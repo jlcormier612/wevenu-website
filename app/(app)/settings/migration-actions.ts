@@ -10,6 +10,7 @@ import {
   getOwnSessionSourceFiles,
   getOwnSessionSummary,
   listSessionsForCurrentVenue,
+  retryOwnRecord,
   reviewOwnRecord,
   resolveFloorPlanImportRecord,
   runDedupeForOwnSession,
@@ -87,6 +88,16 @@ export async function runMigrationDedupeAction(sessionId: string) {
 export async function reviewMigrationRecordAction(sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical") {
   const result = await reviewOwnRecord(sessionId, recordId, decision);
   if (result.ok) revalidatePath("/settings/migration");
+  return result;
+}
+
+export async function retryMigrationRecordAction(sessionId: string, recordId: string) {
+  const result = await retryOwnRecord(sessionId, recordId);
+  if (result.ok) {
+    revalidatePath("/settings/migration");
+    revalidatePath("/clients");
+    revalidatePath("/calendar");
+  }
   return result;
 }
 

@@ -71,6 +71,8 @@ export type Invoice = {
   // Embedded
   clientName: string | null;
   eventDate: string | null;
+  /** Event booking commitment date — for At-booking schedule preview. */
+  bookedAt: string | null;
   eventName: string | null;
   /** Booking Financial Architecture Phase 3a. Null = not linked; a Draft invoice with this set is a live projection of that Event Order. */
   eventOrderId: string | null;

@@ -375,6 +375,10 @@ export function UnifiedTasksSection({
     const busy = completing === item.id;
     const undoBusy = undoing === item.id;
     const hasOutbound = Boolean(item.externalUrl && item.confirmLabel && !item.completed);
+    // A coordinator-configured native destination (e.g. "Open Questionnaire")
+    // with no domain trigger to auto-verify it — same open + confirm shape
+    // as hasOutbound, except "open" navigates in-app instead of leaving it.
+    const hasInternalOpen = Boolean(!item.externalUrl && item.targetSection !== "tasks" && item.confirmLabel && !item.completed);
 
     return (
       <div key={item.id} className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card px-3 py-3">
@@ -416,6 +420,25 @@ export function UnifiedTasksSection({
               <ExternalLink className="h-3 w-3" />
               {item.actionLabel}
             </a>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleComplete(item.id)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-border/80 text-heading transition-opacity hover:opacity-80 disabled:opacity-60"
+            >
+              {busy ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : item.confirmLabel}
+            </button>
+          </div>
+        ) : hasInternalOpen ? (
+          <div className="flex shrink-0 flex-col items-stretch gap-1.5 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={() => onNavigate(item.targetSection, item.targetFocus)}
+              className="inline-flex items-center justify-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90"
+              style={{ background: "var(--venue-primary)" }}
+            >
+              {item.actionLabel}
+            </button>
             <button
               type="button"
               disabled={busy}

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { addFaqStarterAgainAction } from "@/app/(app)/guide/faq-starter-actions";
 import { saveGuideAction } from "@/app/(app)/guide/actions";
+import { updateStoryAction } from "@/app/(app)/settings/actions";
 import {
   emptyVenueGuideData,
   type DualCopySectionKey,
@@ -24,7 +25,7 @@ import {
   type FaqStarterMasterKey,
 } from "@/lib/venue-guide/starters";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
-import { librarySavedToastMessage } from "@/components/library/use-library-unsaved-guard";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -295,6 +296,7 @@ function TextSectionEditor({
 }) {
   const [val, setVal]   = React.useState(value);
   const [dirty, setDirty] = React.useState(false);
+  useLibraryUnsavedGuard(dirty);
 
   function handleChange(v: string) {
     setVal(v);
@@ -821,6 +823,64 @@ function SectionCard({
   );
 }
 
+// Our Story is the same venues.story column Settings → Business & Brand
+// used to edit directly — this is now the one editor for it, not a second
+// one. Not part of GuideSectionKey/SECTIONS: Story has no client/vendor
+// audience split (always shown, unlike the rest of the Guide) and isn't
+// stored in venue_guide, so it deliberately sits outside that completion-
+// weighted, audience-aware system rather than being force-fit into it.
+// Renders first because that's where couples encounter it in the portal —
+// before Parking/Accommodations/etc.
+const STORY_DESCRIPTION = "A short welcome, in your own words. It's the first thing couples read in their Venue Guide.";
+
+function StorySection({
+  value,
+  saving,
+  onSave,
+}: {
+  value: string;
+  saving: boolean;
+  onSave: (v: string) => Promise<void>;
+}) {
+  const [open, setOpen] = React.useState(true);
+  const isFilled = value.trim().length > 0;
+
+  return (
+    <Card className={`overflow-hidden transition-shadow ${open ? "shadow-md ring-1 ring-border" : ""}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-muted/40 transition-colors text-left"
+      >
+        <span className="text-xl shrink-0">📖</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-heading">Our Story</p>
+            {isFilled
+              ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-emerald-700 border-emerald-200 bg-emerald-50">✓ Complete</Badge>
+              : <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-muted-foreground">Empty</Badge>
+            }
+          </div>
+          {!open && <p className="text-xs text-muted-foreground mt-0.5 truncate">{value.trim() || STORY_DESCRIPTION}</p>}
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+      </button>
+      {open && (
+        <CardContent className="pt-0 pb-5 space-y-4 border-t border-border">
+          <p className="text-xs text-muted-foreground pt-4">{STORY_DESCRIPTION}</p>
+          <TextSectionEditor
+            label="Our Story"
+            value={value}
+            placeholder="We are so grateful you chose us and can't wait to help you plan and celebrate your special day…"
+            saving={saving}
+            onSave={onSave}
+          />
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 function VendorOverrideToggle({
   enabled,
   onToggle,
@@ -867,16 +927,24 @@ function VendorOverrideToggle({
 export function VenueGuideEditor({
   initial,
   missingStarterKeys = [],
+  initialStory = "",
 }: {
   initial: VenueGuideData | null;
   missingStarterKeys?: FaqStarterMasterKey[];
+  /** venues.story — same column/action Settings → Business & Brand used to edit; one source of truth. */
+  initialStory?: string;
 }) {
   const [data, setData]     = React.useState<VenueGuideData>(initial ?? emptyVenueGuideData());
   const [saving, setSaving] = React.useState<string | null>(null);
+  const [story, setStory]   = React.useState(initialStory);
 
   React.useEffect(() => {
     if (initial) setData(initial);
   }, [initial]);
+
+  React.useEffect(() => {
+    setStory(initialStory);
+  }, [initialStory]);
 
   async function save(partial: Parameters<typeof saveGuideAction>[0], field: string) {
     setSaving(field);
@@ -886,6 +954,14 @@ export function VenueGuideEditor({
     } else {
       toast.error(result.error ?? "Could not save. Please try again.");
     }
+    setSaving(null);
+  }
+
+  async function saveStory(v: string) {
+    setSaving("story");
+    await updateStoryAction(v);
+    setStory(v);
+    toast.success(librarySavedToastMessage());
     setSaving(null);
   }
 
@@ -952,7 +1028,27 @@ export function VenueGuideEditor({
 
   return (
     <div className="space-y-4 max-w-3xl">
+      <div className="rounded-sm border border-border bg-muted/30 px-4 py-3 text-sm space-y-1.5">
+        <p className="font-medium text-heading">What clients see here</p>
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          Everything in this guide (parking, policies, FAQs, day-of contacts, and the rest) is edited
+          on this page — this is the source of truth clients and vendors read in the portal. Your
+          venue name, logo, and brand colors used in emails and portal chrome live in{" "}
+          <a href="/settings/business" className="underline underline-offset-2 text-heading">
+            Settings → Business &amp; Brand
+          </a>
+          . Client reminder cadence and optional staff email alerts live in{" "}
+          <a href="/settings/communications" className="underline underline-offset-2 text-heading">
+            Settings → Communications
+          </a>
+          .
+        </p>
+      </div>
+
       <CompletionMeter data={data} />
+
+      {/* Our Story — first thing couples read in the portal Guide, right after the hero photo */}
+      <StorySection value={story} saving={saving === "story"} onSave={saveStory} />
 
       {/* Parking & Transportation */}
       <SectionCard {...sectionProps("parking")}>

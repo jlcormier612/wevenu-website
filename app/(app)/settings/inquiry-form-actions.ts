@@ -18,7 +18,7 @@ export async function updateInquiryFormSettingsAction(patch: {
   inquiryEventDateMode?: InquiryEventDateMode;
   inquiryFormFields?: InquiryFormFieldsConfig;
   acceptedEventTypes?: string[];
-}): Promise<{ ok: boolean }> {
+}): Promise<{ ok: boolean; error?: string }> {
   const result = await updateInquiryFormSettings(patch);
   if (result.ok) revalidateInquiryFormSurfaces();
   return result;
@@ -26,7 +26,7 @@ export async function updateInquiryFormSettingsAction(patch: {
 
 export async function replaceInquiryFormQuestionsAction(
   questions: Omit<InquiryFormQuestion, "sortOrder">[],
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const result = await replaceInquiryFormQuestions(questions);
   if (result.ok) revalidateInquiryFormSurfaces();
   return result;

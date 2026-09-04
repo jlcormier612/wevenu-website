@@ -6,8 +6,11 @@ import {
   classifyDashboardItems,
   classifyTodayDatedItems,
   classifyUpcomingItems,
+  collectCrossSectionSubjects,
+  excludeByCrossSectionSubject,
 } from "@/lib/dashboard-system/decision-engine";
 import type { DashboardData } from "@/lib/dashboard/types";
+import { resolveVenueNextSteps } from "@/lib/dashboard/venue-next-steps";
 
 const TODAY = "2026-08-31";
 const TOMORROW = "2026-09-01";
@@ -123,6 +126,80 @@ describe("Today's Focus and Upcoming partition the same data", () => {
       assert.ok(item.sortDate != null && item.sortDate > TODAY, `${item.id} is not upcoming`);
     }
     assert.equal(focus.filter((f) => upcoming.some((u) => u.id === f.id)).length, 0);
+  });
+});
+
+describe("Upcoming identity exclusion (not date partitioning alone)", () => {
+  it("tags Upcoming payments with the same payment:{scheduleId} key Next Steps uses", () => {
+    const data = dashboard({
+      upcomingPayments: [payment("line-a", TOMORROW)] as never,
+    });
+    const upcoming = classifyUpcomingItems(data);
+    assert.equal(upcoming.length, 1);
+    assert.equal(upcoming[0]!.crossSectionSubject, "payment:sched-line-a");
+  });
+
+  it("suppresses an Upcoming payment when Today's Focus already claims that schedule identity", () => {
+    // Same schedule, two line items: one due today (Focus), one future (Upcoming source).
+    // Date partitioning alone would still emit the future line; identity must suppress it.
+    const scheduleId = "sched-shared";
+    const data = dashboard({
+      upcomingPayments: [
+        { id: "due-today", scheduleId, label: "Deposit", amount: 500, dueDate: TODAY, isOverdue: false, clientName: "Client" },
+        { id: "due-later", scheduleId, label: "Balance", amount: 1500, dueDate: TOMORROW, isOverdue: false, clientName: "Client" },
+      ] as never,
+    });
+
+    const focus = classifyBriefingItems(data);
+    assert.ok(
+      focus.some((i) => i.crossSectionSubject === `payment:${scheduleId}`),
+      "Focus claims the schedule via today's payment line",
+    );
+
+    const rawUpcoming = classifyUpcomingItems(data);
+    assert.ok(
+      rawUpcoming.some((i) => i.id === "up-payment-due-later"),
+      "date filter alone still surfaces the future line from the Upcoming source",
+    );
+
+    const upcoming = excludeByCrossSectionSubject(
+      rawUpcoming,
+      collectCrossSectionSubjects(focus),
+    );
+    assert.equal(
+      upcoming.some((i) => i.crossSectionSubject === `payment:${scheduleId}`),
+      false,
+      "identity exclusion removes the future line once Focus claimed the schedule",
+    );
+  });
+
+  it("suppresses an Upcoming payment when Your Next Steps already claims that schedule identity", () => {
+    const data = dashboard({
+      upcomingPayments: [payment("p9", TOMORROW)] as never,
+    });
+    const rawUpcoming = classifyUpcomingItems(data);
+    assert.equal(rawUpcoming[0]!.crossSectionSubject, "payment:sched-p9");
+
+    // Next Steps payment rows use subjectKey payment:{scheduleId} (overdue path).
+    const { visible: nextSteps } = resolveVenueNextSteps({
+      today: TODAY,
+      clients: [],
+      venueTasks: [],
+      leadFollowUps: [],
+      payments: [{
+        id: "overdue-line",
+        scheduleId: "sched-p9",
+        label: "Deposit",
+        dueDate: PAST,
+        isOverdue: true,
+        clientName: "Client",
+      }],
+    });
+    assert.ok(nextSteps.some((s) => s.subjectKey === "payment:sched-p9"));
+
+    const claimed = new Set(nextSteps.map((s) => s.subjectKey));
+    const upcoming = excludeByCrossSectionSubject(rawUpcoming, claimed);
+    assert.equal(upcoming.length, 0);
   });
 });
 

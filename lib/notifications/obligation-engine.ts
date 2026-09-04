@@ -12,6 +12,9 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { sendEmail } from "@/lib/email/send";
+import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
+import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
+import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import type { ProcessResult } from "@/lib/notifications/types";
 import { cadenceIntervalDays, type CadenceLabel } from "@/lib/notifications/obligations";
 
@@ -95,8 +98,12 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
         .select("first_name, partner_first_name, email").eq("id", schedule.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
 
-      const { data: venue } = await supabase.from("venues").select("name").eq("id", reminder.venue_id).maybeSingle();
-      const venueName = venue?.name ?? "Your Venue";
+      const { data: venue } = await supabase.from("venues")
+        .select("name, logo_url, primary_color, email_signature, email, phone")
+        .eq("id", reminder.venue_id)
+        .maybeSingle();
+      const brand = emailBrandFromVenue(venue);
+      const venueName = brand.name;
       const dueLabel = item.due_date
         ? new Date(item.due_date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : "soon";
@@ -109,15 +116,33 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
         ? `Your payment of ${amountLabel} for ${item.label} was due ${dueLabel} and hasn't been received yet. Please reach out to ${venueName} to take care of this.`
         : `This is a reminder that your payment of ${amountLabel} for ${item.label} is due ${dueLabel}.`;
 
-      const sendResult = await sendEmail({ to: client.email, subject, text });
+      const html = wrapConversationMessageHtml(brand, text);
+      const sendResult = await sendEmail({
+        to: client.email,
+        subject,
+        text: appendEmailSignatureText(text, brand),
+        html,
+        replyTo: venue?.email ?? undefined,
+      });
       if (!sendResult.ok) throw new Error(sendResult.message);
 
+      const providerId = sendResult.method === "resend" ? sendResult.providerId ?? null : null;
       await supabase.from("notification_log").insert({
         venue_id: reminder.venue_id, source_type: "task_reminder", source_id: reminder.id,
         recipient_role: "couple", recipient_email: client.email, channel: "email",
         status: "sent", subject, body_preview: text.slice(0, 500),
-        provider_message_id: sendResult.method === "resend" ? sendResult.providerId ?? null : null,
+        provider_message_id: providerId,
         sent_at: new Date().toISOString(),
+      });
+      await recordExternalClientOutbound(supabase, {
+        venueId: reminder.venue_id,
+        clientId: schedule.client_id,
+        channel: "email",
+        body: text,
+        providerId,
+        status: "accepted",
+        sourceType: "payment_reminder",
+        sourceId: reminder.id,
       });
       await supabase.from("task_reminders").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", reminder.id);
       result.sent++;
@@ -173,22 +198,44 @@ async function processContractReminders(supabase: any, now: string, result: Proc
       const { data: client } = await supabase.from("clients").select("email").eq("id", contract.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
 
-      const { data: venue } = await supabase.from("venues").select("name").eq("id", reminder.venue_id).maybeSingle();
-      const venueName = venue?.name ?? "Your Venue";
+      const { data: venue } = await supabase.from("venues")
+        .select("name, logo_url, primary_color, email_signature, email, phone")
+        .eq("id", reminder.venue_id)
+        .maybeSingle();
+      const brand = emailBrandFromVenue(venue);
+      const venueName = brand.name;
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const signUrl = `${baseUrl}/sign/${contract.sign_token}`;
       const subject = `Please sign: ${contract.title} — ${venueName}`;
       const text = `${venueName} is waiting on your signature for "${contract.title}". You can review and sign here: ${signUrl}`;
 
-      const sendResult = await sendEmail({ to: client.email, subject, text });
+      const html = wrapConversationMessageHtml(brand, text);
+      const sendResult = await sendEmail({
+        to: client.email,
+        subject,
+        text: appendEmailSignatureText(text, brand),
+        html,
+        replyTo: venue?.email ?? undefined,
+      });
       if (!sendResult.ok) throw new Error(sendResult.message);
 
+      const providerId = sendResult.method === "resend" ? sendResult.providerId ?? null : null;
       await supabase.from("notification_log").insert({
         venue_id: reminder.venue_id, source_type: "task_reminder", source_id: reminder.id,
         recipient_role: "couple", recipient_email: client.email, channel: "email",
         status: "sent", subject, body_preview: text.slice(0, 500),
-        provider_message_id: sendResult.method === "resend" ? sendResult.providerId ?? null : null,
+        provider_message_id: providerId,
         sent_at: new Date().toISOString(),
+      });
+      await recordExternalClientOutbound(supabase, {
+        venueId: reminder.venue_id,
+        clientId: contract.client_id,
+        channel: "email",
+        body: text,
+        providerId,
+        status: "accepted",
+        sourceType: "contract_reminder",
+        sourceId: reminder.id,
       });
       await supabase.from("task_reminders").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", reminder.id);
       result.sent++;

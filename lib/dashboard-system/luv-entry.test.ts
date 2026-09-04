@@ -15,6 +15,7 @@ function focusItem(overrides: Partial<ClassifiedItem> = {}): ClassifiedItem {
     detail: "No reply in 5 days",
     href: "/leads/sara",
     sortDate: null,
+    crossSectionSubject: null,
     ...overrides,
   };
 }

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getCurrentVenue, getSetupReadyCounts, saveSetupProgress, submitVenueSetup, type SetupReadyCounts, type SubmitSetupResult } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue, getSetupReadyCounts, saveSetupProgress, submitVenueSetup, type SetupReadyCounts, type SubmitSetupResult } from "@/lib/venue/service";
 import { getEmailIntakeStatus, type EmailIntakeStatus } from "@/lib/lead-intake/email-status";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
+import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
 import type { Venue, VenueSetupInput } from "@/lib/venue/types";
 
 /**
@@ -47,10 +49,14 @@ export async function getLeadCaptureStepDataAction(): Promise<{
   appUrl: string;
   leadEmailAddress: string | null;
   emailIntakeStatus: EmailIntakeStatus | null;
+  inquiryFormSettings: InquiryFormSettings | null;
+  canEditInquiryForm: boolean;
 }> {
-  const [venue, emailIntakeStatus] = await Promise.all([
+  const [venue, emailIntakeStatus, inquiryFormSettings, role] = await Promise.all([
     getCurrentVenue(),
     getEmailIntakeStatus(),
+    getInquiryFormSettings(),
+    getCurrentUserRole(),
   ]);
   const leadEmailAddress =
     venue && process.env.RESEND_INBOUND_ADDRESS
@@ -61,6 +67,8 @@ export async function getLeadCaptureStepDataAction(): Promise<{
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
     leadEmailAddress,
     emailIntakeStatus,
+    inquiryFormSettings,
+    canEditInquiryForm: role === "owner" || role === "manager",
   };
 }
 

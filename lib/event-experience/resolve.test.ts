@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { PUBLIC_INQUIRY_EVENT_TYPES } from "@/lib/inquiry-form/constants";
+import { DEFAULT_ACCEPTED_EVENT_TYPES } from "@/lib/event-types/canonical";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import {
   EXPERIENCE_PROFILE_IDS,
@@ -119,16 +119,16 @@ describe("resolveExperienceProfile — CRM event types", () => {
 });
 
 describe("resolveExperienceProfile — inquiry aliases and labels", () => {
-  it("classifies every public inquiry event type", () => {
+  it("classifies every default public inquiry event type", () => {
     const expected: Record<string, string> = {
       wedding: "wedding",
-      corporate_event: "corporate",
+      corporate: "corporate",
       social_event: "general_event",
-      birthday_milestone: "general_event",
+      birthday: "general_event",
       other: "general_event",
     };
-    for (const option of PUBLIC_INQUIRY_EVENT_TYPES) {
-      assert.equal(resolveExperienceProfileId(option.value), expected[option.value], option.value);
+    for (const value of DEFAULT_ACCEPTED_EVENT_TYPES) {
+      assert.equal(resolveExperienceProfileId(value), expected[value], value);
     }
   });
 

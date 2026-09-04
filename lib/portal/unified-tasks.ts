@@ -42,7 +42,10 @@ export type UnifiedTaskTargetSection =
   | "vendors"
   | "seating"
   | "inventory"
-  | "event-order";
+  | "event-order"
+  | "website"
+  | "floor_plans"
+  | "overview";
 
 export type UnifiedTask = {
   id: string;
@@ -132,6 +135,62 @@ const TRIGGER_WORKSPACE: Record<
 };
 
 /**
+ * Task Destination Audit (2026-09-03): a coordinator-chosen "Opens"
+ * destination (event_tasks.action_type), for tasks with no domain trigger
+ * to route by — a custom task, not one of the fixed seed triggers above.
+ * Same native-workspace destinations lib/playbooks/constants.ts's
+ * TASK_ACTION_TYPES offers venue-side, mapped to their real couple-portal
+ * section instead of a venue tab. Checked after TRIGGER_WORKSPACE (a real
+ * domain trigger is always authoritative) and before a raw attachment link
+ * (a native destination beats an arbitrary URL).
+ */
+const ACTION_TYPE_WORKSPACE: Record<
+  string,
+  { section: UnifiedTaskTargetSection; focus: PortalWorkspaceFocus | null; actionLabel: string }
+> = {
+  vendor_library: { section: "vendors", focus: null, actionLabel: "Open Vendor Library" },
+  payments: { section: "payments", focus: null, actionLabel: "Open Payments" },
+  documents: { section: "documents", focus: null, actionLabel: "Open Documents" },
+  guest_list: { section: "guests", focus: null, actionLabel: "Open Guest List" },
+  questionnaire: { section: "questionnaire", focus: "form", actionLabel: "Open Questionnaire" },
+  contract: { section: "documents", focus: "sign", actionLabel: "Open Contract / Agreement" },
+  timeline: { section: "timeline", focus: null, actionLabel: "Open Timeline" },
+  floor_plan: { section: "floor_plans", focus: null, actionLabel: "Open Floor Plan" },
+  event_order: { section: "event-order", focus: null, actionLabel: "Open Event Order" },
+  wedding_website: { section: "website", focus: null, actionLabel: "Open Wedding Website" },
+  // No dedicated portal section exists for either — Overview is the honest
+  // destination (Key Dates render there; there's no couple "event details"
+  // page distinct from Overview at all).
+  key_dates: { section: "overview", focus: null, actionLabel: "Open Key Dates" },
+  event_details: { section: "overview", focus: null, actionLabel: "Open Event Details" },
+};
+
+/**
+ * Presentation for a coordinator-configured actionType with no domain
+ * trigger. Mirrors the externalUrl "open + confirm" shape below, except
+ * the primary action navigates in-app (onNavigate) instead of opening an
+ * external URL — the couple can still Mark complete afterward exactly like
+ * any other manual client_owned task, since nothing here can auto-verify.
+ */
+function actionTypePresentation(t: PortalTask): ReturnType<typeof venueTaskPresentation> | null {
+  if (!t.actionType) return null;
+  const mapped = ACTION_TYPE_WORKSPACE[t.actionType];
+  if (!mapped) return null;
+  const canManual = Boolean(t.canComplete);
+  return {
+    targetSection: mapped.section,
+    targetFocus: mapped.focus,
+    actionLabel: t.actionLabel?.trim() || mapped.actionLabel,
+    completableHere: canManual,
+    externalUrl: null,
+    externalUrlLabel: null,
+    undoableHere: false,
+    confirmLabel: canManual ? "Mark complete" : null,
+    missingLinkHint: null,
+  };
+}
+
+/**
  * Policy: domain-triggered checklist rows navigate to the owning section;
  * only acknowledgment / non-triggered client_owned rows may Mark complete.
  *
@@ -198,6 +257,11 @@ export function venueTaskPresentation(t: PortalTask): {
       missingLinkHint: null,
     };
   }
+
+  // A coordinator-configured native destination beats a raw attachment
+  // link — checked before the externalUrl fallback below.
+  const actionPresentation = actionTypePresentation(t);
+  if (actionPresentation) return actionPresentation;
 
   const canManual = Boolean(t.canComplete);
   const outbound = ackOutboundCopy(t.title, externalUrlLabel);

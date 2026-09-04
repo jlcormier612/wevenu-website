@@ -90,6 +90,8 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
       isRequired: Boolean(r.isRequired),
       completedAt: (r.completedAt as string | null) ?? null,
       autoCompleteTrigger: trigger,
+      actionType: (r.actionType as string | null) ?? null,
+      actionLabel: (r.actionLabel as string | null) ?? null,
       canComplete,
       canUndo,
       links,

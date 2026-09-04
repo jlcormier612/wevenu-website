@@ -39,6 +39,8 @@ function task(partial: Partial<PortalTask> & Pick<PortalTask, "id" | "title" | "
     isRequired: true,
     completedAt: null,
     autoCompleteTrigger: null,
+    actionType: null,
+    actionLabel: null,
     canComplete: false,
     ...partial,
     canUndo: partial.canUndo ?? false,

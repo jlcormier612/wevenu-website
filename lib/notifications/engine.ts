@@ -17,6 +17,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { appendEmailSignatureText, emailBrandFromVenue, escapeHtml } from "@/lib/email/venue-brand";
 import { buildReminderEmail } from "@/lib/notifications/templates";
 import { determineChannel, type NotificationRole, type ProcessResult } from "@/lib/notifications/types";
 
@@ -54,7 +56,7 @@ export async function processReminders(): Promise<ProcessResult> {
         )
       ),
       tour_appointment:tour_appointments (
-        id, scheduled_at, duration_minutes, contact_name, contact_email, status
+        id, scheduled_at, duration_minutes, contact_name, contact_email, status, lead_id
       )
     `)
     .eq("status", "pending")
@@ -103,6 +105,7 @@ export async function processReminders(): Promise<ProcessResult> {
       let recipientEmail: string | null = null;
       let subject = "";
       let bodyPreview = "";
+      let outboundBody = "";
 
       if (channel === "email") {
         // Determine recipient email
@@ -123,9 +126,13 @@ export async function processReminders(): Promise<ProcessResult> {
           portalToken = session?.access_token;
         }
 
-        const { data: venueRow } = await supabase.from("venues").select("name, primary_color").eq("id", reminder.venue_id).maybeSingle<{ name: string; primary_color: string }>();
-        const venueName = venueRow?.name ?? "Your Venue";
-        const venueColor = venueRow?.primary_color ?? "#5D6F5D";
+        const { data: venueRow } = await supabase.from("venues")
+          .select("name, primary_color, logo_url, email_signature, email, phone")
+          .eq("id", reminder.venue_id)
+          .maybeSingle();
+        const brand = emailBrandFromVenue(venueRow);
+        const venueName = brand.name;
+        const venueColor = brand.primaryColor;
 
         let emailContent: { subject: string; html: string; text: string };
         if (isTourReminder && tourAppt) {
@@ -152,8 +159,24 @@ export async function processReminders(): Promise<ProcessResult> {
             portalToken, venueBaseUrl: getBaseUrl(), venueName, venueColor,
           });
         }
+
+        // Couple-facing emails get the venue signature; coordinator alerts stay internal-shaped.
+        if (role === "couple") {
+          emailContent.text = appendEmailSignatureText(emailContent.text, brand);
+          const sig = brand.emailSignature?.trim();
+          const contact = brand.replyContact?.trim();
+          if (sig || contact) {
+            const sigHtml = [
+              sig ? `<p style="white-space:pre-line;margin:0 0 8px;color:#6b7280;font-size:13px">${escapeHtml(sig)}</p>` : "",
+              contact ? `<p style="margin:0;color:#9ca3af;font-size:12px">${escapeHtml(contact)}</p>` : "",
+            ].join("");
+            emailContent.html += `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb">${sigHtml}</div>`;
+          }
+        }
+
         subject = emailContent.subject;
         bodyPreview = emailContent.html.replace(/<[^>]+>/g, "").slice(0, 500);
+        outboundBody = emailContent.text;
 
         // Send via Resend REST API
         const apiKey = process.env.RESEND_API_KEY;
@@ -197,6 +220,22 @@ export async function processReminders(): Promise<ProcessResult> {
         provider_message_id: providerMessageId,
         sent_at: new Date().toISOString(),
       });
+
+      // External client sends must appear in relationship conversation history.
+      // Coordinator alerts are internal-only and stay out of the client thread.
+      if (role === "couple" && channel === "email") {
+        await recordExternalClientOutbound(supabase, {
+          venueId: reminder.venue_id,
+          clientId: event?.client_id ?? null,
+          leadId: tourAppt?.lead_id ?? null,
+          channel: "email",
+          body: outboundBody || bodyPreview,
+          providerId: providerMessageId,
+          status: "accepted",
+          sourceType: isTourReminder ? "tour_reminder" : "task_reminder",
+          sourceId: reminder.id,
+        });
+      }
 
       // Mark reminder as sent
       await supabase.from("task_reminders")

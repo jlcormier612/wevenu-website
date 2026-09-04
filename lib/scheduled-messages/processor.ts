@@ -16,6 +16,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
+import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { acceptOutboundEmail, acceptOutboundSms } from "@/lib/conversations/delivery-result";
@@ -59,22 +60,26 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
     if (!resolved.subject) return { ok: false, error: "An email needs a subject line." };
     // Merge already resolved above. Brand with live venue identity at send time.
     const { data: venue } = await supabase.from("venues")
-      .select("name, logo_url, primary_color")
+      .select("name, logo_url, primary_color, email_signature, email, phone")
       .eq("id", msg.venueId)
-      .maybeSingle<{ name: string | null; logo_url: string | null; primary_color: string | null }>();
-    const brand = {
-      name: venue?.name ?? "Your venue",
-      logoUrl: venue?.logo_url,
-      primaryColor: venue?.primary_color ?? "#5D6F5D",
-    };
+      .maybeSingle<{
+        name: string | null;
+        logo_url: string | null;
+        primary_color: string | null;
+        email_signature: string | null;
+        email: string | null;
+        phone: string | null;
+      }>();
+    const brand = emailBrandFromVenue(venue);
     const html = wrapConversationMessageHtml(brand, resolved.body);
     const conversationId = await findOrCreateConversation(supabase, msg.venueId, msg.relationshipId);
     const result = await sendEmail({
       to: contact.email,
       subject: resolved.subject,
-      text: resolved.body,
+      text: appendEmailSignatureText(resolved.body, brand),
       html,
       threadId: conversationId ?? undefined,
+      replyTo: venue?.email ?? undefined,
     });
     const accepted = acceptOutboundEmail(result);
     if (!accepted.ok) return { ok: false, error: accepted.message };

@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
@@ -21,9 +21,10 @@ import { getTourSettings } from "@/lib/tours/service";
 export const metadata: Metadata = { title: "Leads & Booking — Settings" };
 
 export default async function LeadsBookingSettingsPage() {
-  const [venue, intakeHealth, emailIntakeStatus, tourSettings, inquiryFormSettings] = await Promise.all([
-    getCurrentVenue(), getIntakeHealthSummary(), getEmailIntakeStatus(), getTourSettings(), getInquiryFormSettings(),
+  const [venue, intakeHealth, emailIntakeStatus, tourSettings, inquiryFormSettings, role] = await Promise.all([
+    getCurrentVenue(), getIntakeHealthSummary(), getEmailIntakeStatus(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
   ]);
+  const canEditInquiryForm = role === "owner" || role === "manager";
 
   return (
     <div className="space-y-6">
@@ -52,6 +53,7 @@ export default async function LeadsBookingSettingsPage() {
               }
               emailIntakeStatus={emailIntakeStatus}
               inquiryFormSettings={inquiryFormSettings}
+              canEditInquiryForm={canEditInquiryForm}
             />
           </CardContent>
         </Card>

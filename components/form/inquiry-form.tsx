@@ -14,8 +14,8 @@ import {
 } from "@/components/form/inquiry-confirmations";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import {
+  EVENT_TYPES,
   INQUIRY_API_ERRORS,
-  PUBLIC_INQUIRY_EVENT_TYPES,
 } from "@/lib/inquiry-form/constants";
 import type {
   InquiryFormQuestion,
@@ -245,7 +245,7 @@ export function InquiryForm({
 }) {
   const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes } = config;
   const primary = venue.primaryColor || "#5D6F5D";
-  const eventTypeOptions = PUBLIC_INQUIRY_EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
+  const eventTypeOptions = EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
 
   const [mode, setMode] = React.useState<InquiryMode | null>(() => {
     if (initialMode) return initialMode;

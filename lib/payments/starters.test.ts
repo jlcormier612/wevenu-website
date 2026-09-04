@@ -8,8 +8,14 @@ import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
 import {
   allocatePresetAmounts,
   defaultInvoiceNotes,
+  formatPresetPercent,
+  formatRelativeDueLabel,
+  formatTimingLabel,
   getPaymentPlanStarters,
   paymentMilestoneDescription,
+  previewDueDateFromEvent,
+  resolveDueDateFromTiming,
+  safePaymentScheduleReturnPath,
 } from "@/lib/payments/starters";
 
 describe("Payment Plan starters", () => {
@@ -58,5 +64,72 @@ describe("Payment Plan starters", () => {
     assert.match(paymentMilestoneDescription("final"), /remaining balance/i);
     assert.match(defaultInvoiceNotes("Garden Hall"), /Garden Hall/);
     assert.doesNotMatch(defaultInvoiceNotes("Garden Hall"), /late fee|cancell/i);
+  });
+
+  it("explains timing in venue-owner language (at booking ≠ event day)", () => {
+    assert.equal(formatTimingLabel({ type: "at_booking" }), "At booking");
+    assert.equal(formatTimingLabel({ type: "before_event", days: 60 }), "60 days before the event");
+    assert.equal(formatTimingLabel({ type: "before_event", days: 0 }), "On the event day");
+    assert.equal(formatTimingLabel({ type: "after_booking", days: 30 }), "30 days after booking");
+    assert.notEqual(
+      formatTimingLabel({ type: "at_booking" }),
+      formatTimingLabel({ type: "before_event", days: 0 }),
+    );
+    // Legacy offset helper still works for event-relative copy.
+    assert.equal(formatRelativeDueLabel(-60), "60 days before the event");
+    assert.equal(formatRelativeDueLabel(0), "On the event day");
+    assert.equal(formatPresetPercent(25), "25%");
+    assert.equal(formatPresetPercent(33.33), "about 33%");
+    assert.equal(previewDueDateFromEvent("2026-10-17", -60), "2026-08-18");
+  });
+
+  it("resolves concrete due dates from timing rules without collapsing at-booking into event day", () => {
+    const eventDate = "2026-10-17";
+    const bookingDate = "2025-01-10";
+    assert.equal(
+      resolveDueDateFromTiming({ type: "before_event", days: 60 }, { eventDate, bookingDate }),
+      "2026-08-18",
+    );
+    assert.equal(
+      resolveDueDateFromTiming({ type: "before_event", days: 0 }, { eventDate, bookingDate }),
+      "2026-10-17",
+    );
+    assert.equal(
+      resolveDueDateFromTiming({ type: "at_booking" }, { eventDate, bookingDate }),
+      "2025-01-10",
+    );
+    assert.equal(
+      resolveDueDateFromTiming({ type: "after_booking", days: 30 }, { eventDate, bookingDate }),
+      "2025-02-09",
+    );
+    assert.equal(
+      resolveDueDateFromTiming({ type: "at_booking" }, { eventDate, bookingDate: null }),
+      null,
+    );
+  });
+
+  it("starter deposit lines use at booking; later lines use before event", () => {
+    const thirds = SCHEDULE_PRESETS.find((p) => p.id === "thirds")!;
+    assert.equal(thirds.items[0]!.timing.type, "at_booking");
+    assert.deepEqual(thirds.items[1]!.timing, { type: "before_event", days: 90 });
+    assert.deepEqual(thirds.items[2]!.timing, { type: "before_event", days: 30 });
+
+    const mixed = allocatePresetAmounts(10000, [
+      { pctOfTotal: 50 },
+      { pctOfTotal: 25 },
+      { pctOfTotal: 25 },
+    ]);
+    assert.deepEqual(mixed, [5000, 2500, 2500]);
+    const ctx = { eventDate: "2026-10-17", bookingDate: "2025-09-03" };
+    assert.equal(resolveDueDateFromTiming({ type: "at_booking" }, ctx), "2025-09-03");
+    assert.equal(resolveDueDateFromTiming({ type: "before_event", days: 60 }, ctx), "2026-08-18");
+    assert.equal(resolveDueDateFromTiming({ type: "before_event", days: 14 }, ctx), "2026-10-03");
+  });
+
+  it("only allows safe /payments return paths for invoice handoff", () => {
+    assert.equal(safePaymentScheduleReturnPath("/payments/new?preset=thirds"), "/payments/new?preset=thirds");
+    assert.equal(safePaymentScheduleReturnPath("https://evil.example/payments"), null);
+    assert.equal(safePaymentScheduleReturnPath("//evil.example"), null);
+    assert.equal(safePaymentScheduleReturnPath("/invoices/abc"), null);
   });
 });

@@ -10,7 +10,8 @@ import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/servi
 import { getLeadCaptureStageStatus } from "@/lib/setup-hub/service";
 import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
 import { getTourAvailability, getTourSettings } from "@/lib/tours/service";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 
 export const metadata: Metadata = { title: "Lead Capture — Setup" };
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export default async function LeadCaptureSetupPage() {
     venue, emailIntakeStatus, tourSettings, tourAvailability,
     facebookConnection, facebookLeadForms, facebookLog,
     qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
+    inquiryFormSettings, role,
   ] = await Promise.all([
     getCurrentVenue(),
     getEmailIntakeStatus(),
@@ -32,6 +34,8 @@ export default async function LeadCaptureSetupPage() {
     getQrCampaignAnalytics(),
     getIntakeHealthSummary(),
     getLeadCaptureStageStatus(),
+    getInquiryFormSettings(),
+    getCurrentUserRole(),
   ]);
 
   if (!venue) return null;
@@ -43,6 +47,7 @@ export default async function LeadCaptureSetupPage() {
   const leadEmailAddress = process.env.RESEND_INBOUND_ADDRESS
     ? `leads+${venue.leadEmailKey}@${process.env.RESEND_INBOUND_ADDRESS.replace(/^.*@/, "")}`
     : null;
+  const canEditInquiryForm = role === "owner" || role === "manager";
 
   return (
     <div className="space-y-6">
@@ -68,6 +73,8 @@ export default async function LeadCaptureSetupPage() {
         qrAnalytics={qrAnalytics}
         intakeHealth={intakeHealth}
         stageStatus={stageStatus}
+        inquiryFormSettings={inquiryFormSettings}
+        canEditInquiryForm={canEditInquiryForm}
       />
     </div>
   );

@@ -161,7 +161,7 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-3xl font-medium text-heading">Inbox</h1>
+          <h1 className="font-heading text-3xl font-medium text-heading">Messages</h1>
           <p className="text-[0.95rem] text-muted-foreground">Every conversation with a lead or booked client, in one place.</p>
         </div>
         <Link href="/messaging/health" className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline">
@@ -210,7 +210,7 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
         </select>
       </div>
 
-      <div className="flex h-[calc(100svh-16rem)] min-h-[32rem] overflow-hidden rounded-sm border border-border bg-card">
+      <div className="flex h-[calc(100svh-11rem)] min-h-[28rem] overflow-hidden rounded-sm border border-border bg-card">
         <div className="flex h-full w-full min-h-0">
           <div className={`w-full md:w-80 shrink-0 border-r border-border/60 overflow-y-auto ${activeId ? "hidden md:block" : ""}`}>
             {items === null ? (

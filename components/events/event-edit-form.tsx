@@ -7,15 +7,19 @@ import { toast } from "sonner";
 
 import { updateEventAction } from "@/app/(app)/events/[id]/actions";
 import { EventFormFields } from "@/components/events/event-form";
+import { useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { eventInputFromVenueEvent } from "@/lib/events/constants";
 import type { EventErrors, EventInput, VenueEvent } from "@/lib/events/types";
 import type { VenueSpace } from "@/lib/availability/types";
 
 export function EventEditForm({ event, spaces = [], maxSimultaneousEvents = 1 }: { event: VenueEvent; spaces?: VenueSpace[]; maxSimultaneousEvents?: number }) {
   const router = useRouter();
+  const [baseline] = React.useState(() => JSON.stringify(eventInputFromVenueEvent(event)));
   const [input, setInput] = React.useState<EventInput>(() => eventInputFromVenueEvent(event));
   const [errors, setErrors] = React.useState<EventErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const dirty = JSON.stringify(input) !== baseline;
+  useLibraryUnsavedGuard(dirty);
 
   const set = <K extends keyof EventInput>(key: K, v: EventInput[K]) => {
     setInput((p) => ({ ...p, [key]: v }));

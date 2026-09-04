@@ -5,8 +5,9 @@ import { InvoiceDetail } from "@/components/invoices/invoice-detail";
 import { isEmailConfigured } from "@/lib/email/send";
 import { getEventOrderDrift, getInvoice } from "@/lib/invoices/service";
 import { getPackages } from "@/lib/packages/service";
+import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -15,12 +16,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `${inv.invoiceNumber} · ${inv.clientName ?? "Invoice"}` };
 }
 
-export default async function InvoiceDetailPage({ params }: Props) {
+export default async function InvoiceDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { returnTo: returnToRaw } = await searchParams;
   const [invoice, packages] = await Promise.all([getInvoice(id), getPackages(true)]);
   if (!invoice) notFound();
+  const returnTo = safePaymentScheduleReturnPath(returnToRaw);
   // Booking Financial Architecture Phase 3b — null for any invoice that
   // isn't sent+Event-Order-linked, or that has no undismissed drift.
   const eventOrderDrift = await getEventOrderDrift(id);
-  return <InvoiceDetail invoice={invoice} packages={packages} eventOrderDrift={eventOrderDrift} emailConfigured={isEmailConfigured()} />;
+  return (
+    <InvoiceDetail
+      invoice={invoice}
+      packages={packages}
+      eventOrderDrift={eventOrderDrift}
+      emailConfigured={isEmailConfigured()}
+      returnToPaymentSchedule={returnTo}
+    />
+  );
 }

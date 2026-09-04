@@ -39,6 +39,7 @@ import { sendSms, isSmsConfigured } from "@/lib/sms/send";
 import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
+import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { extractTokens, mergeContent, resolveForCustomerSend, assertCustomerSafeMergedContent, buildMergeData } from "@/lib/message-templates/merge";
 import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
 import { getCurrentStaffMember } from "@/lib/team/service";
@@ -87,7 +88,7 @@ export async function previewConversationSend(
   const empty: ConversationSendPreview = {
     body: trimmed,
     subject,
-    html: wrapConversationMessageHtml({ name: "Your venue", logoUrl: null, primaryColor: "#5D6F5D" }, trimmed),
+    html: wrapConversationMessageHtml(emailBrandFromVenue(null), trimmed),
     unresolvedMessage: null,
   };
   if (!isSupabaseConfigured) return empty;
@@ -96,11 +97,7 @@ export async function previewConversationSend(
     getCurrentVenue(),
     repo.getRelationshipIdForConversation(supabase, conversationId),
   ]);
-  const brand = {
-    name: venue?.name ?? "Your venue",
-    logoUrl: venue?.logoUrl ?? null,
-    primaryColor: venue?.primaryColor ?? "#5D6F5D",
-  };
+  const brand = emailBrandFromVenue(venue);
   if (!venue || !relationshipId || (extractTokens(trimmed).length === 0 && extractTokens(subject).length === 0)) {
     return {
       body: trimmed,
@@ -230,18 +227,15 @@ export async function sendConversationMessage(
     // resolved plain-text body in the shared venue-brand shell; keep `text`
     // as the plain-text fallback (Workstream A).
     const venue = await getCurrentVenue();
-    const brand = {
-      name: venue?.name ?? "Your venue",
-      logoUrl: venue?.logoUrl,
-      primaryColor: venue?.primaryColor ?? "#5D6F5D",
-    };
+    const brand = emailBrandFromVenue(venue);
     const html = wrapConversationMessageHtml(brand, trimmed);
     const emailResult = await sendEmail({
       to: email,
       subject,
-      text: trimmed,
+      text: appendEmailSignatureText(trimmed, brand),
       html,
       threadId: conversationId,
+      replyTo: venue?.email ?? undefined,
     });
     const accepted = acceptOutboundEmail(emailResult);
     if (!accepted.ok) return { ok: false, message: accepted.message };

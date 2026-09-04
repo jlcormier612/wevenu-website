@@ -6,6 +6,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { saveCapacityRulesAction } from "@/app/(app)/availability/actions";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { LIBRARY_LABELS, librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,10 +34,21 @@ function CountSelect({ value, onChange, label, hint }: { value: number; onChange
 
 export function CapacityRulesSection({ initialRules }: { initialRules: VenueCapacityRules | null }) {
   const defaults = { maxSimultaneousEvents: 1, maxSimultaneousTours: 1, minTurnaroundHours: 0 };
+  const [baseline] = React.useState(() => JSON.stringify({
+    maxEvents: initialRules?.maxSimultaneousEvents ?? defaults.maxSimultaneousEvents,
+    maxTours: initialRules?.maxSimultaneousTours ?? defaults.maxSimultaneousTours,
+    turnaround: String(initialRules?.minTurnaroundHours ?? 0),
+  }));
   const [maxEvents, setMaxEvents] = React.useState(initialRules?.maxSimultaneousEvents ?? defaults.maxSimultaneousEvents);
   const [maxTours, setMaxTours] = React.useState(initialRules?.maxSimultaneousTours ?? defaults.maxSimultaneousTours);
   const [turnaround, setTurnaround] = React.useState(String(initialRules?.minTurnaroundHours ?? 0));
   const [pending, startTransition] = React.useTransition();
+  const [justSaved, setJustSaved] = React.useState(false);
+  const [savedBaseline, setSavedBaseline] = React.useState(baseline);
+
+  const current = JSON.stringify({ maxEvents, maxTours, turnaround });
+  const dirty = current !== savedBaseline;
+  useLibraryUnsavedGuard(dirty);
 
   function handleSave() {
     startTransition(async () => {
@@ -44,10 +57,18 @@ export function CapacityRulesSection({ initialRules }: { initialRules: VenueCapa
         maxSimultaneousTours: maxTours,
         minTurnaroundHours: parseFloat(turnaround) || 0,
       });
-      if (result.ok) toast.success("Capacity rules saved.");
-      else toast.error(result.message ?? "Could not save.");
+      if (result.ok) {
+        setSavedBaseline(current);
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 2500);
+        toast.success(librarySavedToastMessage());
+      } else {
+        toast.error(result.message ?? "Could not save.");
+      }
     });
   }
+
+  const status = pending ? "saving" as const : dirty ? "dirty" as const : justSaved ? "saved" as const : "idle" as const;
 
   return (
     <div className="space-y-5">
@@ -75,9 +96,10 @@ export function CapacityRulesSection({ initialRules }: { initialRules: VenueCapa
           step="0.5"
         />
       </div>
-      <div className="flex justify-end">
-        <Button type="button" onClick={handleSave} disabled={pending}>
-          {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : "Save capacity rules"}
+      <div className="flex flex-wrap items-center gap-3 justify-end">
+        <LibrarySaveStatus status={status} model="explicit" className="mr-auto" />
+        <Button type="button" onClick={handleSave} disabled={pending || !dirty}>
+          {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />{LIBRARY_LABELS.saving}</> : LIBRARY_LABELS.saveChanges}
         </Button>
       </div>
     </div>

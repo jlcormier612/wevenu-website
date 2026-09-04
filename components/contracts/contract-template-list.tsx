@@ -151,7 +151,10 @@ export function ContractTemplateList({
         {active.map((t) => cardFor(t, false))}
       </div>
       {active.length === 0 && (
-        <p className="text-sm text-muted-foreground py-6 text-center">No active contract templates.</p>
+        <p className="text-sm text-muted-foreground py-6 text-center">
+          No contract templates yet. Add the starter agreement above, or build your own from your real
+          venue contract — this is what you&apos;ll send couples to sign.
+        </p>
       )}
       <LibraryArchivedSection count={archived.length}>
         <div className="space-y-2">

@@ -68,6 +68,26 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
     }
   }
 
+  const [acceptingSaving, setAcceptingSaving] = React.useState(false);
+  const [acceptingSaved, setAcceptingSaved] = React.useState(false);
+
+  async function handleAcceptingToggle(next: boolean) {
+    const previous = input.acceptingInquiries;
+    set("acceptingInquiries", next);
+    setAcceptingSaving(true);
+    setAcceptingSaved(false);
+    const result = await updateVendorProfileAction({ ...input, acceptingInquiries: next });
+    setAcceptingSaving(false);
+    if (result.ok) {
+      setAcceptingSaved(true);
+      setTimeout(() => setAcceptingSaved(false), 2500);
+      toast.success(next ? "Open for new bookings." : "Not open for new bookings.");
+    } else {
+      set("acceptingInquiries", previous);
+      toast.error(result.message ?? "Could not update booking availability.");
+    }
+  }
+
   function handleSubmit() {
     startTransition(async () => {
       const result = await updateVendorProfileAction(input);
@@ -195,10 +215,16 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
           <div>
             <p className="text-sm font-medium text-foreground">Open for new bookings</p>
             <p className="text-xs text-muted-foreground">
-              Signals to partner venues and prospective clients that you&apos;re available for more events. This isn&apos;t a public inquiry inbox.
+              Signals to partner venues and prospective clients that you&apos;re available for more events. This isn&apos;t a public inquiry inbox. Saves immediately when you change it.
             </p>
+            {acceptingSaving && <p className="text-xs text-muted-foreground mt-1">Saving…</p>}
+            {acceptingSaved && !acceptingSaving && <p className="text-xs text-foreground mt-1">Saved</p>}
           </div>
-          <Switch checked={input.acceptingInquiries} onCheckedChange={(v) => set("acceptingInquiries", v)} />
+          <Switch
+            checked={input.acceptingInquiries}
+            onCheckedChange={(v) => { void handleAcceptingToggle(v); }}
+            disabled={acceptingSaving}
+          />
         </div>
         <div className="rounded-lg border border-dashed border-border p-4">
           <div className="flex items-center justify-between gap-3">

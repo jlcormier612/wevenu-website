@@ -38,10 +38,16 @@ export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleS
             <DollarSign className="h-5 w-5" />
           </span>
           <p className="font-heading text-lg font-medium text-heading">No payment schedules yet</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            Create a payment schedule to start tracking deposits and installments.
+          <p className="mt-1 mb-4 text-sm text-muted-foreground max-w-md">
+            A payment schedule is the installment plan for one couple&apos;s invoice.
+            Start from their invoice, or pick a starter plan and choose the invoice next.
           </p>
-          <Button render={<Link href="/payments/new" />}>+ New Schedule</Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button render={<Link href="/payments/new" />}>+ New schedule from invoice</Button>
+            <Button variant="outline" render={<Link href="/library/payment-schedules" />}>
+              Browse starters
+            </Button>
+          </div>
         </div>
       )}
 

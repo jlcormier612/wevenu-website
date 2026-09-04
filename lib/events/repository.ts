@@ -57,6 +57,7 @@ type EventRow = {
   start_time: string | null; end_time: string | null;
   setup_time: string | null; teardown_time: string | null;
   guest_count: number | null; created_at: string; updated_at: string;
+  booked_at: string | null;
   operational_floor_plan_id: string | null;
   couple_selected_floor_plan_id: string | null;
   // embedded client name from join
@@ -75,6 +76,7 @@ function mapEvent(r: EventRow): VenueEvent {
     startTime: r.start_time, endTime: r.end_time,
     setupTime: r.setup_time, teardownTime: r.teardown_time,
     guestCount: r.guest_count,
+    bookedAt: r.booked_at ?? null,
     operationalFloorPlanId: r.operational_floor_plan_id ?? null,
     coupleSelectedFloorPlanId: r.couple_selected_floor_plan_id ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
@@ -223,6 +225,57 @@ export async function updateEventStatus(client: DbClient, venueId: string, event
     throwIfOccupancyDenied(error);
     throw error;
   }
+}
+
+/**
+ * Stamp events.booked_at once — the system-of-record for "At booking" payment timing.
+ * Never overwrites an existing booked_at. Returns the effective booking date.
+ */
+export async function ensureEventBookedAt(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  bookedAt: string,
+): Promise<string> {
+  const date = bookedAt.trim().slice(0, 10);
+  const { data: existing } = await client.from("events")
+    .select("booked_at").eq("id", eventId).eq("venue_id", venueId)
+    .maybeSingle<{ booked_at: string | null }>();
+  if (existing?.booked_at) return existing.booked_at;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update({ booked_at: date }).eq("id", eventId).eq("venue_id", venueId).is("booked_at", null);
+  if (error) throw error;
+  return date;
+}
+
+/**
+ * Owner/Manager set or correct booked_at. Does not touch payment_line_items.
+ */
+export async function setEventBookedAt(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  bookedAt: string,
+): Promise<void> {
+  const date = bookedAt.trim().slice(0, 10);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update({ booked_at: date }).eq("id", eventId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function getEventTimingAnchors(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+): Promise<{ eventDate: string | null; bookedAt: string | null } | null> {
+  const { data } = await client.from("events")
+    .select("event_date, booked_at")
+    .eq("id", eventId).eq("venue_id", venueId)
+    .maybeSingle<{ event_date: string; booked_at: string | null }>();
+  if (!data) return null;
+  return { eventDate: data.event_date ?? null, bookedAt: data.booked_at ?? null };
 }
 
 // ---- notes ------------------------------------------------------------------

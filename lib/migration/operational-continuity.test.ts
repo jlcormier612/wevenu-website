@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { validateGuestListEntry } from "@/lib/migration/operational-guest";
+import {
+  sanitizeAccessibilityTags,
+  sanitizeDietaryTags,
+  validateGuestListEntry,
+} from "@/lib/migration/operational-guest";
 import { validateEventVendorAssignment } from "@/lib/migration/event-vendor-assignment";
 import {
   shouldImportOperationalTimeline,
@@ -35,6 +39,56 @@ describe("operational guest list normalize + validate", () => {
       clientEmail: "a@b.com",
       eventDate: "2026-10-17",
     }) ?? "", /first name/i);
+  });
+
+  it("normalizes the native guest fields (plus-one, dietary/accessibility tags, child fields, vendor meal)", () => {
+    const result = genericCsvAdapter.normalizeRow({
+      clientEmail: "smith@example.com",
+      eventDate: "2026-10-17",
+      firstName: "Jordan",
+      lastName: "Lee",
+      plusOne: "yes",
+      plusOneName: "Sam Lee",
+      dietaryTags: "Vegetarian, Nut_Allergy",
+      accessibilityTags: "wheelchair; hearing_assistance",
+      accessibilityNotes: "Needs an aisle seat.",
+      age: "7",
+      highChairRequired: "yes",
+      childNotes: "Seated with parents.",
+      isVendorMeal: "no",
+      sourceId: "g-2",
+    }, "guest_list");
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(result.normalized.plusOne, true);
+    assert.equal(result.normalized.plusOneName, "Sam Lee");
+    assert.deepEqual(result.normalized.dietaryTags, ["vegetarian", "nut_allergy"]);
+    assert.deepEqual(result.normalized.accessibilityTags, ["wheelchair", "hearing_assistance"]);
+    assert.equal(result.normalized.accessibilityNotes, "Needs an aisle seat.");
+    assert.equal(result.normalized.age, "7");
+    assert.equal(result.normalized.highChairRequired, true);
+    assert.equal(result.normalized.childNotes, "Seated with parents.");
+    assert.equal(result.normalized.isVendorMeal, false);
+  });
+});
+
+describe("guest dietary / accessibility tag sanitization", () => {
+  it("keeps only values the couple_guests CHECK constraint allows, case/whitespace normalized", () => {
+    assert.deepEqual(
+      sanitizeDietaryTags([" Vegan ", "GLUTEN_FREE", "made_up_tag"]),
+      ["vegan", "gluten_free"],
+    );
+    assert.deepEqual(
+      sanitizeAccessibilityTags(["Wheelchair", "not_a_real_tag"]),
+      ["wheelchair"],
+    );
+  });
+
+  it("de-duplicates and handles empty/missing input safely", () => {
+    assert.deepEqual(sanitizeDietaryTags(["vegan", "vegan"]), ["vegan"]);
+    assert.deepEqual(sanitizeDietaryTags(null), []);
+    assert.deepEqual(sanitizeDietaryTags(undefined), []);
+    assert.deepEqual(sanitizeAccessibilityTags([]), []);
   });
 });
 

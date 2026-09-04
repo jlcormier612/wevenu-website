@@ -134,7 +134,8 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
       </div>
       {active.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No active templates.{" "}
+          No message templates yet. Turn the messages you send most often — inquiry follow-up, tour
+          confirmation, payment reminder — into a template so anyone on your team can send one in a click.{" "}
           <Link href="/communication/templates/new" className="underline hover:text-foreground">
             Create one
           </Link>

@@ -1,28 +1,23 @@
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getCurrentVenue } from "@/lib/venue/service";
-import { DEFAULT_INQUIRY_FORM_FIELDS, PUBLIC_INQUIRY_EVENT_TYPES } from "@/lib/inquiry-form/constants";
+import {
+  DEFAULT_INQUIRY_FORM_FIELDS,
+} from "@/lib/inquiry-form/constants";
+import {
+  filterValidAcceptedEventTypes,
+  parseAcceptedEventTypes,
+} from "@/lib/event-types/canonical";
 import type {
   InquiryFormFieldsConfig,
   InquiryFormQuestion,
   InquiryFormSettings,
   PublicInquiryFormConfig,
 } from "@/lib/inquiry-form/types";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
-const ALL_PUBLIC_EVENT_TYPES = PUBLIC_INQUIRY_EVENT_TYPES.map((t) => t.value);
-
-/**
- * Validate against the canonical vocabulary and fall back to "all" when
- * unset/empty/invalid — matches the DB column's own non-empty default, and
- * keeps the public form showing every option (today's behavior) rather than
- * an empty dropdown if this ever reads a database that predates the
- * accepted_inquiry_event_types migration.
- */
-function parseAcceptedEventTypes(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [...ALL_PUBLIC_EVENT_TYPES];
-  const valid = raw.filter((v): v is string => ALL_PUBLIC_EVENT_TYPES.includes(v as (typeof ALL_PUBLIC_EVENT_TYPES)[number]));
-  return valid.length > 0 ? valid : [...ALL_PUBLIC_EVENT_TYPES];
+function canManageInquiryFormSettings(role: string | null): boolean {
+  return role === "owner" || role === "manager";
 }
 
 type DbQuestionRow = {
@@ -110,29 +105,50 @@ export async function getInquiryFormSettings(): Promise<InquiryFormSettings | nu
 
 export async function updateInquiryFormSettings(
   patch: Partial<Pick<InquiryFormSettings, "inquiryEventDateMode" | "inquiryFormFields" | "acceptedEventTypes">>,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const venue = await getCurrentVenue();
-  if (!venue || !isSupabaseConfigured) return { ok: false };
-  const supabase = await createClient();
+  if (!venue || !isSupabaseConfigured) return { ok: false, error: "not_configured" };
+  const role = await getCurrentUserRole();
+  if (!canManageInquiryFormSettings(role)) {
+    return { ok: false, error: "forbidden" };
+  }
+
   const update: Record<string, unknown> = {};
   if (patch.inquiryEventDateMode) update.inquiry_event_date_mode = patch.inquiryEventDateMode;
   if (patch.inquiryFormFields) update.inquiry_form_fields = patch.inquiryFormFields;
   if (patch.acceptedEventTypes) {
-    const valid = parseAcceptedEventTypes(patch.acceptedEventTypes);
+    const valid = filterValidAcceptedEventTypes(patch.acceptedEventTypes);
+    if (valid.length === 0) return { ok: false, error: "accepted_types_empty" };
     update.accepted_inquiry_event_types = valid;
   }
   if (Object.keys(update).length === 0) return { ok: true };
-  const { error } = await supabase.from("venues").update(update).eq("id", venue.id);
-  return { ok: !error };
+
+  // Owner-only venues_update RLS would silently no-op for Managers. Write
+  // only these operational inquiry columns via admin after Owner|Manager check.
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("venues")
+    .update(update)
+    .eq("id", venue.id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data?.id) return { ok: false, error: "no_row_updated" };
+  return { ok: true };
 }
 
 export async function replaceInquiryFormQuestions(
   questions: Omit<InquiryFormQuestion, "sortOrder">[],
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const venue = await getCurrentVenue();
-  if (!venue || !isSupabaseConfigured) return { ok: false };
+  if (!venue || !isSupabaseConfigured) return { ok: false, error: "not_configured" };
+  const role = await getCurrentUserRole();
+  if (!canManageInquiryFormSettings(role)) {
+    return { ok: false, error: "forbidden" };
+  }
   const admin = createAdminClient();
-  await admin.from("inquiry_form_questions").delete().eq("venue_id", venue.id);
+  const { error: delError } = await admin.from("inquiry_form_questions").delete().eq("venue_id", venue.id);
+  if (delError) return { ok: false, error: delError.message };
   if (questions.length === 0) return { ok: true };
   const rows = questions.map((q, i) => ({
     venue_id: venue.id,
@@ -143,7 +159,7 @@ export async function replaceInquiryFormQuestions(
     sort_order: i,
   }));
   const { error } = await admin.from("inquiry_form_questions").insert(rows);
-  return { ok: !error };
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 export async function getAvailableEventDates(

@@ -79,7 +79,7 @@ export function LibrarySaveStatus({
     content = (
       <>
         <Check className="h-3.5 w-3.5" />
-        {LIBRARY_LABELS.savedJustNow}
+        {model === "explicit" ? LIBRARY_LABELS.saved : LIBRARY_LABELS.savedJustNow}
       </>
     );
   } else if (status === "error") {

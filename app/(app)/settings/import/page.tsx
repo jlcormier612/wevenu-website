@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { ImportWizard } from "@/components/settings/import-wizard";
 import { ImportHealthWidget } from "@/components/settings/import-health-widget";
+import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import type { EntityType } from "@/lib/import/types";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
@@ -31,11 +33,18 @@ export default async function ImportPage({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
+      <div className="space-y-1.5">
         <h1 className="text-xl font-bold text-foreground">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Bring your existing clients, leads, and vendors into Hello to Cheers from any CSV export.
+          This is for a small, clean list. If you're bringing over a real calendar of tours, holds,
+          or booked events, use{" "}
+          <Link href="/settings/migration" className="font-medium text-primary hover:underline">
+            Migration Center
+          </Link>{" "}
+          instead.
         </p>
+        <SetupGuideLink href="/help/setup-bring-your-business" />
       </div>
       <Suspense fallback={null}>
         <ImportHealthWidget />

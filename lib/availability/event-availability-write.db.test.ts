@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmdirSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, type TestContext } from "node:test";
+
+import { withLocalDbSchemaLock, withLocalDbSchemaLockSync } from "@/lib/test/local-db-schema-lock";
 
 const LOCAL_URL = process.env.HTC_LOCAL_DATABASE_URL
   ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
@@ -50,40 +51,12 @@ function applyPhase3(): void {
   applySql(RECURRENCE);
 }
 
-function acquireSchemaLock(): void {
-  const dir = join(tmpdir(), "wevenu-k7-avail-schema.lock");
-  const started = Date.now();
-  while (true) {
-    try {
-      mkdirSync(dir);
-      break;
-    } catch {
-      if (Date.now() - started > 90_000) throw new Error("timed out waiting for k7 availability schema lock");
-      spawnSync("sleep", ["0.2"]);
-    }
-  }
-}
-
-function releaseSchemaLock(): void {
-  try { rmdirSync(join(tmpdir(), "wevenu-k7-avail-schema.lock")); } catch { /* ignore */ }
-}
-
 function withSchemaLock<T>(fn: () => T): T {
-  acquireSchemaLock();
-  try {
-    return fn();
-  } finally {
-    releaseSchemaLock();
-  }
+  return withLocalDbSchemaLockSync(fn);
 }
 
 async function withSchemaLockAsync<T>(fn: () => Promise<T>): Promise<T> {
-  acquireSchemaLock();
-  try {
-    return await fn();
-  } finally {
-    releaseSchemaLock();
-  }
+  return withLocalDbSchemaLock(fn);
 }
 
 function runPsql(sql: string): Promise<{ status: number | null; stdout: string; stderr: string }> {

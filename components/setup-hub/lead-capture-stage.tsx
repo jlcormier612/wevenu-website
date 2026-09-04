@@ -19,6 +19,7 @@ import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from 
 import type { IntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { QrCampaign, QrCampaignAnalytics } from "@/lib/qr-campaigns/types";
+import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
 import type { LeadCaptureChannelKey, LeadCaptureStageStatus } from "@/lib/setup-hub/types";
 import type { TourAvailabilityException, TourAvailabilityWindow, TourSettings } from "@/lib/tours/types";
 
@@ -84,6 +85,7 @@ export function LeadCaptureStage({
   tourSettings, tourWindows, tourExceptions, tourAvailabilityLoadError,
   facebookConnection, facebookLeadForms, facebookLog, facebookConnectUrl,
   qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
+  inquiryFormSettings = null, canEditInquiryForm = true,
 }: {
   venueId: string;
   embedKey: string;
@@ -102,6 +104,8 @@ export function LeadCaptureStage({
   qrAnalytics: QrCampaignAnalytics[];
   intakeHealth: IntakeHealthSummary;
   stageStatus: LeadCaptureStageStatus | null;
+  inquiryFormSettings?: InquiryFormSettings | null;
+  canEditInquiryForm?: boolean;
 }) {
   const router = useRouter();
   const [path, setPath] = React.useState(stageStatus?.path ?? null);
@@ -175,7 +179,14 @@ export function LeadCaptureStage({
               <ChannelBadge configuredAt={website.configuredAt} verifiedAt={website.verifiedAt} hasVerification />
             </CardHeader>
             <CardContent className="space-y-4">
-              <WebsiteFormsSection embedKey={embedKey} appUrl={appUrl} leadEmailAddress={leadEmailAddress} emailIntakeStatus={emailIntakeStatus} />
+              <WebsiteFormsSection
+                embedKey={embedKey}
+                appUrl={appUrl}
+                leadEmailAddress={leadEmailAddress}
+                emailIntakeStatus={emailIntakeStatus}
+                inquiryFormSettings={inquiryFormSettings}
+                canEditInquiryForm={canEditInquiryForm}
+              />
               <ChannelActions channel="website_form" configuredAt={website.configuredAt} verifiedAt={website.verifiedAt} hasVerification
                 testHref={`${appUrl}/form/${embedKey}`} onChanged={onChanged} />
               {emailIntakeStatus?.connectedAt && (
@@ -219,22 +230,24 @@ export function LeadCaptureStage({
               Other lead sources — QR campaigns, Facebook/Instagram, manual entry
             </Button>
           ) : (
-            <Card>
+            <Card id="other-lead-sources">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <QrCode className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-heading">Other Sources</p>
+                  <p className="text-sm font-medium text-heading">Other Lead Sources</p>
                 </div>
-                <p className="text-xs text-muted-foreground">Add other lead sources whenever they&apos;re useful for your business.</p>
+                <p className="text-xs text-muted-foreground">
+                  Manage every other way inquiries reach Hello to Cheers. Facebook / Instagram Lead Ads uses your existing Meta connection — connect once, then choose which forms create leads.
+                </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <p className="text-sm font-medium text-heading mb-2">QR Campaigns</p>
-                  <QrCampaignList initialCampaigns={qrCampaigns} analytics={qrAnalytics} appUrl={appUrl} />
-                </div>
-                <div>
                   <p className="text-sm font-medium text-heading mb-2">Facebook / Instagram Lead Ads</p>
                   <FacebookConnectSection venueId={venueId} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} connectUrl={facebookConnectUrl ?? null} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-heading mb-2">QR Campaigns</p>
+                  <QrCampaignList initialCampaigns={qrCampaigns} analytics={qrAnalytics} appUrl={appUrl} />
                 </div>
               </CardContent>
             </Card>

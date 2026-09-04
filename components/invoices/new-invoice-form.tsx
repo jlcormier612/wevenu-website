@@ -17,11 +17,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { Client } from "@/lib/clients/types";
 import type { InvoiceErrors, InvoiceInput } from "@/lib/invoices/types";
-import { defaultInvoiceNotes } from "@/lib/payments/starters";
+import { defaultInvoiceNotes, safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
 export function NewInvoiceForm({
-  clients, prefillClientId, prefillEventId, venueName = "us",
-}: { clients: Client[]; prefillClientId?: string; prefillEventId?: string; venueName?: string }) {
+  clients, prefillClientId, prefillEventId, venueName = "us", returnTo,
+}: {
+  clients: Client[];
+  prefillClientId?: string;
+  prefillEventId?: string;
+  venueName?: string;
+  returnTo?: string;
+}) {
   const router = useRouter();
   const [input, setInput] = React.useState<InvoiceInput>({
     clientId: prefillClientId ?? "",
@@ -33,13 +39,17 @@ export function NewInvoiceForm({
   const [pending, startTransition] = React.useTransition();
 
   const selectedClient = clients.find((c) => c.id === input.clientId);
+  const handoff = safePaymentScheduleReturnPath(returnTo);
 
   function handleSubmit() {
     startTransition(async () => {
       const result = await createInvoiceAction(input);
       if (result.ok) {
-        toast.success("Invoice created. Add line items now.");
-        router.push(`/invoices/${result.invoiceId}`);
+        toast.success("Invoice created. Add line items now so it can get a payment schedule.");
+        const next = handoff
+          ? `/invoices/${result.invoiceId}?returnTo=${encodeURIComponent(handoff)}`
+          : `/invoices/${result.invoiceId}`;
+        router.push(next);
         return;
       }
       if (result.errors) setErrors(result.errors);

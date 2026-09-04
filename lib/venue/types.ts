@@ -109,6 +109,8 @@ export type Venue = {
   secondaryColor: string;
   accentColor: string;
   neutralColor: string;
+  /** Plain-text signature/footer on outbound client emails. */
+  emailSignature: string | null;
   /** Optional public review URL shown after Post-Event Feedback Yes. */
   publicReviewUrl: string | null;
   currency: string;

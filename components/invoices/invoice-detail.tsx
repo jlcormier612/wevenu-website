@@ -23,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency, invoiceStatusLabel } from "@/lib/invoices/constants";
 import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
+import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: string } | null> = {
   draft: { next: "sent",  label: "Mark as Sent" },
@@ -38,13 +39,21 @@ const INVOICE_WAITING_ON: Record<InvoiceStatus, WaitingOn> = {
 };
 
 export function InvoiceDetail({
-  invoice, packages, eventOrderDrift = null, emailConfigured = true,
-}: { invoice: InvoiceWithLineItems; packages: Package[]; eventOrderDrift?: EventOrderDrift | null; emailConfigured?: boolean }) {
+  invoice, packages, eventOrderDrift = null, emailConfigured = true, returnToPaymentSchedule = null,
+}: {
+  invoice: InvoiceWithLineItems;
+  packages: Package[];
+  eventOrderDrift?: EventOrderDrift | null;
+  emailConfigured?: boolean;
+  /** When set (from payment-schedule handoff), show continue CTA after amount exists. */
+  returnToPaymentSchedule?: string | null;
+}) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
   const [pending, startTransition] = React.useTransition();
   const [emailPending, startEmail] = React.useTransition();
   const transition = STATUS_TRANSITIONS[status];
+  const continueToSchedule = safePaymentScheduleReturnPath(returnToPaymentSchedule);
 
   function handleStatusChange(next: InvoiceStatus) {
     startTransition(async () => {
@@ -242,22 +251,49 @@ export function InvoiceDetail({
         </Card>
       )}
 
-      {/* Create payment plan CTA */}
-      {invoice.total > 0 && status !== "void" && (
+      {/* Payment schedule CTAs — primary booking path is Invoice → Schedule */}
+      {status !== "void" && invoice.total > 0 && (
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-heading">Create a payment plan from this invoice</p>
+                <p className="text-sm font-medium text-heading">
+                  {continueToSchedule
+                    ? "This invoice is ready — continue your payment schedule"
+                    : "Create a payment schedule from this invoice"}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Invoice total {formatCurrency(invoice.total)} will pre-fill the payment schedule.
+                  A payment schedule is the installment plan for this booking. Amounts come from this invoice
+                  total ({formatCurrency(invoice.total)}); due dates come from the Event date when you use a starter.
                 </p>
               </div>
-              <Button type="button" variant="outline" size="sm"
-                render={<Link href={`/payments/new?invoiceId=${invoice.id}`} />}>
-                Create Payment Plan →
+              <Button
+                type="button"
+                size="sm"
+                render={<Link href={continueToSchedule ?? `/payments/new?invoiceId=${invoice.id}`} />}
+              >
+                {continueToSchedule ? "Continue to payment schedule →" : "Create payment schedule →"}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+      {status !== "void" && invoice.total <= 0 && (
+        <Card>
+          <CardContent className="pt-6 space-y-1">
+            <p className="text-sm font-medium text-heading">Add an amount before creating a payment schedule</p>
+            <p className="text-xs text-muted-foreground">
+              This draft is at $0. Add line items or a package above. Once the total is greater than $0,
+              {continueToSchedule
+                ? " you can continue back to the payment schedule you started."
+                : " you can create a payment schedule from this invoice."}
+            </p>
+            {continueToSchedule && (
+              <p className="text-[11px] text-muted-foreground pt-1">
+                We&apos;ll keep your place — after you add the amount, use{" "}
+                <span className="font-medium text-foreground">Continue to payment schedule</span> on this page.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

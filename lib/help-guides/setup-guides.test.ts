@@ -14,6 +14,7 @@ const EXPECTED_SLUGS = [
   "setup-your-venue",
   "setup-bring-your-business",
   "setup-calendar-availability",
+  "understanding-your-calendar",
   "setup-your-offerings",
   "setup-client-experience",
   "setup-communication",

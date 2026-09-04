@@ -18,7 +18,7 @@ import type {
 import { validateEventInput, validateEventStatus, validateTeamMemberInput } from "@/lib/events/validation";
 import { normalizeEventEndDate } from "@/lib/events/constants";
 import { syncEventVendorAvailability } from "@/lib/vendor-availability/sync";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 function occupancyActionFailure(err: unknown): EventActionResult | CreateEventResult | null {
   const fail = occupancyFailureFromUnknown(err);
@@ -142,6 +142,7 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
       throw err;
     }
     // Cancel frees Booked days; restoring a cancelled event re-books them.
+    // Do NOT stamp booked_at here — status changes are not the booking commitment moment.
     if (before && before.status !== status) {
       await syncEventVendorAvailability(eventId, {
         eventDate:    before.eventDate,
@@ -150,6 +151,39 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
         status,
       });
     }
+    return { ok: true } as EventActionResult;
+  });
+  return result as EventActionResult;
+}
+
+/**
+ * Owner/Manager correction of the booking commitment date (payment timing "At booking").
+ * Never rewrites existing payment schedule due dates — those stay concrete until
+ * the venue explicitly regenerates or edits lines.
+ */
+export async function updateEventBookedAt_(
+  eventId: string,
+  bookedAt: string,
+): Promise<EventActionResult> {
+  const date = bookedAt.trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { ok: false, errors: { bookedAt: "Enter a valid booking date." } };
+  }
+  const result = await withVenue(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (role !== "owner" && role !== "manager") {
+      return { ok: false, message: "Only an Owner or Manager can set or correct the booking date." } as EventActionResult;
+    }
+    const before = await repo.getEvent(supabase, venueId, eventId);
+    if (!before) return { ok: false, message: "Event not found." } as EventActionResult;
+    await repo.setEventBookedAt(supabase, venueId, eventId, date);
+    await repo.insertEventActivity(
+      supabase, venueId, eventId, "event_updated",
+      "Booking date updated",
+      before.bookedAt
+        ? `Booking date corrected to ${date}. Existing payment due dates were not changed.`
+        : `Booking date set to ${date}. Existing payment due dates were not changed.`,
+    );
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Printer } from "lucide-react";
 
 import { CalendarView } from "@/components/calendar/calendar-view";
+import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
 
@@ -31,13 +32,19 @@ export default async function CalendarPage({ searchParams }: Props) {
           title="Calendar"
           description="Every important date across your events, leads, and clients — in one view."
         />
-        <Link
-          href={printHref}
-          target="_blank"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors shrink-0"
-        >
-          <Printer className="h-3.5 w-3.5" /> Print / Export
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <Link
+            href={printHref}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          >
+            <Printer className="h-3.5 w-3.5" /> Print / Export
+          </Link>
+          <SetupGuideLink
+            href="/help/understanding-your-calendar"
+            label="What's the difference between these?"
+          />
+        </div>
       </div>
       <CalendarView
         view={view}

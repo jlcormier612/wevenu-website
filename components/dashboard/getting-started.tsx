@@ -10,8 +10,8 @@ import {
 } from "@/lib/dashboard/venue-next-steps";
 
 /**
- * Venue Home — Your Next Steps. State-driven queue of things that need
- * attention next. Not an onboarding carousel and not a discovery list.
+ * Venue Home — Your Next Steps. Actionable work after today's urgent items.
+ * Not an onboarding carousel and not a restatement of Today's Focus.
  */
 export function YourNextStepsCard({
   items,
@@ -27,7 +27,7 @@ export function YourNextStepsCard({
     <DashboardCardShell
       icon={<ListChecks className="h-4 w-4 text-primary" />}
       title="Your Next Steps"
-      description="The things that need your attention next."
+      description="What you should do next after today's urgent work."
       isEmpty={false}
       emptyState={null}
     >

@@ -29,6 +29,8 @@ function task(partial: Partial<PortalTask> & Pick<PortalTask, "id" | "title" | "
     isRequired: false,
     completedAt: null,
     autoCompleteTrigger: null,
+    actionType: null,
+    actionLabel: null,
     canComplete: true,
     ...partial,
     canUndo: partial.canUndo ?? false,
@@ -1014,5 +1016,136 @@ describe("ack outbound + couple undo (A/C/D)", () => {
   });
 
 
+});
+
+describe("actionType destination resolution (Task Destination Audit, 2026-09-03)", () => {
+  const due = "2026-10-31";
+
+  it("Complete your questionnaire (seed task, trigger present) routes via the trigger, not actionType", () => {
+    const p = venueTaskPresentation(task({
+      id: "q1",
+      title: "Complete your questionnaire",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      autoCompleteTrigger: "questionnaire_submitted",
+      actionType: "documents", // deliberately wrong — must be ignored in favor of the trigger
+    }));
+    assert.equal(p.targetSection, "questionnaire");
+    assert.equal(p.targetFocus, "form");
+    assert.equal(p.completableHere, false);
+  });
+
+  it("a custom task with actionType=questionnaire and no trigger opens the couple's questionnaire", () => {
+    const p = venueTaskPresentation(task({
+      id: "q2",
+      title: "Fill out your details form",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      autoCompleteTrigger: null,
+      actionType: "questionnaire",
+    }));
+    assert.equal(p.targetSection, "questionnaire");
+    assert.equal(p.targetFocus, "form");
+    assert.equal(p.actionLabel, "Open Questionnaire");
+    assert.equal(p.completableHere, true);
+    assert.equal(p.confirmLabel, "Mark complete");
+  });
+
+  it("a coordinator's custom actionLabel overrides the default", () => {
+    const p = venueTaskPresentation(task({
+      id: "q3",
+      title: "Fill out your details form",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      actionType: "questionnaire",
+      actionLabel: "Fill out your form",
+    }));
+    assert.equal(p.actionLabel, "Fill out your form");
+  });
+
+  it("every TaskActionType value resolves to a real portal destination", () => {
+    const ALL_ACTION_TYPES = [
+      "vendor_library", "payments", "documents", "guest_list",
+      "questionnaire", "contract", "timeline", "floor_plan",
+      "event_order", "wedding_website", "key_dates", "event_details",
+    ];
+    for (const actionType of ALL_ACTION_TYPES) {
+      const p = venueTaskPresentation(task({
+        id: `at_${actionType}`,
+        title: "Custom task",
+        status: "pending",
+        dueDate: due,
+        visibility: "client_owned",
+        canComplete: true,
+        actionType,
+      }));
+      assert.notEqual(p.targetSection, "tasks", `${actionType} must resolve to a real destination, not the generic tasks fallback`);
+      assert.ok(p.actionLabel.startsWith("Open "), `${actionType} should have an "Open ..." label, got "${p.actionLabel}"`);
+    }
+  });
+
+  it("a native destination beats a raw attachment link when both are present", () => {
+    const p = venueTaskPresentation(task({
+      id: "both",
+      title: "Custom task",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      actionType: "payments",
+      links: [{ id: "l", url: "https://example.com/pay", label: "Pay here" }],
+    }));
+    assert.equal(p.targetSection, "payments");
+    assert.equal(p.externalUrl, null);
+  });
+
+  it("a client_visible (not owned) task with actionType navigates but cannot be marked complete", () => {
+    const p = venueTaskPresentation(task({
+      id: "view-only",
+      title: "Review your floor plan",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_visible",
+      canComplete: false,
+      actionType: "floor_plan",
+    }));
+    assert.equal(p.targetSection, "floor_plans");
+    assert.equal(p.completableHere, false);
+    assert.equal(p.confirmLabel, null);
+  });
+
+  it("an unrecognized actionType value falls back to existing link/manual-complete behavior", () => {
+    const p = venueTaskPresentation(task({
+      id: "unknown",
+      title: "Custom task",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      actionType: "not_a_real_action_type",
+    }));
+    assert.equal(p.targetSection, "tasks");
+    assert.equal(p.actionLabel, "Mark complete");
+  });
+
+  it("a completed task never shows an actionType destination", () => {
+    const p = venueTaskPresentation(task({
+      id: "done",
+      title: "Custom task",
+      status: "complete",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: false,
+      actionType: "questionnaire",
+    }));
+    assert.equal(p.actionLabel, "Done");
+    assert.equal(p.completableHere, false);
+  });
 });
 

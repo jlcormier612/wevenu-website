@@ -5,6 +5,7 @@
 
 import type { createClient } from "@/integrations/supabase/server";
 import { resolveEventForMigration } from "@/lib/migration/resolve-refs";
+import { ACCESSIBILITY_TAGS, DIETARY_TAGS } from "@/lib/portal/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -25,9 +26,33 @@ export type NormalizedGuestListEntry = {
   dietaryRestrictions?: string | null;
   isChild?: boolean;
   isWeddingParty?: boolean;
+  /** Same couple_guests columns the native guest form/portal already use — no parallel model. */
+  plusOne?: boolean;
+  plusOneName?: string | null;
+  dietaryTags?: string[] | null;
+  accessibilityTags?: string[] | null;
+  accessibilityNotes?: string | null;
+  age?: string | null;
+  highChairRequired?: boolean;
+  childNotes?: string | null;
+  isVendorMeal?: boolean;
   notes?: string | null;
   sourceId?: string | null;
 };
+
+/** Keep only values the couple_guests dietary_tags CHECK constraint allows — never invent new tags. */
+export function sanitizeDietaryTags(tags: string[] | null | undefined): string[] {
+  if (!tags?.length) return [];
+  const allowed = new Set<string>(DIETARY_TAGS);
+  return [...new Set(tags.map((t) => t.trim().toLowerCase()).filter((t) => allowed.has(t)))];
+}
+
+/** Keep only values the couple_guests accessibility_tags CHECK constraint allows. */
+export function sanitizeAccessibilityTags(tags: string[] | null | undefined): string[] {
+  if (!tags?.length) return [];
+  const allowed = new Set<string>(ACCESSIBILITY_TAGS);
+  return [...new Set(tags.map((t) => t.trim().toLowerCase()).filter((t) => allowed.has(t)))];
+}
 
 export type GuestCommitResult =
   | { ok: true; guestId: string; alreadyExisted?: boolean; clientId: string; eventId: string }
@@ -171,6 +196,15 @@ export async function commitOperationalGuest(
       dietary_restrictions: n.dietaryRestrictions?.trim() || null,
       is_child: !!n.isChild,
       is_wedding_party: !!n.isWeddingParty,
+      plus_one: !!n.plusOne,
+      plus_one_name: n.plusOneName?.trim() || null,
+      dietary_tags: sanitizeDietaryTags(n.dietaryTags),
+      accessibility_tags: sanitizeAccessibilityTags(n.accessibilityTags),
+      accessibility_notes: n.accessibilityNotes?.trim() || null,
+      age: n.age != null && n.age.trim() !== "" && Number.isFinite(Number(n.age)) ? Number(n.age) : null,
+      high_chair_required: !!n.highChairRequired,
+      child_notes: n.childNotes?.trim() || null,
+      is_vendor_meal: !!n.isVendorMeal,
       notes: noteParts.join("\n"),
       invitation_status: "draft",
       visibility_to_venue: true,

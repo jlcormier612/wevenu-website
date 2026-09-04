@@ -436,6 +436,73 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
   return outcome;
 }
 
+/**
+ * Re-attempt one durable unresolved record through the same canonical commit
+ * path commitSession itself uses. Availability enforcement is unchanged —
+ * success only if the underlying conflict is actually gone. Never invents a
+ * placeholder entity and never bypasses a trigger to force a result.
+ */
+export async function retryOwnRecord(
+  sessionId: string, recordId: string,
+): Promise<{ ok: true; committed: boolean } | { ok: false; message: string }> {
+  const actor = await resolveVenueActor();
+  if (isError(actor)) return actor;
+  const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+  if (!session) return { ok: false, message: "Migration session not found." };
+
+  const existing = await repo.getRecord(actor.client, sessionId, recordId);
+  if (!existing) return { ok: false, message: "That record is no longer in this migration." };
+  if (existing.status === "committed") return { ok: true, committed: true };
+  if (existing.status === "rejected" || existing.status === "skipped" || existing.status === "duplicate_exact") {
+    return { ok: false, message: "This record was already resolved. It is not waiting for another import attempt." };
+  }
+  if (!UNRESOLVED_STATUSES.includes(existing.status)) {
+    return { ok: false, message: "Only records that still need attention can be retried." };
+  }
+  if (!existing.normalizedPayload) {
+    return { ok: false, message: "This row was never recognized well enough to import. Fix the source file or exclude it intentionally." };
+  }
+
+  const record = await repo.claimUnresolvedRecord(actor.client, recordId, actor.createdBy);
+  if (!record) {
+    return { ok: false, message: "Someone else is already retrying this record. Refresh and try again." };
+  }
+
+  const result = await commitOneRecord(actor.client, session, record.targetEntityType, record);
+  if (result.ok) {
+    await repo.updateRecord(actor.client, record.id, {
+      status: "committed",
+      createdEntityId: result.entityId,
+      committedAt: new Date().toISOString(),
+      validationErrors: null,
+    });
+  } else {
+    await repo.updateRecord(actor.client, record.id, {
+      status: "needs_review",
+      validationErrors: [result.error],
+    });
+  }
+  await repo.releaseClaim(actor.client, record.id);
+
+  const allRecordsAfter = await repo.listRecords(actor.client, session.id);
+  const stillUnresolvedAfter = allRecordsAfter.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;
+  const inFlightAfter = await repo.countInFlightClaims(actor.client, session.id);
+  const retryOutcome: CommitOutcome = {
+    committed: result.ok ? 1 : 0,
+    skipped: 0,
+    failed: result.ok ? 0 : 1,
+  };
+  await repo.updateSessionStatus(
+    actor.client,
+    session.id,
+    computeFinalSessionStatus(retryOutcome, stillUnresolvedAfter + inFlightAfter),
+  );
+  await repo.touchSession(actor.client, session.id);
+
+  if (!result.ok) return { ok: false, message: result.error };
+  return { ok: true, committed: true };
+}
+
 export async function addRowsToOwnSession(
   sessionId: string, entityType: MigrationEntityType, rows: SourceRow[],
 ): Promise<{ ok: true; added: number } | { ok: false; message: string }> {

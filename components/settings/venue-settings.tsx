@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,12 +14,10 @@ import {
   saveVenueProfileAction,
   updateLogoAction,
   updateHeroImageAction,
-  updateStoryAction,
   updatePublicReviewUrlAction,
 } from "@/app/(app)/settings/actions";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   BrandStep,
   BusinessHoursStep,
@@ -247,20 +246,24 @@ export function VenueSettings({
         </CardContent>
       </Card>
 
-      {/* 4a.3 — Venue story, shown in the Venue Guide */}
-      <SettingsSection
-        title="Your Venue's Story"
-        description="A short welcome, in your own words — shown to couples in their Venue Guide."
-        onSave={async () => { await updateStoryAction(input.story); toast.success("Saved"); }}
-      >
-        <Textarea
-          value={input.story}
-          onChange={(e) => set("story", e.target.value)}
-          rows={4}
-          maxLength={1000}
-          placeholder="Tell couples what makes your venue special…"
-        />
-      </SettingsSection>
+      {/* 4a.3 — Venue story now edited in Venue Guide (Our Story), not here —
+          this was a second entry point for the same venues.story column,
+          which meant a venue could easily miss that this "Brand" field was
+          actually client-facing Guide content. One source of truth, one
+          editor; this card is a pointer, not a duplicate. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Your Venue&apos;s Story</CardTitle>
+          <CardDescription>
+            Managed in Venue Guide — shown to couples as &quot;Our Story&quot; at the top of their guide.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" render={<Link href="/guide" />}>
+            Open Venue Guide
+          </Button>
+        </CardContent>
+      </Card>
 
       <SettingsSection
         title="Public review link"

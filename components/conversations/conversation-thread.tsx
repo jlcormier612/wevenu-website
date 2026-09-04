@@ -445,7 +445,7 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="min-h-[8rem] flex-1 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {messages === null ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
         ) : messages.length === 0 ? (
@@ -465,48 +465,60 @@ export function ConversationThread({
         <div ref={bottomRef} />
       </div>
 
-      {scheduled.length > 0 && (
-        <div className="shrink-0 space-y-1.5 border-t border-border/60 px-3 py-2">
-          {scheduled.map((s) => <ScheduledRow key={s.id} msg={s} onCancel={cancelScheduled} />)}
-        </div>
-      )}
-
-      {summary && automations.length > 0 && (
-        <div className="shrink-0 space-y-1.5 border-t border-border/60 px-3 py-2">
-          {automations.map((a) => {
-            const total = a.stepsTotal ?? 0;
-            const sent = a.stepsSent ?? 0;
-            const stepNum = total > 0 ? Math.min(sent + 1, total) : null;
-            const next = a.nextScheduledFor
-              ? new Date(a.nextScheduledFor).toLocaleString("en-US", {
-                  month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-                })
-              : null;
-            return (
-              <div key={a.id} className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2">
-                <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-heading">In &ldquo;{a.sequenceName}&rdquo; automation</p>
-                  {stepNum != null && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Step {stepNum} of {total}{next ? ` · Next ${next}` : ""}
-                    </p>
-                  )}
+      {(scheduled.length > 0 || automations.length > 0) && (
+        <details className="shrink-0 border-t border-border/60 bg-muted/20 open:bg-muted/30">
+          <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-heading marker:content-none [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-2">
+              <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
+              {scheduled.length > 0 && (
+                <span>{scheduled.length} scheduled</span>
+              )}
+              {scheduled.length > 0 && automations.length > 0 && <span className="text-muted-foreground">·</span>}
+              {automations.length > 0 && (
+                <span>{automations.length} automation{automations.length === 1 ? "" : "s"}</span>
+              )}
+              <span className="text-muted-foreground font-normal">— tap to expand</span>
+            </span>
+          </summary>
+          <div className="max-h-40 space-y-1.5 overflow-y-auto border-t border-border/40 px-3 py-2">
+            {scheduled.map((s) => <ScheduledRow key={s.id} msg={s} onCancel={cancelScheduled} />)}
+            {automations.map((a) => {
+              const total = a.stepsTotal ?? 0;
+              const sent = a.stepsSent ?? 0;
+              const stepNum = total > 0 ? Math.min(sent + 1, total) : null;
+              const next = a.nextScheduledFor
+                ? new Date(a.nextScheduledFor).toLocaleString("en-US", {
+                    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                  })
+                : null;
+              return (
+                <div key={a.id} className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-background px-3 py-2">
+                  <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-heading">In &ldquo;{a.sequenceName}&rdquo; automation</p>
+                    {stepNum != null && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Step {stepNum} of {total}{next ? ` · Next ${next}` : ""}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </details>
       )}
 
-      <ConversationCompose
-        conversationId={conversationId}
-        initialBody={initialBody}
-        initialSubject={initialSubject}
-        prefill={prefill}
-        onSent={load}
-        onScheduled={loadScheduled}
-      />
+      <div className="shrink-0 border-t border-border/60">
+        <ConversationCompose
+          conversationId={conversationId}
+          initialBody={initialBody}
+          initialSubject={initialSubject}
+          prefill={prefill}
+          onSent={load}
+          onScheduled={loadScheduled}
+        />
+      </div>
     </div>
   );
 }

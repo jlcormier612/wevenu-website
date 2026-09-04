@@ -14,9 +14,8 @@ import type {
 export async function createScheduleAction(
   input: ScheduleInput,
   presetId?: string,
-  eventDate?: string | null,
 ): Promise<CreateScheduleResult> {
-  const result = await createPaymentSchedule(input, presetId, eventDate);
+  const result = await createPaymentSchedule(input, presetId);
   if (result.ok) revalidatePath("/payments");
   return result;
 }

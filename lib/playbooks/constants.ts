@@ -6,17 +6,34 @@ import { clampDaysOffset } from "@/lib/playbooks/due-dates";
 // tab already on the event page — the URL hash makes that tab addressable
 // (see event-detail.tsx) rather than just landing on the event.
 //
-// guest_list has no dedicated venue-side view yet — the real Guest List
-// feature (RSVPs, dietary needs, etc.) only exists in the couple portal
-// today. This points at Overview (where guest count lives) as the closest
-// honest destination until a real venue-side guest view exists — see
-// docs/product-backlog.md.
-export const TASK_ACTION_TYPES: { value: TaskActionType; defaultLabel: string; tabHash: string }[] = [
-  { value: "vendor_library", defaultLabel: "Open Vendor Library",  tabHash: "vendors" },
-  { value: "payments",       defaultLabel: "Open Payments",        tabHash: "invoice" },
-  { value: "documents",      defaultLabel: "Open Documents",       tabHash: "documents" },
-  { value: "guest_list",     defaultLabel: "Open Guest List",      tabHash: "overview" },
+// guest_list, questionnaire, key_dates, event_details and wedding_website
+// have no dedicated venue-side view/tab — Overview is the closest honest
+// destination until a real venue-side view exists (see
+// docs/product-backlog.md). Never point at a tab that doesn't exist.
+//
+// Task Destination Audit (2026-09-03): audiences restricts which Playbook
+// kind offers a destination in the Task Builder's "Opens" dropdown —
+// default is both. wedding_website is client-only: there is no venue-side
+// page for it at all today, so offering it on a Venue Planning task would
+// promise a destination staff can't actually reach.
+export const TASK_ACTION_TYPES: { value: TaskActionType; defaultLabel: string; tabHash: string; audiences?: readonly PlaybookKind[] }[] = [
+  { value: "vendor_library",   defaultLabel: "Open Vendor Library",     tabHash: "vendors" },
+  { value: "payments",         defaultLabel: "Open Payments",           tabHash: "invoice" },
+  { value: "documents",        defaultLabel: "Open Documents",          tabHash: "documents" },
+  { value: "guest_list",       defaultLabel: "Open Guest List",         tabHash: "overview" },
+  { value: "questionnaire",    defaultLabel: "Open Questionnaire",      tabHash: "overview" },
+  { value: "contract",         defaultLabel: "Open Contract / Agreement", tabHash: "documents" },
+  { value: "timeline",         defaultLabel: "Open Timeline",           tabHash: "timeline" },
+  { value: "floor_plan",       defaultLabel: "Open Floor Plan",         tabHash: "floorplan" },
+  { value: "event_order",      defaultLabel: "Open Event Order",        tabHash: "event-order" },
+  { value: "key_dates",        defaultLabel: "Open Key Dates",          tabHash: "overview" },
+  { value: "event_details",    defaultLabel: "Open Event Details",      tabHash: "overview" },
+  { value: "wedding_website",  defaultLabel: "Open Wedding Website",    tabHash: "overview", audiences: ["client"] },
 ];
+
+export function taskActionOptionsForKind(kind: PlaybookKind): typeof TASK_ACTION_TYPES[number][] {
+  return TASK_ACTION_TYPES.filter((a) => !a.audiences || a.audiences.includes(kind));
+}
 
 export function taskActionLabel(actionType: TaskActionType | null, customLabel: string | null): string | null {
   if (!actionType) return null;

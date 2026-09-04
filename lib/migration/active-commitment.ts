@@ -14,6 +14,7 @@ import * as eventOrdersRepo from "@/lib/event-orders/repository";
 import * as invoicesRepo from "@/lib/invoices/repository";
 import * as paymentsRepo from "@/lib/payments/repository";
 import * as documentsRepo from "@/lib/documents/repository";
+import { ensureEventBookedAt } from "@/lib/events/repository";
 import { recordExternallyExecutedContract } from "@/lib/contracts/external-execution";
 import { shareExternallyExecutedAgreementWithCouple } from "@/lib/contracts/external-share";
 import { resolveClientIdByEmail } from "@/lib/migration/resolve-refs";
@@ -70,6 +71,11 @@ export type NormalizedActiveCommitment = {
   contractContent?: string | null;
   contractSignedAt?: string | null;
   contractSignerName?: string | null;
+  /**
+   * Explicit historical booking commitment date from the prior system.
+   * Distinct from contractSignedAt — never derive booked_at from the signed date.
+   */
+  bookedAt?: string | null;
   documents?: ActiveCommitmentDocument[];
   /**
    * Explicit venue decision: make the externally executed agreement (and
@@ -299,6 +305,11 @@ export async function commitActiveCommitment(
 
   const resolved = await resolveEventId(client, venueId, n);
   if (!resolved.ok) return resolved;
+
+  // Explicit historical booking date only — never reinterpret contractSignedAt as booked_at.
+  if (n.bookedAt?.trim()) {
+    await ensureEventBookedAt(client, venueId, resolved.eventId, n.bookedAt.trim().slice(0, 10));
+  }
 
   const existingOrder = await eventOrdersRepo.getEventOrderByEvent(client, venueId, resolved.eventId);
   const { data: existingInvoices } = await client.from("invoices")

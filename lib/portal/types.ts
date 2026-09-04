@@ -87,6 +87,9 @@ export type PortalTask = {
   completedAt: string | null;
   /** Domain auto-complete trigger from event_tasks; null = acknowledgment / manual. */
   autoCompleteTrigger: string | null;
+  /** Coordinator-chosen destination (Task Builder "Opens") — null = no configured destination. */
+  actionType: string | null;
+  actionLabel: string | null;
   /** True only for client_owned tasks with no domain trigger (couple may Mark complete). */
   canComplete: boolean;
   /**

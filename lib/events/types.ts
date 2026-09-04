@@ -34,6 +34,12 @@ export type VenueEvent = {
   setupTime: string | null;
   teardownTime: string | null;
   guestCount: number | null;
+  /**
+   * Calendar date the booking commitment was made (payment timing "At booking").
+   * Distinct from eventDate (celebration day) and createdAt (row insert).
+   * Null until stamped at a real booking moment — never invent from createdAt.
+   */
+  bookedAt: string | null;
   /** Phase 1 — durable venue-controlled operational Floor Plan for this event. */
   operationalFloorPlanId: string | null;
   /** Phase 2 — couple-selected event floor plan (independent of operational). */

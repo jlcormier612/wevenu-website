@@ -10,6 +10,8 @@ import {
   removeTourAvailabilityExceptionAction,
   replaceTourAvailabilityWindowsAction,
 } from "@/app/(app)/settings/tour-actions";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { LIBRARY_LABELS, librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,10 +50,15 @@ export function TourAvailabilityEditor({
   const editableFromServer = React.useMemo(() => toEditable(initialWindows), [initialWindows]);
   const [windows, setWindows] = useSyncedState(editableFromServer);
   const [savingWindows, startSaveWindows] = React.useTransition();
+  const [windowsBaseline, setWindowsBaseline] = React.useState(() => JSON.stringify(editableFromServer));
+  const [justSavedWindows, setJustSavedWindows] = React.useState(false);
 
   const [exceptions, setExceptions] = useSyncedState(initialExceptions);
   const [newException, setNewException] = React.useState({ startDate: "", endDate: "", label: "" });
   const [savingException, startSaveException] = React.useTransition();
+
+  const windowsDirty = JSON.stringify(windows) !== windowsBaseline;
+  useLibraryUnsavedGuard(windowsDirty);
 
   function windowsForDay(dayOfWeek: number): EditableWindow[] {
     return windows.filter((w) => w.dayOfWeek === dayOfWeek);
@@ -90,7 +97,10 @@ export function TourAvailabilityEditor({
         windows.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })),
       );
       if (result.ok) {
-        toast.success("Weekly availability saved.");
+        setWindowsBaseline(JSON.stringify(windows));
+        setJustSavedWindows(true);
+        setTimeout(() => setJustSavedWindows(false), 2500);
+        toast.success(librarySavedToastMessage());
         onAvailabilityChanged?.();
       } else {
         toast.error("Could not save weekly availability.");
@@ -187,9 +197,14 @@ export function TourAvailabilityEditor({
             );
           })}
         </div>
-        <div className="flex justify-end">
-          <Button type="button" size="sm" onClick={handleSaveWindows} disabled={savingWindows}>
-            {savingWindows ? "Saving…" : "Save Weekly Availability"}
+        <div className="flex flex-wrap items-center gap-3 justify-end">
+          <LibrarySaveStatus
+            status={savingWindows ? "saving" : windowsDirty ? "dirty" : justSavedWindows ? "saved" : "idle"}
+            model="explicit"
+            className="mr-auto"
+          />
+          <Button type="button" size="sm" onClick={handleSaveWindows} disabled={savingWindows || !!loadError || !windowsDirty}>
+            {savingWindows ? LIBRARY_LABELS.saving : LIBRARY_LABELS.saveChanges}
           </Button>
         </div>
       </div>

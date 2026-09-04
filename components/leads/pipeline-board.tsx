@@ -128,7 +128,9 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
 
               <div className="min-h-24 flex-1 space-y-2 p-2.5">
                 {stageLeads.length === 0 && (
-                  <p className="py-6 text-center text-xs text-muted-foreground">No leads</p>
+                  <p className="px-1 py-6 text-center text-xs leading-relaxed text-muted-foreground">
+                    No leads in {stage.label} yet. Leads move into this stage as you work through your sales process.
+                  </p>
                 )}
                 {stageLeads.map((lead) => (
                   <div

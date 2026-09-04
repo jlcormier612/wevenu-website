@@ -50,7 +50,7 @@ import { createClient } from "@/integrations/supabase/client";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import {
   AUTO_COMPLETE_TRIGGERS, categoryColor, categoryLabel, defaultReminderForCategory,
-  directionForOffset, formatDaysOffset, offsetForDirection, TASK_ACTION_TYPES, TASK_CATEGORIES, taskActionLabel,
+  directionForOffset, formatDaysOffset, offsetForDirection, taskActionOptionsForKind, TASK_CATEGORIES, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
 import type {
@@ -289,6 +289,7 @@ function TaskFormPanel({
   const [advanced, setAdvanced] = React.useState(false);
   const set = <K extends keyof TaskForm>(k: K, v: TaskForm[K]) => setF((p) => ({ ...p, [k]: v }));
   const isVenue = kind === "venue";
+  const actionOptions = React.useMemo(() => taskActionOptionsForKind(kind), [kind]);
 
   // A smart reminder default the first time a venue picks a category,
   // without ever overwriting something they've already set.
@@ -349,12 +350,12 @@ function TaskFormPanel({
           <Select
             value={f.actionType || "__none__"}
             onValueChange={(v) => set("actionType", v === "__none__" ? "" : v)}
-            items={[{ value: "__none__", label: "Nothing — just a checklist item" }, ...TASK_ACTION_TYPES.map((a) => ({ value: a.value, label: a.defaultLabel }))]}
+            items={[{ value: "__none__", label: "Nothing — just a checklist item" }, ...actionOptions.map((a) => ({ value: a.value, label: a.defaultLabel }))]}
           >
             <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__none__">Nothing — just a checklist item</SelectItem>
-              {TASK_ACTION_TYPES.map((a) => <SelectItem key={a.value} value={a.value}>{a.defaultLabel}</SelectItem>)}
+              {actionOptions.map((a) => <SelectItem key={a.value} value={a.value}>{a.defaultLabel}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

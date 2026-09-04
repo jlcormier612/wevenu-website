@@ -132,16 +132,25 @@ export function SetupWizard({
     [],
   );
 
+  const [progressSaving, setProgressSaving] = React.useState(false);
+
   /**
-   * Guided Setup, Phase 1 — fire-and-forget progress save. Called every time
-   * a real setup step (not welcome/origin) is left, so an abandoned wizard
-   * resumes instead of starting over. Never awaited by the caller and never
-   * surfaces an error to the venue — a failed progress save just means the
-   * next one (or the final authoritative submit) tries again.
+   * Guided Setup — await progress save before advancing so Continue never
+   * implies the step was persisted when it was not.
    */
-  function saveProgress(data: VenueSetupInput, completedStep: SetupStepId) {
-    if (!data.name.trim()) return;
-    void saveSetupProgressAction(data, completedStep);
+  async function saveProgress(data: VenueSetupInput, completedStep: SetupStepId): Promise<boolean> {
+    if (!data.name.trim()) return true;
+    setProgressSaving(true);
+    try {
+      const result = await saveSetupProgressAction(data, completedStep);
+      if (!result.ok) {
+        toast.error("Could not save your progress. Please try Continue again.");
+        return false;
+      }
+      return true;
+    } finally {
+      setProgressSaving(false);
+    }
   }
 
   function handleSubmit() {
@@ -173,8 +182,9 @@ export function SetupWizard({
   /** Shared by the footer's Continue button and by stages that advance
    * themselves internally (Bring Your Business drives its own sub-screens
    * before handing control back). */
-  function advanceFromStep(step: SetupStepId) {
-    saveProgress(input, step);
+  async function advanceFromStep(step: SetupStepId) {
+    const ok = await saveProgress(input, step);
+    if (!ok) return;
     setStepIndex((i) => i + 1);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
@@ -195,7 +205,7 @@ export function SetupWizard({
       handleSubmit();
       return;
     }
-    advanceFromStep(step);
+    void advanceFromStep(step);
   }
 
   if (complete) {
@@ -309,7 +319,7 @@ export function SetupWizard({
           {step === "owner" && <OwnerStep {...stepProps} />}
           {step === "bring-your-business" && (
             <BringYourBusinessStep
-              onAdvance={() => advanceFromStep("bring-your-business")}
+              onAdvance={() => { void advanceFromStep("bring-your-business"); }}
               onPersonaHint={(persona) => set("onboardingPersona", persona)}
             />
           )}
@@ -329,16 +339,16 @@ export function SetupWizard({
             setStepIndex((i) => Math.max(0, i - 1));
             if (typeof window !== "undefined") window.scrollTo({ top: 0 });
           }}
-          disabled={pending}
+          disabled={pending || progressSaving}
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back
         </Button>
-        <Button type="button" onClick={handleContinue} disabled={pending}>
-          {pending ? (
+        <Button type="button" onClick={handleContinue} disabled={pending || progressSaving}>
+          {pending || progressSaving ? (
             <>
               <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              Creating…
+              {progressSaving ? "Saving…" : "Creating…"}
             </>
           ) : isReview ? (
             "Create venue"

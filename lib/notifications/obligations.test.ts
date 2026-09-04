@@ -54,6 +54,26 @@ describe("createRemindersForPaymentLineItem", () => {
     assert.equal(inserted.length, 0);
   });
 
+  it("once_week schedules a single reminder 7 days before", async () => {
+    const { client, inserted } = mockInsertClient();
+    const farFuture = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
+    await createRemindersForPaymentLineItem(client, "venue-1", "item-1", farFuture, {
+      paymentBeforeDueCadence: "once_week",
+    });
+    assert.equal(inserted.length, 1);
+    assert.equal(inserted[0].length, 1);
+  });
+
+  it("on_due schedules a reminder on the due-date morning when still in the future", async () => {
+    const { client, inserted } = mockInsertClient();
+    const farFuture = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    await createRemindersForPaymentLineItem(client, "venue-1", "item-1", farFuture, {
+      paymentBeforeDueCadence: "on_due",
+    });
+    assert.equal(inserted.length, 1);
+    assert.equal(inserted[0].length, 1);
+  });
+
   it("cadence 'none' schedules nothing", async () => {
     const { client, inserted } = mockInsertClient();
     const farFuture = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);

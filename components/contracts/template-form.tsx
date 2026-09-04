@@ -176,16 +176,21 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
         </div>
       </div>
 
-      {/* Split editor */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-1.5 lg:col-span-2">
+      {/* Split editor — content uses available viewport height; merge-field sidebar stays sticky. */}
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+        <div className="flex min-h-0 flex-col gap-1.5 lg:col-span-2">
           <Label htmlFor="tc">Contract content *</Label>
-          <Textarea id="tc" value={input.content} onChange={(e) => set("content", e.target.value)}
-            rows={24} className="font-mono text-sm" aria-invalid={errors.content ? true : undefined}
-            placeholder="Enter your contract text here. Use {{merge_field}} for dynamic values." />
+          <Textarea
+            id="tc"
+            value={input.content}
+            onChange={(e) => set("content", e.target.value)}
+            className="min-h-[min(70svh,52rem)] flex-1 resize-y font-mono text-sm"
+            aria-invalid={errors.content ? true : undefined}
+            placeholder="Enter your contract text here. Use {{merge_field}} for dynamic values."
+          />
           {errors.content && <p className="text-xs text-destructive">{errors.content}</p>}
         </div>
-        <div className="space-y-3">
+        <div className="space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100svh-6rem)] lg:overflow-y-auto">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available merge fields</p>
           <p className="text-xs text-muted-foreground">Type these tokens in your template. They will be replaced with actual data when a contract is generated.</p>
           <div className="space-y-2">

@@ -17,7 +17,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { claimRecord, countInFlightClaims, releaseClaim, releaseStaleClaims } from "@/lib/migration/repository";
+import { claimRecord, claimUnresolvedRecord, countInFlightClaims, releaseClaim, releaseStaleClaims } from "@/lib/migration/repository";
 
 type FakeRow = Record<string, unknown> & { id: string };
 
@@ -183,5 +183,27 @@ describe("countInFlightClaims", () => {
     const rows = [makeRow({ id: "r1", session_id: "s1", status: "validated", claimed_at: null })];
     const client = mockClientFor(rows);
     assert.equal(await countInFlightClaims(client, "s1"), 0);
+  });
+});
+
+describe("claimUnresolvedRecord — retry of durable needs_review / conflict", () => {
+  it("claims an unclaimed needs_review record for Try again", async () => {
+    const rows = [makeRow({ id: "rec-1", status: "needs_review", claimed_at: null })];
+    const client = mockClientFor(rows);
+    const claimed = await claimUnresolvedRecord(client, "rec-1", "user-1");
+    assert.ok(claimed);
+    assert.equal(rows[0].claimed_by, "user-1");
+  });
+
+  it("does not claim validated rows (those use claimRecord)", async () => {
+    const rows = [makeRow({ id: "rec-1", status: "validated", claimed_at: null })];
+    const client = mockClientFor(rows);
+    assert.equal(await claimUnresolvedRecord(client, "rec-1", "user-1"), null);
+  });
+
+  it("refuses a second concurrent retry claim", async () => {
+    const rows = [makeRow({ id: "rec-1", status: "needs_review", claimed_at: new Date().toISOString(), claimed_by: "user-A" })];
+    const client = mockClientFor(rows);
+    assert.equal(await claimUnresolvedRecord(client, "rec-1", "user-B"), null);
   });
 });

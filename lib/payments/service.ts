@@ -18,7 +18,7 @@ import {
   celebrateFinalPaymentObligationIfNeeded,
   completeFinalPaymentTasksBoundToLine,
 } from "@/lib/payments/final-payment-obligation";
-import { allocatePresetAmounts } from "@/lib/payments/starters";
+import { allocatePresetAmounts, resolvePresetItemDueDate } from "@/lib/payments/starters";
 import {
   cancelRemindersForPaymentLineItem,
   createRemindersForPaymentLineItem,
@@ -136,7 +136,8 @@ export async function getUpcomingPayments(daysAhead = 30): Promise<PaymentLineIt
 export async function createPaymentSchedule(
   input: ScheduleInput,
   presetId?: string,
-  eventDate?: string | null,
+  /** @deprecated Prefer DB event anchors from the invoice; kept for call-site compat. */
+  _eventDate?: string | null,
 ): Promise<CreateScheduleResult> {
   const errors = validateScheduleInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -158,10 +159,28 @@ export async function createPaymentSchedule(
       } as CreateScheduleResult;
     }
     const totalAmount = invoice.total;
+    const eventDate = invoice.eventDate;
+    const bookingDate = invoice.bookedAt;
+    const needsBookingDate = Boolean(
+      presetId
+      && presetId !== "custom"
+      && SCHEDULE_PRESETS.find((p) => p.id === presetId)?.items.some(
+        (i) => i.timing.type === "at_booking" || i.timing.type === "after_booking",
+      ),
+    );
+    // Never invent booked_at from schedule-create day — that is not a booking occurrence.
+    if (needsBookingDate && !bookingDate) {
+      return {
+        ok: false,
+        message: "This payment plan includes a payment due at booking. Add the booking date on the Event to continue.",
+      } as CreateScheduleResult;
+    }
+
     const scheduleId = await repo.insertSchedule(supabase, venueId, {
       title: input.title, clientId: invoice.clientId, eventId: invoice.eventId,
       totalAmount, notes: input.notes, invoiceId: input.invoiceId,
     });
+
     // Apply preset line items with authoritative obligation_kind (never from label later).
     if (presetId && presetId !== "custom") {
       const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
@@ -170,12 +189,7 @@ export async function createPaymentSchedule(
         for (let i = 0; i < preset.items.length; i++) {
           const pi = preset.items[i];
           const amt = amounts[i] ?? 0;
-          let dueDate: string | undefined;
-          if (eventDate && pi.offsetDaysFromEvent != null) {
-            const d = new Date(eventDate + "T12:00:00");
-            d.setDate(d.getDate() + pi.offsetDaysFromEvent);
-            dueDate = d.toISOString().slice(0, 10);
-          }
+          const dueDate = resolvePresetItemDueDate(pi, { eventDate, bookingDate }) ?? undefined;
           const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
             label: pi.label, amount: String(amt), dueDate: dueDate ?? "",
             obligationKind: pi.obligationKind,
@@ -509,20 +523,31 @@ export async function regeneratePaymentSchedule(scheduleId: string, presetId: st
     const alreadyCollected = computeTotalPaid(schedule.lineItems);
     const remaining = Math.max(0, invoiceTotal - alreadyCollected);
 
+    const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
+    if (preset && preset.items.length > 0) {
+      const needsBookingDate = preset.items.some(
+        (i) => i.timing.type === "at_booking" || i.timing.type === "after_booking",
+      );
+      // Never invent booked_at from regenerate day — not a booking occurrence.
+      if (needsBookingDate && !schedule.bookedAt) {
+        return {
+          ok: false,
+          message: "This payment plan includes a payment due at booking. Add the booking date on the Event to continue.",
+        } as PaymentActionResult;
+      }
+    }
+
     await repo.deleteUnresolvedLineItems(supabase, venueId, scheduleId);
 
-    const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
     if (preset && preset.items.length > 0) {
       const amounts = allocatePresetAmounts(remaining, preset.items);
       for (let i = 0; i < preset.items.length; i++) {
         const pi = preset.items[i];
         const amt = amounts[i] ?? 0;
-        let dueDate: string | undefined;
-        if (schedule.eventDate && pi.offsetDaysFromEvent != null) {
-          const d = new Date(schedule.eventDate + "T12:00:00");
-          d.setDate(d.getDate() + pi.offsetDaysFromEvent);
-          dueDate = d.toISOString().slice(0, 10);
-        }
+        const dueDate = resolvePresetItemDueDate(pi, {
+          eventDate: schedule.eventDate,
+          bookingDate: schedule.bookedAt,
+        }) ?? undefined;
         const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
           label: pi.label, amount: String(amt), dueDate: dueDate ?? "",
           obligationKind: pi.obligationKind,

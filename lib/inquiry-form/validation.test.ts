@@ -1,19 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { INQUIRY_API_ERRORS, PUBLIC_INQUIRY_EVENT_TYPES } from "@/lib/inquiry-form/constants";
+import { INQUIRY_API_ERRORS } from "@/lib/inquiry-form/constants";
 import { validateConfigurableFields, validateCustomAnswers } from "@/lib/inquiry-form/validation";
 import type { InquiryFormQuestion } from "@/lib/inquiry-form/types";
+import { DEFAULT_ACCEPTED_EVENT_TYPES, eventTypeLabel } from "@/lib/event-types/canonical";
 
 describe("inquiry form validation", () => {
-  it("requires event type labels match spec", () => {
-    assert.deepEqual(PUBLIC_INQUIRY_EVENT_TYPES.map((t) => t.label), [
-      "Wedding",
-      "Corporate Event",
-      "Social Event",
-      "Birthday / Milestone",
-      "Other",
-    ]);
+  it("default public accepted labels match product starter set", () => {
+    assert.deepEqual(
+      DEFAULT_ACCEPTED_EVENT_TYPES.map((v) => eventTypeLabel(v)),
+      ["Wedding", "Corporate Event", "Social Event", "Birthday Party", "Other"],
+    );
   });
 
   it("flags missing required configurable fields", () => {
@@ -55,7 +53,7 @@ describe("inquiry form validation", () => {
     assert.equal(errors.q1, "This field is required.");
   });
 
-  it("maps API error copy for unavailable slot and date", () => {
+  it("maps API error copy for unavailable slot and date and rejected type", () => {
     assert.equal(
       INQUIRY_API_ERRORS.slot_unavailable,
       "That time is no longer available. Please choose another time.",
@@ -63,6 +61,10 @@ describe("inquiry form validation", () => {
     assert.equal(
       INQUIRY_API_ERRORS.date_unavailable,
       "That date is no longer available. Please choose another date.",
+    );
+    assert.equal(
+      INQUIRY_API_ERRORS.event_type_not_accepted,
+      "That event type is not accepted by this venue. Please choose another.",
     );
   });
 });

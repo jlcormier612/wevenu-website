@@ -224,6 +224,73 @@ Each entry: **Feature**, **Problem**, **Opportunity**, **Suggested Direction**, 
 
 ---
 
+## Dashboard Quick Actions — Creation vs Navigation
+
+**Discovered:** 2026-09-03, Communications / Settings / Notification trust pass (product correction).
+**Resolved:** 2026-09-03 — Quick Actions section removed from the Dashboard entirely. Primary nav retains Messages; contextual "+ New Lead" header action remains. No Bookings nav item introduced.
+
+**Problem:** Dashboard Quick Actions mixed real creation actions with navigation duplicates of primary destinations (Messages, Tasks, Calendar). "New Booking" linked to `/clients/new`, which was confusing terminology.
+
+**Opportunity / Outcome:** Quick Actions removed. Creation stays on natural contextual pages. Messages / Tasks / Calendar remain primary navigation destinations only.
+
+---
+
+## Venue-Owned Reusable Payment Plan Templates
+
+**Discovered:** 2026-09-04, Payment Timing / Payment Plan UX release-readiness pass.
+
+**Problem:** `SCHEDULE_PRESETS` (lib/payments/constants.ts) is a hardcoded, code-level array. A venue whose real deposit/installment policy doesn't match one of the shipped starters (thirds, wedding_four, fifty_fifty, deposit_30_70, fifty_25_25) has no way to save their own reusable structure — they either pick the nearest starter and hand-edit every schedule, or use Custom every time and re-enter the same timing rules per booking. Manually added/edited line items also only accept a raw calendar due date (no reusable timing rule), so a hand-built structure doesn't survive an event-date correction the way a preset-based one does.
+
+**Opportunity:** A real "starter builder" — venue-owned rows (percent + timing rule + obligation kind) reusable across bookings — would remove the main reason a venue would ever need to hand-build the same schedule twice, and would make the Library a genuine second entry point rather than a fixed catalog.
+
+**Suggested Direction:** A venue-scoped table mirroring `SchedulePreset`/`SchedulePresetItem`'s shape (percent, `PaymentTiming`, obligation kind), CRUD through the existing Library surface, resolved through the same `resolveDueDateFromTiming`/`allocatePresetAmounts` functions schedules already use — additive to `SCHEDULE_PRESETS`, not a replacement (the certified/shipped starters stay as a floor every venue gets for free). Time/cost: moderate (new table + RLS + a builder UI); reward: real for venues whose policy doesn't match a shipped split, low urgency for those it does.
+
+**Dependencies:** None blocking. Builds on the existing `PaymentTiming` model without changing it.
+
+---
+
+## Migration Center — Remaining Reconciliation/Consistency Cleanup
+
+**Discovered:** 2026-09-04, Migration Center reconciliation pass.
+
+**Problem:** Three small, independent gaps remain in the Migration Center's reconciliation layer: (1) the `conflict`/`conflictFields` values on `RecordStatus`/`MigrationRecord` are defined and read in a few places but never written anywhere in current code — dead states that read as more nuanced than the system actually is; (2) migration tours import through a dedicated `book_tour_for_migration` RPC that mirrors (but is a second implementation of) the native tour-booking capacity/enforcement logic, so the two can silently drift; (3) the multi-table active-commitment write (Event Order → Invoice → Schedule → Payments → Contract → Documents) is application-level compensation on failure, not a single DB transaction — tested and safe for the common case, but not truly atomic.
+
+**Opportunity:** Closing (1) is pure clarity (prune or wire up). Closing (2) removes a maintenance trap where native and migration tour enforcement could diverge without either being obviously "wrong." Closing (3) would remove the last theoretical (untested-in-practice) path to an orphaned partial financial commitment.
+
+**Suggested Direction:** (1) is a quick, isolated cleanup whenever someone is already in that file. (2) and (3) are real but not urgent — worth a parity test for (2) rather than a rewrite, and (3) only warrants the transaction rework if real orphan-row incidents ever show up in practice.
+
+**Dependencies:** None blocking any of the three.
+
+---
+
+## Inquiry Manager / Inbox / Notification E2E Visual Verification
+
+**Discovered:** 2026-09-04, release-readiness pass — carried forward from an earlier assignment.
+
+**Problem:** Inquiry Manager end-to-end behavior, Inbox UX, and inbox behavior at 100+/500-message volume have not been verified via a live, running instance of the app in this pass (unit/source-level tests exist for adjacent logic — e.g. the notification preference → trigger matrix — but that is not the same as watching the actual UI behave at volume). This item was carried on the list from an earlier assignment and remains genuinely unverified rather than confirmed green.
+
+**Opportunity:** Real confidence that these surfaces behave correctly under realistic data volume before release, not just that their underlying logic typechecks.
+
+**Suggested Direction:** A dedicated pass using a running dev server (see the `run` skill) to drive Inquiry Manager end-to-end and load the Inbox with 100+/500 messages, checking both visual behavior (virtualization/pagination, scroll performance) and functional behavior (read/unread state, filters) — this needs a live browser pass, not more unit tests.
+
+**Dependencies:** None blocking; needs to be scheduled as its own pass given the scope.
+
+---
+
+## Floor Plan Metadata Save Status
+
+**Discovered:** 2026-09-04, Save Trust platform-wide pass.
+
+**Problem:** The Save Trust audit's original target list included Floor Plan metadata save/status confirmation. Floor Plan is a separate, actively in-flight workstream (Cursor's lane) during this pass — this item was deliberately not inspected or touched to avoid colliding with that work.
+
+**Opportunity:** Once Floor Plan work stabilizes, its metadata editing surface should get the same explicit save/dirty/saved-status treatment (`LibrarySaveStatus`/`useLibraryUnsavedGuard`, the same shared primitive already applied to Capacity Rules, Tour Availability, Series, Venue Guide, and Vendor Task Templates in this pass) rather than a bespoke pattern.
+
+**Suggested Direction:** Re-evaluate once Floor Plan reaches a stable, committed state; apply the same shared Save Trust primitive other surfaces now use rather than inventing a new one.
+
+**Dependencies:** Blocked on Floor Plan workstream reaching a stable state.
+
+---
+
 ## How to use this
 
 Add an entry whenever implementation surfaces a real opportunity that isn't part of the work at hand. Keep entries here until they're either scoped into an actual approved phase (move the detail into that phase's design doc, remove it from here) or explicitly declined (leave a one-line note why, don't delete the history).

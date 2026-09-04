@@ -21,7 +21,7 @@ type ScheduleRow = {
   acknowledged_invoice_total: number | null;
   created_at: string; updated_at: string;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
-  events?: { event_date: string | null } | null;
+  events?: { event_date: string | null; booked_at: string | null } | null;
 };
 
 type ItemRow = {
@@ -57,6 +57,7 @@ function mapSchedule(r: ScheduleRow): PaymentSchedule {
     acknowledgedInvoiceTotal: r.acknowledged_invoice_total != null ? Number(r.acknowledged_invoice_total) : null,
     createdAt: r.created_at, updatedAt: r.updated_at,
     clientName: cn, eventDate: r.events?.event_date ?? null,
+    bookedAt: r.events?.booked_at ?? null,
   };
 }
 
@@ -82,7 +83,7 @@ function mapItem(r: ItemRow): PaymentLineItem {
 
 export async function getSchedules(client: DbClient, venueId: string): Promise<PaymentSchedule[]> {
   const { data, error } = await client.from("payment_schedules")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date, booked_at)")
     .eq("venue_id", venueId).order("created_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as ScheduleRow[]).map(mapSchedule);
@@ -98,7 +99,7 @@ export async function getAllLineItems(client: DbClient, venueId: string): Promis
 export async function getSchedule(client: DbClient, venueId: string, id: string): Promise<PaymentScheduleWithDetails | null> {
   const [sRes, iRes, aRes] = await Promise.all([
     client.from("payment_schedules")
-      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
+      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date, booked_at)")
       .eq("id", id).eq("venue_id", venueId).maybeSingle<ScheduleRow>(),
     client.from("payment_line_items").select("*")
       .eq("schedule_id", id).eq("venue_id", venueId)
@@ -153,12 +154,30 @@ export async function insertSchedule(client: DbClient, venueId: string, input: {
  */
 export async function getInvoiceSummaryForSchedule(
   client: DbClient, venueId: string, invoiceId: string,
-): Promise<{ total: number; clientId: string | null; eventId: string | null } | null> {
+): Promise<{
+  total: number;
+  clientId: string | null;
+  eventId: string | null;
+  eventDate: string | null;
+  bookedAt: string | null;
+} | null> {
   const { data } = await client.from("invoices")
-    .select("total, client_id, event_id").eq("id", invoiceId).eq("venue_id", venueId)
-    .maybeSingle<{ total: number; client_id: string | null; event_id: string | null }>();
+    .select("total, client_id, event_id, events(event_date, booked_at)")
+    .eq("id", invoiceId).eq("venue_id", venueId)
+    .maybeSingle<{
+      total: number;
+      client_id: string | null;
+      event_id: string | null;
+      events: { event_date: string | null; booked_at: string | null } | null;
+    }>();
   if (!data) return null;
-  return { total: Number(data.total), clientId: data.client_id, eventId: data.event_id };
+  return {
+    total: Number(data.total),
+    clientId: data.client_id,
+    eventId: data.event_id,
+    eventDate: data.events?.event_date ?? null,
+    bookedAt: data.events?.booked_at ?? null,
+  };
 }
 
 /**

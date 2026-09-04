@@ -4,6 +4,10 @@
  */
 import type { ActivityType, Lead, LeadInput, LeadStatus, RelationshipInput } from "@/lib/leads/types";
 import { SALES_STAGE_META, type SalesStage } from "@/lib/leads/sales-stages";
+import {
+  EVENT_TYPES as CANONICAL_EVENT_TYPES,
+  eventTypeLabel as labelFromCanonical,
+} from "@/lib/event-types/canonical";
 
 export type StatusMeta = {
   value: SalesStage;
@@ -28,22 +32,8 @@ export const ACTIVE_STATUSES: SalesStage[] = [
 
 export type Option = { value: string; label: string };
 
-export const EVENT_TYPES: Option[] = [
-  { value: "wedding",           label: "Wedding" },
-  { value: "elopement",         label: "Elopement" },
-  { value: "engagement_party",  label: "Engagement Party" },
-  { value: "rehearsal_dinner",  label: "Rehearsal Dinner" },
-  { value: "reception",         label: "Reception Only" },
-  { value: "corporate",         label: "Corporate Event" },
-  { value: "birthday",          label: "Birthday Party" },
-  { value: "anniversary",       label: "Anniversary Celebration" },
-  { value: "shower",            label: "Bridal / Baby Shower" },
-  { value: "gala",              label: "Gala / Fundraiser" },
-  { value: "retreat",           label: "Retreat" },
-  { value: "celebration_of_life", label: "Celebration of Life" },
-  { value: "quinceanera",       label: "Quinceañera" },
-  { value: "other",             label: "Other" },
-];
+/** Canonical HTC event types — see `lib/event-types/canonical.ts`. */
+export const EVENT_TYPES: Option[] = CANONICAL_EVENT_TYPES;
 
 export const LEAD_SOURCES: Option[] = [
   { value: "website",      label: "Website" },
@@ -102,13 +92,7 @@ export function statusLabel(status: string): string {
 export { salesStageLabel } from "@/lib/leads/sales-stages";
 
 export function eventTypeLabel(value: string | null): string {
-  if (!value) return "";
-  const publicLabels: Record<string, string> = {
-    corporate_event: "Corporate Event",
-    social_event: "Social Event",
-    birthday_milestone: "Birthday / Milestone",
-  };
-  return EVENT_TYPES.find((e) => e.value === value)?.label ?? publicLabels[value] ?? value;
+  return labelFromCanonical(value);
 }
 
 /** Intake/registry keys that are not offered on the manual New Lead picker. */

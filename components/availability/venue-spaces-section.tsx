@@ -82,6 +82,7 @@ export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpac
       if (result.ok) {
         setSpaces((p) => [...p, { id: result.spaceId, venueId: "", name: input.name.trim(), description: input.description || null, capacity: input.capacity ? parseInt(input.capacity) : null, isActive: input.isActive, sortOrder: p.length, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }]);
         setShowAdd(false);
+        toast.success("Event space saved.");
         router.refresh();
       } else toast.error(result.message ?? "Could not add space.");
     });
@@ -93,6 +94,7 @@ export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpac
       if (result.ok) {
         setSpaces((p) => p.map((s) => s.id === spaceId ? { ...s, name: input.name.trim(), description: input.description || null, capacity: input.capacity ? parseInt(input.capacity) : null, isActive: input.isActive } : s));
         setEditingId(null);
+        toast.success("Event space saved.");
         router.refresh();
       } else toast.error(result.message ?? "Could not update space.");
     });

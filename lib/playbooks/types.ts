@@ -63,7 +63,16 @@ export type PlaybookMilestone = {
 // columns (`action_type`/`action_label`) reserved back in the original
 // "Task Action Centers" schema pass (20260628200000) and never activated
 // until now — reusing them rather than adding parallel new ones.
-export type TaskActionType = "vendor_library" | "payments" | "documents" | "guest_list";
+//
+// Task Destination Audit (2026-09-03): extended from the original 4 to
+// cover every native HTC workflow that has a real place to do the work —
+// questionnaire/contract/timeline/floor_plan/event_order/wedding_website/
+// key_dates/event_details. wedding_website has no venue-side page today
+// (see TASK_ACTION_TYPES' comment) — offered to Client Planning tasks only.
+export type TaskActionType =
+  | "vendor_library" | "payments" | "documents" | "guest_list"
+  | "questionnaire" | "contract" | "timeline" | "floor_plan"
+  | "event_order" | "wedding_website" | "key_dates" | "event_details";
 
 export type PlaybookTask = {
   id: string;

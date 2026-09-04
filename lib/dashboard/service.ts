@@ -34,7 +34,7 @@ import { venueToday } from "@/lib/venue/timezone";
 import { getClientListFilterCounts } from "@/lib/clients/service";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { leadDisplayName } from "@/lib/leads/constants";
-import { resolveVenueNextSteps } from "@/lib/dashboard/venue-next-steps";
+import { resolveVenueNextSteps, VENUE_NEXT_STEPS_CANDIDATE_CAP } from "@/lib/dashboard/venue-next-steps";
 import type {
   ActivityItem,
   AttentionLead,
@@ -526,6 +526,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     })),
   ];
 
+  // Fetched at the larger candidate cap, not VENUE_NEXT_STEPS_CAP — the
+  // Dashboard page excludes anything already shown in Today's Focus and
+  // THEN caps to 5, so overlap with Today's Focus can't quietly shrink
+  // what Your Next Steps actually shows below 5 real, distinct items.
   const nextSteps = resolveVenueNextSteps({
     today,
     clients: clients.map((c) => {
@@ -549,7 +553,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       isOverdue: p.isOverdue,
       clientName: p.clientName,
     })),
-  }).visible;
+  }, VENUE_NEXT_STEPS_CANDIDATE_CAP).visible;
 
   // Extract first name from "Jordan Rivera" → "Jordan"
   const ownerFullName = staffRes.data?.full_name ?? null;

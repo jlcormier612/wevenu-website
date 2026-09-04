@@ -41,6 +41,7 @@ import {
   proposeActiveCommitmentFromFileAction,
   proposeActiveCommitmentFromTextAction,
   proposeMigrationFieldMappingAction,
+  retryMigrationRecordAction,
   reviewMigrationRecordAction,
   runMigrationDedupeAction,
   startMigrationSessionAction,
@@ -248,6 +249,15 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "dietaryRestrictions", label: "Dietary notes", required: false },
     { key: "isChild", label: "Child? (yes/no)", required: false },
     { key: "isWeddingParty", label: "Wedding party? (yes/no)", required: false },
+    { key: "plusOne", label: "Has a plus one? (yes/no)", required: false },
+    { key: "plusOneName", label: "Plus one's name", required: false },
+    { key: "dietaryTags", label: "Dietary tags (vegetarian, vegan, gluten_free, dairy_free, nut_allergy, shellfish_allergy, kosher, halal)", required: false },
+    { key: "accessibilityTags", label: "Accessibility tags (wheelchair, limited_mobility, hearing_assistance, vision_assistance, service_animal, special_seating)", required: false },
+    { key: "accessibilityNotes", label: "Accessibility notes", required: false },
+    { key: "age", label: "Age (children)", required: false },
+    { key: "highChairRequired", label: "High chair required? (yes/no)", required: false },
+    { key: "childNotes", label: "Child notes", required: false },
+    { key: "isVendorMeal", label: "Vendor meal placeholder? (yes/no)", required: false },
     { key: "sourceId", label: "Their own record ID", required: false },
   ],
   event_vendor_assignment: [
@@ -573,6 +583,20 @@ export function MigrationCenter({
     });
   }
 
+  function handleRetryRecord(sessionId: string, recordId: string) {
+    startLoading(async () => {
+      const result = await retryMigrationRecordAction(sessionId, recordId);
+      if (result.ok) {
+        toast.success("Imported after retry.");
+        openSession(sessionId);
+        refreshSessions();
+      } else {
+        toast.error(result.message);
+        openSession(sessionId);
+      }
+    });
+  }
+
   function handleCommit(sessionId: string) {
     startLoading(async () => {
       const result = await commitMigrationSessionAction(sessionId);
@@ -840,10 +864,14 @@ export function MigrationCenter({
             {(resume?.state === "needs_review" || resume?.state === "partially_done") && decisionRecords.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Needs your decision</p>
+                <p className="text-xs text-muted-foreground">
+                  These source records are still part of this migration. Resolve the underlying issue and try again, or intentionally exclude them — they will not disappear.
+                </p>
                 {decisionRecords.filter((r) => r.targetEntityType !== "floor_plan").map((r) => {
                   const historical = isHistoricalRecordEligibleError(r.validationErrors);
                   const liveConflict = isLiveAvailabilityConflictError(r.validationErrors);
                   const displayError = (r.validationErrors?.[0] ?? "").replace(`${HISTORICAL_RECORD_ELIGIBLE}: `, "");
+                  const canRetry = !!r.normalizedPayload && (r.status === "needs_review" || r.status === "conflict");
                   return (
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
                     <div className="min-w-0">
@@ -856,13 +884,15 @@ export function MigrationCenter({
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleDecision(activeSession.id, r.id, "reject")} disabled={loading}>Skip</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleDecision(activeSession.id, r.id, "reject")} disabled={loading}>Don&apos;t bring this over</Button>
                       {historical ? (
                         <Button size="sm" onClick={() => handleDecision(activeSession.id, r.id, "approve_historical")} disabled={loading}>
                           {HISTORICAL_RECORD_LABEL}
                         </Button>
                       ) : r.status !== "needs_review" && !liveConflict ? (
                         <Button size="sm" onClick={() => handleDecision(activeSession.id, r.id, "approve")} disabled={loading}>Import anyway</Button>
+                      ) : canRetry ? (
+                        <Button size="sm" onClick={() => handleRetryRecord(activeSession.id, r.id)} disabled={loading}>Try again</Button>
                       ) : (
                         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                       )}

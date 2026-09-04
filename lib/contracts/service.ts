@@ -33,12 +33,14 @@ import { getEvent } from "@/lib/events/service";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { getCurrentStaffMember } from "@/lib/team/service";
 import { sendEmail } from "@/lib/email/send";
-import { createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
 import {
+  buildContractInviteHtml,
   buildContractInviteSubject,
   buildContractInviteText,
-  buildContractInviteHtml,
 } from "@/lib/email/contract-invite";
+import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
 import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
 import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
@@ -545,7 +547,8 @@ async function sendContractInviteEmails(
   const venue = await getCurrentVenue();
   if (!venue) return;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
-  const brand = { name: venue.name ?? "Your venue", logoUrl: venue.logoUrl, primaryColor: venue.primaryColor };
+  const brand = emailBrandFromVenue(venue);
+  const supabase = await createClient();
 
   const clientSigners = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
   if (clientSigners.length > 0) {
@@ -556,17 +559,30 @@ async function sendContractInviteEmails(
       const ctx = {
         brand,
         recipientFirstName: firstName,
-        recipientFullName: signer.signerName,
         contractTitle: contract.title,
         signUrl,
         customMessage,
       };
-      await sendEmail({
+      const text = buildContractInviteText(ctx);
+      const result = await sendEmail({
         to: signer.signerEmail,
         subject: buildContractInviteSubject(ctx),
-        text: buildContractInviteText(ctx),
+        text,
         html: buildContractInviteHtml(ctx),
+        replyTo: venue.email ?? undefined,
       });
+      if (result.ok && contract.clientId) {
+        await recordExternalClientOutbound(supabase, {
+          venueId: venue.id,
+          clientId: contract.clientId,
+          channel: "email",
+          body: text,
+          providerId: result.method === "resend" ? result.providerId ?? null : null,
+          status: "accepted",
+          sourceType: "contract_invite",
+          sourceId: contract.id,
+        });
+      }
     }
     return;
   }
@@ -579,17 +595,30 @@ async function sendContractInviteEmails(
   const ctx = {
     brand,
     recipientFirstName: client.firstName,
-    recipientFullName: [client.firstName, client.lastName].filter(Boolean).join(" ") || client.firstName,
     contractTitle: contract.title,
     signUrl,
     customMessage,
   };
-  await sendEmail({
+  const text = buildContractInviteText(ctx);
+  const result = await sendEmail({
     to: client.email,
     subject: buildContractInviteSubject(ctx),
-    text: buildContractInviteText(ctx),
+    text,
     html: buildContractInviteHtml(ctx),
+    replyTo: venue.email ?? undefined,
   });
+  if (result.ok) {
+    await recordExternalClientOutbound(supabase, {
+      venueId: venue.id,
+      clientId: contract.clientId,
+      channel: "email",
+      body: text,
+      providerId: result.method === "resend" ? result.providerId ?? null : null,
+      status: "accepted",
+      sourceType: "contract_invite",
+      sourceId: contract.id,
+    });
+  }
 }
 
 export async function venueSignContract(

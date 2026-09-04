@@ -44,6 +44,7 @@ import { getLeadCaptureStepDataAction } from "@/app/setup/actions";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import type { Venue } from "@/lib/venue/types";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
+import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
 
 /**
  * Shared onboarding guidance (2026-08-17) — every step tells the venue what
@@ -714,6 +715,8 @@ export function LeadCaptureStep() {
     appUrl: string;
     leadEmailAddress: string | null;
     emailIntakeStatus: EmailIntakeStatus | null;
+    inquiryFormSettings: InquiryFormSettings | null;
+    canEditInquiryForm: boolean;
   } | null>(null);
 
   React.useEffect(() => {
@@ -738,6 +741,8 @@ export function LeadCaptureStep() {
       appUrl={data.appUrl}
       leadEmailAddress={data.leadEmailAddress}
       emailIntakeStatus={data.emailIntakeStatus}
+      inquiryFormSettings={data.inquiryFormSettings}
+      canEditInquiryForm={data.canEditInquiryForm}
     />
   );
 }

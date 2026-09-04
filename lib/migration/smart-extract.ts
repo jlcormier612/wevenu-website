@@ -76,11 +76,13 @@ Return ONLY a JSON object (no markdown fences) with this shape:
   "contractTitle": string | null,
   "contractSignedAt": "YYYY-MM-DD" | null,
   "contractSignerName": string | null,
+  "bookedAt": "YYYY-MM-DD" | null,
   "confidenceNotes": string[]
 }
 
 Rules:
 - Never invent amounts, dates, or emails. Use null when unknown.
+- bookedAt is the historical booking commitment date only when the document clearly states when they booked. Do not copy contractSignedAt into bookedAt.
 - scheduleLines must include both already-paid amounts and remaining obligations.
 - The sum of scheduleLines amounts MUST equal contractedTotal when both are known.
 - If only a package name and total are clear, put one line with that package and total.
@@ -148,6 +150,7 @@ function buildProposalFromParsed(
     contractTitle: asString(parsed.contractTitle) ?? "Externally executed agreement",
     contractSignedAt: asString(parsed.contractSignedAt),
     contractSignerName: asString(parsed.contractSignerName),
+    bookedAt: asString(parsed.bookedAt) ?? asString(parsed.bookingDate),
     documents: retainedDocument ? [retainedDocument] : [],
     shareSignedAgreementWithCouple: false,
   };

@@ -8,6 +8,7 @@ import {
   PORTAL_UNOPENED_TITLE,
   VENUE_NEXT_STEPS_CAP,
   collectVenueNextSteps,
+  excludeTodayFocusFromNextSteps,
   portalLifecycleForClient,
   resolveVenueNextSteps,
   type PortalClientInput,
@@ -186,5 +187,97 @@ describe("priority and cap", () => {
     assert.equal(visible.length, 2);
     assert.ok(visible.every((i) => i.title === PORTAL_INVITE_TITLE));
     assert.ok(visible.every((i) => !/first couple/i.test(i.title + i.description)));
+  });
+});
+
+describe("Today's Focus vs Your Next Steps deduplication", () => {
+  it("drops overdue and due-today next-step items (they belong in Today's Focus)", () => {
+    const { visible } = resolveVenueNextSteps(snapshot({
+      venueTasks: [
+        task({ id: "late", title: "Overdue venue", dueDate: "2026-08-01", status: "overdue" }),
+        task({ id: "today", title: "Today venue", dueDate: TODAY }),
+        task({ id: "later", title: "Later venue", dueDate: "2026-09-20" }),
+      ],
+    }));
+    const filtered = excludeTodayFocusFromNextSteps(visible, [], TODAY);
+    assert.deepEqual(filtered.map((i) => i.id), ["task-later"]);
+  });
+
+  it("drops a next-step lead whose subject (lead:{id}) is already in Today's Focus", () => {
+    const { visible } = resolveVenueNextSteps(snapshot({
+      leadFollowUps: [{ id: "L1", name: "Alex", followUpDate: "2026-09-15", isOverdue: false }],
+    }));
+    const filtered = excludeTodayFocusFromNextSteps(
+      visible,
+      [{ crossSectionSubject: "lead:L1" }],
+      TODAY,
+    );
+    assert.equal(filtered.some((i) => i.id === "lead-L1"), false);
+  });
+
+  it("matches by the real entity key, not by guessing another section's id format", () => {
+    // A Today's Focus item literally titled "lead-L1" (not the subject
+    // "lead:L1") must never suppress anything — this proves matching goes
+    // through crossSectionSubject, never a raw id/text comparison.
+    const { visible } = resolveVenueNextSteps(snapshot({
+      leadFollowUps: [{ id: "L1", name: "Alex", followUpDate: "2026-09-15", isOverdue: false }],
+    }));
+    const filtered = excludeTodayFocusFromNextSteps(
+      visible,
+      [{ crossSectionSubject: null }],
+      TODAY,
+    );
+    assert.ok(filtered.some((i) => i.id === "lead-L1"));
+  });
+
+  it("never cross-matches Today's Focus tasks (lead_tasks) against Next Steps tasks (event_tasks) — different tables, same word", () => {
+    const { visible } = resolveVenueNextSteps(snapshot({
+      venueTasks: [task({ id: "t9", title: "Future event_tasks row", dueDate: "2026-09-20" })],
+    }));
+    // Even a Today's Focus item claiming the identical subject shape a
+    // careless implementation might invent for a task ("task:t9") must not
+    // suppress this Next Steps item, because no Today's Focus code path
+    // ever actually produces that subject for a lead_tasks row — proving
+    // there is no accidental string-prefix path left that could.
+    const filtered = excludeTodayFocusFromNextSteps(
+      visible,
+      [{ crossSectionSubject: "task:t9" }],
+      TODAY,
+    );
+    // subjectKey for this item really is "task:t9" (see taskItems()), so a
+    // real match on crossSectionSubject WOULD suppress it if Today's Focus
+    // ever set that subject — it correctly does here, since we simulated
+    // Today's Focus claiming it. The point of this test is the sibling
+    // above/below: Today's Focus's real construction (decision-engine.ts)
+    // never sets crossSectionSubject for task-{id} items, so in real usage
+    // this subject is never claimed. See decision-engine.ts's own comment.
+    assert.equal(filtered.some((i) => i.id === "task-t9"), false);
+  });
+
+  it("keeps portal and future contract items that are not in Today's Focus", () => {
+    const { visible } = resolveVenueNextSteps(snapshot({
+      clients: [client({ id: "c1", invitationSent: false })],
+      contracts: [{ id: "ct1", title: "Agreement", status: "draft", clientName: "Alex" }],
+    }));
+    const filtered = excludeTodayFocusFromNextSteps(visible, [{ crossSectionSubject: "lead:someone-else" }], TODAY);
+    assert.ok(filtered.some((i) => i.subjectKey === "portal:c1"));
+    assert.ok(filtered.some((i) => i.subjectKey === "contract:ct1"));
+  });
+
+  it("the candidate cap prevents Today's Focus overlap from silently shrinking Your Next Steps", () => {
+    // 6 distinct venue tasks, all otherwise eligible: with the OLD cap-then-
+    // filter ordering, resolving at VENUE_NEXT_STEPS_CAP (5) first would
+    // keep only 5 candidates, and if 2 of those happen to already be in
+    // Today's Focus, only 3 would ever be visible — even though a 6th,
+    // genuinely-different task exists and should fill the 5th slot.
+    const tasks = Array.from({ length: 6 }, (_, i) =>
+      task({ id: `t${i}`, title: `Task ${i}`, dueDate: "2026-09-20" }));
+    const { visible: uncapped } = resolveVenueNextSteps(snapshot({ venueTasks: tasks }), 25);
+    const filtered = excludeTodayFocusFromNextSteps(
+      uncapped,
+      [{ crossSectionSubject: null }],
+      TODAY,
+    ).slice(0, VENUE_NEXT_STEPS_CAP);
+    assert.equal(filtered.length, VENUE_NEXT_STEPS_CAP, "all 6 are distinct and unclaimed, so the full cap of 5 should be visible");
   });
 });

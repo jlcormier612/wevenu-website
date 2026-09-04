@@ -41,6 +41,7 @@ const EVENT_TYPE_VALUE_TO_PROFILE: Record<string, ExperienceProfileId> = {
   corporate_event: "corporate",
 
   social_event: "general_event",
+  birthday: "general_event",
   birthday_milestone: "general_event",
 };
 

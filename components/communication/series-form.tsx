@@ -7,6 +7,8 @@ import { ArrowDown, ArrowUp, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createSeriesAction, updateSeriesAction } from "@/app/(app)/communication/series/actions";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { LIBRARY_LABELS, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,9 +45,12 @@ export function SeriesForm({
 }) {
   const router = useRouter();
   const isEdit = !!series;
+  const [baseline] = React.useState(() => JSON.stringify(buildInitial(series)));
   const [input, setInput] = React.useState<MessageSequenceInput>(() => buildInitial(series));
   const [errors, setErrors] = React.useState<SequenceErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const dirty = JSON.stringify(input) !== baseline;
+  const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   const stageItems = SEQUENCE_TRIGGER_STAGES.map((s) => ({
     value: s.value,
@@ -230,9 +235,10 @@ export function SeriesForm({
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
-        <Button type="button" onClick={handleSubmit} disabled={pending}>
-          {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : isEdit ? "Save changes" : "Create automation"}
+        <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+        <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) router.back(); }} disabled={pending}>Cancel</Button>
+        <Button type="button" onClick={handleSubmit} disabled={pending || (isEdit && !dirty)}>
+          {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />{LIBRARY_LABELS.saving}</> : isEdit ? LIBRARY_LABELS.saveChanges : "Create automation"}
         </Button>
       </div>
     </div>

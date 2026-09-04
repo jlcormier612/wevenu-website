@@ -34,8 +34,8 @@ import {
   weddingWeekEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
-import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
-import { venueToday } from "@/lib/venue/timezone";
+import { getEventIdForClient, insertEvent, ensureEventBookedAt } from "@/lib/events/repository";
+import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
 import type { Lead } from "@/lib/leads/types";
 import { updateLeadSalesStage } from "@/lib/leads/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -46,6 +46,16 @@ import { exitEnrollmentsForBooking } from "@/lib/message-sequences/service";
  * Called inside the same withVenue callback as insertClient so both rows
  * share the same authenticated Supabase client and venue context.
  */
+async function stampBookingDateIfNeeded(
+  supabase: Parameters<typeof insertEvent>[0],
+  venueId: string,
+  eventId: string | null | undefined,
+): Promise<void> {
+  if (!eventId) return;
+  const tz = await getVenueTimezone(supabase, venueId);
+  await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
+}
+
 async function autoCreateEvent(
   supabase: Parameters<typeof insertEvent>[0],
   venueId: string,
@@ -71,7 +81,7 @@ async function autoCreateEvent(
 
   const coupleName = clientDisplayName(opts.firstName, opts.lastName, opts.partnerFirstName, opts.partnerLastName);
   const typeLabel = opts.eventType?.replace(/_/g, " ") ?? "Event";
-  return insertEvent(supabase, venueId, {
+  const eventId = await insertEvent(supabase, venueId, {
     name: `${coupleName} — ${typeLabel}`,
     eventType: opts.eventType ?? "",
     eventDate: opts.eventDate,
@@ -84,6 +94,8 @@ async function autoCreateEvent(
     clientId,
     spaceId: opts.spaceId ?? "",
   });
+  await stampBookingDateIfNeeded(supabase, venueId, eventId);
+  return eventId;
 }
 
 function datedEventFromClient(
@@ -269,6 +281,11 @@ async function createClientCore(
       );
       clientId = row.clientId;
       eventId = row.eventId;
+      // Direct Add of a dated future booking IS the booking commitment moment.
+      // Historical past-event imports do not invent a booking date.
+      if (!asHistorical) {
+        await stampBookingDateIfNeeded(supabase, venueId, eventId);
+      }
     } catch (err) {
       const fail = occupancyClientFailure(err);
       if (fail) return fail;
@@ -394,6 +411,7 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
         }
       }
       await updateLeadSalesStage(lead.id, "booked", { allowBooked: true });
+      await stampBookingDateIfNeeded(supabase, venueId, eventId);
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
     let clientId: string;
@@ -405,6 +423,7 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
         );
         clientId = row.clientId;
         eventId = row.eventId;
+        await stampBookingDateIfNeeded(supabase, venueId, eventId);
       } else {
         clientId = await repo.insertClient(supabase, venueId, input, lead.id);
       }
@@ -419,6 +438,7 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
           .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
+          await stampBookingDateIfNeeded(supabase, venueId, raceEventId);
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
         }
       }

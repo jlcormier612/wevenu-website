@@ -111,7 +111,7 @@ export default async function CommunicationHealthPage() {
       </Card>
 
       <Link href="/messaging" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <MessageSquare className="h-3.5 w-3.5" /> Back to Inbox
+        <MessageSquare className="h-3.5 w-3.5" /> Back to Messages
       </Link>
     </div>
   );

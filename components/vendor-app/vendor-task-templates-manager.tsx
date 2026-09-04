@@ -390,6 +390,21 @@ export function VendorTaskTemplatesManager({
   }
 
   function backToList() {
+    const hasDirtyItems = Object.keys(itemDrafts).some((id) => {
+      const item = activePack?.items.find((i) => i.id === id);
+      const draft = itemDrafts[id];
+      if (!item || !draft) return false;
+      return !draftsEqual(draft, {
+        title: item.title,
+        daysOffset: item.daysOffset != null ? String(item.daysOffset) : "",
+        notes: item.notes ?? "",
+        actionType: item.actionType === "share_timeline" ? "share_timeline" : "",
+      });
+    });
+    const hasDirtyDraftRows = draftRows.some((r) => r.title.trim() || r.notes.trim() || r.daysOffset.trim());
+    if (packHeaderDirty || hasDirtyItems || hasDirtyDraftRows) {
+      if (!confirm("You have unsaved changes. Leave without saving?")) return;
+    }
     setActivePackId(null);
     setCreating(false);
     setCreateForm(EMPTY_PACK);

@@ -18,13 +18,24 @@ import { createClient } from "@/integrations/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-export type CadenceLabel = "weekly" | "every_3_days" | "daily" | "none";
+export type AfterDueCadenceLabel = "weekly" | "every_3_days" | "daily" | "none";
+
+/** Before-due presets — fixed offsets relative to the obligation due date. */
+export type BeforeDueCadenceLabel =
+  | "weekly"          // 21, 14, 7 days before
+  | "once_week"       // 7 days before
+  | "once_two_weeks"  // 14 days before
+  | "on_due"          // morning of the due date
+  | "none";
+
+/** @deprecated Prefer AfterDueCadenceLabel / BeforeDueCadenceLabel. Kept for call sites. */
+export type CadenceLabel = AfterDueCadenceLabel;
 
 export type ReminderCadence = {
-  paymentBeforeDueCadence: Extract<CadenceLabel, "weekly" | "none">;
-  paymentAfterDueCadence: CadenceLabel;
-  contractBeforeDueCadence: Extract<CadenceLabel, "weekly" | "none">;
-  taskAfterDueCadence: CadenceLabel;
+  paymentBeforeDueCadence: BeforeDueCadenceLabel;
+  paymentAfterDueCadence: AfterDueCadenceLabel;
+  contractBeforeDueCadence: BeforeDueCadenceLabel;
+  taskAfterDueCadence: AfterDueCadenceLabel;
 };
 
 const CADENCE_DEFAULTS: ReminderCadence = {
@@ -35,7 +46,7 @@ const CADENCE_DEFAULTS: ReminderCadence = {
 };
 
 /** Interval in days for a recurring ("after due") cadence label. null = don't recur. */
-export function cadenceIntervalDays(label: CadenceLabel): number | null {
+export function cadenceIntervalDays(label: AfterDueCadenceLabel): number | null {
   switch (label) {
     case "daily": return 1;
     case "every_3_days": return 3;
@@ -44,9 +55,19 @@ export function cadenceIntervalDays(label: CadenceLabel): number | null {
   }
 }
 
-/** Fixed offsets (days before due date) for a "before due" batch. Empty = don't schedule any. */
-function beforeDueOffsets(label: Extract<CadenceLabel, "weekly" | "none">): number[] {
-  return label === "weekly" ? [21, 14, 7] : [];
+/**
+ * Fixed offsets (days before due date) for a "before due" batch.
+ * Empty = don't schedule any. Not relative to booking — use payment
+ * schedule timing (at_booking / before_event) for when the due date itself falls.
+ */
+export function beforeDueOffsets(label: BeforeDueCadenceLabel): number[] {
+  switch (label) {
+    case "weekly": return [21, 14, 7];
+    case "once_two_weeks": return [14];
+    case "once_week": return [7];
+    case "on_due": return [0];
+    case "none": return [];
+  }
 }
 
 export async function getReminderCadence(): Promise<ReminderCadence> {

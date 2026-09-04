@@ -224,7 +224,9 @@ function DayDetail({
     <div className="space-y-3">
       <p className="font-heading text-base font-medium text-heading">{label}</p>
       {dateItems.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">Nothing scheduled.</p>
+        <p className="text-sm text-muted-foreground py-4 text-center">
+          Nothing scheduled for this day. Use Add Schedule Item above to add a tour, hold, or block.
+        </p>
       ) : (
         <div className="space-y-2">
           {dateItems.map((item) => (

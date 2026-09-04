@@ -12,6 +12,14 @@ import {
 
 export const VENUE_NEXT_STEPS_CAP = 5;
 
+/**
+ * The Dashboard page fetches at this larger cap, filters out anything
+ * already shown in Today's Focus, then caps to VENUE_NEXT_STEPS_CAP for
+ * display — so a next step already claimed by Today's Focus can't shrink
+ * what's actually visible below 5 genuinely-different items.
+ */
+export const VENUE_NEXT_STEPS_CANDIDATE_CAP = 25;
+
 export type VenueNextStepsPriority = "venue" | "shared";
 
 export type VenueNextStep = {
@@ -303,11 +311,54 @@ export function selectVenueNextSteps(
   return { visible: ordered.slice(0, Math.max(0, cap)), total: ordered.length };
 }
 
-export function resolveVenueNextSteps(snapshot: VenueNextStepsSnapshot): {
+export function resolveVenueNextSteps(
+  snapshot: VenueNextStepsSnapshot,
+  cap = VENUE_NEXT_STEPS_CAP,
+): {
   visible: VenueNextStep[];
   total: number;
 } {
-  return selectVenueNextSteps(collectVenueNextSteps(snapshot), VENUE_NEXT_STEPS_CAP, snapshot.today);
+  return selectVenueNextSteps(collectVenueNextSteps(snapshot), cap, snapshot.today);
+}
+
+/**
+ * Exclude anything that belongs in Today's Focus (NOW) from Your Next Steps (NEXT).
+ *
+ * Rules:
+ * 1. Overdue or due-today items are today's urgent work — never Next Steps.
+ * 2. Any subject already represented in Today's Focus is excluded — via
+ *    ClassifiedItem.crossSectionSubject, the real underlying entity a
+ *    Today's Focus item is about (set only where confirmed correct — see
+ *    that field's own doc comment for exactly which entities are and are
+ *    not matched, and why). Never derived by guessing at another section's
+ *    id format: a Today's Focus "task-" item is a lead_tasks row; a Your
+ *    Next Steps "task:" item is an event_tasks row — different tables that
+ *    happen to share a word, not the same entity, so they are never
+ *    conflated here.
+ *
+ * Call this with the FULL (uncapped) Your Next Steps candidate list — i.e.
+ * resolveVenueNextSteps's `visible` at a cap generous enough that Today's
+ * Focus overlap doesn't quietly shrink what Your Next Steps can show.
+ * Capping to VENUE_NEXT_STEPS_CAP happens after this filter, not before,
+ * so a lead already shown in Today's Focus can't silently use up one of
+ * only 5 slots and crowd out a genuinely different next step.
+ */
+export function excludeTodayFocusFromNextSteps(
+  nextSteps: VenueNextStep[],
+  focusItems: { crossSectionSubject: string | null }[],
+  today: string,
+): VenueNextStep[] {
+  const focusSubjects = new Set<string>();
+  for (const item of focusItems) {
+    if (item.crossSectionSubject) focusSubjects.add(item.crossSectionSubject);
+  }
+
+  return nextSteps.filter((step) => {
+    if (step.isOverdue) return false;
+    if (step.dueDate && step.dueDate <= today) return false;
+    if (focusSubjects.has(step.subjectKey)) return false;
+    return true;
+  });
 }
 
 export function groupVenueNextSteps(visible: VenueNextStep[]): {

@@ -120,11 +120,18 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
   }
 
   async function handleRoleChange(staffId: string, newRole: StaffRole) {
+    const member = members.find((m) => m.id === staffId);
+    const fromLabel = member ? ROLE_LABELS[member.role] : "current role";
+    const toLabel = ROLE_LABELS[newRole];
+    if (!confirm(`Change ${member?.name ?? "this team member"} from ${fromLabel} to ${toLabel}? This updates what they can do in Hello to Cheers.`)) {
+      return;
+    }
     const result = await updateTeamMemberRoleAction(staffId, newRole);
     if (result.ok) {
       setMembers((prev) =>
         prev.map((m) => (m.id === staffId ? { ...m, role: newRole } : m))
       );
+      toast.success(`Role updated to ${toLabel}.`);
     } else {
       toast.error(result.error ?? "Failed to update role");
     }

@@ -563,6 +563,24 @@ export async function updateVenueStory(story: string): Promise<void> {
   await repository.updateVenueFields(supabase, venue.id, { story: story.trim() || null });
 }
 
+/** Save: plain-text email signature/footer for outbound client emails. */
+export async function updateVenueEmailSignature(
+  signature: string | null,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Venue not found." };
+  const trimmed = (signature ?? "").trim();
+  if (trimmed.length > 2000) {
+    return { ok: false, message: "Signature is too long (max 2000 characters)." };
+  }
+  await repository.updateVenueFields(supabase, venue.id, {
+    email_signature: trimmed || null,
+  });
+  return { ok: true };
+}
+
 // connectStripeAccount()/disconnectStripeAccount() moved to
 // lib/stripe/service.ts (Sprint 4 — Venue Payment Processing), which reads
 // Stripe's real charges_enabled flag and calls Stripe's own deauthorize

@@ -24,6 +24,7 @@ export function WebsiteFormsSection({
   leadEmailAddress,
   emailIntakeStatus,
   inquiryFormSettings = null,
+  canEditInquiryForm = true,
 }: {
   embedKey: string;
   appUrl: string;
@@ -31,6 +32,7 @@ export function WebsiteFormsSection({
   leadEmailAddress: string | null;
   emailIntakeStatus: EmailIntakeStatus | null;
   inquiryFormSettings?: InquiryFormSettings | null;
+  canEditInquiryForm?: boolean;
 }) {
   const formUrl = `${appUrl}/form/${embedKey}`;
   const iframeCode = `<iframe\n  src="${formUrl}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="Venue Inquiry Form"\n></iframe>`;
@@ -77,6 +79,7 @@ export function WebsiteFormsSection({
             initialFields={inquiryFormSettings.inquiryFormFields}
             initialAcceptedEventTypes={inquiryFormSettings.acceptedEventTypes}
             initialQuestions={inquiryFormSettings.customQuestions}
+            canEdit={canEditInquiryForm}
           />
         </div>
       )}
@@ -145,14 +148,21 @@ export function WebsiteFormsSection({
 
       <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
         <p className="text-sm font-medium text-heading">More lead sources</p>
+        <p className="text-xs text-muted-foreground">
+          Lead Capture is where you manage every way inquiries reach Hello to Cheers — not only this website form.
+        </p>
         <ul className="space-y-1.5 text-xs">
           <li>
-            <span className="text-muted-foreground">Facebook / Instagram Lead Ads — </span>
-            <a href="#facebook" className="text-primary hover:underline">connect it above</a>
+            <Link href="/setup-hub/lead-capture" className="text-primary hover:underline">Facebook / Instagram Lead Ads</Link>
+            <span className="text-muted-foreground"> — connect Meta and choose which Lead Ads forms create leads</span>
           </li>
           <li>
             <Link href="/library/qr-campaigns" className="text-primary hover:underline">QR code campaigns</Link>
             <span className="text-muted-foreground"> — bridal shows, brochures, front-gate signs</span>
+          </li>
+          <li>
+            <Link href="/leads/new" className="text-primary hover:underline">Manual entry</Link>
+            <span className="text-muted-foreground"> — add a lead yourself from Sales → Leads</span>
           </li>
         </ul>
         <p className="text-xs text-muted-foreground italic pt-1">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { CommunicationIdentitySection } from "@/components/settings/communication-identity-section";
 import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
 import { NotificationPreferencesSection } from "@/components/settings/notification-preferences-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
@@ -21,6 +22,8 @@ import { getLuvSettings } from "@/lib/luv/settings";
 import { getReminderCadence } from "@/lib/notifications/obligations";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getNotificationStats } from "@/lib/notifications/stats";
+import { isSmsConfigured } from "@/lib/sms/send";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Communications & Automation — Settings" };
 
@@ -33,8 +36,13 @@ export const metadata: Metadata = { title: "Communications & Automation — Sett
  * one component.
  */
 export default async function CommunicationsAutomationSettingsPage() {
-  const [notifStats, notifPrefs, eventCompletedNudgeRule, luvSettings, reminderCadence] = await Promise.all([
-    getNotificationStats(), getNotificationPreferences(), getEventCompletedNudgeRule(), getLuvSettings(), getReminderCadence(),
+  const [notifStats, notifPrefs, eventCompletedNudgeRule, luvSettings, reminderCadence, venue] = await Promise.all([
+    getNotificationStats(),
+    getNotificationPreferences(),
+    getEventCompletedNudgeRule(),
+    getLuvSettings(),
+    getReminderCadence(),
+    getCurrentVenue(),
   ]);
 
   return (
@@ -44,6 +52,28 @@ export default async function CommunicationsAutomationSettingsPage() {
         description="Notifications, follow-ups, and Luv."
       />
       <SettingsTabs />
+
+      <Card id="identity" className="scroll-mt-20">
+        <CardHeader>
+          <CardTitle className="text-base">How clients see you</CardTitle>
+          <CardDescription>
+            Venue identity on outbound email and text. Edit brand fields in Business &amp; Brand —
+            this page shows what clients actually receive.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CommunicationIdentitySection
+            venueName={venue?.name ?? ""}
+            logoUrl={venue?.logoUrl ?? null}
+            primaryColor={venue?.primaryColor ?? "#5D6F5D"}
+            venueEmail={venue?.email ?? null}
+            venuePhone={venue?.phone ?? null}
+            emailSignature={venue?.emailSignature ?? null}
+            emailConfigured={isEmailConfigured()}
+            smsConfigured={isSmsConfigured()}
+          />
+        </CardContent>
+      </Card>
 
       <Card id="notifications" className="scroll-mt-20">
         <CardHeader>

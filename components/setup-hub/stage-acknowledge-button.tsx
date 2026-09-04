@@ -33,7 +33,8 @@ export function StageAcknowledgeButton({
         e.stopPropagation();
         startTransition(async () => {
           const result = await action();
-          if (!result.ok) toast.error("Something went wrong saving that. Please try again.");
+          if (result.ok) toast.success("Saved.");
+          else toast.error("Something went wrong saving that. Please try again.");
         });
       }}
     >

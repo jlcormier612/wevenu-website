@@ -128,7 +128,7 @@ export default async function LibraryPage() {
             starter list by coincidence, but would have silently gone stale
             the moment a starter was added or removed. Every other Library
             card computes its own count — this now does too. */}
-        <ToolboxCard title="Payment Schedules" description="Starter payment plans — 3-payment, 4-payment, or custom — always tied to a real invoice total." href="/library/payment-schedules" count={getPaymentPlanStarters().length} icon={ClipboardList} />
+        <ToolboxCard title="Payment plan starters" description="Starting structures (percentages + timing before the Event). Start with one, then create the real schedule on a couple’s invoice." href="/library/payment-schedules" count={getPaymentPlanStarters().length} icon={ClipboardList} />
       </Group>
 
       <Group title="Planning">

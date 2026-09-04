@@ -384,6 +384,8 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
     const firstName = str(row, "firstName") ?? str(row, "guestFirstName");
     if (!firstName) return { ok: false, error: "Guest rows need a firstName." };
     const bool = (v: string | null | undefined) => ["yes", "true", "1"].includes((v ?? "").toLowerCase());
+    const splitTags = (v: string | null | undefined) =>
+      (v ?? "").split(/[,|;]/).map((t) => t.trim().toLowerCase()).filter(Boolean);
     const normalized = {
       eventId: str(row, "eventId"),
       clientEmail: str(row, "clientEmail"),
@@ -399,6 +401,15 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
       dietaryRestrictions: str(row, "dietaryRestrictions") ?? str(row, "dietary"),
       isChild: bool(str(row, "isChild")),
       isWeddingParty: bool(str(row, "isWeddingParty")),
+      plusOne: bool(str(row, "plusOne")),
+      plusOneName: str(row, "plusOneName"),
+      dietaryTags: splitTags(str(row, "dietaryTags")),
+      accessibilityTags: splitTags(str(row, "accessibilityTags")),
+      accessibilityNotes: str(row, "accessibilityNotes"),
+      age: str(row, "age"),
+      highChairRequired: bool(str(row, "highChairRequired")),
+      childNotes: str(row, "childNotes"),
+      isVendorMeal: bool(str(row, "isVendorMeal")),
       notes: str(row, "notes"),
       sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
     };

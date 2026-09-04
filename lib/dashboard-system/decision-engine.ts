@@ -45,7 +45,43 @@ export type ClassifiedItem = {
   rightSeverity?: "critical" | "warning" | "informational";
   /** ISO date, for sort ordering — null sorts last. */
   sortDate: string | null;
+  /**
+   * Cross-section dedupe key (Dashboard IA cleanup) — "type:id" of the real
+   * underlying entity this item is about, set ONLY where a different
+   * Dashboard section's item is confirmed to represent the exact same
+   * entity, never inferred from label text. null means "no other section
+   * currently has a comparable item" — that is the correct, honest default,
+   * not a gap to fill in. In particular: Today's Focus tasks come from
+   * lead_tasks; Your Next Steps tasks come from event_tasks. These are
+   * different tables (a lead's pipeline task vs. a booked event's Task
+   * Center task) that happen to share the word "task" — never matched here.
+   * Event Readiness items (briefing-contract-{eventId}, etc.) are an
+   * event-level aggregate; Your Next Steps' contract/payment items are
+   * per-record. Matching those would require plumbing an eventId through
+   * the contracts/payments queries this phase intentionally leaves alone —
+   * a real, documented remaining gap, not silently papered over.
+   */
+  crossSectionSubject: string | null;
 };
+
+/** Collects the non-null cross-section subjects already claimed by a set of items. */
+export function collectCrossSectionSubjects(
+  items: readonly { crossSectionSubject: string | null }[],
+): Set<string> {
+  const out = new Set<string>();
+  for (const item of items) {
+    if (item.crossSectionSubject) out.add(item.crossSectionSubject);
+  }
+  return out;
+}
+
+/** Removes items whose cross-section subject is already claimed by a higher-priority section. */
+export function excludeByCrossSectionSubject<T extends { crossSectionSubject: string | null }>(
+  items: readonly T[],
+  claimed: ReadonlySet<string>,
+): T[] {
+  return items.filter((item) => !item.crossSectionSubject || !claimed.has(item.crossSectionSubject));
+}
 
 /**
  * CLASSIFY + PRIORITIZE (architecture doc §4) — turns getDashboardData()'s
@@ -70,6 +106,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightLabel: "Follow up",
       rightSeverity: "warning",
       sortDate: null,
+      crossSectionSubject: `lead:${lead.id}`,
     });
   }
 
@@ -94,10 +131,15 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightLabel: "Today",
       rightSeverity: "warning",
       sortDate: today,
+      crossSectionSubject: `lead:${lead.id}`,
     });
   }
 
   // ── Tasks domain: overdue tasks (Critical — a missed commitment) ──────
+  // crossSectionSubject stays null: these are lead_tasks (pipeline-stage
+  // tasks), a different table from Your Next Steps' event_tasks (Task
+  // Center). Both are called "task" but are not the same entity — never
+  // matched against each other.
   for (const task of data.openTasks) {
     if (!isOverdue(task.dueDate)) continue;
     items.push({
@@ -110,6 +152,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightLabel: "Overdue",
       rightSeverity: "critical",
       sortDate: task.dueDate,
+      crossSectionSubject: null,
     });
   }
 
@@ -140,6 +183,10 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightLabel: "Today",
       rightSeverity: "warning",
       sortDate: lead.tourDate,
+      // Deliberately null, not `lead:{id}` — a tour today and a stale
+      // follow-up are different obligations about the same lead. Suppressing
+      // the follow-up because a tour is showing would lose real information.
+      crossSectionSubject: null,
     });
   }
 
@@ -158,6 +205,11 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightLabel: item.eventDate ? formatEventDate(item.eventDate) : undefined,
       rightSeverity: "critical",
       sortDate: item.eventDate,
+      // Event-level aggregate (this event's contracts/payments/requests
+      // need attention) vs. Your Next Steps' per-record contract/payment
+      // items — different granularity, no clean shared id without plumbing
+      // an eventId through those queries. Left unmatched, not guessed.
+      crossSectionSubject: null,
     });
   }
 
@@ -191,6 +243,9 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       href: `/leads/${lead.id}`,
       rightLabel: lead.tourDate ? formatLeadDate(lead.tourDate) : undefined,
       sortDate: lead.tourDate,
+      // Same reasoning as today's tour item above: not the same obligation
+      // as a lead follow-up, even for the same lead.
+      crossSectionSubject: null,
     });
   }
 
@@ -204,6 +259,8 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       href: `/events/${event.id}`,
       rightLabel: formatEventDate(event.eventDate),
       sortDate: event.eventDate,
+      // No other section currently emits a comparable per-event key.
+      crossSectionSubject: null,
     });
   }
 
@@ -217,6 +274,12 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       href: `/payments/${payment.scheduleId}`,
       rightLabel: `${formatMoney(payment.amount)} · ${formatPaymentDate(payment.dueDate)}`,
       sortDate: payment.dueDate,
+      // Same schedule key Your Next Steps' overdue payment items use
+      // (payment:{scheduleId}) — kept in sync even though today the two are
+      // temporally exclusive (Upcoming is strictly future, Next Steps'
+      // payment items are overdue/today-only), so the match is honest and
+      // future-proof rather than a coincidence of the current date filter.
+      crossSectionSubject: `payment:${payment.scheduleId}`,
     });
   }
 
@@ -230,6 +293,8 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       href: `/clients/${kd.clientId}`,
       rightLabel: formatClientDate(kd.date),
       sortDate: kd.date,
+      // No other section currently has a comparable key-date item.
+      crossSectionSubject: null,
     });
   }
 

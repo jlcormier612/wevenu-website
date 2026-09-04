@@ -8,6 +8,7 @@ import {
   deleteEventNote_,
   removeTeamMember,
   updateEvent_,
+  updateEventBookedAt_,
   updateEventNote_,
   updateEventStatus_,
 } from "@/lib/events/service";
@@ -16,6 +17,8 @@ import type { EventActionResult, EventInput, TeamMemberInput } from "@/lib/event
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
   revalidatePath("/events");
+  revalidatePath("/payments");
+  revalidatePath("/payments/new");
 }
 
 export async function updateEventStatusAction(eventId: string, status: string): Promise<EventActionResult> {
@@ -26,6 +29,12 @@ export async function updateEventStatusAction(eventId: string, status: string): 
 
 export async function updateEventAction(eventId: string, input: EventInput): Promise<EventActionResult> {
   const result = await updateEvent_(eventId, input);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function updateEventBookedAtAction(eventId: string, bookedAt: string): Promise<EventActionResult> {
+  const result = await updateEventBookedAt_(eventId, bookedAt);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }
