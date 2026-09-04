@@ -15,6 +15,7 @@ import {
   addMigrationRowsAction,
   getFloorPlanImportCatalogAction,
   resolveFloorPlanImportRecordAction,
+  reviewMigrationRecordAction,
   runMigrationDedupeAction,
   startMigrationSessionAction,
 } from "@/app/(app)/settings/migration-actions";
@@ -281,6 +282,21 @@ function FloorPlanReviewRow({
     }
   }
 
+  async function handleExclude() {
+    setSaving(true);
+    try {
+      const result = await reviewMigrationRecordAction(sessionId, record.id, "reject");
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      toast.success("Floor plan left out of this import.");
+      onResolved();
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-2 rounded-lg border border-border px-3 py-2">
       <p className="truncate text-sm font-medium text-heading">{String(p.name ?? p.fileName ?? "Floor plan")}</p>
@@ -346,10 +362,15 @@ function FloorPlanReviewRow({
           </div>
         )}
       </div>
-      <Button size="sm" onClick={handleConfirm} disabled={saving}>
-        {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-        Confirm match
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={handleConfirm} disabled={saving}>
+          {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+          Confirm match
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleExclude} disabled={saving}>
+          Don&apos;t import
+        </Button>
+      </div>
     </div>
   );
 }

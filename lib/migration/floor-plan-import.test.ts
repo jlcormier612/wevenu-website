@@ -193,6 +193,36 @@ describe("floor plan import adapter + library surfacing", () => {
     assert.match(src, /entityType === "floor_plan"[\s\S]*canEditFloorPlans/);
     assert.match(src, /byEntityType\.floor_plan[\s\S]*canEditFloorPlans/);
     assert.match(src, /FLOOR_PLAN_EDIT_DENIED/);
+    assert.match(
+      readFileSync(join(process.cwd(), "components/settings/floor-plan-migration-import.tsx"), "utf8"),
+      /Don&apos;t import|Don't import/,
+    );
+    assert.match(
+      readFileSync(join(process.cwd(), "components/settings/floor-plan-migration-import.tsx"), "utf8"),
+      /reviewMigrationRecordAction[\s\S]*reject/,
+    );
+  });
+
+  it("cutover migrations never narrow migration_records entity vocabulary", () => {
+    // Local DB tests re-apply foundational cutover SQL. Shrinking the check
+    // after later entities exist (timeline_entry, floor_plan, …) breaks the suite.
+    for (const file of [
+      "supabase/migrations/20261323000000_bring_business_cutover.sql",
+      "supabase/migrations/20261324000000_active_financial_cutover.sql",
+      "supabase/migrations/20261326000000_active_business_continuity.sql",
+      "supabase/migrations/20261336000000_floor_plan_migration_entity.sql",
+    ]) {
+      const src = readFileSync(join(process.cwd(), file), "utf8");
+      for (const entity of [
+        "active_commitment",
+        "guest_list",
+        "event_vendor_assignment",
+        "timeline_entry",
+        "floor_plan",
+      ]) {
+        assert.match(src, new RegExp(`'${entity}'`), `${file} must allow ${entity}`);
+      }
+    }
   });
 });
 
