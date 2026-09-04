@@ -2,9 +2,11 @@
  * Keep /public/pdf.worker.min.mjs in sync with the installed pdfjs-dist
  * (Floor Plan Phase 2 — PDF page-1 raster in the browser).
  */
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const src = path.join(__dirname, "..", "node_modules", "pdfjs-dist", "build", "pdf.worker.min.mjs");
 const dest = path.join(__dirname, "..", "public", "pdf.worker.min.mjs");
 
