@@ -57,9 +57,9 @@ describe("migration_records entity-check isolation", () => {
         { dbUrl: LOCAL_DB, alreadyHoldingLock: true },
       );
 
-      const sessionId = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff01";
-      const venueId = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff02";
-      const ownerId = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff03";
+      const sessionId = "bbbbbbbb-cccc-dddd-eeee-ffffffffff01";
+      const venueId = "bbbbbbbb-cccc-dddd-eeee-ffffffffff02";
+      const ownerId = "bbbbbbbb-cccc-dddd-eeee-ffffffffff03";
 
       psql(`
         delete from public.migration_records where session_id = '${sessionId}';
