@@ -167,8 +167,63 @@ export async function addRows(
   return { added: inserted.length };
 }
 
+/**
+ * In-batch duplicate signal for a row that has no live/committed match
+ * (i.e. dedupe() alone would call it "validated"). Mirrors the exact
+ * matching signal the live checks already use — email if present,
+ * otherwise first+last name (lib/clients/repository.ts's
+ * findActiveDuplicateClient / lib/leads/repository.ts's
+ * findActiveDuplicate) — for client/lead, and clientEmail/clientId +
+ * eventDate for event, since that's the identity an Event resolves
+ * against (lib/migration/resolve-refs.ts). No new matching philosophy —
+ * same signals, applied against sibling rows in this session instead of
+ * the live tables. Returns null when the row doesn't carry enough
+ * identity to compare (nothing invented in that case; it's simply not
+ * checked in-batch, same as it wouldn't be checked live).
+ */
+function inBatchDuplicateKey(entityType: MigrationEntityType, normalized: Record<string, unknown>): string | null {
+  if (entityType === "client" || entityType === "lead") {
+    const n = normalized as NormalizedClientLike;
+    const email = n.email?.trim().toLowerCase();
+    if (email) return `${entityType}:email:${email}`;
+    const first = n.firstName?.trim().toLowerCase();
+    const last = n.lastName?.trim().toLowerCase();
+    if (first && last) return `${entityType}:name:${first}|${last}`;
+    return null;
+  }
+  if (entityType === "event") {
+    const n = normalized as NormalizedEventLike;
+    const eventDate = n.eventDate?.trim();
+    if (!eventDate) return null;
+    const clientKey = n.clientEmail?.trim().toLowerCase() || n.clientId?.trim();
+    if (!clientKey) return null;
+    return `event:${clientKey}|${eventDate}`;
+  }
+  return null;
+}
+
 export async function runDedupe(client: AnyDbClient, session: MigrationSession): Promise<void> {
   const normalized = await repo.listRecords(client, session.id, "normalized");
+  // Claims one in-batch identity key per first-seen row, so later sibling
+  // rows (this call, or a later addRows+runDedupe on the same session)
+  // with the same signal are flagged against it — surfaced as durable
+  // needs-review duplicate_likely, never auto-skipped, since neither row
+  // is yet a real canonical record (§ hardening: in-batch duplicates were
+  // previously invisible to dedupe, which only ever checked live/committed
+  // data). Seeded from every row this session has already validated as a
+  // distinct identity (not from duplicate_likely/duplicate_exact/rejected
+  // losers — those already independently match a live/earlier record), so
+  // re-running dedupe after more rows are added still catches a new row
+  // that duplicates an earlier, already-resolved sibling.
+  const inBatchClaims = new Map<string, { sourceRowRef: string | null; recordId: string }>();
+  const priorValidated = await repo.listRecords(client, session.id, "validated");
+  for (const record of priorValidated) {
+    if (!record.normalizedPayload) continue;
+    const key = inBatchDuplicateKey(record.targetEntityType, record.normalizedPayload);
+    if (key && !inBatchClaims.has(key)) {
+      inBatchClaims.set(key, { sourceRowRef: record.sourceRowRef, recordId: record.id });
+    }
+  }
   const floorPlanCatalog = normalized.some((r) => r.targetEntityType === "floor_plan")
     ? await loadFloorPlanMatchCatalog(client, session.venueId)
     : null;
@@ -213,14 +268,35 @@ export async function runDedupe(client: AnyDbClient, session: MigrationSession):
         status: "duplicate_exact", matchType: "exact",
         matchedEntityId: result.matchedEntityId, matchConfidence: result.matchConfidence,
       });
-    } else if (result.matchType === "likely") {
+      continue;
+    }
+    if (result.matchType === "likely") {
       await repo.updateRecord(client, record.id, {
         status: "duplicate_likely", matchType: "likely",
         matchedEntityId: result.matchedEntityId, matchConfidence: result.matchConfidence,
       });
-    } else {
-      await repo.updateRecord(client, record.id, { status: "validated", matchType: "none" });
+      continue;
     }
+
+    // No live/committed match — before calling it validated, check whether
+    // an earlier row in this same batch already claims the same identity.
+    // Neither row is a real canonical record yet, so this is never
+    // duplicate_exact (which auto-skips at commit) — always a durable,
+    // human-reviewed duplicate_likely, pointing back at the earlier row's
+    // own source reference so the reviewer can compare both.
+    const key = inBatchDuplicateKey(record.targetEntityType, record.normalizedPayload);
+    const claim = key ? inBatchClaims.get(key) : undefined;
+    if (key && claim) {
+      await repo.updateRecord(client, record.id, {
+        status: "duplicate_likely", matchType: "likely", matchConfidence: 90,
+        validationErrors: [
+          `Looks like a duplicate of ${claim.sourceRowRef ?? "another row"} in this same file — review both before importing.`,
+        ],
+      });
+      continue;
+    }
+    await repo.updateRecord(client, record.id, { status: "validated", matchType: "none" });
+    if (key) inBatchClaims.set(key, { sourceRowRef: record.sourceRowRef, recordId: record.id });
   }
   await repo.updateSessionStatus(client, session.id, "ready_for_review");
 }
