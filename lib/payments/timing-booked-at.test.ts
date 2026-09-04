@@ -96,10 +96,10 @@ describe("Payment timing — migration booked_at", () => {
     const commitSrc = readFileSync(resolve("lib/migration/active-commitment.ts"), "utf8");
     const modelSrc = readFileSync(resolve("lib/migration/active-commitment-model.ts"), "utf8");
     assert.match(commitSrc, /n\.bookedAt\?\.trim\(\)/);
-    assert.match(commitSrc, /ensureEventBookedAt\(client, venueId, resolved\.eventId, n\.bookedAt/);
+    assert.match(commitSrc, /ensureEventBookedAt\(client, venueId, resolvedEventId, n\.bookedAt/);
     assert.doesNotMatch(
       commitSrc,
-      /ensureEventBookedAt\(client, venueId, resolved\.eventId, n\.contractSignedAt/,
+      /ensureEventBookedAt\([^)]*contractSignedAt/,
     );
     // Invariant lives on the NormalizedActiveCommitment type (client-safe model)
     // and is restated at the ensureEventBookedAt call site in the commit module.
