@@ -46,6 +46,11 @@ on:
         description: 'Type APPLY to confirm these migration(s) are reviewed and approved for Sandbox'
         required: true
         type: string
+      allow_out_of_order_backfill:
+        description: 'Optional. Type BACKFILL only when intentionally applying missed versions that sort before the current schema_migrations max (gap repair). Leave empty for normal ordered applies.'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -151,8 +156,10 @@ jobs:
             if [ -n "$MAX_TRACKED" ] && [ "$version" \< "$MAX_TRACKED" ]; then
               if echo "$KNOWN_COLLISIONS" | grep -qw "$version"; then
                 echo "INFO: $f (version $version) sorts before the tracked max ($MAX_TRACKED) - expected, this is one of the 4 documented collision-group timestamps."
+              elif [ "${{ inputs.allow_out_of_order_backfill }}" = "BACKFILL" ]; then
+                echo "WARN: $f (version $version) sorts before tracked max ($MAX_TRACKED) - applying as an explicit BACKFILL of a missed gap. SQL must be idempotent / safe to run after later versions."
               else
-                echo "::error::$f (version $version) sorts before the currently tracked max ($MAX_TRACKED) and is not one of the documented collision timestamps - this looks like a migration-order conflict, not applying."
+                echo "::error::$f (version $version) sorts before the currently tracked max ($MAX_TRACKED) and is not one of the documented collision timestamps - this looks like a migration-order conflict, not applying. If this is a deliberate missed-gap repair, re-run with allow_out_of_order_backfill=BACKFILL."
                 FAILED=1
                 continue
               fi
