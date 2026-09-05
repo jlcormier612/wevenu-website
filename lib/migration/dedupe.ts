@@ -73,11 +73,28 @@ export async function dedupeClientLike(
     return { matchType: "exact", matchedEntityId: bySource.createdEntityId, matchConfidence: 100 };
   }
 
+  const email = (normalized.email ?? "").trim();
+  const firstName = (normalized.firstName ?? "").trim();
+  const lastName = (normalized.lastName ?? "").trim();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const match = await clientsRepo.findActiveDuplicateClient(
-    client as any, venueId, normalized.email ?? "", normalized.firstName, normalized.lastName,
-  );
-  if (match) return { matchType: "exact", matchedEntityId: match.id, matchConfidence: 100 };
+  const db = client as any;
+  if (email) {
+    const byEmail = await clientsRepo.findActiveDuplicateClient(db, venueId, email, firstName, lastName);
+    if (byEmail) return { matchType: "exact", matchedEntityId: byEmail.id, matchConfidence: 100 };
+    // Changed-email hole: email differs (or is new) but first+last still match an
+    // active client. Never exact — human review via duplicate_likely only.
+    if (firstName && lastName) {
+      const byName = await clientsRepo.findActiveDuplicateClient(db, venueId, "", firstName, lastName);
+      if (byName) {
+        return { matchType: "likely", matchedEntityId: byName.id, matchConfidence: 70 };
+      }
+    }
+    return NO_MATCH;
+  }
+
+  const byName = await clientsRepo.findActiveDuplicateClient(db, venueId, "", firstName, lastName);
+  if (byName) return { matchType: "exact", matchedEntityId: byName.id, matchConfidence: 100 };
   return NO_MATCH;
 }
 
@@ -89,11 +106,26 @@ export async function dedupeLeadLike(
     return { matchType: "exact", matchedEntityId: bySource.createdEntityId, matchConfidence: 100 };
   }
 
+  const email = (normalized.email ?? "").trim();
+  const firstName = (normalized.firstName ?? "").trim();
+  const lastName = (normalized.lastName ?? "").trim();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const match = await leadsRepo.findActiveDuplicate(
-    client as any, venueId, normalized.email ?? "", normalized.firstName, normalized.lastName,
-  );
-  if (match) return { matchType: "exact", matchedEntityId: match.id, matchConfidence: 100 };
+  const db = client as any;
+  if (email) {
+    const byEmail = await leadsRepo.findActiveDuplicate(db, venueId, email, firstName, lastName);
+    if (byEmail) return { matchType: "exact", matchedEntityId: byEmail.id, matchConfidence: 100 };
+    if (firstName && lastName) {
+      const byName = await leadsRepo.findActiveDuplicate(db, venueId, "", firstName, lastName);
+      if (byName) {
+        return { matchType: "likely", matchedEntityId: byName.id, matchConfidence: 70 };
+      }
+    }
+    return NO_MATCH;
+  }
+
+  const byName = await leadsRepo.findActiveDuplicate(db, venueId, "", firstName, lastName);
+  if (byName) return { matchType: "exact", matchedEntityId: byName.id, matchConfidence: 100 };
   return NO_MATCH;
 }
 
