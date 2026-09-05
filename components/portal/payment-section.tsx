@@ -478,9 +478,10 @@ export function PaymentSection({ token }: { token: string }) {
     baseline: checkoutBaseline,
   });
 
-  // Poll while Checkout returned successfully but HTC has not confirmed yet.
+  // Poll while Checkout returned and HTC has not reached settled paid yet
+  // (awaiting reconciliation or ACH processing).
   React.useEffect(() => {
-    if (checkoutNotice !== "confirming") return;
+    if (checkoutNotice !== "confirming" && checkoutNotice !== "processing") return;
     const started = Date.now();
     let cancelled = false;
     const tick = async () => {
@@ -490,7 +491,7 @@ export function PaymentSection({ token }: { token: string }) {
         const next = await fetchPortalSchedules(token);
         if (!cancelled) setSchedules(next);
       } catch {
-        // Keep the confirming notice; next interval retries.
+        // Keep the current notice; next interval retries.
       }
     };
     const id = window.setInterval(() => { void tick(); }, CHECKOUT_POLL_MS);
@@ -549,6 +550,12 @@ export function PaymentSection({ token }: { token: string }) {
             <p>Checkout finished. We&apos;re waiting for your venue ledger to confirm the payment.</p>
           </div>
         )}
+        {checkoutNotice === "processing" && (
+          <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
+            <p className="font-medium">Payment processing</p>
+            <p>Your payment is processing. Your balance updates when it clears.</p>
+          </div>
+        )}
         {checkoutNotice === "cancelled" && (
           <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: "#FAFAF9", border: "1px solid #E8E2D8", color: "#57534E" }}>
             Checkout was cancelled — nothing was charged.
@@ -582,6 +589,13 @@ export function PaymentSection({ token }: { token: string }) {
         <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
           <p className="font-medium">Confirming your payment</p>
           <p>Checkout finished. Your balance updates when Hello to Cheers confirms the payment — this can take a moment.</p>
+          <p>Current remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+        </div>
+      )}
+      {checkoutNotice === "processing" && (
+        <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
+          <p className="font-medium">Payment processing</p>
+          <p>Your payment is processing (for example a bank transfer). It is not marked paid until it clears.</p>
           <p>Current remaining balance: {formatMoney(remaining, schedule.currency)}</p>
         </div>
       )}

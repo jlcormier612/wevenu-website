@@ -6,13 +6,19 @@
  * paid — reconciliation happens only when the Connect webhook (or an
  * equivalent authoritative write) updates `payment_line_items`.
  *
- * These helpers keep the UI honest: a successful redirect shows a confirming
- * / pending state until the ledger itself reflects progress.
+ * Customer-facing notices map to authoritative ledger states:
+ *   awaiting reconciliation → confirming
+ *   processing (ACH intermediate) → processing
+ *   paid / partially_refunded     → confirmed
  */
 
 export type CheckoutReturnQuery = "success" | "cancelled" | null;
 
-export type CheckoutNoticeKind = "confirming" | "confirmed" | "cancelled" | null;
+/** UI notice after a Checkout return. `processing` ≠ paid. */
+export type CheckoutNoticeKind = "confirming" | "processing" | "confirmed" | "cancelled" | null;
+
+/** Authoritative ledger stage for the Checkout just completed. */
+export type AuthoritativeCheckoutStage = "awaiting" | "processing" | "paid";
 
 export type CheckoutBaseline = {
   itemId: string;
@@ -71,36 +77,58 @@ export function serializeCheckoutBaseline(baseline: CheckoutBaseline): string {
   return JSON.stringify(baseline);
 }
 
+function isSettledStatus(status: string): boolean {
+  return status === "paid" || status === "partially_refunded";
+}
+
+function hasRecentSettledPayment(
+  lineItems: readonly CheckoutNoticeLineItem[],
+  nowMs: number,
+  recentMs: number = 30 * 60 * 1000,
+): boolean {
+  return lineItems.some((i) => {
+    if (!isSettledStatus(i.status) || !i.paidAt) return false;
+    const paidAtMs = Date.parse(i.paidAt);
+    return Number.isFinite(paidAtMs) && nowMs - paidAtMs <= recentMs;
+  });
+}
+
 /**
- * Whether the authoritative portal payment ledger shows confirmation
- * progress for the Checkout the couple just completed.
+ * Resolve the authoritative ledger stage for the Checkout the couple just
+ * completed. Never treats `processing` as paid.
+ */
+export function resolveAuthoritativeCheckoutStage(
+  lineItems: readonly CheckoutNoticeLineItem[],
+  baseline: CheckoutBaseline | null,
+  nowMs: number = Date.now(),
+): AuthoritativeCheckoutStage {
+  const paidTotal = settledPaidTotal(lineItems);
+
+  if (baseline) {
+    const target = lineItems.find((i) => i.id === baseline.itemId);
+    if (target && isSettledStatus(target.status)) return "paid";
+    if (paidTotal > baseline.paidTotal) return "paid";
+    if (target && target.status === "processing") return "processing";
+    return "awaiting";
+  }
+
+  // No Pay-now baseline (refresh, shared link, storage cleared): only treat
+  // recent authoritative transitions as progress — never the redirect alone.
+  if (hasRecentSettledPayment(lineItems, nowMs)) return "paid";
+  if (lineItems.some((i) => i.status === "processing")) return "processing";
+  return "awaiting";
+}
+
+/**
+ * @deprecated Prefer resolveAuthoritativeCheckoutStage — kept as a narrow
+ * paid-only predicate for callers that need "fully settled" specifically.
  */
 export function hasAuthoritativePaymentConfirmation(
   lineItems: readonly CheckoutNoticeLineItem[],
   baseline: CheckoutBaseline | null,
   nowMs: number = Date.now(),
 ): boolean {
-  const paidTotal = settledPaidTotal(lineItems);
-
-  if (baseline) {
-    const target = lineItems.find((i) => i.id === baseline.itemId);
-    if (target && (target.status === "paid" || target.status === "processing" || target.status === "partially_refunded")) {
-      return true;
-    }
-    if (paidTotal > baseline.paidTotal) return true;
-    return false;
-  }
-
-  // No Pay-now baseline (refresh, shared link, storage cleared): only treat
-  // recent authoritative transitions as confirmation — never the redirect alone.
-  if (lineItems.some((i) => i.status === "processing")) return true;
-  const recentMs = 30 * 60 * 1000;
-  return lineItems.some((i) => {
-    if (i.status !== "paid" && i.status !== "partially_refunded") return false;
-    if (!i.paidAt) return false;
-    const paidAtMs = Date.parse(i.paidAt);
-    return Number.isFinite(paidAtMs) && nowMs - paidAtMs <= recentMs;
-  });
+  return resolveAuthoritativeCheckoutStage(lineItems, baseline, nowMs) === "paid";
 }
 
 /**
@@ -117,6 +145,8 @@ export function resolveCheckoutNotice(input: {
   if (checkoutReturn === "cancelled") return "cancelled";
   if (checkoutReturn !== "success") return null;
   if (lineItems == null) return "confirming";
-  if (hasAuthoritativePaymentConfirmation(lineItems, baseline, nowMs)) return "confirmed";
+  const stage = resolveAuthoritativeCheckoutStage(lineItems, baseline, nowMs);
+  if (stage === "paid") return "confirmed";
+  if (stage === "processing") return "processing";
   return "confirming";
 }

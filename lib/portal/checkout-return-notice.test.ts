@@ -5,6 +5,7 @@ import {
   hasAuthoritativePaymentConfirmation,
   parseCheckoutReturnQuery,
   readCheckoutBaseline,
+  resolveAuthoritativeCheckoutStage,
   resolveCheckoutNotice,
   serializeCheckoutBaseline,
   settledPaidTotal,
@@ -32,81 +33,117 @@ describe("parseCheckoutReturnQuery", () => {
 });
 
 describe("settledPaidTotal", () => {
-  it("counts paid and partially_refunded, not pending", () => {
+  it("counts paid and partially_refunded, not pending or processing", () => {
     assert.equal(
       settledPaidTotal([
         item({ id: "a", status: "paid", amount: 800, paidAmount: 800 }),
         item({ id: "b", status: "pending", amount: 800 }),
-        item({ id: "c", status: "partially_refunded", amount: 800, paidAmount: 400 }),
+        item({ id: "c", status: "processing", amount: 800 }),
+        item({ id: "d", status: "partially_refunded", amount: 800, paidAmount: 400 }),
       ]),
       1200,
     );
   });
 });
 
-describe("hasAuthoritativePaymentConfirmation", () => {
+describe("resolveAuthoritativeCheckoutStage", () => {
   const baseline: CheckoutBaseline = { itemId: "deposit", paidTotal: 0, at: 1_700_000_000_000 };
 
-  it("is false when redirect succeeded but ledger is still pending", () => {
+  it("is awaiting when redirect succeeded but ledger is still pending", () => {
     assert.equal(
-      hasAuthoritativePaymentConfirmation(
+      resolveAuthoritativeCheckoutStage(
         [item({ id: "deposit", status: "pending" }), item({ id: "final", status: "pending" })],
         baseline,
       ),
-      false,
+      "awaiting",
     );
   });
 
-  it("is true when the checked-out line item is paid", () => {
+  it("is processing — not paid — when the checked-out line is processing", () => {
     assert.equal(
-      hasAuthoritativePaymentConfirmation(
-        [item({ id: "deposit", status: "paid", paidAmount: 800, paidAt: "2026-09-05T19:40:00Z" })],
-        baseline,
-      ),
-      true,
-    );
-  });
-
-  it("is true when the checked-out line item is processing", () => {
-    assert.equal(
-      hasAuthoritativePaymentConfirmation(
+      resolveAuthoritativeCheckoutStage(
         [item({ id: "deposit", status: "processing" })],
         baseline,
       ),
-      true,
+      "processing",
     );
   });
 
-  it("is true when settled paid total rises above the Pay-now baseline", () => {
+  it("is paid when the checked-out line item is paid", () => {
     assert.equal(
-      hasAuthoritativePaymentConfirmation(
+      resolveAuthoritativeCheckoutStage(
+        [item({ id: "deposit", status: "paid", paidAmount: 800, paidAt: "2026-09-05T19:40:00Z" })],
+        baseline,
+      ),
+      "paid",
+    );
+  });
+
+  it("is paid when settled paid total rises above the Pay-now baseline", () => {
+    assert.equal(
+      resolveAuthoritativeCheckoutStage(
         [
           item({ id: "other", status: "paid", amount: 500, paidAmount: 500 }),
           item({ id: "deposit", status: "pending" }),
         ],
         { ...baseline, paidTotal: 0 },
       ),
-      true,
+      "paid",
     );
   });
 
   it("without baseline, does not treat older paid lines as this checkout", () => {
     assert.equal(
-      hasAuthoritativePaymentConfirmation(
+      resolveAuthoritativeCheckoutStage(
         [item({ id: "old", status: "paid", paidAmount: 800, paidAt: "2026-01-01T00:00:00Z" })],
         null,
         Date.parse("2026-09-05T19:40:00Z"),
+      ),
+      "awaiting",
+    );
+  });
+
+  it("without baseline, accepts a recently paid line as paid", () => {
+    assert.equal(
+      resolveAuthoritativeCheckoutStage(
+        [item({ id: "deposit", status: "paid", paidAmount: 800, paidAt: "2026-09-05T19:35:00Z" })],
+        null,
+        Date.parse("2026-09-05T19:40:00Z"),
+      ),
+      "paid",
+    );
+  });
+
+  it("without baseline, maps a processing line to processing not paid", () => {
+    assert.equal(
+      resolveAuthoritativeCheckoutStage(
+        [item({ id: "deposit", status: "processing" })],
+        null,
+        Date.parse("2026-09-05T19:40:00Z"),
+      ),
+      "processing",
+    );
+  });
+});
+
+describe("hasAuthoritativePaymentConfirmation", () => {
+  const baseline: CheckoutBaseline = { itemId: "deposit", paidTotal: 0, at: 1 };
+
+  it("is false for processing — processing is not confirmation", () => {
+    assert.equal(
+      hasAuthoritativePaymentConfirmation(
+        [item({ id: "deposit", status: "processing" })],
+        baseline,
       ),
       false,
     );
   });
 
-  it("without baseline, accepts a recently paid line as confirmation", () => {
+  it("is true only for settled paid progress", () => {
     assert.equal(
       hasAuthoritativePaymentConfirmation(
-        [item({ id: "deposit", status: "paid", paidAmount: 800, paidAt: "2026-09-05T19:35:00Z" })],
-        null,
-        Date.parse("2026-09-05T19:40:00Z"),
+        [item({ id: "deposit", status: "paid", paidAmount: 800, paidAt: "2026-09-05T19:40:00Z" })],
+        baseline,
       ),
       true,
     );
@@ -127,7 +164,18 @@ describe("resolveCheckoutNotice", () => {
     );
   });
 
-  it("shows confirmed only after authoritative ledger progress", () => {
+  it("shows processing — not confirmed — when ledger is processing", () => {
+    assert.equal(
+      resolveCheckoutNotice({
+        checkoutReturn: "success",
+        lineItems: [item({ id: "deposit", status: "processing" })],
+        baseline,
+      }),
+      "processing",
+    );
+  });
+
+  it("shows confirmed only after authoritative paid progress", () => {
     assert.equal(
       resolveCheckoutNotice({
         checkoutReturn: "success",
