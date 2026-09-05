@@ -237,6 +237,72 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
     dependencies: [], status: "canonical",
   },
 
+  // ── Deeper Attribution (Phase 2D) ───────────────────────────────────────
+  {
+    name: "Top-of-Funnel Evidence (UTM / Landing / Referrer / QR / Meta)",
+    businessDefinition:
+      "Phase 2D inventory of lead-entry evidence fields in leads.source_data (utm_*, landing_page, referrer, qr_campaign_id, Meta campaign_id/leadgen_id). Not authoritative HTC acquisition attribution. Never overwrites acquisition_source. Blank stays Unknown / Unattributed. Not a campaign→booking causation claim.",
+    owner: "Lead",
+    formula: "COUNT leads created in window grouped by evidence key; fill counts for presence",
+    sourceTables: ["leads", "qr_campaigns"],
+    dimensions: ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "landing_page", "referrer host", "qr_campaign", "meta campaign"],
+    filters: ["date range (leads.created_at)"],
+    aggregationRules: "Evidence only. Top-N + Other for high cardinality. Unknown for blanks.",
+    unit: "count",
+    precision: "n/a",
+    consumers: ["lib/metrics/deeper-attribution.ts", "Sales report"],
+    dependencies: [],
+    status: "canonical",
+  },
+  {
+    name: "Acquisition-Source Cohort Rates (Lead→Tour / Lead→Booking / Tour→Booking)",
+    businessDefinition:
+      "Phase 2D breakdown of Business Funnel cohort rates by frozen leads.acquisition_source. Same population as Business Funnel (excludes cancelled/lost). Not period activity ratios.",
+    owner: "Lead",
+    formula: "Per reporting source group: rates among cohort leads using tour_appointments presence and first_booked_at",
+    sourceTables: ["leads", "tour_appointments"],
+    dimensions: ["Acquisition Source"],
+    filters: ["date range (leads.created_at)"],
+    aggregationRules: "Website rollup includes tour_scheduling. Unknown first-class.",
+    unit: "percent / count",
+    precision: "integer percent",
+    consumers: ["lib/metrics/deeper-attribution.ts", "Sales report"],
+    dependencies: [],
+    status: "canonical",
+  },
+  {
+    name: "Time to Book by Acquisition Source",
+    businessDefinition:
+      "Phase 2D median whole days from lead.created_at to lifecycle first_booked for period first_booked rows that are lead-linked, grouped by frozen acquisition_source. Leadless excluded.",
+    owner: "Lead / Lifecycle Booking",
+    formula: "MEDIAN(days) per acquisition source group",
+    sourceTables: ["lifecycle_booking_events", "leads"],
+    dimensions: ["Acquisition Source"],
+    filters: ["date range (lifecycle occurred_at)"],
+    aggregationRules: "Incalculable rows excluded. Unknown first-class.",
+    unit: "days",
+    precision: "median of whole days",
+    consumers: ["lib/metrics/deeper-attribution.ts", "Sales report"],
+    dependencies: ["Time to Book (Lead → Lifecycle Booking)"],
+    status: "canonical",
+  },
+  {
+    name: "Event-Type Cohort Lead → Booking",
+    businessDefinition:
+      "Phase 2D Business Funnel cohort Lead→Booking rate grouped by leads.event_type. Blank event type → Unknown / Unattributed.",
+    owner: "Lead",
+    formula: "Per event_type: booked / cohort leads",
+    sourceTables: ["leads"],
+    dimensions: ["Event Type"],
+    filters: ["date range (leads.created_at)"],
+    aggregationRules: "Same cohort exclusions as Business Funnel.",
+    unit: "percent / count",
+    precision: "integer percent",
+    consumers: ["lib/metrics/deeper-attribution.ts", "Sales report"],
+    dependencies: [],
+    status: "canonical",
+  },
+
   // ── Business Funnel (Phase 2B) ───────────────────────────────────────────
   {
     name: "Business Funnel — Period Leads",

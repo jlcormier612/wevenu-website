@@ -5,6 +5,7 @@ import { DetailPanel, DetailRow } from "@/components/reporting/detail-panel";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { EvidenceCountRow } from "@/lib/attribution/evidence";
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
 import { getConversionFunnel } from "@/lib/metrics/conversion";
@@ -16,6 +17,12 @@ import {
   getMedianTimeToBookDays,
   getToursByAcquisitionSource,
 } from "@/lib/metrics/attribution";
+import {
+  getAcquisitionSourceCohortBreakdown,
+  getEventTypeCohortBreakdown,
+  getLeadTopOfFunnelEvidence,
+  getMedianTimeToBookByAcquisitionSource,
+} from "@/lib/metrics/deeper-attribution";
 import {
   getCurrentlyBookedPipelineCount,
   getLeadCohortLifecycleBookingStats,
@@ -47,6 +54,26 @@ function hrefWith(params: Record<string, string | string[] | undefined>, overrid
   return qs ? `/reporting/sales?${qs}` : "/reporting/sales";
 }
 
+function EvidenceList({ title, rows }: { title: string; rows: EvidenceCountRow[] }) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-heading">{title}</p>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No leads in this period.</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {rows.map((r) => (
+            <div key={r.key} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+              <span className="min-w-0 truncate text-foreground" title={r.label}>{r.label}</span>
+              <span className="shrink-0 tabular-nums font-medium">{r.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default async function SalesReportPage({ searchParams }: Props) {
   const params = await searchParams;
   const range = resolveDateRangeFromParams(params);
@@ -60,6 +87,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     currentlyBooked, funnelLeads,
     leadCoverage, bookingCoverage, toursBySource, bookingsBySource,
     timeToBook, revenueBySource,
+    sourceCohort, timeToBookBySource, eventTypeCohort, topOfFunnelEvidence,
   ] = await Promise.all([
     getConversionFunnel(window),
     getLeadsTrend(window),
@@ -77,6 +105,10 @@ export default async function SalesReportPage({ searchParams }: Props) {
     getLifecycleBookingsByAcquisitionSource(window),
     getMedianTimeToBookDays(window),
     getGrossBookedRevenueByAcquisitionSource(window),
+    getAcquisitionSourceCohortBreakdown(window),
+    getMedianTimeToBookByAcquisitionSource(window),
+    getEventTypeCohortBreakdown(window),
+    getLeadTopOfFunnelEvidence(window),
   ]);
 
   const counts = funnel?.counts;
@@ -98,7 +130,6 @@ export default async function SalesReportPage({ searchParams }: Props) {
         Bookings here mean lifecycle first booked; Financially Committed is the separate signed-contract + first-payment concept.
       </p>
 
-      {/* ── Cohort ─────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Cohort performance</CardTitle>
@@ -131,19 +162,58 @@ export default async function SalesReportPage({ searchParams }: Props) {
           </p>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">By source (cohort)</p>
-            {cohort.bySource.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No leads in this period.</p>
+            <p className="mb-2 text-sm font-medium text-heading">By acquisition source</p>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Official Hello to Cheers acquisition source for each lead (set when they entered — not later edits).
+              Website includes tour-scheduling form entries. Rates are of this cohort only: Lead → Tour, Lead → Booking,
+              and among those who toured, Tour → Booking. Unknown / Unattributed stays visible when source is missing.
+            </p>
+            {sourceCohort.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No cohort leads in this period.</p>
+            ) : (
+              <div className="divide-y divide-border overflow-x-auto">
+                <div className="grid min-w-[40rem] grid-cols-[1.5fr_repeat(6,minmax(0,1fr))] gap-2 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <span>Source</span>
+                  <span className="text-right">Leads</span>
+                  <span className="text-right">Lead→Tour</span>
+                  <span className="text-right">Lead→Book</span>
+                  <span className="text-right">Tour→Book</span>
+                  <span className="text-right"># Toured</span>
+                  <span className="text-right"># Booked</span>
+                </div>
+                {sourceCohort.map((s) => (
+                  <div key={s.key} className="grid min-w-[40rem] grid-cols-[1.5fr_repeat(6,minmax(0,1fr))] gap-2 py-2 text-sm">
+                    <span className="text-foreground">{s.label}</span>
+                    <span className="text-right tabular-nums">{s.leads}</span>
+                    <span className="text-right tabular-nums text-muted-foreground">{s.leadToTourRate}%</span>
+                    <span className="text-right tabular-nums text-muted-foreground">{s.leadToBookingRate}%</span>
+                    <span className="text-right tabular-nums text-muted-foreground">{s.tourToBookingRate}%</span>
+                    <span className="text-right tabular-nums">{s.eventuallyToured}</span>
+                    <span className="text-right tabular-nums">{s.eventuallyBooked}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <p className="mb-2 text-sm font-medium text-heading">By event type</p>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Same cohort as above, grouped by the event type on the lead when they inquired.
+              Missing event type stays Unknown / Unattributed — we do not guess from later bookings or packages.
+            </p>
+            {eventTypeCohort.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No cohort leads in this period.</p>
             ) : (
               <div className="divide-y divide-border">
                 <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <span>Source</span><span className="text-right">Leads</span><span className="text-right">Booked</span><span className="text-right">Rate</span>
+                  <span>Event type</span><span className="text-right">Leads</span><span className="text-right">Booked</span><span className="text-right">Lead→Book</span>
                 </div>
-                {cohort.bySource.map((s) => (
-                  <div key={s.source} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-2 text-sm">
+                {eventTypeCohort.map((s) => (
+                  <div key={s.key} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-2 text-sm">
                     <span className="text-foreground">{s.label}</span>
-                    <span className="text-right tabular-nums">{s.total}</span>
-                    <span className="text-right tabular-nums">{s.booked}</span>
+                    <span className="text-right tabular-nums">{s.leads}</span>
+                    <span className="text-right tabular-nums">{s.eventuallyBooked}</span>
                     <span className="text-right tabular-nums text-muted-foreground">{s.rate}%</span>
                   </div>
                 ))}
@@ -201,7 +271,51 @@ export default async function SalesReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── Period activity ────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Top-of-funnel clues</CardTitle>
+          <CardDescription>
+            {topOfFunnelEvidence.authorityNote}{" "}
+            {topOfFunnelEvidence.clockNote}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads created</p>
+              <p className="text-lg font-semibold tabular-nums text-heading">{topOfFunnelEvidence.leadsInWindow}</p>
+            </div>
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Any UTM present</p>
+              <p className="text-lg font-semibold tabular-nums text-heading">{topOfFunnelEvidence.withAnyUtm}</p>
+            </div>
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Other clues present</p>
+              <p className="text-sm tabular-nums text-heading">
+                {topOfFunnelEvidence.withLandingPage} landing · {topOfFunnelEvidence.withReferrer} referrer ·{" "}
+                {topOfFunnelEvidence.withQrCampaign} QR · {topOfFunnelEvidence.withMetaLeadgen} Meta ad lead
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <EvidenceList title="UTM source" rows={topOfFunnelEvidence.utmSource} />
+            <EvidenceList title="UTM medium" rows={topOfFunnelEvidence.utmMedium} />
+            <EvidenceList title="UTM campaign" rows={topOfFunnelEvidence.utmCampaign} />
+            <EvidenceList title="UTM content" rows={topOfFunnelEvidence.utmContent} />
+            <EvidenceList title="UTM term" rows={topOfFunnelEvidence.utmTerm} />
+            <EvidenceList title="Landing page" rows={topOfFunnelEvidence.landingPage} />
+            <EvidenceList title="Referrer website" rows={topOfFunnelEvidence.referrerHost} />
+            <EvidenceList title="QR campaign" rows={topOfFunnelEvidence.qrCampaign} />
+            <EvidenceList title="Meta ad campaign" rows={topOfFunnelEvidence.metaCampaign} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Meta ad lead id present on {topOfFunnelEvidence.withMetaLeadgen} of {topOfFunnelEvidence.leadsInWindow} leads;
+            Meta campaign id on {topOfFunnelEvidence.withMetaCampaign}. These are inventory counts only — not proof a campaign caused a booking.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Period activity</CardTitle>
@@ -249,6 +363,30 @@ export default async function SalesReportPage({ searchParams }: Props) {
               ? ` Median time to book (lead created → first lifecycle booking): ${timeToBook.medianDays} days (${timeToBook.sampleSize} lead-linked).`
               : ""}
           </p>
+
+          <div>
+            <p className="mb-2 text-sm font-medium text-heading">Time to book by acquisition source</p>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Median days from lead created → first lifecycle booking, for bookings marked in this period that still have a lead.
+              Direct / import bookings without a lead are excluded. This is not financial commitment or payment timing.
+            </p>
+            {timeToBookBySource.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No lead-linked bookings with a calculable time-to-book in this period.</p>
+            ) : (
+              <div className="divide-y divide-border">
+                <div className="grid grid-cols-[1fr_auto_auto] gap-4 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <span>Source</span><span className="text-right">Median days</span><span className="text-right">Bookings measured</span>
+                </div>
+                {timeToBookBySource.map((s) => (
+                  <div key={s.key} className="grid grid-cols-[1fr_auto_auto] gap-4 py-2 text-sm">
+                    <span className="text-foreground">{s.label}</span>
+                    <span className="text-right tabular-nums">{s.medianDays ?? "—"}</span>
+                    <span className="text-right tabular-nums text-muted-foreground">{s.sampleSize}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
             <div>
