@@ -12,24 +12,55 @@ import { describe, it } from "node:test";
 import { dedupeVendor, findBySourceId } from "@/lib/migration/dedupe";
 
 /**
- * `.maybeSingle()` (the exact-match query's terminal call) always resolves
- * empty here — this mock doesn't implement real ilike semantics, so it
- * models "the exact/ilike check found nothing" directly, letting a test
- * isolate the likely-match loop's own logic (which awaits the chain
- * directly, via `.then`, instead of calling `.maybeSingle()`).
+ * Supports the indexed findBySourceId filter path and the paged vendor
+ * likely-match scan. Exact-match vendor/client helpers still resolve empty
+ * via maybeSingle so tests isolate the likely tier.
  */
 function tableMock(responses: Record<string, unknown>) {
   function chain(table: string): Record<string, unknown> {
     const c: Record<string, unknown> = {};
     const self = () => c;
+    let filterSourceId: string | null = null;
+    let rangeFrom = 0;
+    let rangeTo = 999;
     c.select = self;
     c.eq = self;
     c.neq = self;
     c.ilike = self;
+    c.order = self;
     c.limit = self;
-    c.maybeSingle = async () => ({ data: null });
+    c.filter = (_col: string, _op: string, value: string) => {
+      filterSourceId = value;
+      return c;
+    };
+    c.range = (from: number, to: number) => {
+      rangeFrom = from;
+      rangeTo = to;
+      return c;
+    };
+    c.maybeSingle = async () => {
+      if (table === "migration_records" && filterSourceId != null) {
+        const rows = (responses.migration_records ?? []) as {
+          id: string;
+          created_entity_id: string | null;
+          normalized_payload: { sourceId?: string };
+        }[];
+        const hit = rows.find((r) => r.normalized_payload?.sourceId === filterSourceId);
+        return {
+          data: hit ? { id: hit.id, created_entity_id: hit.created_entity_id } : null,
+          error: null,
+        };
+      }
+      return { data: null, error: null };
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    c.then = (resolve: any) => resolve({ data: responses[table] ?? [] });
+    c.then = (resolve: any) => {
+      const all = (responses[table] ?? []) as unknown[];
+      if (table === "venue_vendor_relationships" || table === "migration_records") {
+        return resolve({ data: all.slice(rangeFrom, rangeTo + 1), error: null });
+      }
+      return resolve({ data: all, error: null });
+    };
     return c;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -49,6 +49,7 @@ import {
 import * as repo from "@/lib/migration/repository";
 import * as documentsRepo from "@/lib/documents/repository";
 import { dedupe, findBySourceId } from "@/lib/migration/dedupe";
+import { fetchAllPages } from "@/lib/migration/pagination";
 import { getSourceAdapter } from "@/lib/migration/source-profiles";
 import { createImportBatch, createImportBatchForVenue, finalizeImportBatch, stampImportBatch } from "@/lib/import/batches";
 import { resolveClientIdByEmail, resolveLeadIdByEmail, resolveSpaceId } from "@/lib/migration/resolve-refs";
@@ -322,14 +323,26 @@ async function loadFloorPlanMatchCatalog(
   client: AnyDbClient,
   venueId: string,
 ): Promise<{ spaces: FloorPlanMatchCandidate[]; events: FloorPlanMatchCandidate[] }> {
-  const [{ data: spaceRows }, { data: eventRows }] = await Promise.all([
+  const [{ data: spaceRows, error: spaceErr }, events] = await Promise.all([
     client.from("venue_spaces").select("id, name").eq("venue_id", venueId).order("name"),
-    client.from("events").select("id, name, event_date").eq("venue_id", venueId)
-      .order("event_date", { ascending: false }).limit(500),
+    // Page all venue events — a hard .limit(500) previously could miss the
+    // matching event for a floor-plan import on a large calendar history.
+    fetchAllPages(async (from, to) => {
+      const { data, error } = await client
+        .from("events")
+        .select("id, name, event_date")
+        .eq("venue_id", venueId)
+        .order("event_date", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string; event_date: string | null }[];
+    }),
   ]);
+  if (spaceErr) throw spaceErr;
   return {
     spaces: ((spaceRows ?? []) as { id: string; name: string }[]).map((s) => ({ id: s.id, name: s.name })),
-    events: ((eventRows ?? []) as { id: string; name: string; event_date: string | null }[]).map((e) => ({
+    events: events.map((e) => ({
       id: e.id, name: e.name, eventDate: e.event_date,
     })),
   };

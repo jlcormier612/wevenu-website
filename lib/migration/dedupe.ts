@@ -21,6 +21,7 @@ import type {
   NormalizedClientLike,
   NormalizedVendorLike,
 } from "@/lib/migration/types";
+import { fetchAllPages } from "@/lib/migration/pagination";
 
 export type DedupeResult = {
   matchType: MatchType;
@@ -42,27 +43,26 @@ function looseKey(s: string): string {
  * closest this system gets to true idempotency for a source whose export
  * carries stable ids. Sources without one (most CSV exports) simply never
  * hit this branch and fall through to the entity-level checks below.
+ *
+ * Uses the partial index on (venue_id, normalized_payload->>'sourceId') via
+ * a PostgREST jsonb-path filter — never a capped client-side scan that could
+ * miss a match past an arbitrary row limit.
  */
 export async function findBySourceId(
   client: AnyDbClient, venueId: string, sourceId: string | null | undefined,
 ): Promise<{ recordId: string; createdEntityId: string | null } | null> {
   if (!sourceId) return null;
-  // Filtered client-side on normalized_payload.sourceId rather than a
-  // jsonb-path PostgREST filter — this stays correct regardless of key
-  // casing/quoting edge cases, and committed-record volume per venue is
-  // bounded, not the kind of scale that needs a single indexed query here.
-  // The partial index on (venue_id, normalized_payload->>'sourceId') still
-  // exists for a future version of this check to use directly.
-  const { data } = await client
+  const { data, error } = await client
     .from("migration_records")
-    .select("id, created_entity_id, normalized_payload")
+    .select("id, created_entity_id")
     .eq("venue_id", venueId)
     .eq("status", "committed")
-    .limit(500);
-  const rows = (data ?? []) as { id: string; created_entity_id: string | null; normalized_payload: Record<string, unknown> | null }[];
-  const match = rows.find((r) => r.normalized_payload?.sourceId === sourceId);
-  if (!match) return null;
-  return { recordId: match.id, createdEntityId: match.created_entity_id };
+    .filter("normalized_payload->>sourceId", "eq", sourceId)
+    .limit(1)
+    .maybeSingle<{ id: string; created_entity_id: string | null }>();
+  if (error) throw error;
+  if (!data) return null;
+  return { recordId: data.id, createdEntityId: data.created_entity_id };
 }
 
 export async function dedupeClientLike(
@@ -121,17 +121,22 @@ export async function dedupeVendor(
   if (exact) return { matchType: "exact", matchedEntityId: exact.id, matchConfidence: 100 };
 
   // Likely-match tier: normalized business name, scoped to this venue's
-  // own active vendor relationships only.
+  // own active vendor relationships only. Page through every relationship —
+  // a hard .limit(200) previously could miss a real likely match.
   const targetKey = looseKey(normalized.businessName);
   if (targetKey.length >= 3) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (client as any)
-      .from("venue_vendor_relationships")
-      .select("vendor_id, vendors!inner(id, business_name)")
-      .eq("venue_id", venueId)
-      .neq("status", "inactive")
-      .limit(200);
-    const candidates = (data ?? []) as { vendor_id: string; vendors: { id: string; business_name: string } }[];
+    const candidates = await fetchAllPages(async (from, to) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (client as any)
+        .from("venue_vendor_relationships")
+        .select("vendor_id, vendors!inner(id, business_name)")
+        .eq("venue_id", venueId)
+        .neq("status", "inactive")
+        .order("vendor_id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as { vendor_id: string; vendors: { id: string; business_name: string } }[];
+    });
     for (const c of candidates) {
       if (looseKey(c.vendors.business_name) === targetKey) {
         return { matchType: "likely", matchedEntityId: c.vendor_id, matchConfidence: 75 };

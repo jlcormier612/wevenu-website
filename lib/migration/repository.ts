@@ -15,6 +15,7 @@ import type {
   SessionStatus,
   SourceKey,
 } from "@/lib/migration/types";
+import { fetchAllPages } from "@/lib/migration/pagination";
 
 function mapSession(r: Record<string, unknown>): MigrationSession {
   return {
@@ -126,10 +127,18 @@ export async function insertRecords(
 export async function listRecords(
   client: AnyDbClient, sessionId: string, status?: RecordStatus,
 ): Promise<MigrationRecord[]> {
-  let q = client.from("migration_records").select("*").eq("session_id", sessionId);
-  if (status) q = q.eq("status", status);
-  const { data } = await q.order("created_at", { ascending: true }).limit(5000);
-  return ((data ?? []) as Record<string, unknown>[]).map(mapRecord);
+  // Page through the full session — a single .limit(5000) previously dropped
+  // trailing rows and could leave dedupe/commit/accounting incomplete.
+  return fetchAllPages(async (from, to) => {
+    let q = client.from("migration_records").select("*").eq("session_id", sessionId);
+    if (status) q = q.eq("status", status);
+    const { data, error } = await q
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return ((data ?? []) as Record<string, unknown>[]).map(mapRecord);
+  });
 }
 
 export async function updateRecord(
