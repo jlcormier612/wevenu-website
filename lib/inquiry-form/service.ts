@@ -77,6 +77,10 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
     inquiryFormFields: parseFieldsConfig(payload.inquiryFormFields),
     acceptedEventTypes: parseAcceptedEventTypes(payload.acceptedEventTypes),
     customQuestions: ((payload.customQuestions as DbQuestionRow[]) ?? []).map(mapQuestion),
+    ga4MeasurementId:
+      typeof payload.ga4MeasurementId === "string" && payload.ga4MeasurementId.trim()
+        ? payload.ga4MeasurementId.trim()
+        : null,
   };
 }
 

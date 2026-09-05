@@ -12,7 +12,20 @@ import {
   RequestInformationConfirmation,
   ScheduleTourConfirmation,
 } from "@/components/form/inquiry-confirmations";
+import { VenueFormAnalyticsConsent } from "@/components/form/venue-form-analytics-consent";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
+import {
+  captureFirstTouchAttribution,
+  getOrCreateOpaqueAnonId,
+  isGa4Initialized,
+  isValidGa4MeasurementId,
+  mergeAttributionForSubmit,
+  readFirstTouchAttribution,
+  readOpaqueAnonId,
+  readVenueFormAnalyticsConsent,
+  trackGenerateLead,
+  trackTourRequest,
+} from "@shared/analytics";
 import {
   EVENT_TYPES,
   INQUIRY_API_ERRORS,
@@ -311,6 +324,11 @@ export function InquiryForm({
       .finally(() => setLoadingTourSlots(false));
   }, [mode, tourEmbedKey, tourMonth, tourYear]);
 
+  // First-touch UTM/referrer snapshot (sessionStorage only — no visitor DB).
+  React.useEffect(() => {
+    captureFirstTouchAttribution(embedKey);
+  }, [embedKey]);
+
   const tourAvailableDates = new Set(tourSlots.map((s) => s.date));
   const tourSlotsForDate = selectedTourDate ? tourSlots.filter((s) => s.date === selectedTourDate) : [];
 
@@ -325,11 +343,8 @@ export function InquiryForm({
         return { questionId: q.id, questionText: q.questionText, answer };
       })
       .filter(Boolean);
-    return {
-      source: "website_form",
-      form_key: embedKey,
-      inquiry_mode: inquiryMode,
-      custom_answers: customAnswerEntries,
+
+    const live = {
       utm_source: urlParams.get("utm_source") ?? undefined,
       utm_medium: urlParams.get("utm_medium") ?? undefined,
       utm_campaign: urlParams.get("utm_campaign") ?? undefined,
@@ -337,8 +352,55 @@ export function InquiryForm({
       utm_term: urlParams.get("utm_term") ?? undefined,
       referrer: document.referrer || undefined,
       landing_page: window.location.href,
-      qr_campaign_id: urlParams.get("qr") ?? undefined,
     };
+    const merged = mergeAttributionForSubmit(live, readFirstTouchAttribution(embedKey));
+
+    // Opaque anon id only when GA4 is configured AND consent is ON (never invent after the fact).
+    // Prefs stored before a Measurement ID existed are ignored (v2 consent key).
+    const analyticsConfigured = isValidGa4MeasurementId(config.ga4MeasurementId);
+    const consented = analyticsConfigured && readVenueFormAnalyticsConsent(venue.id);
+    let htcAnonId: string | undefined;
+    if (consented) {
+      htcAnonId =
+        getOrCreateOpaqueAnonId(`venue:${venue.id}`) ??
+        readOpaqueAnonId(`venue:${venue.id}`) ??
+        undefined;
+    }
+
+    return {
+      source: "website_form",
+      form_key: embedKey,
+      inquiry_mode: inquiryMode,
+      custom_answers: customAnswerEntries,
+      utm_source: merged.utm_source,
+      utm_medium: merged.utm_medium,
+      utm_campaign: merged.utm_campaign,
+      utm_content: merged.utm_content,
+      utm_term: merged.utm_term,
+      referrer: merged.referrer,
+      landing_page: merged.landing_page,
+      qr_campaign_id: urlParams.get("qr") ?? undefined,
+      ...(htcAnonId ? { htc_anon_id: htcAnonId } : {}),
+    };
+  }
+
+  function hasUtmInSourceData(sd: Record<string, unknown>): boolean {
+    return Boolean(sd.utm_source || sd.utm_medium || sd.utm_campaign || sd.utm_term || sd.utm_content);
+  }
+
+  function fireVenueLeadAnalytics(inquiryMode: InquiryMode, sourceData: Record<string, unknown>) {
+    if (!isGa4Initialized()) return;
+    const params = {
+      funnel_surface: "venue_public_form" as const,
+      form_mode: inquiryMode,
+      has_utm: hasUtmInSourceData(sourceData),
+      venue_key: embedKey,
+    };
+    if (inquiryMode === "schedule_tour") {
+      trackTourRequest(params);
+    } else {
+      trackGenerateLead(params);
+    }
   }
 
   function validate(): boolean {
@@ -368,6 +430,7 @@ export function InquiryForm({
 
     try {
       if (mode === "request_information") {
+        const sourceData = buildSourceData("request_information");
         const res = await fetch("/api/public/inquire", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -379,18 +442,21 @@ export function InquiryForm({
             guestCount: guestCount ? parseInt(guestCount, 10) : null,
             estimatedBudget: budget ? parseFloat(budget.replace(/[$,]/g, "")) : null,
             message,
-            sourceData: buildSourceData("request_information"),
+            sourceData,
             turnstileToken,
           }),
         });
         const data = await res.json();
-        if (data.ok) setState("success_info");
-        else {
+        if (data.ok) {
+          fireVenueLeadAnalytics("request_information", sourceData);
+          setState("success_info");
+        } else {
           setError(INQUIRY_API_ERRORS[data.error] ?? data.message ?? "Something went wrong. Please try again.");
           setState("error");
         }
       } else if (mode === "schedule_tour" && selectedTourSlot && tourEmbedKey) {
         const qrCampaignId = new URLSearchParams(window.location.search).get("qr");
+        const sourceData = buildSourceData("schedule_tour");
         const res = await fetch("/api/tours/book", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -404,11 +470,12 @@ export function InquiryForm({
             notes: message,
             turnstileToken,
             qrCampaignId,
-            sourceData: buildSourceData("schedule_tour"),
+            sourceData,
           }),
         });
         const data = await res.json();
         if (data.ok) {
+          fireVenueLeadAnalytics("schedule_tour", sourceData);
           setTourConfirmation({
             scheduledAt: data.scheduledAt,
             duration: data.duration ?? 60,
@@ -630,6 +697,11 @@ export function InquiryForm({
             </button>
 
             <p className="text-center text-xs text-gray-400">Your information is used only to respond to your inquiry.</p>
+            <VenueFormAnalyticsConsent
+              venueId={venue.id}
+              measurementId={config.ga4MeasurementId}
+              primaryColor={primary}
+            />
           </form>
         )}
       </div>

@@ -23,8 +23,10 @@ describe("attribution fill-rate inventory", () => {
     assert.ok(ATTRIBUTION_SOURCE_DATA_KEYS.includes("utm_source"));
     assert.ok(ATTRIBUTION_SOURCE_DATA_KEYS.includes("qr_campaign_id"));
     assert.ok(ATTRIBUTION_SOURCE_DATA_KEYS.includes("leadgen_id"));
+    assert.ok(ATTRIBUTION_SOURCE_DATA_KEYS.includes("htc_anon_id"));
     assert.match(ATTRIBUTION_FILL_RATE_SQL, /acquisition_source/);
     assert.match(ATTRIBUTION_FILL_RATE_SQL, /utm_source/);
+    assert.match(ATTRIBUTION_FILL_RATE_SQL, /htc_anon_id/);
 
     if (!localReady()) {
       t.skip("local Postgres is not running");

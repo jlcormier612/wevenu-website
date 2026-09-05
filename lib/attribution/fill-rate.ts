@@ -19,6 +19,7 @@ export const ATTRIBUTION_SOURCE_DATA_KEYS = [
   "form_id",
   "acquisition_source",
   "platform",
+  "htc_anon_id",
 ] as const;
 
 export type AttributionFillRateRow = {
@@ -53,6 +54,8 @@ union all select 'landing_page', count(*) from public.leads
   where nullif(trim(source_data->>'landing_page'),'') is not null
 union all select 'qr_campaign', count(*) from public.leads
   where nullif(trim(source_data->>'qr_campaign_id'),'') is not null
+union all select 'htc_anon_id', count(*) from public.leads
+  where nullif(trim(source_data->>'htc_anon_id'),'') is not null
 union all select 'meta_campaign_id', count(*) from public.leads
   where nullif(trim(source_data->>'campaign_id'),'') is not null
 union all select 'meta_leadgen_id', count(*) from public.leads

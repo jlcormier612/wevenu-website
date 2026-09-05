@@ -241,7 +241,7 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
   {
     name: "Business Funnel — Period Leads",
     businessDefinition:
-      "Leads created in the reporting window for the Business Funnel period strip. Excludes status=cancelled and sales_stage=lost. Clock: leads.created_at. Distinct from some legacy lead counts that use different filters.",
+      "Leads created in the reporting window for the Business Funnel period strip. Excludes status=cancelled and sales_stage=lost. Clock: leads.created_at. Distinct from some legacy lead counts that use different filters. Phase 2C GA4/website visitors are NOT part of this metric (instrumentation only; no funnel website tile).",
     owner: "Venue",
     formula: "COUNT(leads WHERE created_at in window AND status<>'cancelled' AND sales_stage<>'lost')",
     sourceTables: ["leads"],

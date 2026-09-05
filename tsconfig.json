@@ -32,7 +32,9 @@
       "@shared/email": ["./shared/email/index.ts"],
       "@shared/email/*": ["./shared/email/*"],
       "@shared/product-account": ["./shared/product-account/index.ts"],
-      "@shared/product-account/*": ["./shared/product-account/*"]
+      "@shared/product-account/*": ["./shared/product-account/*"],
+      "@shared/analytics": ["./shared/analytics/index.ts"],
+      "@shared/analytics/*": ["./shared/analytics/*"]
     }
   },
   "include": [

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-type CookiePrefs = {
-  necessary: true;
-  analytics: boolean;
-  marketing: boolean;
-};
+import {
+  MARKETING_COOKIE_PREFS_KEY,
+  type MarketingCookiePrefs,
+  writeMarketingAnalyticsConsent,
+} from "@shared/analytics";
 
-const STORAGE_KEY = "hellotocheers-cookie-prefs";
+type CookiePrefs = MarketingCookiePrefs;
 
 const DEFAULT_PREFS: CookiePrefs = {
   necessary: true,
@@ -18,6 +18,7 @@ const DEFAULT_PREFS: CookiePrefs = {
 
 /**
  * Cookie preferences — calm self-serve controls stored locally.
+ * Analytics toggle gates GA4 via MarketingGa4Provider (Phase 2C).
  */
 export function CookiePreferencesExperience() {
   const [prefs, setPrefs] = useState<CookiePrefs>(DEFAULT_PREFS);
@@ -25,7 +26,7 @@ export function CookiePreferencesExperience() {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(MARKETING_COOKIE_PREFS_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<CookiePrefs>;
         setPrefs({
@@ -41,7 +42,9 @@ export function CookiePreferencesExperience() {
 
   function save(next: CookiePrefs) {
     setPrefs(next);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    window.localStorage.setItem(MARKETING_COOKIE_PREFS_KEY, JSON.stringify(next));
+    // Keep analytics consent event in sync for the GA4 provider.
+    writeMarketingAnalyticsConsent(next.analytics);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2500);
   }

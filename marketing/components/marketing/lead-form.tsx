@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 
+import { isGa4Initialized, trackGenerateLead } from "@shared/analytics";
+
 import { HOVER_FILL } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +78,14 @@ export function LeadForm({
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
         throw new Error(data.error ?? "Unable to send your message.");
+      }
+      // Marketing CRM inquiry only — never venue lead surface.
+      if (isGa4Initialized()) {
+        trackGenerateLead({
+          funnel_surface: "htc_marketing",
+          form_mode: intent,
+          has_utm: typeof window !== "undefined" && /utm_/i.test(window.location.search),
+        });
       }
       setStatus("done");
     } catch (err) {

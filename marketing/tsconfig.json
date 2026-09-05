@@ -49,6 +49,12 @@
       ],
       "@shared/product-account/*": [
         "../shared/product-account/*"
+      ],
+      "@shared/analytics": [
+        "../shared/analytics/index.ts"
+      ],
+      "@shared/analytics/*": [
+        "../shared/analytics/*"
       ]
     }
   },

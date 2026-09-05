@@ -51,6 +51,11 @@ export type PublicInquiryFormConfig = {
   /** Subset of PUBLIC_INQUIRY_EVENT_TYPES this venue accepts. Never empty. */
   acceptedEventTypes: string[];
   customQuestions: InquiryFormQuestion[];
+  /**
+   * Optional per-venue GA4 Measurement ID (Phase 2C). Null = analytics no-op.
+   * Never an HTC marketing property ID.
+   */
+  ga4MeasurementId: string | null;
 };
 
 export type InquiryFormSettings = {
