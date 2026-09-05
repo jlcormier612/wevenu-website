@@ -551,6 +551,13 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
 }
 
 /**
+ * duplicate_likely is review-only — Import anyway / Don't bring this over,
+ * never Try again / commit-retry.
+ */
+export const DUPLICATE_LIKELY_RETRY_REFUSAL =
+  "This record looks like a possible duplicate and is waiting for your review. Use Import anyway or Don't bring this over — it can't be retried until that decision is made.";
+
+/**
  * Re-attempt one durable unresolved record through the same canonical commit
  * path commitSession itself uses. Availability enforcement is unchanged —
  * success only if the underlying conflict is actually gone. Never invents a
@@ -569,6 +576,16 @@ export async function retryOwnRecord(
   if (existing.status === "committed") return { ok: true, committed: true };
   if (existing.status === "rejected" || existing.status === "skipped" || existing.status === "duplicate_exact") {
     return { ok: false, message: "This record was already resolved. It is not waiting for another import attempt." };
+  }
+  // duplicate_likely is review-only: Import anyway / Don't bring this over —
+  // never a commit-retry target. Refuse before claimUnresolvedRecord so we
+  // never misreport this as a concurrent-retry conflict (claim would also
+  // fail, since that path only accepts needs_review/conflict).
+  if (existing.status === "duplicate_likely") {
+    return {
+      ok: false,
+      message: DUPLICATE_LIKELY_RETRY_REFUSAL,
+    };
   }
   if (!UNRESOLVED_STATUSES.includes(existing.status)) {
     return { ok: false, message: "Only records that still need attention can be retried." };

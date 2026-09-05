@@ -180,9 +180,9 @@ describe("releaseStaleClaims — crash recovery", () => {
     ];
     const client = mockClientFor(rows);
     await releaseStaleClaims(client, "s1", new Date(Date.now() - 5 * 60_000).toISOString());
-    // duplicate_likely is not a claimUnresolvedRecord target (Item 6 territory);
-    // leave its claim column alone rather than inventing a new claim path here.
-    assert.equal(rows[0].claimed_at, old, "duplicate_likely is outside Item 4 claim recovery statuses");
+    // Item 6: duplicate_likely stays review-only — not a claimUnresolvedRecord
+    // target and not swept by Item 4 recovery (would invent a retry path).
+    assert.equal(rows[0].claimed_at, old, "duplicate_likely must remain excluded from releaseStaleClaims");
     assert.equal(rows[1].claimed_at, old, "committed must not be reopened by stale-claim recovery");
     assert.equal(rows[2].claimed_at, old, "rejected must not be rewritten by stale-claim recovery");
     assert.equal(rows[3].claimed_at, old, "skipped must not be rewritten by stale-claim recovery");
@@ -225,6 +225,13 @@ describe("claimUnresolvedRecord — retry of durable needs_review / conflict", (
     const claimed = await claimUnresolvedRecord(client, "rec-1", "user-1");
     assert.ok(claimed);
     assert.equal(rows[0].claimed_by, "user-1");
+  });
+
+  it("does not claim duplicate_likely (review-only — Import anyway / Don't bring this over)", async () => {
+    const rows = [makeRow({ id: "rec-1", status: "duplicate_likely", claimed_at: null })];
+    const client = mockClientFor(rows);
+    assert.equal(await claimUnresolvedRecord(client, "rec-1", "user-1"), null);
+    assert.equal(rows[0].claimed_at, null, "duplicate_likely must remain unclaimed");
   });
 
   it("does not claim validated rows (those use claimRecord)", async () => {
