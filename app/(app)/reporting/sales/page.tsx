@@ -391,7 +391,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
           <div className="grid gap-6 lg:grid-cols-3">
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Tours by source</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">By tour date in this period; source from the lead&apos;s frozen acquisition attribution.</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">By tour date in this period; source is the lead&apos;s official acquisition source (set when they entered).</p>
               {toursBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No tours in this period.</p>
               ) : (
