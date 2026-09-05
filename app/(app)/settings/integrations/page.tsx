@@ -6,6 +6,7 @@ import { StripeConnectSection } from "@/components/settings/stripe-connect-secti
 import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
 import { FacebookConnectSection } from "@/components/settings/facebook-connect-section";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
+import { buildFacebookOAuthUrl } from "@/lib/facebook/config";
 import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
 import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -45,7 +46,13 @@ export default async function FinancialsIntegrationsSettingsPage() {
 
       {venue && (
         <div id="facebook" className="scroll-mt-20 space-y-2">
-          <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />
+          <FacebookConnectSection
+            venueId={venue.id}
+            connection={facebookConnection}
+            leadForms={facebookLeadForms}
+            recentLog={facebookLog}
+            connectUrl={buildFacebookOAuthUrl(venue.id)}
+          />
           <div className="px-1"><SetupGuideLink href="/help/setup-lead-capture#facebook" label="Need help connecting? Follow the step-by-step guide" /></div>
         </div>
       )}

@@ -121,6 +121,14 @@ describe("facebook card renders from the derived state", () => {
   });
 });
 
+describe("Facebook Connect URL wiring on Settings integrations", () => {
+  it("passes a server-built connectUrl like Stripe/QuickBooks (avoids client server-action hang)", () => {
+    const page = readFileSync(resolve("app/(app)/settings/integrations/page.tsx"), "utf8");
+    assert.match(page, /buildFacebookOAuthUrl/);
+    assert.match(page, /connectUrl=\{buildFacebookOAuthUrl\(venue\.id\)\}/);
+  });
+});
+
 describe("facebookEnabledFormCount", () => {
   it("counts only enabled forms", () => {
     assert.equal(facebookEnabledFormCount([]), 0);
