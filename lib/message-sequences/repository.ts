@@ -52,6 +52,22 @@ export async function getSequences(client: DbClient, venueId: string): Promise<M
   return (data as SequenceRow[]).map(mapSequence);
 }
 
+/** Active participant counts per automation (status = active). */
+export async function getActiveEnrollmentCountsBySequence(
+  client: DbClient, venueId: string,
+): Promise<Map<string, number>> {
+  const { data, error } = await client.from("sequence_enrollments")
+    .select("sequence_id")
+    .eq("venue_id", venueId)
+    .eq("status", "active");
+  if (error) throw error;
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { sequence_id: string }[]) {
+    counts.set(row.sequence_id, (counts.get(row.sequence_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export async function getSequenceWithSteps(client: DbClient, venueId: string, id: string): Promise<MessageSequenceWithSteps | null> {
   const { data: seq, error } = await client.from("message_sequences").select("*")
     .eq("id", id).eq("venue_id", venueId).maybeSingle<SequenceRow>();
@@ -156,7 +172,8 @@ export async function getEnrollmentsForSequence(client: DbClient, venueId: strin
     .eq("venue_id", venueId).eq("sequence_id", sequenceId).order("enrolled_at", { ascending: false });
   if (error) throw error;
   const enrollments = (data as EnrollmentRow[]).map(mapEnrollment);
-  return enrichEnrollmentsWithProgress(client, enrollments);
+  const withProgress = await enrichEnrollmentsWithProgress(client, enrollments);
+  return enrichEnrollmentsWithOtherAutomations(client, venueId, withProgress);
 }
 
 /** Active Automations for one Relationship (Communication Workspace Completion) — the reverse of getEnrollmentsForSequence. */
@@ -369,8 +386,37 @@ export async function isEnrollmentSequencePaused(client: AnyDbClient, enrollment
   return data.message_sequences?.status === "paused";
 }
 
+export type RelationshipSearchHit = {
+  id: string;
+  displayName: string;
+  /** Names of other active automations this person is already in. */
+  otherActiveAutomations: string[];
+};
+
+/** Supabase nested selects may type a many-to-one join as object or array. */
+function nestedSequenceName(raw: unknown): string | null {
+  if (!raw) return null;
+  if (Array.isArray(raw)) {
+    const first = raw[0] as { name?: string } | undefined;
+    return first?.name?.trim() || null;
+  }
+  if (typeof raw === "object" && "name" in raw) {
+    const name = (raw as { name?: string | null }).name;
+    return name?.trim() || null;
+  }
+  return null;
+}
+
+type ActiveEnrollmentNameRow = {
+  relationship_id: string;
+  sequence_id: string;
+  message_sequences: unknown;
+};
+
 /** Manual enrollment search — name/email lookup across every lead/client relationship in the venue. */
-export async function searchRelationships(client: DbClient, venueId: string, query: string): Promise<{ id: string; displayName: string }[]> {
+export async function searchRelationships(
+  client: DbClient, venueId: string, query: string, excludeSequenceId?: string,
+): Promise<RelationshipSearchHit[]> {
   const q = query.trim();
   if (!q) return [];
   const pattern = `%${q}%`;
@@ -381,10 +427,70 @@ export async function searchRelationships(client: DbClient, venueId: string, que
     .order("last_name", { ascending: true, nullsFirst: false })
     .limit(10);
   if (error) throw error;
-  return ((data ?? []) as ({ id: string } & RelationshipNameCols)[]).map((r) => ({
+  const hits = ((data ?? []) as ({ id: string } & RelationshipNameCols)[]).map((r) => ({
     id: r.id,
     displayName: relationshipDisplayName(r),
+    otherActiveAutomations: [] as string[],
   }));
+  if (hits.length === 0) return hits;
+
+  const ids = hits.map((h) => h.id);
+  const { data: enrollments, error: enrollError } = await client.from("sequence_enrollments")
+    .select("relationship_id, sequence_id, message_sequences(name)")
+    .eq("venue_id", venueId)
+    .eq("status", "active")
+    .in("relationship_id", ids);
+  if (enrollError) throw enrollError;
+
+  const byRelationship = new Map<string, string[]>();
+  for (const row of (enrollments ?? []) as ActiveEnrollmentNameRow[]) {
+    if (excludeSequenceId && row.sequence_id === excludeSequenceId) continue;
+    const name = nestedSequenceName(row.message_sequences);
+    if (!name) continue;
+    const list = byRelationship.get(row.relationship_id) ?? [];
+    if (!list.includes(name)) list.push(name);
+    byRelationship.set(row.relationship_id, list);
+  }
+  return hits.map((h) => ({
+    ...h,
+    otherActiveAutomations: byRelationship.get(h.id) ?? [],
+  }));
+}
+
+/**
+ * For enrollments already listed on an automation, attach names of *other*
+ * active automations the same person is in (lightweight duplicate-comms visibility).
+ */
+export async function enrichEnrollmentsWithOtherAutomations(
+  client: DbClient, venueId: string, enrollments: SequenceEnrollment[],
+): Promise<SequenceEnrollment[]> {
+  if (enrollments.length === 0) return enrollments;
+  const relationshipIds = [...new Set(enrollments.map((e) => e.relationshipId))];
+  const { data, error } = await client.from("sequence_enrollments")
+    .select("relationship_id, sequence_id, message_sequences(name)")
+    .eq("venue_id", venueId)
+    .eq("status", "active")
+    .in("relationship_id", relationshipIds);
+  if (error) throw error;
+
+  const byRelationship = new Map<string, { sequenceId: string; name: string }[]>();
+  for (const row of (data ?? []) as ActiveEnrollmentNameRow[]) {
+    const name = nestedSequenceName(row.message_sequences);
+    if (!name) continue;
+    const list = byRelationship.get(row.relationship_id) ?? [];
+    list.push({ sequenceId: row.sequence_id, name });
+    byRelationship.set(row.relationship_id, list);
+  }
+
+  return enrollments.map((e) => {
+    const others = (byRelationship.get(e.relationshipId) ?? [])
+      .filter((x) => x.sequenceId !== e.sequenceId)
+      .map((x) => x.name);
+    return {
+      ...e,
+      otherActiveAutomations: [...new Set(others)],
+    };
+  });
 }
 
 // ---- Rule-based enrollment (auto-enroll on a trigger) -------------------------

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AutomationsHelp } from "@/components/communication/automations-help";
 import { SeriesForm } from "@/components/communication/series-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,12 +12,16 @@ export default async function NewSeriesPage() {
   const templates = await getTemplates();
   return (
     <div className="space-y-6">
-      <PageHeader title="New Automation" description="Build a set of steps that send automatically, in order, from your Templates." />
+      <PageHeader
+        title="New Automation"
+        description="Choose who it starts for, what messages go out, and when. You’ll see a plain-language preview before you save."
+      />
+      <AutomationsHelp />
       <Card>
         <CardHeader>
-          <CardTitle>Automation editor</CardTitle>
+          <CardTitle>Build your automation</CardTitle>
           <CardDescription>
-            Choose what starts it, then add steps. Each step sends a Template on its own schedule after the one before it. Changes apply to new enrollments only.
+            Keep it simple: who it starts for → what happens → when it stops. Use your existing Templates for the message content.
           </CardDescription>
         </CardHeader>
         <CardContent>

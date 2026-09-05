@@ -7,8 +7,8 @@ import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/message-sequences/repository";
 import { validateSequenceInput } from "@/lib/message-sequences/validation";
 import type {
-  CreateSequenceResult, EnrollResult, MessageSequence, MessageSequenceInput, MessageSequenceWithSteps,
-  SequenceActionResult, SequenceEnrollment, SequenceTriggerType,
+  CreateSequenceResult, EnrollResult, MessageSequenceInput, MessageSequenceListItem,
+  MessageSequenceWithSteps, SequenceActionResult, SequenceEnrollment, SequenceTriggerType,
 } from "@/lib/message-sequences/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -27,11 +27,17 @@ async function withVenue<T>(
   return fn(supabase, venue.id);
 }
 
-export async function getSequences(): Promise<MessageSequence[]> {
+export async function getSequences(): Promise<MessageSequenceListItem[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getSequences(await createClient(), venue.id);
+  const client = await createClient();
+  const sequences = await repo.getSequences(client, venue.id);
+  const counts = await repo.getActiveEnrollmentCountsBySequence(client, venue.id);
+  return sequences.map((s) => ({
+    ...s,
+    activeParticipantCount: counts.get(s.id) ?? 0,
+  }));
 }
 
 export async function getSequence(id: string): Promise<MessageSequenceWithSteps | null> {
@@ -95,7 +101,7 @@ export async function getActiveEnrollmentsForRelationship(relationshipId: string
 export async function enrollRelationshipManually(sequenceId: string, relationshipId: string): Promise<EnrollResult> {
   const result = await withVenue(async (supabase, venueId) => {
     if (await repo.hasActiveEnrollment(supabase, sequenceId, relationshipId)) {
-      return { ok: false, message: "Already enrolled in this series." } as EnrollResult;
+      return { ok: false, message: "Already in this automation." } as EnrollResult;
     }
     const seq = await repo.getSequenceWithSteps(supabase, venueId, sequenceId);
     const enrollmentId = await repo.insertEnrollment(supabase, venueId, sequenceId, relationshipId);
@@ -108,11 +114,14 @@ export async function enrollRelationshipManually(sequenceId: string, relationshi
   return result as EnrollResult;
 }
 
-export async function searchRelationships(query: string): Promise<{ id: string; displayName: string }[]> {
+export async function searchRelationships(
+  query: string,
+  excludeSequenceId?: string,
+): Promise<repo.RelationshipSearchHit[]> {
   if (!isSupabaseConfigured || !query.trim()) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.searchRelationships(await createClient(), venue.id, query.trim());
+  return repo.searchRelationships(await createClient(), venue.id, query.trim(), excludeSequenceId);
 }
 
 export async function cancelEnrollment_(enrollmentId: string): Promise<SequenceActionResult> {

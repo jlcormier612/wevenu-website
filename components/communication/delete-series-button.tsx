@@ -38,7 +38,7 @@ export function DeleteSeriesButton({ seriesId, seriesName }: { seriesId: string;
         open={confirmOpen}
         itemName={seriesName}
         itemLabel="automation"
-        consequenceNote="Anyone currently enrolled will stop receiving its remaining steps."
+        consequenceNote="Anyone currently in this automation stops receiving further messages from it. Past messages and conversations stay."
         pending={pending}
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmOpen(false)}

@@ -34,8 +34,11 @@ export async function setSeriesStatusAction(id: string, status: "active" | "paus
   return result;
 }
 
-export async function searchRelationshipsAction(query: string): Promise<{ id: string; displayName: string }[]> {
-  return searchRelationships(query);
+export async function searchRelationshipsAction(
+  query: string,
+  excludeSequenceId?: string,
+): Promise<{ id: string; displayName: string; otherActiveAutomations: string[] }[]> {
+  return searchRelationships(query, excludeSequenceId);
 }
 
 export async function enrollRelationshipAction(sequenceId: string, relationshipId: string): Promise<EnrollResult> {

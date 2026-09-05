@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { buildAutomationBehaviorSummary } from "@/lib/message-sequences/behavior-summary";
 import { SEQUENCE_TRIGGER_STAGES, SEQUENCE_TRIGGER_TYPES } from "@/lib/message-sequences/constants";
 import { salesStageLabel } from "@/lib/leads/constants";
 import type {
@@ -36,6 +37,15 @@ function emptyStep(): SequenceStepInput {
   return { templateId: "", channel: "email", offsetDays: 1 };
 }
 
+function SectionHeading({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-sm font-semibold text-heading">{title}</p>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 export function SeriesForm({
   series,
   templates,
@@ -51,6 +61,7 @@ export function SeriesForm({
   const [pending, startTransition] = React.useTransition();
   const dirty = JSON.stringify(input) !== baseline;
   const { confirmLeave } = useLibraryUnsavedGuard(dirty);
+  const preview = buildAutomationBehaviorSummary(input);
 
   const stageItems = SEQUENCE_TRIGGER_STAGES.map((s) => ({
     value: s.value,
@@ -102,19 +113,29 @@ export function SeriesForm({
   }
 
   return (
-    <div className="space-y-6">
-      <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Editing an Automation applies to new enrollments only. People already enrolled keep the steps that were set when they joined.
-      </p>
+    <div className="space-y-8">
+      {isEdit && (
+        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Saving changes applies to people who join after you save. People already in this automation keep the steps they started with.
+        </p>
+      )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
+      <section className="space-y-3">
+        <SectionHeading title="Name" hint="Something you’ll recognize on the Automations list." />
+        <div className="max-w-lg space-y-1.5">
           <Label htmlFor="sn">Automation name *</Label>
           <Input id="sn" value={input.name} onChange={(e) => set("name", e.target.value)}
             placeholder="New Inquiry Follow-Up" aria-invalid={errors.name ? true : undefined} />
           {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
         </div>
-        <div className="space-y-1.5">
+      </section>
+
+      <section className="space-y-3">
+        <SectionHeading
+          title="Who it starts for"
+          hint="Choose when someone should begin receiving these messages."
+        />
+        <div className="max-w-lg space-y-1.5">
           <Label htmlFor="strig">Starts when…</Label>
           <Select
             value={input.triggerType ?? NO_TRIGGER}
@@ -122,57 +143,70 @@ export function SeriesForm({
               set("triggerType", v === NO_TRIGGER ? null : (v as MessageSequenceInput["triggerType"]));
               if (v !== "lead_stage_changed") set("triggerStage", null);
             }}
-            items={[{ value: NO_TRIGGER, label: "Manual only — I'll enroll people myself" }, ...SEQUENCE_TRIGGER_TYPES]}
+            items={[{ value: NO_TRIGGER, label: "Manual only — I'll add people myself" }, ...SEQUENCE_TRIGGER_TYPES]}
           >
             <SelectTrigger id="strig" className="h-9 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={NO_TRIGGER}>Manual only — I&apos;ll enroll people myself</SelectItem>
-              {SEQUENCE_TRIGGER_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              <SelectItem value={NO_TRIGGER}>Manual only — I&apos;ll add people myself</SelectItem>
+              {SEQUENCE_TRIGGER_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
+          {input.triggerType && (
+            <p className="text-xs text-muted-foreground">
+              {SEQUENCE_TRIGGER_TYPES.find((t) => t.value === input.triggerType)?.description}
+            </p>
+          )}
         </div>
-      </div>
 
-      {input.triggerType === "lead_stage_changed" && (
-        <div className="max-w-md space-y-1.5">
-          <Label htmlFor="sstage">Which stage?</Label>
-          <Select value={input.triggerStage ?? ""} onValueChange={(v) => set("triggerStage", v)} items={stageItems}>
-            <SelectTrigger id="sstage" className="h-9 text-sm" aria-invalid={errors.triggerStage ? true : undefined}><SelectValue placeholder="Choose a stage" /></SelectTrigger>
-            <SelectContent>
-              {stageItems.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {errors.triggerStage && <p className="text-xs text-destructive">{errors.triggerStage}</p>}
-        </div>
-      )}
+        {input.triggerType === "lead_stage_changed" && (
+          <div className="max-w-md space-y-1.5">
+            <Label htmlFor="sstage">Which stage?</Label>
+            <Select value={input.triggerStage ?? ""} onValueChange={(v) => set("triggerStage", v)} items={stageItems}>
+              <SelectTrigger id="sstage" className="h-9 text-sm" aria-invalid={errors.triggerStage ? true : undefined}>
+                <SelectValue placeholder="Choose a stage" />
+              </SelectTrigger>
+              <SelectContent>
+                {stageItems.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {errors.triggerStage && <p className="text-xs text-destructive">{errors.triggerStage}</p>}
+          </div>
+        )}
 
-      <label className="flex max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card/40 px-3 py-2.5">
-        <input
-          type="checkbox"
-          className="mt-0.5"
-          checked={input.updatePipelineOnEnroll === true}
-          onChange={(e) => set("updatePipelineOnEnroll", e.target.checked)}
-        />
-        <span className="space-y-0.5">
-          <span className="block text-sm font-medium text-heading">
-            Move this lead to Enrolled in Sequence/Workflow when enrolled
+        <label className="flex max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card/40 px-3 py-2.5">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={input.updatePipelineOnEnroll === true}
+            onChange={(e) => set("updatePipelineOnEnroll", e.target.checked)}
+          />
+          <span className="space-y-0.5">
+            <span className="block text-sm font-medium text-heading">
+              Also move their sales stage forward when they join
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              Off by default. When on, an open lead may advance to “{salesStageLabel("enrolled_in_sequence")}”
+              so your board shows they’re in an active follow-up. Never moves Booked or Lost, and never moves someone backward.
+            </span>
           </span>
-          <span className="block text-xs text-muted-foreground">
-            Off by default. When on, a successful enrollment may move the lead forward to Enrolled in Sequence/Workflow.
-          </span>
-        </span>
-      </label>
+        </label>
+      </section>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-heading">Steps</p>
-          <Button type="button" size="sm" variant="outline" onClick={addStep}>+ Add step</Button>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <SectionHeading
+            title="What happens"
+            hint="Messages send in order, using your Templates."
+          />
+          <Button type="button" size="sm" variant="outline" onClick={addStep}>+ Add message</Button>
         </div>
         {errors.steps && <p className="text-xs text-destructive">{errors.steps}</p>}
 
         {input.steps.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-            No steps yet. Add one to build this automation.
+            No messages yet. Add one to build this automation.
           </p>
         ) : (
           <div className="space-y-3">
@@ -187,11 +221,11 @@ export function SeriesForm({
                     <Button type="button" size="icon-sm" variant="ghost" disabled={i === input.steps.length - 1} onClick={() => moveStep(i, 1)}>
                       <ArrowDown className="h-3.5 w-3.5" />
                     </Button>
-                    <span className="ml-1 text-xs font-medium text-muted-foreground">Step {i + 1}</span>
+                    <span className="ml-1 text-xs font-medium text-muted-foreground">Message {i + 1}</span>
                   </div>
 
                   <div className="space-y-1.5 sm:w-28">
-                    <Label className="text-xs">Channel</Label>
+                    <Label className="text-xs">Send as</Label>
                     <Select value={step.channel} onValueChange={(v) => updateStep(i, { channel: v as SequenceStepInput["channel"], templateId: "" })}
                       items={[{ value: "email", label: "Email" }, { value: "sms", label: "SMS" }]}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
@@ -216,8 +250,8 @@ export function SeriesForm({
                     </Select>
                   </div>
 
-                  <div className="space-y-1.5 sm:w-40">
-                    <Label className="text-xs">{i === 0 ? "Days after enrolling" : "Days after previous step"}</Label>
+                  <div className="space-y-1.5 sm:w-44">
+                    <Label className="text-xs">{i === 0 ? "When (days after joining)" : "When (days after previous)"}</Label>
                     <Input type="number" min={0} value={step.offsetDays}
                       onChange={(e) => updateStep(i, { offsetDays: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                       className="h-9 text-sm" />
@@ -232,7 +266,26 @@ export function SeriesForm({
             })}
           </div>
         )}
-      </div>
+      </section>
+
+      <section className="space-y-2">
+        <SectionHeading title="When it stops" />
+        <p className="max-w-2xl text-sm text-muted-foreground leading-relaxed">
+          {preview.lines.stops} Pausing the whole automation pauses scheduled messages for everyone in it until you resume.
+        </p>
+      </section>
+
+      <section className="space-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3">
+        <p className="text-sm font-semibold text-heading">What will happen?</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{preview.paragraph}</p>
+        {preview.lines.steps.length > 0 && (
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+            {preview.lines.steps.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       <div className="flex items-center justify-end gap-3">
         <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />

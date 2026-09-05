@@ -72,6 +72,13 @@ export type SequenceEnrollment = {
   stepsTotal?: number;
   stepsSent?: number;
   nextScheduledFor?: string | null;
+  /** Other active automations this person is in (when loaded for visibility). */
+  otherActiveAutomations?: string[];
+};
+
+/** List row with optional active-participant count for venue-facing overview. */
+export type MessageSequenceListItem = MessageSequence & {
+  activeParticipantCount: number;
 };
 
 export type SequenceErrors = Record<string, string>;

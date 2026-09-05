@@ -12,6 +12,7 @@ import {
   resumeEnrollmentAction,
   searchRelationshipsAction,
 } from "@/app/(app)/communication/series/actions";
+import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +20,12 @@ import type { SequenceEnrollment } from "@/lib/message-sequences/types";
 
 export const ENROLLMENT_STATUS_LABEL: Record<SequenceEnrollment["status"], string> = {
   active: "Active",
-  completed: "Completed",
+  completed: "Finished",
   exited_reply: "Stopped — replied",
   exited_booking: "Stopped — booked",
   exited_lost: "Stopped — lost",
   exited_cancelled: "Stopped — cancelled",
-  cancelled: "Cancelled",
+  cancelled: "Stopped",
 };
 
 function formatNextSend(iso: string): string {
@@ -44,10 +45,8 @@ function progressLine(e: SequenceEnrollment): string | null {
   const stepNum = Math.min(sent + 1, total);
   const next = e.nextScheduledFor
     ? ` · Next ${formatNextSend(e.nextScheduledFor)}`
-    : sent >= total
-      ? ""
-      : "";
-  return `Step ${stepNum} of ${total}${next}`;
+    : "";
+  return `Message ${stepNum} of ${total}${next}`;
 }
 
 function statusLabel(e: SequenceEnrollment): string {
@@ -57,15 +56,17 @@ function statusLabel(e: SequenceEnrollment): string {
 
 export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: string; enrollments: SequenceEnrollment[] }) {
   const [query, setQuery] = React.useState("");
-  const [results, setResults] = React.useState<{ id: string; displayName: string }[]>([]);
+  const [results, setResults] = React.useState<{ id: string; displayName: string; otherActiveAutomations: string[] }[]>([]);
   const [searching, startSearch] = React.useTransition();
   const [enrolling, startEnroll] = React.useTransition();
   const [rowPending, startRow] = React.useTransition();
+  const [stopTarget, setStopTarget] = React.useState<SequenceEnrollment | null>(null);
+  const [stopping, setStopping] = React.useState(false);
 
   function handleSearch() {
     if (!query.trim()) return;
     startSearch(async () => {
-      setResults(await searchRelationshipsAction(query));
+      setResults(await searchRelationshipsAction(query, sequenceId));
     });
   }
 
@@ -73,25 +74,31 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
     startEnroll(async () => {
       const result = await enrollRelationshipAction(sequenceId, relationshipId);
       if (result.ok) {
-        toast.success("Enrolled.");
+        toast.success("Added to this automation.");
         setResults((r) => r.filter((x) => x.id !== relationshipId));
       } else {
-        toast.error(result.message ?? "Could not enroll.");
+        toast.error(result.message ?? "Could not add them.");
       }
     });
   }
 
-  function handleCancel(enrollmentId: string) {
-    startRow(async () => {
-      const result = await cancelEnrollmentAction(sequenceId, enrollmentId);
-      if (!result.ok) toast.error(result.message ?? "Could not cancel.");
-    });
+  async function handleStopConfirmed() {
+    if (!stopTarget) return;
+    setStopping(true);
+    const result = await cancelEnrollmentAction(sequenceId, stopTarget.id);
+    setStopping(false);
+    if (result.ok) {
+      toast.success("Stopped for this person.");
+      setStopTarget(null);
+    } else {
+      toast.error(result.message ?? "Could not stop.");
+    }
   }
 
   function handlePause(enrollmentId: string) {
     startRow(async () => {
       const result = await pauseEnrollmentAction(sequenceId, enrollmentId);
-      if (result.ok) toast.success("Paused.");
+      if (result.ok) toast.success("Paused for this person.");
       else toast.error(result.message ?? "Could not pause.");
     });
   }
@@ -99,7 +106,7 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
   function handleResume(enrollmentId: string) {
     startRow(async () => {
       const result = await resumeEnrollmentAction(sequenceId, enrollmentId);
-      if (result.ok) toast.success("Resumed.");
+      if (result.ok) toast.success("Resumed for this person.");
       else toast.error(result.message ?? "Could not resume.");
     });
   }
@@ -122,21 +129,31 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
       {results.length > 0 && (
         <div className="space-y-1.5 rounded-lg border border-border p-2">
           {results.map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
-              <span>{r.displayName}</span>
-              <Button type="button" size="xs" variant="outline" disabled={enrolling} onClick={() => handleEnroll(r.id)}>Enroll</Button>
+            <div key={r.id} className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
+              <div className="min-w-0 space-y-0.5">
+                <span>{r.displayName}</span>
+                {r.otherActiveAutomations.length > 0 && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Also in another active automation: {r.otherActiveAutomations.join(", ")}
+                  </p>
+                )}
+              </div>
+              <Button type="button" size="xs" variant="outline" disabled={enrolling} onClick={() => handleEnroll(r.id)}>
+                Add
+              </Button>
             </div>
           ))}
         </div>
       )}
 
       {enrollments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No one is enrolled in this automation yet.</p>
+        <p className="text-sm text-muted-foreground">No one is in this automation yet.</p>
       ) : (
         <div className="space-y-1.5">
           {enrollments.map((e) => {
             const progress = progressLine(e);
             const isPaused = e.status === "active" && !!e.pausedAt;
+            const others = e.otherActiveAutomations ?? [];
             return (
               <div key={e.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
                 <div className="min-w-0 space-y-0.5">
@@ -148,6 +165,11 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
                   </div>
                   {progress && (
                     <p className="text-xs text-muted-foreground">{progress}</p>
+                  )}
+                  {others.length > 0 && e.status === "active" && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      Also in another active automation: {others.join(", ")}
+                    </p>
                   )}
                 </div>
                 {e.status === "active" && (
@@ -161,7 +183,7 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
                         onClick={() => handleResume(e.id)}
                         className="text-muted-foreground"
                         aria-label="Resume for this person"
-                        title="Resume"
+                        title="Resume for this person"
                       >
                         <Play className="h-3 w-3" />
                       </Button>
@@ -174,7 +196,7 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
                         onClick={() => handlePause(e.id)}
                         className="text-muted-foreground"
                         aria-label="Pause for this person"
-                        title="Pause"
+                        title="Pause for this person only"
                       >
                         <Pause className="h-3 w-3" />
                       </Button>
@@ -184,10 +206,10 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
                       size="icon-xs"
                       variant="ghost"
                       disabled={rowPending}
-                      onClick={() => handleCancel(e.id)}
+                      onClick={() => setStopTarget(e)}
                       className="text-muted-foreground hover:text-destructive"
-                      aria-label="Stop"
-                      title="Stop"
+                      aria-label="Stop for this person"
+                      title="Stop for this person"
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -198,6 +220,16 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
           })}
         </div>
       )}
+
+      <LeadLifecycleConfirmDialog
+        open={!!stopTarget}
+        title={`Stop this automation for ${stopTarget?.relationshipName ?? "this person"}?`}
+        description="They won’t receive any more messages from this automation. Their conversation and past messages stay as they are."
+        confirmLabel="Stop Automation"
+        confirming={stopping}
+        onConfirm={() => { void handleStopConfirmed(); }}
+        onCancel={() => { if (!stopping) setStopTarget(null); }}
+      />
     </div>
   );
 }
