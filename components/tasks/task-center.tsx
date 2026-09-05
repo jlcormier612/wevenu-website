@@ -285,13 +285,12 @@ function StaffGroup({
 }
 
 function DoSection({
-  title, icon, tasks, emptyMessage, priority, onComplete, onWaive, completing, waiving,
+  title, icon, tasks, priority, onComplete, onWaive, completing, waiving,
   collapsed = false, groupBy = "event", previewLimit,
 }: {
   title: string;
   icon: React.ReactNode;
   tasks: TaskRow[];
-  emptyMessage: string;
   priority?: "high" | "normal";
   onComplete: (id: string, eventId: string) => void;
   onWaive: (id: string, eventId: string) => void;
@@ -335,6 +334,10 @@ function DoSection({
     return 0;
   });
 
+  // Hide empty urgency bands — only Upcoming is gated by the caller; other
+  // bands omit themselves when empty so the page stays quiet.
+  if (tasks.length === 0) return null;
+
   return (
     <div>
       <button type="button" onClick={() => setOpen((o) => !o)}
@@ -349,30 +352,26 @@ function DoSection({
       </button>
 
       {open && (
-        tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground pl-5 pb-2">{emptyMessage}</p>
-        ) : (
-          <div className="space-y-3">
-            {groupBy === "staff"
-              ? staffEntries.map(([staffId, group]) => (
-                  <StaffGroup key={staffId} staffName={group.name}
-                    tasks={group.tasks} onComplete={onComplete} onWaive={onWaive}
-                    completing={completing} waiving={waiving} />
-                ))
-              : [...byEvent.entries()].map(([eventId, group]) => (
-                  <EventGroup key={eventId} eventId={eventId} eventName={group.name} couple={group.couple}
-                    tasks={group.tasks} mode="do"
-                    onComplete={onComplete} onWaive={onWaive}
-                    completing={completing} waiving={waiving} />
-                ))}
-            {hiddenCount > 0 && (
-              <Button type="button" variant="ghost" size="sm" className="text-xs"
-                onClick={() => setShowAll(true)}>
-                Show all {tasks.length} upcoming
-              </Button>
-            )}
-          </div>
-        )
+        <div className="space-y-3">
+          {groupBy === "staff"
+            ? staffEntries.map(([staffId, group]) => (
+                <StaffGroup key={staffId} staffName={group.name}
+                  tasks={group.tasks} onComplete={onComplete} onWaive={onWaive}
+                  completing={completing} waiving={waiving} />
+              ))
+            : [...byEvent.entries()].map(([eventId, group]) => (
+                <EventGroup key={eventId} eventId={eventId} eventName={group.name} couple={group.couple}
+                  tasks={group.tasks} mode="do"
+                  onComplete={onComplete} onWaive={onWaive}
+                  completing={completing} waiving={waiving} />
+              ))}
+          {hiddenCount > 0 && (
+            <Button type="button" variant="ghost" size="sm" className="text-xs"
+              onClick={() => setShowAll(true)}>
+              Show all {tasks.length} upcoming
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -407,11 +406,26 @@ export function TaskCenter({
   );
   const [findQuery, setFindQuery] = React.useState("");
   const [eventFilterId, setEventFilterId] = React.useState<string | null>(null);
+  const [findMenuOpen, setFindMenuOpen] = React.useState(false);
 
   const findMatches = React.useMemo(
     () => matchEventsForFind(searchableEvents, findQuery),
     [searchableEvents, findQuery],
   );
+
+  function selectFindEvent(ev: SearchableEvent) {
+    setEventFilterId(ev.id);
+    setFindQuery(ev.coupleLabel || ev.name);
+    setFindMenuOpen(false);
+    const el = document.getElementById("task-center-find") as HTMLInputElement | null;
+    el?.blur();
+  }
+
+  function clearFind() {
+    setEventFilterId(null);
+    setFindQuery("");
+    setFindMenuOpen(false);
+  }
 
   const filterByEvent = React.useCallback(
     (rows: TaskRow[]) => {
@@ -523,15 +537,32 @@ export function TaskCenter({
             value={findQuery}
             onChange={(e) => {
               setFindQuery(e.target.value);
+              setFindMenuOpen(true);
               if (!e.target.value.trim()) setEventFilterId(null);
+            }}
+            onFocus={() => {
+              // Re-open matches when editing; stay closed after a completed selection.
+              if (!eventFilterId && findQuery.trim()) setFindMenuOpen(true);
+            }}
+            onBlur={() => {
+              // Delay so a mousedown on a result can fire first.
+              window.setTimeout(() => setFindMenuOpen(false), 150);
             }}
             placeholder="Search by couple or event name…"
             className="pl-8 h-9"
             autoComplete="off"
+            aria-expanded={findMenuOpen}
+            aria-controls="task-center-find-results"
+            aria-autocomplete="list"
           />
         </div>
-        {findQuery.trim() && (
-          <div className="max-w-md rounded-sm border border-border bg-card" role="listbox" aria-label="Matching events">
+        {findMenuOpen && findQuery.trim() && (
+          <div
+            id="task-center-find-results"
+            className="max-w-md rounded-sm border border-border bg-card"
+            role="listbox"
+            aria-label="Matching events"
+          >
             {findMatches.length === 0 ? (
               <p className="px-3 py-2.5 text-sm text-muted-foreground">No events match.</p>
             ) : (
@@ -541,10 +572,8 @@ export function TaskCenter({
                     <button
                       type="button"
                       className="min-w-0 flex-1 text-left"
-                      onClick={() => {
-                        setEventFilterId(ev.id);
-                        setFindQuery(ev.coupleLabel || ev.name);
-                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectFindEvent(ev)}
                     >
                       <p className="text-sm font-medium text-heading truncate">{ev.coupleLabel || ev.name}</p>
                       <p className="text-[11px] text-muted-foreground truncate">
@@ -555,6 +584,7 @@ export function TaskCenter({
                       </p>
                     </button>
                     <Button type="button" size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                      onMouseDown={(e) => e.preventDefault()}
                       render={<Link href={`/events/${ev.id}`} />}>
                       Open planning
                     </Button>
@@ -572,7 +602,7 @@ export function TaskCenter({
             <button
               type="button"
               className="text-muted-foreground underline-offset-2 hover:underline"
-              onClick={() => { setEventFilterId(null); setFindQuery(""); }}
+              onClick={clearFind}
             >
               Clear
             </button>
@@ -663,32 +693,32 @@ export function TaskCenter({
           <>
             <DoSection
               title="Overdue" icon={<AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />}
-              tasks={scopedDo.overdue} emptyMessage="No overdue team tasks."
+              tasks={scopedDo.overdue}
               priority="high" onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}
             />
             <DoSection
               title="Blocked" icon={<Lock className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />}
-              tasks={scopedDo.blocked} emptyMessage="No blocked team tasks."
+              tasks={scopedDo.blocked}
               onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}
             />
             <DoSection
               title="Due today" icon={<CalendarDays className="h-4 w-4 text-heading shrink-0" aria-hidden />}
-              tasks={scopedDo.dueToday} emptyMessage="Nothing due today."
+              tasks={scopedDo.dueToday}
               onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}
             />
             <DoSection
               title="Due soon" icon={<Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />}
-              tasks={scopedDo.dueSoon} emptyMessage="Nothing due in the next week."
+              tasks={scopedDo.dueSoon}
               onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}
             />
             {scopedDo.upcoming.length > 0 && (
               <DoSection
                 title="Upcoming" icon={<CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />}
-                tasks={scopedDo.upcoming} emptyMessage=""
+                tasks={scopedDo.upcoming}
                 onComplete={handleComplete} onWaive={handleWaive}
                 completing={completing} waiving={waiving} groupBy={groupBy}
                 collapsed={doImmediate > 0}
