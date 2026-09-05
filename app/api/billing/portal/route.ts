@@ -56,12 +56,6 @@ export async function POST() {
     );
   }
 
-  const appUrl = (
-    process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000"
-  ).replace(/\/$/, "");
-  const returnUrl = `${appUrl}/billing/suspended`;
-
-  // Prefer calling marketing portal when configured (same SaaS Stripe account).
   // Never fall through to the venue-app Stripe client: that process is wired to
   // htc/*/stripe-connect (Connect platform), while saas_stripe_customer_id lives
   // on the separate HTC SaaS Stripe account (htc/*/stripe-saas → marketing).
