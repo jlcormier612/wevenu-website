@@ -89,6 +89,7 @@ export type RecordStatus =
   | "validated"
   | "duplicate_exact"
   | "duplicate_likely"
+  /** Legacy enum value — no production writer sets this (Item 5). Kept for DB/claim compatibility. */
   | "conflict"
   | "needs_review"
   | "approved"
@@ -110,6 +111,10 @@ export type MigrationRecord = {
   matchType: MatchType;
   matchedEntityId: string | null;
   matchConfidence: number | null;
+  /**
+   * Unused by current writers (Item 5). Column retained; do not treat as an
+   * active field-level conflict contract.
+   */
   conflictFields: Record<string, { existing: unknown; incoming: unknown }> | null;
   validationErrors: string[] | null;
   createdEntityId: string | null;

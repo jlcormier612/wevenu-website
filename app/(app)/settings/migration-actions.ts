@@ -20,6 +20,7 @@ import * as repo from "@/lib/migration/repository";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getSourceProfiles } from "@/lib/migration/source-profiles";
+import { getVendors } from "@/lib/vendors/repository";
 import type { MigrationEntityType, SourceKey, SourceRow } from "@/lib/migration/types";
 import { proposeFieldMapping } from "@/lib/luv/import-assist";
 import type { EntityType as LuvEntityType } from "@/lib/import/types";
@@ -65,6 +66,17 @@ export async function getMigrationSessionRecordsAction(sessionId: string, status
   if (!session) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return repo.listRecords(supabase, sessionId, status as any);
+}
+
+/** Vendor id → business name for Migration Center duplicate_likely match lines. */
+export async function getMigrationVendorMatchLabelsAction(): Promise<Record<string, string>> {
+  const venue = await getCurrentVenue();
+  if (!venue) return {};
+  const supabase = await createClient();
+  const vendors = await getVendors(supabase, venue.id);
+  const labels: Record<string, string> = {};
+  for (const v of vendors) labels[v.id] = v.businessName;
+  return labels;
 }
 
 export async function startMigrationSessionAction(sourceKey: SourceKey) {

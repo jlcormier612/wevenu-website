@@ -153,6 +153,8 @@ export async function updateRecord(
   if (patch.matchType !== undefined) row.match_type = patch.matchType;
   if (patch.matchedEntityId !== undefined) row.matched_entity_id = patch.matchedEntityId;
   if (patch.matchConfidence !== undefined) row.match_confidence = patch.matchConfidence;
+  // conflict_fields column retained for schema compatibility; product writers
+  // do not populate it (Item 5 — demoted / unused field-level conflict model).
   if (patch.conflictFields !== undefined) row.conflict_fields = patch.conflictFields;
   if (patch.validationErrors !== undefined) row.validation_errors = patch.validationErrors;
   if (patch.createdEntityId !== undefined) row.created_entity_id = patch.createdEntityId;

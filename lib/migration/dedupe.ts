@@ -1,14 +1,15 @@
 /**
- * Migration Center — duplicate & conflict strategy (docs/migration-cutover-
+ * Migration Center — duplicate strategy (docs/migration-cutover-
  * architecture.md §B.4).
  *
  * Reuses the existing exact-match functions as-is for the exact tier —
  * they're correct and require no changes. Adds a "likely match" tier only
  * where the architecture audit found a real gap: vendors, whose only
  * existing check is exact business-name-or-email `ilike`, with no
- * normalized/fuzzy signal at all. Every `conflict`/`duplicate_likely`
- * outcome is surfaced for an explicit human decision — this module never
- * auto-merges anything.
+ * normalized/fuzzy signal at all. Every `duplicate_likely` (and floor-plan
+ * `needs_review` + matchType likely) outcome is surfaced for an explicit
+ * human decision — this module never auto-merges anything. Writers do not
+ * use RecordStatus "conflict" or conflictFields.
  */
 import * as clientsRepo from "@/lib/clients/repository";
 import * as leadsRepo from "@/lib/leads/repository";

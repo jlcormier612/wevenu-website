@@ -37,6 +37,7 @@ import {
   getMigrationSessionRecordsAction,
   getMigrationSessionResumeStateAction,
   getMigrationSessionSourceFilesAction,
+  getMigrationVendorMatchLabelsAction,
   listMigrationSessionsAction,
   proposeActiveCommitmentFromFileAction,
   proposeActiveCommitmentFromTextAction,
@@ -50,6 +51,11 @@ import { ActiveCommitmentReview } from "@/components/settings/active-commitment-
 import { FloorPlanMigrationImport } from "@/components/settings/floor-plan-migration-import";
 import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
+import {
+  duplicateLikelyMatchLine,
+  LEGACY_CONFLICT_BADGE_LABEL,
+  needsReviewBadgeLabel,
+} from "@/lib/migration/review-display";
 import { formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
 import {
   MIGRATION_CENTER_INTRO,
@@ -303,6 +309,7 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
   ],
 };
 
+/** Includes legacy "conflict" only so residual rows (Item 4 claim recovery) still appear. Writers do not produce that status. */
 const NEEDS_DECISION_STATUSES = ["duplicate_likely", "conflict", "needs_review"] as const;
 
 /** Plain-language status, computed from the session's actual current state — never the raw enum. */
@@ -327,15 +334,31 @@ function formatBytes(n: number | null): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({
+  status,
+  validationErrors,
+  hasNormalizedPayload,
+}: {
+  status: string;
+  validationErrors?: string[] | null;
+  hasNormalizedPayload?: boolean;
+}) {
+  if (status === "needs_review") {
+    return (
+      <Badge variant="destructive">
+        {needsReviewBadgeLabel(validationErrors, !!hasNormalizedPayload)}
+      </Badge>
+    );
+  }
+  if (status === "conflict") {
+    return <Badge variant="warning">{LEGACY_CONFLICT_BADGE_LABEL}</Badge>;
+  }
   const map: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "outline" }> = {
     validated: { label: "Ready", variant: "success" },
     approved: { label: "Approved", variant: "success" },
     committed: { label: "Imported", variant: "success" },
     duplicate_exact: { label: "Already exists — will skip", variant: "outline" },
     duplicate_likely: { label: "Possible duplicate", variant: "warning" },
-    conflict: { label: "Needs a decision", variant: "warning" },
-    needs_review: { label: "Couldn't read this row", variant: "destructive" },
     rejected: { label: "Intentionally excluded", variant: "outline" },
     skipped: { label: "Already in Hello to Cheers", variant: "outline" },
   };
@@ -396,6 +419,7 @@ export function MigrationCenter({
   const [activeSessionId, setActiveSessionId] = React.useState<string | null>(null);
   const [resume, setResume] = React.useState<{ state: SessionResumeState; summary: SessionSummary } | null>(null);
   const [decisionRecords, setDecisionRecords] = React.useState<MigrationRecord[]>([]);
+  const [vendorMatchLabels, setVendorMatchLabels] = React.useState<Record<string, string>>({});
   const [sourceFiles, setSourceFiles] = React.useState<SessionSourceFile[]>([]);
   const [loading, startLoading] = React.useTransition();
   const [starting, setStarting] = React.useState(false);
@@ -436,10 +460,15 @@ export function MigrationCenter({
       setResume(resumeState);
       setSourceFiles(files);
       if (resumeState && (resumeState.state === "needs_review" || resumeState.state === "partially_done")) {
-        const needsDecision = (await Promise.all(NEEDS_DECISION_STATUSES.map((status) => getMigrationSessionRecordsAction(sessionId, status)))).flat();
+        const [needsDecision, labels] = await Promise.all([
+          Promise.all(NEEDS_DECISION_STATUSES.map((status) => getMigrationSessionRecordsAction(sessionId, status))).then((parts) => parts.flat()),
+          getMigrationVendorMatchLabelsAction(),
+        ]);
         setDecisionRecords(needsDecision as MigrationRecord[]);
+        setVendorMatchLabels(labels);
       } else {
         setDecisionRecords([]);
+        setVendorMatchLabels({});
       }
       // Resume may have advanced a settled session (e.g. Don't import only) to
       // committed — refresh History so the badge matches Complete.
@@ -872,14 +901,26 @@ export function MigrationCenter({
                   const liveConflict = isLiveAvailabilityConflictError(r.validationErrors);
                   const displayError = (r.validationErrors?.[0] ?? "").replace(`${HISTORICAL_RECORD_ELIGIBLE}: `, "");
                   const canRetry = !!r.normalizedPayload && (r.status === "needs_review" || r.status === "conflict");
+                  const matchLine = duplicateLikelyMatchLine({
+                    matchType: r.matchType,
+                    matchedEntityId: r.matchedEntityId,
+                    matchConfidence: r.matchConfidence,
+                    matchedEntityLabel: r.matchedEntityId ? (vendorMatchLabels[r.matchedEntityId] ?? null) : null,
+                    targetEntityType: r.targetEntityType,
+                  });
                   return (
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-heading">
                         {recordHeadline(r)}
                       </p>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <StatusBadge status={r.status} />
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                        <StatusBadge
+                          status={r.status}
+                          validationErrors={r.validationErrors}
+                          hasNormalizedPayload={!!r.normalizedPayload}
+                        />
+                        {matchLine && <span className="text-[11px] text-muted-foreground">{matchLine}</span>}
                         {displayError && <span className="text-[11px] text-muted-foreground">{displayError}</span>}
                       </div>
                     </div>

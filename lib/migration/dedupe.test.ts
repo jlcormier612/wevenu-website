@@ -72,6 +72,8 @@ describe("dedupeVendor — likely-match tier", () => {
     const result = await dedupeVendor(client, "venue-1", { businessName: "bloom &  co   florals," });
     assert.equal(result.matchType, "likely");
     assert.equal(result.matchedEntityId, "vendor-9");
+    assert.equal(result.matchConfidence, 75);
+    // Identity is structured match fields — callers must not invent validationErrors for display.
   });
 
   it("reports no match for a genuinely different business", async () => {

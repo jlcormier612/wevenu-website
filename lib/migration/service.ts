@@ -3,7 +3,8 @@
  *
  * One engine, two entry points (self-service venue session vs. HQ-assisted
  * on-behalf-of). Commits always go through canonical create paths; availability
- * enforcement is never bypassed — conflicts surface as needs_review.
+ * enforcement is never bypassed — scheduling conflicts surface as needs_review
+ * + validationErrors (not the unused RecordStatus "conflict" / conflictFields).
  */
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -116,6 +117,18 @@ async function resolveAdminActor(venueId: string): Promise<Actor | { ok: false; 
 function isError(a: Actor | { ok: false; message: string }): a is { ok: false; message: string } {
   return "ok" in a && a.ok === false;
 }
+
+/**
+ * When a commit/retry ends in needs_review (or succeeds as a fresh create),
+ * prior match/dedupe columns must not keep describing a different outcome.
+ * conflictFields is cleared alongside for the demoted unused column.
+ */
+const CLEAR_MATCH_METADATA = {
+  matchType: "none" as const,
+  matchedEntityId: null,
+  matchConfidence: null,
+  conflictFields: null,
+};
 
 export async function startSelfServiceSession(sourceKey: SourceKey): Promise<{ ok: true; session: MigrationSession } | { ok: false; message: string }> {
   const actor = await resolveVenueActor();
@@ -284,8 +297,10 @@ export async function runDedupe(client: AnyDbClient, session: MigrationSession):
     // an earlier row in this same batch already claims the same identity.
     // Neither row is a real canonical record yet, so this is never
     // duplicate_exact (which auto-skips at commit) — always a durable,
-    // human-reviewed duplicate_likely, pointing back at the earlier row's
-    // own source reference so the reviewer can compare both.
+    // human-reviewed duplicate_likely. Sibling identity is currently only in
+    // validationErrors text (matchedEntityId left null) — later cleanup debt;
+    // not required for Item 5 GREEN. Live vendor likely matches set
+    // matchedEntityId + matchConfidence without validationErrors.
     const key = inBatchDuplicateKey(record.targetEntityType, record.normalizedPayload);
     const claim = key ? inBatchClaims.get(key) : undefined;
     if (key && claim) {
@@ -499,7 +514,11 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
         claimedCount++;
 
         if (!record.normalizedPayload) {
-          await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: ["Nothing to commit — this record was never normalized."] });
+          await repo.updateRecord(client, record.id, {
+            status: "needs_review",
+            validationErrors: ["Nothing to commit — this record was never normalized."],
+            ...CLEAR_MATCH_METADATA,
+          });
           await repo.releaseClaim(client, record.id);
           outcome.failed++;
           continue;
@@ -515,16 +534,30 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
         try {
           const result = await commitOneRecord(client, session, entityType, record);
           if (result.ok) {
-            await repo.updateRecord(client, record.id, { status: "committed", createdEntityId: result.entityId, committedAt: new Date().toISOString() });
+            await repo.updateRecord(client, record.id, {
+              status: "committed",
+              createdEntityId: result.entityId,
+              committedAt: new Date().toISOString(),
+              validationErrors: null,
+              ...CLEAR_MATCH_METADATA,
+            });
             createdIds.push(result.entityId);
             outcome.committed++;
           } else {
-            await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: [result.error] });
+            await repo.updateRecord(client, record.id, {
+              status: "needs_review",
+              validationErrors: [result.error],
+              ...CLEAR_MATCH_METADATA,
+            });
             outcome.failed++;
           }
         } catch (err) {
           console.error("commitSession: unexpected exception committing record", { sessionId: session.id, recordId: record.id, entityType, err });
-          await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: [unexpectedCommitErrorMessage(err)] });
+          await repo.updateRecord(client, record.id, {
+            status: "needs_review",
+            validationErrors: [unexpectedCommitErrorMessage(err)],
+            ...CLEAR_MATCH_METADATA,
+          });
           outcome.failed++;
         } finally {
           await repo.releaseClaim(client, record.id);
@@ -619,11 +652,13 @@ export async function retryOwnRecord(
         createdEntityId: result.entityId,
         committedAt: new Date().toISOString(),
         validationErrors: null,
+        ...CLEAR_MATCH_METADATA,
       });
     } else {
       await repo.updateRecord(actor.client, record.id, {
         status: "needs_review",
         validationErrors: [result.error],
+        ...CLEAR_MATCH_METADATA,
       });
     }
   } finally {
