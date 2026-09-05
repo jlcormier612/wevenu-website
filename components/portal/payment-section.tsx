@@ -2,6 +2,16 @@
 
 import * as React from "react";
 import { getPaymentObservations } from "@/lib/luv/portal-observations";
+import {
+  CHECKOUT_BASELINE_STORAGE_KEY,
+  parseCheckoutReturnQuery,
+  readCheckoutBaseline,
+  resolveCheckoutNotice,
+  serializeCheckoutBaseline,
+  settledPaidTotal,
+  type CheckoutBaseline,
+  type CheckoutNoticeKind,
+} from "@/lib/portal/checkout-return-notice";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +36,9 @@ type PortalPaymentItem = {
   notes: string | null;
   sortOrder: number;
 };
+
+const CHECKOUT_POLL_MS = 2500;
+const CHECKOUT_POLL_MAX_MS = 90_000;
 
 type PortalPaymentSchedule = {
   id: string;
@@ -169,9 +182,15 @@ function StatusPill({ status, dueDate }: { status: PaymentStatus; dueDate: strin
 
 // ── Summary bar ───────────────────────────────────────────────────────────────
 
-function SummaryBar({ schedule, token }: { schedule: PortalPaymentSchedule; token: string }) {
-  const { paid, remaining } = computeTotals(schedule);
-  const paidPct = schedule.totalAmount > 0 ? Math.round((paid / schedule.totalAmount) * 100) : 0;
+function SummaryBar({
+  schedule, token, paidTotal,
+}: {
+  schedule: PortalPaymentSchedule;
+  token: string;
+  paidTotal: number;
+}) {
+  const { remaining } = computeTotals(schedule);
+  const paidPct = schedule.totalAmount > 0 ? Math.round((paidTotal / schedule.totalAmount) * 100) : 0;
   const allPaid = remaining <= 0;
   const next = nextUnpaidItem(schedule.lineItems);
 
@@ -215,7 +234,7 @@ function SummaryBar({ schedule, token }: { schedule: PortalPaymentSchedule; toke
         <div className="flex gap-4">
           <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.7)" }}>
             <p className="text-xs text-muted-foreground mb-0.5">Paid</p>
-            <p className="text-base font-semibold" style={{ color: SAGE }}>{formatMoney(paid, schedule.currency)}</p>
+            <p className="text-base font-semibold" style={{ color: SAGE }}>{formatMoney(paidTotal, schedule.currency)}</p>
           </div>
           {!allPaid && (
             <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.7)" }}>
@@ -245,7 +264,7 @@ function SummaryBar({ schedule, token }: { schedule: PortalPaymentSchedule; toke
               </p>
             </div>
             {(next.status === "pending" || next.status === "overdue") && (
-              <PayNowButton token={token} itemId={next.id} />
+              <PayNowButton token={token} itemId={next.id} paidTotal={paidTotal} />
             )}
           </div>
         </div>
@@ -256,12 +275,29 @@ function SummaryBar({ schedule, token }: { schedule: PortalPaymentSchedule; toke
 
 // ── Pay Now ───────────────────────────────────────────────────────────────────
 
-function PayNowButton({ token, itemId }: { token: string; itemId: string }) {
+function PayNowButton({
+  token, itemId, paidTotal,
+}: {
+  token: string;
+  itemId: string;
+  paidTotal: number;
+}) {
   const [loading, setLoading] = React.useState(false);
 
   async function handleClick() {
     setLoading(true);
     try {
+      // Baseline for the return notice: Checkout redirect alone is not confirmation.
+      try {
+        const baseline: CheckoutBaseline = {
+          itemId,
+          paidTotal,
+          at: Date.now(),
+        };
+        sessionStorage.setItem(CHECKOUT_BASELINE_STORAGE_KEY, serializeCheckoutBaseline(baseline));
+      } catch {
+        // sessionStorage may be unavailable; return notice still stays confirming.
+      }
       const res = await fetch("/api/portal/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -292,7 +328,13 @@ function PayNowButton({ token, itemId }: { token: string; itemId: string }) {
 
 // ── Payment timeline ──────────────────────────────────────────────────────────
 
-function PaymentTimeline({ items, token }: { items: PortalPaymentItem[]; token: string }) {
+function PaymentTimeline({
+  items, token, paidTotal,
+}: {
+  items: PortalPaymentItem[];
+  token: string;
+  paidTotal: number;
+}) {
   return (
     <div className="space-y-3">
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
@@ -318,10 +360,13 @@ function PaymentTimeline({ items, token }: { items: PortalPaymentItem[]; token: 
                     ? "#FEF2F2"
                     : item.status === "paid"
                     ? "#F7FBF8"
+                    : item.status === "processing"
+                    ? "#EFF6FF"
                     : "#FAFAF9",
                   border: `1px solid ${
                     item.status === "overdue" ? "#FECACA"
                     : item.status === "paid" ? "#B9D1C2"
+                    : item.status === "processing" ? "#BFDBFE"
                     : "#E8E2D8"
                   }`,
                 }}
@@ -332,9 +377,11 @@ function PaymentTimeline({ items, token }: { items: PortalPaymentItem[]; token: 
                   style={{
                     background: item.status === "paid" ? SAGE
                       : item.status === "overdue" ? "#FCA5A5"
+                      : item.status === "processing" ? "#93C5FD"
                       : "#E8E2D8",
                     color: item.status === "paid" ? "white"
                       : item.status === "overdue" ? "#7F1D1D"
+                      : item.status === "processing" ? "#1E3A8A"
                       : "#6B7280",
                   }}
                 >
@@ -363,7 +410,7 @@ function PaymentTimeline({ items, token }: { items: PortalPaymentItem[]; token: 
                       </p>
                       <StatusPill status={item.status} dueDate={item.dueDate} />
                       {(item.status === "pending" || item.status === "overdue") && (
-                        <div><PayNowButton token={token} itemId={item.id} /></div>
+                        <div><PayNowButton token={token} itemId={item.id} paidTotal={paidTotal} /></div>
                       )}
                     </div>
                   </div>
@@ -379,31 +426,88 @@ function PaymentTimeline({ items, token }: { items: PortalPaymentItem[]; token: 
 
 // ── Main section ──────────────────────────────────────────────────────────────
 
+async function fetchPortalSchedules(token: string): Promise<PortalPaymentSchedule[]> {
+  const res = await fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`);
+  const data = await res.json() as { schedules?: PortalPaymentSchedule[]; error?: string };
+  return data.schedules ?? [];
+}
+
 export function PaymentSection({ token }: { token: string }) {
   const [schedules, setSchedules] = React.useState<PortalPaymentSchedule[] | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [checkoutNotice, setCheckoutNotice] = React.useState<"success" | "cancelled" | null>(null);
-
-  React.useEffect(() => {
-    fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`)
-      .then(r => r.json())
-      .then((d: { schedules?: PortalPaymentSchedule[]; error?: string }) => {
-        setSchedules(d.schedules ?? []);
-      })
-      .catch(() => setSchedules([]))
-      .finally(() => setLoading(false));
-  }, [token]);
+  const [checkoutReturn, setCheckoutReturn] = React.useState<"success" | "cancelled" | null>(null);
+  const [checkoutBaseline, setCheckoutBaseline] = React.useState<CheckoutBaseline | null>(null);
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const payment = params.get("payment");
-    if (payment === "success" || payment === "cancelled") {
-      setCheckoutNotice(payment);
+    const payment = parseCheckoutReturnQuery(params.get("payment"));
+    if (payment) {
+      setCheckoutReturn(payment);
       params.delete("payment");
       const next = params.toString();
-      window.history.replaceState(null, "", window.location.pathname + (next ? `?${next}` : ""));
+      const hash = window.location.hash || (payment === "success" || payment === "cancelled" ? "#payments" : "");
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + (next ? `?${next}` : "") + hash,
+      );
+    }
+    try {
+      setCheckoutBaseline(readCheckoutBaseline(sessionStorage.getItem(CHECKOUT_BASELINE_STORAGE_KEY)));
+    } catch {
+      setCheckoutBaseline(null);
     }
   }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchPortalSchedules(token)
+      .then((next) => { if (!cancelled) setSchedules(next); })
+      .catch(() => { if (!cancelled) setSchedules([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [token]);
+
+  const schedule = schedules?.[0] ?? null;
+  const allItems = schedule?.lineItems ?? [];
+  const paidTotal = settledPaidTotal(allItems);
+  const checkoutNotice: CheckoutNoticeKind = resolveCheckoutNotice({
+    checkoutReturn,
+    lineItems: loading ? null : allItems,
+    baseline: checkoutBaseline,
+  });
+
+  // Poll while Checkout returned successfully but HTC has not confirmed yet.
+  React.useEffect(() => {
+    if (checkoutNotice !== "confirming") return;
+    const started = Date.now();
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      if (Date.now() - started > CHECKOUT_POLL_MAX_MS) return;
+      try {
+        const next = await fetchPortalSchedules(token);
+        if (!cancelled) setSchedules(next);
+      } catch {
+        // Keep the confirming notice; next interval retries.
+      }
+    };
+    const id = window.setInterval(() => { void tick(); }, CHECKOUT_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [checkoutNotice, token]);
+
+  React.useEffect(() => {
+    if (checkoutNotice !== "confirmed") return;
+    try {
+      sessionStorage.removeItem(CHECKOUT_BASELINE_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }, [checkoutNotice]);
 
   if (loading) {
     return (
@@ -436,9 +540,20 @@ export function PaymentSection({ token }: { token: string }) {
     );
   }
 
-  if (!schedules || schedules.length === 0) {
+  if (!schedules || schedules.length === 0 || !schedule) {
     return (
       <div className="space-y-6 px-1">
+        {checkoutNotice === "confirming" && (
+          <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
+            <p className="font-medium">Confirming your payment</p>
+            <p>Checkout finished. We&apos;re waiting for your venue ledger to confirm the payment.</p>
+          </div>
+        )}
+        {checkoutNotice === "cancelled" && (
+          <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: "#FAFAF9", border: "1px solid #E8E2D8", color: "#57534E" }}>
+            Checkout was cancelled — nothing was charged.
+          </div>
+        )}
         <div>
           <h2 className="font-heading text-2xl font-medium text-heading">Payments</h2>
           <p className="text-sm text-muted-foreground mt-1">Your payment schedule with your venue.</p>
@@ -457,26 +572,29 @@ export function PaymentSection({ token }: { token: string }) {
   // API returns one schedule per invoice (newest). Emma-style single-invoice
   // relationships see exactly that plan; multi-invoice clients still pick the
   // newest plan here (pre-existing Payments destination limitation).
-  const schedule = schedules[0];
-  const allItems = schedule.lineItems;
   const luvObs = getPaymentObservations(allItems);
+  const { remaining } = computeTotals(schedule);
+  const next = nextUnpaidItem(allItems);
 
   return (
     <div className="space-y-6 px-1">
-      {checkoutNotice === "success" && (() => {
-        const { remaining } = computeTotals(schedule);
-        const next = nextUnpaidItem(allItems);
-        return (
-          <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#F7FBF8", border: "1px solid #B9D1C2", color: "#1F5C3D" }}>
-            <p className="font-medium">Payment received</p>
-            <p>Thank you! Your payment has been received.</p>
-            <p>Remaining balance: {formatMoney(remaining, schedule.currency)}</p>
-            {next?.dueDate && (
-              <p>Next payment due: {formatDate(next.dueDate)}{next.amount != null ? ` · ${formatMoney(next.amount, schedule.currency)}` : ""}</p>
-            )}
-          </div>
-        );
-      })()}
+      {checkoutNotice === "confirming" && (
+        <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
+          <p className="font-medium">Confirming your payment</p>
+          <p>Checkout finished. Your balance updates when Hello to Cheers confirms the payment — this can take a moment.</p>
+          <p>Current remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+        </div>
+      )}
+      {checkoutNotice === "confirmed" && (
+        <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#F7FBF8", border: "1px solid #B9D1C2", color: "#1F5C3D" }}>
+          <p className="font-medium">Payment confirmed</p>
+          <p>Thank you — your payment is reflected on your plan.</p>
+          <p>Remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+          {next?.dueDate && (
+            <p>Next payment due: {formatDate(next.dueDate)}{next.amount != null ? ` · ${formatMoney(next.amount, schedule.currency)}` : ""}</p>
+          )}
+        </div>
+      )}
       {checkoutNotice === "cancelled" && (
         <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: "#FAFAF9", border: "1px solid #E8E2D8", color: "#57534E" }}>
           Checkout was cancelled — nothing was charged.
@@ -491,7 +609,7 @@ export function PaymentSection({ token }: { token: string }) {
       </div>
 
       {/* Summary */}
-      <SummaryBar schedule={schedule} token={token} />
+      <SummaryBar schedule={schedule} token={token} paidTotal={paidTotal} />
 
       {/* Luv observations */}
       {luvObs.length > 0 && (
@@ -513,7 +631,7 @@ export function PaymentSection({ token }: { token: string }) {
       )}
 
       {/* Timeline */}
-      {allItems.length > 0 && <PaymentTimeline items={allItems} token={token} />}
+      {allItems.length > 0 && <PaymentTimeline items={allItems} token={token} paidTotal={paidTotal} />}
 
       {/* Notes */}
       {schedule.notes && (

@@ -90,8 +90,10 @@ export async function createPortalCheckoutSession(token: string, itemId: string)
           wevenu_invoice_id: ctx.invoiceId ?? "",
         },
       },
-      success_url: `${appUrl}/p/${token}?payment=success`,
-      cancel_url: `${appUrl}/p/${token}?payment=cancelled`,
+      // Land on Payments so the confirming/confirmed notice is visible.
+      // `payment=success` means Checkout finished — not that HTC has reconciled.
+      success_url: `${appUrl}/p/${token}?payment=success#payments`,
+      cancel_url: `${appUrl}/p/${token}?payment=cancelled#payments`,
     },
     { stripeAccount: ctx.stripeAccountId },
   );
