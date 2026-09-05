@@ -122,7 +122,14 @@ async function compensate(
 ): Promise<void> {
   // Reverse order. Prefer deleting only what this attempt created.
   for (const documentId of [...created.documentIds].reverse()) {
-    try { await documentsRepo.deleteDocument(client, venueId, documentId); } catch { /* best-effort */ }
+    try {
+      const storagePath = await documentsRepo.deleteDocument(client, venueId, documentId);
+      // DB row is gone; remove the storage object only when nothing else still
+      // references that path (idempotent if already missing).
+      if (storagePath) {
+        await removeOrphanedDocumentStorage(client, storagePath);
+      }
+    } catch { /* best-effort */ }
   }
   if (created.createdNewContract && created.contractId) {
     try {
@@ -145,6 +152,40 @@ async function compensate(
     try {
       await client.from("event_orders").delete().eq("id", created.eventOrderId).eq("venue_id", venueId);
     } catch { /* best-effort */ }
+  }
+}
+
+/**
+ * Best-effort storage cleanup for a path that no longer has a documents row.
+ * Skips removal when another document still references the path. Treats a
+ * missing object as success (idempotent). Storage failures never throw —
+ * compensation's DB cleanup already completed.
+ */
+export async function removeOrphanedDocumentStorage(
+  client: DbClient,
+  storagePath: string,
+): Promise<{ removed: boolean; skippedShared: boolean }> {
+  const trimmed = storagePath.trim();
+  if (!trimmed) return { removed: false, skippedShared: false };
+
+  const { count, error: countError } = await client
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("storage_path", trimmed);
+  if (countError) return { removed: false, skippedShared: false };
+  if ((count ?? 0) > 0) return { removed: false, skippedShared: true };
+
+  try {
+    const { error } = await client.storage.from("documents").remove([trimmed]);
+    // Missing objects / empty results are not compensation failures.
+    if (error && !/not\s*found|does\s*not\s*exist|No such file/i.test(error.message ?? "")) {
+      console.error("compensate: storage remove failed", { storagePath: trimmed, error });
+      return { removed: false, skippedShared: false };
+    }
+    return { removed: true, skippedShared: false };
+  } catch (err) {
+    console.error("compensate: storage remove threw", { storagePath: trimmed, err });
+    return { removed: false, skippedShared: false };
   }
 }
 
