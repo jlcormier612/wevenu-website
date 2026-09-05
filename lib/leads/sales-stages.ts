@@ -29,9 +29,12 @@ export const SALES_STAGE_META: SalesStageMeta[] = [
   { value: "enrolled_in_sequence", label: "Enrolled in Sequence/Workflow", order: 2, description: "Active sales follow-up workflow" },
   { value: "tour_scheduled", label: "Tour Scheduled", order: 3, description: "A real tour appointment exists" },
   { value: "proposal_sent", label: "Proposal Sent", order: 4, description: "Proposal has been sent" },
-  { value: "booked", label: "Booked", order: 5, description: "Converted to a client booking" },
+  { value: "booked", label: "Booked", order: 5, description: "Business is won — ready to set up the event" },
   { value: "lost", label: "Lost", order: 6, description: "Opportunity marked lost" },
 ];
+
+/** Default Sales Pipeline entry when leaving Booked without inventing prior-stage history. */
+export const SALES_PIPELINE_RETURN_STAGE: SalesStage = "new_inquiry";
 
 export const STANDARD_SALES_PIPELINE_NAME = "Standard Sales Pipeline";
 

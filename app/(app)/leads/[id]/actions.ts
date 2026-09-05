@@ -7,6 +7,8 @@ import {
   addTask,
   deleteNote,
   deleteTask,
+  moveLeadBackToSalesPipeline,
+  returnLeadToBooked,
   setTaskCompleted,
   updateLeadInfo,
   updateLeadPipelineStage,
@@ -57,6 +59,29 @@ export async function updateLeadPipelineStageAction(
   if (result.ok) {
     revalidateLead(leadId);
     void refreshLeadScore(leadId).catch(() => {}); // same as status changes — the underlying status did change
+  }
+  return result;
+}
+
+export async function moveLeadBackToSalesPipelineAction(
+  leadId: string,
+): Promise<LeadActionResult> {
+  const result = await moveLeadBackToSalesPipeline(leadId);
+  if (result.ok) {
+    revalidateLead(leadId);
+    void refreshLeadScore(leadId).catch(() => {});
+  }
+  return result;
+}
+
+export async function returnLeadToBookedAction(
+  leadId: string,
+): Promise<LeadActionResult> {
+  const result = await returnLeadToBooked(leadId);
+  if (result.ok) {
+    revalidateLead(leadId);
+    revalidatePath(`/clients`);
+    void refreshLeadScore(leadId).catch(() => {});
   }
   return result;
 }

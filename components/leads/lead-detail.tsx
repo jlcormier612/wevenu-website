@@ -20,10 +20,13 @@ import { toast } from "sonner";
 import { convertLeadToClientAction } from "@/app/(app)/clients/actions";
 import { EventSpaceField } from "@/components/availability/event-space-field";
 import {
+  moveLeadBackToSalesPipelineAction,
+  returnLeadToBookedAction,
   updateLeadStatusAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
+import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm-dialog";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { Badge } from "@/components/ui/badge";
@@ -107,17 +110,27 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
+  const [lifecyclePending, startLifecycle] = React.useTransition();
   const [confirmStageId, setConfirmStageId] = React.useState<string | null>(null);
   const [confirmPreview, setConfirmPreview] = React.useState<import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null>(null);
   const [bookingSpaceId, setBookingSpaceId] = React.useState("");
+  const [confirmBookOpen, setConfirmBookOpen] = React.useState(false);
+  const [confirmMoveBackOpen, setConfirmMoveBackOpen] = React.useState(false);
+  const [confirmReturnBookedOpen, setConfirmReturnBookedOpen] = React.useState(false);
   const spacesRequired = maxSimultaneousEvents >= 2 && !!lead.eventDate && !lead.linkedClientId;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
 
-  function handleConvert() {
+  function requestBookThisLead() {
     if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
       toast.error("Assign an Event Space before booking.");
       return;
     }
+    setConfirmBookOpen(true);
+  }
+
+  function confirmBookThisLead() {
+    if (convertPending) return;
+    setConfirmBookOpen(false);
     startConvert(async () => {
       const result = await convertLeadToClientAction(lead, bookingSpaceId || undefined);
       if (result.ok) {
@@ -128,6 +141,32 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         router.push(`/clients/${result.clientId}/booked${qs ? `?${qs}` : ""}`);
       } else {
         toast.error(result.message ?? "Could not convert to client.");
+      }
+    });
+  }
+
+  function confirmMoveBack() {
+    setConfirmMoveBackOpen(false);
+    startLifecycle(async () => {
+      const result = await moveLeadBackToSalesPipelineAction(lead.id);
+      if (result.ok) {
+        toast.success("Moved back to the Sales Pipeline.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not move this lead.");
+      }
+    });
+  }
+
+  function confirmReturnToBooked() {
+    setConfirmReturnBookedOpen(false);
+    startLifecycle(async () => {
+      const result = await returnLeadToBookedAction(lead.id);
+      if (result.ok) {
+        toast.success("Returned to Booked.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not return to Booked.");
       }
     });
   }
@@ -172,7 +211,15 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   }
 
   const currentStage = (lead.salesStage ?? lead.status) as SalesStage;
-  const assignableStages = LEAD_STATUSES.filter((s) => isManuallyAssignableSalesStage(s.value));
+  const isBooked = currentStage === "booked";
+  const previouslyConverted = !!lead.linkedClientId;
+  // When Booked, only Lost remains in the generic stage menu — leaving Booked
+  // for an active sales stage uses Move back to Sales Pipeline.
+  const assignableStages = LEAD_STATUSES.filter((s) => {
+    if (!isManuallyAssignableSalesStage(s.value)) return false;
+    if (isBooked) return s.value === "lost";
+    return true;
+  });
 
   const openTaskCount = lead.tasks.filter((t) => !t.completed).length;
 
@@ -192,6 +239,33 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           setConfirmPreview(null);
           commitStageChange(stageId);
         }}
+      />
+      <LeadLifecycleConfirmDialog
+        open={confirmBookOpen}
+        title="Book this lead?"
+        description="Booked means you've won the business and are ready to start setting up the event. It doesn't necessarily mean the contract is signed or a payment has been received."
+        confirmLabel="Book This Lead"
+        confirming={convertPending}
+        onCancel={() => setConfirmBookOpen(false)}
+        onConfirm={confirmBookThisLead}
+      />
+      <LeadLifecycleConfirmDialog
+        open={confirmMoveBackOpen}
+        title="Move this lead back to the Sales Pipeline?"
+        description="This changes the current sales stage only. The client, event, documents, messages, and financial information you've already created will stay in place."
+        confirmLabel="Move Back to Sales Pipeline"
+        confirming={lifecyclePending}
+        onCancel={() => setConfirmMoveBackOpen(false)}
+        onConfirm={confirmMoveBack}
+      />
+      <LeadLifecycleConfirmDialog
+        open={confirmReturnBookedOpen}
+        title="Return to Booked?"
+        description="This marks the relationship as Booked again. Your existing client, event, documents, messages, and financial information stay in place — this is not a new first booking."
+        confirmLabel="Return to Booked"
+        confirming={lifecyclePending}
+        onCancel={() => setConfirmReturnBookedOpen(false)}
+        onConfirm={confirmReturnToBooked}
       />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -264,29 +338,31 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               />
             </div>
           )}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
           <LeadStatusBadge status={currentStage} />
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button variant="outline" size="sm" disabled={statusPending} />}
-            >
-              Change stage
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {assignableStages.map((s) => (
-                <DropdownMenuItem
-                  key={s.value}
-                  disabled={s.value === currentStage}
-                  onClick={() => handleStatusChange(s.value)}
-                >
-                  {s.label}
-                  <span className="ml-auto pl-4 text-xs text-muted-foreground">
-                    {s.description}
-                  </span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {assignableStages.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="sm" disabled={statusPending || lifecyclePending} />}
+              >
+                Change stage
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {assignableStages.map((s) => (
+                  <DropdownMenuItem
+                    key={s.value}
+                    disabled={s.value === currentStage}
+                    onClick={() => handleStatusChange(s.value)}
+                  >
+                    {s.label}
+                    <span className="ml-auto pl-4 text-xs text-muted-foreground">
+                      {s.description}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -295,12 +371,32 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
           </Button>
-          {lead.linkedClientId ? (
-            <Button size="sm" render={<Link href={`/clients/${lead.linkedClientId}`} />}>
+          {isBooked && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={lifecyclePending}
+              onClick={() => setConfirmMoveBackOpen(true)}
+            >
+              Move back to Sales Pipeline
+            </Button>
+          )}
+          {previouslyConverted && !isBooked && currentStage !== "lost" && (
+            <Button
+              size="sm"
+              disabled={lifecyclePending}
+              onClick={() => setConfirmReturnBookedOpen(true)}
+            >
+              Return to Booked
+            </Button>
+          )}
+          {previouslyConverted ? (
+            <Button size="sm" variant={isBooked || currentStage === "lost" ? "default" : "outline"}
+              render={<Link href={`/clients/${lead.linkedClientId}`} />}>
               View Client →
             </Button>
           ) : currentStage !== "lost" ? (
-            <Button size="sm" disabled={convertPending || convertBlocked} onClick={handleConvert}
+            <Button size="sm" disabled={convertPending || convertBlocked} onClick={requestBookThisLead}
               title={convertBlocked ? "Add an Event Space in Availability settings before booking." : undefined}>
               {convertPending
                 ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Booking…</>

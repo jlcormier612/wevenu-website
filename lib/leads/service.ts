@@ -35,6 +35,7 @@ import {
   isForwardSalesStageMove,
   isManuallyAssignableSalesStage,
   isSalesStage,
+  SALES_PIPELINE_RETURN_STAGE,
   type SalesStage,
 } from "@/lib/leads/sales-stages";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
@@ -228,7 +229,12 @@ export async function createLeadForVenue(venueId: string, input: LeadInput, hist
 export async function updateLeadSalesStage(
   leadId: string,
   stage: string,
-  opts?: { allowBooked?: boolean; clientId?: string | null },
+  opts?: {
+    allowBooked?: boolean;
+    clientId?: string | null;
+    /** Required to leave Booked for a non-Lost sales-pipeline stage (Move back to Sales Pipeline). */
+    allowLeaveBooked?: boolean;
+  },
 ): Promise<LeadActionResult> {
   if (!validateStatus(stage) || !isSalesStage(stage))
     return { ok: false, message: `"${stage}" is not a valid sales stage.` };
@@ -244,6 +250,20 @@ export async function updateLeadSalesStage(
       .eq("id", leadId).eq("venue_id", venueId)
       .maybeSingle<{ sales_stage: string | null }>();
     const previousStage = before?.sales_stage ?? null;
+
+    // Leaving Booked for an active sales stage requires the deliberate Move Back path.
+    // Lost remains available from Booked (deal died after booking).
+    if (
+      previousStage === "booked"
+      && stage !== "booked"
+      && stage !== "lost"
+      && !opts?.allowLeaveBooked
+    ) {
+      return {
+        ok: false,
+        message: "Use Move back to Sales Pipeline to leave Booked.",
+      } as LeadActionResult;
+    }
 
     await repo.updateLeadSalesStage(supabase, venueId, leadId, stage);
 
@@ -353,6 +373,52 @@ export async function advanceLeadSalesStageIfForward(
 /** Board / detail: move to a sales stage key (not a pipeline_templates stage id). */
 export async function updateLeadPipelineStage(leadId: string, stageKey: string): Promise<LeadActionResult> {
   return updateLeadSalesStage(leadId, stageKey);
+}
+
+/**
+ * Deliberate Booked → Sales Pipeline return.
+ * Destination is the pipeline entry stage (new_inquiry) — never invents prior-stage history.
+ * Preserves client/event/documents/financials/first_booked_at (stage-only change).
+ */
+export async function moveLeadBackToSalesPipeline(leadId: string): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { data: row } = await supabase.from("leads").select("sales_stage")
+      .eq("id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ sales_stage: string | null }>();
+    if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
+    if (row.sales_stage !== "booked") {
+      return { ok: false, message: "This lead is not currently Booked." } as LeadActionResult;
+    }
+    return updateLeadSalesStage(leadId, SALES_PIPELINE_RETURN_STAGE, { allowLeaveBooked: true });
+  });
+  return result as LeadActionResult;
+}
+
+/**
+ * Return a previously converted relationship to Booked (rebooking when first_booked_at already set).
+ * Requires an existing linked client — does not create a new client/event.
+ */
+export async function returnLeadToBooked(leadId: string): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { data: row } = await supabase.from("leads").select("sales_stage")
+      .eq("id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ sales_stage: string | null }>();
+    if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
+    if (row.sales_stage === "booked") {
+      return { ok: true } as LeadActionResult;
+    }
+    const { data: linked } = await supabase.from("clients").select("id")
+      .eq("lead_id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ id: string }>();
+    if (!linked) {
+      return {
+        ok: false,
+        message: "Book This Lead first — there is no client linked to this inquiry yet.",
+      } as LeadActionResult;
+    }
+    return updateLeadSalesStage(leadId, "booked", { allowBooked: true, clientId: linked.id });
+  });
+  return result as LeadActionResult;
 }
 
 export async function wouldEnrollOnPipelineStageMove(

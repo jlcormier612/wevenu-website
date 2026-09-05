@@ -80,6 +80,10 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
       toast.error("Booked is only set by converting the lead with Book This Lead.");
       return;
     }
+    if (currentStageByLead[leadId] === "booked" && targetStage !== "lost") {
+      toast.error("Open this lead and use Move back to Sales Pipeline.");
+      return;
+    }
 
     setPendingLeadIds((p) => new Set(p).add(leadId));
     wouldEnrollOnPipelineStageMoveAction(leadId, targetStage).then((check) => {
