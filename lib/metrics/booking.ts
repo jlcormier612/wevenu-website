@@ -9,6 +9,8 @@
  */
 
 import { createClient } from "@/integrations/supabase/server";
+import { reportingSourceGroupKey } from "@/lib/attribution/source";
+import { resolveDeterministicClientAcquisitionSource } from "@/lib/attribution/resolve-client";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -61,15 +63,9 @@ export async function getBookingsThisYear(): Promise<CanonicalBooking[]> {
 }
 
 /**
- * Bookings grouped by the originating lead's source — reuses `leads.source`,
- * the same column get_venue_analytics().leadFunnel.bySource already reads.
- *
- * Work Package R3 — fixed a real bug: `canonical_bookings` is a view, so
- * PostgREST can't resolve an embedded `clients!inner(...)` off it (no
- * discoverable foreign key) — this always errored, silently, returning no
- * rows regardless of actual data. Two flat queries joined in JS instead;
- * see lib/reporting/service.ts:getBookingsWithClientNames for the same fix
- * applied to Reporting's own consumer of this exact pattern.
+ * Financially Committed clients grouped by frozen acquisition source.
+ * Prefer lib/metrics/attribution.ts for Reporting; kept for legacy callers.
+ * Multi-event clients → unknown (no invented allocation).
  */
 export async function getBookingsByLeadSource(): Promise<{ source: string; count: number }[]> {
   if (!isSupabaseConfigured) return [];
@@ -81,11 +77,11 @@ export async function getBookingsByLeadSource(): Promise<{ source: string; count
   const clientIds = [...new Set((bookings ?? []).map((b: { client_id: string }) => b.client_id))];
   if (clientIds.length === 0) return [];
 
-  const { data: clients } = await supabase.from("clients").select("id, leads(source)").in("id", clientIds);
+  const sourceByClient = await resolveDeterministicClientAcquisitionSource(supabase, venue.id, clientIds);
 
   const counts = new Map<string, number>();
-  for (const row of (clients ?? []) as unknown as { leads: { source: string | null } | null }[]) {
-    const source = row.leads?.source ?? "unknown";
+  for (const id of clientIds) {
+    const source = reportingSourceGroupKey(sourceByClient.get(id) ?? null);
     counts.set(source, (counts.get(source) ?? 0) + 1);
   }
   return [...counts.entries()].map(([source, count]) => ({ source, count }));

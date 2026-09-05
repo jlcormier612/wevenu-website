@@ -20,6 +20,10 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
 const MIGRATION = resolve("supabase/migrations/20261337000000_lifecycle_booking_events.sql");
+const ATTR_MIGRATIONS = [
+  resolve("supabase/migrations/20261338000000_acquisition_attribution_foundation.sql"),
+  resolve("supabase/migrations/20261339000000_reporting_frozen_acquisition_source.sql"),
+];
 
 const venueId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee01";
 const ownerId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee02";
@@ -55,7 +59,7 @@ describe("Lifecycle booking DB", () => {
     }
 
     await withLocalDbSchemaLock(async () => {
-      applyLocalMigrationFiles([MIGRATION], { dbUrl: LOCAL_DB, alreadyHoldingLock: true });
+      applyLocalMigrationFiles([MIGRATION, ...ATTR_MIGRATIONS], { dbUrl: LOCAL_DB, alreadyHoldingLock: true });
       const supabase = adminClient();
 
       psql(`

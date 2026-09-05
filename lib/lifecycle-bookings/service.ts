@@ -124,6 +124,18 @@ export async function recordLifecycleBooking(
 
   const eventKind: LifecycleBookingEventKind = existing ? "rebooked" : "first_booked";
 
+  // Frozen acquisition at first_booked only — from lead.acquisition_source (never invent).
+  let acquisitionSource: string | null = null;
+  if (eventKind === "first_booked" && leadId) {
+    const { data: leadRow } = await client
+      .from("leads")
+      .select("acquisition_source")
+      .eq("id", leadId)
+      .eq("venue_id", input.venueId)
+      .maybeSingle<{ acquisition_source: string | null }>();
+    acquisitionSource = leadRow?.acquisition_source ?? null;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client.from("lifecycle_booking_events") as any)
     .insert({
@@ -136,8 +148,9 @@ export async function recordLifecycleBooking(
       actor_user_id: input.actorUserId ?? null,
       previous_sales_stage: input.previousSalesStage ?? null,
       metadata: input.metadata ?? {},
+      acquisition_source: eventKind === "first_booked" ? acquisitionSource : null,
     })
-    .select("id, venue_id, lead_id, client_id, origin, event_kind, occurred_at, actor_user_id, previous_sales_stage")
+    .select("id, venue_id, lead_id, client_id, origin, event_kind, occurred_at, actor_user_id, previous_sales_stage, acquisition_source")
     .single();
 
   if (error || !data) {
@@ -217,6 +230,8 @@ export type LifecycleBookingRow = {
   origin: LifecycleBookingOrigin;
   occurredAt: string;
   actorUserId: string | null;
+  /** Frozen acquisition_source on the first_booked row (null = Unknown). */
+  acquisitionSource: string | null;
 };
 
 /** First lifecycle bookings in a date window (Reporting Bookings count). */
@@ -227,7 +242,7 @@ export async function listLifecycleBookingsInPeriod(
 ): Promise<LifecycleBookingRow[]> {
   let q = client
     .from("lifecycle_booking_events")
-    .select("id, lead_id, client_id, origin, occurred_at, actor_user_id")
+    .select("id, lead_id, client_id, origin, occurred_at, actor_user_id, acquisition_source")
     .eq("venue_id", venueId)
     .eq("event_kind", "first_booked")
     .order("occurred_at", { ascending: false });
@@ -237,6 +252,7 @@ export async function listLifecycleBookingsInPeriod(
   return ((data ?? []) as {
     id: string; lead_id: string | null; client_id: string | null;
     origin: LifecycleBookingOrigin; occurred_at: string; actor_user_id: string | null;
+    acquisition_source: string | null;
   }[]).map((r) => ({
     id: r.id,
     leadId: r.lead_id,
@@ -244,6 +260,7 @@ export async function listLifecycleBookingsInPeriod(
     origin: r.origin,
     occurredAt: r.occurred_at,
     actorUserId: r.actor_user_id,
+    acquisitionSource: r.acquisition_source ?? null,
   }));
 }
 

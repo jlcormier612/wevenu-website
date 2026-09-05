@@ -81,38 +81,72 @@ describe("Lifecycle booking writers", () => {
   });
 });
 
+describe("Customer-facing Lead → Booking cohort alignment", () => {
+  it("getLeadCohortLifecycleBookingStats uses isBusinessFunnelCohortLead", () => {
+    const lifecycleMetrics = readFileSync(resolve("lib/metrics/lifecycle-booking.ts"), "utf8");
+    assert.match(lifecycleMetrics, /isBusinessFunnelCohortLead/);
+    assert.match(lifecycleMetrics, /from \"@\/lib\/metrics\/cohort-population\"/);
+    assert.match(lifecycleMetrics, /select\("id, acquisition_source, first_booked_at, sales_stage, status"\)/);
+  });
+
+  it("Overview Lead → Booked Rate and Business Funnel share the approved population", () => {
+    assert.match(overview, /excluding cancelled and lost/);
+    assert.match(overview, /getLeadCohortLifecycleBookingStats/);
+    assert.match(overview, /getBusinessFunnel/);
+    const funnelSrc = readFileSync(resolve("lib/metrics/business-funnel.ts"), "utf8");
+    assert.match(funnelSrc, /isBusinessFunnelCohortLead/);
+    assert.match(funnelSrc, /from \"@\/lib\/metrics\/cohort-population\"/);
+  });
+
+  it("Sales cohort Lead → Booked uses the same helper (not a second population)", () => {
+    assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
+    assert.match(salesPage, /excluding cancelled and lost/);
+    assert.match(salesPage, /Same Lead → Booking cohort population as the Business Funnel/);
+  });
+});
+
 describe("Reporting distinctions", () => {
   it("Overview Bookings use lifecycle; Financially Committed is separate", () => {
     assert.match(overview, /getLifecycleBookings/);
     assert.match(overview, /Financially Committed/);
     assert.match(overview, /getCanonicalBookings/);
     assert.match(overview, /Currently Booked on the sales pipeline/);
+    assert.match(overview, /getBusinessFunnel/);
+    assert.match(overview, /BusinessFunnel/);
   });
 
   it("Bookings page is lifecycle-dated with origin breakdown", () => {
     assert.match(bookingsPage, /getLifecycleBookingsWithNames/);
     assert.match(bookingsPage, /Bookings by origin/);
+    assert.match(bookingsPage, /Bookings by source/);
     assert.match(bookingsPage, /Unknown \/ Unattributed/);
     assert.match(bookingsPage, /Financially Committed/);
   });
 
-  it("Sales separates cohort vs period activity", () => {
+  it("Sales separates cohort vs period activity and shows attribution coverage", () => {
     assert.match(salesPage, /Cohort performance/);
     assert.match(salesPage, /Period activity/);
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
     assert.match(salesPage, /Financially Committed/);
+    assert.match(salesPage, /known acquisition source/);
+    assert.match(salesPage, /Tours by source/);
+    assert.match(salesPage, /Bookings by source/);
+    assert.match(salesPage, /Business Funnel/);
     assert.doesNotMatch(salesPage, /Signed contract \+ deposit collected/);
   });
 
   it("Revenue copy does not call financial proxy Booking", () => {
     assert.match(revenuePage, /Financially Committed/);
     assert.match(revenuePage, /Avg\. Committed Value/);
+    assert.match(revenuePage, /Revenue by acquisition source/);
+    assert.match(revenuePage, /mixed date clocks|not the same clock/);
   });
 
   it("Metric Registry distinguishes Lifecycle Booking and Financially Committed", () => {
     assert.match(registry, /name: "Lifecycle Booking"/);
     assert.match(registry, /name: "Financially Committed"/);
     assert.match(registry, /write-once/);
+    assert.match(registry, /Business Funnel/);
   });
 });
 

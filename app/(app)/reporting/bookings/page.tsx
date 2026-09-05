@@ -6,8 +6,13 @@ import { ReportHeader } from "@/components/reporting/report-header";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
 import { TrendChart, type TrendPoint } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { sourceLabel } from "@/lib/leads/constants";
+import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
+import {
+  getLifecycleBookingSourceCoverage,
+  getLifecycleBookingsByAcquisitionSource,
+  getMedianTimeToBookDays,
+} from "@/lib/metrics/attribution";
 import {
   getCurrentlyBookedPipelineCount,
   getLifecycleBookingsByOrigin,
@@ -61,7 +66,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     bookings, prevBookings, byOrigin,
     financiallyCommitted, prevFinanciallyCommitted,
     avgValue, prevAvgValue, grossRevenue, prevGrossRevenue,
-    health, currentlyBooked,
+    health, currentlyBooked, bookingCoverage, bookingsBySource, timeToBook,
   ] = await Promise.all([
     getLifecycleBookingsWithNames(window),
     getLifecycleBookingsWithNames(prevWindow),
@@ -74,6 +79,9 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getGrossBookedRevenue(prevWindow),
     getClientHealthScores(),
     getCurrentlyBookedPipelineCount(),
+    getLifecycleBookingSourceCoverage(window),
+    getLifecycleBookingsByAcquisitionSource(window),
+    getMedianTimeToBookDays(window),
   ]);
   const trend = lifecycleToTrend(bookings, window);
   const needsAttention = (health?.clients ?? []).filter((c) => c.health === "at_risk" || c.health === "needs_attention").slice(0, 8);
@@ -127,7 +135,36 @@ export default async function BookingsReportPage({ searchParams }: Props) {
 
       <p className="text-xs text-muted-foreground">
         Currently Booked on the pipeline right now: {currentlyBooked}. Period Bookings above stay in history even if a lead later moves to Lost.
+        {" "}
+        {bookingCoverage.percent}% of lifecycle bookings in this period have a known acquisition source
+        ({bookingCoverage.known} of {bookingCoverage.total}).
+        {timeToBook.sampleSize > 0 && timeToBook.medianDays != null
+          ? ` Median time to book (lead created → first lifecycle booking): ${timeToBook.medianDays} days.`
+          : ""}
       </p>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Bookings by source</CardTitle>
+          <CardDescription>
+            Frozen acquisition attribution. Website includes tour scheduling. Missing attribution stays Unknown / Unattributed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {bookingsBySource.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No bookings in this date range.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {bookingsBySource.map((s) => (
+                <div key={s.key} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-foreground">{s.label}</span>
+                  <span className="tabular-nums font-medium text-heading">{s.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -207,7 +244,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
                 const meta = (
                   <span className="flex items-center gap-3 text-muted-foreground">
                     <span className="text-xs">{b.originLabel}</span>
-                    <span className="text-xs">{sourceLabel(b.source) || "Unknown / Unattributed"}</span>
+                    <span className="text-xs">{reportingSourceDisplayLabel(b.source)}</span>
                     <span className="tabular-nums">{new Date(b.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                   </span>
                 );

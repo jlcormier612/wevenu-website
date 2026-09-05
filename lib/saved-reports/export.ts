@@ -42,7 +42,7 @@ export async function buildSavedReportCsv(report: SavedReport): Promise<string> 
     [
       ["Bookings (lifecycle, period)", bookings.length],
       ["Leads entered", leads.total],
-      ["Lead → Booked rate (cohort %)", `${cohort.conversionRate}%`],
+      ["Lead → Booked rate (cohort %, excl. cancelled/lost)", `${cohort.conversionRate}%`],
       ["Financially Committed (period)", financiallyCommitted.length],
       ["Gross Booked Revenue", formatMoney(grossRevenue ?? 0)],
       ["Payments Collected", formatMoney(paymentsCollected ?? 0)],

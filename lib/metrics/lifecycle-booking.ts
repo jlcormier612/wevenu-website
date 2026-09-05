@@ -1,7 +1,12 @@
 /**
  * Lifecycle Booking metrics — durable first_booked events.
  * Distinct from Financially Committed (`canonical_bookings`).
+ * Acquisition attribution uses frozen acquisition_source (Phase 2A).
  */
+import {
+  reportingSourceDisplayLabel,
+  reportingSourceGroupKey,
+} from "@/lib/attribution/source";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
@@ -10,12 +15,14 @@ import {
   type LifecycleBookingOrigin,
   type LifecycleBookingRow,
 } from "@/lib/lifecycle-bookings/service";
+import { isBusinessFunnelCohortLead } from "@/lib/metrics/cohort-population";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DateWindow = { from?: string; to?: string };
 
 export type LifecycleBookingDetail = LifecycleBookingRow & {
   displayName: string;
+  /** Frozen acquisition source (raw key); null = Unknown / Unattributed. */
   source: string | null;
   originLabel: string;
 };
@@ -44,20 +51,17 @@ export async function getLifecycleBookingsWithNames(window?: DateWindow): Promis
 
   const [{ data: leads }, { data: clients }] = await Promise.all([
     leadIds.length
-      ? supabase.from("leads").select("id, first_name, last_name, source").in("id", leadIds)
-      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; source: string | null }[] }),
+      ? supabase.from("leads").select("id, first_name, last_name, acquisition_source").in("id", leadIds)
+      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; acquisition_source: string | null }[] }),
     clientIds.length
-      ? supabase.from("clients").select("id, first_name, last_name, lead_id, leads(source)").in("id", clientIds)
-      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; lead_id: string | null; leads: { source: string | null } | null }[] }),
+      ? supabase.from("clients").select("id, first_name, last_name, lead_id").in("id", clientIds)
+      : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string; lead_id: string | null }[] }),
   ]);
 
-  type LeadRow = { id: string; first_name: string; last_name: string; source: string | null };
-  type ClientRow = {
-    id: string; first_name: string; last_name: string; lead_id: string | null;
-    leads: { source: string | null } | null;
-  };
+  type LeadRow = { id: string; first_name: string; last_name: string; acquisition_source: string | null };
+  type ClientRow = { id: string; first_name: string; last_name: string; lead_id: string | null };
   const leadById = new Map(((leads ?? []) as LeadRow[]).map((l) => [l.id, l]));
-  const clientById = new Map(((clients ?? []) as unknown as ClientRow[]).map((c) => [c.id, c]));
+  const clientById = new Map(((clients ?? []) as ClientRow[]).map((c) => [c.id, c]));
 
   return rows.map((r) => {
     const lead = r.leadId ? leadById.get(r.leadId) : null;
@@ -67,10 +71,9 @@ export async function getLifecycleBookingsWithNames(window?: DateWindow): Promis
       : client
         ? `${client.first_name} ${client.last_name}`.trim()
         : "Booking";
-    let source: string | null = lead?.source ?? null;
-    if (!source && client?.leads?.source) source = client.leads.source;
+    // Prefer event stamp; fall back to lead frozen source (pre-stamp rows).
+    let source: string | null = r.acquisitionSource ?? lead?.acquisition_source ?? null;
     if (r.origin === "direct" || r.origin === "import") {
-      // Leadless / explicit import: do not invent a pipeline source.
       if (!r.leadId && !client?.lead_id) source = null;
     }
     return {
@@ -110,8 +113,13 @@ export async function getCurrentlyBookedPipelineCount(): Promise<number> {
 }
 
 /**
- * Cohort: of leads created in the window, how many eventually have a first
- * lifecycle booking (any time). Uses leads.first_booked_at — write-once.
+ * Cohort: of leads created in the window (Business Funnel population —
+ * excludes status=cancelled and sales_stage=lost), how many eventually have
+ * a first lifecycle booking (any time). Uses leads.first_booked_at — write-once.
+ * By-source uses frozen acquisition_source (not editable operational source).
+ *
+ * Same population as Phase 2B Business Funnel Lead → Booking so Reporting
+ * never presents two different Lead → Booking rates.
  */
 export async function getLeadCohortLifecycleBookingStats(
   window: { from: string; to: string },
@@ -119,7 +127,7 @@ export async function getLeadCohortLifecycleBookingStats(
   leadsEntered: number;
   eventuallyBooked: number;
   conversionRate: number;
-  bySource: { source: string; total: number; booked: number; rate: number }[];
+  bySource: { source: string; label: string; total: number; booked: number; rate: number }[];
 }> {
   if (!isSupabaseConfigured) {
     return { leadsEntered: 0, eventuallyBooked: 0, conversionRate: 0, bySource: [] };
@@ -130,20 +138,26 @@ export async function getLeadCohortLifecycleBookingStats(
 
   const { data: leads } = await supabase
     .from("leads")
-    .select("id, source, first_booked_at, sales_stage")
+    .select("id, acquisition_source, first_booked_at, sales_stage, status")
     .eq("venue_id", venue.id)
     .gte("created_at", `${window.from}T00:00:00.000Z`)
     .lte("created_at", `${window.to}T23:59:59.999Z`);
 
-  type Row = { id: string; source: string | null; first_booked_at: string | null; sales_stage: string };
-  const rows = (leads ?? []) as Row[];
+  type Row = {
+    id: string;
+    acquisition_source: string | null;
+    first_booked_at: string | null;
+    sales_stage: string | null;
+    status: string | null;
+  };
+  const rows = ((leads ?? []) as Row[]).filter(isBusinessFunnelCohortLead);
   const leadsEntered = rows.length;
   const eventuallyBooked = rows.filter((l) => !!l.first_booked_at).length;
   const conversionRate = leadsEntered > 0 ? Math.round((100 * eventuallyBooked) / leadsEntered) : 0;
 
   const totals = new Map<string, { total: number; booked: number }>();
   for (const l of rows) {
-    const key = l.source?.trim() ? l.source : "unknown";
+    const key = reportingSourceGroupKey(l.acquisition_source);
     const cur = totals.get(key) ?? { total: 0, booked: 0 };
     cur.total += 1;
     if (l.first_booked_at) cur.booked += 1;
@@ -152,11 +166,16 @@ export async function getLeadCohortLifecycleBookingStats(
   const bySource = [...totals.entries()]
     .map(([source, v]) => ({
       source,
+      label: reportingSourceDisplayLabel(source === "unknown" ? null : source),
       total: v.total,
       booked: v.booked,
       rate: v.total > 0 ? Math.round((100 * v.booked) / v.total) : 0,
     }))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => {
+      if (a.source === "unknown") return 1;
+      if (b.source === "unknown") return -1;
+      return b.total - a.total;
+    });
 
   return { leadsEntered, eventuallyBooked, conversionRate, bySource };
 }

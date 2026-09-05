@@ -47,9 +47,8 @@ function monthBuckets(from: string, to: string): { key: string; label: string }[
 export type BookingDrillRow = { clientId: string; clientName: string; contractId: string; bookedAt: string; source: string | null };
 
 /**
- * Canonical Bookings in range, with client name + originating lead source
- * for display — for the Bookings report's trend + detail list (brief §17:
- * Client/Event, dates, value, Source).
+ * Canonical Bookings in range, with client name + frozen acquisition source
+ * (leads.acquisition_source) for display — never mutable leads.source.
  *
  * Work Package R3 — a real, previously-undetected bug fixed here:
  * `canonical_bookings` is a *view*, not a table, so it carries no foreign
@@ -64,7 +63,7 @@ export type BookingDrillRow = { clientId: string; clientName: string; contractId
  * Fixed using this codebase's own established pattern for exactly this
  * situation (see getGrossBookedRevenueByCategory's own comment): two flat
  * queries — canonical_bookings for the venue-scoped, date-windowed rows,
- * then `clients` (a real table, so embedding `leads(source)` off *it*
+ * then `clients` (a real table, so embedding `leads(acquisition_source)` off *it*
  * works) for display fields — joined in JS, not a broken embedded filter.
  */
 export async function getBookingsWithClientNames(window: DateWindow): Promise<BookingDrillRow[]> {
@@ -86,17 +85,17 @@ export async function getBookingsWithClientNames(window: DateWindow): Promise<Bo
   const clientIds = [...new Set(bookingRows.map((b) => b.client_id))];
   const { data: clients } = await supabase
     .from("clients")
-    .select("id, first_name, last_name, partner_first_name, partner_last_name, leads(source)")
+    .select("id, first_name, last_name, partner_first_name, partner_last_name, leads(acquisition_source)")
     .in("id", clientIds);
 
-  type ClientRow = { id: string; first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null; leads: { source: string | null } | null };
+  type ClientRow = { id: string; first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null; leads: { acquisition_source: string | null } | null };
   const clientById = new Map(((clients ?? []) as unknown as ClientRow[]).map((c) => [c.id, c]));
 
   return bookingRows.map((b) => {
     const c = clientById.get(b.client_id);
     const primary = c ? [c.first_name, c.last_name].filter(Boolean).join(" ") : "Client";
     const partner = c?.partner_first_name ? ` & ${[c.partner_first_name, c.partner_last_name].filter(Boolean).join(" ")}` : "";
-    return { clientId: b.client_id, clientName: `${primary}${partner}`, contractId: b.contract_id, bookedAt: b.booked_at, source: c?.leads?.source ?? null };
+    return { clientId: b.client_id, clientName: `${primary}${partner}`, contractId: b.contract_id, bookedAt: b.booked_at, source: c?.leads?.acquisition_source ?? null };
   });
 }
 
@@ -222,10 +221,11 @@ export type FunnelLeadRow = { id: string; name: string; source: string; createdA
 
 /**
  * All seven funnel stages' underlying leads, from one call to
- * canonical_conversion_funnel_leads() (migration 20261258000000) — the
- * exact same join conditions the aggregate counts use, never a second
- * approximation (brief §12). The caller filters this one result set by
- * stage rather than issuing a separate query per stage.
+ * canonical_conversion_funnel_leads() — the exact same join conditions the
+ * aggregate counts use, never a second approximation (brief §12). The caller
+ * filters this one result set by stage rather than issuing a separate query
+ * per stage. The RPC `source` column is frozen leads.acquisition_source
+ * (migration 20261339), never mutable leads.source.
  */
 export async function getFunnelLeadsRaw(window: DateWindow): Promise<Record<FunnelStageKey, FunnelLeadRow[]>> {
   const empty: Record<FunnelStageKey, FunnelLeadRow[]> = {

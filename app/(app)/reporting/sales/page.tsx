@@ -5,15 +5,23 @@ import { DetailPanel, DetailRow } from "@/components/reporting/detail-panel";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
 import { getConversionFunnel } from "@/lib/metrics/conversion";
+import {
+  getGrossBookedRevenueByAcquisitionSource,
+  getLeadSourceCoverage,
+  getLifecycleBookingSourceCoverage,
+  getLifecycleBookingsByAcquisitionSource,
+  getMedianTimeToBookDays,
+  getToursByAcquisitionSource,
+} from "@/lib/metrics/attribution";
 import {
   getCurrentlyBookedPipelineCount,
   getLeadCohortLifecycleBookingStats,
   getLifecycleBookingsByOrigin,
   getLifecycleBookingsWithNames,
 } from "@/lib/metrics/lifecycle-booking";
-import { sourceLabel } from "@/lib/leads/constants";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import { getFunnelLeadsRaw, getLeadsTrend, type FunnelStageKey } from "@/lib/reporting/service";
 import { getGrossBookedRevenue, getPaymentsCollected } from "@/lib/metrics/revenue";
@@ -50,6 +58,8 @@ export default async function SalesReportPage({ searchParams }: Props) {
     funnel, leads, cohort, periodBookings, byOrigin,
     financiallyCommitted, grossRevenue, paymentsCollected,
     currentlyBooked, funnelLeads,
+    leadCoverage, bookingCoverage, toursBySource, bookingsBySource,
+    timeToBook, revenueBySource,
   ] = await Promise.all([
     getConversionFunnel(window),
     getLeadsTrend(window),
@@ -61,6 +71,12 @@ export default async function SalesReportPage({ searchParams }: Props) {
     getPaymentsCollected(window),
     getCurrentlyBookedPipelineCount(),
     getFunnelLeadsRaw(window),
+    getLeadSourceCoverage(window),
+    getLifecycleBookingSourceCoverage(window),
+    getToursByAcquisitionSource(window),
+    getLifecycleBookingsByAcquisitionSource(window),
+    getMedianTimeToBookDays(window),
+    getGrossBookedRevenueByAcquisitionSource(window),
   ]);
 
   const counts = funnel?.counts;
@@ -71,16 +87,26 @@ export default async function SalesReportPage({ searchParams }: Props) {
     <div className="space-y-6">
       <ReportHeader
         title="Sales"
-        description="Cohort performance and period activity — kept separate so conversion rates stay trustworthy."
+        description="Sales-process detail: cohort performance and period activity. For the end-to-end inquiry→cash story, see the Business Funnel on Overview."
       />
       <DateRangeControl current={range.preset} label={range.label} />
+      <p className="text-xs text-muted-foreground -mt-2">
+        <Link href="/reporting" className="underline underline-offset-2 hover:text-foreground">
+          Business Funnel (Overview)
+        </Link>
+        {" — "}period Leads → Tours → Bookings → Financially Committed → cash, plus cohort Lead → Tour / Booking rates.
+        Bookings here mean lifecycle first booked; Financially Committed is the separate signed-contract + first-payment concept.
+      </p>
 
       {/* ── Cohort ─────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Cohort performance</CardTitle>
           <CardDescription>
-            Leads that entered during {range.label} — how they eventually performed. Booking here means a lifecycle first booking (any later date).
+            Leads that entered during {range.label} (excluding cancelled and lost) — how they eventually performed.
+            Booking here means a lifecycle first booking (any later date) — not Financially Committed.
+            Same Lead → Booking cohort population as the Business Funnel on Overview.
+            Cohort rates below are period-entry outcomes; they are not period Tours ÷ period Bookings.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -99,6 +125,11 @@ export default async function SalesReportPage({ searchParams }: Props) {
             </div>
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            {leadCoverage.percent}% of leads that entered this period have a known acquisition source
+            ({leadCoverage.known} of {leadCoverage.total}). Unknown / Unattributed remains visible below.
+          </p>
+
           <div>
             <p className="mb-2 text-sm font-medium text-heading">By source (cohort)</p>
             {cohort.bySource.length === 0 ? (
@@ -110,7 +141,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
                 </div>
                 {cohort.bySource.map((s) => (
                   <div key={s.source} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-2 text-sm">
-                    <span className="text-foreground">{sourceLabel(s.source) || "Unknown / Unattributed"}</span>
+                    <span className="text-foreground">{s.label}</span>
                     <span className="text-right tabular-nums">{s.total}</span>
                     <span className="text-right tabular-nums">{s.booked}</span>
                     <span className="text-right tabular-nums text-muted-foreground">{s.rate}%</span>
@@ -160,7 +191,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
                   {(funnelLeads[detailValue as FunnelStageKey] ?? []).slice(0, 25).map((l) => (
                     <DetailRow key={l.id}>
                       <span className="text-foreground font-medium">{l.name}</span>
-                      <span className="text-muted-foreground">{sourceLabel(l.source) || "Unknown / Unattributed"} · {new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                      <span className="text-muted-foreground">{reportingSourceDisplayLabel(l.source)} · {new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                     </DetailRow>
                   ))}
                 </DetailPanel>
@@ -175,7 +206,9 @@ export default async function SalesReportPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Period activity</CardTitle>
           <CardDescription>
-            What happened during {range.label} — bookings dated by lifecycle first booking date; money by financial dates.
+            What happened during {range.label} — each metric on its own clock.
+            Bookings dated by lifecycle first booking; Financially Committed by commitment date; money by financial dates.
+            Period counts are not conversion rates between stages.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -209,6 +242,65 @@ export default async function SalesReportPage({ searchParams }: Props) {
             </div>
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            {bookingCoverage.percent}% of lifecycle bookings in this period have a known acquisition source
+            ({bookingCoverage.known} of {bookingCoverage.total}).
+            {timeToBook.sampleSize > 0 && timeToBook.medianDays != null
+              ? ` Median time to book (lead created → first lifecycle booking): ${timeToBook.medianDays} days (${timeToBook.sampleSize} lead-linked).`
+              : ""}
+          </p>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div>
+              <p className="mb-2 text-sm font-medium text-heading">Tours by source</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">By tour date in this period; source from the lead&apos;s frozen acquisition attribution.</p>
+              {toursBySource.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No tours in this period.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {toursBySource.map((s) => (
+                    <div key={s.key} className="flex items-center justify-between py-2 text-sm">
+                      <span>{s.label}</span>
+                      <span className="tabular-nums font-medium">{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-heading">Bookings by source</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">Lifecycle first bookings; Website includes tour scheduling.</p>
+              {bookingsBySource.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No bookings in this period.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {bookingsBySource.map((s) => (
+                    <div key={s.key} className="flex items-center justify-between py-2 text-sm">
+                      <span>{s.label}</span>
+                      <span className="tabular-nums font-medium">{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-heading">Contracted revenue by source</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">Financially Committed only; leadless or unresolvable source stays Unknown.</p>
+              {revenueBySource.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No contracted revenue in this period.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {revenueBySource.map((s) => (
+                    <div key={s.key} className="flex items-center justify-between py-2 text-sm">
+                      <span>{s.label}</span>
+                      <span className="tabular-nums font-medium">{formatMoney(s.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div>
             <p className="mb-2 text-sm font-medium text-heading">Bookings by origin</p>
             <div className="divide-y divide-border">
@@ -229,7 +321,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
                   <div key={b.id} className="flex items-center justify-between gap-4 py-2 text-sm">
                     <span className="font-medium text-foreground">{b.displayName}</span>
                     <span className="text-muted-foreground text-xs">
-                      {b.originLabel} · {sourceLabel(b.source) || "Unknown / Unattributed"} ·{" "}
+                      {b.originLabel} · {reportingSourceDisplayLabel(b.source)} ·{" "}
                       {new Date(b.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
                   </div>

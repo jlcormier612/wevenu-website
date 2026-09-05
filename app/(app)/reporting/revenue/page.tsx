@@ -12,6 +12,10 @@ import {
   getAverageBookingValue, getGrossBookedRevenue, getGrossBookedRevenueByCategory,
   getOutstandingBalance, getPaymentsCollected,
 } from "@/lib/metrics/revenue";
+import {
+  getGrossBookedRevenueByAcquisitionSource,
+  getPaymentsCollectedByAcquisitionSource,
+} from "@/lib/metrics/attribution";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import { getCategoryDetail, getOutstandingBalanceDetail, getPaymentsCollectedDetail, getRevenueTrend } from "@/lib/reporting/service";
 import { formatMoney } from "@/lib/event-orders/constants";
@@ -40,7 +44,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
     paymentsCollected, prevPaymentsCollected,
     outstanding, prevOutstanding,
     avgValue, prevAvgValue,
-    byCategory, trend,
+    byCategory, trend, revenueBySource, collectedBySource,
   ] = await Promise.all([
     getGrossBookedRevenue(window), getGrossBookedRevenue(prevWindow),
     getPaymentsCollected(window), getPaymentsCollected(prevWindow),
@@ -48,6 +52,8 @@ export default async function RevenueReportPage({ searchParams }: Props) {
     getAverageBookingValue(window), getAverageBookingValue(prevWindow),
     getGrossBookedRevenueByCategory(window),
     getRevenueTrend(window),
+    getGrossBookedRevenueByAcquisitionSource(window),
+    getPaymentsCollectedByAcquisitionSource(window),
   ]);
 
   const categoryTotal = byCategory.reduce((sum, c) => sum + c.amount, 0);
@@ -81,7 +87,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <ComparisonCard
           label="Outstanding Balance" value={outstanding ?? 0} previousValue={prevOutstanding}
           comparisonLabel={range.comparisonLabel} polarity="up-bad" format={formatMoney}
-          sub="Financially Committed revenue not yet collected. Click to see who owes what."
+          sub="Derived: contracted value among clients who became Financially Committed in this period, minus payments collected (by payment date) in this period — not the same clock as either figure alone."
           href={hrefWith(params, { detail: "outstanding" })}
         />
         <ComparisonCard
@@ -144,6 +150,52 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           ) : (
             <TrendChart data={trend} formatValue={formatMoney} />
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Revenue by acquisition source</CardTitle>
+          <CardDescription>
+            Financially Committed contracted value (commitment date) and payments collected (payment date).
+            Attribution via invoice/schedule → event (when present) → client → originating lead → frozen acquisition source.
+            Leadless or unresolvable paths stay Unknown / Unattributed. Multi-event clients with one originating lead remain attributed.
+            Not lifecycle Booking revenue. Outstanding is not broken out by source (mixed date clocks — see label above).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <p className="mb-2 text-sm font-medium text-heading">Contracted (Financially Committed)</p>
+              {revenueBySource.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No contracted revenue in this range.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {revenueBySource.map((s) => (
+                    <div key={s.key} className="flex items-center justify-between py-2 text-sm">
+                      <span>{s.label}</span>
+                      <span className="tabular-nums font-medium">{formatMoney(s.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-heading">Collected</p>
+              {collectedBySource.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No payments collected in this range.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {collectedBySource.map((s) => (
+                    <div key={s.key} className="flex items-center justify-between py-2 text-sm">
+                      <span>{s.label}</span>
+                      <span className="tabular-nums font-medium">{formatMoney(s.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 

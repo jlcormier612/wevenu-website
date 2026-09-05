@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { CalendarDays, DollarSign, TrendingUp, Users, Wallet, Receipt, BadgeCheck } from "lucide-react";
 
+import { BusinessFunnel } from "@/components/reporting/business-funnel";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
 import { Button } from "@/components/ui/button";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
+import { getBusinessFunnel } from "@/lib/metrics/business-funnel";
 import {
   getCurrentlyBookedPipelineCount,
   getLeadCohortLifecycleBookingStats,
@@ -18,8 +20,9 @@ import { formatMoney } from "@/lib/event-orders/constants";
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 /**
- * Reporting Overview — Lifecycle Bookings are the primary "Bookings" tile.
- * Financially Committed and revenue stay on financial truth.
+ * Reporting Overview — Business Funnel (Phase 2B) tells the inquiry→cash story.
+ * Lifecycle Bookings remain the primary "Bookings" tile; Financially Committed
+ * and revenue stay on financial truth.
  */
 export default async function ReportingOverviewPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -28,6 +31,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
   const prevWindow = { from: range.previousFrom, to: range.previousTo };
 
   const [
+    businessFunnel,
     bookings, prevBookings,
     financiallyCommitted, prevFinanciallyCommitted,
     grossRevenue, prevGrossRevenue,
@@ -37,6 +41,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
     cohort, prevCohort,
     currentlyBooked,
   ] = await Promise.all([
+    getBusinessFunnel(window),
     getLifecycleBookings(window), getLifecycleBookings(prevWindow),
     getCanonicalBookings(window), getCanonicalBookings(prevWindow),
     getGrossBookedRevenue(window), getGrossBookedRevenue(prevWindow),
@@ -50,6 +55,8 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <DateRangeControl current={range.preset} label={range.label} />
+
+      <BusinessFunnel funnel={businessFunnel} rangeLabel={range.label} />
 
       <ComparisonCardGrid>
         <ComparisonCard
@@ -71,14 +78,14 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           value={cohort.conversionRate} previousValue={prevCohort.conversionRate}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={(n) => `${n}%`}
           href="/reporting/sales"
-          sub="Of leads that entered this period, how many eventually booked."
+          sub="Of leads that entered this period (excluding cancelled and lost), how many eventually lifecycle-booked."
         />
         <ComparisonCard
           label="Financially Committed" icon={BadgeCheck}
           value={financiallyCommitted.length} previousValue={prevFinanciallyCommitted.length}
           comparisonLabel={range.comparisonLabel} polarity="up-good"
           href="/reporting/revenue"
-          sub="Signed contract and first scheduled payment collected."
+          sub="Signed contract and first scheduled payment collected — not a Lifecycle Booking."
         />
         <ComparisonCard
           label="Gross Booked Revenue" icon={DollarSign}
@@ -99,7 +106,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           value={outstanding ?? 0} previousValue={prevOutstanding}
           comparisonLabel={range.comparisonLabel} polarity="up-bad" format={formatMoney}
           href="/reporting/revenue"
-          sub="Financially Committed revenue not yet collected."
+          sub="Derived mix: commitment-window contracted value minus payment-window collections — see Revenue for detail."
         />
       </ComparisonCardGrid>
 
