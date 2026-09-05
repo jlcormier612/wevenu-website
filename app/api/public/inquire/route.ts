@@ -4,11 +4,13 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
 import { INQUIRY_API_ERRORS } from "@/lib/inquiry-form/constants";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+import { parsePublicLeadRpcSuccess } from "@/lib/lead-intake/public-lead-rpc";
 
 function clientIp(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -98,15 +100,30 @@ export async function POST(request: NextRequest) {
         const errKey = (data?.error as string | undefined) ?? error?.message;
         return { ok: false, error: INQUIRY_API_ERRORS[errKey ?? ""] ?? errKey ?? "Could not submit inquiry." };
       }
-      const { data: leadRow } = await supabase.from("leads").select("relationship_id")
-        .eq("id", data.lead_id).maybeSingle<{ relationship_id: string | null }>();
+      // Prefer relationship fields from the RPC (post-migration). Fallback:
+      // service-role read — anon RLS hides leads, which previously caused a
+      // false "Lead created without a relationship" after a successful create.
+      const parsed = parsePublicLeadRpcSuccess(data as Record<string, unknown>);
+      if (parsed) {
+        return {
+          ok: true,
+          leadId: parsed.leadId,
+          relationshipId: parsed.relationshipId,
+          isReturningRelationship: parsed.isReturningRelationship,
+        };
+      }
+      const leadId = String((data as { lead_id?: string }).lead_id ?? "").trim();
+      if (!leadId) return { ok: false, error: "Lead created without a relationship." };
+      const admin = createAdminClient();
+      const { data: leadRow } = await admin.from("leads").select("relationship_id")
+        .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
       if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
-      const { count } = await supabase.from("leads")
+      const { count } = await admin.from("leads")
         .select("id", { count: "exact", head: true })
         .eq("relationship_id", leadRow.relationship_id);
       return {
         ok: true,
-        leadId: data.lead_id as string,
+        leadId,
         relationshipId: leadRow.relationship_id,
         isReturningRelationship: (count ?? 0) > 1,
       };
