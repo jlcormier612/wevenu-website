@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * Conversation compose surface — Email / SMS / Portal message / Internal note.
+ * Conversation compose surface — outbound Email / Text / Portal message,
+ * with Internal note as a separate staff-only mode (not another send channel).
  * Destination, channel readiness, resolved preview, and labeled Send now /
  * Schedule actions live here. Enter does not send.
  */
 import * as React from "react";
 import Link from "next/link";
-import { Clock, Paperclip, X } from "lucide-react";
+import { Clock, Paperclip, StickyNote, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -18,7 +19,14 @@ import {
   scheduleMessageAction,
   sendConversationMessageAction,
 } from "@/app/(app)/messaging/actions";
-import { SENDABLE_CHANNEL_LABEL, SENDABLE_CHANNELS, type SendableChannel } from "@/lib/conversations/channels";
+import {
+  OUTBOUND_CHANNEL_LABEL,
+  OUTBOUND_CHANNELS,
+  isOutboundChannel,
+  isSendableChannel,
+  type OutboundChannel,
+  type SendableChannel,
+} from "@/lib/conversations/channels";
 import type { ConversationChannel, ConversationComposeContext, ConversationSendPreview } from "@/lib/conversations/types";
 import type { MessageTemplate } from "@/lib/message-templates/types";
 import type { ScheduledMessageChannel } from "@/lib/scheduled-messages/types";
@@ -34,14 +42,13 @@ function formatScheduledFor(iso: string): string {
   return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-function isSendable(channel: ConversationChannel): channel is SendableChannel {
-  return (SENDABLE_CHANNELS as readonly string[]).includes(channel);
-}
+type ComposeMode = "outbound" | "internal_note";
 
 export function ConversationCompose({
   conversationId,
   initialBody,
   initialSubject,
+  relationshipLabel,
   prefill,
   onSent,
   onScheduled,
@@ -49,6 +56,8 @@ export function ConversationCompose({
   conversationId: string;
   initialBody?: string;
   initialSubject?: string;
+  /** "Lead" or "Booking" — same language as the Messages list badge. */
+  relationshipLabel?: "Lead" | "Booking" | null;
   prefill?: { body: string; channel: ConversationChannel; nonce: number } | null;
   onSent: () => Promise<void> | void;
   onScheduled: () => Promise<void> | void;
@@ -56,7 +65,8 @@ export function ConversationCompose({
   const [context, setContext] = React.useState<ConversationComposeContext | null>(null);
   const [body, setBody] = React.useState(initialBody ?? "");
   const [emailSubject, setEmailSubject] = React.useState(initialSubject ?? "");
-  const [channel, setChannel] = React.useState<SendableChannel>(initialSubject ? "email" : "portal");
+  const [mode, setMode] = React.useState<ComposeMode>("outbound");
+  const [outboundChannel, setOutboundChannel] = React.useState<OutboundChannel>(initialSubject ? "email" : "portal");
   const [sending, setSending] = React.useState(false);
   const [pendingFile, setPendingFile] = React.useState<File | null>(null);
   const [uploadingFile, setUploadingFile] = React.useState(false);
@@ -75,9 +85,19 @@ export function ConversationCompose({
     | null
   >(null);
   const [appliedPrefillNonce, setAppliedPrefillNonce] = React.useState<number | null>(null);
+
+  const channel: SendableChannel = mode === "internal_note" ? "internal_note" : outboundChannel;
+
   if (prefill && prefill.nonce !== appliedPrefillNonce) {
     setAppliedPrefillNonce(prefill.nonce);
-    if (isSendable(prefill.channel)) setChannel(prefill.channel);
+    if (isSendableChannel(prefill.channel)) {
+      if (prefill.channel === "internal_note") {
+        setMode("internal_note");
+      } else if (isOutboundChannel(prefill.channel)) {
+        setMode("outbound");
+        setOutboundChannel(prefill.channel);
+      }
+    }
     setBody(prefill.body);
     if (prefill.channel !== "email") setEmailSubject("");
   }
@@ -85,7 +105,7 @@ export function ConversationCompose({
   React.useEffect(() => {
     void getConversationComposeContextAction(conversationId).then((ctx) => {
       setContext(ctx);
-      if (initialSubject && ctx && !ctx.emailReady) setChannel("portal");
+      if (initialSubject && ctx && !ctx.emailReady) setOutboundChannel("portal");
     });
     void getComposeTemplatesAction().then(setTemplates);
   }, [conversationId, initialSubject]);
@@ -152,6 +172,20 @@ export function ConversationCompose({
     setPendingFile(file);
   }
 
+  function switchMode(next: ComposeMode) {
+    setMode(next);
+    setTemplateId("");
+    setSchedulePanelOpen(false);
+    setConfirm(null);
+    setPendingFile(null);
+    if (next === "internal_note") setEmailSubject("");
+  }
+
+  const who = context?.displayName ?? "this relationship";
+  const relationshipLine = context
+    ? `${who}${relationshipLabel ? ` · ${relationshipLabel}` : ""}`
+    : "Loading relationship…";
+
   const recipientLine = (() => {
     if (!context) return "Loading recipient…";
     if (channel === "email") {
@@ -165,13 +199,12 @@ export function ConversationCompose({
         : "No phone number on file for this person — add one to their record before sending.";
     }
     if (channel === "portal") {
-      const who = context.displayName ?? "this couple or vendor";
       const kind = context.conversationKind === "venue_vendor"
         ? `${who} (vendor)`
         : who;
       return `Portal message to ${kind} in Hello to Cheers — they will see this in their portal, not as a separate email or text.`;
     }
-    return "Internal note — visible only to your venue team. Couples and vendors will never see this.";
+    return "Visible only to your venue team. Couples and vendors will never see this.";
   })();
 
   async function send() {
@@ -287,8 +320,16 @@ export function ConversationCompose({
     : channel === "portal" ? "Send portal message"
     : "Save internal note";
 
+  const isNote = mode === "internal_note";
+
   return (
-    <div className="shrink-0 space-y-3 border-t border-border/60 bg-card p-4">
+    <div
+      className={`max-h-[min(42vh,26rem)] shrink-0 space-y-3 overflow-y-auto border-t p-3 sm:p-4 ${
+        isNote
+          ? "border-amber-500/25 bg-amber-500/[0.04]"
+          : "border-border/60 bg-card"
+      }`}
+    >
       {confirm?.kind === "sent" && (
         <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-heading" role="status">
           {confirm.channel === "email" && "Email sent — it left Hello to Cheers through email."}
@@ -308,52 +349,90 @@ export function ConversationCompose({
         </p>
       )}
 
-      <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recipient</p>
-        <p className="text-sm text-heading">{recipientLine}</p>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Compose mode">
+        <button
+          type="button"
+          onClick={() => switchMode("outbound")}
+          className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition-colors ${
+            !isNote
+              ? "bg-primary text-primary-foreground"
+              : "border border-border bg-background text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Message
+        </button>
+        <button
+          type="button"
+          onClick={() => switchMode("internal_note")}
+          className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${
+            isNote
+              ? "bg-amber-700 text-amber-50"
+              : "border border-border bg-background text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <StickyNote className="h-3.5 w-3.5" />
+          Internal note
+        </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="space-y-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Channel</span>
-          <select
-            aria-label="Channel"
-            value={channel}
-            onChange={(e) => {
-              setChannel(e.target.value as SendableChannel);
-              setTemplateId("");
-              setConfirm(null);
-            }}
-            className="h-10 w-full rounded-lg border border-border bg-background px-2 text-sm"
-          >
-            {SENDABLE_CHANNELS.map((c) => {
-              const disabled = (c === "email" && !emailReady) || (c === "sms" && !smsReady);
-              const label = SENDABLE_CHANNEL_LABEL[c];
-              return (
-                <option key={c} value={c} disabled={disabled}>
-                  {disabled ? `${label} (not ready)` : label}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-        {templatesForChannel.length > 0 ? (
+      <div className="space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {isNote ? "About" : "Relationship"}
+        </p>
+        <p className="text-sm font-medium text-heading">{relationshipLine}</p>
+        <p className="text-sm text-muted-foreground">{recipientLine}</p>
+      </div>
+
+      {!isNote && (
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Template</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Channel</span>
             <select
-              aria-label="Use a template"
-              value={templateId}
-              onChange={(e) => void applyTemplate(e.target.value)}
+              aria-label="Channel"
+              value={outboundChannel}
+              onChange={(e) => {
+                setOutboundChannel(e.target.value as OutboundChannel);
+                setTemplateId("");
+                setConfirm(null);
+                setSchedulePanelOpen(false);
+              }}
               className="h-10 w-full rounded-lg border border-border bg-background px-2 text-sm"
             >
-              <option value="">Optional — use a template…</option>
-              {templatesForChannel.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {OUTBOUND_CHANNELS.map((c) => {
+                const disabled = (c === "email" && !emailReady) || (c === "sms" && !smsReady);
+                const label = OUTBOUND_CHANNEL_LABEL[c];
+                return (
+                  <option key={c} value={c} disabled={disabled}>
+                    {disabled ? `${label} (not ready)` : label}
+                  </option>
+                );
+              })}
             </select>
           </label>
-        ) : (
-          <div />
-        )}
-      </div>
+          {templatesForChannel.length > 0 ? (
+            <label className="space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Template</span>
+              <select
+                aria-label="Use a template"
+                value={templateId}
+                onChange={(e) => void applyTemplate(e.target.value)}
+                className="h-10 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              >
+                <option value="">Optional — use a template…</option>
+                {templatesForChannel.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+          ) : (
+            <div />
+          )}
+        </div>
+      )}
+
+      {isNote && (
+        <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+          This is a staff note for your venue team — not a message to the couple or vendor.
+        </p>
+      )}
 
       {channelDisabledReason && (
         <p className="text-xs text-muted-foreground">
@@ -376,17 +455,19 @@ export function ConversationCompose({
       )}
 
       <label className="block space-y-1">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Message</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {isNote ? "Note" : "Message"}
+        </span>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={
-            channel === "internal_note" ? "Write a note for your team…"
+            isNote ? "Write a note for your team…"
             : channel === "portal" ? "Write a portal message…"
             : "Write the message…"
           }
-          rows={8}
-          className="min-h-[10rem] w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm leading-relaxed"
+          rows={6}
+          className="min-h-[8.5rem] w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm leading-relaxed"
         />
       </label>
 
@@ -406,52 +487,45 @@ export function ConversationCompose({
       )}
 
       {(channel === "email" || channel === "sms") && (body.trim() || emailSubject.trim()) && (
-        <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <details className="rounded-lg border border-border bg-muted/20 open:pb-0">
+          <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground marker:content-none [&::-webkit-details-marker]:hidden">
             {channel === "email" ? "Email preview" : "Text preview"}
-            {previewing ? " · updating…" : ""}
-          </p>
-          {preview?.unresolvedMessage && (
-            <p className="text-xs text-destructive">{preview.unresolvedMessage}</p>
-          )}
-          {channel === "sms" && (
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">
-                To {context?.recipientPhoneDisplay ?? context?.recipientPhone ?? "the number on file"}
-              </p>
-              <p className="whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2.5 text-sm text-primary-foreground">
-                {preview?.body || body}
-              </p>
-            </div>
-          )}
-          {channel === "email" && (
-            <div className="overflow-hidden rounded-lg border border-border bg-background">
-              <div className="space-y-1 border-b border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                <p><span className="font-medium text-foreground">To:</span> {context?.recipientEmail ?? "—"}</p>
-                <p className="text-sm font-semibold text-heading">{preview?.subject || emailSubject || "(no subject)"}</p>
+            {previewing ? " · updating…" : " — tap to review what will send"}
+          </summary>
+          <div className="space-y-2 border-t border-border/50 px-3 py-3">
+            {preview?.unresolvedMessage && (
+              <p className="text-xs text-destructive">{preview.unresolvedMessage}</p>
+            )}
+            {channel === "sms" && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  To {context?.recipientPhoneDisplay ?? context?.recipientPhone ?? "the number on file"}
+                </p>
+                <p className="whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2.5 text-sm text-primary-foreground">
+                  {preview?.body || body}
+                </p>
               </div>
-              {preview?.html ? (
-                <iframe
-                  title="Email preview"
-                  sandbox=""
-                  srcDoc={preview.html}
-                  className="h-64 w-full bg-background"
-                />
-              ) : (
-                <p className="whitespace-pre-wrap px-3 py-3 text-sm">{preview?.body || body}</p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {(channel === "portal" || channel === "internal_note") && body.trim() && (
-        <div className="rounded-lg border border-border bg-muted/20 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {channel === "portal" ? "Portal preview" : "Internal note preview"}
-          </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-heading">{body}</p>
-        </div>
+            )}
+            {channel === "email" && (
+              <div className="overflow-hidden rounded-lg border border-border bg-background">
+                <div className="space-y-1 border-b border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                  <p><span className="font-medium text-foreground">To:</span> {context?.recipientEmail ?? "—"}</p>
+                  <p className="text-sm font-semibold text-heading">{preview?.subject || emailSubject || "(no subject)"}</p>
+                </div>
+                {preview?.html ? (
+                  <iframe
+                    title="Email preview"
+                    sandbox=""
+                    srcDoc={preview.html}
+                    className="h-44 w-full bg-background"
+                  />
+                ) : (
+                  <p className="whitespace-pre-wrap px-3 py-3 text-sm">{preview?.body || body}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
       )}
 
       {schedulePanelOpen && canSchedule && (
@@ -504,11 +578,20 @@ export function ConversationCompose({
           type="button"
           onClick={() => void send()}
           disabled={sendDisabled}
-          className="ml-auto inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-40"
+          className={`ml-auto inline-flex h-10 items-center rounded-lg px-4 text-sm font-medium disabled:opacity-40 ${
+            isNote
+              ? "bg-amber-700 text-amber-50 hover:bg-amber-800"
+              : "bg-primary text-primary-foreground"
+          }`}
         >
-          {sending ? "Sending…" : sendLabel}
+          {sending ? (isNote ? "Saving…" : "Sending…") : sendLabel}
         </button>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        {isNote
+          ? "Saving is explicit — Enter does not save this note."
+          : "Sending is explicit — Enter does not send. Review the channel and recipient above before you send."}
+      </p>
     </div>
   );
 }

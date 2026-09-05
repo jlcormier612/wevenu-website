@@ -58,7 +58,7 @@ function formatDateLabel(iso: string): string {
 // remember to check.
 export const CHANNEL_META: Record<ConversationChannel, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
   email:         { icon: Mail,          label: "Email" },
-  sms:           { icon: Smartphone,    label: "SMS" },
+  sms:           { icon: Smartphone,    label: "Text" },
   portal:        { icon: MessageSquare, label: "Portal" },
   internal_note: { icon: StickyNote,    label: "Internal note" },
   phone_log:     { icon: Phone,         label: "Phone call" },
@@ -218,7 +218,7 @@ function ScheduledRow({ msg, onCancel }: { msg: ScheduledMessage; onCancel: (id:
       <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-heading">
-          Scheduled for {formatScheduledFor(msg.scheduledFor)} · {msg.channel === "email" ? "Email" : "SMS"}
+          Scheduled for {formatScheduledFor(msg.scheduledFor)} · {msg.channel === "email" ? "Email" : "Text"}
         </p>
         <p className="truncate text-xs text-muted-foreground">{msg.body}</p>
       </div>
@@ -399,7 +399,7 @@ export function ConversationThread({
             <div className="flex flex-wrap items-center gap-3 px-4 pb-3 text-xs">
               {summary.leadId && (
                 <Link href={`/leads/${summary.leadId}`} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                  <User className="h-3 w-3" /> Client
+                  <User className="h-3 w-3" /> Lead
                 </Link>
               )}
               {summary.clientId && (
@@ -509,16 +509,15 @@ export function ConversationThread({
         </details>
       )}
 
-      <div className="shrink-0 border-t border-border/60">
-        <ConversationCompose
-          conversationId={conversationId}
-          initialBody={initialBody}
-          initialSubject={initialSubject}
-          prefill={prefill}
-          onSent={load}
-          onScheduled={loadScheduled}
-        />
-      </div>
+      <ConversationCompose
+        conversationId={conversationId}
+        initialBody={initialBody}
+        initialSubject={initialSubject}
+        relationshipLabel={summary ? (summary.clientId ? "Booking" : "Lead") : null}
+        prefill={prefill}
+        onSent={load}
+        onScheduled={loadScheduled}
+      />
     </div>
   );
 }
