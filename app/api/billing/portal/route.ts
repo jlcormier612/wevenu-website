@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getStripeClient, isStripeConfigured } from "@/lib/stripe/config";
 
 export const runtime = "nodejs";
 
@@ -10,8 +9,8 @@ export const runtime = "nodejs";
  * Open Stripe Customer Portal for SaaS subscription payment method update.
  * Used from /billing/suspended while the venue is hard-locked.
  *
- * Prefers venues.saas_stripe_customer_id (set on CRM Suspend). Falls back to
- * marketing portal proxy when MARKETING_SITE_URL is set and no local Stripe.
+ * Uses venues.saas_stripe_customer_id (HTC subscription Stripe account) via
+ * the marketing app's portal API — never the venue-app Connect Stripe client.
  */
 
 export async function POST() {
@@ -63,48 +62,52 @@ export async function POST() {
   const returnUrl = `${appUrl}/billing/suspended`;
 
   // Prefer calling marketing portal when configured (same SaaS Stripe account).
+  // Never fall through to the venue-app Stripe client: that process is wired to
+  // htc/*/stripe-connect (Connect platform), while saas_stripe_customer_id lives
+  // on the separate HTC SaaS Stripe account (htc/*/stripe-saas → marketing).
   const marketingUrl = (
     process.env.NEXT_PUBLIC_MARKETING_URL?.trim() ||
     process.env.MARKETING_SITE_URL?.trim() ||
     ""
   ).replace(/\/$/, "");
 
-  if (marketingUrl) {
-    try {
-      const res = await fetch(`${marketingUrl}/api/stripe/portal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer_id: customerId }),
-      });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (res.ok && data.url) {
-        return NextResponse.json({ url: data.url });
-      }
-      // Fall through to local Stripe if marketing portal fails.
-      console.warn("[billing/portal] marketing portal failed", data.error || res.status);
-    } catch (err) {
-      console.warn("[billing/portal] marketing portal unreachable", err);
-    }
-  }
-
-  if (!isStripeConfigured()) {
+  if (!marketingUrl) {
     return NextResponse.json(
       {
         error:
-          "Billing portal is not configured. Set STRIPE_SECRET_KEY or NEXT_PUBLIC_MARKETING_URL.",
+          "Billing portal is not configured. Set NEXT_PUBLIC_MARKETING_URL so SaaS portal sessions use the Hello to Cheers subscription Stripe account.",
       },
       { status: 503 },
     );
   }
 
   try {
-    const portal = await getStripeClient().billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl,
+    const res = await fetch(`${marketingUrl}/api/stripe/portal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: customerId }),
     });
-    return NextResponse.json({ url: portal.url });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Portal failed.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const data = (await res.json()) as { url?: string; error?: string };
+    if (res.ok && data.url) {
+      return NextResponse.json({ url: data.url });
+    }
+    console.warn("[billing/portal] marketing portal failed", data.error || res.status);
+    return NextResponse.json(
+      {
+        error:
+          data.error ??
+          "Could not open the subscription billing portal. Try again or contact support.",
+      },
+      { status: res.ok ? 500 : res.status },
+    );
+  } catch (err) {
+    console.warn("[billing/portal] marketing portal unreachable", err);
+    return NextResponse.json(
+      {
+        error:
+          "Subscription billing portal is temporarily unavailable. Try again or contact support.",
+      },
+      { status: 503 },
+    );
   }
 }
