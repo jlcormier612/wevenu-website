@@ -449,68 +449,104 @@ function toVendorInput(n: NormalizedVendorLike): VendorInput {
 
 const STALE_CLAIM_MS = 5 * 60 * 1000;
 
+/**
+ * A record whose commit attempt threw something commitOneRecord did not
+ * already turn into a plain ok:false (an availability/validation failure it
+ * classifies itself) — an unexpected exception. Never let this escape
+ * un-logged or leave the record silently stuck in whatever status it had
+ * before the attempt; always resolves to a durable, human-reviewable
+ * needs_review with a message that does not assume what the record's own
+ * error path would have said.
+ */
+function unexpectedCommitErrorMessage(err: unknown): string {
+  const detail = err instanceof Error ? err.message : String(err);
+  return `An unexpected error interrupted this import attempt (${detail}). The record was not created — try again, or exclude it if it keeps failing.`;
+}
+
 export async function commitSession(client: AnyDbClient, session: MigrationSession, actorId: string | null): Promise<CommitOutcome> {
   await repo.updateSessionStatus(client, session.id, "committing");
   await repo.releaseStaleClaims(client, session.id, new Date(Date.now() - STALE_CLAIM_MS).toISOString());
 
   const outcome: CommitOutcome = { committed: 0, skipped: 0, failed: 0 };
-  const duplicates = await repo.listRecords(client, session.id, "duplicate_exact");
-  for (const record of duplicates) {
-    await repo.updateRecord(client, record.id, { status: "skipped" });
-    outcome.skipped++;
-  }
-
-  for (const entityType of COMMITTABLE_ENTITY_TYPES) {
-    const candidates = [
-      ...(await repo.listRecords(client, session.id, "validated")),
-      ...(await repo.listRecords(client, session.id, "approved")),
-    ].filter((r) => r.targetEntityType === entityType);
-    if (candidates.length === 0) continue;
-
-    const batchEntityType = BATCH_ENTITY[entityType];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const batchClient = client as any;
-    const batchId = batchEntityType
-      ? (session.createdByType === "hq_staff"
-        ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, candidates.length, actorId ?? "unknown", session.engagementId, session.id)
-        : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, candidates.length, batchClient, session.id))
-      : null;
-
-    const createdIds: string[] = [];
-    let claimedCount = 0;
-    for (const candidate of candidates) {
-      const record = await repo.claimRecord(client, candidate.id, actorId);
-      if (!record) continue;
-      claimedCount++;
-
-      if (!record.normalizedPayload) {
-        await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: ["Nothing to commit — this record was never normalized."] });
-        await repo.releaseClaim(client, record.id);
-        outcome.failed++;
-        continue;
-      }
-      const result = await commitOneRecord(client, session, entityType, record);
-      if (result.ok) {
-        await repo.updateRecord(client, record.id, { status: "committed", createdEntityId: result.entityId, committedAt: new Date().toISOString() });
-        await repo.releaseClaim(client, record.id);
-        createdIds.push(result.entityId);
-        outcome.committed++;
-      } else {
-        await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: [result.error] });
-        await repo.releaseClaim(client, record.id);
-        outcome.failed++;
-      }
+  try {
+    const duplicates = await repo.listRecords(client, session.id, "duplicate_exact");
+    for (const record of duplicates) {
+      await repo.updateRecord(client, record.id, { status: "skipped" });
+      outcome.skipped++;
     }
-    if (claimedCount === 0) continue;
-    if (batchEntityType && createdIds.length > 0) await stampImportBatch(batchEntityType, batchId, createdIds, batchClient);
-    await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: claimedCount - createdIds.length }, batchClient);
-  }
 
-  const allRecords = await repo.listRecords(client, session.id);
-  const stillUnresolved = allRecords.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;
-  const inFlight = await repo.countInFlightClaims(client, session.id);
-  const finalStatus = computeFinalSessionStatus(outcome, stillUnresolved + inFlight);
-  await repo.updateSessionStatus(client, session.id, finalStatus);
+    for (const entityType of COMMITTABLE_ENTITY_TYPES) {
+      const candidates = [
+        ...(await repo.listRecords(client, session.id, "validated")),
+        ...(await repo.listRecords(client, session.id, "approved")),
+      ].filter((r) => r.targetEntityType === entityType);
+      if (candidates.length === 0) continue;
+
+      const batchEntityType = BATCH_ENTITY[entityType];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const batchClient = client as any;
+      const batchId = batchEntityType
+        ? (session.createdByType === "hq_staff"
+          ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, candidates.length, actorId ?? "unknown", session.engagementId, session.id)
+          : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, candidates.length, batchClient, session.id))
+        : null;
+
+      const createdIds: string[] = [];
+      let claimedCount = 0;
+      for (const candidate of candidates) {
+        const record = await repo.claimRecord(client, candidate.id, actorId);
+        if (!record) continue;
+        claimedCount++;
+
+        if (!record.normalizedPayload) {
+          await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: ["Nothing to commit — this record was never normalized."] });
+          await repo.releaseClaim(client, record.id);
+          outcome.failed++;
+          continue;
+        }
+        // The claim must always be released, and the record must always end
+        // up in a real, durable status — including when commitOneRecord
+        // rethrows something it did not already turn into ok:false (see its
+        // outer catch). An unhandled exception previously left status
+        // untouched with claimed_at still set; stale validated/approved
+        // claims were already sweepable, but a caught path that forgot to
+        // releaseClaim (or a needs_review/conflict retry claim) could still
+        // strand the row until the broadened releaseStaleClaims runs.
+        try {
+          const result = await commitOneRecord(client, session, entityType, record);
+          if (result.ok) {
+            await repo.updateRecord(client, record.id, { status: "committed", createdEntityId: result.entityId, committedAt: new Date().toISOString() });
+            createdIds.push(result.entityId);
+            outcome.committed++;
+          } else {
+            await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: [result.error] });
+            outcome.failed++;
+          }
+        } catch (err) {
+          console.error("commitSession: unexpected exception committing record", { sessionId: session.id, recordId: record.id, entityType, err });
+          await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: [unexpectedCommitErrorMessage(err)] });
+          outcome.failed++;
+        } finally {
+          await repo.releaseClaim(client, record.id);
+        }
+      }
+      if (claimedCount === 0) continue;
+      if (batchEntityType && createdIds.length > 0) await stampImportBatch(batchEntityType, batchId, createdIds, batchClient);
+      await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: claimedCount - createdIds.length }, batchClient);
+    }
+  } catch (err) {
+    // Something outside the per-record recovery above failed unexpectedly
+    // (e.g. a batch/session-level call). Still fall through to the finally
+    // below so the session reaches a real terminal status from whatever it
+    // actually accomplished — never left stuck at "committing".
+    console.error("commitSession: unexpected exception outside per-record handling", { sessionId: session.id, err });
+  } finally {
+    const allRecords = await repo.listRecords(client, session.id);
+    const stillUnresolved = allRecords.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;
+    const inFlight = await repo.countInFlightClaims(client, session.id);
+    const finalStatus = computeFinalSessionStatus(outcome, stillUnresolved + inFlight);
+    await repo.updateSessionStatus(client, session.id, finalStatus);
+  }
   return outcome;
 }
 
@@ -541,26 +577,43 @@ export async function retryOwnRecord(
     return { ok: false, message: "This row was never recognized well enough to import. Fix the source file or exclude it intentionally." };
   }
 
+  // Sweep any claim left behind by a crashed prior attempt on this session
+  // before trying to take a fresh one — retryOwnRecord has no "committing"
+  // phase of its own to gate this on, so it must clear stale claims itself
+  // rather than only relying on commitSession's sweep ever having run.
+  await repo.releaseStaleClaims(actor.client, session.id, new Date(Date.now() - STALE_CLAIM_MS).toISOString());
+
   const record = await repo.claimUnresolvedRecord(actor.client, recordId, actor.createdBy);
   if (!record) {
     return { ok: false, message: "Someone else is already retrying this record. Refresh and try again." };
   }
 
-  const result = await commitOneRecord(actor.client, session, record.targetEntityType, record);
-  if (result.ok) {
-    await repo.updateRecord(actor.client, record.id, {
-      status: "committed",
-      createdEntityId: result.entityId,
-      committedAt: new Date().toISOString(),
-      validationErrors: null,
-    });
-  } else {
-    await repo.updateRecord(actor.client, record.id, {
-      status: "needs_review",
-      validationErrors: [result.error],
-    });
+  let result: { ok: true; entityId: string } | { ok: false; error: string };
+  try {
+    try {
+      result = await commitOneRecord(actor.client, session, record.targetEntityType, record);
+    } catch (err) {
+      console.error("retryOwnRecord: unexpected exception committing record", { sessionId, recordId, err });
+      result = { ok: false, error: unexpectedCommitErrorMessage(err) };
+    }
+    if (result.ok) {
+      await repo.updateRecord(actor.client, record.id, {
+        status: "committed",
+        createdEntityId: result.entityId,
+        committedAt: new Date().toISOString(),
+        validationErrors: null,
+      });
+    } else {
+      await repo.updateRecord(actor.client, record.id, {
+        status: "needs_review",
+        validationErrors: [result.error],
+      });
+    }
+  } finally {
+    // Always clear the retry claim — success, classified failure, or an
+    // unexpected throw during status update must not leave claimed_at set.
+    await repo.releaseClaim(actor.client, record.id);
   }
-  await repo.releaseClaim(actor.client, record.id);
 
   const allRecordsAfter = await repo.listRecords(actor.client, session.id);
   const stillUnresolvedAfter = allRecordsAfter.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;

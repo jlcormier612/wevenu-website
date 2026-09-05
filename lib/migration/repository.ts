@@ -52,6 +52,8 @@ function mapRecord(r: Record<string, unknown>): MigrationRecord {
     reviewedBy: (r.reviewed_by ?? null) as string | null,
     reviewedAt: (r.reviewed_at ?? null) as string | null,
     committedAt: (r.committed_at ?? null) as string | null,
+    claimedAt: (r.claimed_at ?? null) as string | null,
+    claimedBy: (r.claimed_by ?? null) as string | null,
     createdAt: r.created_at as string,
   };
 }
@@ -223,18 +225,21 @@ export async function releaseClaim(client: AnyDbClient, recordId: string): Promi
 
 /**
  * Recovery from a crashed/killed process that claimed a record but never
- * resolved it: any record still claimed, still `validated`/`approved`,
- * older than the staleness threshold is released so a later commit
- * attempt can retry it. Never touches a record a genuinely still-running
- * commit legitimately holds — the threshold is generous relative to how
- * long one record's entity-creation call actually takes.
+ * resolved it: any record still claimed — validated/approved (claimRecord's
+ * bulk-commit claim) or needs_review/conflict (claimUnresolvedRecord's
+ * retry claim) — older than the staleness threshold is released so a later
+ * attempt can retry it. Status and claim are independent columns: a normal
+ * unclaimed needs_review/conflict row always has claimed_at null and is
+ * never touched here. Never touches a record a genuinely still-running
+ * commit/retry legitimately holds — the threshold is generous relative to
+ * how long one record's entity-creation call actually takes.
  */
 export async function releaseStaleClaims(client: AnyDbClient, sessionId: string, staleBeforeIso: string): Promise<void> {
   await client.from("migration_records")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update({ claimed_at: null, claimed_by: null } as any)
     .eq("session_id", sessionId)
-    .in("status", ["validated", "approved"])
+    .in("status", ["validated", "approved", "needs_review", "conflict"])
     .not("claimed_at", "is", null)
     .lt("claimed_at", staleBeforeIso);
 }

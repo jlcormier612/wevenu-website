@@ -116,6 +116,9 @@ export type MigrationRecord = {
   reviewedBy: string | null;
   reviewedAt: string | null;
   committedAt: string | null;
+  /** Concurrent commit/retry lock — independent of status. Null when unclaimed. */
+  claimedAt: string | null;
+  claimedBy: string | null;
   createdAt: string;
 };
 

@@ -156,6 +156,38 @@ describe("releaseStaleClaims — crash recovery", () => {
     assert.equal(rows[1].claimed_at, fresh, "a genuinely in-flight claim must not be touched");
   });
 
+  it("releases stale needs_review and conflict retry claims (claimUnresolvedRecord statuses)", async () => {
+    const old = new Date(Date.now() - 10 * 60_000).toISOString();
+    const rows = [
+      makeRow({ id: "rec-review", session_id: "s1", status: "needs_review", claimed_at: old, claimed_by: "crashed-retry" }),
+      makeRow({ id: "rec-conflict", session_id: "s1", status: "conflict", claimed_at: old, claimed_by: "crashed-retry" }),
+      makeRow({ id: "rec-approved", session_id: "s1", status: "approved", claimed_at: old, claimed_by: "crashed-commit" }),
+    ];
+    const client = mockClientFor(rows);
+    await releaseStaleClaims(client, "s1", new Date(Date.now() - 5 * 60_000).toISOString());
+    assert.equal(rows[0].claimed_at, null, "stale needs_review retry claims must be reclaimable");
+    assert.equal(rows[1].claimed_at, null, "stale conflict retry claims must be reclaimable");
+    assert.equal(rows[2].claimed_at, null, "stale approved bulk-commit claims must still be reclaimable");
+  });
+
+  it("does not sweep duplicate_likely or terminal committed/rejected/skipped rows", async () => {
+    const old = new Date(Date.now() - 10 * 60_000).toISOString();
+    const rows = [
+      makeRow({ id: "rec-likely", session_id: "s1", status: "duplicate_likely", claimed_at: old }),
+      makeRow({ id: "rec-committed", session_id: "s1", status: "committed", claimed_at: old }),
+      makeRow({ id: "rec-rejected", session_id: "s1", status: "rejected", claimed_at: old }),
+      makeRow({ id: "rec-skipped", session_id: "s1", status: "skipped", claimed_at: old }),
+    ];
+    const client = mockClientFor(rows);
+    await releaseStaleClaims(client, "s1", new Date(Date.now() - 5 * 60_000).toISOString());
+    // duplicate_likely is not a claimUnresolvedRecord target (Item 6 territory);
+    // leave its claim column alone rather than inventing a new claim path here.
+    assert.equal(rows[0].claimed_at, old, "duplicate_likely is outside Item 4 claim recovery statuses");
+    assert.equal(rows[1].claimed_at, old, "committed must not be reopened by stale-claim recovery");
+    assert.equal(rows[2].claimed_at, old, "rejected must not be rewritten by stale-claim recovery");
+    assert.equal(rows[3].claimed_at, old, "skipped must not be rewritten by stale-claim recovery");
+  });
+
   it("never touches a record that already resolved (committed) even if its claim was never explicitly released", async () => {
     const old = new Date(Date.now() - 10 * 60_000).toISOString();
     const rows = [makeRow({ id: "rec-1", session_id: "s1", status: "committed", claimed_at: old })];

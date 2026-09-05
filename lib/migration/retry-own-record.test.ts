@@ -20,6 +20,10 @@ describe("retryOwnRecord uses the canonical commit path, not a shortcut", () => 
     assert.match(body, /repo\.claimUnresolvedRecord/);
     assert.match(body, /commitOneRecord\(actor\.client, session, record\.targetEntityType, record\)/);
     assert.match(body, /repo\.releaseClaim/);
+    // Item 4: retry must sweep stale needs_review/conflict claims itself —
+    // it has no "committing" phase that would otherwise run releaseStaleClaims.
+    assert.match(body, /repo\.releaseStaleClaims/);
+    assert.match(body, /unexpectedCommitErrorMessage|unexpected error interrupted/i);
     // Session status is recomputed from real unresolved counts, never optimistically advanced.
     assert.match(body, /computeFinalSessionStatus/);
   });
