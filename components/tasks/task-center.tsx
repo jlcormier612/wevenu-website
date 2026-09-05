@@ -1,29 +1,37 @@
 "use client";
 
 /**
- * Task Center — the coordinator's operational command center.
+ * Task Center — venue operational workspace.
  *
- * Design principle: "Coordinator manages exceptions, not steps."
- * The Task Center surfaces what needs human attention:
- *   Overdue → Blocked → Due Today → Due This Week → Upcoming
+ * DO    = work the venue/team needs to do (exceptions first, Upcoming always discoverable)
+ * WATCH = meaningful released client progress (not a complete checklist dump)
+ * INVESTIGATE = Find a client/event → filter or open event Planning
  *
- * Each section shows tasks grouped by event so coordinators immediately
- * understand which event is at risk, not just which tasks are late.
+ * My Work / By Person / All Team Work are lenses over DO only.
+ * WATCH stays visible regardless of lens.
  */
 
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CalendarDays, Check, ChevronRight, Clock, Lock, Loader2 } from "lucide-react";
+import {
+  AlertTriangle, CalendarDays, Check, ChevronRight, Clock, Eye, Lock, Loader2, Search,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { completeTaskAction, setTaskStatusAction } from "@/app/(app)/playbooks/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { categoryColor, categoryLabel, formatEventRelativeDue } from "@/lib/playbooks/constants";
+import {
+  matchEventsForFind,
+  UPCOMING_DO_PREVIEW,
+  type SearchableEvent,
+} from "@/lib/tasks/task-center";
 import { cn } from "@/lib/utils";
 
-type TaskRow = {
+export type TaskRow = {
   id: string;
   title: string;
   status: string;
@@ -35,6 +43,7 @@ type TaskRow = {
   owner_type: string;
   visibility: string;
   is_required: boolean;
+  auto_complete_trigger: string | null;
   assigned_to_staff_id: string | null;
   assignee: { full_name: string } | null;
   milestone_kind: string | null;
@@ -46,26 +55,24 @@ type TaskRow = {
       first_name: string;
       last_name: string | null;
       partner_first_name: string | null;
+      partner_last_name?: string | null;
     } | null;
   } | null;
 };
 
-// Staff-Centered Planning Views (Planning Execution — Release Completion).
-// Three lenses over the exact same fetched task set — no second query, no
-// separate data shape. "All Tasks" is today's unmodified default view.
-type Perspective = "my-tasks" | "team-tasks" | "all-tasks";
+type Perspective = "my-work" | "by-person" | "all-team";
 
 const PERSPECTIVES: { id: Perspective; label: string }[] = [
-  { id: "my-tasks", label: "My Tasks" },
-  { id: "team-tasks", label: "Team Tasks" },
-  { id: "all-tasks", label: "All Tasks" },
+  { id: "my-work", label: "My Work" },
+  { id: "by-person", label: "By Person" },
+  { id: "all-team", label: "All Team Work" },
 ];
 
 const STATUS_ICON = {
-  overdue:  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />,
-  blocked:  <Lock className="h-3.5 w-3.5 text-amber-500 shrink-0" />,
-  pending:  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
-  complete: <Check className="h-3.5 w-3.5 text-success shrink-0" />,
+  overdue:  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" aria-hidden />,
+  blocked:  <Lock className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-hidden />,
+  pending:  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />,
+  complete: <Check className="h-3.5 w-3.5 text-success shrink-0" aria-hidden />,
 };
 
 function formatDue(task: TaskRow): string {
@@ -77,13 +84,26 @@ function formatDue(task: TaskRow): string {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function coupleName(clients: any): string {
+function coupleName(clients: TaskRow["events"] extends infer E
+  ? E extends { clients: infer C } ? C : null
+  : null): string {
   if (!clients) return "";
   return [clients.first_name, clients.partner_first_name].filter(Boolean).join(" & ");
 }
 
-function TaskItem({
+function eventMeta(task: TaskRow): { eventId: string; couple: string; eventName: string; eventDate: string } {
+  const eventId = task.events?.id ?? "";
+  const eventName = task.events?.name ?? "Event";
+  const couple = coupleName(task.events?.clients ?? null);
+  const eventDate = task.events?.event_date
+    ? new Date(task.events.event_date + "T00:00:00").toLocaleDateString(undefined, {
+        month: "short", day: "numeric", year: "numeric",
+      })
+    : "";
+  return { eventId, couple, eventName, eventDate };
+}
+
+function DoTaskItem({
   task, onComplete, onWaive, completing, waiving,
 }: {
   task: TaskRow;
@@ -93,7 +113,7 @@ function TaskItem({
   waiving: string | null;
 }) {
   const isActing = completing === task.id || waiving === task.id;
-  const eventId = task.events?.id ?? "";
+  const { eventId, couple, eventDate } = eventMeta(task);
 
   return (
     <div className="group flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
@@ -101,46 +121,55 @@ function TaskItem({
       <div className="flex-1 min-w-0 space-y-0.5">
         <p className="text-sm font-medium text-heading truncate">{task.title}</p>
         <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+          {(couple || eventDate) && (
+            <span className="truncate max-w-[14rem] text-heading/80">
+              {[couple, eventDate].filter(Boolean).join(" · ")}
+            </span>
+          )}
+          <span aria-hidden>·</span>
           <span style={{ color: categoryColor(task.category as import("@/lib/playbooks/types").TaskCategory) }}>
             {categoryLabel(task.category as import("@/lib/playbooks/types").TaskCategory)}
           </span>
-          <span>·</span>
+          <span aria-hidden>·</span>
           <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
             {formatDue(task)}
           </span>
-          {task.owner_type !== "coordinator" && (
-            <><span>·</span><span className="capitalize">{task.owner_type}</span></>
+          {task.owner_type === "vendor" && (
+            <><span aria-hidden>·</span><span>Vendor</span></>
           )}
-          {task.assignee && (
-            <><span>·</span><span>👤 {task.assignee.full_name}</span></>
+          {task.owner_type === "team" && (
+            <><span aria-hidden>·</span><span>Team</span></>
+          )}
+          {task.assignee ? (
+            <><span aria-hidden>·</span><span>{task.assignee.full_name}</span></>
+          ) : (
+            <><span aria-hidden>·</span><span className="italic">Unassigned</span></>
           )}
           {!task.is_required && <Badge variant="outline" className="text-[9px] h-4 px-1">optional</Badge>}
-          {/* Wedding-Day Visibility (Planning Execution — Release
-              Completion) — the same milestone_kind get_wedding_day_ops
-              already reads, surfaced here for the first time so a
-              coordinator can tell, while planning, which tasks are the ones
-              that matter on the day itself. */}
           {task.milestone_kind === "event_day" && (
-            <Badge className="text-[9px] h-4 px-1.5 gap-0.5 border-transparent bg-primary text-primary-foreground">
-              💍 Wedding Day
+            <Badge className="text-[9px] h-4 px-1.5 border-transparent bg-primary text-primary-foreground">
+              Event day
             </Badge>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
         {task.computedStatus !== "blocked" && (
           <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs"
-            disabled={isActing} onClick={() => onComplete(task.id, eventId)}>
+            disabled={isActing} onClick={() => onComplete(task.id, eventId)}
+            aria-label={`Mark complete: ${task.title}`}>
             {completing === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
           </Button>
         )}
         <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
-          disabled={isActing} onClick={() => onWaive(task.id, eventId)}>
+          disabled={isActing} onClick={() => onWaive(task.id, eventId)}
+          aria-label={`Waive: ${task.title}`}>
           Waive
         </Button>
         {eventId && (
           <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0"
-            render={<Link href={`/events/${eventId}`} />}>
+            render={<Link href={`/events/${eventId}`} />}
+            aria-label={`Open event for ${couple || task.title}`}>
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -149,42 +178,89 @@ function TaskItem({
   );
 }
 
-function EventGroup({ eventName, couple, eventId, tasks, onComplete, onWaive, completing, waiving }: {
+function WatchTaskItem({ task }: { task: TaskRow }) {
+  const { eventId, couple, eventDate } = eventMeta(task);
+  const reason =
+    task.computedStatus === "overdue" ? "Overdue — client may be falling behind"
+    : task.computedStatus === "blocked" ? "Waiting on another step"
+    : "Coming up soon for this couple";
+
+  return (
+    <div className="flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
+      <div className="mt-0.5 shrink-0" aria-hidden>
+        {task.computedStatus === "overdue"
+          ? <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+          : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
+      </div>
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        <p className="text-xs text-muted-foreground truncate">
+          {[couple, eventDate].filter(Boolean).join(" · ")}
+          <span aria-hidden> · </span>
+          <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
+            {formatDue(task)}
+          </span>
+        </p>
+        <p className="text-[11px] text-muted-foreground">{reason}</p>
+      </div>
+      {eventId && (
+        <Button type="button" size="sm" variant="outline" className="h-7 px-2.5 text-xs shrink-0"
+          render={<Link href={`/events/${eventId}`} />}>
+          View client progress
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function EventGroup({
+  eventName, couple, eventId, tasks, mode, onComplete, onWaive, completing, waiving,
+}: {
   eventName: string;
   couple: string;
   eventId: string;
   tasks: TaskRow[];
-  onComplete: (id: string, eventId: string) => void;
-  onWaive: (id: string, eventId: string) => void;
-  completing: string | null;
-  waiving: string | null;
+  mode: "do" | "watch";
+  onComplete?: (id: string, eventId: string) => void;
+  onWaive?: (id: string, eventId: string) => void;
+  completing?: string | null;
+  waiving?: string | null;
 }) {
   return (
-    <div className="rounded-sm border border-border bg-card">
+    <div className={cn(
+      "rounded-sm border bg-card",
+      mode === "watch" ? "border-border/80 border-l-[3px] border-l-sky-600/70" : "border-border",
+    )}>
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/50">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-heading truncate">{couple || eventName}</p>
-          <p className="text-[10px] text-muted-foreground">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {tasks.length} {mode === "watch" ? "to watch" : `task${tasks.length !== 1 ? "s" : ""}`}
+          </p>
         </div>
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs shrink-0 text-muted-foreground"
           render={<Link href={`/events/${eventId}`} />}>
-          View Event →
+          View event →
         </Button>
       </div>
       <div className="px-4">
-        {tasks.map(t => (
-          <TaskItem key={t.id} task={t} onComplete={onComplete} onWaive={onWaive} completing={completing} waiving={waiving} />
-        ))}
+        {mode === "watch"
+          ? tasks.map((t) => <WatchTaskItem key={t.id} task={t} />)
+          : tasks.map((t) => (
+              <DoTaskItem
+                key={t.id} task={t}
+                onComplete={onComplete!} onWaive={onWaive!}
+                completing={completing ?? null} waiving={waiving ?? null}
+              />
+            ))}
       </div>
     </div>
   );
 }
 
-// Team Tasks' own grouping (Planning Execution — Release Completion) —
-// exactly the same rows and the same TaskItem rendering as every other
-// perspective, only regrouped by who rather than by which booking. Not a
-// second query or a second data shape, just a different Map key.
-function StaffGroup({ staffName, tasks, onComplete, onWaive, completing, waiving }: {
+function StaffGroup({
+  staffName, tasks, onComplete, onWaive, completing, waiving,
+}: {
   staffName: string;
   tasks: TaskRow[];
   onComplete: (id: string, eventId: string) => void;
@@ -195,19 +271,23 @@ function StaffGroup({ staffName, tasks, onComplete, onWaive, completing, waiving
   return (
     <div className="rounded-sm border border-border bg-card">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50">
-        <p className="text-xs font-semibold text-heading truncate">👤 {staffName}</p>
+        <p className="text-xs font-semibold text-heading truncate">{staffName}</p>
         <p className="text-[10px] text-muted-foreground">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</p>
       </div>
       <div className="px-4">
-        {tasks.map(t => (
-          <TaskItem key={t.id} task={t} onComplete={onComplete} onWaive={onWaive} completing={completing} waiving={waiving} />
+        {tasks.map((t) => (
+          <DoTaskItem key={t.id} task={t} onComplete={onComplete} onWaive={onWaive}
+            completing={completing} waiving={waiving} />
         ))}
       </div>
     </div>
   );
 }
 
-type SectionProps = {
+function DoSection({
+  title, icon, tasks, emptyMessage, priority, onComplete, onWaive, completing, waiving,
+  collapsed = false, groupBy = "event", previewLimit,
+}: {
   title: string;
   icon: React.ReactNode;
   tasks: TaskRow[];
@@ -218,19 +298,22 @@ type SectionProps = {
   completing: string | null;
   waiving: string | null;
   collapsed?: boolean;
-  /** "event" (default, unchanged) or "staff" — Team Tasks' own regrouping (Planning Execution — Release Completion). */
   groupBy?: "event" | "staff";
-};
-
-function TaskSection({ title, icon, tasks, emptyMessage, priority, onComplete, onWaive, completing, waiving, collapsed = false, groupBy = "event" }: SectionProps) {
+  previewLimit?: number;
+}) {
   const [open, setOpen] = React.useState(!collapsed);
+  const [showAll, setShowAll] = React.useState(false);
+  const visible = previewLimit && !showAll ? tasks.slice(0, previewLimit) : tasks;
+  const hiddenCount = tasks.length - visible.length;
 
   const byEvent = new Map<string, { name: string; couple: string; tasks: TaskRow[] }>();
   const byStaff = new Map<string, { name: string; tasks: TaskRow[] }>();
-  for (const t of tasks) {
+  for (const t of visible) {
     if (groupBy === "staff") {
       const staffId = t.assigned_to_staff_id ?? "unassigned";
-      if (!byStaff.has(staffId)) byStaff.set(staffId, { name: t.assignee?.full_name ?? "Unassigned", tasks: [] });
+      if (!byStaff.has(staffId)) {
+        byStaff.set(staffId, { name: t.assignee?.full_name ?? "Unassigned", tasks: [] });
+      }
       byStaff.get(staffId)!.tasks.push(t);
     } else {
       const eventId = t.events?.id ?? "no-event";
@@ -245,16 +328,24 @@ function TaskSection({ title, icon, tasks, emptyMessage, priority, onComplete, o
     }
   }
 
+  // Unassigned first when grouping by person
+  const staffEntries = [...byStaff.entries()].sort(([a], [b]) => {
+    if (a === "unassigned") return -1;
+    if (b === "unassigned") return 1;
+    return 0;
+  });
+
   return (
     <div>
-      <button type="button" onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 mb-3 w-full text-left group">
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 mb-3 w-full text-left group"
+        aria-expanded={open}>
         {icon}
         <span className={`text-sm font-semibold ${priority === "high" ? "text-destructive" : "text-heading"}`}>{title}</span>
         <span className={`text-xs rounded-full px-2 py-0.5 font-semibold ${
           priority === "high" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
         }`}>{tasks.length}</span>
-        <span className="text-xs text-muted-foreground ml-auto group-hover:text-foreground">{open ? "▲" : "▼"}</span>
+        <span className="text-xs text-muted-foreground ml-auto group-hover:text-foreground">{open ? "Hide" : "Show"}</span>
       </button>
 
       {open && (
@@ -263,14 +354,23 @@ function TaskSection({ title, icon, tasks, emptyMessage, priority, onComplete, o
         ) : (
           <div className="space-y-3">
             {groupBy === "staff"
-              ? [...byStaff.entries()].map(([staffId, group]) => (
+              ? staffEntries.map(([staffId, group]) => (
                   <StaffGroup key={staffId} staffName={group.name}
-                    tasks={group.tasks} onComplete={onComplete} onWaive={onWaive} completing={completing} waiving={waiving} />
+                    tasks={group.tasks} onComplete={onComplete} onWaive={onWaive}
+                    completing={completing} waiving={waiving} />
                 ))
               : [...byEvent.entries()].map(([eventId, group]) => (
                   <EventGroup key={eventId} eventId={eventId} eventName={group.name} couple={group.couple}
-                    tasks={group.tasks} onComplete={onComplete} onWaive={onWaive} completing={completing} waiving={waiving} />
+                    tasks={group.tasks} mode="do"
+                    onComplete={onComplete} onWaive={onWaive}
+                    completing={completing} waiving={waiving} />
                 ))}
+            {hiddenCount > 0 && (
+              <Button type="button" variant="ghost" size="sm" className="text-xs"
+                onClick={() => setShowAll(true)}>
+                Show all {tasks.length} upcoming
+              </Button>
+            )}
           </div>
         )
       )}
@@ -279,62 +379,94 @@ function TaskSection({ title, icon, tasks, emptyMessage, priority, onComplete, o
 }
 
 export function TaskCenter({
-  overdue, dueToday, dueThisWeek, blocked, upcoming, venueId,
-  currentStaffId = null, currentRole = null,
+  doOverdue, doBlocked, doDueToday, doDueSoon, doUpcoming,
+  watchTasks,
+  searchableEvents,
+  hasAnyDoTasks,
+  currentStaffId = null,
+  currentRole = null,
 }: {
-  overdue: TaskRow[];
-  dueToday: TaskRow[];
-  dueThisWeek: TaskRow[];
-  blocked: TaskRow[];
-  upcoming: TaskRow[];
-  venueId: string;
-  /** Prerequisite for "My Tasks" — the logged-in user's own venue_staff.id, resolved server-side (lib/team/service.ts's getCurrentStaffMember). Null only if the session has no active staff row. */
+  doOverdue: TaskRow[];
+  doBlocked: TaskRow[];
+  doDueToday: TaskRow[];
+  doDueSoon: TaskRow[];
+  doUpcoming: TaskRow[];
+  watchTasks: TaskRow[];
+  searchableEvents: SearchableEvent[];
+  /** Venue has at least one open DO task (any urgency). */
+  hasAnyDoTasks: boolean;
   currentStaffId?: string | null;
   currentRole?: string | null;
 }) {
   const router = useRouter();
-  const [tasks, setTasks] = React.useState({ overdue, dueToday, dueThisWeek, blocked, upcoming });
+  const [removedIds, setRemovedIds] = React.useState(() => new Set<string>());
   const [completing, setCompleting] = React.useState<string | null>(null);
   const [waiving, setWaiving] = React.useState<string | null>(null);
-
-  // Staff-Centered Planning Views: "Managers and owners should naturally
-  // see all venue tasks. Staff should naturally see their own work" — a
-  // default, not a restriction. Every role can switch to any perspective;
-  // nothing here gates access, only which view opens first (Planning
-  // Execution — Release Completion).
   const [perspective, setPerspective] = React.useState<Perspective>(
-    currentRole === "owner" || currentRole === "manager" || !currentStaffId ? "all-tasks" : "my-tasks",
+    currentRole === "owner" || currentRole === "manager" || !currentStaffId ? "all-team" : "my-work",
+  );
+  const [findQuery, setFindQuery] = React.useState("");
+  const [eventFilterId, setEventFilterId] = React.useState<string | null>(null);
+
+  const findMatches = React.useMemo(
+    () => matchEventsForFind(searchableEvents, findQuery),
+    [searchableEvents, findQuery],
   );
 
-  const scoped = React.useMemo(() => {
-    if (perspective !== "my-tasks" || !currentStaffId) return tasks;
-    const mine = (t: TaskRow) => t.assigned_to_staff_id === currentStaffId;
-    return {
-      overdue: tasks.overdue.filter(mine),
-      dueToday: tasks.dueToday.filter(mine),
-      dueThisWeek: tasks.dueThisWeek.filter(mine),
-      blocked: tasks.blocked.filter(mine),
-      upcoming: tasks.upcoming.filter(mine),
+  const filterByEvent = React.useCallback(
+    (rows: TaskRow[]) => {
+      if (!eventFilterId) return rows;
+      return rows.filter((t) => t.events?.id === eventFilterId);
+    },
+    [eventFilterId],
+  );
+
+  const notRemoved = React.useCallback(
+    (rows: TaskRow[]) => rows.filter((t) => !removedIds.has(t.id)),
+    [removedIds],
+  );
+
+  const doBuckets = React.useMemo(() => ({
+    overdue: notRemoved(doOverdue),
+    blocked: notRemoved(doBlocked),
+    dueToday: notRemoved(doDueToday),
+    dueSoon: notRemoved(doDueSoon),
+    upcoming: notRemoved(doUpcoming),
+  }), [doOverdue, doBlocked, doDueToday, doDueSoon, doUpcoming, notRemoved]);
+
+  const scopedDo = React.useMemo(() => {
+    const applyLens = (rows: TaskRow[]) => {
+      let next = filterByEvent(rows);
+      if (perspective === "my-work" && currentStaffId) {
+        next = next.filter((t) => t.assigned_to_staff_id === currentStaffId);
+      }
+      return next;
     };
-  }, [tasks, perspective, currentStaffId]);
+    return {
+      overdue: applyLens(doBuckets.overdue),
+      blocked: applyLens(doBuckets.blocked),
+      dueToday: applyLens(doBuckets.dueToday),
+      dueSoon: applyLens(doBuckets.dueSoon),
+      upcoming: applyLens(doBuckets.upcoming),
+    };
+  }, [doBuckets, perspective, currentStaffId, filterByEvent]);
 
-  const groupBy: "event" | "staff" = perspective === "team-tasks" ? "staff" : "event";
+  const scopedWatch = React.useMemo(
+    () => filterByEvent(notRemoved(watchTasks)),
+    [watchTasks, filterByEvent, notRemoved],
+  );
 
-  function removeTask(id: string) {
-    setTasks(prev => ({
-      overdue:    prev.overdue.filter(t => t.id !== id),
-      dueToday:   prev.dueToday.filter(t => t.id !== id),
-      dueThisWeek: prev.dueThisWeek.filter(t => t.id !== id),
-      blocked:    prev.blocked.filter(t => t.id !== id),
-      upcoming:   prev.upcoming.filter(t => t.id !== id),
-    }));
+  const groupBy: "event" | "staff" = perspective === "by-person" ? "staff" : "event";
+
+  function removeDoTask(id: string) {
+    setRemovedIds((prev) => new Set(prev).add(id));
   }
 
   async function handleComplete(taskId: string, eventId: string) {
     setCompleting(taskId);
     const result = await completeTaskAction(taskId, eventId);
     setCompleting(null);
-    if (result.ok) { removeTask(taskId); toast.success("Task complete."); router.refresh(); }
+    if (result.ok) { removeDoTask(taskId); toast.success("Task complete."); router.refresh(); }
     else toast.error(result.message ?? "Could not complete task.");
   }
 
@@ -342,27 +474,126 @@ export function TaskCenter({
     setWaiving(taskId);
     const result = await setTaskStatusAction(taskId, eventId, "waived");
     setWaiving(null);
-    if (result.ok) { removeTask(taskId); }
+    if (result.ok) { removeDoTask(taskId); }
     else toast.error("Could not waive task.");
   }
 
-  const totalExceptions = scoped.overdue.length + scoped.dueToday.length + scoped.blocked.length;
+  const doImmediate =
+    scopedDo.overdue.length + scopedDo.blocked.length + scopedDo.dueToday.length + scopedDo.dueSoon.length;
+  const doUpcomingCount = scopedDo.upcoming.length;
+  const doTotalAll =
+    doBuckets.overdue.length + doBuckets.blocked.length + doBuckets.dueToday.length
+    + doBuckets.dueSoon.length + doBuckets.upcoming.length;
+
+  const myWorkEmpty =
+    perspective === "my-work"
+    && doImmediate === 0
+    && doUpcomingCount === 0
+    && doTotalAll > 0;
+
+  const filteredEvent = eventFilterId
+    ? searchableEvents.find((e) => e.id === eventFilterId) ?? null
+    : null;
+
+  const watchByEvent = new Map<string, { name: string; couple: string; tasks: TaskRow[] }>();
+  for (const t of scopedWatch) {
+    const eventId = t.events?.id ?? "no-event";
+    if (!watchByEvent.has(eventId)) {
+      watchByEvent.set(eventId, {
+        name: t.events?.name ?? "Unknown event",
+        couple: coupleName(t.events?.clients ?? null),
+        tasks: [],
+      });
+    }
+    watchByEvent.get(eventId)!.tasks.push(t);
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Staff-Centered Planning Views (Planning Execution — Release
-          Completion) — same fetched task set, three lenses. Reuses the
-          existing assignment model (assigned_to_staff_id) and role
-          (owner/manager/coordinator/staff) purely as a default, never a
-          restriction — every perspective stays switchable by everyone. */}
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className="space-y-8">
+      {/* INVESTIGATE */}
+      <div className="space-y-2">
+        <label htmlFor="task-center-find" className="text-xs font-medium text-heading">
+          Find a client or event
+        </label>
+        <div className="relative max-w-md">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            id="task-center-find"
+            type="search"
+            value={findQuery}
+            onChange={(e) => {
+              setFindQuery(e.target.value);
+              if (!e.target.value.trim()) setEventFilterId(null);
+            }}
+            placeholder="Search by couple or event name…"
+            className="pl-8 h-9"
+            autoComplete="off"
+          />
+        </div>
+        {findQuery.trim() && (
+          <div className="max-w-md rounded-sm border border-border bg-card" role="listbox" aria-label="Matching events">
+            {findMatches.length === 0 ? (
+              <p className="px-3 py-2.5 text-sm text-muted-foreground">No events match.</p>
+            ) : (
+              <ul className="divide-y divide-border/60">
+                {findMatches.slice(0, 8).map((ev) => (
+                  <li key={ev.id} className="flex items-center gap-2 px-3 py-2">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => {
+                        setEventFilterId(ev.id);
+                        setFindQuery(ev.coupleLabel || ev.name);
+                      }}
+                    >
+                      <p className="text-sm font-medium text-heading truncate">{ev.coupleLabel || ev.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {ev.name}
+                        {ev.eventDate
+                          ? ` · ${new Date(ev.eventDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+                          : ""}
+                      </p>
+                    </button>
+                    <Button type="button" size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                      render={<Link href={`/events/${ev.id}`} />}>
+                      Open planning
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {filteredEvent && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full bg-muted px-2.5 py-1 text-heading">
+              Showing: {filteredEvent.coupleLabel || filteredEvent.name}
+            </span>
+            <button
+              type="button"
+              className="text-muted-foreground underline-offset-2 hover:underline"
+              onClick={() => { setEventFilterId(null); setFindQuery(""); }}
+            >
+              Clear
+            </button>
+            <Link href={`/events/${filteredEvent.id}`} className="text-primary underline-offset-2 hover:underline">
+              Full event planning →
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Lenses — DO only */}
+      <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Team work view">
         {PERSPECTIVES.map((p) => (
           <button
             key={p.id}
             type="button"
+            role="tab"
+            aria-selected={perspective === p.id}
             onClick={() => setPerspective(p.id)}
-            disabled={p.id === "my-tasks" && !currentStaffId}
-            title={p.id === "my-tasks" && !currentStaffId ? "No active staff record found for your account." : undefined}
+            disabled={p.id === "my-work" && !currentStaffId}
+            title={p.id === "my-work" && !currentStaffId ? "No active staff record found for your account." : undefined}
             className={cn(
               "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
               perspective === p.id
@@ -375,61 +606,137 @@ export function TaskCenter({
         ))}
       </div>
 
-      {totalExceptions === 0 && scoped.dueThisWeek.length === 0 ? (
-        <div className="rounded-sm border border-dashed border-border py-16 text-center space-y-2">
-          <p className="text-2xl">✅</p>
-          <p className="text-sm font-medium text-heading">
-            {perspective === "my-tasks" ? "Nothing assigned to you needs attention right now" : "No tasks need attention right now"}
+      {/* DO */}
+      <section aria-labelledby="task-center-do-heading" className="space-y-4">
+        <div>
+          <h2 id="task-center-do-heading" className="text-sm font-semibold text-heading tracking-wide uppercase">
+            Your team&apos;s work
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Tasks your venue needs to complete across events.
           </p>
-          <p className="text-xs text-muted-foreground">All upcoming events are on track. Check back tomorrow.</p>
         </div>
-      ) : (
-        <>
-          {/* Exception band */}
-          {totalExceptions > 0 && (
-            <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-              <p className="text-sm font-medium text-destructive">
-                {totalExceptions} item{totalExceptions !== 1 ? "s" : ""} need your attention today
-              </p>
-            </div>
-          )}
 
-          <TaskSection
-            title="Overdue" icon={<AlertTriangle className="h-4 w-4 text-destructive shrink-0" />}
-            tasks={scoped.overdue} emptyMessage="No overdue tasks."
-            priority="high" onComplete={handleComplete} onWaive={handleWaive}
-            completing={completing} waiving={waiving} groupBy={groupBy}
-          />
-          <TaskSection
-            title="Blocked" icon={<Lock className="h-4 w-4 text-amber-500 shrink-0" />}
-            tasks={scoped.blocked} emptyMessage="No blocked tasks."
-            onComplete={handleComplete} onWaive={handleWaive}
-            completing={completing} waiving={waiving} groupBy={groupBy}
-          />
-          <TaskSection
-            title="Due today" icon={<CalendarDays className="h-4 w-4 text-heading shrink-0" />}
-            tasks={scoped.dueToday} emptyMessage="Nothing due today."
-            onComplete={handleComplete} onWaive={handleWaive}
-            completing={completing} waiving={waiving} groupBy={groupBy}
-          />
-          <TaskSection
-            title="Due this week" icon={<Clock className="h-4 w-4 text-muted-foreground shrink-0" />}
-            tasks={scoped.dueThisWeek} emptyMessage="Nothing due this week."
-            onComplete={handleComplete} onWaive={handleWaive}
-            completing={completing} waiving={waiving} groupBy={groupBy}
-          />
-          {scoped.upcoming.length > 0 && (
-            <TaskSection
-              title="Upcoming" icon={<CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />}
-              tasks={scoped.upcoming} emptyMessage=""
+        {myWorkEmpty && (
+          <div className="rounded-sm border border-dashed border-border px-4 py-6 text-center space-y-2">
+            <p className="text-sm font-medium text-heading">Nothing assigned to you</p>
+            <p className="text-xs text-muted-foreground">
+              Your teammates still have work. Switch to{" "}
+              <button type="button" className="underline underline-offset-2" onClick={() => setPerspective("by-person")}>
+                By Person
+              </button>
+              {" "}or{" "}
+              <button type="button" className="underline underline-offset-2" onClick={() => setPerspective("all-team")}>
+                All Team Work
+              </button>
+              .
+            </p>
+          </div>
+        )}
+
+        {!hasAnyDoTasks && !eventFilterId && (
+          <div className="rounded-sm border border-dashed border-border px-4 py-10 text-center space-y-2">
+            <p className="text-sm font-medium text-heading">No team tasks yet</p>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Apply Venue Planning on an event to build your team&apos;s task list.
+            </p>
+          </div>
+        )}
+
+        {hasAnyDoTasks && doImmediate === 0 && doUpcomingCount > 0 && !myWorkEmpty && (
+          <div className="rounded-sm border border-border bg-muted/30 px-4 py-3">
+            <p className="text-sm font-medium text-heading">Nothing on your plate today</p>
+            <p className="text-xs text-muted-foreground">Here&apos;s what&apos;s coming up across your events.</p>
+          </div>
+        )}
+
+        {doImmediate > 0 && (
+          <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />
+            <p className="text-sm font-medium text-destructive">
+              {doImmediate} item{doImmediate !== 1 ? "s" : ""} need attention on your team&apos;s list
+            </p>
+          </div>
+        )}
+
+        {(hasAnyDoTasks || eventFilterId) && !myWorkEmpty && (
+          <>
+            <DoSection
+              title="Overdue" icon={<AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />}
+              tasks={scopedDo.overdue} emptyMessage="No overdue team tasks."
+              priority="high" onComplete={handleComplete} onWaive={handleWaive}
+              completing={completing} waiving={waiving} groupBy={groupBy}
+            />
+            <DoSection
+              title="Blocked" icon={<Lock className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />}
+              tasks={scopedDo.blocked} emptyMessage="No blocked team tasks."
               onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}
-              collapsed={true}
             />
-          )}
-        </>
-      )}
+            <DoSection
+              title="Due today" icon={<CalendarDays className="h-4 w-4 text-heading shrink-0" aria-hidden />}
+              tasks={scopedDo.dueToday} emptyMessage="Nothing due today."
+              onComplete={handleComplete} onWaive={handleWaive}
+              completing={completing} waiving={waiving} groupBy={groupBy}
+            />
+            <DoSection
+              title="Due soon" icon={<Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />}
+              tasks={scopedDo.dueSoon} emptyMessage="Nothing due in the next week."
+              onComplete={handleComplete} onWaive={handleWaive}
+              completing={completing} waiving={waiving} groupBy={groupBy}
+            />
+            {scopedDo.upcoming.length > 0 && (
+              <DoSection
+                title="Upcoming" icon={<CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />}
+                tasks={scopedDo.upcoming} emptyMessage=""
+                onComplete={handleComplete} onWaive={handleWaive}
+                completing={completing} waiving={waiving} groupBy={groupBy}
+                collapsed={doImmediate > 0}
+                previewLimit={UPCOMING_DO_PREVIEW}
+              />
+            )}
+          </>
+        )}
+      </section>
+
+      {/* WATCH — always its own zone; not affected by My Work lens */}
+      <section aria-labelledby="task-center-watch-heading" className="space-y-3">
+        <div className="flex items-start gap-2">
+          <Eye className="h-4 w-4 text-sky-700 mt-0.5 shrink-0" aria-hidden />
+          <div>
+            <h2 id="task-center-watch-heading" className="text-sm font-semibold text-heading tracking-wide uppercase">
+              Client progress
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Couples who may need a nudge — open the event to see the full picture.
+            </p>
+          </div>
+        </div>
+
+        {scopedWatch.length === 0 ? (
+          <p className="text-sm text-muted-foreground pl-6">No client tasks need watching right now.</p>
+        ) : (
+          <>
+            {doImmediate === 0 && doUpcomingCount === 0 && (
+              <div className="rounded-sm border border-sky-700/20 bg-sky-50/50 dark:bg-sky-950/20 px-4 py-3">
+                <p className="text-sm font-medium text-heading">Your team&apos;s clear — a few clients need watching</p>
+              </div>
+            )}
+            <div className="space-y-3">
+              {[...watchByEvent.entries()].map(([eventId, group]) => (
+                <EventGroup
+                  key={eventId}
+                  eventId={eventId}
+                  eventName={group.name}
+                  couple={group.couple}
+                  tasks={group.tasks}
+                  mode="watch"
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 }
