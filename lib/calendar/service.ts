@@ -322,7 +322,7 @@ export async function getCalendarData(
       title: k.label,
       subtitle: cn,
       time: null,
-      link: `/clients/${k.client_id}`,
+      link: `/clients/${k.client_id}#overview`,
       clientId: k.client_id ?? null,
     });
   }

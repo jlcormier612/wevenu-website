@@ -149,8 +149,23 @@ export async function sendInvoiceEmailAction(
     replyTo: venue.email ?? undefined,
   });
 
+  // Mirror successful Resend delivery into the relationship conversation
+  // (same pattern as payment/contract reminders). Mailto/disabled paths do
+  // not claim a sent message in conversation history.
   if (result.ok && result.method === "resend") {
+    const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
+    await recordExternalClientOutbound(supabase, {
+      venueId: venue.id,
+      clientId: invoiceToSend.clientId,
+      channel: "email",
+      body: text,
+      providerId: result.providerId ?? null,
+      status: "accepted",
+      sourceType: "invoice_email",
+      sourceId: invoiceId,
+    });
     revalidatePath(`/invoices/${invoiceId}`);
+    if (invoiceToSend.clientId) revalidatePath(`/clients/${invoiceToSend.clientId}`);
   }
   return result;
 }

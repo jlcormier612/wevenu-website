@@ -43,6 +43,13 @@ describe("communication architecture locks", () => {
     assert.match(obligationEngine, /recordExternalClientOutbound/);
   });
 
+  it("invoice email send records into conversation history when Resend delivers", () => {
+    const invoiceActions = readFileSync(resolve("app/(app)/invoices/actions.ts"), "utf8");
+    assert.match(invoiceActions, /recordExternalClientOutbound/);
+    assert.match(invoiceActions, /sourceType: "invoice_email"/);
+    assert.match(invoiceActions, /method === "resend"/);
+  });
+
   const engine = readFileSync(resolve("lib/notifications/engine.ts"), "utf8");
   it("couple-facing task/tour reminders record into conversation history", () => {
     assert.match(engine, /recordExternalClientOutbound/);

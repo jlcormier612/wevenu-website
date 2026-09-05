@@ -23,6 +23,7 @@ import { KeyDatesSection } from "@/components/clients/key-dates-section";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
+import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
@@ -581,6 +582,19 @@ export function EventDetail({
               conversationMessages={conversationMessages}
               documents={documents}
             />
+          )}
+          {event.clientId && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Client portal</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PortalLinkWidget
+                  clientId={event.clientId}
+                  coupleName={event.clientName?.trim() || "your client"}
+                />
+              </CardContent>
+            </Card>
           )}
           <div id="requests-summary-card">
             <RequestSummaryCard requests={requests} />
