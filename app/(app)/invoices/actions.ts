@@ -153,8 +153,11 @@ export async function sendInvoiceEmailAction(
   // (same pattern as payment/contract reminders). Mailto/disabled paths do
   // not claim a sent message in conversation history.
   if (result.ok && result.method === "resend") {
+    // Service role — same pattern as obligation/reminder engines — so the
+    // conversation history write is not blocked by session/RLS edge cases.
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
     const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
-    await recordExternalClientOutbound(supabase, {
+    const recorded = await recordExternalClientOutbound(createAdminClient(), {
       venueId: venue.id,
       clientId: invoiceToSend.clientId,
       channel: "email",
@@ -164,6 +167,9 @@ export async function sendInvoiceEmailAction(
       sourceType: "invoice_email",
       sourceId: invoiceId,
     });
+    if (!recorded.ok) {
+      console.error("[sendInvoiceEmailAction] conversation record failed", recorded);
+    }
     revalidatePath(`/invoices/${invoiceId}`);
     if (invoiceToSend.clientId) revalidatePath(`/clients/${invoiceToSend.clientId}`);
   }
