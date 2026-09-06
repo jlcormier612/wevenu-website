@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensure-commercial-customer";
 import {
   attachSelectionToBookingFile,
   createSelectedPackageFromLibrary,
@@ -35,6 +36,9 @@ export async function createSelectedPackageAction(input: {
   return result;
 }
 
+/**
+ * Explicit planning/workspace action — not required for contracts or payments.
+ */
 export async function startBookingFileAction(
   lead: Lead,
   spaceId?: string,
@@ -49,7 +53,6 @@ export async function startBookingFileAction(
         leadId: lead.id,
       });
     } else {
-      // Attach any active lead selection that exists
       const { getActiveSelectedPackageForLead } = await import("@/lib/commercial-selections/service");
       const active = await getActiveSelectedPackageForLead(lead.id);
       if (active) {
@@ -65,6 +68,47 @@ export async function startBookingFileAction(
     revalidatePath(`/clients/${result.clientId}`);
   }
   return result;
+}
+
+/**
+ * Quietly ensure Client (+ Event when possible) so Create contract / Set up payments
+ * work from a Lead without a manual workspace step. Never invites the portal.
+ */
+export async function ensureCommercialCustomerAction(input: {
+  selectionId?: string;
+  leadId?: string;
+}): Promise<
+  | { ok: true; clientId: string; eventId: string | null; selectionId: string }
+  | { ok: false; message: string }
+> {
+  const result = await ensureCommercialCustomerForSelection(input);
+  if (!result.ok) return result;
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  revalidatePath(`/clients/${result.clientId}`);
+  return {
+    ok: true,
+    clientId: result.clientId,
+    eventId: result.eventId,
+    selectionId: result.selectionId,
+  };
+}
+
+export async function prepareCreateContractAction(input: {
+  selectionId: string;
+  leadId?: string;
+}): Promise<
+  | { ok: true; href: string }
+  | { ok: false; message: string }
+> {
+  const ensured = await ensureCommercialCustomerForSelection(input);
+  if (!ensured.ok) return ensured;
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  revalidatePath(`/clients/${ensured.clientId}`);
+  const params = new URLSearchParams();
+  params.set("selectionId", ensured.selectionId);
+  params.set("clientId", ensured.clientId);
+  if (ensured.eventId) params.set("eventId", ensured.eventId);
+  return { ok: true, href: `/contracts/new?${params.toString()}` };
 }
 
 export async function sendOfferAction(input: {

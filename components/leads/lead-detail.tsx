@@ -247,7 +247,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
         title="Start booking file?"
-        description="This creates their client and event workspace so you can finish the agreement and deposit. They are not Booked until the agreement is done and the deposit is paid."
+        description="This opens their planning workspace (client and event). It is optional for contracts and payments — those work from the Booking Journey on the lead. They are not Booked until the agreement is done and the deposit is paid. This does not invite them to the portal."
         confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}

@@ -59,7 +59,21 @@ describe("Booking Journey derivation", () => {
     assert.equal(j.currentKey, "agreement");
     assert.equal(j.primaryAction, "send_offer");
     assert.equal(j.secondaryLabel, "Create contract");
+    assert.equal(j.secondaryAction, "create_contract");
     assert.match(j.secondaryHref ?? "", /selectionId=sel-1/);
+  });
+
+  it("Create contract remains available without an existing client id", () => {
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: selection({ clientId: null }),
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+    });
+    assert.equal(j.secondaryAction, "create_contract");
+    assert.match(j.secondaryHref ?? "", /leadId=lead-1/);
   });
 
   it("does not mark Booked on booking file alone", () => {

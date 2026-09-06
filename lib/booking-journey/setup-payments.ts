@@ -14,7 +14,7 @@ export type SetupPaymentsResult =
 export async function setupPaymentsFromSelection(input: {
   selectionId: string;
   clientId: string;
-  eventId: string;
+  eventId?: string | null;
   depositAmount?: number;
   requestDeposit?: boolean;
 }): Promise<SetupPaymentsResult> {
@@ -41,7 +41,7 @@ export async function setupPaymentsFromSelection(input: {
 
   const invoiceResult = await createInvoice({
     clientId: input.clientId,
-    eventId: input.eventId,
+    eventId: input.eventId ?? "",
     notes: `${selection.name} — booking commitment`,
     dueDate: "",
   });

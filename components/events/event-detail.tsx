@@ -902,7 +902,7 @@ export function EventDetail({
               {invoices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
                   <p className="text-sm text-muted-foreground">No invoice yet.</p>
-                  {selectedPackage && event.clientId ? (
+                  {selectedPackage ? (
                     <>
                       <Button type="button" size="sm" onClick={() => setSetupPaymentsOpen(true)}>
                         Set up payments
@@ -910,9 +910,9 @@ export function EventDetail({
                       <details className="text-left w-full max-w-sm mx-auto">
                         <summary className="cursor-pointer text-xs text-muted-foreground text-center">More options</summary>
                         <div className="mt-3 flex flex-col items-center gap-2">
-                          <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />
+                          {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}
                           <Button type="button" variant="outline" size="sm"
-                            render={<Link href={`/invoices/new?eventId=${event.id}&clientId=${event.clientId}`} />}>
+                            render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
                             Blank invoice
                           </Button>
                         </div>
@@ -921,8 +921,9 @@ export function EventDetail({
                         open={setupPaymentsOpen}
                         onOpenChange={setSetupPaymentsOpen}
                         selection={selectedPackage}
-                        clientId={event.clientId}
+                        clientId={event.clientId ?? undefined}
                         eventId={event.id}
+                        leadId={originatingLeadId ?? undefined}
                       />
                     </>
                   ) : (

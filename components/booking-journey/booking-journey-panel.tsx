@@ -2,13 +2,13 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   markOfferAcceptedAction,
+  prepareCreateContractAction,
   sendOfferAction,
 } from "@/app/(app)/booking-journey/actions";
 import { BookingJourneyStrip } from "@/components/booking-journey/booking-journey-strip";
@@ -51,21 +51,37 @@ export function BookingJourneyPanel({
   const [pending, startTransition] = React.useTransition();
   const selection = journey.selection;
 
+  function handleCreateContract() {
+    if (!selection) return;
+    startTransition(async () => {
+      const result = await prepareCreateContractAction({
+        selectionId: selection.id,
+        leadId,
+      });
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      router.push(result.href);
+      router.refresh();
+    });
+  }
+
   function handlePrimary(action: string) {
     if (action === "select_package") setSelectOpen(true);
     else if (action === "send_offer" || action === "remind_offer") setOfferOpen(true);
     else if (action === "mark_accepted") handleMarkAccepted();
     else if (action === "setup_payments") {
-      if (selection && clientId && eventId) setPaymentsOpen(true);
-      else if (journey.primaryHref) router.push(journey.primaryHref);
-      else toast.error("Start the booking file first so payments can be attached to the event.");
-    } else if (action === "invite_portal" || action === "start_planning") {
+      if (selection) setPaymentsOpen(true);
+    } else if (action === "create_contract") handleCreateContract();
+    else if (action === "invite_portal" || action === "start_planning") {
       if (journey.primaryHref) router.push(journey.primaryHref);
     }
   }
 
   function handleSecondary(action: string) {
     if (action === "mark_accepted") handleMarkAccepted();
+    else if (action === "create_contract") handleCreateContract();
   }
 
   function handleMarkAccepted() {
@@ -135,23 +151,28 @@ export function BookingJourneyPanel({
                   <Button type="button" size="sm" onClick={() => setOfferOpen(true)}>
                     Send offer
                   </Button>
-                  {(clientId || leadId) && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      render={
-                        <Link
-                          href={`/contracts/new?selectionId=${selection.id}${
-                            clientId ? `&clientId=${clientId}` : ""
-                          }${eventId ? `&eventId=${eventId}` : ""}`}
-                        />
-                      }
-                    >
-                      Create contract
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={handleCreateContract}
+                  >
+                    {pending ? (
+                      <>
+                        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                        Preparing…
+                      </>
+                    ) : (
+                      "Create contract"
+                    )}
+                  </Button>
                 </>
+              )}
+              {selection.status === "accepted" && (
+                <Button type="button" size="sm" onClick={() => setPaymentsOpen(true)}>
+                  Set up payments
+                </Button>
               )}
               <Button type="button" size="sm" variant="ghost" onClick={() => setSelectOpen(true)}>
                 Change package
@@ -177,13 +198,14 @@ export function BookingJourneyPanel({
         eventId={eventId}
       />
 
-      {selection && clientId && eventId && (
+      {selection && (
         <SetupPaymentsSheet
           open={paymentsOpen}
           onOpenChange={setPaymentsOpen}
           selection={selection}
           clientId={clientId}
           eventId={eventId}
+          leadId={leadId}
         />
       )}
 

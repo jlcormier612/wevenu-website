@@ -63,6 +63,7 @@ describe("Sales → Booking lifecycle product rules", () => {
   it("UI confirms Start booking file before mutation", () => {
     assert.match(detail, /Start booking file\?/);
     assert.match(detail, /not Booked until the agreement is done and the deposit is paid/i);
+    assert.match(detail, /optional for contracts and payments/i);
     assert.match(detail, /setConfirmBookOpen\(true\)/);
     assert.match(detail, /confirmBookThisLead/);
     assert.doesNotMatch(

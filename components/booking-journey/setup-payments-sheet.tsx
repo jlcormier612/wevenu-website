@@ -26,12 +26,14 @@ export function SetupPaymentsSheet({
   selection,
   clientId,
   eventId,
+  leadId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selection: CommercialSelection;
-  clientId: string;
-  eventId: string;
+  clientId?: string;
+  eventId?: string;
+  leadId?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
@@ -60,6 +62,7 @@ export function SetupPaymentsSheet({
         selectionId: selection.id,
         clientId,
         eventId,
+        leadId,
         depositAmount,
         requestDeposit,
       });

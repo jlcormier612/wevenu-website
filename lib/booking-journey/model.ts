@@ -105,6 +105,7 @@ function contractNewHref(input: JourneyInputs, selection: CommercialSelection): 
   params.set("selectionId", selection.id);
   if (input.clientId) params.set("clientId", input.clientId);
   if (input.eventId) params.set("eventId", input.eventId);
+  if (input.leadId) params.set("leadId", input.leadId);
   return `/contracts/new?${params.toString()}`;
 }
 
@@ -190,8 +191,9 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryLabel = "Send offer";
       primaryAction = "send_offer";
       secondaryLabel = "Create contract";
+      // Prefer action so Lead-only flows quietly attach a commercial customer first.
+      secondaryAction = "create_contract";
       secondaryHref = contractNewHref(input, selection!);
-      secondaryAction = null;
     }
   } else if (!depositDone) {
     if (depositExists(input.paymentLines)) {
@@ -213,7 +215,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryAction = "setup_payments";
     }
   } else if (!planningDone) {
-    direction = `They're Booked. Invite them to the portal and start planning. ${formatCurrency(remaining ?? 0)} remains.`;
+    direction = `They're Booked. ${formatCurrency(remaining ?? 0)} remains on the payment plan. When you're ready, invite them to planning — optional if they won't use the portal.`;
     primaryLabel = input.portalInvited ? "Start planning" : "Invite to portal";
     primaryHref = input.clientId
       ? input.portalInvited

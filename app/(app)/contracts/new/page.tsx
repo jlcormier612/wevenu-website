@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { NewContractForm } from "@/components/contracts/new-contract-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensure-commercial-customer";
 import { getClients } from "@/lib/clients/service";
 import { getSelectedPackage } from "@/lib/commercial-selections/service";
 import { getClientContacts } from "@/lib/contacts/service";
@@ -18,16 +20,28 @@ type Props = {
     selectionId?: string;
     clientId?: string;
     eventId?: string;
+    leadId?: string;
   }>;
 };
 
 export default async function NewContractPage({ searchParams }: Props) {
-  const [{ templateId, selectionId, clientId, eventId }, templates, clients] = await Promise.all([
-    searchParams,
-    getTemplates(),
-    getClients(),
-  ]);
+  const sp = await searchParams;
+  let { templateId, selectionId, clientId, eventId, leadId } = sp;
 
+  // From Lead-only Booking Journey: quietly attach commercial customer if needed.
+  if (selectionId && !clientId) {
+    const ensured = await ensureCommercialCustomerForSelection({ selectionId, leadId });
+    if (ensured.ok) {
+      const params = new URLSearchParams();
+      params.set("selectionId", ensured.selectionId);
+      params.set("clientId", ensured.clientId);
+      if (ensured.eventId) params.set("eventId", ensured.eventId);
+      if (templateId) params.set("templateId", templateId);
+      redirect(`/contracts/new?${params.toString()}`);
+    }
+  }
+
+  const [templates, clients] = await Promise.all([getTemplates(), getClients()]);
   const selection = selectionId ? await getSelectedPackage(selectionId) : null;
 
   const contactsByClientId: Record<string, ClientContact[]> = {};
