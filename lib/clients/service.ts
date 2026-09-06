@@ -410,6 +410,11 @@ export async function convertLeadToClient(
   opts?: { spaceId?: string; commercialOnly?: boolean },
 ): Promise<CreateClientResult> {
   const commercialOnly = opts?.commercialOnly === true;
+  const spaceId = opts?.spaceId?.trim() || "";
+  // Quiet commercial ensure may lack an Event Space. Multi-space venues refuse
+  // dated Events without one — create the Client anyway and defer the Event
+  // until a space is chosen (Start booking file or a later ensure with space).
+  const createDatedEvent = Boolean(lead.eventDate) && (!commercialOnly || Boolean(spaceId));
   const input: ClientInput = {
     firstName: lead.firstName,
     lastName: lead.lastName,
@@ -428,11 +433,11 @@ export async function convertLeadToClient(
     teardownTime: "",
     rehearsalDate: "",
     internalNotes: "",
-    spaceId: opts?.spaceId ?? "",
+    spaceId,
   };
   const result = await withVenue(async (supabase, venueId) => {
     // Server-side hard block: refuse if the lead's event date is calendar-blocked.
-    if (input.eventDate) {
+    if (createDatedEvent && input.eventDate) {
       const title = await coveringClientEventBlockTitle(supabase, venueId, input);
       if (title) {
         return { ok: false, message: `Cannot convert this lead — their event date is blocked: "${title}". Remove the block first, or update the event date.` } as CreateClientResult;
@@ -447,7 +452,7 @@ export async function convertLeadToClient(
       .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
     if (existingClient) {
       let eventId = await getEventIdForClient(supabase, venueId, existingClient.id);
-      if (!eventId && input.eventDate) {
+      if (!eventId && createDatedEvent && input.eventDate) {
         try {
           eventId = await autoCreateEvent(supabase, venueId, existingClient.id, {
             firstName: lead.firstName,
@@ -478,7 +483,7 @@ export async function convertLeadToClient(
     let clientId: string;
     let eventId: string | null = null;
     try {
-      if (input.eventDate) {
+      if (createDatedEvent && input.eventDate) {
         const row = await repo.insertClientWithDatedEvent(
           supabase, venueId, input, datedEventFromClient(input), lead.id,
         );

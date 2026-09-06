@@ -35,12 +35,15 @@ export function BookingJourneyPanel({
   leadId,
   clientId,
   eventId,
+  spaceId,
 }: {
   journey: BookingJourneyModel;
   packages: PackageWithItems[];
   leadId?: string;
   clientId?: string;
   eventId?: string;
+  /** Event Space selected on the Lead — used when quietly creating a dated Event. */
+  spaceId?: string;
 }) {
   const router = useRouter();
   const [selectOpen, setSelectOpen] = React.useState(false);
@@ -57,6 +60,7 @@ export function BookingJourneyPanel({
       const result = await prepareCreateContractAction({
         selectionId: selection.id,
         leadId,
+        spaceId,
       });
       if (!result.ok) {
         toast.error(result.message);
@@ -216,6 +220,7 @@ export function BookingJourneyPanel({
           clientId={clientId}
           eventId={eventId}
           leadId={leadId}
+          spaceId={spaceId}
         />
       )}
 

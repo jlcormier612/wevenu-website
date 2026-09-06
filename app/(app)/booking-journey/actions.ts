@@ -96,6 +96,7 @@ export async function ensureCommercialCustomerAction(input: {
 export async function prepareCreateContractAction(input: {
   selectionId: string;
   leadId?: string;
+  spaceId?: string;
 }): Promise<
   | { ok: true; href: string }
   | { ok: false; message: string }

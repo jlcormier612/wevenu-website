@@ -12,6 +12,7 @@ export async function setupPaymentsAction(input: {
   clientId?: string;
   eventId?: string | null;
   leadId?: string;
+  spaceId?: string;
   depositAmount?: number;
   requestDeposit?: boolean;
 }): Promise<SetupPaymentsResult & { emailSent?: boolean }> {
@@ -22,6 +23,7 @@ export async function setupPaymentsAction(input: {
     const ensured = await ensureCommercialCustomerForSelection({
       selectionId: input.selectionId,
       leadId: input.leadId,
+      spaceId: input.spaceId,
     });
     if (!ensured.ok) return ensured;
     clientId = ensured.clientId;

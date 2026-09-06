@@ -463,6 +463,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               leadId={lead.id}
               clientId={lead.linkedClientId ?? undefined}
               eventId={lead.linkedEventId ?? undefined}
+              spaceId={bookingSpaceId || undefined}
             />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

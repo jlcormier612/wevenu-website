@@ -19,6 +19,8 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.match(fn, /commercialOnly/);
     assert.match(fn, /if \(!commercialOnly\)/);
     assert.match(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
+    assert.match(fn, /createDatedEvent/);
+    assert.match(fn, /!commercialOnly \|\| Boolean\(spaceId\)/);
   });
 
   it("Create contract preparation action exists", () => {

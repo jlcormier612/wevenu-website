@@ -27,6 +27,7 @@ export function SetupPaymentsSheet({
   clientId,
   eventId,
   leadId,
+  spaceId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,6 +35,7 @@ export function SetupPaymentsSheet({
   clientId?: string;
   eventId?: string;
   leadId?: string;
+  spaceId?: string;
 }) {
   // Remount body when opening so step/deposit reset without an effect.
   return (
@@ -46,6 +48,7 @@ export function SetupPaymentsSheet({
           clientId={clientId}
           eventId={eventId}
           leadId={leadId}
+          spaceId={spaceId}
         />
       ) : null}
     </Sheet>
@@ -58,12 +61,14 @@ function SetupPaymentsSheetBody({
   clientId,
   eventId,
   leadId,
+  spaceId,
 }: {
   onOpenChange: (open: boolean) => void;
   selection: CommercialSelection;
   clientId?: string;
   eventId?: string;
   leadId?: string;
+  spaceId?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
@@ -85,6 +90,7 @@ function SetupPaymentsSheetBody({
         clientId,
         eventId,
         leadId,
+        spaceId,
         depositAmount,
         requestDeposit,
       });

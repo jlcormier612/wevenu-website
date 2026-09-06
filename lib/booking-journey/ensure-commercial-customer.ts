@@ -19,6 +19,8 @@ export type EnsureCommercialCustomerResult =
 export async function ensureCommercialCustomerForSelection(input: {
   selectionId?: string;
   leadId?: string;
+  /** Optional Event Space — used when creating a dated Event on multi-space venues. */
+  spaceId?: string;
 }): Promise<EnsureCommercialCustomerResult> {
   let selection = input.selectionId
     ? await getSelectedPackage(input.selectionId)
@@ -71,11 +73,14 @@ export async function ensureCommercialCustomerForSelection(input: {
     };
   }
 
-  // Reuse convertLeadToClient — creates Client (+ Event when a date exists),
-  // never invites the portal (invitationSent is always false). commercialOnly
-  // keeps the lead on the sales pipeline (does not set sales Booked / stamp
-  // booked_at) — Start booking file remains the explicit planning step.
-  const converted = await convertLeadToClient(lead, { commercialOnly: true });
+  // Reuse convertLeadToClient — creates Client (+ Event when a date exists and
+  // space is available), never invites the portal (invitationSent is always false).
+  // commercialOnly keeps the lead on the sales pipeline (does not set sales
+  // Booked / stamp booked_at) — Start booking file remains the explicit planning step.
+  const converted = await convertLeadToClient(lead, {
+    commercialOnly: true,
+    spaceId: input.spaceId,
+  });
   if (!converted.ok) {
     return { ok: false, message: converted.message ?? "Could not continue." };
   }
