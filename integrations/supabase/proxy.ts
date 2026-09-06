@@ -51,6 +51,7 @@ const PUBLIC_PATHS = [
   "/vendor/accept",  // vendor invitation claim - accessible before auth
   "/join",           // staff team-invite acceptance - accessible before auth, same shape as /vendor/accept
   "/book",           // public tour scheduling - /book/{tour_embed_key}
+  "/offer",          // Booking Journey couple offer accept - /offer/{accept_token}
   "/w",              // public wedding website - /w/{slug}
   "/qr",             // QR Lead Capture scan-and-redirect - /qr/{code}, plus /qr/inactive
   "/rsvp",           // public RSVP submission - /rsvp/{rsvp_token}

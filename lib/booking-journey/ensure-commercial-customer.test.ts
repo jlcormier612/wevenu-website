@@ -48,4 +48,10 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.match(detail, /optional for contracts and payments/i);
     assert.match(detail, /not Booked until the agreement is done and the deposit is paid/i);
   });
+
+  it("couple offer accept path is public (not redirected to login)", () => {
+    const proxy = readFileSync(resolve("integrations/supabase/proxy.ts"), "utf8");
+    assert.match(proxy, /"\/offer"/);
+    assert.match(proxy, /Booking Journey couple offer/);
+  });
 });
