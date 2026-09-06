@@ -33,6 +33,11 @@ export type ConversationSummary = {
   // both at once.
   leadId: string | null;
   clientId: string | null;
+  /** Enrichment for Inbox search (email / phone / event date) — not shown as columns. */
+  searchEmail?: string | null;
+  searchPhone?: string | null;
+  eventDate?: string | null;
+  eventType?: string | null;
 };
 
 export type ConversationMessageAttachment = {

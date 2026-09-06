@@ -28,6 +28,7 @@ import { Search } from "lucide-react";
 import { getConversationInboxAction, getScheduledCountForTodayAction } from "@/app/(app)/messaging/actions";
 import { CHANNEL_META, ConversationThread } from "@/components/conversations/conversation-thread";
 import { RelationshipContextPanel } from "@/components/conversations/relationship-context-panel";
+import { conversationMatchesInboxSearch } from "@/lib/conversations/inbox-search";
 import type { ConversationSummary } from "@/lib/conversations/types";
 import type { StaffMember } from "@/lib/team/types";
 
@@ -143,7 +144,7 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
       if (relationshipFilter === "bookings" && !c.clientId) return false;
       if (unreadOnly && c.venueUnread === 0) return false;
       if (assignedFilter !== ALL && c.assignedStaffId !== assignedFilter) return false;
-      if (q && !(c.displayName ?? "").toLowerCase().includes(q)) return false;
+      if (q && !conversationMatchesInboxSearch(c, search)) return false;
       return true;
     });
   }, [items, relationshipFilter, unreadOnly, assignedFilter, search]);
@@ -183,7 +184,7 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search conversations…" aria-label="Search conversations"
+            placeholder="Search by name, email, phone, or event date…" aria-label="Search conversations"
             className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm"
           />
         </div>

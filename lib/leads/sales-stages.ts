@@ -26,7 +26,7 @@ export type SalesStageMeta = {
 export const SALES_STAGE_META: SalesStageMeta[] = [
   { value: "new_inquiry", label: "New Inquiry", order: 0, description: "Inquiry just received" },
   { value: "outreach_sent", label: "Outreach Sent", order: 1, description: "Venue has reached out" },
-  { value: "enrolled_in_sequence", label: "Enrolled in Sequence/Workflow", order: 2, description: "Active sales follow-up workflow" },
+  { value: "enrolled_in_sequence", label: "In Follow-Up", order: 2, description: "Active sales follow-up" },
   { value: "tour_scheduled", label: "Tour Scheduled", order: 3, description: "A real tour appointment exists" },
   { value: "proposal_sent", label: "Proposal Sent", order: 4, description: "Proposal has been sent" },
   { value: "booked", label: "Booked", order: 5, description: "Business is won — ready to set up the event" },

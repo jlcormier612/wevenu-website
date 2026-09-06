@@ -70,7 +70,7 @@ export function TimelineSetupCard({
             <SelectContent>{templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
           <Button type="button" size="sm" onClick={handleApply} disabled={applying} className="h-7 px-2 text-xs shrink-0">
-            {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Plus className="mr-1 h-3 w-3" />Apply</>}
+            {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Plus className="mr-1 h-3 w-3" />Use Template</>}
           </Button>
         </div>
         {!eventStartTime && (

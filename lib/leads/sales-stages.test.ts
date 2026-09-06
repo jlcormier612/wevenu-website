@@ -16,7 +16,7 @@ describe("sales stages", () => {
     assert.deepEqual(SALES_STAGE_META.map((s) => s.label), [
       "New Inquiry",
       "Outreach Sent",
-      "Enrolled in Sequence/Workflow",
+      "In Follow-Up",
       "Tour Scheduled",
       "Proposal Sent",
       "Booked",

@@ -63,6 +63,79 @@ function mapInboxRow(r: InboxConversationRow): ConversationSummary {
   };
 }
 
+/**
+ * Batch-enrich Inbox rows for search (email/phone/event date) — two/three
+ * queries total, not per-row. Venue isolation comes from the authenticated
+ * client + relationship ids already scoped by get_conversation_inbox.
+ */
+async function enrichInboxForSearch(
+  client: DbClient,
+  conversations: ConversationSummary[],
+): Promise<ConversationSummary[]> {
+  if (conversations.length === 0) return conversations;
+  const relationshipIds = conversations.map((c) => c.relationshipId);
+
+  const [leadsRes, clientsRes] = await Promise.all([
+    client.from("leads")
+      .select("relationship_id, email, phone")
+      .in("relationship_id", relationshipIds),
+    client.from("clients")
+      .select("id, relationship_id, email, phone")
+      .in("relationship_id", relationshipIds),
+  ]);
+
+  type ContactRow = { relationship_id: string; email: string | null; phone: string | null; id?: string };
+  const byRel = new Map<string, { email: string | null; phone: string | null; clientId: string | null }>();
+
+  for (const row of (leadsRes.data ?? []) as ContactRow[]) {
+    const cur = byRel.get(row.relationship_id) ?? { email: null, phone: null, clientId: null };
+    byRel.set(row.relationship_id, {
+      email: cur.email || row.email,
+      phone: cur.phone || row.phone,
+      clientId: cur.clientId,
+    });
+  }
+  for (const row of (clientsRes.data ?? []) as ContactRow[]) {
+    const cur = byRel.get(row.relationship_id) ?? { email: null, phone: null, clientId: null };
+    byRel.set(row.relationship_id, {
+      email: row.email || cur.email,
+      phone: row.phone || cur.phone,
+      clientId: row.id ?? cur.clientId,
+    });
+  }
+
+  const clientIds = [...new Set(
+    conversations.map((c) => c.clientId ?? byRel.get(c.relationshipId)?.clientId).filter(Boolean) as string[],
+  )];
+
+  const eventByClient = new Map<string, { eventDate: string | null; eventType: string | null }>();
+  if (clientIds.length > 0) {
+    const { data: events } = await client.from("events")
+      .select("client_id, event_date, event_type")
+      .in("client_id", clientIds)
+      .order("event_date", { ascending: true });
+    for (const e of (events ?? []) as { client_id: string; event_date: string | null; event_type: string | null }[]) {
+      // Prefer the soonest upcoming / earliest dated event for search.
+      if (!eventByClient.has(e.client_id)) {
+        eventByClient.set(e.client_id, { eventDate: e.event_date, eventType: e.event_type });
+      }
+    }
+  }
+
+  return conversations.map((c) => {
+    const contact = byRel.get(c.relationshipId);
+    const clientId = c.clientId ?? contact?.clientId ?? null;
+    const event = clientId ? eventByClient.get(clientId) : undefined;
+    return {
+      ...c,
+      searchEmail: contact?.email ?? null,
+      searchPhone: contact?.phone ?? null,
+      eventDate: event?.eventDate ?? null,
+      eventType: event?.eventType ?? null,
+    };
+  });
+}
+
 export async function getConversationInbox(
   client: DbClient,
 ): Promise<{ conversations: ConversationSummary[]; totalUnread: number }> {
@@ -70,7 +143,9 @@ export async function getConversationInbox(
   if (error) throw error;
   if (!data || "error" in data) return { conversations: [], totalUnread: 0 };
   const rows = (data.conversations ?? []) as InboxConversationRow[];
-  return { conversations: rows.map(mapInboxRow), totalUnread: data.total_unread ?? 0 };
+  const mapped = rows.map(mapInboxRow);
+  const conversations = await enrichInboxForSearch(client, mapped);
+  return { conversations, totalUnread: data.total_unread ?? 0 };
 }
 
 export async function getConversation(
