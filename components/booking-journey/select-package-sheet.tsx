@@ -44,13 +44,17 @@ export function SelectPackageSheet({
   const selected = packages.find((p) => p.id === packageId) ?? null;
   const total = selected?.basePrice != null ? Number(selected.basePrice) : null;
 
-  React.useEffect(() => {
-    if (!selected || total == null || !(total > 0)) {
+  function choosePackage(id: string) {
+    setPackageId(id);
+    setError("");
+    const pkg = packages.find((p) => p.id === id);
+    const price = pkg?.basePrice != null ? Number(pkg.basePrice) : null;
+    if (price != null && price > 0) {
+      setDeposit(String(suggestDepositAmount(price)));
+    } else {
       setDeposit("");
-      return;
     }
-    setDeposit(String(suggestDepositAmount(total)));
-  }, [selected, total]);
+  }
 
   function reset() {
     setPackageId("");
