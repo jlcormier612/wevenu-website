@@ -239,7 +239,7 @@ export async function updateLeadSalesStage(
   if (!validateStatus(stage) || !isSalesStage(stage))
     return { ok: false, message: `"${stage}" is not a valid sales stage.` };
   if (stage === "booked" && !opts?.allowBooked) {
-    return { ok: false, message: "Booked is only set by converting the lead with Book This Lead." };
+    return { ok: false, message: "Booked sales stage is only set by starting a booking file." };
   }
   if (!opts?.allowBooked && !isManuallyAssignableSalesStage(stage)) {
     return { ok: false, message: "That stage cannot be set manually." };
@@ -413,7 +413,7 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
     if (!linked) {
       return {
         ok: false,
-        message: "Book This Lead first — there is no client linked to this inquiry yet.",
+        message: "Start the booking file first — there is no client linked to this inquiry yet.",
       } as LeadActionResult;
     }
     return updateLeadSalesStage(leadId, "booked", { allowBooked: true, clientId: linked.id });

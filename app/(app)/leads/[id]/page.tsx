@@ -4,11 +4,13 @@ import { notFound } from "next/navigation";
 import { LeadDetail } from "@/components/leads/lead-detail";
 import { getHolds, getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
+import { loadBookingJourneyForLead } from "@/lib/booking-journey/load";
 import { getDocuments } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getDraftsForLead } from "@/lib/luv/drafts";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
+import { getPackagesWithItems } from "@/lib/packages/service";
 import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
 
@@ -31,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { luv: autoLuvDraft } = await searchParams;
-  const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments] = await Promise.all([
+  const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages] = await Promise.all([
     getLead(id),
     getHolds({ leadId: id }),
     getSpaces(),
@@ -42,11 +44,17 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
     getRecentInteractionMap(),
     getDraftsForLead(id),
     getTourAppointmentsForLead(id),
+    getPackagesWithItems(true),
   ]);
   if (!lead) notFound();
   const conversationId = lead.relationshipId
     ? await getConversationIdForRelationship(lead.relationshipId)
     : null;
+  const bookingJourney = await loadBookingJourneyForLead({
+    leadId: lead.id,
+    linkedClientId: lead.linkedClientId,
+    linkedEventId: lead.linkedEventId ?? null,
+  });
   // Computed server-side, not inside the client component — React Compiler
   // treats Date.now() as impure during render; see the identical pattern in
   // app/(app)/leads/page.tsx and app/(app)/clients/page.tsx.
@@ -66,6 +74,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       autoLuvDraft={autoLuvDraft}
       tourAppointments={tourAppointments}
       conversationId={conversationId}
+      bookingJourney={bookingJourney}
+      packages={packages}
     />
   );
 }

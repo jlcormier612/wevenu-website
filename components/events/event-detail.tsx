@@ -46,6 +46,11 @@ import { EventTaskList } from "@/components/playbooks/event-task-list";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import type { TimelineEntry, TimelineEntryAttachment, TimelineEntryLink, TimelineRelatedLink, TimelineSection } from "@/lib/timeline/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
+import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
+import type { BookingJourneyModel } from "@/lib/booking-journey/model";
+import type { CommercialSelection } from "@/lib/commercial-selections/types";
+import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
 import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
@@ -284,6 +289,10 @@ export function EventDetail({
   originatingLeadId = null,
   keyDates = [],
   clientRehearsalDate = null,
+  bookingJourney = null,
+  packagesWithItems = [],
+  selectedPackage = null,
+  openSetupPayments = false,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -354,10 +363,15 @@ export function EventDetail({
   keyDates?: ClientKeyDate[];
   /** The client's structured Rehearsal Date (Client Info) — passed through so KeyDatesSection can synthesize a single canonical Rehearsal entry instead of allowing a second, independently-editable one. */
   clientRehearsalDate?: string | null;
+  bookingJourney?: BookingJourneyModel | null;
+  packagesWithItems?: PackageWithItems[];
+  selectedPackage?: CommercialSelection | null;
+  openSetupPayments?: boolean;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
-  const [activeTab, setActiveTab] = React.useState("overview");
+  const [activeTab, setActiveTab] = React.useState(openSetupPayments ? "invoice" : "overview");
+  const [setupPaymentsOpen, setSetupPaymentsOpen] = React.useState(openSetupPayments);
   React.useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
@@ -566,6 +580,15 @@ export function EventDetail({
 
         {/* ── Overview ──────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-4">
+          {bookingJourney && (
+            <BookingJourneyPanel
+              journey={bookingJourney}
+              packages={packagesWithItems}
+              leadId={originatingLeadId ?? undefined}
+              clientId={event.clientId ?? undefined}
+              eventId={event.id}
+            />
+          )}
           <EventReadinessCard
             summary={readinessSummary}
             portalToken={portalToken}
@@ -867,23 +890,55 @@ export function EventDetail({
                   <CardTitle className="text-base">Payments</CardTitle>
                   <CardDescription>Financial summary for this event.</CardDescription>
                 </div>
-                <Button type="button" size="sm"
-                  render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
-                  + New Invoice
-                </Button>
+                {invoices.length > 0 && (
+                  <Button type="button" size="sm"
+                    render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
+                    + New Invoice
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
               {invoices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
                   <p className="text-sm text-muted-foreground">No invoice yet.</p>
-                  <div className="flex items-center gap-2">
-                    {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}
-                    <Button type="button" variant="outline" size="sm"
-                      render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
-                      Create Full Invoice
-                    </Button>
-                  </div>
+                  {selectedPackage && event.clientId ? (
+                    <>
+                      <Button type="button" size="sm" onClick={() => setSetupPaymentsOpen(true)}>
+                        Set up payments
+                      </Button>
+                      <details className="text-left w-full max-w-sm mx-auto">
+                        <summary className="cursor-pointer text-xs text-muted-foreground text-center">More options</summary>
+                        <div className="mt-3 flex flex-col items-center gap-2">
+                          <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />
+                          <Button type="button" variant="outline" size="sm"
+                            render={<Link href={`/invoices/new?eventId=${event.id}&clientId=${event.clientId}`} />}>
+                            Blank invoice
+                          </Button>
+                        </div>
+                      </details>
+                      <SetupPaymentsSheet
+                        open={setupPaymentsOpen}
+                        onOpenChange={setSetupPaymentsOpen}
+                        selection={selectedPackage}
+                        clientId={event.clientId}
+                        eventId={event.id}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground max-w-sm">
+                        Select a package on the Booking Journey first for the guided payment setup, or use an advanced option below.
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}
+                        <Button type="button" variant="outline" size="sm"
+                          render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
+                          Blank invoice
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">

@@ -241,6 +241,7 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
 
     const mergeData = await buildContractMergeData({
       clientId: input.clientId, eventId: input.eventId, contractTitle: input.title,
+      selectionId: input.selectionId,
     });
     const resolvedContent = applyRequiredSignerSignatureBlocks(
       mergeContent(input.content, mergeData),
@@ -262,6 +263,10 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
       supabase, venueId, contractId, "contract_created", "Contract created",
       undefined, actor.userId, actor.label,
     );
+    if (input.selectionId) {
+      const { linkSelectionContract } = await import("@/lib/commercial-selections/service");
+      await linkSelectionContract(input.selectionId, contractId);
+    }
     return { ok: true, contractId } as CreateContractResult;
   });
   return result as CreateContractResult;
@@ -274,6 +279,7 @@ export async function previewContractContent(opts: {
   eventId: string;
   contractTitle: string;
   clientSignerContactIds?: string[];
+  selectionId?: string;
 }): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
   try {
     const signerSeeds = await resolveClientSignerSeeds(opts.clientId, opts.clientSignerContactIds);
@@ -282,6 +288,7 @@ export async function previewContractContent(opts: {
       clientId: opts.clientId,
       eventId: opts.eventId,
       contractTitle: opts.contractTitle,
+      selectionId: opts.selectionId,
     });
     const content = applyRequiredSignerSignatureBlocks(
       mergeContent(opts.templateContent, mergeData),
@@ -360,6 +367,7 @@ export async function buildContractMergeData(opts: {
   clientId?: string;
   eventId?: string;
   contractTitle?: string;
+  selectionId?: string;
 }): Promise<Record<string, string>> {
   const [venue, client, event] = await Promise.all([
     getCurrentVenue(),
@@ -387,6 +395,28 @@ export async function buildContractMergeData(opts: {
   let balanceRemaining: string | null = null;
   let vendorsOnFile = "No vendors are currently listed for this celebration.";
   let coordinatorName: string | null = null;
+  let packageFromSelection = false;
+
+  // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
+  try {
+    const { getSelectedPackage, getActiveSelectedPackageForClient, getActiveSelectedPackageForEvent } =
+      await import("@/lib/commercial-selections/service");
+    const { formatPackageSection } = await import("@/lib/commercial-selections/constants");
+    let selection = opts.selectionId ? await getSelectedPackage(opts.selectionId) : null;
+    if (!selection && opts.eventId) selection = await getActiveSelectedPackageForEvent(opts.eventId);
+    if (!selection && opts.clientId) selection = await getActiveSelectedPackageForClient(opts.clientId);
+    if (selection && selection.status !== "superseded") {
+      packageFromSelection = true;
+      packageSection = formatPackageSection(selection.name, selection.totalAmount, selection.includedItems);
+      if (selection.includedItems.length > 0) {
+        includedItemsSummary = selection.includedItems
+          .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}${l.unit ? ` ${l.unit}` : ""}`)
+          .join("\n");
+      }
+      contractTotal = selection.totalAmount.toFixed(2);
+      balanceRemaining = (selection.totalAmount - selection.depositAmount).toFixed(2);
+    }
+  } catch { /* selection optional */ }
 
   if (venue) {
     try {
@@ -432,11 +462,11 @@ export async function buildContractMergeData(opts: {
         const packageLines = order.lines.filter((l) => l.provenance === "package");
         const included = order.lines.filter((l) => l.provenance === "package" || l.provenance === "inventory");
         const additional = order.lines.filter((l) => l.provenance === "custom");
-        if (packageLines.length > 0) {
+        if (!packageFromSelection && packageLines.length > 0) {
           const names = [...new Set(packageLines.map((l) => l.description))];
           packageSection = `Selected package / services:\n${names.map((n) => `• ${n}`).join("\n")}`;
         }
-        if (included.length > 0) {
+        if (!packageFromSelection && included.length > 0) {
           includedItemsSummary = included.map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`).join("\n");
         }
         if (additional.length > 0) {

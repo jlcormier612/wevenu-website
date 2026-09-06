@@ -77,7 +77,7 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
     if (!leadId) return;
     if (currentStageByLead[leadId] === targetStage) return;
     if (targetStage === "booked") {
-      toast.error("Booked is only set by converting the lead with Book This Lead.");
+      toast.error("Booked sales stage is only set by starting a booking file.");
       return;
     }
     if (currentStageByLead[leadId] === "booked" && targetStage !== "lost") {

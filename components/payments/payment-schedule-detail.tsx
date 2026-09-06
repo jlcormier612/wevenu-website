@@ -268,6 +268,7 @@ function LineItemRow({
   item,
   scheduleId,
   scheduleTitle,
+  clientId,
   onUpdate,
   onMarkPaid,
   onDelete,
@@ -276,6 +277,7 @@ function LineItemRow({
   item: PaymentLineItem;
   scheduleId: string;
   scheduleTitle: string;
+  clientId?: string | null;
   onUpdate: (id: string, updated: Partial<PaymentLineItem>) => void;
   onMarkPaid: (id: string) => void;
   onDelete: (id: string) => void;
@@ -325,6 +327,11 @@ function LineItemRow({
       if (result.ok) {
         onMarkPaid(item.id);
         setPayMode(false);
+        if (item.obligationKind === "deposit" && clientId) {
+          toast.success("Deposit recorded.");
+          window.location.href = `/clients/${clientId}/booked`;
+          return;
+        }
         if (result.celebrated) {
           celebrateLuv(coordinatorCelebrationMessage("final_payment_received", scheduleTitle));
         } else if (result.obligationCelebrated) {
@@ -658,6 +665,7 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
           )}
           {items.map((item) => (
             <LineItemRow key={item.id} item={item} scheduleId={schedule.id} scheduleTitle={schedule.title}
+              clientId={schedule.clientId}
               onUpdate={handleItemUpdate} onMarkPaid={handleMarkPaid} onDelete={handleDelete}
               currentUserRole={currentUserRole} />
           ))}

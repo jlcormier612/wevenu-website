@@ -46,11 +46,16 @@ import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
-import { getPackages } from "@/lib/packages/service";
+import { getPackages, getPackagesWithItems } from "@/lib/packages/service";
+import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
+import { getActiveSelectedPackageForClient } from "@/lib/commercial-selections/service";
 import { getItems as getInventoryItems } from "@/lib/inventory/service";
 import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ setupPayments?: string; selectionId?: string; eventId?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -65,8 +70,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * Documents, Notes, Team, Feedback) — reusing EventDetail exactly as it
  * already existed under /events/[id], just resolved from the Client side.
  */
-export default async function BookingWorkspacePage({ params }: Props) {
+export default async function BookingWorkspacePage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
   const client = await getClient(id);
   if (!client) notFound();
 
@@ -184,9 +190,18 @@ export default async function BookingWorkspacePage({ params }: Props) {
   // false skips these entirely rather than fetching and simply not rendering,
   // since most venues won't have the flag on.
   const eventOrderEnabled = venue?.eventOrderEnabled ?? false;
-  const [eventOrder, packages, eventOrderTemplates] = eventOrderEnabled
-    ? await Promise.all([getEventOrder(eventId), getPackages(), getEventOrderTemplates()])
-    : [null, [], []];
+  const [eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney] = await Promise.all([
+    eventOrderEnabled ? getEventOrder(eventId) : Promise.resolve(null),
+    eventOrderEnabled ? getPackages() : Promise.resolve([]),
+    eventOrderEnabled ? getEventOrderTemplates() : Promise.resolve([]),
+    getPackagesWithItems(true),
+    getActiveSelectedPackageForClient(client.id),
+    loadBookingJourneyForClient({
+      clientId: client.id,
+      eventId,
+      leadId: client.leadId,
+    }),
+  ]);
   // Reused by both Event Order's Add-from-Inventory sheet (when the flag is
   // on) and the always-on Event Inventory panel — one catalog fetch, not two.
   const inventoryItems = inventoryCatalogItems;
@@ -237,6 +252,10 @@ export default async function BookingWorkspacePage({ params }: Props) {
       eventOrderTemplates={eventOrderTemplates}
       keyDates={client.keyDates}
       clientRehearsalDate={client.rehearsalDate}
+      bookingJourney={bookingJourney}
+      packagesWithItems={packagesWithItems}
+      selectedPackage={selectedPackage}
+      openSetupPayments={sp.setupPayments === "1"}
     />
   );
 }

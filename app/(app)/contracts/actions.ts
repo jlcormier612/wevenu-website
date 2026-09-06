@@ -91,12 +91,14 @@ export async function previewMergedContentAction(opts: {
   clientId: string;
   eventId: string;
   contractTitle: string;
+  selectionId?: string;
 }): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
   try {
     const data = await buildContractMergeData({
       clientId: opts.clientId,
       eventId: opts.eventId,
       contractTitle: opts.contractTitle,
+      selectionId: opts.selectionId,
     });
     return { ok: true, content: mergeContent(opts.templateContent, data) };
   } catch {

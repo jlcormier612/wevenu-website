@@ -29,6 +29,10 @@ export function NewContractForm({
   clients,
   initialTemplateId,
   contactsByClientId = {},
+  initialClientId,
+  initialEventId,
+  selectionId,
+  selectionSummary,
 }: {
   templates: ContractTemplate[];
   clients: Client[];
@@ -36,6 +40,10 @@ export function NewContractForm({
   initialTemplateId?: string;
   /** Preloaded contacts keyed by client id — never auto-selects all as signers. */
   contactsByClientId?: Record<string, ClientContact[]>;
+  initialClientId?: string;
+  initialEventId?: string;
+  selectionId?: string;
+  selectionSummary?: { name: string; totalAmount: number; depositAmount: number } | null;
 }) {
   const router = useRouter();
   const requestedTemplate = initialTemplateId ? templates.find((t) => t.id === initialTemplateId && !t.isArchived) : undefined;
@@ -43,14 +51,23 @@ export function NewContractForm({
   const defaultTemplate = requestedTemplate ?? activeTemplates.find((t) => t.isDefault) ?? activeTemplates[0];
 
   const [templateId, setTemplateId] = React.useState(defaultTemplate?.id ?? "");
-  const [clientId, setClientId] = React.useState("");
-  const [eventId] = React.useState("");
+  const [clientId, setClientId] = React.useState(initialClientId ?? "");
+  const [eventId] = React.useState(initialEventId ?? "");
   const [title, setTitle] = React.useState("");
   const [content, setContent] = React.useState(defaultTemplate?.content ?? "");
   const [errors, setErrors] = React.useState<ContractErrors>({});
   const [pending, startTransition] = React.useTransition();
   const [merging, startMerge] = React.useTransition();
   const [selectedSignerIds, setSelectedSignerIds] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (!initialClientId || title) return;
+    const c = clients.find((x) => x.id === initialClientId);
+    if (c) {
+      const name = clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName);
+      setTitle(`Venue Rental Agreement — ${name}`);
+    }
+  }, [initialClientId, clients, title]);
 
   const clientContacts = clientId ? (contactsByClientId[clientId] ?? []) : [];
   const selectableContacts = clientContacts.filter((c) => c.email?.trim());
@@ -87,6 +104,7 @@ export function NewContractForm({
         clientId,
         eventId,
         contractTitle: title,
+        selectionId,
       });
       if (result.ok) {
         setContent(result.content);
@@ -114,6 +132,7 @@ export function NewContractForm({
         title,
         content,
         clientSignerContactIds: selectedSignerIds.length > 0 ? selectedSignerIds : undefined,
+        selectionId,
       });
       if (result.ok) { toast.success("Contract created."); router.push(`/contracts/${result.contractId}`); return; }
       if (result.errors) setErrors(result.errors);
@@ -123,6 +142,16 @@ export function NewContractForm({
 
   return (
     <div className="space-y-6">
+      {selectionSummary && (
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected Package</p>
+          <p className="mt-1 font-medium text-heading">{selectionSummary.name}</p>
+          <p className="text-heading">${selectionSummary.totalAmount.toFixed(2)}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            This package will be filled into the contract. You do not need to retype the price.
+          </p>
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="nc-tmpl">Template</Label>
         <Select

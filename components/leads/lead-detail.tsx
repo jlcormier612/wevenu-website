@@ -17,8 +17,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { convertLeadToClientAction } from "@/app/(app)/clients/actions";
+import { startBookingFileAction } from "@/app/(app)/booking-journey/actions";
 import { EventSpaceField } from "@/components/availability/event-space-field";
+import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
+import type { BookingJourneyModel } from "@/lib/booking-journey/model";
+import type { PackageWithItems } from "@/lib/packages/types";
 import {
   moveLeadBackToSalesPipelineAction,
   returnLeadToBookedAction,
@@ -98,7 +101,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[] }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -122,7 +125,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
   function requestBookThisLead() {
     if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
-      toast.error("Assign an Event Space before booking.");
+      toast.error("Assign an Event Space before starting the booking file.");
       return;
     }
     setConfirmBookOpen(true);
@@ -132,15 +135,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     if (convertPending) return;
     setConfirmBookOpen(false);
     startConvert(async () => {
-      const result = await convertLeadToClientAction(lead, bookingSpaceId || undefined);
+      const result = await startBookingFileAction(
+        lead,
+        bookingSpaceId || undefined,
+        bookingJourney.selection?.id,
+      );
       if (result.ok) {
-        const params = new URLSearchParams();
-        if (result.eventId) params.set("eventId", result.eventId);
-        if (result.invitationSent) params.set("invited", "1");
-        const qs = params.toString();
-        router.push(`/clients/${result.clientId}/booked${qs ? `?${qs}` : ""}`);
+        toast.success("Booking file started. Finish the agreement and deposit to mark them Booked.");
+        router.push(`/clients/${result.clientId}${result.eventId ? `?eventId=${result.eventId}` : ""}`);
       } else {
-        toast.error(result.message ?? "Could not convert to client.");
+        toast.error(result.message ?? "Could not start the booking file.");
       }
     });
   }
@@ -163,10 +167,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     startLifecycle(async () => {
       const result = await returnLeadToBookedAction(lead.id);
       if (result.ok) {
-        toast.success("Returned to Booked.");
+        toast.success("Returned to booking file.");
         router.refresh();
       } else {
-        toast.error(result.message ?? "Could not return to Booked.");
+        toast.error(result.message ?? "Could not return to booking file.");
       }
     });
   }
@@ -242,9 +246,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       />
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
-        title="Book this lead?"
-        description="Booked means you've won the business and are ready to start setting up the event. It doesn't necessarily mean the contract is signed or a payment has been received."
-        confirmLabel="Book This Lead"
+        title="Start booking file?"
+        description="This creates their client and event workspace so you can finish the agreement and deposit. They are not Booked until the agreement is done and the deposit is paid."
+        confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}
         onConfirm={confirmBookThisLead}
@@ -260,9 +264,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       />
       <LeadLifecycleConfirmDialog
         open={confirmReturnBookedOpen}
-        title="Return to Booked?"
-        description="This marks the relationship as Booked again. Your existing client, event, documents, messages, and financial information stay in place — this is not a new first booking."
-        confirmLabel="Return to Booked"
+        title="Return to booking file?"
+        description="This returns the sales stage to the booking-file workspace. Your existing client, event, documents, messages, and financial information stay in place. They are only commercially Booked after agreement and deposit."
+        confirmLabel="Return to booking file"
         confirming={lifecyclePending}
         onCancel={() => setConfirmReturnBookedOpen(false)}
         onConfirm={confirmReturnToBooked}
@@ -387,20 +391,20 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               disabled={lifecyclePending}
               onClick={() => setConfirmReturnBookedOpen(true)}
             >
-              Return to Booked
+              Return to booking file
             </Button>
           )}
           {previouslyConverted ? (
             <Button size="sm" variant={isBooked || currentStage === "lost" ? "default" : "outline"}
               render={<Link href={`/clients/${lead.linkedClientId}`} />}>
-              View Client →
+              Open booking file →
             </Button>
           ) : currentStage !== "lost" ? (
             <Button size="sm" disabled={convertPending || convertBlocked} onClick={requestBookThisLead}
-              title={convertBlocked ? "Add an Event Space in Availability settings before booking." : undefined}>
+              title={convertBlocked ? "Add an Event Space in Availability settings before starting the booking file." : undefined}>
               {convertPending
-                ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Booking…</>
-                : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Book This Lead</>}
+                ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Starting…</>
+                : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Start booking file</>}
             </Button>
           ) : null}
         </div>
@@ -452,6 +456,15 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
         {/* ── Overview ─────────────────────────────────────────────── */}
         <TabsContent value="overview">
+          <div className="mb-4">
+            <BookingJourneyPanel
+              journey={bookingJourney}
+              packages={packages}
+              leadId={lead.id}
+              clientId={lead.linkedClientId ?? undefined}
+              eventId={lead.linkedEventId ?? undefined}
+            />
+          </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>

@@ -108,6 +108,8 @@ export type NewContractInput = {
    * Never auto-assumes couple = two signers.
    */
   clientSignerContactIds?: string[];
+  /** Booking Journey — link contract to frozen Selected Package (CommercialSelection). */
+  selectionId?: string;
 };
 
 export type ContractErrors = Record<string, string>;

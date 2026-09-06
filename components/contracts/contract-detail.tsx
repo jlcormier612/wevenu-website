@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Check,
@@ -433,19 +434,38 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
       {/* Signed state */}
       {contract.status === "signed" && (
         <Card className="border-success/25 bg-success/5">
-          <CardContent className="py-4 flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
-              <Check className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Fully signed{contract.signerName ? ` — last signature by ${contract.signerName}` : ""}
-                {contract.signedAt ? ` on ${formatContractDate(contract.signedAt.slice(0, 10))}` : ""}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {finalized ? "This agreement is finalized. The final PDF is the official record." : "Finalize this contract to lock the signed content and generate the official final PDF."}
-              </p>
+          <CardContent className="py-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
+                <Check className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Fully signed{contract.signerName ? ` — last signature by ${contract.signerName}` : ""}
+                  {contract.signedAt ? ` on ${formatContractDate(contract.signedAt.slice(0, 10))}` : ""}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Agreement signed. Next: collect the deposit. Booking isn&apos;t complete until the deposit is paid.
+                  {finalized ? " This agreement is finalized." : " You can finalize the PDF anytime — it does not block collecting the deposit."}
+                </p>
+              </div>
             </div>
+            {contract.clientId && (
+              <Button
+                size="sm"
+                render={
+                  <Link
+                    href={
+                      contract.eventId
+                        ? `/clients/${contract.clientId}?setupPayments=1`
+                        : `/clients/${contract.clientId}`
+                    }
+                  />
+                }
+              >
+                Set up payments
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
