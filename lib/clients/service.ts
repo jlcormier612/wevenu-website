@@ -405,7 +405,11 @@ async function convertLeadHolds(venueId: string, leadId: string, supabase: Param
   if (error) console.error("Could not convert holds:", error.message);
 }
 
-export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string }): Promise<CreateClientResult> {
+export async function convertLeadToClient(
+  lead: Lead,
+  opts?: { spaceId?: string; commercialOnly?: boolean },
+): Promise<CreateClientResult> {
+  const commercialOnly = opts?.commercialOnly === true;
   const input: ClientInput = {
     firstName: lead.firstName,
     lastName: lead.lastName,
@@ -463,8 +467,12 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
           throw err;
         }
       }
-      await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: existingClient.id });
-      await stampBookingDateIfNeeded(supabase, venueId, eventId);
+      // Planning workspace ("Start booking file") sets sales Booked. Quiet
+      // commercial ensure (contract/payments) must not move the pipeline stage.
+      if (!commercialOnly) {
+        await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: existingClient.id });
+        await stampBookingDateIfNeeded(supabase, venueId, eventId);
+      }
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
     let clientId: string;
@@ -476,7 +484,9 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
         );
         clientId = row.clientId;
         eventId = row.eventId;
-        await stampBookingDateIfNeeded(supabase, venueId, eventId);
+        if (!commercialOnly) {
+          await stampBookingDateIfNeeded(supabase, venueId, eventId);
+        }
       } else {
         clientId = await repo.insertClient(supabase, venueId, input, lead.id);
       }
@@ -491,8 +501,10 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
           .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
-          await stampBookingDateIfNeeded(supabase, venueId, raceEventId);
-          await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: raceClient.id });
+          if (!commercialOnly) {
+            await stampBookingDateIfNeeded(supabase, venueId, raceEventId);
+            await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: raceClient.id });
+          }
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
         }
       }
@@ -503,11 +515,14 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
     await convertLeadHolds(venueId, lead.id, supabase);
 
     // Stop on booking (§3.3) — must never block conversion.
-    const { data: newClient } = await supabase.from("clients").select("relationship_id")
-      .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
-    if (newClient?.relationship_id) {
-      void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
-        .catch((e) => console.error("Series exit-on-booking failed:", e));
+    // Quiet commercial ensure is not a planning booking yet — leave series running.
+    if (!commercialOnly) {
+      const { data: newClient } = await supabase.from("clients").select("relationship_id")
+        .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
+      if (newClient?.relationship_id) {
+        void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
+          .catch((e) => console.error("Series exit-on-booking failed:", e));
+      }
     }
 
     // Sales → Booking Journey walkthrough — a document uploaded to the Lead
@@ -524,7 +539,9 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
       .update(eventId ? { lead_id: null, event_id: eventId } : { lead_id: null, client_id: clientId })
       .eq("lead_id", lead.id).eq("venue_id", venueId);
 
-    await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId });
+    if (!commercialOnly) {
+      await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId });
+    }
 
     return { ok: true, clientId, eventId } as CreateClientResult;
   });

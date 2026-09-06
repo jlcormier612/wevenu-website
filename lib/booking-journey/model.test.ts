@@ -127,7 +127,7 @@ describe("Booking Journey derivation", () => {
     );
   });
 
-  it("after accept shows Set up payments", () => {
+  it("after accept shows Set up payments with deposit language", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       eventId: "event-1",
@@ -139,7 +139,40 @@ describe("Booking Journey derivation", () => {
     });
     assert.equal(j.currentKey, "deposit");
     assert.equal(j.primaryAction, "setup_payments");
-    assert.match(j.direction, /800|\$800/);
-    assert.match(j.direction, /2,400|\$2,400|2400/);
+    assert.match(j.direction, /accepted the offer/i);
+    assert.match(j.direction, /Collect the \$800\.00 deposit/i);
+    assert.match(j.direction, /\$2,400\.00/);
+  });
+
+  it("deposit pending explains waiting without calling Booked", () => {
+    const j = buildBookingJourney({
+      clientId: "client-1",
+      selection: selection({ status: "accepted", invoiceId: "inv-1" }),
+      contract: null,
+      paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 800 }],
+      portalInvited: false,
+      planningStarted: false,
+    });
+    assert.equal(j.currentKey, "deposit");
+    assert.match(j.direction, /Waiting for the \$800\.00 deposit/i);
+    assert.match(j.direction, /not Booked/i);
+    assert.equal(j.isCommerciallyBooked, false);
+  });
+
+  it("Booked stage presents planning as optional", () => {
+    const j = buildBookingJourney({
+      clientId: "client-1",
+      eventId: "event-1",
+      selection: selection({ status: "accepted" }),
+      contract: null,
+      paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
+      portalInvited: false,
+      planningStarted: false,
+    });
+    assert.equal(j.currentKey, "booked");
+    assert.equal(j.isCommerciallyBooked, true);
+    assert.match(j.direction, /They're booked/i);
+    assert.match(j.direction, /optional/i);
+    assert.equal(j.primaryAction, "invite_portal");
   });
 });

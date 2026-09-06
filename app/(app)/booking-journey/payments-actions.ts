@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { sendInvoiceEmailAction } from "@/app/(app)/invoices/actions";
 import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensure-commercial-customer";
 import { setupPaymentsFromSelection } from "@/lib/booking-journey/setup-payments";
 import type { SetupPaymentsResult } from "@/lib/booking-journey/setup-payments";
@@ -13,7 +14,7 @@ export async function setupPaymentsAction(input: {
   leadId?: string;
   depositAmount?: number;
   requestDeposit?: boolean;
-}): Promise<SetupPaymentsResult> {
+}): Promise<SetupPaymentsResult & { emailSent?: boolean }> {
   let clientId = input.clientId;
   let eventId = input.eventId ?? null;
 
@@ -34,12 +35,19 @@ export async function setupPaymentsAction(input: {
     depositAmount: input.depositAmount,
     requestDeposit: input.requestDeposit,
   });
-  if (result.ok) {
-    revalidatePath(`/invoices/${result.invoiceId}`);
-    revalidatePath(`/payments/${result.scheduleId}`);
-    revalidatePath(`/clients/${clientId}`);
-    if (eventId) revalidatePath(`/events/${eventId}`);
-    if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (!result.ok) return result;
+
+  let emailSent = false;
+  if (input.requestDeposit) {
+    const emailed = await sendInvoiceEmailAction(result.invoiceId);
+    emailSent = emailed.ok === true;
   }
-  return result;
+
+  revalidatePath(`/invoices/${result.invoiceId}`);
+  revalidatePath(`/payments/${result.scheduleId}`);
+  revalidatePath(`/clients/${clientId}`);
+  if (eventId) revalidatePath(`/events/${eventId}`);
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+
+  return { ...result, emailSent };
 }

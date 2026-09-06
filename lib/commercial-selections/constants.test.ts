@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import {
   remainingAmount,
@@ -33,5 +35,22 @@ describe("Selected Package money helpers", () => {
     assert.match(text, /Ceremony space/);
     assert.match(text, /Tables × 10 ea/);
     assert.match(text, /\$3200\.00/);
+  });
+});
+
+describe("Selected Package freeze (source locks)", () => {
+  it("createSelectedPackageFromLibrary copies name, price, and items — not a live library link", () => {
+    const src = readFileSync(resolve("lib/commercial-selections/service.ts"), "utf8");
+    assert.match(src, /includedItems = pkg\.items\.map/);
+    assert.match(src, /totalAmount = roundMoney\(pkg\.basePrice\)/);
+    assert.match(src, /name: pkg\.name/);
+    assert.match(src, /sourcePackageId: pkg\.id/);
+    assert.match(src, /insertSelection|bumpVersion/);
+  });
+
+  it("setup payments refuses a second invoice for the same selection", () => {
+    const src = readFileSync(resolve("lib/booking-journey/setup-payments.ts"), "utf8");
+    assert.match(src, /selection\.invoiceId/);
+    assert.match(src, /Payments are already set up/);
   });
 });

@@ -146,7 +146,7 @@ export function BookingJourneyPanel({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {selection.status !== "accepted" && (
+              {journey.currentKey === "agreement" && (
                 <>
                   <Button type="button" size="sm" onClick={() => setOfferOpen(true)}>
                     Send offer
@@ -169,21 +169,31 @@ export function BookingJourneyPanel({
                   </Button>
                 </>
               )}
-              {selection.status === "accepted" && (
+              {(journey.primaryAction === "setup_payments" ||
+                (journey.currentKey === "deposit" && !selection.invoiceId)) && (
                 <Button type="button" size="sm" onClick={() => setPaymentsOpen(true)}>
                   Set up payments
                 </Button>
               )}
-              <Button type="button" size="sm" variant="ghost" onClick={() => setSelectOpen(true)}>
-                Change package
-              </Button>
+              {journey.currentKey === "package" || journey.currentKey === "agreement" ? (
+                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectOpen(true)}>
+                  Change package
+                </Button>
+              ) : null}
             </div>
           </div>
-          {selection.status === "draft" && (
+          {journey.currentKey === "agreement" && selection.status === "draft" && (
             <p className="mt-3 text-sm text-muted-foreground">
               Sending an offer lets them accept {selection.name}. After they accept, you&apos;ll
               collect the {formatCurrency(selection.depositAmount)} deposit. Or create a contract
-              from this package — they sign, then you collect the deposit.
+              from this package — they sign, then you collect the deposit. You do not need to start
+              a planning workspace first.
+            </p>
+          )}
+          {journey.primaryAction === "setup_payments" && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Next: set up payments for the {formatCurrency(selection.depositAmount)} deposit.
+              Planning stays optional until after they&apos;re Booked.
             </p>
           )}
         </div>

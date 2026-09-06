@@ -170,17 +170,17 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     primaryAction = "select_package";
   } else if (!agreementDone) {
     if (input.contract?.status === "sent") {
-      direction = "Sent — awaiting signature. Booking isn't complete until they sign and pay the deposit.";
-      primaryLabel = "Remind couple";
+      direction = "Contract sent — waiting for their signature. Collect the deposit after they sign to confirm the booking.";
+      primaryLabel = "Open contract";
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
     } else if (input.contract?.status === "draft") {
-      direction = "Next: you sign, then release to the couple.";
+      direction = "Create and send the contract. Sign as the venue, then release it to the couple.";
       primaryLabel = "Open contract";
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
     } else if (selection!.status === "offered") {
-      direction = "Offer sent — waiting for them to accept.";
+      direction = "Offer sent — waiting for them to accept. After they accept, collect the deposit to confirm the booking.";
       primaryLabel = "Remind couple";
       primaryAction = "remind_offer";
       secondaryLabel = "Mark accepted";
@@ -191,13 +191,12 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryLabel = "Send offer";
       primaryAction = "send_offer";
       secondaryLabel = "Create contract";
-      // Prefer action so Lead-only flows quietly attach a commercial customer first.
       secondaryAction = "create_contract";
       secondaryHref = contractNewHref(input, selection!);
     }
   } else if (!depositDone) {
     if (depositExists(input.paymentLines)) {
-      direction = `Deposit ${formatCurrency(selection!.depositAmount)} is due. They are not Booked until it is paid. ${formatCurrency(remaining!)} will remain.`;
+      direction = `The payment request is ready. Waiting for the ${formatCurrency(selection!.depositAmount)} deposit. They are not Booked until it is paid. ${formatCurrency(remaining!)} will remain.`;
       primaryLabel = "Open invoice";
       primaryHref = selection?.invoiceId
         ? `/invoices/${selection.invoiceId}`
@@ -207,15 +206,15 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       secondaryHref = selection?.invoiceId ? `/invoices/${selection.invoiceId}` : paymentsHref(input, selection);
     } else {
       const agreementLine = selection?.status === "accepted"
-        ? "Offer accepted."
-        : `Agreement signed for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}.`;
-      direction = `${agreementLine} Next: collect the ${formatCurrency(selection!.depositAmount)} deposit. ${formatCurrency(remaining!)} will remain on the payment plan.`;
+        ? `They accepted the offer. Collect the ${formatCurrency(selection!.depositAmount)} deposit to confirm the booking.`
+        : `The agreement is complete for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Collect the ${formatCurrency(selection!.depositAmount)} deposit to confirm the booking.`;
+      direction = `${agreementLine} ${formatCurrency(remaining!)} will remain on the payment plan.`;
       primaryLabel = "Set up payments";
       primaryHref = paymentsHref(input, selection);
       primaryAction = "setup_payments";
     }
   } else if (!planningDone) {
-    direction = `They're Booked. ${formatCurrency(remaining ?? 0)} remains on the payment plan. When you're ready, invite them to planning — optional if they won't use the portal.`;
+    direction = `They're booked. ${formatCurrency(remaining ?? 0)} remains on the payment plan. Invite them to the portal and start planning when you're ready — optional if they won't use planning.`;
     primaryLabel = input.portalInvited ? "Start planning" : "Invite to portal";
     primaryHref = input.clientId
       ? input.portalInvited
