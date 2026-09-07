@@ -159,6 +159,38 @@ export async function POST(request: NextRequest) {
       if (eventError) console.error("conversation_message_events insert failed:", eventError.message);
     }
 
+    // Bounce / complaint → suppress future sends to this address (server-side).
+    if (payload.type === "email.bounced" || payload.type === "email.complained") {
+      const recipients = payload.data?.to ?? [];
+      const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
+      for (const addr of recipients) {
+        await upsertCommunicationPermission(supabase, {
+          venueId,
+          channel: "email",
+          rawAddress: addr,
+          status: payload.type === "email.complained" ? "opted_out" : "provider_blocked",
+          source: payload.type === "email.complained" ? "resend_complaint" : "resend_bounce",
+          evidence: { emailId, type: payload.type },
+        });
+      }
+    }
+
+    // Resend may emit email.unsubscribed — treat as hard opt-out when present.
+    if (payload.type === "email.unsubscribed") {
+      const recipients = payload.data?.to ?? [];
+      const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
+      for (const addr of recipients) {
+        await upsertCommunicationPermission(supabase, {
+          venueId,
+          channel: "email",
+          rawAddress: addr,
+          status: "opted_out",
+          source: "resend_unsubscribed",
+          evidence: { emailId },
+        });
+      }
+    }
+
     // For email opens and clicks, find the lead and log an engagement signal
     if (payload.type === "email.opened" || payload.type === "email.clicked") {
       const signalType = payload.type === "email.opened" ? "email_opened" : "email_clicked";

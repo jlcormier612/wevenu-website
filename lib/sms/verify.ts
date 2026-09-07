@@ -1,11 +1,12 @@
 /**
- * Twilio webhook signature verification (2026-07-11).
+ * Twilio webhook signature verification.
  *
- * Twilio's scheme (distinct from Resend/Svix's HMAC-SHA256 used elsewhere in
- * this codebase — see app/api/messaging/webhook/route.ts): HMAC-SHA1 of the
- * exact webhook URL Twilio was configured to call, with every POST param
- * (sorted by key, no delimiter) appended directly to it, keyed by the
- * account's Auth Token. https://www.twilio.com/docs/usage/webhooks/webhooks-security
+ * HMAC-SHA1 of the exact webhook URL + sorted POST params, keyed by the
+ * subaccount Auth Token (not the API key). Pass authToken from the venue
+ * secret resolved via AccountSid — do not rely on a global parent token
+ * for customer subaccount webhooks.
+ *
+ * https://www.twilio.com/docs/usage/webhooks/webhooks-security
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 
@@ -13,9 +14,9 @@ export function verifyTwilioSignature(
   url: string,
   params: Record<string, string>,
   signatureHeader: string | null,
+  authToken: string | null | undefined,
 ): boolean {
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (!authToken) return true; // Skip verification when not configured (dev/unset)
+  if (!authToken?.trim()) return false;
   if (!signatureHeader) return false;
 
   const data = Object.keys(params).sort()

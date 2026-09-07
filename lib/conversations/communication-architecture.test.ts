@@ -28,6 +28,21 @@ describe("communication architecture locks", () => {
     assert.ok(smsAt > 0 && emailAt > 0 && recordAt > emailAt);
   });
 
+  it("outbound SMS/email enforce communication permissions server-side", () => {
+    assert.match(conversationService, /assertChannelAllowed/);
+    assert.match(scheduledProcessor, /assertChannelAllowed/);
+    assert.match(inboundSmsRoute, /permissionFromTwilioOptOut|OptOutType/);
+    const smsStatus = readFileSync(resolve("app/api/messaging/sms-status/route.ts"), "utf8");
+    assert.match(smsStatus, /upsertCommunicationPermission/);
+    const emailWebhook = readFileSync(resolve("app/api/messaging/webhook/route.ts"), "utf8");
+    assert.match(emailWebhook, /email\.bounced|email\.complained|email\.unsubscribed/);
+    assert.match(emailWebhook, /upsertCommunicationPermission/);
+    const sendSmsSrc = readFileSync(resolve("lib/sms/send.ts"), "utf8");
+    assert.match(sendSmsSrc, /assertChannelAllowed/);
+    assert.match(sendSmsSrc, /skipPermissionCheck/);
+    assert.match(sendSmsSrc, /venueId/);
+  });
+
   it("portal messages are record-only and do not call sendEmail/sendSms in sendConversationMessage", () => {
     assert.match(conversationService, /channel === "portal"/);
     assert.match(conversationService, /notifyCoupleOfVenuePortalMessage/);
@@ -56,17 +71,45 @@ describe("communication architecture locks", () => {
     assert.match(engine, /role === "couple"/);
   });
 
-  it("inbound email and SMS routes write through conversation inbound modules", () => {
-    assert.match(inboundEmail, /conversation_messages/);
-    assert.match(inboundEmailRoute, /inbound/);
-    assert.match(inboundSmsRoute, /conversation_messages|inbound/);
+  it("inbound SMS persists MessageSid and supports MMS media ingest", () => {
+    assert.match(inboundSmsRoute, /MessageSid/);
+    assert.match(inboundSmsRoute, /provider_id/);
+    assert.match(inboundSmsRoute, /parseInboundTwilioMedia|NumMedia|persistTwilioMedia/);
+    assert.match(inboundSmsRoute, /registerMessageAttachmentAsDocument/);
+  });
+
+  it("inbound SMS routes by AccountSid → venue, not global phone matching", () => {
+    assert.match(inboundSmsRoute, /AccountSid/);
+    assert.match(inboundSmsRoute, /resolveVenueTwilioForWebhookAccountSid/);
+    assert.match(inboundSmsRoute, /find_relationship_by_phone_for_venue/);
+    assert.doesNotMatch(inboundSmsRoute, /find_relationship_by_phone[^_]/);
+    const smsStatus = readFileSync(resolve("app/api/messaging/sms-status/route.ts"), "utf8");
+    assert.match(smsStatus, /AccountSid/);
+    assert.match(smsStatus, /resolveVenueTwilioForWebhookAccountSid/);
+  });
+
+  it("outbound SMS resolves venue Twilio and does not use global Messaging Service SID", () => {
+    const sendSms = readFileSync(resolve("lib/sms/send.ts"), "utf8");
+    assert.match(sendSms, /resolveVenueTwilioForSend/);
+    assert.match(sendSms, /twilioRestBasicAuth/);
+    assert.doesNotMatch(sendSms, /process\.env\.TWILIO_MESSAGING_SERVICE_SID/);
+    assert.doesNotMatch(sendSms, /process\.env\.TWILIO_ACCOUNT_SID/);
+  });
+
+  it("outbound SMS/email send paths accept media or attachments", () => {
+    assert.match(conversationService, /mediaUrls/);
+    assert.match(conversationService, /attachments:/);
+    const sendSms = readFileSync(resolve("lib/sms/send.ts"), "utf8");
+    assert.match(sendSms, /MediaUrl/);
+    const sendEmail = readFileSync(resolve("lib/email/send.ts"), "utf8");
+    assert.match(sendEmail, /attachments/);
   });
 });
 
-describe("messages primary navigation", () => {
-  it("labels /messaging as Messages in primary nav", () => {
+describe("inbox primary navigation", () => {
+  it("labels /messaging as Inbox in primary nav", () => {
     const nav = readFileSync(resolve("lib/navigation.ts"), "utf8");
-    assert.match(nav, /title: "Messages"/);
+    assert.match(nav, /title: "Inbox"/);
     assert.match(nav, /href: "\/messaging"/);
   });
 });

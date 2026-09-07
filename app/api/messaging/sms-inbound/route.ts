@@ -1,67 +1,108 @@
 /**
  * POST /api/messaging/sms-inbound
  *
- * Handles inbound SMS from Twilio (2026-07-11 — texting added ahead of
- * launch; see lib/sms/send.ts for the send side).
+ * Handles inbound SMS/MMS from Twilio (ISV: one subaccount per venue).
  *
- * Setup required (external):
- *   1. Buy or port a phone number in the Twilio Console (or set up a
- *      Messaging Service — recommended, gets STOP/START/HELP opt-out
- *      compliance handling for free).
- *   2. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and either
- *      TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM_NUMBER in .env.
- *   3. In the Twilio Console, set this route's full URL
- *      (${NEXT_PUBLIC_APP_URL}/api/messaging/sms-inbound) as the number's
- *      (or Messaging Service's) "A message comes in" webhook, POST method.
+ * Tenant routing (authoritative):
+ *   1. AccountSid → venue_twilio_accounts.venue_id
+ *   2. Verify signature with that subaccount's Auth Token
+ *   3. From → find_relationship_by_phone_for_venue(phone, venue_id)
+ *   4. Match → find-or-create Conversation, insert message (idempotent on MessageSid)
+ *   5. Persist NumMedia MediaUrl* with venue credentials + Documents registration
+ *   6. No match → log and skip
  *
- * Matching (mirrors app/api/messaging/inbound/route.ts's email matching —
- * one shared Twilio number across every venue on Hello to Cheers, matched by sender
- * phone number, not by which number they texted):
- *   1. Normalize the "From" number to digits, call find_relationship_by_phone
- *   2. Match found → find-or-create that relationship's Conversation, insert
- *   3. No match → log and skip (future: unmatched queue)
- *
- * Twilio inbound payload is form-encoded (application/x-www-form-urlencoded),
- * not JSON: From, To, Body, MessageSid, ...
+ * Media-only MMS (empty Body) is allowed when NumMedia > 0.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { verifyTwilioSignature } from "@/lib/sms/verify";
 import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
 import { shouldAdvanceStatus } from "@/lib/communication/status";
+import { verifyTwilioSignature } from "@/lib/sms/verify";
+import { parseInboundTwilioMedia, persistTwilioMediaToConversationStorage } from "@/lib/sms/media";
+import { registerMessageAttachmentAsDocument } from "@/lib/conversations/attachment-document";
+import { resolveVenueTwilioForWebhookAccountSid } from "@/lib/sms/venue-twilio-resolve";
+import { twilioMediaBasicAuth } from "@/lib/sms/venue-twilio-secrets";
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const params = new URLSearchParams(rawBody);
   const paramsObj = Object.fromEntries(params.entries());
 
+  const accountSid = params.get("AccountSid")?.trim();
+  if (!accountSid) {
+    return NextResponse.json({ error: "Missing AccountSid." }, { status: 401 });
+  }
+
+  const resolved = await resolveVenueTwilioForWebhookAccountSid(accountSid);
+  if (!resolved.ok) {
+    return NextResponse.json({ error: "Unknown Twilio account." }, { status: 401 });
+  }
+
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin}/api/messaging/sms-inbound`;
   const signature = request.headers.get("x-twilio-signature");
-  if (!verifyTwilioSignature(webhookUrl, paramsObj, signature)) {
+  if (!verifyTwilioSignature(webhookUrl, paramsObj, signature, resolved.ctx.secret.authToken)) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
   }
 
+  const venueId = resolved.ctx.account.venueId;
   const from = params.get("From")?.trim();
-  const body = params.get("Body")?.trim();
-  if (!from || !body) return NextResponse.json({ ok: true });
+  const body = (params.get("Body") ?? "").trim();
+  const messageSid = params.get("MessageSid")?.trim() || null;
+  const optOutType = params.get("OptOutType")?.trim() || null;
+  const media = parseInboundTwilioMedia(params);
 
-  // TR-M7 pattern (see inbound email route): no Supabase session here, so
-  // this must use the admin client — RLS would silently reject every write.
+  if (!from) return NextResponse.json({ ok: true });
+  if (!body && media.length === 0 && !optOutType) return NextResponse.json({ ok: true });
+
   const supabase = createAdminClient();
 
-  const { data: match } = await supabase.rpc("find_relationship_by_phone", { p_phone: from })
-    .maybeSingle<{ venue_id: string; relationship_id: string; entity_type: string; entity_id: string; display_name: string | null }>();
+  // Idempotency — Twilio retries must not create duplicate messages.
+  if (messageSid) {
+    const { data: existingMsg } = await supabase.from("conversation_messages")
+      .select("id")
+      .eq("provider_id", messageSid)
+      .maybeSingle<{ id: string }>();
+    if (existingMsg) return NextResponse.json({ ok: true, deduped: true });
+  }
+
+  const { data: match } = await supabase.rpc("find_relationship_by_phone_for_venue", {
+    p_phone: from,
+    p_venue_id: venueId,
+  }).maybeSingle<{
+    venue_id: string;
+    relationship_id: string;
+    entity_type: string;
+    entity_id: string;
+    display_name: string | null;
+  }>();
 
   if (!match) {
-    console.warn("Inbound SMS from unmatched number:", from);
+    console.warn("Inbound SMS from unmatched number for venue:", venueId, from);
     return NextResponse.json({ ok: true });
   }
 
-  // Find or create this relationship's Conversation. In the normal case one
-  // already exists — provision_conversation_for_relationship provisions it
-  // the moment a relationship is created — this is a fallback for
-  // relationships that predate that trigger, not the common path.
+  // Persist STOP/START (never treat ordinary inbound as opt-in).
+  const { permissionFromTwilioOptOut, upsertCommunicationPermission } = await import("@/lib/communication/permissions");
+  const permChange = permissionFromTwilioOptOut(optOutType, body);
+  if (permChange) {
+    await upsertCommunicationPermission(supabase, {
+      venueId: match.venue_id,
+      channel: "sms",
+      rawAddress: from,
+      status: permChange.status,
+      source: permChange.source,
+      evidence: { optOutType, body, messageSid, accountSid },
+      relationshipId: match.relationship_id,
+    });
+  }
+
+  // STOP/START/HELP may still create a conversation note when there is body text,
+  // but HELP alone with no media does not need a transcript row beyond permission.
+  if (!body && media.length === 0) {
+    return NextResponse.json({ ok: true, permissionUpdated: !!permChange });
+  }
+
   let conversationId: string;
   const { data: existing } = await supabase.from("conversations")
     .select("id").eq("relationship_id", match.relationship_id).maybeSingle<{ id: string }>();
@@ -78,37 +119,82 @@ export async function POST(request: NextRequest) {
     conversationId = created.id;
   }
 
-  // last_message_at / venue_unread update themselves via
-  // touch_conversation_on_message — no manual update needed here.
-  const { error: insertError } = await supabase.from("conversation_messages").insert({
-    conversation_id: conversationId,
-    venue_id: match.venue_id,
-    sender_type: "lead_or_client",
-    channel: "sms",
-    body,
-  });
+  const { data: inserted, error: insertError } = await supabase.from("conversation_messages")
+    .insert({
+      conversation_id: conversationId,
+      venue_id: match.venue_id,
+      sender_type: "lead_or_client",
+      channel: "sms",
+      body: body || (media.length > 0 ? "" : body),
+      provider_id: messageSid,
+      provider_account_sid: accountSid,
+      status: "received",
+    })
+    .select("id")
+    .single<{ id: string }>();
+
   if (insertError) {
+    // Unique provider_id race with a concurrent retry.
+    if (messageSid && /duplicate|unique|provider/i.test(insertError.message)) {
+      return NextResponse.json({ ok: true, deduped: true });
+    }
     console.error("Inbound SMS insert failed:", insertError.message);
     return NextResponse.json({ error: "Failed to record message." }, { status: 500 });
   }
 
-  // Communication Trust Experience — same "replied" marking as the email
-  // inbound route, for the most recent outbound text in this conversation.
+  const messageId = inserted.id;
+  const mediaAuth = twilioMediaBasicAuth(resolved.ctx.secret);
+
+  for (const item of media) {
+    const stored = await persistTwilioMediaToConversationStorage({
+      venueId: match.venue_id,
+      conversationId,
+      media: item,
+      messageSid: messageSid ?? messageId,
+      mediaBasicAuth: mediaAuth,
+    });
+    if (!stored.ok) {
+      console.error("Inbound MMS persist failed:", stored.message);
+      continue;
+    }
+    const { data: att, error: attError } = await supabase.from("conversation_message_attachments")
+      .insert({
+        message_id: messageId,
+        file_url: stored.url,
+        file_name: stored.fileName,
+        file_size: stored.fileSize,
+        mime_type: stored.mimeType,
+      })
+      .select("id")
+      .single<{ id: string }>();
+    if (attError) {
+      console.error("Inbound MMS attachment row failed:", attError.message);
+      continue;
+    }
+    await registerMessageAttachmentAsDocument(supabase as never, {
+      messageId,
+      attachmentId: att.id,
+      file: {
+        url: stored.url,
+        name: stored.fileName,
+        size: stored.fileSize,
+        mimeType: stored.mimeType,
+      },
+    });
+  }
+
   const { data: lastOutbound } = await supabase.from("conversation_messages")
     .select("id, status").eq("conversation_id", conversationId).eq("channel", "sms")
-    .neq("sender_type", "lead_or_client").order("sent_at", { ascending: false }).limit(1).maybeSingle<{ id: string; status: string | null }>();
+    .neq("sender_type", "lead_or_client").order("sent_at", { ascending: false }).limit(1)
+    .maybeSingle<{ id: string; status: string | null }>();
   if (lastOutbound && shouldAdvanceStatus(lastOutbound.status, "replied")) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from("conversation_messages") as any).update({ status: "replied" }).eq("id", lastOutbound.id);
-    // Message Timeline needs a timestamp for every transition — see the
-    // identical comment in app/api/messaging/inbound/route.ts.
     await supabase.from("conversation_message_events").insert({
       message_id: lastOutbound.id, event_type: "replied", occurred_at: new Date().toISOString(),
     });
   }
 
-  // Stop on reply (§3.3) — a reply means a human is handling this
-  // personally now, so any Series in progress should get out of the way.
   void exitActiveEnrollmentsForRelationship(supabase, match.venue_id, match.relationship_id, "exited_reply")
     .catch((e) => console.error("Series exit-on-reply failed:", e));
 

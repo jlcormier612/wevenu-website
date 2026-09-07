@@ -70,7 +70,7 @@ export default async function CommunicationsAutomationSettingsPage() {
             venuePhone={venue?.phone ?? null}
             emailSignature={venue?.emailSignature ?? null}
             emailConfigured={isEmailConfigured()}
-            smsConfigured={isSmsConfigured()}
+            smsConfigured={venue ? await isSmsConfigured(venue.id) : false}
           />
         </CardContent>
       </Card>

@@ -17,6 +17,14 @@
 
 import { getCommunicationMode, sandboxEmailRecipient } from "@/lib/communication/mode";
 
+export type EmailAttachment = {
+  /** Public URL Resend can fetch (preferred for conversation uploads). */
+  path?: string;
+  /** Base64 content — used when path is unavailable. */
+  content?: string;
+  filename: string;
+};
+
 export type EmailPayload = {
   to: string;
   subject: string;
@@ -24,6 +32,7 @@ export type EmailPayload = {
   html?: string;      // optional rich HTML body
   replyTo?: string;   // venue contact email
   threadId?: string;  // when set, Reply-To routes through inbound for thread matching
+  attachments?: EmailAttachment[];
 };
 
 export type SendResult =
@@ -77,6 +86,14 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
       ? `thread+${payload.threadId}@${inboundAddress.replace(/^.*@/, "")}` // subaddressing for thread matching
       : (payload.replyTo ?? null);
     if (replyTo) body.reply_to = replyTo;
+    if (payload.attachments && payload.attachments.length > 0) {
+      body.attachments = payload.attachments.map((a) => {
+        const item: Record<string, string> = { filename: a.filename };
+        if (a.path) item.path = a.path;
+        else if (a.content) item.content = a.content;
+        return item;
+      });
+    }
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

@@ -1,21 +1,8 @@
 /**
  * POST /api/messaging/sms-status
  *
- * Twilio's StatusCallback for outbound SMS — see lib/sms/send.ts, which
- * attaches this route's URL to every send. Without it, a "sent" text and
- * one silently dropped by a carrier look identical; this is what actually
- * answers "did my text go?" for SMS, the same way the Resend webhook does
- * for email (see app/api/messaging/webhook/route.ts).
- *
- * Twilio's payload is form-encoded, matching sms-inbound's shape:
- *   MessageSid, MessageStatus (queued|sending|sent|delivered|undelivered|failed),
- *   ErrorCode, ErrorMessage, To, From.
- *
- * SMS has never been a legacy `messages` channel (see lib/scheduled-
- * messages/processor.ts's own comment on that), so `provider_id` here is
- * only ever looked up against conversation_messages — checking `messages`
- * too costs one query and keeps this symmetric with the Resend webhook if
- * that ever changes.
+ * Twilio StatusCallback for outbound SMS (ISV: verify with subaccount Auth Token
+ * resolved from AccountSid → venue_twilio_accounts).
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -23,6 +10,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { verifyTwilioSignature } from "@/lib/sms/verify";
 import { shouldAdvanceStatus } from "@/lib/communication/status";
 import { translateSmsFailure } from "@/lib/communication/failure-messages";
+import { resolveVenueTwilioForWebhookAccountSid } from "@/lib/sms/venue-twilio-resolve";
 
 const TWILIO_STATUS_TO_SHARED: Record<string, string> = {
   queued:       "sending",
@@ -38,9 +26,19 @@ export async function POST(request: NextRequest) {
   const params = new URLSearchParams(rawBody);
   const paramsObj = Object.fromEntries(params.entries());
 
+  const accountSid = params.get("AccountSid")?.trim();
+  if (!accountSid) {
+    return NextResponse.json({ error: "Missing AccountSid." }, { status: 401 });
+  }
+
+  const resolved = await resolveVenueTwilioForWebhookAccountSid(accountSid);
+  if (!resolved.ok) {
+    return NextResponse.json({ error: "Unknown Twilio account." }, { status: 401 });
+  }
+
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin}/api/messaging/sms-status`;
   const signature = request.headers.get("x-twilio-signature");
-  if (!verifyTwilioSignature(webhookUrl, paramsObj, signature)) {
+  if (!verifyTwilioSignature(webhookUrl, paramsObj, signature, resolved.ctx.secret.authToken)) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
   }
 
@@ -54,18 +52,60 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   const { data: message } = await supabase.from("conversation_messages")
-    .select("id, venue_id, status")
+    .select("id, venue_id, status, provider_account_sid")
     .eq("provider_id", messageSid)
-    .maybeSingle<{ id: string; venue_id: string; status: string | null }>();
+    .maybeSingle<{
+      id: string;
+      venue_id: string;
+      status: string | null;
+      provider_account_sid: string | null;
+    }>();
 
   if (!message) return NextResponse.json({ ok: true }); // unknown message — ignore gracefully
 
+  // Tenant isolation: status callback AccountSid must match the message's venue account.
+  if (message.provider_account_sid && message.provider_account_sid !== accountSid) {
+    return NextResponse.json({ error: "Account mismatch." }, { status: 401 });
+  }
+  if (message.venue_id !== resolved.ctx.account.venueId) {
+    return NextResponse.json({ error: "Venue mismatch." }, { status: 401 });
+  }
+
   if (shouldAdvanceStatus(message.status, newStatus)) {
     const patch: Record<string, unknown> = { status: newStatus };
+    if (!message.provider_account_sid) {
+      patch.provider_account_sid = accountSid;
+    }
     if (newStatus === "failed") {
       const errorCode = params.get("ErrorCode");
       const errorMessage = params.get("ErrorMessage") ?? "";
       patch.failure_reason = translateSmsFailure(`${errorCode ?? ""} ${errorMessage}`);
+      // Persist provider opt-out / block so future sends are refused server-side.
+      const to = params.get("To")?.trim();
+      if (to && (errorCode === "21610" || /opted out|unsubscribed/i.test(errorMessage))) {
+        const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
+        await upsertCommunicationPermission(supabase, {
+          venueId: message.venue_id,
+          channel: "sms",
+          rawAddress: to,
+          status: errorCode === "21610" ? "opted_out" : "provider_blocked",
+          source: "twilio_status_callback",
+          evidence: { errorCode, errorMessage, messageSid, accountSid },
+        });
+      } else if (to && newStatus === "failed") {
+        // Non-opt-out carrier failures — mark unreachable without inventing opt-out.
+        if (errorCode && ["30003", "30005", "30006", "21211", "21614"].includes(errorCode)) {
+          const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
+          await upsertCommunicationPermission(supabase, {
+            venueId: message.venue_id,
+            channel: "sms",
+            rawAddress: to,
+            status: "provider_blocked",
+            source: "twilio_status_callback",
+            evidence: { errorCode, errorMessage, messageSid, accountSid },
+          });
+        }
+      }
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: statusError } = await (supabase.from("conversation_messages") as any).update(patch).eq("id", message.id);

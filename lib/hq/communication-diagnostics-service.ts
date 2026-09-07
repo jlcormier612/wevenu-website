@@ -57,8 +57,9 @@ export async function getVenueCommunicationDiagnostics(venueId: string): Promise
 
   const scheduledRows = (scheduled.data ?? []) as { status: string; scheduled_for: string }[];
 
+  const smsConfigured = await isSmsConfigured(venueId);
   return {
-    authStatus: { emailConfigured: isEmailConfigured(), smsConfigured: isSmsConfigured() },
+    authStatus: { emailConfigured: isEmailConfigured(), smsConfigured },
     queue: {
       pending: scheduledRows.length,
       overdue: scheduledRows.filter((r) => r.scheduled_for < nowIso).length,

@@ -12,7 +12,6 @@ import { Clock, Paperclip, StickyNote, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addConversationMessageAttachmentAction,
   getComposeTemplatesAction,
   getConversationComposeContextAction,
   previewConversationSendAction,
@@ -27,6 +26,12 @@ import {
   type OutboundChannel,
   type SendableChannel,
 } from "@/lib/conversations/channels";
+import {
+  acceptAttributeForChannel,
+  maxBytesForChannel,
+  validateAttachmentsForChannel,
+  type AttachmentChannel,
+} from "@/lib/conversations/attachment-constraints";
 import type { ConversationChannel, ConversationComposeContext, ConversationSendPreview } from "@/lib/conversations/types";
 import type { MessageTemplate } from "@/lib/message-templates/types";
 import type { ScheduledMessageChannel } from "@/lib/scheduled-messages/types";
@@ -68,7 +73,7 @@ export function ConversationCompose({
   const [mode, setMode] = React.useState<ComposeMode>("outbound");
   const [outboundChannel, setOutboundChannel] = React.useState<OutboundChannel>(initialSubject ? "email" : "portal");
   const [sending, setSending] = React.useState(false);
-  const [pendingFile, setPendingFile] = React.useState<File | null>(null);
+  const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
   const [uploadingFile, setUploadingFile] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [templates, setTemplates] = React.useState<MessageTemplate[]>([]);
@@ -116,13 +121,15 @@ export function ConversationCompose({
     channel === "email" ? emailReady : channel === "sms" ? smsReady : true;
   const channelDisabledReason =
     channel === "email" && !emailReady
-      ? context?.sendingDisabled
-        ? "Sending is turned off in this environment."
-        : "Email isn't ready to send yet. Open Communication Health to see why."
-      : channel === "sms" && !smsReady
-        ? context?.sendingDisabled
+      ? context?.emailPermissionMessage
+        ?? (context?.sendingDisabled
           ? "Sending is turned off in this environment."
-          : "Texting isn't set up yet. Open Communication Health to see why."
+          : "Email isn't ready to send yet. Open Communication Health to see why.")
+      : channel === "sms" && !smsReady
+        ? context?.smsPermissionMessage
+          ?? (context?.sendingDisabled
+            ? "Sending is turned off in this environment."
+            : "Texting isn't set up yet. Open Communication Health to see why.")
         : null;
 
   const templatesForChannel = templates.filter((t) =>
@@ -162,14 +169,31 @@ export function ConversationCompose({
   }
 
   function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error("File exceeds 20 MB limit.");
+    if (picked.length === 0) return;
+    const attachChannel = (isNote ? "internal_note" : channel) as AttachmentChannel;
+    const next = [...pendingFiles, ...picked];
+    const check = validateAttachmentsForChannel(
+      attachChannel,
+      next.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
+    );
+    if (!check.ok) {
+      toast.error(check.message);
       return;
     }
-    setPendingFile(file);
+    const maxBytes = maxBytesForChannel(attachChannel);
+    for (const file of picked) {
+      if (file.size > maxBytes) {
+        toast.error(
+          attachChannel === "sms"
+            ? `Each text/MMS file must be under ${Math.floor(maxBytes / (1024 * 1024))} MB (Twilio limit).`
+            : `File exceeds ${Math.floor(maxBytes / (1024 * 1024))} MB limit.`,
+        );
+        return;
+      }
+    }
+    setPendingFiles(next);
   }
 
   function switchMode(next: ComposeMode) {
@@ -177,9 +201,22 @@ export function ConversationCompose({
     setTemplateId("");
     setSchedulePanelOpen(false);
     setConfirm(null);
-    setPendingFile(null);
+    setPendingFiles([]);
     if (next === "internal_note") setEmailSubject("");
   }
+
+  React.useEffect(() => {
+    if (pendingFiles.length === 0) return;
+    const attachChannel = (mode === "internal_note" ? "internal_note" : channel) as AttachmentChannel;
+    const check = validateAttachmentsForChannel(
+      attachChannel,
+      pendingFiles.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
+    );
+    if (!check.ok) {
+      setPendingFiles([]);
+      toast.error(check.message);
+    }
+  }, [channel, mode]); // eslint-disable-line react-hooks/exhaustive-deps -- revalidate when channel changes
 
   const who = context?.displayName ?? "this relationship";
   const relationshipLine = context
@@ -209,7 +246,7 @@ export function ConversationCompose({
 
   async function send() {
     const text = body.trim();
-    if ((!text && !pendingFile) || sending || uploadingFile) return;
+    if ((!text && pendingFiles.length === 0) || sending || uploadingFile) return;
     if (!channelReady) {
       toast.error(channelDisabledReason ?? "This channel isn't ready to send.");
       return;
@@ -218,30 +255,44 @@ export function ConversationCompose({
       toast.error("An email needs a subject line.");
       return;
     }
-    if (pendingFile && channel !== "portal" && channel !== "internal_note") {
-      toast.error("Attachments can only be sent on Portal or Internal Note messages right now.");
+    const attachChannel = (isNote ? "internal_note" : channel) as AttachmentChannel;
+    const precheck = validateAttachmentsForChannel(
+      attachChannel,
+      pendingFiles.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
+    );
+    if (!precheck.ok) {
+      toast.error(precheck.message);
       return;
     }
     setSending(true);
     setConfirm(null);
 
-    let uploaded: { url: string; name: string; size: number; mimeType: string } | null = null;
-    if (pendingFile) {
+    const uploaded: Array<{ url: string; name: string; size: number; mimeType: string }> = [];
+    if (pendingFiles.length > 0) {
       setUploadingFile(true);
       try {
-        const form = new FormData();
-        form.append("file", pendingFile);
-        form.append("conversationId", conversationId);
-        const res = await fetch("/api/conversations/upload", { method: "POST", body: form });
-        const data = await res.json() as { ok: boolean; url?: string; file_name?: string; file_size?: number; mime_type?: string; error?: string };
-        if (!data.ok || !data.url) {
-          setConfirm({ kind: "failed", message: data.error ?? "Upload failed." });
-          toast.error(data.error ?? "Upload failed.");
-          setSending(false);
-          setUploadingFile(false);
-          return;
+        for (const pendingFile of pendingFiles) {
+          const form = new FormData();
+          form.append("file", pendingFile);
+          form.append("conversationId", conversationId);
+          const res = await fetch("/api/conversations/upload", { method: "POST", body: form });
+          const data = await res.json() as {
+            ok: boolean; url?: string; file_name?: string; file_size?: number; mime_type?: string; error?: string;
+          };
+          if (!data.ok || !data.url) {
+            setConfirm({ kind: "failed", message: data.error ?? "Upload failed." });
+            toast.error(data.error ?? "Upload failed.");
+            setSending(false);
+            setUploadingFile(false);
+            return;
+          }
+          uploaded.push({
+            url: data.url,
+            name: data.file_name ?? pendingFile.name,
+            size: data.file_size ?? pendingFile.size,
+            mimeType: data.mime_type ?? pendingFile.type,
+          });
         }
-        uploaded = { url: data.url, name: data.file_name ?? pendingFile.name, size: data.file_size ?? pendingFile.size, mimeType: data.mime_type ?? pendingFile.type };
       } catch {
         setConfirm({ kind: "failed", message: "Upload failed." });
         toast.error("Upload failed.");
@@ -252,15 +303,14 @@ export function ConversationCompose({
       setUploadingFile(false);
     }
 
-    const result = await sendConversationMessageAction(conversationId, text, channel, emailSubject, !!uploaded);
+    const result = await sendConversationMessageAction(
+      conversationId, text, channel, emailSubject, uploaded.length > 0, uploaded,
+    );
     if (result.ok) {
-      if (uploaded) {
-        await addConversationMessageAttachmentAction(result.messageId, uploaded);
-      }
       setBody("");
       setEmailSubject("");
       setTemplateId("");
-      setPendingFile(null);
+      setPendingFiles([]);
       setPreview(null);
       setConfirm({ kind: "sent", channel });
       await onSent();
@@ -308,7 +358,7 @@ export function ConversationCompose({
 
   const canSchedule = (channel === "email" || channel === "sms") && channelReady;
   const sendDisabled =
-    (!body.trim() && !pendingFile) ||
+    (!body.trim() && pendingFiles.length === 0) ||
     sending ||
     uploadingFile ||
     !channelReady ||
@@ -321,6 +371,7 @@ export function ConversationCompose({
     : "Save internal note";
 
   const isNote = mode === "internal_note";
+  const attachChannel = (isNote ? "internal_note" : channel) as AttachmentChannel;
 
   return (
     <div
@@ -436,8 +487,13 @@ export function ConversationCompose({
 
       {channelDisabledReason && (
         <p className="text-xs text-muted-foreground">
-          {channelDisabledReason}{" "}
-          <Link href="/messaging/health" className="underline hover:text-foreground">Communication Health</Link>
+          {channelDisabledReason}
+          {!context?.smsPermissionMessage && !context?.emailPermissionMessage && (
+            <>
+              {" "}
+              <Link href="/messaging/health" className="underline hover:text-foreground">Communication Health</Link>
+            </>
+          )}
         </p>
       )}
 
@@ -471,17 +527,30 @@ export function ConversationCompose({
         />
       </label>
 
-      {pendingFile && (
-        <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-2.5 py-1.5">
-          <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate text-xs text-heading">{pendingFile.name}</span>
-          {uploadingFile ? (
-            <span className="shrink-0 text-[10px] text-muted-foreground">Uploading…</span>
-          ) : (
-            <button type="button" onClick={() => setPendingFile(null)} aria-label="Remove attachment"
-              className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive">
-              <X className="h-3.5 w-3.5" />
-            </button>
+      {pendingFiles.length > 0 && (
+        <div className="space-y-1">
+          {pendingFiles.map((file, idx) => (
+            <div key={`${file.name}-${idx}`} className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-2.5 py-1.5">
+              <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate text-xs text-heading">{file.name}</span>
+              {uploadingFile ? (
+                <span className="shrink-0 text-[10px] text-muted-foreground">Uploading…</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPendingFiles((prev) => prev.filter((_, i) => i !== idx))}
+                  aria-label="Remove attachment"
+                  className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+          {channel === "sms" && (
+            <p className="text-[10px] text-muted-foreground">
+              Text/MMS: images, PDF, or short video · max 5 MB total (Twilio).
+            </p>
           )}
         </div>
       )}
@@ -553,16 +622,21 @@ export function ConversationCompose({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <input ref={fileInputRef} type="file" onChange={handleFilePick} className="hidden" />
-        {(channel === "portal" || channel === "internal_note") && (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <Paperclip className="h-4 w-4" /> Attach a file
-          </button>
-        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={acceptAttributeForChannel(attachChannel)}
+          onChange={handleFilePick}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <Paperclip className="h-4 w-4" /> Attach
+        </button>
         {canSchedule && (
           <button
             type="button"

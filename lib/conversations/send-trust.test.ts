@@ -3,12 +3,16 @@ import { afterEach, describe, it } from "node:test";
 
 import { sendEmail } from "@/lib/email/send";
 import { sendSms } from "@/lib/sms/send";
+import { clearVenueTwilioSecretCache } from "@/lib/sms/venue-twilio-secrets";
 
 const KEYS = [
+  "NODE_ENV",
   "COMMUNICATION_MODE",
   "COMMUNICATION_SANDBOX_EMAIL",
   "COMMUNICATION_SANDBOX_PHONE",
   "RESEND_API_KEY",
+  "TWILIO_VENUE_ACCOUNTS_JSON",
+  "TWILIO_VENUE_SECRETS_JSON",
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",
   "TWILIO_FROM_NUMBER",
@@ -26,6 +30,7 @@ function restoreEnv() {
     if (snapshot[key] === undefined) delete process.env[key];
     else process.env[key] = snapshot[key];
   }
+  clearVenueTwilioSecretCache();
 }
 
 captureEnv();
@@ -59,37 +64,63 @@ describe("email send trust", () => {
 });
 
 describe("SMS send trust", () => {
-  it("fails when Twilio is unavailable without asking the venue to add credentials", async () => {
+  it("fails when venue Twilio is unavailable without asking the venue to add credentials", async () => {
     process.env.COMMUNICATION_MODE = "real";
+    delete process.env.TWILIO_VENUE_ACCOUNTS_JSON;
+    delete process.env.TWILIO_VENUE_SECRETS_JSON;
     delete process.env.TWILIO_ACCOUNT_SID;
     delete process.env.TWILIO_AUTH_TOKEN;
     delete process.env.TWILIO_FROM_NUMBER;
     delete process.env.TWILIO_MESSAGING_SERVICE_SID;
-    const result = await sendSms({ to: "+16155551234", body: "Hello" });
+    const result = await sendSms({ to: "+16155551234", body: "Hello", venueId: "test-venue", skipPermissionCheck: true });
     assert.equal(result.ok, false);
     if (!result.ok) {
       assert.match(result.message, /Communication Health/);
-      assert.doesNotMatch(result.message, /Twilio|this venue|credentials/i);
+      assert.doesNotMatch(result.message, /Twilio|credentials/i);
     }
   });
 
   it("fails clearly when sending is disabled — it does not report success", async () => {
+    process.env.NODE_ENV = "test";
     process.env.COMMUNICATION_MODE = "disabled";
-    process.env.TWILIO_ACCOUNT_SID = "ACtest";
-    process.env.TWILIO_AUTH_TOKEN = "token";
-    process.env.TWILIO_FROM_NUMBER = "+15555550100";
-    const result = await sendSms({ to: "+16155551234", body: "Hello" });
+    process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([{
+      venue_id: "test-venue",
+      twilio_account_sid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      messaging_service_sid: "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      status: "ready",
+    }]);
+    process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({
+      ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: {
+        account_sid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        auth_token: "token",
+        api_key_sid: "SKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        api_key_secret: "secret",
+      },
+    });
+    const result = await sendSms({ to: "+16155551234", body: "Hello", venueId: "test-venue", skipPermissionCheck: true });
     assert.equal(result.ok, false);
     if (!result.ok) assert.match(result.message, /turned off/i);
   });
 
   it("does not send to a real recipient when sandbox phone is missing", async () => {
+    process.env.NODE_ENV = "test";
     process.env.COMMUNICATION_MODE = "sandbox";
     delete process.env.COMMUNICATION_SANDBOX_PHONE;
-    process.env.TWILIO_ACCOUNT_SID = "ACtest";
-    process.env.TWILIO_AUTH_TOKEN = "token";
-    process.env.TWILIO_FROM_NUMBER = "+15555550100";
-    const result = await sendSms({ to: "+16155551234", body: "Hello" });
+    process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([{
+      venue_id: "test-venue",
+      twilio_account_sid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      messaging_service_sid: "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      status: "ready",
+    }]);
+    process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({
+      ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: {
+        account_sid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        auth_token: "token",
+        api_key_sid: "SKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        api_key_secret: "secret",
+      },
+    });
+    const result = await sendSms({ to: "+16155551234", body: "Hello", venueId: "test-venue", skipPermissionCheck: true });
     assert.equal(result.ok, false);
     if (!result.ok) assert.match(result.message, /not delivered to a real recipient/i);
   });

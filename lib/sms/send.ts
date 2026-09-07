@@ -1,42 +1,50 @@
 /**
- * SMS sending utility, mirroring lib/email/send.ts's shape and fallback
- * discipline (2026-07-11 — SMS added ahead of launch).
+ * SMS sending — Twilio ISV subaccount model.
  *
- * Uses the Twilio REST API directly via fetch (no SDK dependency, matching
- * how Resend is called elsewhere in this codebase) when Twilio env vars are
- * configured. Unlike email, there is no "safe" fallback for SMS — texting
- * has no mailto-style client-side alternative — so an unconfigured send
- * returns a clear ok:false rather than pretending to succeed.
+ * Outbound resolution: venueId → venue_twilio_accounts → Secrets Manager
+ * credentials → Messaging Service. Uses API Key SID + secret for REST.
+ * Does not fall back to a global parent Messaging Service for customer sends.
  *
- * Required env vars:
- *   TWILIO_ACCOUNT_SID
- *   TWILIO_AUTH_TOKEN                — server only, never expose to browser
- *   TWILIO_MESSAGING_SERVICE_SID     — preferred: a Messaging Service gets
- *                                      Twilio's built-in STOP/START/HELP
- *                                      opt-out compliance handling for free.
- *   TWILIO_FROM_NUMBER               — fallback if no Messaging Service is
- *                                      set up yet; opt-out handling must be
- *                                      built separately if used long-term.
- *
- * See lib/communication/mode.ts for COMMUNICATION_MODE (real/sandbox/
- * disabled) and COMMUNICATION_SANDBOX_PHONE — Communication Infrastructure
- * Readiness, Phase 2.
+ * See lib/communication/mode.ts for COMMUNICATION_MODE.
  */
 
 import { getCommunicationMode, sandboxPhoneRecipient } from "@/lib/communication/mode";
+import { resolveVenueTwilioForSend } from "@/lib/sms/venue-twilio-resolve";
+import { twilioRestBasicAuth } from "@/lib/sms/venue-twilio-secrets";
 
 export type SmsPayload = {
   to: string;      // E.164 format, e.g. "+16155551234"
   body: string;
+  /** Publicly fetchable MediaUrl values (Twilio GETs these). Max 10; total ≤ 5MB. */
+  mediaUrls?: string[];
+  /**
+   * Venue scope for Twilio account resolution and communication_permissions.
+   * Required for every customer/relationship send so callers cannot bypass.
+   */
+  venueId: string;
+  /**
+   * Only for Communication Health self-test to the venue's own number.
+   * Never set this for lead/client/vendor outbound SMS/MMS.
+   */
+  skipPermissionCheck?: boolean;
 };
 
 export type SmsSendResult =
-  | { ok: true; providerId: string; sandboxRedirectedFrom?: string }
+  | {
+      ok: true;
+      providerId: string;
+      providerAccountSid: string;
+      sandboxRedirectedFrom?: string;
+    }
   | { ok: false; message: string };
 
-function isConfigured(): boolean {
-  return !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
-    && (process.env.TWILIO_MESSAGING_SERVICE_SID || process.env.TWILIO_FROM_NUMBER));
+const NOT_CONFIGURED =
+  "Texting isn't set up yet. Open Communication Health to see why.";
+
+export async function isSmsConfigured(venueId: string): Promise<boolean> {
+  if (!venueId?.trim()) return false;
+  const resolved = await resolveVenueTwilioForSend(venueId);
+  return resolved.ok;
 }
 
 export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
@@ -45,16 +53,40 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
     return { ok: false, message: "Sending is turned off in this environment." };
   }
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
-  const fromNumber = process.env.TWILIO_FROM_NUMBER;
-
-  if (!accountSid || !authToken || !(messagingServiceSid || fromNumber)) {
-    return { ok: false, message: "Texting isn't set up yet. Open Communication Health to see why." };
+  if (!payload.venueId?.trim()) {
+    return { ok: false, message: "Texting isn't available — missing venue context." };
   }
+
+  const resolved = await resolveVenueTwilioForSend(payload.venueId);
+  if (!resolved.ok) {
+    return { ok: false, message: NOT_CONFIGURED };
+  }
+
+  const { account, secret } = resolved.ctx;
+  const messagingServiceSid = account.messagingServiceSid;
+
   if (!payload.to.trim()) {
     return { ok: false, message: "No phone number on file to text." };
+  }
+  const mediaUrls = (payload.mediaUrls ?? []).map((u) => u.trim()).filter(Boolean);
+  if (!payload.body.trim() && mediaUrls.length === 0) {
+    return { ok: false, message: "A text needs a message or at least one photo/file." };
+  }
+  if (mediaUrls.length > 10) {
+    return { ok: false, message: "Text messages can include at most 10 files (Twilio MMS limit)." };
+  }
+
+  // Hard stop for opted_out / provider_blocked at the Twilio boundary so no
+  // automation, retry, or API path can bypass Inbox/scheduled checks.
+  if (!payload.skipPermissionCheck) {
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
+    const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+    const allowed = await assertChannelAllowed(createAdminClient(), {
+      venueId: payload.venueId,
+      channel: "sms",
+      rawAddress: payload.to,
+    });
+    if (!allowed.ok) return { ok: false, message: allowed.message };
   }
 
   let recipient = payload.to;
@@ -74,9 +106,9 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
   const params = new URLSearchParams({
     To: recipient,
     Body: payload.body,
+    MessagingServiceSid: messagingServiceSid,
   });
-  if (messagingServiceSid) params.set("MessagingServiceSid", messagingServiceSid);
-  else params.set("From", fromNumber!);
+  for (const url of mediaUrls) params.append("MediaUrl", url);
 
   // Communication Trust Experience — without this, Twilio has nothing to
   // call back to, so a "sent" text can never be told apart from one that
@@ -84,20 +116,26 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (appUrl) params.set("StatusCallback", `${appUrl}/api/messaging/sms-status`);
 
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+  const res = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${account.twilioAccountSid}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${twilioRestBasicAuth(secret)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
     },
-    body: params.toString(),
-  });
+  );
 
   const data = await res.json().catch(() => null) as { sid?: string; message?: string } | null;
   if (!res.ok) {
     return { ok: false, message: data?.message ?? `Text send failed (${res.status}).` };
   }
-  return { ok: true, providerId: data?.sid ?? "", sandboxRedirectedFrom };
+  return {
+    ok: true,
+    providerId: data?.sid ?? "",
+    providerAccountSid: account.twilioAccountSid,
+    sandboxRedirectedFrom,
+  };
 }
-
-export { isConfigured as isSmsConfigured };

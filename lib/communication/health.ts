@@ -138,7 +138,15 @@ async function getRecentIssues(client: DbClient, venueId: string, since: string)
 
 export async function getCommunicationHealth(): Promise<CommunicationHealth> {
   const emailConfigured = isEmailConfigured();
-  const smsConfigured = isSmsConfigured();
+
+  if (!isSupabaseConfigured) {
+    return { level: "excellent", headline: "Excellent", detail: "Everything is working normally.", issues: [] };
+  }
+
+  const venue = await getCurrentVenue();
+  if (!venue) return { level: "excellent", headline: "Excellent", detail: "Everything is working normally.", issues: [] };
+
+  const smsConfigured = await isSmsConfigured(venue.id);
 
   if (!emailConfigured && !smsConfigured) {
     return {
@@ -148,13 +156,6 @@ export async function getCommunicationHealth(): Promise<CommunicationHealth> {
       issues: [],
     };
   }
-
-  if (!isSupabaseConfigured) {
-    return { level: "excellent", headline: "Excellent", detail: "Everything is working normally.", issues: [] };
-  }
-
-  const venue = await getCurrentVenue();
-  if (!venue) return { level: "excellent", headline: "Excellent", detail: "Everything is working normally.", issues: [] };
 
   const client = await createClient();
   const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();

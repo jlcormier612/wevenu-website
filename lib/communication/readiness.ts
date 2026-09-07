@@ -3,13 +3,12 @@
  *
  * "A venue should know before sending its first client message whether
  * everything is configured correctly" — without ever needing to understand
- * email authentication. Email/SMS credentials are platform-level (one
- * shared Resend/Twilio account across every venue, not per-venue setup —
- * see lib/sms/send.ts's own comment on this), so most of this checklist is
- * a status report, not a wizard the venue steps through. Where something
- * genuinely can't be verified yet (a brand-new venue that hasn't sent
- * anything), the answer is an honest "not yet tested," never a fabricated
- * checkmark.
+ * email authentication. Email remains platform-level (shared Resend).
+ * SMS/MMS readiness is venue-scoped (Twilio subaccount + Messaging Service
+ * in venue_twilio_accounts). This checklist is a status report, not a
+ * venue Twilio setup wizard. Where something genuinely can't be verified
+ * yet (a brand-new venue that hasn't sent anything), the answer is an
+ * honest "not yet tested," never a fabricated checkmark.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -44,7 +43,7 @@ export async function getCommunicationReadiness(): Promise<CommunicationReadines
   const client = await createClient();
 
   const emailConfigured = isEmailConfigured();
-  const smsConfigured = isSmsConfigured();
+  const smsConfigured = await isSmsConfigured(venue.id);
 
   const [hasReceivedMessage, hasNotification, hasActiveAutomation, venueRow] = await Promise.all([
     hasEverReceivedAMessage(client, venue.id),
@@ -68,8 +67,8 @@ export async function getCommunicationReadiness(): Promise<CommunicationReadines
       key: "sms", label: "Texting configured",
       state: smsConfigured ? "ready" : "not_ready",
       detail: smsConfigured
-        ? "Ready to send. Texting is set up for Hello to Cheers — you don't configure it in venue Settings."
-        : "Not ready yet. Texting is set up for Hello to Cheers as a platform, not per venue. Contact support if this still shows as not ready.",
+        ? "Ready to send. Texting is configured for this venue."
+        : "Not ready yet. Texting for this venue isn't finished setting up. Contact support if this still shows as not ready.",
     },
     {
       key: "reply_routing", label: "Reply routing working",
@@ -149,6 +148,9 @@ export async function sendTestSms(): Promise<TestSendResult> {
   const result = await sendSms({
     to: e164,
     body: `This is a test message from Hello to Cheers to confirm texting is working for ${venue.name}. If you received this, texting is set up correctly.`,
+    venueId: venue.id,
+    // Self-test to the venue's own number — not a customer send.
+    skipPermissionCheck: true,
   });
   const accepted = acceptOutboundSms(result);
   if (!accepted.ok) return { ok: false, message: accepted.message };

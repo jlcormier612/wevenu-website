@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 import {
   cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getConversationAction,
-  getScheduledForConversationAction, setConversationAssignedStaffAction,
+  getRelationshipContextAction, getScheduledForConversationAction, setConversationAssignedStaffAction,
 } from "@/app/(app)/messaging/actions";
 import {
   addTaskAction,
@@ -27,8 +27,18 @@ import {
 import { createRequestAction } from "@/app/(app)/requests/actions";
 import { ConversationCompose } from "@/components/conversations/conversation-compose";
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
+import { documentsWorkspaceHref } from "@/lib/conversations/attachment-document";
+import {
+  conversationNeedsResponse,
+  latestMeaningfulFromMessages,
+} from "@/lib/conversations/inbox-attention";
 import { SENDABLE_CHANNEL_LABEL } from "@/lib/conversations/channels";
-import type { ConversationChannel, ConversationMessage, ConversationSummary } from "@/lib/conversations/types";
+import type {
+  ConversationChannel,
+  ConversationMessage,
+  ConversationMessagePreview,
+  ConversationSummary,
+} from "@/lib/conversations/types";
 import type { SequenceEnrollment } from "@/lib/message-sequences/types";
 import type { ScheduledMessage } from "@/lib/scheduled-messages/types";
 import type { StaffMember } from "@/lib/team/types";
@@ -88,14 +98,16 @@ function ChannelIcon({ channel }: { channel: ConversationChannel }) {
 // elsewhere in this codebase, and email in particular has no stored subject
 // to safely resend without a look.
 function RecoveryActions({
-  msg, leadId, onPrefill, onCreateTask,
+  msg, leadId, clientId, onPrefill, onCreateTask,
 }: {
   msg: ConversationMessage;
   leadId: string | null;
+  clientId: string | null;
   onPrefill: (body: string, channel: ConversationChannel) => void;
   onCreateTask: () => void;
 }) {
   const altChannel: ConversationChannel | null = msg.channel === "email" ? "sms" : msg.channel === "sms" ? "email" : null;
+  const detailsHref = clientId ? `/clients/${clientId}` : leadId ? `/leads/${leadId}` : null;
   return (
     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
       <button type="button" onClick={() => onPrefill(msg.body, msg.channel)} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
@@ -105,6 +117,11 @@ function RecoveryActions({
         <button type="button" onClick={() => onPrefill(msg.body, altChannel)} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
           Send as {altChannel === "sms" ? "text" : "email"} instead
         </button>
+      )}
+      {detailsHref && (
+        <Link href={detailsHref} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
+          <User className="h-2.5 w-2.5" /> Open client details
+        </Link>
       )}
       {leadId && (
         <button type="button" onClick={onCreateTask} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
@@ -119,27 +136,44 @@ function isImageAttachment(mimeType: string | null): boolean {
   return !!mimeType && mimeType.startsWith("image/");
 }
 
-function AttachmentList({ attachments, isVenue }: { attachments: ConversationMessage["attachments"]; isVenue: boolean }) {
+function AttachmentList({
+  attachments, isVenue, documentsHref,
+}: {
+  attachments: ConversationMessage["attachments"];
+  isVenue: boolean;
+  documentsHref: string | null;
+}) {
   if (!attachments.length) return null;
   return (
     <div className="mt-1.5 space-y-1.5">
       {attachments.map((a) => (
-        <a
-          key={a.id}
-          href={a.fileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`block ${isImageAttachment(a.mimeType) ? "" : "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs underline-offset-2 hover:underline"} ${
-            isImageAttachment(a.mimeType) ? "" : isVenue ? "bg-primary-foreground/10" : "bg-background/60"
-          }`}
-        >
-          {isImageAttachment(a.mimeType) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={a.fileUrl} alt={a.fileName} className="max-h-48 rounded-lg object-cover" />
-          ) : (
-            <><FileText className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{a.fileName}</span></>
+        <div key={a.id} className="space-y-0.5">
+          <a
+            href={a.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`block ${isImageAttachment(a.mimeType) ? "" : "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs underline-offset-2 hover:underline"} ${
+              isImageAttachment(a.mimeType) ? "" : isVenue ? "bg-primary-foreground/10" : "bg-background/60"
+            }`}
+          >
+            {isImageAttachment(a.mimeType) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={a.fileUrl} alt={a.fileName} className="max-h-48 rounded-lg object-cover" />
+            ) : (
+              <><FileText className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{a.fileName}</span></>
+            )}
+          </a>
+          {documentsHref && (
+            <Link
+              href={documentsHref}
+              className={`block px-2 text-[10px] underline-offset-2 hover:underline ${
+                isVenue ? "text-primary-foreground/70" : "text-muted-foreground"
+              }`}
+            >
+              View in Documents
+            </Link>
           )}
-        </a>
+        </div>
       ))}
     </div>
   );
@@ -162,34 +196,56 @@ function AutomatedBadge({ isVenue }: { isVenue: boolean }) {
 }
 
 function Bubble({
-  msg, leadId, onPrefill, onCreateTask,
+  msg, leadId, clientId, onPrefill, onCreateTask,
 }: {
   msg: ConversationMessage;
   leadId: string | null;
+  clientId: string | null;
   onPrefill: (body: string, channel: ConversationChannel) => void;
   onCreateTask: (msg: ConversationMessage) => void;
 }) {
+  // Delivery badges only for provider-backed outbound (email/SMS). Portal /
+  // notes / system-without-status must never imply delivery success.
   const isVenue = msg.senderType === "venue_staff" || msg.senderType === "system";
+  const showDelivery = isVenue && (msg.channel === "email" || msg.channel === "sms") && !!msg.status;
+  const failed = showDelivery && msg.status === "failed";
+  const documentsHref = documentsWorkspaceHref({ leadId, clientId });
   return (
     <div className={`flex flex-col ${isVenue ? "items-end" : "items-start"}`}>
       <div
         className={`max-w-[72%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
           isVenue ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
-        }`}
+        } ${failed ? "ring-1 ring-destructive/50" : ""}`}
       >
         {msg.senderType === "system" && (
           <div className="mb-1"><AutomatedBadge isVenue={isVenue} /></div>
         )}
         {msg.body && <p className="whitespace-pre-wrap">{msg.body}</p>}
-        <AttachmentList attachments={msg.attachments} isVenue={isVenue} />
+        {!msg.body && msg.attachments.length > 0 && (
+          <p className="italic opacity-80">{msg.channel === "sms" ? "Photo or file" : "Attachment"}</p>
+        )}
+        <AttachmentList attachments={msg.attachments} isVenue={isVenue} documentsHref={documentsHref} />
         <span className={`mt-1 flex items-center gap-1 text-[10px] ${isVenue ? "text-primary-foreground/60 justify-end" : "text-muted-foreground"}`}>
           <ChannelIcon channel={msg.channel} />
           {formatTime(msg.sentAt)}
-          <MessageTimelinePopover messageId={msg.id} source="conversation" status={msg.status} failureReason={msg.failureReason} isOutbound={isVenue} />
+          {showDelivery && !(msg.channel === "sms" && (msg.status === "opened" || msg.status === "clicked")) && (
+            <MessageTimelinePopover messageId={msg.id} source="conversation" status={msg.status} failureReason={msg.failureReason} isOutbound />
+          )}
         </span>
       </div>
-      {isVenue && msg.status === "failed" && (
-        <RecoveryActions msg={msg} leadId={leadId} onPrefill={onPrefill} onCreateTask={() => onCreateTask(msg)} />
+      {failed && (
+        <>
+          {msg.failureReason && (
+            <p className="mt-1 max-w-[72%] text-[10px] text-destructive">{msg.failureReason}</p>
+          )}
+          <RecoveryActions
+            msg={msg}
+            leadId={leadId}
+            clientId={clientId}
+            onPrefill={onPrefill}
+            onCreateTask={() => onCreateTask(msg)}
+          />
+        </>
       )}
     </div>
   );
@@ -234,6 +290,7 @@ const NO_ASSIGNEE = "__none__";
 
 export function ConversationThread({
   conversationId, onBack, showHeader = true, summary, teamMembers = [], initialBody, initialSubject,
+  onInboxOpened, onInboxSent,
 }: {
   conversationId: string;
   onBack?: () => void;
@@ -254,11 +311,20 @@ export function ConversationThread({
    */
   initialBody?: string;
   initialSubject?: string;
+  /** Inbox list sync — called once after messages load (marks read + needs response). */
+  onInboxOpened?: (needsResponse: boolean) => void;
+  /** Inbox list sync — after a successful venue send. */
+  onInboxSent?: (latestMessage: ConversationMessagePreview, needsResponse: boolean) => void;
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const [scheduled, setScheduled] = React.useState<ScheduledMessage[]>([]);
   const [prefill, setPrefill] = React.useState<{ body: string; channel: ConversationChannel; nonce: number } | null>(null);
+  const openedNotifiedRef = React.useRef(false);
+  const onInboxOpenedRef = React.useRef(onInboxOpened);
+  const onInboxSentRef = React.useRef(onInboxSent);
+  onInboxOpenedRef.current = onInboxOpened;
+  onInboxSentRef.current = onInboxSent;
 
   // RC2, Milestone 4 — "Create Request" from this Conversation. source_id
   // is the conversation's id (not one specific message), so the Request's
@@ -272,21 +338,30 @@ export function ConversationThread({
   // re-sync from the summary prop via an effect.
   const [assignedStaffId, setAssignedStaffId] = React.useState(summary?.assignedStaffId ?? NO_ASSIGNEE);
   const [automations, setAutomations] = React.useState<SequenceEnrollment[]>([]);
+  const [headerStageLabel, setHeaderStageLabel] = React.useState<string | null>(null);
   const relationshipId = summary?.relationshipId ?? null;
   React.useEffect(() => {
     if (!relationshipId) return;
     void getActiveEnrollmentsForConversationAction(relationshipId).then(setAutomations);
   }, [relationshipId]);
 
+  React.useEffect(() => {
+    if (!summary?.leadId && !summary?.clientId) {
+      setHeaderStageLabel(null);
+      return;
+    }
+    let cancelled = false;
+    void getRelationshipContextAction(summary.leadId ?? null, summary.clientId ?? null).then((ctx) => {
+      if (cancelled) return;
+      setHeaderStageLabel(ctx.orientation?.bookingStageLabel ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [summary?.leadId, summary?.clientId]);
+
   function handleAssignedStaffChange(value: string) {
     setAssignedStaffId(value);
     void setConversationAssignedStaffAction(conversationId, value === NO_ASSIGNEE ? null : value);
   }
-
-  const load = React.useCallback(async () => {
-    const detail = await getConversationAction(conversationId);
-    setMessages(detail?.messages ?? []);
-  }, [conversationId]);
 
   const loadScheduled = React.useCallback(async () => {
     setScheduled(await getScheduledForConversationAction(conversationId));
@@ -294,8 +369,15 @@ export function ConversationThread({
 
   React.useEffect(() => {
     let cancelled = false;
+    openedNotifiedRef.current = false;
     void getConversationAction(conversationId).then((detail) => {
-      if (!cancelled) setMessages(detail?.messages ?? []);
+      if (cancelled) return;
+      const next = detail?.messages ?? [];
+      setMessages(next);
+      if (!openedNotifiedRef.current) {
+        openedNotifiedRef.current = true;
+        onInboxOpenedRef.current?.(conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+      }
     });
     void getScheduledForConversationAction(conversationId).then((next) => {
       if (!cancelled) setScheduled(next);
@@ -307,6 +389,22 @@ export function ConversationThread({
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages?.length]);
+
+  async function handleSent() {
+    const detail = await getConversationAction(conversationId);
+    const next = detail?.messages ?? [];
+    setMessages(next);
+    const last = next[next.length - 1];
+    if (last && onInboxSentRef.current) {
+      const preview: ConversationMessagePreview = {
+        body: last.body,
+        senderType: last.senderType,
+        sentAt: last.sentAt,
+        channel: last.channel,
+      };
+      onInboxSentRef.current(preview, conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+    }
+  }
 
   // Communication Trust Experience, Phase 5 — loads a failed message back
   // into the compose box (same or an alternate channel) rather than
@@ -379,9 +477,22 @@ export function ConversationThread({
                 <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                   <span className="text-xs font-semibold text-primary">{threadInitials(summary.displayName)}</span>
                 </div>
-                <p className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
-                  {summary.displayName ?? "Unnamed relationship"}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-heading">
+                    {summary.displayName ?? "Unnamed relationship"}
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    <span className="font-medium text-foreground/80">
+                      {summary.clientId ? "Booking" : "Lead"}
+                    </span>
+                    {headerStageLabel ? (
+                      <>
+                        <span className="mx-1.5 text-border">·</span>
+                        <span>{headerStageLabel}</span>
+                      </>
+                    ) : null}
+                  </p>
+                </div>
                 <select
                   aria-label="Assigned coordinator" value={assignedStaffId}
                   onChange={(e) => handleAssignedStaffChange(e.target.value)}
@@ -399,12 +510,12 @@ export function ConversationThread({
             <div className="flex flex-wrap items-center gap-3 px-4 pb-3 text-xs">
               {summary.leadId && (
                 <Link href={`/leads/${summary.leadId}`} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                  <User className="h-3 w-3" /> Lead
+                  <User className="h-3 w-3" /> Open lead
                 </Link>
               )}
               {summary.clientId && (
                 <Link href={`/clients/${summary.clientId}`} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                  <Calendar className="h-3 w-3" /> Booking
+                  <Calendar className="h-3 w-3" /> Open booking
                 </Link>
               )}
               {/* RC2, Milestone 4 — Requests need a Client, not just a Lead
@@ -456,7 +567,14 @@ export function ConversationThread({
               <DateSep label={g.label} />
               <div className="space-y-2">
                 {g.msgs.map((m) => (
-                  <Bubble key={m.id} msg={m} leadId={summary?.leadId ?? null} onPrefill={prefillFromFailed} onCreateTask={createFollowUpTask} />
+                  <Bubble
+                    key={m.id}
+                    msg={m}
+                    leadId={summary?.leadId ?? null}
+                    clientId={summary?.clientId ?? null}
+                    onPrefill={prefillFromFailed}
+                    onCreateTask={createFollowUpTask}
+                  />
                 ))}
               </div>
             </div>
@@ -515,7 +633,7 @@ export function ConversationThread({
         initialSubject={initialSubject}
         relationshipLabel={summary ? (summary.clientId ? "Booking" : "Lead") : null}
         prefill={prefill}
-        onSent={load}
+        onSent={handleSent}
         onScheduled={loadScheduled}
       />
     </div>

@@ -25,6 +25,12 @@ export type ConversationSummary = {
   venueUnread: number;
   contactUnread: number;
   latestMessage: ConversationMessagePreview | null;
+  /**
+   * Latest meaningful customer/staff message (excludes system + internal notes).
+   * Authoritative input for Needs Response on the Inbox list — enriched in
+   * getConversationInbox, not inferred from tip-of-thread alone.
+   */
+  latestMeaningfulMessage?: ConversationMessagePreview | null;
   // Communication Workspace Completion — Inbox filtering/cards/shortcuts.
   assignedStaffId: string | null;
   assignedStaffName: string | null;
@@ -36,8 +42,21 @@ export type ConversationSummary = {
   /** Enrichment for Inbox search (email / phone / event date) — not shown as columns. */
   searchEmail?: string | null;
   searchPhone?: string | null;
+  /**
+   * Unambiguous event fields only (exactly one associated event).
+   * Never populated from “earliest of many.”
+   */
+  eventCount?: number;
+  eventName?: string | null;
   eventDate?: string | null;
   eventType?: string | null;
+  /** Lead preferred date — never labeled as Event date. */
+  preferredDate?: string | null;
+  leadEventType?: string | null;
+  /** Has at least one conversation attachment (list cue). */
+  hasAttachments?: boolean;
+  /** Booking Journey stage key when enriched for filters/display. */
+  bookingStage?: string | null;
 };
 
 export type ConversationMessageAttachment = {
@@ -109,6 +128,9 @@ export type ConversationComposeContext = {
   emailReady: boolean;
   smsReady: boolean;
   sendingDisabled: boolean;
+  /** Server-side permission/suppression — null when channel is allowed. */
+  smsPermissionMessage: string | null;
+  emailPermissionMessage: string | null;
 };
 
 export type ConversationSendPreview = {

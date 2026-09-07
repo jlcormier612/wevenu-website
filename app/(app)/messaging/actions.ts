@@ -47,6 +47,12 @@ export async function getConversationInboxAction(): Promise<{ conversations: Con
   return conversations.getConversationInbox();
 }
 
+export async function getConversationInboxPageAction(
+  query: import("@/lib/conversations/repository").InboxPageQuery = {},
+): Promise<import("@/lib/conversations/repository").InboxPageResult> {
+  return conversations.getConversationInboxPage(query);
+}
+
 export async function getConversationAction(conversationId: string): Promise<ConversationDetail | null> {
   return conversations.getConversation(conversationId);
 }
@@ -71,8 +77,11 @@ export async function sendConversationMessageAction(
   channel: string,
   emailSubject?: string,
   hasAttachment = false,
+  attachments: Array<{ url: string; name: string; size?: number | null; mimeType?: string | null }> = [],
 ): Promise<SendMessageResult> {
-  const result = await conversations.sendConversationMessage(conversationId, body, channel, emailSubject, hasAttachment);
+  const result = await conversations.sendConversationMessage(
+    conversationId, body, channel, emailSubject, hasAttachment, attachments,
+  );
   if (result.ok) {
     revalidatePath("/messaging");
   }

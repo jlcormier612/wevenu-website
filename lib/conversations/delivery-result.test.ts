@@ -35,12 +35,20 @@ describe("acceptOutboundEmail", () => {
 
 describe("acceptOutboundSms", () => {
   it("accepts a real Twilio provider id", () => {
-    const accepted = acceptOutboundSms({ ok: true, providerId: "SM123" });
+    const accepted = acceptOutboundSms({
+      ok: true,
+      providerId: "SM123",
+      providerAccountSid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    });
     assert.deepEqual(accepted, { ok: true, providerId: "SM123" });
   });
 
   it("never records success when the provider id is the disabled sentinel", () => {
-    const accepted = acceptOutboundSms({ ok: true, providerId: "disabled" });
+    const accepted = acceptOutboundSms({
+      ok: true,
+      providerId: "disabled",
+      providerAccountSid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    });
     assert.equal(accepted.ok, false);
     if (!accepted.ok) assert.equal(accepted.message, SENDING_DISABLED_MESSAGE);
   });

@@ -54,10 +54,18 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
   if (!resolved.ok) return { ok: false, error: resolved.message };
 
   let providerId: string | undefined;
+  let providerAccountSid: string | undefined;
 
   if (msg.channel === "email") {
     if (!contact.email) return { ok: false, error: "No email address on file for this contact." };
     if (!resolved.subject) return { ok: false, error: "An email needs a subject line." };
+    const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+    const allowed = await assertChannelAllowed(supabase, {
+      venueId: msg.venueId,
+      channel: "email",
+      rawAddress: contact.email,
+    });
+    if (!allowed.ok) return { ok: false, error: allowed.message };
     // Merge already resolved above. Brand with live venue identity at send time.
     const { data: venue } = await supabase.from("venues")
       .select("name, logo_url, primary_color, email_signature, email, phone")
@@ -88,10 +96,32 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
     if (!contact.phone) return { ok: false, error: "No phone number on file for this contact." };
     const e164 = toE164(contact.phone);
     if (!e164) return { ok: false, error: "The phone number on file isn't valid." };
-    const result = await sendSms({ to: e164, body: resolved.body });
+    const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+    const allowed = await assertChannelAllowed(supabase, {
+      venueId: msg.venueId,
+      channel: "sms",
+      rawAddress: e164,
+    });
+    if (!allowed.ok) return { ok: false, error: allowed.message };
+    const result = await sendSms({ to: e164, body: resolved.body, venueId: msg.venueId });
     const accepted = acceptOutboundSms(result);
-    if (!accepted.ok) return { ok: false, error: accepted.message };
+    if (!accepted.ok) {
+      if (/21610|opted out|unsubscribed/i.test(accepted.message)) {
+        const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
+        await upsertCommunicationPermission(supabase, {
+          venueId: msg.venueId,
+          channel: "sms",
+          rawAddress: e164,
+          status: "opted_out",
+          source: "twilio_send_reject",
+          evidence: { message: accepted.message },
+          relationshipId: msg.relationshipId,
+        });
+      }
+      return { ok: false, error: accepted.message };
+    }
     providerId = accepted.providerId;
+    providerAccountSid = result.ok ? result.providerAccountSid : undefined;
   }
 
   const conversationId = await findOrCreateConversation(supabase, msg.venueId, msg.relationshipId);
@@ -103,6 +133,7 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
       channel: msg.channel,
       body: resolved.body,
       provider_id: providerId ?? null,
+      provider_account_sid: providerAccountSid ?? null,
       status: "accepted",
       channel_metadata: msg.sequenceEnrollmentId ? { sequenceEnrollmentId: msg.sequenceEnrollmentId } : null,
     });

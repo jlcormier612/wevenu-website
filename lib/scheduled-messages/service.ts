@@ -38,6 +38,30 @@ export async function scheduleMessageForConversation(
   const result = await withVenue(async (supabase, venueId) => {
     const relationshipId = await getRelationshipIdForConversation(supabase, conversationId);
     if (!relationshipId) return { ok: false, message: "Couldn't find who this conversation belongs to." } as ScheduleMessageResult;
+
+    // Refuse to queue SMS/email that would be hard-blocked at send time.
+    if (channel === "sms" || channel === "email") {
+      const { getConversationRecipientPhone, getConversationRecipientEmail } = await import("@/lib/conversations/repository");
+      const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+      const rawAddress = channel === "sms"
+        ? await getConversationRecipientPhone(supabase, conversationId)
+        : await getConversationRecipientEmail(supabase, conversationId);
+      if (!rawAddress) {
+        return {
+          ok: false,
+          message: channel === "sms"
+            ? "This client has no phone number on file — add one to their record to schedule a text."
+            : "This client has no email address on file — add one to their record to schedule an email.",
+        } as ScheduleMessageResult;
+      }
+      const allowed = await assertChannelAllowed(supabase, {
+        venueId,
+        channel,
+        rawAddress,
+      });
+      if (!allowed.ok) return { ok: false, message: allowed.message } as ScheduleMessageResult;
+    }
+
     const scheduledMessageId = await repo.insertScheduledMessage(supabase, venueId, { ...input, relationshipId });
     return { ok: true, scheduledMessageId } as ScheduleMessageResult;
   });

@@ -50,6 +50,13 @@ describe("conversation composer send surface", () => {
     assert.match(compose, /previewConversationSendAction/);
   });
 
+  it("allows attachments on Email, Text, Portal, and Internal note with channel constraints", () => {
+    assert.match(compose, /validateAttachmentsForChannel/);
+    assert.match(compose, /acceptAttributeForChannel/);
+    assert.match(compose, /Text\/MMS: images, PDF/);
+    assert.doesNotMatch(compose, /Attachments can only be sent on Portal/);
+  });
+
   it("keeps historical channel icons on the thread without using them as the send selector", () => {
     assert.match(thread, /CHANNEL_META/);
     assert.match(thread, /ConversationCompose/);
@@ -58,5 +65,12 @@ describe("conversation composer send surface", () => {
     assert.match(thread, /Lead/);
     assert.match(thread, /Booking/);
     assert.doesNotMatch(thread, /> Client</);
+  });
+
+  it("shows hierarchical relationship type then Booking Journey stage in the thread header", () => {
+    assert.match(thread, /headerStageLabel/);
+    assert.match(thread, /summary\.clientId \? "Booking" : "Lead"/);
+    assert.match(thread, /Open lead/);
+    assert.match(thread, /Open booking/);
   });
 });

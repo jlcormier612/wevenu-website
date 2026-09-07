@@ -51,6 +51,16 @@ export async function getConversationInbox(): Promise<{ conversations: Conversat
   return repo.getConversationInbox(supabase);
 }
 
+export async function getConversationInboxPage(
+  query: repo.InboxPageQuery = {},
+): Promise<repo.InboxPageResult> {
+  if (!isSupabaseConfigured) {
+    return { conversations: [], totalUnread: 0, hasMore: false, nextCursor: null };
+  }
+  const supabase = await createClient();
+  return repo.getConversationInboxPage(supabase, query);
+}
+
 export async function getConversation(conversationId: string): Promise<ConversationDetail | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
@@ -66,15 +76,44 @@ export async function getConversationComposeContext(
   if (!facts) return null;
   const mode = getCommunicationMode();
   const sendingDisabled = mode === "disabled";
+  const venue = await getCurrentVenue();
+
+  let smsPermissionMessage: string | null = null;
+  let emailPermissionMessage: string | null = null;
+  if (venue) {
+    const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+    if (facts.recipientPhone) {
+      const sms = await assertChannelAllowed(supabase, {
+        venueId: venue.id,
+        channel: "sms",
+        rawAddress: facts.recipientPhone,
+      });
+      if (!sms.ok) smsPermissionMessage = sms.message;
+    }
+    if (facts.recipientEmail) {
+      const email = await assertChannelAllowed(supabase, {
+        venueId: venue.id,
+        channel: "email",
+        rawAddress: facts.recipientEmail,
+      });
+      if (!email.ok) emailPermissionMessage = email.message;
+    }
+  }
+
   return {
     displayName: facts.displayName,
     conversationKind: facts.conversationKind,
     recipientEmail: facts.recipientEmail,
     recipientPhone: facts.recipientPhone,
     recipientPhoneDisplay: facts.recipientPhone ? formatPhoneDisplay(facts.recipientPhone) : null,
-    emailReady: !sendingDisabled && isEmailConfigured(),
-    smsReady: !sendingDisabled && isSmsConfigured(),
+    emailReady: !sendingDisabled && isEmailConfigured() && !emailPermissionMessage,
+    smsReady: !sendingDisabled
+      && !!venue
+      && (await isSmsConfigured(venue.id))
+      && !smsPermissionMessage,
     sendingDisabled,
+    smsPermissionMessage,
+    emailPermissionMessage,
   };
 }
 
@@ -136,17 +175,25 @@ export async function sendConversationMessage(
   channel = "portal",
   emailSubject?: string,
   hasAttachment = false,
+  attachments: Array<{ url: string; name: string; size?: number | null; mimeType?: string | null }> = [],
 ): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!isSendableChannel(channel)) {
     return { ok: false, message: "That isn't a sendable message type." };
   }
-  // An attachment-only message ("here's the floor plan," no text) is only
-  // meaningful on record-only channels — email/SMS attachments aren't
-  // actually delivered by either provider integration in this pass, so an
-  // empty body there would silently send nothing.
-  const attachmentOnlyAllowed = hasAttachment && (channel === "portal" || channel === "internal_note");
+  const pending = attachments.filter((a) => !!a.url);
+  const attachmentOnlyAllowed = hasAttachment || pending.length > 0;
   if (!body.trim() && !attachmentOnlyAllowed) return { ok: false, message: "Message can't be empty." };
+
+  if (pending.length > 0 && (channel === "email" || channel === "sms" || channel === "portal" || channel === "internal_note")) {
+    const { validateAttachmentsForChannel } = await import("@/lib/conversations/attachment-constraints");
+    const check = validateAttachmentsForChannel(
+      channel,
+      pending.map((a) => ({ name: a.name, size: a.size ?? 0, mimeType: a.mimeType })),
+    );
+    if (!check.ok) return { ok: false, message: check.message };
+  }
+
   const supabase = await createClient();
   let trimmed = body.trim();
   let subject = emailSubject?.trim();
@@ -191,18 +238,13 @@ export async function sendConversationMessage(
   // left Hello to Cheers. Every other channel here (portal, internal_note,
   // phone_log, ...) is record-only by nature.
   //
-  // Email was corrected 2026-07-14 — it looked identical to sms in the
-  // channel dropdown but silently never called Resend; see
-  // docs/product-backlog.md "Immediate Email Send in Conversations Isn't
-  // Real" for how that was found. conversation_messages has no subject
-  // column (true for every channel, not just email) — the subject is used
-  // for the real outbound send only, same as Scheduled Sends already does.
   // Communication Trust Experience — capture what the provider actually
   // said (its id, whether it was accepted at all) instead of throwing that
   // answer away the moment the send succeeds. Without a provider_id here,
   // no delivery/open/click/bounce webhook could ever find this row again —
   // see docs/communication-trust-experience.md, Phase 1.
   let providerId: string | undefined;
+  let providerAccountSid: string | undefined;
   let status: string | undefined;
   if (channel === "sms") {
     const phone = await repo.getConversationRecipientPhone(supabase, conversationId);
@@ -210,10 +252,39 @@ export async function sendConversationMessage(
     if (!e164) {
       return { ok: false, message: "This client has no phone number on file — add one to their record to send a text." };
     }
-    const smsResult = await sendSms({ to: e164, body: trimmed });
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "Venue not found." };
+    const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+    const allowed = await assertChannelAllowed(supabase, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: e164,
+    });
+    if (!allowed.ok) return { ok: false, message: allowed.message };
+    const smsResult = await sendSms({
+      to: e164,
+      body: trimmed,
+      mediaUrls: pending.map((a) => a.url),
+      venueId: venue.id,
+    });
     const accepted = acceptOutboundSms(smsResult);
-    if (!accepted.ok) return { ok: false, message: accepted.message };
+    if (!accepted.ok) {
+      // Persist provider opt-out when Twilio rejects immediately (21610).
+      if (/21610|opted out|unsubscribed/i.test(accepted.message)) {
+        const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
+        await upsertCommunicationPermission(supabase, {
+          venueId: venue.id,
+          channel: "sms",
+          rawAddress: e164,
+          status: "opted_out",
+          source: "twilio_send_reject",
+          evidence: { message: accepted.message },
+        });
+      }
+      return { ok: false, message: accepted.message };
+    }
     providerId = accepted.providerId;
+    providerAccountSid = smsResult.ok ? smsResult.providerAccountSid : undefined;
     status = "accepted";
   } else if (channel === "email") {
     if (!subject) {
@@ -223,19 +294,25 @@ export async function sendConversationMessage(
     if (!email) {
       return { ok: false, message: "This client has no email address on file — add one to their record to send an email." };
     }
-    // Merge resolution already ran above when tokens were present. Wrap the
-    // resolved plain-text body in the shared venue-brand shell; keep `text`
-    // as the plain-text fallback (Workstream A).
     const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "Venue not found." };
+    const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+    const allowed = await assertChannelAllowed(supabase, {
+      venueId: venue.id,
+      channel: "email",
+      rawAddress: email,
+    });
+    if (!allowed.ok) return { ok: false, message: allowed.message };
     const brand = emailBrandFromVenue(venue);
-    const html = wrapConversationMessageHtml(brand, trimmed);
+    const html = wrapConversationMessageHtml(brand, trimmed || "(see attached)");
     const emailResult = await sendEmail({
       to: email,
       subject,
-      text: appendEmailSignatureText(trimmed, brand),
+      text: appendEmailSignatureText(trimmed || "(see attached)", brand),
       html,
       threadId: conversationId,
       replyTo: venue?.email ?? undefined,
+      attachments: pending.map((a) => ({ path: a.url, filename: a.name })),
     });
     const accepted = acceptOutboundEmail(emailResult);
     if (!accepted.ok) return { ok: false, message: accepted.message };
@@ -245,6 +322,36 @@ export async function sendConversationMessage(
 
   const result = await repo.sendConversationMessage(supabase, conversationId, trimmed, channel, providerId, status);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
+
+  if (result.messageId && providerAccountSid) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("conversation_messages") as any)
+      .update({ provider_account_sid: providerAccountSid })
+      .eq("id", result.messageId);
+  }
+
+  // Attach files + register Documents (same physical object; independent lifecycles).
+  for (const file of pending) {
+    const attached = await repo.addConversationMessageAttachment(supabase, result.messageId!, {
+      url: file.url,
+      name: file.name,
+      size: file.size,
+      mimeType: file.mimeType,
+    });
+    if (attached.ok) {
+      const { registerMessageAttachmentAsDocument } = await import("@/lib/conversations/attachment-document");
+      await registerMessageAttachmentAsDocument(supabase, {
+        messageId: result.messageId!,
+        attachmentId: attached.attachmentId,
+        file: {
+          url: file.url,
+          name: file.name,
+          size: file.size,
+          mimeType: file.mimeType,
+        },
+      });
+    }
+  }
 
   // Portal-only: email/SMS already notified the counterparty via the
   // provider send above. Route by thread kind — each helper no-ops when
@@ -273,6 +380,17 @@ export async function addConversationMessageAttachment(
   const supabase = await createClient();
   const result = await repo.addConversationMessageAttachment(supabase, messageId, file);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not attach file." };
+  // Authoritative Documents registration — same file URL, separate lifecycle.
+  // Failure must not undo the message attachment.
+  const { registerMessageAttachmentAsDocument } = await import("@/lib/conversations/attachment-document");
+  const registered = await registerMessageAttachmentAsDocument(supabase, {
+    messageId,
+    attachmentId: result.attachmentId,
+    file,
+  });
+  if (!registered.ok) {
+    console.error("[addConversationMessageAttachment] documents register failed:", registered.reason);
+  }
   return { ok: true };
 }
 

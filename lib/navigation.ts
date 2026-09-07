@@ -68,7 +68,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Communication",
     items: [
-      { title: "Messages", href: "/messaging", icon: InboxIcon },
+      { title: "Inbox", href: "/messaging", icon: InboxIcon },
       { title: "Automations", href: "/communication/series", icon: Repeat },
     ],
   },

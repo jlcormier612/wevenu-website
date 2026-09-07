@@ -10,6 +10,11 @@
  * Conversation doesn't repeat that.
  */
 import { createClient } from "@/integrations/supabase/server";
+import {
+  latestMeaningfulFromInboxTip,
+  NON_MEANINGFUL_CHANNELS,
+  pickLatestMeaningfulPerConversation,
+} from "@/lib/conversations/inbox-attention";
 import type {
   ConversationDetail,
   ConversationKind,
@@ -60,13 +65,79 @@ function mapInboxRow(r: InboxConversationRow): ConversationSummary {
     latestMessage: r.latest_message
       ? { body: r.latest_message.body, senderType: r.latest_message.sender_type, sentAt: r.latest_message.sent_at, channel: r.latest_message.channel }
       : null,
+    latestMeaningfulMessage: null,
   };
 }
 
 /**
- * Batch-enrich Inbox rows for search (email/phone/event date) — two/three
- * queries total, not per-row. Venue isolation comes from the authenticated
- * client + relationship ids already scoped by get_conversation_inbox.
+ * Attach latestMeaningfulMessage for Needs Response without loading every
+ * conversation's full history into the browser:
+ * - tip already meaningful → that tip is the answer (no query)
+ * - tip missing → null
+ * - tip is system/note → one batched lookup of meaningful rows only, take newest per id
+ */
+async function enrichInboxLatestMeaningful(
+  client: DbClient,
+  conversations: ConversationSummary[],
+): Promise<ConversationSummary[]> {
+  if (conversations.length === 0) return conversations;
+
+  const resolved = new Map<string, ConversationMessagePreview | null>();
+  const lookupIds: string[] = [];
+
+  for (const c of conversations) {
+    const tip = latestMeaningfulFromInboxTip(c.latestMessage);
+    if (tip.status === "known") {
+      resolved.set(c.id, tip.value);
+    } else {
+      lookupIds.push(c.id);
+    }
+  }
+
+  if (lookupIds.length > 0) {
+    const CHUNK = 150;
+    for (let i = 0; i < lookupIds.length; i += CHUNK) {
+      const chunk = lookupIds.slice(i, i + CHUNK);
+      const { data, error } = await client
+        .from("conversation_messages")
+        .select("conversation_id, sender_type, channel, body, sent_at")
+        .in("conversation_id", chunk)
+        .neq("sender_type", "system")
+        .not("channel", "in", `(${NON_MEANINGFUL_CHANNELS.join(",")})`)
+        .order("sent_at", { ascending: false });
+      if (error) throw error;
+
+      type Row = {
+        conversation_id: string;
+        sender_type: ConversationMessagePreview["senderType"];
+        channel: ConversationMessagePreview["channel"];
+        body: string;
+        sent_at: string;
+      };
+      const picked = pickLatestMeaningfulPerConversation(
+        ((data ?? []) as Row[]).map((row) => ({
+          conversationId: row.conversation_id,
+          senderType: row.sender_type,
+          channel: row.channel,
+          body: row.body,
+          sentAt: row.sent_at,
+        })),
+      );
+      for (const id of chunk) {
+        resolved.set(id, picked.get(id) ?? null);
+      }
+    }
+  }
+
+  return conversations.map((c) => ({
+    ...c,
+    latestMeaningfulMessage: resolved.has(c.id) ? (resolved.get(c.id) ?? null) : null,
+  }));
+}
+
+/**
+ * Batch-enrich Inbox rows for search + unambiguous event cues — few queries
+ * total, not per-row. Never invents an “earliest event” as the associated event.
  */
 async function enrichInboxForSearch(
   client: DbClient,
@@ -77,30 +148,45 @@ async function enrichInboxForSearch(
 
   const [leadsRes, clientsRes] = await Promise.all([
     client.from("leads")
-      .select("relationship_id, email, phone")
+      .select("relationship_id, email, phone, event_date, event_type")
       .in("relationship_id", relationshipIds),
     client.from("clients")
       .select("id, relationship_id, email, phone")
       .in("relationship_id", relationshipIds),
   ]);
 
-  type ContactRow = { relationship_id: string; email: string | null; phone: string | null; id?: string };
-  const byRel = new Map<string, { email: string | null; phone: string | null; clientId: string | null }>();
+  type LeadRow = {
+    relationship_id: string; email: string | null; phone: string | null;
+    event_date: string | null; event_type: string | null;
+  };
+  type ClientRow = { id: string; relationship_id: string; email: string | null; phone: string | null };
+  const byRel = new Map<string, {
+    email: string | null; phone: string | null; clientId: string | null;
+    preferredDate: string | null; leadEventType: string | null;
+  }>();
 
-  for (const row of (leadsRes.data ?? []) as ContactRow[]) {
-    const cur = byRel.get(row.relationship_id) ?? { email: null, phone: null, clientId: null };
+  for (const row of (leadsRes.data ?? []) as LeadRow[]) {
+    const cur = byRel.get(row.relationship_id) ?? {
+      email: null, phone: null, clientId: null, preferredDate: null, leadEventType: null,
+    };
     byRel.set(row.relationship_id, {
       email: cur.email || row.email,
       phone: cur.phone || row.phone,
       clientId: cur.clientId,
+      preferredDate: cur.preferredDate || row.event_date,
+      leadEventType: cur.leadEventType || row.event_type,
     });
   }
-  for (const row of (clientsRes.data ?? []) as ContactRow[]) {
-    const cur = byRel.get(row.relationship_id) ?? { email: null, phone: null, clientId: null };
+  for (const row of (clientsRes.data ?? []) as ClientRow[]) {
+    const cur = byRel.get(row.relationship_id) ?? {
+      email: null, phone: null, clientId: null, preferredDate: null, leadEventType: null,
+    };
     byRel.set(row.relationship_id, {
       email: row.email || cur.email,
       phone: row.phone || cur.phone,
       clientId: row.id ?? cur.clientId,
+      preferredDate: cur.preferredDate,
+      leadEventType: cur.leadEventType,
     });
   }
 
@@ -108,44 +194,243 @@ async function enrichInboxForSearch(
     conversations.map((c) => c.clientId ?? byRel.get(c.relationshipId)?.clientId).filter(Boolean) as string[],
   )];
 
-  const eventByClient = new Map<string, { eventDate: string | null; eventType: string | null }>();
+  type EventRow = { id: string; client_id: string; name: string; event_date: string | null; event_type: string | null };
+  const eventsByClient = new Map<string, EventRow[]>();
   if (clientIds.length > 0) {
     const { data: events } = await client.from("events")
-      .select("client_id, event_date, event_type")
-      .in("client_id", clientIds)
-      .order("event_date", { ascending: true });
-    for (const e of (events ?? []) as { client_id: string; event_date: string | null; event_type: string | null }[]) {
-      // Prefer the soonest upcoming / earliest dated event for search.
-      if (!eventByClient.has(e.client_id)) {
-        eventByClient.set(e.client_id, { eventDate: e.event_date, eventType: e.event_type });
-      }
+      .select("id, client_id, name, event_date, event_type")
+      .in("client_id", clientIds);
+    for (const e of (events ?? []) as EventRow[]) {
+      const list = eventsByClient.get(e.client_id) ?? [];
+      list.push(e);
+      eventsByClient.set(e.client_id, list);
     }
   }
 
   return conversations.map((c) => {
     const contact = byRel.get(c.relationshipId);
     const clientId = c.clientId ?? contact?.clientId ?? null;
-    const event = clientId ? eventByClient.get(clientId) : undefined;
+    const events = clientId ? (eventsByClient.get(clientId) ?? []) : [];
+    const unambiguous = events.length === 1 ? events[0]! : null;
     return {
       ...c,
       searchEmail: contact?.email ?? null,
       searchPhone: contact?.phone ?? null,
-      eventDate: event?.eventDate ?? null,
-      eventType: event?.eventType ?? null,
+      preferredDate: contact?.preferredDate ?? null,
+      leadEventType: contact?.leadEventType ?? null,
+      eventCount: events.length,
+      eventName: unambiguous?.name ?? null,
+      eventDate: unambiguous?.event_date ?? null,
+      eventType: unambiguous?.event_type ?? null,
     };
   });
+}
+
+export type InboxPageQuery = {
+  limit?: number;
+  cursorLastMessageAt?: string | null;
+  cursorId?: string | null;
+  search?: string | null;
+  unreadOnly?: boolean;
+  needsResponseOnly?: boolean;
+  relationship?: "all" | "leads" | "bookings";
+  channel?: string | null;
+  bookingStage?: string | null;
+  assignedStaffId?: string | null;
+};
+
+export type InboxPageResult = {
+  conversations: ConversationSummary[];
+  totalUnread: number;
+  hasMore: boolean;
+  nextCursor: { lastMessageAt: string | null; id: string } | null;
+};
+
+export async function getConversationInboxPage(
+  client: DbClient,
+  query: InboxPageQuery = {},
+): Promise<InboxPageResult> {
+  const { data, error } = await client.rpc("get_conversation_inbox_page", {
+    p_limit: query.limit ?? 40,
+    p_cursor_last_message_at: query.cursorLastMessageAt ?? null,
+    p_cursor_id: query.cursorId ?? null,
+    p_search: query.search ?? null,
+    p_unread_only: query.unreadOnly ?? false,
+    p_needs_response_only: query.needsResponseOnly ?? false,
+    p_relationship: query.relationship ?? "all",
+    p_channel: query.channel ?? null,
+    p_booking_stage: null, // applied in app via Booking Journey after enrich
+    p_assigned_staff_id: query.assignedStaffId ?? null,
+  });
+  if (error) throw error;
+  if (!data || "error" in data) {
+    return { conversations: [], totalUnread: 0, hasMore: false, nextCursor: null };
+  }
+
+  type PageRow = InboxConversationRow & {
+    latest_meaningful_message?: {
+      body: string; sender_type: ConversationMessagePreview["senderType"]; sent_at: string;
+      channel: ConversationMessagePreview["channel"];
+    } | null;
+    search_email?: string | null;
+    search_phone?: string | null;
+    event_count?: number;
+    event_name?: string | null;
+    event_date?: string | null;
+    event_type?: string | null;
+    preferred_date?: string | null;
+    lead_event_type?: string | null;
+  };
+
+  const rows = (data.conversations ?? []) as PageRow[];
+  let conversations: ConversationSummary[] = rows.map((r) => {
+    const base = mapInboxRow(r);
+    const meaningful = r.latest_meaningful_message
+      ? {
+          body: r.latest_meaningful_message.body,
+          senderType: r.latest_meaningful_message.sender_type,
+          sentAt: r.latest_meaningful_message.sent_at,
+          channel: r.latest_meaningful_message.channel,
+        }
+      : null;
+    return {
+      ...base,
+      latestMeaningfulMessage: meaningful,
+      searchEmail: r.search_email ?? null,
+      searchPhone: r.search_phone ?? null,
+      eventCount: r.event_count ?? 0,
+      eventName: r.event_name ?? null,
+      eventDate: r.event_date ?? null,
+      eventType: r.event_type ?? null,
+      preferredDate: r.preferred_date ?? null,
+      leadEventType: r.lead_event_type ?? null,
+    };
+  });
+
+  let hasMore = !!data.has_more;
+  let next = data.next_cursor as { last_message_at: string | null; id: string } | null;
+
+  // Booking stage uses authoritative Booking Journey. When filtering, keep
+  // walking pages until we fill the requested limit or exhaust results —
+  // never invent a second stage source in SQL.
+  if (query.bookingStage) {
+    const { enrichInboxBookingStages } = await import("@/lib/conversations/inbox-booking-stage");
+    const want = query.limit ?? 40;
+    const matched: ConversationSummary[] = [];
+    let guard = 0;
+    let cursorAt = query.cursorLastMessageAt ?? null;
+    let cursorId = query.cursorId ?? null;
+    let batch = conversations;
+
+    while (guard < 8) {
+      guard += 1;
+      const enriched = await enrichInboxBookingStages(batch);
+      for (const c of enriched) {
+        if (c.bookingStage === query.bookingStage) matched.push(c);
+        if (matched.length >= want) break;
+      }
+      if (matched.length >= want) {
+        hasMore = true;
+        const last = matched[matched.length - 1]!;
+        next = { last_message_at: last.lastMessageAt, id: last.id };
+        break;
+      }
+      if (!hasMore || !next) {
+        hasMore = false;
+        next = null;
+        break;
+      }
+      cursorAt = next.last_message_at;
+      cursorId = next.id;
+      const more = await client.rpc("get_conversation_inbox_page", {
+        p_limit: want,
+        p_cursor_last_message_at: cursorAt,
+        p_cursor_id: cursorId,
+        p_search: query.search ?? null,
+        p_unread_only: query.unreadOnly ?? false,
+        p_needs_response_only: query.needsResponseOnly ?? false,
+        p_relationship: query.relationship ?? "all",
+        p_channel: query.channel ?? null,
+        p_booking_stage: null,
+        p_assigned_staff_id: query.assignedStaffId ?? null,
+      });
+      if (!more.data || "error" in more.data) break;
+      hasMore = !!more.data.has_more;
+      next = more.data.next_cursor as { last_message_at: string | null; id: string } | null;
+      batch = ((more.data.conversations ?? []) as PageRow[]).map((r) => {
+        const base = mapInboxRow(r);
+        const meaningful = r.latest_meaningful_message
+          ? {
+              body: r.latest_meaningful_message.body,
+              senderType: r.latest_meaningful_message.sender_type,
+              sentAt: r.latest_meaningful_message.sent_at,
+              channel: r.latest_meaningful_message.channel,
+            }
+          : null;
+        return {
+          ...base,
+          latestMeaningfulMessage: meaningful,
+          searchEmail: r.search_email ?? null,
+          searchPhone: r.search_phone ?? null,
+          eventCount: r.event_count ?? 0,
+          eventName: r.event_name ?? null,
+          eventDate: r.event_date ?? null,
+          eventType: r.event_type ?? null,
+          preferredDate: r.preferred_date ?? null,
+          leadEventType: r.lead_event_type ?? null,
+        };
+      });
+      if (batch.length === 0) break;
+    }
+    conversations = matched.slice(0, want);
+  }
+
+  conversations = await enrichInboxAttachmentCues(client, conversations);
+
+  return {
+    conversations,
+    totalUnread: data.total_unread ?? 0,
+    hasMore,
+    nextCursor: next ? { lastMessageAt: next.last_message_at, id: next.id } : null,
+  };
+}
+
+async function enrichInboxAttachmentCues(
+  client: DbClient,
+  conversations: ConversationSummary[],
+): Promise<ConversationSummary[]> {
+  if (conversations.length === 0) return conversations;
+  const ids = conversations.map((c) => c.id);
+  const { data, error } = await client
+    .from("conversation_messages")
+    .select("conversation_id, conversation_message_attachments!inner(id)")
+    .in("conversation_id", ids)
+    .limit(5000);
+  if (error) return conversations;
+  const withFiles = new Set<string>();
+  for (const row of (data ?? []) as { conversation_id: string }[]) {
+    withFiles.add(row.conversation_id);
+  }
+  return conversations.map((c) => ({ ...c, hasAttachments: withFiles.has(c.id) }));
 }
 
 export async function getConversationInbox(
   client: DbClient,
 ): Promise<{ conversations: ConversationSummary[]; totalUnread: number }> {
-  const { data, error } = await client.rpc("get_conversation_inbox");
-  if (error) throw error;
-  if (!data || "error" in data) return { conversations: [], totalUnread: 0 };
-  const rows = (data.conversations ?? []) as InboxConversationRow[];
-  const mapped = rows.map(mapInboxRow);
-  const conversations = await enrichInboxForSearch(client, mapped);
-  return { conversations, totalUnread: data.total_unread ?? 0 };
+  // Prefer paginated foundation; fall back to legacy full RPC if migration not applied yet.
+  try {
+    const page = await getConversationInboxPage(client, { limit: 40 });
+    return { conversations: page.conversations, totalUnread: page.totalUnread };
+  } catch {
+    const { data, error } = await client.rpc("get_conversation_inbox");
+    if (error) throw error;
+    if (!data || "error" in data) return { conversations: [], totalUnread: 0 };
+    const rows = (data.conversations ?? []) as InboxConversationRow[];
+    const mapped = rows.map(mapInboxRow);
+    const withMeaningful = await enrichInboxLatestMeaningful(client, mapped);
+    const conversations = await enrichInboxForSearch(client, withMeaningful);
+    return { conversations, totalUnread: data.total_unread ?? 0 };
+  }
 }
 
 export async function getConversation(

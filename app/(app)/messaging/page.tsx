@@ -1,5 +1,5 @@
 /**
- * Messaging — the canonical Conversation inbox.
+ * Inbox — the canonical Conversation workspace for venues.
  *
  * RC2, Milestone 5: conversation_experience_enabled now defaults true for
  * every venue (no toggle UI was ever built, so there was never a real "off"
@@ -9,11 +9,14 @@
  * docs/rc2-messaging-conversations-final-report.md), just no longer wired
  * into any live route.
  */
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { getTeamMembers } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { ConversationInbox } from "@/app/(app)/messaging/conversation-inbox";
+
+export const metadata: Metadata = { title: "Inbox" };
 
 export default async function MessagingPage() {
   const venue = await getCurrentVenue();

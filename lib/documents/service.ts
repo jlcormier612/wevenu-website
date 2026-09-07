@@ -98,8 +98,12 @@ export async function updateDocument(
 export async function deleteDocument(documentId: string): Promise<DocumentActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const storagePath = await repo.deleteDocument(c, venueId, documentId);
-    // Remove the file from the bucket
-    if (storagePath) {
+    // Only remove objects that live in the documents bucket. Conversation
+    // attachments may share a Documents row that references couple-messages
+    // storage — deleting the workspace document must not destroy that file
+    // while a message attachment still points at it (and vice versa).
+    const { isDocumentsBucketPath } = await import("@/lib/conversations/attachment-document");
+    if (storagePath && isDocumentsBucketPath(storagePath)) {
       const browser = createBrowserClient();
       await browser.storage.from("documents").remove([storagePath]);
     }
