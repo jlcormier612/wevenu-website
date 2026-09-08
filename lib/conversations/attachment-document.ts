@@ -63,12 +63,19 @@ export function isDocumentsBucketPath(storagePath: string): boolean {
   return true;
 }
 
+/**
+ * Venue-facing Documents deep link for conversation attachments.
+ * Callers must only pass eventId when the relationship has exactly one event
+ * (eventCount === 1 / eventUnambiguous) — never invent an association.
+ */
 export function documentsWorkspaceHref(input: {
   leadId: string | null;
   clientId: string | null;
+  eventId?: string | null;
 }): string | null {
+  if (input.eventId) return `/events/${input.eventId}#documents`;
   if (input.clientId) return `/clients/${input.clientId}#documents`;
-  if (input.leadId) return `/leads/${input.leadId}`;
+  if (input.leadId) return `/leads/${input.leadId}#documents`;
   return null;
 }
 
@@ -157,6 +164,15 @@ export async function registerMessageAttachmentAsDocument(
     : `Shared in conversation (message ${input.messageId})`;
 
   try {
+    // Idempotent on venue + storage_path — retries must not duplicate Documents.
+    // No unique DB constraint required for this release; lookup is authoritative.
+    const existingId = await documentsRepo.findDocumentIdByVenueStoragePath(
+      client,
+      ids.venueId,
+      storagePath,
+    );
+    if (existingId) return { ok: true, documentId: existingId };
+
     const documentId = await documentsRepo.insertDocument(client, ids.venueId, {
       entityType: target.entityType,
       entityId: target.entityId,

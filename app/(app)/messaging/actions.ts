@@ -79,13 +79,14 @@ export async function sendConversationMessageAction(
   hasAttachment = false,
   attachments: Array<{ url: string; name: string; size?: number | null; mimeType?: string | null }> = [],
 ): Promise<SendMessageResult> {
-  const result = await conversations.sendConversationMessage(
+  // P0: do NOT revalidate the /messaging route on the hot send path.
+  // Full-route revalidation aborts in-flight Server Actions / RSC fetches and
+  // can leave the composer stuck on "Sending…" after the email already went out.
+  // The client reconciles the thread from the returned messageId (and a
+  // separate getConversation refresh that must not gate send success).
+  return conversations.sendConversationMessage(
     conversationId, body, channel, emailSubject, hasAttachment, attachments,
   );
-  if (result.ok) {
-    revalidatePath("/messaging");
-  }
-  return result;
 }
 
 /** RC2 — attaches an already-uploaded file to a message. */

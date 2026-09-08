@@ -106,6 +106,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
 
+  React.useEffect(() => {
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash) setActiveTab(hash);
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
+
   function handleUseDraft(subject: string | null, body: string) {
     setMessagePrefill({ subject: subject ?? "", body });
     setActiveTab("messages");
@@ -415,7 +425,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <RelationshipCard lead={lead} />
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="messages">Conversation</TabsTrigger>
@@ -553,6 +563,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         <TabsContent value="messages">
           <RelationshipConversationTab
             conversationId={conversationId}
+            leadId={lead.id}
+            clientId={lead.linkedClientId}
             initialBody={messagePrefill?.body}
             initialSubject={messagePrefill?.subject}
           />

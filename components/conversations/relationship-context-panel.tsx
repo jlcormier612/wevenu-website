@@ -53,17 +53,39 @@ function ContextBody({
   onClose?: () => void;
 }) {
   const [context, setContext] = React.useState<RelationshipContext | null>(null);
+  const [contextStatus, setContextStatus] = React.useState<"loading" | "ready" | "error">("loading");
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
 
   React.useEffect(() => {
-    void getRelationshipContextAction(leadId, clientId).then(setContext);
-    void getConversationAttachmentsAction(conversationId).then((rows) => {
-      setAttachments(rows as Attachment[]);
-    });
+    let cancelled = false;
+    setContextStatus("loading");
+    void getRelationshipContextAction(leadId, clientId)
+      .then((ctx) => {
+        if (cancelled) return;
+        setContext(ctx);
+        setContextStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setContextStatus("error");
+      });
+    void getConversationAttachmentsAction(conversationId)
+      .then((rows) => {
+        if (!cancelled) setAttachments(rows as Attachment[]);
+      })
+      .catch(() => {
+        /* keep prior attachments — do not stick loading */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [conversationId, leadId, clientId]);
 
   const requestHref = clientId ? `/clients/${clientId}` : leadId ? `/leads/${leadId}` : null;
-  const docsHref = documentsWorkspaceHref({ leadId, clientId });
+  const docsHref = documentsWorkspaceHref({
+    leadId,
+    clientId,
+    eventId: context?.orientation?.eventUnambiguous ? context.orientation.eventId : null,
+  });
   const o = context?.orientation;
 
   return (
@@ -126,9 +148,11 @@ function ContextBody({
       )}
 
       <Section title="Requests">
-        {!context ? (
+        {contextStatus === "loading" && !context ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
-        ) : context.requests.length === 0 ? (
+        ) : contextStatus === "error" && !context ? (
+          <p className="text-xs text-muted-foreground">Couldn’t load requests.</p>
+        ) : !context || context.requests.length === 0 ? (
           <p className="text-xs text-muted-foreground">No open requests.</p>
         ) : (
           <div className="space-y-1.5">
@@ -169,9 +193,11 @@ function ContextBody({
       </Section>
 
       <Section title="Recent activity">
-        {!context ? (
+        {contextStatus === "loading" && !context ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
-        ) : context.recentActivity.length === 0 ? (
+        ) : contextStatus === "error" && !context ? (
+          <p className="text-xs text-muted-foreground">Couldn’t load activity.</p>
+        ) : !context || context.recentActivity.length === 0 ? (
           <p className="text-xs text-muted-foreground">Nothing yet.</p>
         ) : (
           <div className="space-y-2">

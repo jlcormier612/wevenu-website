@@ -219,6 +219,7 @@ async function enrichInboxForSearch(
       preferredDate: contact?.preferredDate ?? null,
       leadEventType: contact?.leadEventType ?? null,
       eventCount: events.length,
+      eventId: unambiguous?.id ?? null,
       eventName: unambiguous?.name ?? null,
       eventDate: unambiguous?.event_date ?? null,
       eventType: unambiguous?.event_type ?? null,
@@ -385,6 +386,7 @@ export async function getConversationInboxPage(
     conversations = matched.slice(0, want);
   }
 
+  conversations = await enrichUnambiguousEventIds(client, conversations);
   conversations = await enrichInboxAttachmentCues(client, conversations);
 
   return {
@@ -393,6 +395,41 @@ export async function getConversationInboxPage(
     hasMore,
     nextCursor: next ? { lastMessageAt: next.last_message_at, id: next.id } : null,
   };
+}
+
+/**
+ * RPC page rows include event_count / name / date / type but not event id.
+ * Fill eventId only when eventCount === 1 (same rule as enrichInboxForSearch).
+ */
+async function enrichUnambiguousEventIds(
+  client: DbClient,
+  conversations: ConversationSummary[],
+): Promise<ConversationSummary[]> {
+  const need = conversations.filter(
+    (c) => c.eventCount === 1 && !!c.clientId && !c.eventId,
+  );
+  if (need.length === 0) return conversations;
+
+  const clientIds = [...new Set(need.map((c) => c.clientId!))];
+  const { data, error } = await client
+    .from("events")
+    .select("id, client_id")
+    .in("client_id", clientIds);
+  if (error) return conversations;
+
+  const byClient = new Map<string, string[]>();
+  for (const e of (data ?? []) as { id: string; client_id: string }[]) {
+    const list = byClient.get(e.client_id) ?? [];
+    list.push(e.id);
+    byClient.set(e.client_id, list);
+  }
+
+  return conversations.map((c) => {
+    if (c.eventCount !== 1 || !c.clientId || c.eventId) return c;
+    const ids = byClient.get(c.clientId) ?? [];
+    if (ids.length !== 1) return c;
+    return { ...c, eventId: ids[0]! };
+  });
 }
 
 async function enrichInboxAttachmentCues(

@@ -381,7 +381,12 @@ export async function sendConversationMessage(
     notifyCoupleOfVenuePortalMessage(conversationId, trimmed);
   }
 
-  return { ok: true, messageId: result.messageId! };
+  return {
+    ok: true,
+    messageId: result.messageId!,
+    channel,
+    status: status ?? null,
+  };
 }
 
 /** RC2 — every attachment across a Conversation, for the Relationship Context Panel. */

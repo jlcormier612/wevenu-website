@@ -32,6 +32,12 @@ import {
   validateAttachmentsForChannel,
   type AttachmentChannel,
 } from "@/lib/conversations/attachment-constraints";
+import {
+  confirmationAfterSend,
+  isAuthoritativeSendSuccess,
+  toSentMessageAck,
+  type SentMessageAck,
+} from "@/lib/conversations/send-ui-state";
 import type { ConversationChannel, ConversationComposeContext, ConversationSendPreview } from "@/lib/conversations/types";
 import type { MessageTemplate } from "@/lib/message-templates/types";
 import type { ScheduledMessageChannel } from "@/lib/scheduled-messages/types";
@@ -64,7 +70,8 @@ export function ConversationCompose({
   /** "Lead" or "Booking" — same language as the Messages list badge. */
   relationshipLabel?: "Lead" | "Booking" | null;
   prefill?: { body: string; channel: ConversationChannel; nonce: number } | null;
-  onSent: () => Promise<void> | void;
+  /** Post-send UI refresh — failures must not look like send failures. */
+  onSent: (ack?: SentMessageAck) => Promise<void> | void;
   onScheduled: () => Promise<void> | void;
 }) {
   const [context, setContext] = React.useState<ConversationComposeContext | null>(null);
@@ -142,16 +149,22 @@ export function ConversationCompose({
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setPreviewing(true);
-      void previewConversationSendAction(conversationId, text, subject).then((next) => {
-        if (!cancelled) {
-          setPreview(next);
+      void previewConversationSendAction(conversationId, text, subject)
+        .then((next) => {
+          if (!cancelled) setPreview(next);
+        })
+        .catch(() => {
+          // Keep last good preview; never treat preview abort as a send failure.
+        })
+        .finally(() => {
+          // Always clear so "UPDATING…" cannot stick after abort/error.
           setPreviewing(false);
-        }
-      });
+        });
     }, 250);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      setPreviewing(false);
     };
   }, [body, emailSubject, channel, conversationId]);
 
@@ -267,59 +280,88 @@ export function ConversationCompose({
     setSending(true);
     setConfirm(null);
 
-    const uploaded: Array<{ url: string; name: string; size: number; mimeType: string }> = [];
-    if (pendingFiles.length > 0) {
-      setUploadingFile(true);
-      try {
-        for (const pendingFile of pendingFiles) {
-          const form = new FormData();
-          form.append("file", pendingFile);
-          form.append("conversationId", conversationId);
-          const res = await fetch("/api/conversations/upload", { method: "POST", body: form });
-          const data = await res.json() as {
-            ok: boolean; url?: string; file_name?: string; file_size?: number; mime_type?: string; error?: string;
-          };
-          if (!data.ok || !data.url) {
-            setConfirm({ kind: "failed", message: data.error ?? "Upload failed." });
-            toast.error(data.error ?? "Upload failed.");
-            setSending(false);
-            setUploadingFile(false);
-            return;
+    try {
+      const uploaded: Array<{ url: string; name: string; size: number; mimeType: string }> = [];
+      if (pendingFiles.length > 0) {
+        setUploadingFile(true);
+        try {
+          for (const pendingFile of pendingFiles) {
+            const form = new FormData();
+            form.append("file", pendingFile);
+            form.append("conversationId", conversationId);
+            const res = await fetch("/api/conversations/upload", { method: "POST", body: form });
+            const data = await res.json() as {
+              ok: boolean; url?: string; file_name?: string; file_size?: number; mime_type?: string; error?: string;
+            };
+            if (!data.ok || !data.url) {
+              setConfirm({ kind: "failed", message: data.error ?? "Upload failed." });
+              toast.error(data.error ?? "Upload failed.");
+              return;
+            }
+            uploaded.push({
+              url: data.url,
+              name: data.file_name ?? pendingFile.name,
+              size: data.file_size ?? pendingFile.size,
+              mimeType: data.mime_type ?? pendingFile.type,
+            });
           }
-          uploaded.push({
-            url: data.url,
-            name: data.file_name ?? pendingFile.name,
-            size: data.file_size ?? pendingFile.size,
-            mimeType: data.mime_type ?? pendingFile.type,
-          });
+        } catch {
+          setConfirm({ kind: "failed", message: "Upload failed." });
+          toast.error("Upload failed.");
+          return;
+        } finally {
+          setUploadingFile(false);
         }
+      }
+
+      let result: Awaited<ReturnType<typeof sendConversationMessageAction>>;
+      try {
+        result = await sendConversationMessageAction(
+          conversationId, text, channel, emailSubject, uploaded.length > 0, uploaded,
+        );
       } catch {
-        setConfirm({ kind: "failed", message: "Upload failed." });
-        toast.error("Upload failed.");
-        setSending(false);
-        setUploadingFile(false);
+        // Transport aborted before an authoritative result — do NOT claim the
+        // email failed (it may already have been accepted). Do not clear body.
+        const message =
+          "We couldn't confirm whether this message was sent. Check the conversation before sending again.";
+        setConfirm({ kind: "failed", message });
+        toast.warning(message);
         return;
       }
-      setUploadingFile(false);
-    }
 
-    const result = await sendConversationMessageAction(
-      conversationId, text, channel, emailSubject, uploaded.length > 0, uploaded,
-    );
-    if (result.ok) {
+      if (!isAuthoritativeSendSuccess(result)) {
+        const message = result.message ?? "Could not send message.";
+        setConfirm({ kind: "failed", message });
+        toast.error(message);
+        return;
+      }
+
+      // Authoritative send — clear composer; refresh is secondary.
+      const ack = toSentMessageAck(result, text, channel);
       setBody("");
       setEmailSubject("");
       setTemplateId("");
       setPendingFiles([]);
       setPreview(null);
       setConfirm({ kind: "sent", channel });
-      await onSent();
-    } else {
-      const message = result.message ?? "Could not send message.";
-      setConfirm({ kind: "failed", message });
-      toast.error(message);
+
+      try {
+        await onSent(ack);
+      } catch {
+        // Refresh/reconciliation failed — message was still sent.
+        const after = confirmationAfterSend({
+          sendOk: true,
+          refreshFailed: true,
+          channel,
+        });
+        if (after.kind === "sent") {
+          setConfirm({ kind: "sent", channel });
+        }
+        toast.message("Message sent. If it doesn't appear yet, refresh the conversation.");
+      }
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   }
 
   async function confirmSchedule() {

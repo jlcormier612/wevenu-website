@@ -968,7 +968,11 @@ export function EventDetail({
 
         {/* ── Messages ─────────────────────────────────────────────── */}
         <TabsContent value="messages">
-          <RelationshipConversationTab conversationId={conversationId} />
+          <RelationshipConversationTab
+            conversationId={conversationId}
+            leadId={originatingLeadId}
+            clientId={event.clientId}
+          />
         </TabsContent>
 
         {/* ── Activity — RC2, Milestone 4: the relationship's audit trail ── */}

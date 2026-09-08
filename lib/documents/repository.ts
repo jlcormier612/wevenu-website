@@ -53,6 +53,28 @@ export async function getDocuments(
   return (data as DocRow[]).map(mapDoc);
 }
 
+/**
+ * Lookup by venue + storage_path for conversation→Documents idempotency.
+ * Schema has no unique constraint on (venue_id, storage_path); earliest row wins.
+ */
+export async function findDocumentIdByVenueStoragePath(
+  client: DbClient,
+  venueId: string,
+  storagePath: string,
+): Promise<string | null> {
+  if (!storagePath) return null;
+  const { data, error } = await client
+    .from("documents")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("storage_path", storagePath)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
 export async function insertDocument(
   client: DbClient,
   venueId: string,

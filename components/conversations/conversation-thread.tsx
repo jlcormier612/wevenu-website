@@ -35,6 +35,10 @@ import {
   latestMeaningfulFromMessages,
 } from "@/lib/conversations/inbox-attention";
 import { SENDABLE_CHANNEL_LABEL } from "@/lib/conversations/channels";
+import {
+  mergeSentAckIntoMessages,
+  type SentMessageAck,
+} from "@/lib/conversations/send-ui-state";
 import type {
   ConversationChannel,
   ConversationMessage,
@@ -248,11 +252,12 @@ function AutomatedBadge({ isVenue }: { isVenue: boolean }) {
 }
 
 function Bubble({
-  msg, leadId, clientId, onPrefill, onCreateTask,
+  msg, leadId, clientId, eventId, onPrefill, onCreateTask,
 }: {
   msg: ConversationMessage;
   leadId: string | null;
   clientId: string | null;
+  eventId: string | null;
   onPrefill: (body: string, channel: ConversationChannel) => void;
   onCreateTask: (msg: ConversationMessage) => void;
 }) {
@@ -267,7 +272,7 @@ function Bubble({
   });
   const showDelivery = !!delivery;
   const failed = !!delivery?.isFailure;
-  const documentsHref = documentsWorkspaceHref({ leadId, clientId });
+  const documentsHref = documentsWorkspaceHref({ leadId, clientId, eventId });
   return (
     <div className={`flex flex-col ${isVenue ? "items-end" : "items-start"}`}>
       <div
@@ -399,6 +404,10 @@ export function ConversationThread({
   const [assignedStaffId, setAssignedStaffId] = React.useState(summary?.assignedStaffId ?? NO_ASSIGNEE);
   const [automations, setAutomations] = React.useState<SequenceEnrollment[]>([]);
   const [headerStageLabel, setHeaderStageLabel] = React.useState<string | null>(null);
+  /** Unambiguous event for Documents links — only when eventCount === 1 / eventUnambiguous. */
+  const [docsEventId, setDocsEventId] = React.useState<string | null>(
+    summary?.eventCount === 1 ? (summary.eventId ?? null) : null,
+  );
   const relationshipId = summary?.relationshipId ?? null;
   React.useEffect(() => {
     if (!relationshipId) return;
@@ -408,15 +417,28 @@ export function ConversationThread({
   React.useEffect(() => {
     if (!summary?.leadId && !summary?.clientId) {
       setHeaderStageLabel(null);
+      setDocsEventId(summary?.eventCount === 1 ? (summary.eventId ?? null) : null);
       return;
     }
     let cancelled = false;
-    void getRelationshipContextAction(summary.leadId ?? null, summary.clientId ?? null).then((ctx) => {
-      if (cancelled) return;
-      setHeaderStageLabel(ctx.orientation?.bookingStageLabel ?? null);
-    });
+    void getRelationshipContextAction(summary.leadId ?? null, summary.clientId ?? null)
+      .then((ctx) => {
+        if (cancelled) return;
+        setHeaderStageLabel(ctx.orientation?.bookingStageLabel ?? null);
+        // Prefer authoritative relationship context when unambiguous; else summary enrichment.
+        if (ctx.orientation?.eventUnambiguous && ctx.orientation.eventId) {
+          setDocsEventId(ctx.orientation.eventId);
+        } else if (summary.eventCount === 1 && summary.eventId) {
+          setDocsEventId(summary.eventId);
+        } else {
+          setDocsEventId(null);
+        }
+      })
+      .catch(() => {
+        /* keep summary-derived docsEventId / stage — do not hang */
+      });
     return () => { cancelled = true; };
-  }, [summary?.leadId, summary?.clientId]);
+  }, [summary?.leadId, summary?.clientId, summary?.eventCount, summary?.eventId]);
 
   function handleAssignedStaffChange(value: string) {
     setAssignedStaffId(value);
@@ -430,18 +452,27 @@ export function ConversationThread({
   React.useEffect(() => {
     let cancelled = false;
     openedNotifiedRef.current = false;
-    void getConversationAction(conversationId).then((detail) => {
-      if (cancelled) return;
-      const next = detail?.messages ?? [];
-      setMessages(next);
-      if (!openedNotifiedRef.current) {
-        openedNotifiedRef.current = true;
-        onInboxOpenedRef.current?.(conversationNeedsResponse(latestMeaningfulFromMessages(next)));
-      }
-    });
-    void getScheduledForConversationAction(conversationId).then((next) => {
-      if (!cancelled) setScheduled(next);
-    });
+    void getConversationAction(conversationId)
+      .then((detail) => {
+        if (cancelled) return;
+        const next = detail?.messages ?? [];
+        setMessages(next);
+        if (!openedNotifiedRef.current) {
+          openedNotifiedRef.current = true;
+          onInboxOpenedRef.current?.(conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+        }
+      })
+      .catch(() => {
+        // Aborted/failed load must not leave the thread on permanent "Loading…"
+        if (!cancelled) setMessages((prev) => prev ?? []);
+      });
+    void getScheduledForConversationAction(conversationId)
+      .then((next) => {
+        if (!cancelled) setScheduled(next);
+      })
+      .catch(() => {
+        /* keep prior scheduled list */
+      });
     return () => {
       cancelled = true;
     };
@@ -450,19 +481,38 @@ export function ConversationThread({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages?.length]);
 
-  async function handleSent() {
-    const detail = await getConversationAction(conversationId);
-    const next = detail?.messages ?? [];
-    setMessages(next);
-    const last = next[next.length - 1];
-    if (last && onInboxSentRef.current) {
-      const preview: ConversationMessagePreview = {
-        body: last.body,
-        senderType: last.senderType,
-        sentAt: last.sentAt,
-        channel: last.channel,
-      };
-      onInboxSentRef.current(preview, conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+  async function handleSent(ack?: SentMessageAck) {
+    try {
+      const detail = await getConversationAction(conversationId);
+      const next = detail?.messages ?? [];
+      setMessages(next);
+      const last = next[next.length - 1];
+      if (last && onInboxSentRef.current) {
+        const preview: ConversationMessagePreview = {
+          body: last.body,
+          senderType: last.senderType,
+          sentAt: last.sentAt,
+          channel: last.channel,
+        };
+        onInboxSentRef.current(preview, conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+      }
+    } catch {
+      // Post-send refresh failed — reconcile from authoritative ack when present.
+      if (ack) {
+        setMessages((prev) => mergeSentAckIntoMessages(prev, ack));
+        if (onInboxSentRef.current) {
+          const channel = (ack.channel as ConversationChannel) || "email";
+          const preview: ConversationMessagePreview = {
+            body: ack.body,
+            senderType: "venue_staff",
+            sentAt: new Date().toISOString(),
+            channel,
+          };
+          onInboxSentRef.current(preview, false);
+        }
+      } else {
+        setMessages((prev) => prev ?? []);
+      }
     }
   }
 
@@ -632,6 +682,7 @@ export function ConversationThread({
                     msg={m}
                     leadId={summary?.leadId ?? null}
                     clientId={summary?.clientId ?? null}
+                    eventId={docsEventId}
                     onPrefill={prefillFromFailed}
                     onCreateTask={createFollowUpTask}
                   />

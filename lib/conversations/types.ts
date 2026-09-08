@@ -45,8 +45,10 @@ export type ConversationSummary = {
   /**
    * Unambiguous event fields only (exactly one associated event).
    * Never populated from “earliest of many.”
+   * eventId is set only when eventCount === 1.
    */
   eventCount?: number;
+  eventId?: string | null;
   eventName?: string | null;
   eventDate?: string | null;
   eventType?: string | null;
@@ -106,7 +108,14 @@ export type PortalConversationDetail = {
 };
 
 export type SendMessageResult =
-  | { ok: true; messageId: string }
+  | {
+      ok: true;
+      messageId: string;
+      /** Channel that was recorded — for post-send UI reconciliation only. */
+      channel?: string;
+      /** Delivery status at record time (e.g. accepted) — never provider jargon. */
+      status?: string | null;
+    }
   | { ok: false; message: string };
 
 export type PortalConversationResult =
