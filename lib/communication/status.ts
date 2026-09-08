@@ -23,9 +23,13 @@ const STATUS_RANK: Record<string, number> = {
   replied: 6,
 };
 
+const TERMINAL_FAILURE = new Set(["failed", "undelivered"]);
+
 export function shouldAdvanceStatus(current: string | null | undefined, next: string): boolean {
-  if (next === "failed") return true;
-  if (current === "failed") return false;
+  // Failure / undelivered always records — a bounce after "accepted" is real news.
+  if (TERMINAL_FAILURE.has(next)) return true;
+  // Once failed or undelivered, nothing un-fails a message automatically.
+  if (current && TERMINAL_FAILURE.has(current)) return false;
   const curRank = current ? (STATUS_RANK[current] ?? -1) : -1;
   const nextRank = STATUS_RANK[next] ?? -1;
   return nextRank > curRank;

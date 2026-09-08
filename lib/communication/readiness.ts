@@ -57,18 +57,25 @@ export async function getCommunicationReadiness(): Promise<CommunicationReadines
 
   const items: ReadinessItem[] = [
     {
-      key: "email", label: "Email configured",
+      key: "email", label: "Email connected",
       state: emailConfigured ? "ready" : "not_ready",
       detail: emailConfigured
         ? "Ready to send. Email is set up for Hello to Cheers — you don't configure it in venue Settings."
         : "Not ready yet. Email sending is set up for Hello to Cheers as a platform, not per venue. Contact support if this still shows as not ready.",
     },
     {
-      key: "sms", label: "Texting configured",
+      key: "sms", label: "Texting setup",
       state: smsConfigured ? "ready" : "not_ready",
       detail: smsConfigured
         ? "Ready to send. Texting is configured for this venue."
-        : "Not ready yet. Texting for this venue isn't finished setting up. Contact support if this still shows as not ready.",
+        : "Not ready yet. Enable text messaging for your venue in Settings → Communications.",
+    },
+    {
+      key: "delivery", label: "Delivery system",
+      state: emailConfigured || smsConfigured ? "ready" : "not_ready",
+      detail: emailConfigured || smsConfigured
+        ? "Outbound delivery is operational for the channels that are ready."
+        : "No delivery channel is ready yet.",
     },
     {
       key: "reply_routing", label: "Reply routing working",

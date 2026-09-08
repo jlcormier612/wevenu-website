@@ -121,7 +121,13 @@ export async function getVenueTwilioAccountByVenueId(
     .select(SELECT_COLS)
     .eq("venue_id", venueId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) {
+    const msg = error.message ?? "";
+    if (/does not exist|schema cache|Could not find the table|PGRST205|42P01/i.test(msg) || error.code === "PGRST205") {
+      return null;
+    }
+    throw new Error(error.message);
+  }
   return data ? mapRow(data as Row) : null;
 }
 

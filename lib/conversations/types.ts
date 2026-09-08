@@ -131,6 +131,10 @@ export type ConversationComposeContext = {
   /** Server-side permission/suppression — null when channel is allowed. */
   smsPermissionMessage: string | null;
   emailPermissionMessage: string | null;
+  /** Informational SMS permission label when send is still allowed. */
+  smsPermissionHint: string | null;
+  /** When SMS isn't configured yet — deep link to venue texting setup. */
+  textingSetupHref: string | null;
 };
 
 export type ConversationSendPreview = {

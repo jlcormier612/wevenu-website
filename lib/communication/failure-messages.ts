@@ -47,10 +47,20 @@ export function translateSmsFailure(raw: string): string {
     s.includes("isn't configured")
     || s.includes("not configured")
     || s.includes("isn't set up")
+    || s.includes("isn’t set up")
     || s.includes("isn't available")
     || s.includes("communication health")
+    || s.includes("settings")
   ) {
-    return "Texting isn't set up yet. Open Communication Health to see why.";
+    return "Texting isn’t set up yet for your venue. Enable it in Settings → Communications.";
+  }
+  // Twilio error 30003 / undelivered — unreachable handset
+  if (s.includes("30003") || s.includes("unreachable") || s.includes("handset")) {
+    return "The recipient's number could not receive this message.";
+  }
+  // Twilio error 30005 / 30006 — unknown / landline destination
+  if (s.includes("30005") || s.includes("30006") || s.includes("landline")) {
+    return "The recipient's number could not receive this message.";
   }
   if (s.includes("no phone number") || s.includes("no phone")) {
     return "There's no phone number on file for this client.";

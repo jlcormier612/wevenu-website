@@ -11,6 +11,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getCommunicationHealth, type CommunicationHealth } from "@/lib/communication/health";
+import { isDeliveryFailureStatus } from "@/lib/communication/status-labels";
 
 const WINDOW_DAYS = 30;
 
@@ -89,7 +90,7 @@ async function getCounts(client: DbClient, venueId: string, since: string): Prom
     windowDays: WINDOW_DAYS,
     sent: rows.length,
     delivered: rows.filter((r) => r.status && DELIVERED_LIKE.has(r.status)).length,
-    needsAttention: rows.filter((r) => r.status === "failed").length,
+    needsAttention: rows.filter((r) => isDeliveryFailureStatus(r.status)).length,
   };
 }
 

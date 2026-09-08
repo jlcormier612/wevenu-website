@@ -426,7 +426,8 @@ jobs:
           check_secret "htc/sandbox/twilio" ".TWILIO_ACCOUNT_SID" "Twilio Account SID"
           check_secret "htc/sandbox/twilio" ".TWILIO_AUTH_TOKEN" "Twilio Auth Token"
           check_secret "htc/sandbox/twilio" ".TWILIO_MESSAGING_SERVICE_SID" "Twilio Messaging Service SID"
-          echo "Expected secrets checked (including Twilio SMS). Any '::warning::' above means that specific capability (not the deploy itself) won't work until the real value is set."
+          check_secret "htc/sandbox/sensitive-field-encryption-key" ".value" "Sensitive field encryption key"
+          echo "Expected secrets checked (including Twilio SMS + sensitive-field encryption). Any '::warning::' above means that specific capability (not the deploy itself) won't work until the real value is set."
 
       - name: Verify Sandbox database readiness (optional)
         # Runs scripts/verify-sandbox-database.sh against the real project

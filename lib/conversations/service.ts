@@ -44,6 +44,7 @@ import { extractTokens, mergeContent, resolveForCustomerSend, assertCustomerSafe
 import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
 import { getCurrentStaffMember } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { TEXTING_SETUP_PATH } from "@/lib/texting-registration/types";
 
 export async function getConversationInbox(): Promise<{ conversations: ConversationSummary[]; totalUnread: number }> {
   if (!isSupabaseConfigured) return { conversations: [], totalUnread: 0 };
@@ -80,17 +81,31 @@ export async function getConversationComposeContext(
 
   let smsPermissionMessage: string | null = null;
   let emailPermissionMessage: string | null = null;
+  let smsPermissionHint: string | null = null;
   if (venue) {
-    const { assertChannelAllowed } = await import("@/lib/communication/permissions");
-    if (facts.recipientPhone) {
+    const {
+      assertChannelAllowed,
+      smsPermissionStatusLabel,
+    } = await import("@/lib/communication/permissions");
+    if (!facts.recipientPhone) {
+      smsPermissionMessage = "There's no phone number on file for this contact.";
+    } else {
       const sms = await assertChannelAllowed(supabase, {
         venueId: venue.id,
         channel: "sms",
         rawAddress: facts.recipientPhone,
       });
-      if (!sms.ok) smsPermissionMessage = sms.message;
+      if (!sms.ok) {
+        smsPermissionMessage = sms.message;
+      } else if (sms.status === "not_opted_in") {
+        smsPermissionHint = smsPermissionStatusLabel(sms.status);
+      } else if (sms.status === "opted_in") {
+        smsPermissionHint = smsPermissionStatusLabel(sms.status);
+      }
     }
-    if (facts.recipientEmail) {
+    if (!facts.recipientEmail) {
+      emailPermissionMessage = "There's no email address on file for this contact.";
+    } else {
       const email = await assertChannelAllowed(supabase, {
         venueId: venue.id,
         channel: "email",
@@ -100,6 +115,9 @@ export async function getConversationComposeContext(
     }
   }
 
+  const smsConfigured = !!venue && (await isSmsConfigured(venue.id));
+  const smsReady = !sendingDisabled && smsConfigured && !smsPermissionMessage;
+
   return {
     displayName: facts.displayName,
     conversationKind: facts.conversationKind,
@@ -107,13 +125,15 @@ export async function getConversationComposeContext(
     recipientPhone: facts.recipientPhone,
     recipientPhoneDisplay: facts.recipientPhone ? formatPhoneDisplay(facts.recipientPhone) : null,
     emailReady: !sendingDisabled && isEmailConfigured() && !emailPermissionMessage,
-    smsReady: !sendingDisabled
-      && !!venue
-      && (await isSmsConfigured(venue.id))
-      && !smsPermissionMessage,
+    smsReady,
     sendingDisabled,
     smsPermissionMessage,
     emailPermissionMessage,
+    smsPermissionHint,
+    textingSetupHref:
+      !sendingDisabled && !smsConfigured && !smsPermissionMessage
+        ? TEXTING_SETUP_PATH
+        : null,
   };
 }
 

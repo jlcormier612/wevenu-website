@@ -39,7 +39,7 @@ export type SmsSendResult =
   | { ok: false; message: string };
 
 const NOT_CONFIGURED =
-  "Texting isn't set up yet. Open Communication Health to see why.";
+  "Texting isn’t set up yet for your venue. Enable it in Settings → Communications.";
 
 export async function isSmsConfigured(venueId: string): Promise<boolean> {
   if (!venueId?.trim()) return false;
@@ -73,7 +73,7 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
     return { ok: false, message: "A text needs a message or at least one photo/file." };
   }
   if (mediaUrls.length > 10) {
-    return { ok: false, message: "Text messages can include at most 10 files (Twilio MMS limit)." };
+    return { ok: false, message: "Text messages can include at most 10 files." };
   }
 
   // Hard stop for opted_out / provider_blocked at the Twilio boundary so no

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   EMAIL_NOT_CONFIGURED_MESSAGE,
+  SMS_NOT_CONFIGURED_MESSAGE,
   SENDING_DISABLED_MESSAGE,
   acceptOutboundEmail,
   acceptOutboundSms,
@@ -56,12 +57,12 @@ describe("acceptOutboundSms", () => {
   it("does not tell the venue to add Twilio credentials when texting is unconfigured", () => {
     const accepted = acceptOutboundSms({
       ok: false,
-      message: "Texting isn't set up yet. Open Communication Health to see why.",
+      message: SMS_NOT_CONFIGURED_MESSAGE,
     });
     assert.equal(accepted.ok, false);
     if (!accepted.ok) {
-      assert.match(accepted.message, /Communication Health/);
-      assert.doesNotMatch(accepted.message, /Twilio|this venue|credentials/i);
+      assert.match(accepted.message, /Settings → Communications|texting/i);
+      assert.doesNotMatch(accepted.message, /Twilio|credentials/i);
     }
   });
 });

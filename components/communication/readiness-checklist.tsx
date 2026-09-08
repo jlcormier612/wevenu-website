@@ -7,12 +7,14 @@
  * email authentication — no SPF/DKIM/webhook language here.
  */
 import * as React from "react";
+import Link from "next/link";
 import { Check, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { sendTestEmailAction, sendTestSmsAction, getCommunicationReadinessAction } from "@/app/(app)/messaging/actions";
 import type { CommunicationReadiness, ReadinessState } from "@/lib/communication/readiness";
+import { TEXTING_SETUP_PATH } from "@/lib/texting-registration/types";
 
 const STATE_META: Record<ReadinessState, { icon: string; className: string }> = {
   ready:     { icon: "✓", className: "text-success" },
@@ -76,6 +78,16 @@ export function ReadinessChecklist({ initial }: { initial: CommunicationReadines
                 <div className="min-w-0">
                   <p className="text-heading">{item.label}</p>
                   <p className="text-xs text-muted-foreground">{item.detail}</p>
+                  {item.key === "sms" && item.state === "not_ready" && (
+                    <p className="text-xs mt-1">
+                      <Link
+                        href={TEXTING_SETUP_PATH}
+                        className="underline underline-offset-2 text-heading hover:text-foreground"
+                      >
+                        Enable text messaging
+                      </Link>
+                    </p>
+                  )}
                 </div>
               </li>
             );

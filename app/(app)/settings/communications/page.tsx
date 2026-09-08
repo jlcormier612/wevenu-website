@@ -9,6 +9,7 @@ import { NotificationsSection } from "@/components/settings/notifications-sectio
 import { ReminderCadenceSection } from "@/components/settings/reminder-cadence-section";
 import { ReviewReferralNudgeSection } from "@/components/settings/review-referral-nudge-section";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { TextMessagingSetupSection } from "@/components/settings/text-messaging-setup-section";
 import {
   Card,
   CardContent,
@@ -23,6 +24,7 @@ import { getReminderCadence } from "@/lib/notifications/obligations";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getNotificationStats } from "@/lib/notifications/stats";
 import { isSmsConfigured } from "@/lib/sms/send";
+import { getTextingSetupBundle } from "@/lib/texting-registration/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Communications & Automation — Settings" };
@@ -36,22 +38,29 @@ export const metadata: Metadata = { title: "Communications & Automation — Sett
  * one component.
  */
 export default async function CommunicationsAutomationSettingsPage() {
-  const [notifStats, notifPrefs, eventCompletedNudgeRule, luvSettings, reminderCadence, venue] = await Promise.all([
-    getNotificationStats(),
-    getNotificationPreferences(),
-    getEventCompletedNudgeRule(),
-    getLuvSettings(),
-    getReminderCadence(),
-    getCurrentVenue(),
-  ]);
+  const [notifStats, notifPrefs, eventCompletedNudgeRule, luvSettings, reminderCadence, venue, textingSetup] =
+    await Promise.all([
+      getNotificationStats(),
+      getNotificationPreferences(),
+      getEventCompletedNudgeRule(),
+      getLuvSettings(),
+      getReminderCadence(),
+      getCurrentVenue(),
+      getTextingSetupBundle(),
+    ]);
+
+  const smsConfigured = venue ? await isSmsConfigured(venue.id) : false;
+  const textingNumberDisplay = textingSetup?.statusPanel.textingNumber.label ?? null;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Communications & Automation"
-        description="Notifications, follow-ups, and Luv."
+        description="Notifications, follow-ups, texting, and Luv."
       />
       <SettingsTabs />
+
+      <TextMessagingSetupSection initial={textingSetup} />
 
       <Card id="identity" className="scroll-mt-20">
         <CardHeader>
@@ -70,7 +79,12 @@ export default async function CommunicationsAutomationSettingsPage() {
             venuePhone={venue?.phone ?? null}
             emailSignature={venue?.emailSignature ?? null}
             emailConfigured={isEmailConfigured()}
-            smsConfigured={venue ? await isSmsConfigured(venue.id) : false}
+            smsConfigured={smsConfigured}
+            textingNumberDisplay={
+              smsConfigured && textingNumberDisplay && textingNumberDisplay !== "Not yet assigned"
+                ? textingNumberDisplay
+                : null
+            }
           />
         </CardContent>
       </Card>

@@ -27,7 +27,7 @@ export type VenueTwilioResolveResult =
   | { ok: false; message: string };
 
 const NOT_READY =
-  "Texting isn't set up yet. Open Communication Health to see why.";
+  "Texting isn’t set up yet for your venue. Enable it in Settings → Communications.";
 
 function hasEnvAccountOverride(): boolean {
   return twilioVenueTestOverridesAllowed()

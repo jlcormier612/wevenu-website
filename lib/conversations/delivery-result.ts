@@ -9,7 +9,7 @@ import type { SmsSendResult } from "@/lib/sms/send";
 export const EMAIL_NOT_CONFIGURED_MESSAGE =
   "Email isn't fully configured yet — Hello to Cheers can't send from here until email is set up.";
 export const SMS_NOT_CONFIGURED_MESSAGE =
-  "Texting isn't set up yet — Hello to Cheers can't send a text until texting is configured.";
+  "Texting isn’t set up yet for your venue — enable text messaging in Settings → Communications.";
 export const SENDING_DISABLED_MESSAGE =
   "Sending is turned off in this environment.";
 

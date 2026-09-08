@@ -12,6 +12,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isEmailConfigured } from "@/lib/email/send";
 import { isSmsConfigured } from "@/lib/sms/send";
+import { isDeliveryFailureStatus } from "@/lib/communication/status-labels";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type CommunicationHealthLevel = "excellent" | "attention" | "action_required";
@@ -58,7 +59,7 @@ async function countRecentAttempts(
       .gte("sent_at", since),
   ]);
   const rows = [...(legacy.data ?? []), ...(conversation.data ?? [])] as { status: string | null }[];
-  return { total: rows.length, failed: rows.filter((r) => r.status === "failed").length };
+  return { total: rows.length, failed: rows.filter((r) => isDeliveryFailureStatus(r.status)).length };
 }
 
 async function getRecentIssues(client: DbClient, venueId: string, since: string): Promise<CommunicationHealthIssue[]> {
@@ -71,7 +72,7 @@ async function getRecentIssues(client: DbClient, venueId: string, since: string)
       .limit(20),
     client.from("conversation_messages")
       .select("id, channel, failure_reason, sent_at, conversation_id")
-      .eq("venue_id", venueId).eq("status", "failed")
+      .eq("venue_id", venueId).in("status", ["failed", "undelivered"])
       .gte("sent_at", since)
       .order("sent_at", { ascending: false })
       .limit(20),
@@ -152,7 +153,7 @@ export async function getCommunicationHealth(): Promise<CommunicationHealth> {
     return {
       level: "action_required",
       headline: "Action Required",
-      detail: "Messages can't be delivered right now — email and texting aren't finished setting up yet. Contact support to get this resolved.",
+      detail: "Messages can't be delivered right now — email isn't finished setting up, and texting isn't enabled for your venue yet. Enable text messaging in Settings → Communications; contact support if email still isn't ready.",
       issues: [],
     };
   }
@@ -177,18 +178,20 @@ export async function getCommunicationHealth(): Promise<CommunicationHealth> {
   if (issues.length > 0) {
     return {
       level: "attention",
-      headline: "Needs Attention",
-      detail: `${issues.length} message${issues.length === 1 ? "" : "s"} couldn't be delivered in the last week — take a look below.`,
+      headline: "Some messages couldn't be delivered",
+      detail: `${issues.length} message${issues.length === 1 ? "" : "s"} couldn't be delivered in the last week — open them in Inbox to see why and what you can try next.`,
       issues,
     };
   }
 
   const partialNote = !emailConfigured ? " (texting only — email isn't set up yet)"
-    : !smsConfigured ? " (email only — texting isn't set up yet)" : "";
+    : !smsConfigured ? " (email only — enable text messaging in Settings when you’re ready)" : "";
   return {
     level: "excellent",
     headline: "Excellent",
-    detail: `Everything is working normally${partialNote}.`,
+    detail: !smsConfigured && emailConfigured
+      ? "Email delivery looks healthy. Texting isn’t enabled for your venue yet — that’s a setup step in Settings, not an HTC outage."
+      : `Everything is working normally${partialNote}.`,
     issues: [],
   };
 }

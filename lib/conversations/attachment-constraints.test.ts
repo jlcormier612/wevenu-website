@@ -1,5 +1,5 @@
 /**
- * Attachment constraint unit tests — Twilio MMS vs storage limits.
+ * Attachment constraint unit tests — SMS/MMS vs storage limits.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -17,15 +17,18 @@ describe("validateAttachmentsForChannel", () => {
     assert.equal(result.ok, true);
   });
 
-  it("rejects SMS media over the Twilio 5MB total", () => {
+  it("rejects SMS media over the 5MB total", () => {
     const result = validateAttachmentsForChannel("sms", [
       { name: "big.jpg", size: SMS_MMS_MAX_BYTES + 1, mimeType: "image/jpeg" },
     ]);
     assert.equal(result.ok, false);
-    if (!result.ok) assert.match(result.message, /5 MB|Twilio|MMS/i);
+    if (!result.ok) {
+      assert.match(result.message, /5 MB|MMS/i);
+      assert.doesNotMatch(result.message, /Twilio/i);
+    }
   });
 
-  it("rejects Office docs on SMS (not Twilio MMS types)", () => {
+  it("rejects Office docs on SMS (not MMS types)", () => {
     const result = validateAttachmentsForChannel("sms", [
       {
         name: "menu.docx",

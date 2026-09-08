@@ -129,7 +129,7 @@ export function ConversationCompose({
         ? context?.smsPermissionMessage
           ?? (context?.sendingDisabled
             ? "Sending is turned off in this environment."
-            : "Texting isn't set up yet. Open Communication Health to see why.")
+            : "Texting isn’t set up yet for your venue.")
         : null;
 
   const templatesForChannel = templates.filter((t) =>
@@ -187,7 +187,7 @@ export function ConversationCompose({
       if (file.size > maxBytes) {
         toast.error(
           attachChannel === "sms"
-            ? `Each text/MMS file must be under ${Math.floor(maxBytes / (1024 * 1024))} MB (Twilio limit).`
+            ? `Each text/MMS file must be under ${Math.floor(maxBytes / (1024 * 1024))} MB.`
             : `File exceeds ${Math.floor(maxBytes / (1024 * 1024))} MB limit.`,
         );
         return;
@@ -485,16 +485,66 @@ export function ConversationCompose({
         </p>
       )}
 
+      {!isNote && !channelDisabledReason && (!emailReady || !smsReady) && (
+        <div className="space-y-1 text-xs text-muted-foreground">
+          {!emailReady && (
+            <p>
+              {context?.emailPermissionMessage
+                ?? (context?.sendingDisabled
+                  ? "Email sending is turned off in this environment."
+                  : "Email isn’t ready to send yet.")}
+              {!context?.emailPermissionMessage && (
+                <>
+                  {" "}
+                  <Link href="/messaging/health" className="underline hover:text-foreground">
+                    Communication Health
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
+          {!smsReady && (
+            <p>
+              {context?.smsPermissionMessage
+                ?? (context?.sendingDisabled
+                  ? "Text sending is turned off in this environment."
+                  : "Texting isn’t set up yet for your venue.")}
+              {context?.textingSetupHref && !context?.smsPermissionMessage ? (
+                <>
+                  {" "}
+                  <Link href={context.textingSetupHref} className="underline hover:text-foreground">
+                    Enable text messaging
+                  </Link>
+                </>
+              ) : null}
+            </p>
+          )}
+        </div>
+      )}
+
       {channelDisabledReason && (
         <p className="text-xs text-muted-foreground">
           {channelDisabledReason}
-          {!context?.smsPermissionMessage && !context?.emailPermissionMessage && (
+          {channel === "sms" && context?.textingSetupHref && !context?.smsPermissionMessage ? (
             <>
               {" "}
-              <Link href="/messaging/health" className="underline hover:text-foreground">Communication Health</Link>
+              <Link href={context.textingSetupHref} className="underline hover:text-foreground">
+                Enable text messaging
+              </Link>
             </>
-          )}
+          ) : !context?.smsPermissionMessage && !context?.emailPermissionMessage ? (
+            <>
+              {" "}
+              <Link href="/messaging/health" className="underline hover:text-foreground">
+                Communication Health
+              </Link>
+            </>
+          ) : null}
         </p>
+      )}
+
+      {!channelDisabledReason && channel === "sms" && context?.smsPermissionHint && (
+        <p className="text-xs text-muted-foreground">{context.smsPermissionHint}</p>
       )}
 
       {channel === "email" && (
@@ -549,7 +599,7 @@ export function ConversationCompose({
           ))}
           {channel === "sms" && (
             <p className="text-[10px] text-muted-foreground">
-              Text/MMS: images, PDF, or short video · max 5 MB total (Twilio).
+              Text/MMS: images, PDF, or short video · max 5 MB total.
             </p>
           )}
         </div>

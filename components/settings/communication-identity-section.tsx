@@ -23,6 +23,7 @@ export function CommunicationIdentitySection({
   emailSignature: initialSignature,
   emailConfigured,
   smsConfigured,
+  textingNumberDisplay = null,
 }: {
   venueName: string;
   logoUrl: string | null;
@@ -32,6 +33,8 @@ export function CommunicationIdentitySection({
   emailSignature: string | null;
   emailConfigured: boolean;
   smsConfigured: boolean;
+  /** Venue texting number when ready — never provider SIDs. */
+  textingNumberDisplay?: string | null;
 }) {
   const [signature, setSignature] = useSyncedState(initialSignature ?? "");
   const [saving, setSaving] = React.useState(false);
@@ -66,7 +69,11 @@ export function CommunicationIdentitySection({
         <Link href="/settings/business" className="underline underline-offset-2 text-heading">
           Business &amp; Brand
         </Link>
-        . Delivery providers (Resend / Twilio) are platform-managed — not venue credentials.
+        . Email delivery is managed by Hello to Cheers. Texting is enabled per venue in{" "}
+        <Link href="/settings/communications#texting" className="underline underline-offset-2 text-heading">
+          Text messaging
+        </Link>
+        .
       </p>
 
       <div className="space-y-3">
@@ -137,10 +144,14 @@ export function CommunicationIdentitySection({
             label="Sender identity"
             value={
               smsConfigured
-                ? "Platform Twilio number / Messaging Service"
+                ? (textingNumberDisplay ?? "Your venue’s dedicated texting number")
                 : "Texting not connected"
             }
-            hint="Clients see the from-number. Logos and HTML signatures do not apply to SMS."
+            hint={
+              smsConfigured
+                ? "Clients see this number on texts. Logos and HTML signatures do not apply to SMS."
+                : "Enable text messaging in Settings → Communications when you’re ready."
+            }
           />
           <Row
             label="Message body"

@@ -23,7 +23,16 @@ export default async function CommunicationHealthPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-medium text-heading">Communication Health</h1>
-        <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients. Email is set up for Hello to Cheers as a platform. Texting readiness is checked for your venue. Your venue contact email and phone are used for test messages and for how couples reach you.</p>
+        <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients.</p>
+        <div className="mt-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground space-y-1.5">
+          <p className="font-medium text-heading">How to read this page</p>
+          <p>If <span className="text-heading">texting setup</span> isn’t ready, finish it in Settings — that isn’t an HTC outage.</p>
+          <p>If <span className="text-heading">some messages couldn’t be delivered</span>, open those conversations in Inbox to retry or switch channels.</p>
+          <p>If many messages fail at once, contact support — that may be a broader delivery problem.</p>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">Email is set up for Hello to Cheers as a platform. Texting is enabled per venue in{" "}
+          <Link href="/settings/communications#texting" className="underline underline-offset-2 text-heading">Settings → Text messaging</Link>
+          . Your venue contact email and phone are used for test messages and for how couples reach you.</p>
       </div>
 
       {/* Overall Communication Health — a different question from the history below:
@@ -90,7 +99,11 @@ export default async function CommunicationHealthPage() {
                     <div className="shrink-0 text-right">
                       {m.direction === "outbound" ? (
                         <MessageTimelinePopover
-                          messageId={m.id} source={m.source} status={m.status} failureReason={m.failureReason}
+                          messageId={m.id}
+                          source={m.source}
+                          status={m.status}
+                          failureReason={m.failureReason}
+                          channel={m.channel}
                           isOutbound
                         />
                       ) : m.status && MESSAGE_STATUS_META[m.status] ? (

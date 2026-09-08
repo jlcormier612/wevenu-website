@@ -75,7 +75,7 @@ describe("SMS send trust", () => {
     const result = await sendSms({ to: "+16155551234", body: "Hello", venueId: "test-venue", skipPermissionCheck: true });
     assert.equal(result.ok, false);
     if (!result.ok) {
-      assert.match(result.message, /Communication Health/);
+      assert.match(result.message, /Settings → Communications|texting/i);
       assert.doesNotMatch(result.message, /Twilio|credentials/i);
     }
   });

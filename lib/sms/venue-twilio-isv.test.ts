@@ -120,7 +120,7 @@ describe("venue Twilio fail-closed + tenant isolation", () => {
     });
     assert.equal(result.ok, false);
     if (!result.ok) {
-      assert.match(result.message, /Communication Health/);
+      assert.match(result.message, /Settings → Communications/);
       assert.doesNotMatch(result.message, /Twilio|credentials/i);
     }
     assert.equal(await isSmsConfigured(VENUE_A), false);

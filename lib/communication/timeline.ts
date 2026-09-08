@@ -12,7 +12,15 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 
-export type TimelineStepKey = "created" | "sent" | "delivered" | "opened" | "clicked" | "replied" | "failed";
+export type TimelineStepKey =
+  | "created"
+  | "sent"
+  | "delivered"
+  | "opened"
+  | "clicked"
+  | "replied"
+  | "failed"
+  | "undelivered";
 
 export type TimelineStep = {
   key: TimelineStepKey;
@@ -28,9 +36,12 @@ const STEP_LABEL: Record<TimelineStepKey, string> = {
   clicked: "Clicked",
   replied: "Replied",
   failed: "Couldn't deliver",
+  undelivered: "Not delivered",
 };
 
-const STEP_ORDER: TimelineStepKey[] = ["created", "sent", "delivered", "opened", "clicked", "replied", "failed"];
+const STEP_ORDER: TimelineStepKey[] = [
+  "created", "sent", "delivered", "opened", "clicked", "replied", "undelivered", "failed",
+];
 
 // Every raw provider event_type this platform logs, mapped to the one it
 // represents on the timeline. Both channels' webhooks funnel through here
@@ -47,7 +58,7 @@ const EVENT_TYPE_TO_STEP: Record<string, TimelineStepKey> = {
   "sms.sending": "sent",
   "sms.sent": "sent",
   "sms.delivered": "delivered",
-  "sms.undelivered": "failed",
+  "sms.undelivered": "undelivered",
   "sms.failed": "failed",
   replied: "replied",
 };

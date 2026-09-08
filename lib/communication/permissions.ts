@@ -79,21 +79,51 @@ export function normalizeEmailAddressKey(email: string): string | null {
 function blockMessage(channel: CommunicationChannel, status: CommunicationPermissionStatus): string {
   if (channel === "sms") {
     if (status === "opted_out") {
-      return "Texting isn't available for this recipient — they opted out of texts. Try email instead.";
+      return "Texting isn't available for this contact because they opted out of texts. Try email instead.";
     }
     if (status === "provider_blocked") {
-      return "Texting isn't available for this recipient — the carrier/provider blocked delivery. Try email instead.";
+      return "Texting isn't available for this contact — delivery was blocked for this number. Try email instead.";
     }
   }
   if (channel === "email") {
     if (status === "opted_out") {
-      return "Email isn't available for this address — it is unsubscribed or suppressed.";
+      return "Email can't be sent to this address because it has been unsubscribed.";
     }
     if (status === "provider_blocked") {
-      return "Email isn't available for this address — prior delivery failed permanently (bounce or complaint).";
+      return "Email can't be sent because this address previously bounced.";
     }
   }
   return "This channel isn't available for this recipient.";
+}
+
+/** Venue-facing SMS permission status — progressive, not a compliance wall. */
+export function smsPermissionStatusLabel(status: CommunicationPermissionStatus): string {
+  switch (status) {
+    case "opted_in":
+      return "Texting is ready for this contact.";
+    case "not_opted_in":
+      return "Texting permission hasn’t been collected for this contact.";
+    case "opted_out":
+      return "Texting is currently opted out for this contact.";
+    case "provider_blocked":
+      return "Texting isn’t available for this contact — delivery was blocked.";
+    default:
+      return "Texting status is unavailable for this contact.";
+  }
+}
+
+export function emailPermissionStatusLabel(status: CommunicationPermissionStatus): string {
+  switch (status) {
+    case "opted_in":
+    case "not_opted_in":
+      return "Email is available for this contact.";
+    case "opted_out":
+      return "This address is unsubscribed from email.";
+    case "provider_blocked":
+      return "This address previously bounced — email can’t be sent.";
+    default:
+      return "Email status is unavailable for this contact.";
+  }
 }
 
 /** Hard blocks only — opted_out / provider_blocked. not_opted_in is never a hard block. */

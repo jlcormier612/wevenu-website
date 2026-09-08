@@ -17,7 +17,7 @@ const TWILIO_STATUS_TO_SHARED: Record<string, string> = {
   sending:      "sending",
   sent:         "accepted",
   delivered:    "delivered",
-  undelivered:  "failed",
+  undelivered:  "undelivered",
   failed:       "failed",
 };
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     if (!message.provider_account_sid) {
       patch.provider_account_sid = accountSid;
     }
-    if (newStatus === "failed") {
+    if (newStatus === "failed" || newStatus === "undelivered") {
       const errorCode = params.get("ErrorCode");
       const errorMessage = params.get("ErrorMessage") ?? "";
       patch.failure_reason = translateSmsFailure(`${errorCode ?? ""} ${errorMessage}`);
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
           source: "twilio_status_callback",
           evidence: { errorCode, errorMessage, messageSid, accountSid },
         });
-      } else if (to && newStatus === "failed") {
+      } else if (to && (newStatus === "failed" || newStatus === "undelivered")) {
         // Non-opt-out carrier failures — mark unreachable without inventing opt-out.
         if (errorCode && ["30003", "30005", "30006", "21211", "21614"].includes(errorCode)) {
           const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");

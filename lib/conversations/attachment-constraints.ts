@@ -2,9 +2,9 @@
  * Channel-aware attachment constraints for Inbox compose / provider send.
  *
  * Storage bucket (couple-messages) allows up to 20MB and a broad MIME set.
- * Twilio MMS additionally requires total media ≤ 5MB and a Twilio-accepted type.
- * Resend email attachments allow larger payloads (40MB encoded) — we keep the
- * shared 20MB storage cap as the venue-facing limit.
+ * Text/MMS additionally requires total media ≤ 5MB and an MMS-accepted type.
+ * Email attachments allow larger payloads — we keep the shared 20MB storage
+ * cap as the venue-facing limit.
  *
  * Constraints are surfaced to the user — never silently degraded.
  */
@@ -14,7 +14,7 @@ export const SMS_MMS_MAX_FILES = 10;
 export const EMAIL_ATTACH_MAX_BYTES = CONVERSATION_STORAGE_MAX_BYTES;
 export const EMAIL_ATTACH_MAX_FILES = 10;
 
-/** Types accepted both by couple-messages storage and Twilio MMS. */
+/** Types accepted both by couple-messages storage and text/MMS. */
 export const SMS_MMS_MIME_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -92,7 +92,7 @@ export function validateAttachmentsForChannel(
     return {
       ok: false,
       message: channel === "sms"
-        ? `Text messages can include at most ${maxFiles} files (Twilio MMS limit).`
+        ? `Text messages can include at most ${maxFiles} files.`
         : `You can attach at most ${maxFiles} files to one message.`,
     };
   }
@@ -103,7 +103,7 @@ export function validateAttachmentsForChannel(
       return {
         ok: false,
         message: channel === "sms"
-          ? `"${f.name}" isn’t a file type Twilio can send as a text/MMS. Try a photo (JPEG/PNG), PDF, or short video.`
+          ? `"${f.name}" isn’t a file type that can be sent as a text/MMS. Try a photo (JPEG/PNG), PDF, or short video.`
           : `"${f.name}" isn’t an allowed attachment type.`,
       };
     }
@@ -111,7 +111,7 @@ export function validateAttachmentsForChannel(
       return {
         ok: false,
         message: channel === "sms"
-          ? `"${f.name}" is too large for text/MMS (max ${Math.floor(maxBytes / (1024 * 1024))} MB total per Twilio).`
+          ? `"${f.name}" is too large for text/MMS (max ${Math.floor(maxBytes / (1024 * 1024))} MB for all media in one text).`
           : `"${f.name}" exceeds the ${Math.floor(maxBytes / (1024 * 1024))} MB limit.`,
       };
     }
@@ -120,7 +120,7 @@ export function validateAttachmentsForChannel(
   if (channel === "sms" && total > SMS_MMS_MAX_BYTES) {
     return {
       ok: false,
-      message: `These files total more than ${Math.floor(SMS_MMS_MAX_BYTES / (1024 * 1024))} MB. Twilio MMS allows at most 5 MB for all media in one text.`,
+      message: `These files total more than ${Math.floor(SMS_MMS_MAX_BYTES / (1024 * 1024))} MB. Text/MMS allows at most 5 MB for all media in one text.`,
     };
   }
   return { ok: true };

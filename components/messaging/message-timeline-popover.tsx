@@ -27,13 +27,14 @@ function formatStep(step: TimelineStep, previousDateLabel: string | null): { dat
 }
 
 export function MessageTimelinePopover({
-  messageId, source, status, failureReason, isOutbound,
+  messageId, source, status, failureReason, isOutbound, channel,
 }: {
   messageId: string;
   source: "legacy" | "conversation";
   status: string | null | undefined;
   failureReason?: string | null;
   isOutbound: boolean;
+  channel?: string | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -60,11 +61,23 @@ export function MessageTimelinePopover({
   }
 
   if (!isOutbound || !status) return null;
+  // Suppress unsupported Read-like states (e.g. SMS opened) — same rule as badge.
+  if (
+    (status === "opened" || status === "clicked")
+    && channel === "sms"
+  ) {
+    return null;
+  }
 
   return (
     <span ref={containerRef} className="relative inline-block">
       <button type="button" onClick={() => void toggle()} className="cursor-pointer">
-        <MessageStatusBadge status={status} failureReason={failureReason} isOutbound={isOutbound} />
+        <MessageStatusBadge
+          status={status}
+          failureReason={failureReason}
+          isOutbound={isOutbound}
+          channel={channel}
+        />
       </button>
       {open && (
         <div className="absolute bottom-full left-0 z-20 mb-2 w-56 rounded-xl border border-border bg-popover p-3 text-left shadow-lg">

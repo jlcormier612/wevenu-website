@@ -28,6 +28,8 @@ import { createRequestAction } from "@/app/(app)/requests/actions";
 import { ConversationCompose } from "@/components/conversations/conversation-compose";
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
 import { documentsWorkspaceHref } from "@/lib/conversations/attachment-document";
+import { deliveryRecoveryActions } from "@/lib/conversations/delivery-recovery";
+import { resolveDeliveryDisplay } from "@/lib/conversations/delivery-display";
 import {
   conversationNeedsResponse,
   latestMeaningfulFromMessages,
@@ -91,12 +93,10 @@ function ChannelIcon({ channel }: { channel: ConversationChannel }) {
   );
 }
 
-// Communication Trust Experience, Phase 5 — a failed message is never a
-// dead end. "Retry" and "Send as X instead" prefill the compose box rather
+// Communication Trust Experience — a failed/undelivered message is never a
+// dead end. "Retry" and "Use email/text" prefill the compose box rather
 // than silently re-sending — the coordinator confirms before anything goes
-// out a second time, same "system proposes, human confirms" principle used
-// elsewhere in this codebase, and email in particular has no stored subject
-// to safely resend without a look.
+// out a second time.
 function RecoveryActions({
   msg, leadId, clientId, onPrefill, onCreateTask,
 }: {
@@ -106,28 +106,80 @@ function RecoveryActions({
   onPrefill: (body: string, channel: ConversationChannel) => void;
   onCreateTask: () => void;
 }) {
-  const altChannel: ConversationChannel | null = msg.channel === "email" ? "sms" : msg.channel === "sms" ? "email" : null;
+  const actions = deliveryRecoveryActions({
+    channel: msg.channel,
+    status: msg.status,
+    leadId,
+    clientId,
+  });
+  if (actions.length === 0) return null;
+
   const detailsHref = clientId ? `/clients/${clientId}` : leadId ? `/leads/${leadId}` : null;
+
   return (
     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-      <button type="button" onClick={() => onPrefill(msg.body, msg.channel)} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
-        <RotateCcw className="h-2.5 w-2.5" /> Retry
-      </button>
-      {altChannel && (
-        <button type="button" onClick={() => onPrefill(msg.body, altChannel)} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
-          Send as {altChannel === "sms" ? "text" : "email"} instead
-        </button>
-      )}
-      {detailsHref && (
-        <Link href={detailsHref} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
-          <User className="h-2.5 w-2.5" /> Open client details
-        </Link>
-      )}
-      {leadId && (
-        <button type="button" onClick={onCreateTask} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
-          <ListTodo className="h-2.5 w-2.5" /> Follow up later
-        </button>
-      )}
+      {actions.map((action) => {
+        if (action.id === "retry") {
+          return (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => onPrefill(msg.body, msg.channel)}
+              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+            >
+              <RotateCcw className="h-2.5 w-2.5" /> {action.label}
+            </button>
+          );
+        }
+        if (action.id === "use_email") {
+          return (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => onPrefill(msg.body, "email")}
+              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+            >
+              {action.label}
+            </button>
+          );
+        }
+        if (action.id === "use_sms") {
+          return (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => onPrefill(msg.body, "sms")}
+              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+            >
+              {action.label}
+            </button>
+          );
+        }
+        if (action.id === "open_client" && detailsHref) {
+          return (
+            <Link
+              key={action.id}
+              href={detailsHref}
+              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+            >
+              <User className="h-2.5 w-2.5" /> {action.label}
+            </Link>
+          );
+        }
+        if (action.id === "follow_up" && leadId) {
+          return (
+            <button
+              key={action.id}
+              type="button"
+              onClick={onCreateTask}
+              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+            >
+              <ListTodo className="h-2.5 w-2.5" /> {action.label}
+            </button>
+          );
+        }
+        return null;
+      })}
     </div>
   );
 }
@@ -207,8 +259,14 @@ function Bubble({
   // Delivery badges only for provider-backed outbound (email/SMS). Portal /
   // notes / system-without-status must never imply delivery success.
   const isVenue = msg.senderType === "venue_staff" || msg.senderType === "system";
-  const showDelivery = isVenue && (msg.channel === "email" || msg.channel === "sms") && !!msg.status;
-  const failed = showDelivery && msg.status === "failed";
+  const delivery = resolveDeliveryDisplay({
+    status: msg.status,
+    channel: msg.channel,
+    failureReason: msg.failureReason,
+    isOutbound: isVenue && (msg.channel === "email" || msg.channel === "sms"),
+  });
+  const showDelivery = !!delivery;
+  const failed = !!delivery?.isFailure;
   const documentsHref = documentsWorkspaceHref({ leadId, clientId });
   return (
     <div className={`flex flex-col ${isVenue ? "items-end" : "items-start"}`}>
@@ -228,24 +286,26 @@ function Bubble({
         <span className={`mt-1 flex items-center gap-1 text-[10px] ${isVenue ? "text-primary-foreground/60 justify-end" : "text-muted-foreground"}`}>
           <ChannelIcon channel={msg.channel} />
           {formatTime(msg.sentAt)}
-          {showDelivery && !(msg.channel === "sms" && (msg.status === "opened" || msg.status === "clicked")) && (
-            <MessageTimelinePopover messageId={msg.id} source="conversation" status={msg.status} failureReason={msg.failureReason} isOutbound />
+          {showDelivery && (
+            <MessageTimelinePopover
+              messageId={msg.id}
+              source="conversation"
+              status={msg.status}
+              failureReason={msg.failureReason}
+              channel={msg.channel}
+              isOutbound
+            />
           )}
         </span>
       </div>
       {failed && (
-        <>
-          {msg.failureReason && (
-            <p className="mt-1 max-w-[72%] text-[10px] text-destructive">{msg.failureReason}</p>
-          )}
-          <RecoveryActions
-            msg={msg}
-            leadId={leadId}
-            clientId={clientId}
-            onPrefill={onPrefill}
-            onCreateTask={() => onCreateTask(msg)}
-          />
-        </>
+        <RecoveryActions
+          msg={msg}
+          leadId={leadId}
+          clientId={clientId}
+          onPrefill={onPrefill}
+          onCreateTask={() => onCreateTask(msg)}
+        />
       )}
     </div>
   );
