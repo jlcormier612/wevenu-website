@@ -31,7 +31,7 @@ export const SCHEDULE_APPOINTMENT_SETTINGS_GROUPS: {
     keys: ["consultation", "client_meeting", "walkthrough", "vendor_meeting", "tasting"],
   },
   {
-    label: "Reserved & blocked time",
+    label: "Blocked & personal time",
     keys: ["personal_appointment", "blocked_time", "other"],
   },
 ];
@@ -46,7 +46,7 @@ export const CUSTOM_SCHEDULE_ITEM_KIND_OPTIONS: {
   label: string;
 }[] = [
   { value: "appointment", label: "Appointment" },
-  { value: "reserved_blocked", label: "Reserved & blocked time" },
+  { value: "reserved_blocked", label: "Blocked & personal time" },
 ];
 
 export function customKindToGroupKey(kind: CustomScheduleItemKind): ScheduleItemGroupKey {
@@ -447,9 +447,9 @@ export function buildScheduleItemPickerGroups(
     groups.push({ label: "Appointments", options: appointments });
   }
   if (reservedBlocked.length > 0) {
-    groups.push({ label: "Reserved & blocked time", options: reservedBlocked });
+    groups.push({ label: "Blocked & personal time", options: reservedBlocked });
   }
-  groups.push({ label: "Reserved dates", options: RESERVED_DATE_OPTIONS });
+  groups.push({ label: "Holds", options: RESERVED_DATE_OPTIONS });
   return groups;
 }
 

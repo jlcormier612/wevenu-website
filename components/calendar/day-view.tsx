@@ -20,7 +20,7 @@ import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 
 export function DayView({
-  date, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending,
+  date, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
 }: {
   date: string;
   items: CalendarItem[];
@@ -29,10 +29,11 @@ export function DayView({
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
+  tastingEnabled?: boolean;
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
+  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
   const [y, m, d] = date.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);
   const label = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
@@ -65,7 +66,7 @@ export function DayView({
         )}
       </div>
 
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} />
+      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
 
       {dayItems.length === 0 ? (

@@ -238,7 +238,7 @@ describe("Calendar Slice 2A.2.3 — picker & perspectives", () => {
     ];
     const groups = buildScheduleItemPickerGroups(catalog);
     const appt = groups.find((g) => g.label === "Appointments")?.options.map((o) => o.value) ?? [];
-    const reserved = groups.find((g) => g.label === "Reserved & blocked time")?.options.map((o) => o.value) ?? [];
+    const reserved = groups.find((g) => g.label === "Blocked & personal time")?.options.map((o) => o.value) ?? [];
     assert.equal(appt.includes("custom:c-appt"), true);
     assert.equal(reserved.includes("custom:c-res"), true);
     assert.equal(appt.includes("custom:c-arch"), false);

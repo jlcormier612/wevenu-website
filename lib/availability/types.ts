@@ -79,11 +79,11 @@ export type ManualScheduleType = (typeof MANUAL_SCHEDULE_TYPES)[number];
 
 // The "Schedule Item" picker groups types this way when the venue catalog is
 // unavailable. Calendar 2A.2.2 prefers catalog-driven groups (Appointments /
-// Reserved & blocked time / Reserved dates) built in schedule-item-catalog.
+// Blocked & personal time / Holds) built in schedule-item-catalog.
 export const MANUAL_SCHEDULE_TYPE_GROUPS: { label: string; types: ManualScheduleType[] }[] = [
   { label: "Appointments", types: ["consultation", "client_meeting", "walkthrough", "vendor_meeting"] },
-  { label: "Reserved & blocked time", types: ["personal_appointment", "blocked_time", "other"] },
-  { label: "Reserved dates", types: ["wedding_event_booking", "private_event"] },
+  { label: "Blocked & personal time", types: ["personal_appointment", "blocked_time", "other"] },
+  { label: "Holds", types: ["wedding_event_booking", "private_event"] },
 ];
 
 export const BOOKING_SCHEDULE_TYPES: ManualScheduleType[] = ["wedding_event_booking", "private_event"];

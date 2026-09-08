@@ -1,5 +1,5 @@
 /**
- * Calendar Slice 1 — venue Calendar boundary + Tour/Tasting picker + filters.
+ * Calendar Slice 1 — venue Calendar boundary + Tour/Tasting + F01–F06 corrections.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,7 +13,7 @@ import {
   manualScheduleTypeLabel,
 } from "@/lib/availability/constants";
 import { MANUAL_SCHEDULE_TYPE_GROUPS } from "@/lib/availability/types";
-import { PERSPECTIVES } from "@/components/calendar/perspectives";
+import { getPerspectives, PERSPECTIVES } from "@/components/calendar/perspectives";
 import { CALENDAR_FILTER_STORAGE_KEY } from "@/components/calendar/use-calendar-filters";
 import {
   isVenueCalendarItemType,
@@ -31,6 +31,7 @@ const calendarViewSrc = readFileSync(resolve("components/calendar/calendar-view.
 const filtersSrc = readFileSync(resolve("components/calendar/use-calendar-filters.ts"), "utf8");
 const sharedSrc = readFileSync(resolve("components/calendar/calendar-shared.tsx"), "utf8");
 const availServiceSrc = readFileSync(resolve("lib/availability/service.ts"), "utf8");
+const perspectivesSrc = readFileSync(resolve("components/calendar/perspectives.ts"), "utf8");
 
 describe("Calendar Slice 1 — venue aggregation boundary", () => {
   it("venue Calendar KEEP types are documented and recognized", () => {
@@ -38,7 +39,7 @@ describe("Calendar Slice 1 — venue aggregation boundary", () => {
       assert.equal(isVenueCalendarItemType(t), true);
     }
     assert.deepEqual([...VENUE_CALENDAR_ITEM_TYPES], [
-      "event", "tour", "date_hold", "calendar_block", "planning_activity",
+      "event", "tour", "date_hold", "calendar_block",
     ]);
   });
 
@@ -46,10 +47,10 @@ describe("Calendar Slice 1 — venue aggregation boundary", () => {
     for (const t of VENUE_CALENDAR_EXCLUDED_ITEM_TYPES) {
       assert.equal(isVenueCalendarItemType(t as CalendarItemType), false);
     }
+    assert.equal(isVenueCalendarItemType("planning_activity"), false);
   });
 
   it("getCalendarData no longer queries moved-off sources", () => {
-    // Related-to search still reads leads/clients; aggregation must not.
     const aggregation = serviceSrc.slice(serviceSrc.indexOf("export async function getCalendarData"));
     assert.doesNotMatch(aggregation, /follow_up_date/);
     assert.doesNotMatch(aggregation, /payment_line_items/);
@@ -66,14 +67,15 @@ describe("Calendar Slice 1 — venue aggregation boundary", () => {
     assert.doesNotMatch(aggregation, /type: "document_expiration"/);
   });
 
-  it("getCalendarData still aggregates KEEP sources", () => {
-    assert.match(serviceSrc, /from\("events"\)/);
-    assert.match(serviceSrc, /getTourCalendarEntries/);
-    assert.match(serviceSrc, /from\("date_holds"\)/);
-    assert.match(serviceSrc, /from\("calendar_blocks"\)/);
-    assert.match(serviceSrc, /from\("event_tasks"\)/);
-    assert.match(serviceSrc, /scheduled_date/);
-    assert.match(serviceSrc, /type: "planning_activity"/);
+  it("getCalendarData aggregates schedule/availability sources only — no planning_activity", () => {
+    const aggregation = serviceSrc.slice(serviceSrc.indexOf("export async function getCalendarData"));
+    assert.match(aggregation, /from\("events"\)/);
+    assert.match(aggregation, /getTourCalendarEntries/);
+    assert.match(aggregation, /from\("date_holds"\)/);
+    assert.match(aggregation, /from\("calendar_blocks"\)/);
+    assert.doesNotMatch(aggregation, /from\("event_tasks"\)/);
+    assert.doesNotMatch(aggregation, /scheduled_date/);
+    assert.doesNotMatch(aggregation, /type: "planning_activity"/);
   });
 
   it("Booking Schedule still includes due dates and planning tasks", () => {
@@ -83,6 +85,7 @@ describe("Calendar Slice 1 — venue aggregation boundary", () => {
     assert.match(bookingSrc, /type: "timeline_entry"/);
     assert.match(bookingSrc, /type: "contract_expiration"/);
     assert.match(bookingSrc, /type: "document_expiration"/);
+    assert.match(bookingSrc, /type: "planning_activity"/);
   });
 });
 
@@ -122,23 +125,36 @@ describe("Calendar Slice 1 — Tour / Tasting manual types", () => {
     assert.doesNotMatch(sharedSrc, /tour:\s*TYPE_META\.tour/);
   });
 
-  it("booking placeholders do not reuse Event visual identity", () => {
+  it("booking placeholders use Hold taxonomy — not Reserved date", () => {
     assert.doesNotMatch(sharedSrc, /wedding_event_booking:\s*TYPE_META\.event/);
     assert.doesNotMatch(sharedSrc, /private_event:\s*TYPE_META\.event/);
-    assert.match(sharedSrc, /Reserved date/);
-    assert.match(serviceSrc, /Reserved date/);
+    assert.doesNotMatch(sharedSrc, /Reserved date/);
+    assert.doesNotMatch(serviceSrc, /Reserved date/);
+    assert.match(sharedSrc, /label: "Hold"/);
+    assert.match(serviceSrc, /\["Hold"\]/);
   });
 });
 
 describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
-  it("perspectives do not reintroduce moved-off item types", () => {
+  it("perspectives do not reintroduce moved-off item types or planning_activity", () => {
     for (const p of PERSPECTIVES) {
       for (const t of p.filters.types ?? []) {
         assert.equal(isVenueCalendarItemType(t), true, `${p.id} includes non-venue type ${t}`);
+        assert.notEqual(t, "planning_activity");
       }
       assert.equal((p.filters.manualTypes ?? []).includes("tour"), false, `${p.id} manual tour`);
+      assert.equal((p.filters.manualTypes ?? []).includes("tasting"), false, `${p.id} tasting default`);
     }
     assert.equal(PERSPECTIVES.some((p) => (p.id as string) === "finance"), false);
+  });
+
+  it("getPerspectives adds tasting only when enabled", () => {
+    const off = getPerspectives(false);
+    const on = getPerspectives(true);
+    assert.equal(off.find((p) => p.id === "sales")!.filters.manualTypes?.includes("tasting"), false);
+    assert.equal(on.find((p) => p.id === "sales")!.filters.manualTypes?.includes("tasting"), true);
+    assert.equal(on.find((p) => p.id === "planning")!.filters.manualTypes?.includes("tasting"), true);
+    assert.match(perspectivesSrc, /getPerspectives/);
   });
 
   it("Calendar page copy describes schedule, not every dated fact", () => {
@@ -165,7 +181,7 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
 
   it("sanitizeVenueCalendarFilters strips excluded types and legacy manual tour", () => {
     const cleaned = sanitizeVenueCalendarFilters({
-      types: ["event", "payment_due", "follow_up", "key_date"] as CalendarItemType[],
+      types: ["event", "payment_due", "follow_up", "key_date", "planning_activity"] as CalendarItemType[],
       manualTypes: ["tour", "consultation", "tasting"] as never,
       staffId: null,
       spaceId: null,
@@ -174,8 +190,9 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
     assert.deepEqual(cleaned.manualTypes, ["consultation", "tasting"]);
   });
 
-  it("venue Calendar legend never teaches excluded taxonomy", () => {
-    const labels = venueCalendarLegendEntries().map((e) => e.label);
+  it("venue Calendar legend gates Tasting and omits planning", () => {
+    const off = venueCalendarLegendEntries({ tastingEnabled: false }).map((e) => e.label);
+    const on = venueCalendarLegendEntries({ tastingEnabled: true }).map((e) => e.label);
     for (const banned of [
       "Follow-up",
       "Payment Due",
@@ -186,26 +203,55 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
       "Planning Task",
       "Timeline",
       "Meeting",
+      "Planning",
+      "Reserved date",
     ]) {
-      assert.equal(labels.includes(banned), false, `legend must not include ${banned}`);
+      assert.equal(off.includes(banned), false, `legend must not include ${banned}`);
+      assert.equal(on.includes(banned), false, `legend must not include ${banned}`);
     }
-    assert.ok(labels.includes("Event"));
-    assert.ok(labels.includes("Tour"));
-    assert.ok(labels.includes("Date Hold"));
-    assert.ok(labels.includes("Blocked Time"));
-    assert.ok(labels.includes("Planning"));
-    assert.ok(labels.includes("Consultation"));
-    assert.ok(labels.includes("Client Meeting"));
+    assert.ok(off.includes("Event"));
+    assert.ok(off.includes("Tour"));
+    assert.ok(off.includes("Date Hold"));
+    assert.ok(off.includes("Blocked Time"));
+    assert.ok(off.includes("Consultation"));
+    assert.ok(off.includes("Hold"));
+    assert.equal(off.includes("Tasting"), false);
+    assert.equal(on.includes("Tasting"), true);
     assert.doesNotMatch(calendarViewSrc, /Object\.entries\(TYPE_META\)\s*as/);
-    assert.match(calendarViewSrc, /venueCalendarLegendEntries\(\)/);
-    assert.doesNotMatch(calendarViewSrc, /LEGEND_MANUAL_EXTRAS/);
-    assert.match(sharedSrc, /for \(const type of VENUE_CALENDAR_ITEM_TYPES\)/);
-    assert.match(sharedSrc, /for \(const manual of VENUE_CALENDAR_LEGEND_MANUAL_TYPES\)/);
+    assert.match(calendarViewSrc, /venueCalendarLegendEntries\(\{ tastingEnabled \}\)/);
+    assert.match(sharedSrc, /manual === "tasting" && !tastingEnabled/);
   });
 
-  it("FilterBar and presentTypes harden against excluded types", () => {
+  it("FilterBar uses Appointments & blocks for calendar_block chip", () => {
+    assert.match(sharedSrc, /Appointments & blocks/);
+    assert.match(sharedSrc, /type === "calendar_block"/);
     assert.match(sharedSrc, /venuePresentTypes = presentTypes\.filter\(isVenueCalendarItemType\)/);
     assert.match(filtersSrc, /isVenueCalendarItemType/);
+  });
+
+  it("appointment form: title first, optional type, notes persist", () => {
+    assert.match(calendarViewSrc, /OPTIONAL_TYPE_NONE/);
+    assert.match(calendarViewSrc, /No classification/);
+    assert.match(calendarViewSrc, /Type <span[^>]*>\(optional\)/);
+    assert.match(calendarViewSrc, /Title \*/);
+    assert.match(calendarViewSrc, /Notes \/ Details/);
+    assert.match(calendarViewSrc, /notes: blockNotes/);
+    assert.match(calendarViewSrc, /setBlockNotes\(block\.notes/);
+    assert.match(calendarViewSrc, /resolvedTypeForSave/);
+    assert.match(calendarViewSrc, /type: "other"/);
+    // Title field appears before Type label in the form markup.
+    const titleAt = calendarViewSrc.indexOf(">Title *</Label>");
+    const typeAt = calendarViewSrc.indexOf("Type <span");
+    assert.ok(titleAt > 0 && typeAt > titleAt);
+  });
+
+  it("no user-facing Reserved date(s) terminology in Calendar UI sources", () => {
+    assert.doesNotMatch(sharedSrc, /Reserved date/);
+    assert.doesNotMatch(serviceSrc, /Reserved date/);
+    assert.doesNotMatch(calendarViewSrc, /Reserved date/);
+    assert.doesNotMatch(readFileSync(resolve("lib/calendar/schedule-item-catalog.ts"), "utf8"), /Reserved date/);
+    assert.doesNotMatch(readFileSync(resolve("lib/calendar/schedule-item-catalog.ts"), "utf8"), /Reserved & blocked/);
+    assert.doesNotMatch(readFileSync(resolve("lib/availability/types.ts"), "utf8"), /Reserved date/);
   });
 
   it("month detail selection resets when navigating to another month", () => {

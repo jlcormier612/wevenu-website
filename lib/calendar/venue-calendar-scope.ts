@@ -14,7 +14,6 @@ export const VENUE_CALENDAR_ITEM_TYPES = [
   "tour",
   "date_hold",
   "calendar_block",
-  "planning_activity",
 ] as const satisfies readonly CalendarItemType[];
 
 export type VenueCalendarItemType = (typeof VENUE_CALENDAR_ITEM_TYPES)[number];
@@ -29,6 +28,7 @@ export const VENUE_CALENDAR_EXCLUDED_ITEM_TYPES = [
   "document_expiration",
   "planning_task",
   "timeline_entry",
+  "planning_activity",
 ] as const satisfies readonly CalendarItemType[];
 
 export function isVenueCalendarItemType(type: CalendarItemType): type is VenueCalendarItemType {
@@ -45,7 +45,7 @@ export function isLegacyOnlyManualScheduleType(type: ManualScheduleType): boolea
 /**
  * Strip excluded item types (and legacy manual-tour filters) from persisted
  * filter state so old localStorage cannot reintroduce noise after Slice 1.
- * Tasting stays filterable — it is catalog-gated, not permanently removed.
+ * Tasting stays filterable when enabled — it is catalog-gated, not permanently removed.
  */
 export function sanitizeVenueCalendarFilters<T extends {
   types: CalendarItemType[] | null;
@@ -74,7 +74,9 @@ export function sanitizeVenueCalendarFilters<T extends {
  * - tour (legacy) — real Tours use TYPE_META.tour; legacy rows use item label
  * - blocked_time — already covered by TYPE_META.calendar_block
  * - custom — same visual as Other; live labels come from catalogLabel
- * - private_event — same "Reserved date" label as wedding_event_booking
+ * - private_event — same Hold label as wedding_event_booking
+ * - tasting — included here but omitted from the live legend unless the venue
+ *   catalog has Tasting enabled (see venueCalendarLegendEntries).
  */
 export const VENUE_CALENDAR_LEGEND_MANUAL_TYPES = [
   "consultation",

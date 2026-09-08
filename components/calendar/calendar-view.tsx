@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -52,6 +53,9 @@ import { DayView } from "@/components/calendar/day-view";
 import { AgendaView } from "@/components/calendar/agenda-view";
 
 export { TYPE_META, formatTime, ItemRow, venueCalendarLegendEntries } from "@/components/calendar/calendar-shared";
+
+/** Sentinel — no user-selected classification; save uses safe default `other`. */
+const OPTIONAL_TYPE_NONE = "__none__";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
@@ -261,10 +265,10 @@ function DayDetail({
 // ---- Legend -----------------------------------------------------------------
 // Venue Calendar only — never Object.entries(TYPE_META). Booking Schedule and
 // other lenses may still use excluded TYPE_META entries; this legend must not.
-function Legend() {
+function Legend({ tastingEnabled }: { tastingEnabled: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-      {venueCalendarLegendEntries().map((entry) => (
+      {venueCalendarLegendEntries({ tastingEnabled }).map((entry) => (
         <div key={entry.key} className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.dotColor }} />
           <span className="text-xs text-muted-foreground">{entry.label}</span>
@@ -298,7 +302,10 @@ export function CalendarView({
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
+  const tastingEnabled = scheduleCatalog.some(
+    (r) => r.source === "builtin" && r.builtinKey === "tasting" && r.enabled && !r.archivedAt,
+  );
+  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
   const pickerGroups = React.useMemo(
     () => buildScheduleItemPickerGroups(scheduleCatalog),
     [scheduleCatalog],
@@ -307,9 +314,10 @@ export function CalendarView({
     () => flattenScheduleItemPickerOptions(pickerGroups),
     [pickerGroups],
   );
-  const defaultPickerValue = creatableOptions.find((o) => o.type === "consultation")?.value
-    ?? creatableOptions[0]?.value
-    ?? "consultation";
+  const defaultOtherOption = React.useMemo(
+    () => creatableOptions.find((o) => o.type === "other") ?? null,
+    [creatableOptions],
+  );
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
   // Keep the Schedule detail panel coherent with the month being viewed —
   // navigating away from a month must not leave a stale day from another month.
@@ -323,9 +331,9 @@ export function CalendarView({
   }, [view, year, month, today]);
   const [showBlockForm, setShowBlockForm] = React.useState(false);
   const [blockTitle, setBlockTitle] = React.useState("");
-  // Default to Consultation when enabled; otherwise first creatable catalog/system option.
-  const [blockPickerValue, setBlockPickerValue] = React.useState<string>(defaultPickerValue);
-  const [blockType, setBlockType] = React.useState<ManualScheduleType>("consultation");
+  // Optional classification — empty sentinel means save as safe default `other`.
+  const [blockPickerValue, setBlockPickerValue] = React.useState<string>(OPTIONAL_TYPE_NONE);
+  const [blockType, setBlockType] = React.useState<ManualScheduleType>("other");
   const [blockScheduleItemTypeId, setBlockScheduleItemTypeId] = React.useState<string | null>(null);
   const [blockReason, setBlockReason] = React.useState<string>("other");
   const [blockStart, setBlockStart] = React.useState(today);
@@ -347,6 +355,7 @@ export function CalendarView({
   // option (not just its id) so the field can display its name/subtitle
   // without a second lookup; blockPayload() below reads .kind/.id off it.
   const [blockRelatedTo, setBlockRelatedTo] = React.useState<ScheduleRelationOption | null>(null);
+  const [blockNotes, setBlockNotes] = React.useState("");
   // Set while editing an existing item; null while creating a new one.
   const [editingBlockId, setEditingBlockId] = React.useState<string | null>(null);
   const [loadingBlock, setLoadingBlock] = React.useState(false);
@@ -368,7 +377,23 @@ export function CalendarView({
     return today;
   }
 
+  function applySafeDefaultType() {
+    if (defaultOtherOption) {
+      setBlockPickerValue(OPTIONAL_TYPE_NONE);
+      setBlockType(defaultOtherOption.type);
+      setBlockScheduleItemTypeId(defaultOtherOption.scheduleItemTypeId);
+      return;
+    }
+    setBlockPickerValue(OPTIONAL_TYPE_NONE);
+    setBlockType("other");
+    setBlockScheduleItemTypeId(null);
+  }
+
   function applyPickerSelection(value: string) {
+    if (value === OPTIONAL_TYPE_NONE) {
+      applySafeDefaultType();
+      return;
+    }
     const fromList = creatableOptions.find((o) => o.value === value);
     if (fromList) {
       setBlockPickerValue(fromList.value);
@@ -397,16 +422,14 @@ export function CalendarView({
 
   function resetBlockForm() {
     const date = defaultFormDate();
-    const nextDefault = creatableOptions.find((o) => o.type === "consultation")?.value
-      ?? creatableOptions[0]?.value
-      ?? "consultation";
     setBlockTitle("");
-    applyPickerSelection(nextDefault);
+    applySafeDefaultType();
     setBlockReason("other"); setBlockStart(date); setBlockEnd(date);
     setBlockIsAllDay(false); setBlockStartTime("09:00"); setBlockEndTime("17:00");
     setBlockRecurrence("none"); setBlockRecurrenceCustom(false); setBlockRecurrenceInterval("1");
     setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
     setBlockRelatedTo(null);
+    setBlockNotes("");
     setBlockEventType("wedding"); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
     setEditingBlockId(null);
   }
@@ -426,20 +449,39 @@ export function CalendarView({
     };
   }
 
+  function resolvedTypeForSave(): {
+    type: ManualScheduleType;
+    scheduleItemTypeId: string | null;
+  } {
+    if (blockPickerValue === OPTIONAL_TYPE_NONE || !blockPickerValue) {
+      return {
+        type: "other",
+        scheduleItemTypeId: defaultOtherOption?.scheduleItemTypeId ?? null,
+      };
+    }
+    if (blockType === "custom") {
+      return { type: "custom", scheduleItemTypeId: blockScheduleItemTypeId };
+    }
+    const fromList = creatableOptions.find((o) => o.value === blockPickerValue);
+    return {
+      type: blockType,
+      scheduleItemTypeId: fromList?.scheduleItemTypeId ?? blockScheduleItemTypeId,
+    };
+  }
+
   function blockPayload() {
+    const resolved = resolvedTypeForSave();
     return {
       title: blockTitle.trim(),
-      type: blockType,
-      scheduleItemTypeId: blockType === "custom" ? blockScheduleItemTypeId : (
-        creatableOptions.find((o) => o.value === blockPickerValue)?.scheduleItemTypeId ?? blockScheduleItemTypeId
-      ),
-      reason: blockType === "blocked_time" ? (blockReason as import("@/lib/availability/types").BlockReason) : null,
+      type: resolved.type,
+      scheduleItemTypeId: resolved.scheduleItemTypeId,
+      reason: resolved.type === "blocked_time" ? (blockReason as import("@/lib/availability/types").BlockReason) : null,
       startDate: blockStart,
       endDate: blockEnd || blockStart,
       isAllDay: blockIsAllDay,
       startTime: blockIsAllDay ? "" : blockStartTime,
       endTime: blockIsAllDay ? "" : blockEndTime,
-      notes: "",
+      notes: blockNotes,
       ...recurrencePayload(),
       leadId: blockRelatedTo?.kind === "lead" ? blockRelatedTo.id : null,
       clientId: blockRelatedTo?.kind === "client" ? blockRelatedTo.id : null,
@@ -450,8 +492,9 @@ export function CalendarView({
     };
   }
 
-  const currentPickerCreatable = creatableOptions.some((o) => o.value === blockPickerValue);
-  const editOnlyCurrentType = editingBlockId && !currentPickerCreatable;
+  const currentPickerCreatable = blockPickerValue === OPTIONAL_TYPE_NONE
+    || creatableOptions.some((o) => o.value === blockPickerValue);
+  const editOnlyCurrentType = Boolean(editingBlockId && !currentPickerCreatable);
 
   function handleDeleteBlock(blockId: string) {
     setDeletingId(blockId);
@@ -519,6 +562,7 @@ export function CalendarView({
       } else {
         setBlockRelatedTo(null);
       }
+      setBlockNotes(block.notes ?? "");
       setBlockEventType(block.eventType ?? "wedding");
       setBlockClientName(block.clientName ?? "");
       setBlockGuestCount(block.guestCount != null ? String(block.guestCount) : "");
@@ -661,12 +705,20 @@ export function CalendarView({
           </p>
           {loadingBlock && <p className="text-xs text-muted-foreground">Loading…</p>}
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs">Title *</Label>
+              <Input value={blockTitle} onChange={(e) => setBlockTitle(e.target.value)}
+                placeholder={isBookingPlaceholder(blockType) ? "e.g. Smith Wedding" : "e.g. Meeting with the Smith family"} autoFocus />
+            </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Schedule Item *</Label>
+              <Label className="text-xs">
+                Type <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
               <Select
                 value={blockPickerValue}
                 onValueChange={(v) => applyPickerSelection(v)}
                 items={[
+                  { value: OPTIONAL_TYPE_NONE, label: "No classification" },
                   ...creatableOptions.map((o) => ({ value: o.value, label: o.label })),
                   ...(editOnlyCurrentType
                     ? [{
@@ -678,11 +730,14 @@ export function CalendarView({
               >
                 <SelectTrigger>
                   <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
-                    <SelectValue />
+                    {blockPickerValue !== OPTIONAL_TYPE_NONE && (
+                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
+                    )}
+                    <SelectValue placeholder="No classification" />
                   </span>
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={OPTIONAL_TYPE_NONE}>No classification</SelectItem>
                   {pickerGroups.map((group) => (
                     <React.Fragment key={group.label}>
                       <div className="px-2 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground first:pt-1.5">
@@ -719,12 +774,7 @@ export function CalendarView({
                 </p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Title *</Label>
-              <Input value={blockTitle} onChange={(e) => setBlockTitle(e.target.value)}
-                placeholder={isBookingPlaceholder(blockType) ? "e.g. Smith Wedding" : "e.g. Meeting with the Smith family"} autoFocus />
-            </div>
-            {blockType === "blocked_time" && (
+            {blockType === "blocked_time" && blockPickerValue !== OPTIONAL_TYPE_NONE && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Reason</Label>
                 <Select value={blockReason} onValueChange={setBlockReason} items={BLOCK_REASONS}>
@@ -733,7 +783,7 @@ export function CalendarView({
                 </Select>
               </div>
             )}
-            {isBookingPlaceholder(blockType) && (
+            {isBookingPlaceholder(blockType) && blockPickerValue !== OPTIONAL_TYPE_NONE && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Event type</Label>
                 <Select value={blockEventType} onValueChange={setBlockEventType} items={EVENT_TYPES}>
@@ -799,7 +849,20 @@ export function CalendarView({
               </Label>
               <ScheduleRelationPicker value={blockRelatedTo} onChange={setBlockRelatedTo} />
             </div>
-            {isBookingPlaceholder(blockType) && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs" htmlFor="schedule-notes">
+                Notes / Details <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Textarea
+                id="schedule-notes"
+                value={blockNotes}
+                onChange={(e) => setBlockNotes(e.target.value)}
+                placeholder="Anything worth remembering about this appointment…"
+                rows={3}
+                className="min-h-[4.5rem] resize-y text-sm"
+              />
+            </div>
+            {isBookingPlaceholder(blockType) && blockPickerValue !== OPTIONAL_TYPE_NONE && (
               <>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Client <span className="font-normal text-muted-foreground">(optional)</span></Label>
@@ -940,6 +1003,7 @@ export function CalendarView({
           weekStart={weekStart || today} items={items} today={today}
           onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
+          tastingEnabled={tastingEnabled}
         />
       )}
       {view === "day" && (
@@ -947,6 +1011,7 @@ export function CalendarView({
           date={dayDate || today} items={items} today={today}
           onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
+          tastingEnabled={tastingEnabled}
         />
       )}
       {view === "agenda" && (
@@ -954,6 +1019,7 @@ export function CalendarView({
           items={items} today={today} year={year} month={month}
           onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
+          tastingEnabled={tastingEnabled}
         />
       )}
 
@@ -982,10 +1048,10 @@ export function CalendarView({
       </div>
 
       {/* Legend */}
-      <Legend />
+      <Legend tastingEnabled={tastingEnabled} />
 
       {/* Perspectives (Calendar Release Completion) */}
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} />
+      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
 
       {/* Filters (Calendar Integration Phase 4) */}
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />

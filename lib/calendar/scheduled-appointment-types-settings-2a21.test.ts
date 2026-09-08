@@ -103,7 +103,7 @@ describe("Calendar Slice 2A.2.1 — rendering/defaults", () => {
       assert.equal(flat.includes(key), true, key);
     }
     assert.equal(SCHEDULE_APPOINTMENT_SETTINGS_GROUPS[0]?.label, "Appointments");
-    assert.equal(SCHEDULE_APPOINTMENT_SETTINGS_GROUPS[1]?.label, "Reserved & blocked time");
+    assert.equal(SCHEDULE_APPOINTMENT_SETTINGS_GROUPS[1]?.label, "Blocked & personal time");
   });
 
   it("seed defaults: tasting off; blocked_time locked on; personal/other reserve on", () => {

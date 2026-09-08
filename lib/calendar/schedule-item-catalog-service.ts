@@ -192,7 +192,7 @@ export async function createCustomScheduleItemType(input: {
   const denied = requireManageCatalog(role);
   if (denied) return denied;
   if (input.kind !== "appointment" && input.kind !== "reserved_blocked") {
-    return { ok: false, message: "Choose whether this is an Appointment or Reserved & blocked time." };
+    return { ok: false, message: "Choose whether this is an Appointment or Blocked & personal time." };
   }
 
   const catalog = await loadVenueCatalogRows(venue.id);

@@ -28,7 +28,7 @@ function toIso(d: Date): string {
 }
 
 export function WeekView({
-  weekStart, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending,
+  weekStart, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
 }: {
   /** ISO date of this week's Sunday. */
   weekStart: string;
@@ -38,10 +38,11 @@ export function WeekView({
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
+  tastingEnabled?: boolean;
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
+  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
   const [y, m, d] = weekStart.split("-").map(Number);
   const start = new Date(y, m - 1, d);
 
@@ -82,7 +83,7 @@ export function WeekView({
         )}
       </div>
 
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} />
+      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
 
       <div className="grid gap-3 md:grid-cols-7">

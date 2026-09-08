@@ -22,7 +22,7 @@ import type { CalendarItem } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
 
 export function AgendaView({
-  items, today, year, month, onEditBlock, onDeleteBlock, deletingId, deletePending,
+  items, today, year, month, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
 }: {
   items: CalendarItem[];
   today: string;
@@ -32,10 +32,11 @@ export function AgendaView({
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
+  tastingEnabled?: boolean;
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
+  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
 
   // Same ±1-month semantics as the "ArrowLeft"/"ArrowRight" keyboard
   // shortcut already uses for this view (calendar-view.tsx) — the on-screen
@@ -85,7 +86,7 @@ export function AgendaView({
         )}
       </div>
 
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} />
+      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
 
       {byDate.length === 0 ? (

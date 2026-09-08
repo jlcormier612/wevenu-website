@@ -27,7 +27,7 @@ import {
   VENUE_CALENDAR_ITEM_TYPES,
   VENUE_CALENDAR_LEGEND_MANUAL_TYPES,
 } from "@/lib/calendar/venue-calendar-scope";
-import { activePerspectiveId, PERSPECTIVES } from "@/components/calendar/perspectives";
+import { activePerspectiveId, getPerspectives } from "@/components/calendar/perspectives";
 import { cn } from "@/lib/utils";
 
 type ItemMeta = {
@@ -75,9 +75,9 @@ export const MANUAL_TYPE_META: Record<ManualScheduleType, ItemMeta> = {
   tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
   personal_appointment: { label: "Personal Appointment", icon: User,      dotColor: "var(--cal-follow-up)", textClass: "text-muted-foreground" },
   blocked_time:         TYPE_META.calendar_block,
-  // Reserved/held dates — must not reuse Event visual identity (Slice 1).
-  wedding_event_booking: { label: "Reserved date", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
-  private_event:         { label: "Reserved date", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
+  // Holds — booking placeholders; must not reuse Event visual identity.
+  wedding_event_booking: { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
+  private_event:         { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
   other:                { label: "Other",                icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
   // Custom catalog offerings reuse Other visuals; label comes from catalogLabel.
   custom:               { label: "Custom",               icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
@@ -97,14 +97,20 @@ export function resolveItemMeta(item: CalendarItem): ItemMeta {
  * Venue Calendar legend only — never Object.entries(TYPE_META).
  * TYPE_META remains shared for Booking Schedule / other lenses that still
  * render payment due, follow-ups, etc.
+ *
+ * Tasting appears only when the venue catalog has it enabled.
  */
-export function venueCalendarLegendEntries(): { key: string; label: string; dotColor: string }[] {
+export function venueCalendarLegendEntries(options?: {
+  tastingEnabled?: boolean;
+}): { key: string; label: string; dotColor: string }[] {
+  const tastingEnabled = options?.tastingEnabled === true;
   const entries: { key: string; label: string; dotColor: string }[] = [];
   for (const type of VENUE_CALENDAR_ITEM_TYPES) {
     const meta = TYPE_META[type];
     entries.push({ key: type, label: meta.label, dotColor: meta.dotColor });
   }
   for (const manual of VENUE_CALENDAR_LEGEND_MANUAL_TYPES) {
+    if (manual === "tasting" && !tastingEnabled) continue;
     const meta = MANUAL_TYPE_META[manual];
     entries.push({ key: `manual:${manual}`, label: meta.label, dotColor: meta.dotColor });
   }
@@ -281,6 +287,9 @@ export function FilterBar({
         {venuePresentTypes.map((type) => {
           const meta = TYPE_META[type];
           const active = activeTypes.includes(type);
+          // calendar_block covers appointments and availability blocks — do not
+          // label the filter chip as only "Blocked Time".
+          const chipLabel = type === "calendar_block" ? "Appointments & blocks" : meta.label;
           return (
             <button
               key={type}
@@ -292,7 +301,7 @@ export function FilterBar({
               )}
             >
               <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: meta.dotColor }} />
-              {meta.label}
+              {chipLabel}
             </button>
           );
         })}
@@ -349,16 +358,19 @@ export function FilterBar({
 // reflected honestly (nothing highlighted) rather than a stale label.
 
 export function PerspectiveSwitcher({
-  filters, onChange,
+  filters, onChange, tastingEnabled = false,
 }: {
   filters: import("@/components/calendar/use-calendar-filters").CalendarFilterState;
   onChange: (next: import("@/components/calendar/use-calendar-filters").CalendarFilterState) => void;
+  /** When true, Sales/Planning presets include Tasting. */
+  tastingEnabled?: boolean;
 }) {
-  const active = activePerspectiveId(filters);
+  const perspectives = getPerspectives(tastingEnabled);
+  const active = activePerspectiveId(filters, tastingEnabled);
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {PERSPECTIVES.map((p) => (
+      {perspectives.map((p) => (
         <button
           key={p.id}
           type="button"

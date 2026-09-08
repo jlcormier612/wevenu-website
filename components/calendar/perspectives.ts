@@ -2,10 +2,11 @@
  * Calendar Release Completion — Operational Perspectives.
  *
  * A Perspective is a named CalendarFilterState preset over the venue Calendar
- * schedule (Slice 1: scheduled / reserved / blocked only — not dated work).
+ * schedule (Slice 1: scheduled / holds / blocked / appointments only — not
+ * dated work or planning tasks).
  *
  * Finance was removed in Slice 2A.0/2A.1 — payment/expiration dates are not
- * venue Calendar items.
+ * venue Calendar items. Planning activities (event_tasks) are not either.
  */
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
@@ -27,6 +28,7 @@ function preset(types: CalendarItemType[], manualTypes?: ManualScheduleType[]): 
   return { types, staffId: null, spaceId: null, manualTypes: manualTypes ?? null };
 }
 
+/** Base presets — Tasting is catalog-gated via getPerspectives(). */
 export const PERSPECTIVES: Perspective[] = [
   {
     id: "everything",
@@ -40,26 +42,25 @@ export const PERSPECTIVES: Perspective[] = [
     label: "Sales",
     emoji: "🤝",
     description: "Tours, consultations, and date holds — pre-booking schedule.",
-    // Include tasting + custom so catalog-driven creates remain visible here.
     filters: preset(["tour", "date_hold", "calendar_block"], [
-      "consultation", "tasting", "client_meeting", "custom",
+      "consultation", "client_meeting", "custom",
     ]),
   },
   {
     id: "planning",
     label: "Planning",
     emoji: "📋",
-    description: "Scheduled planning activities, walkthroughs, and client or vendor meetings.",
-    filters: preset(["planning_activity", "calendar_block"], [
-      "walkthrough", "vendor_meeting", "client_meeting", "tasting", "consultation", "custom",
+    description: "Walkthroughs and client or vendor meetings.",
+    filters: preset(["calendar_block"], [
+      "walkthrough", "vendor_meeting", "client_meeting", "consultation", "custom",
     ]),
   },
   {
     id: "operations",
     label: "Operations",
     emoji: "🧭",
-    description: "Wedding days, scheduled activities, walkthroughs, vendor meetings, and blocked time.",
-    filters: preset(["planning_activity", "calendar_block", "event"], [
+    description: "Wedding days, walkthroughs, vendor meetings, and blocked time.",
+    filters: preset(["calendar_block", "event"], [
       "vendor_meeting", "walkthrough", "blocked_time", "personal_appointment", "other", "custom",
     ]),
   },
@@ -72,6 +73,29 @@ export const PERSPECTIVES: Perspective[] = [
   },
 ];
 
+const TASTING_PERSPECTIVE_IDS: PerspectiveId[] = ["sales", "planning"];
+
+/**
+ * Perspectives for the live venue Calendar. When Tasting is enabled in the
+ * venue catalog, Sales/Planning include tasting as a filterable appointment
+ * classification; otherwise tasting is omitted entirely.
+ */
+export function getPerspectives(tastingEnabled: boolean): Perspective[] {
+  if (!tastingEnabled) return PERSPECTIVES;
+  return PERSPECTIVES.map((p) => {
+    if (!TASTING_PERSPECTIVE_IDS.includes(p.id)) return p;
+    const manualTypes = p.filters.manualTypes ?? [];
+    if (manualTypes.includes("tasting")) return p;
+    return {
+      ...p,
+      filters: {
+        ...p.filters,
+        manualTypes: [...manualTypes, "tasting"],
+      },
+    };
+  });
+}
+
 function filterStateEquals(a: CalendarFilterState, b: CalendarFilterState): boolean {
   const arrEq = (x: string[] | null, y: string[] | null) =>
     x === y || (x !== null && y !== null && x.length === y.length && x.every((v) => y.includes(v)));
@@ -79,8 +103,11 @@ function filterStateEquals(a: CalendarFilterState, b: CalendarFilterState): bool
 }
 
 /** Which perspective (if any) the current filter state exactly matches — drives the switcher's own highlighted state, never a separately-tracked "mode" that could drift from the real filters. */
-export function activePerspectiveId(filters: CalendarFilterState): PerspectiveId | null {
-  const match = PERSPECTIVES.find((p) => filterStateEquals(p.filters, filters));
+export function activePerspectiveId(
+  filters: CalendarFilterState,
+  tastingEnabled = false,
+): PerspectiveId | null {
+  const match = getPerspectives(tastingEnabled).find((p) => filterStateEquals(p.filters, filters));
   return match?.id ?? null;
 }
 

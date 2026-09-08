@@ -22,9 +22,9 @@ import { calendarDatesForProtectedEvent } from "@/lib/calendar/event-display";
 import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { toScheduleRelationOption, type ScheduleRelationRow } from "@/lib/calendar/schedule-relation-search";
 
-// Calendar Booking Placeholder — reserved/held time, not a booked Event.
+// Calendar Booking Placeholder — hold on availability, not a booked Event.
 function bookingPlaceholderSubtitle(guestCount: number | null, estimatedRevenue: number | string | null, convertedLeadId: string | null): string | null {
-  const parts: string[] = ["Reserved date"];
+  const parts: string[] = ["Hold"];
   if (guestCount != null) parts.push(`${guestCount} guest${guestCount === 1 ? "" : "s"}`);
   if (estimatedRevenue != null) parts.push(formatCurrency(Number(estimatedRevenue)));
   if (convertedLeadId) parts.push("→ Lead");
@@ -112,9 +112,9 @@ export async function getCalendarData(
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-  // Venue Calendar Slice 1 — scheduled / reserved / blocked only.
+  // Venue Calendar — scheduled things + availability only (no planning tasks).
   const [
-    eventsRes, tourItems, holdsRes, blocksRes, scheduledTasksRes,
+    eventsRes, tourItems, holdsRes, blocksRes,
   ] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
@@ -152,16 +152,6 @@ export async function getCalendarData(
       .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads!calendar_blocks_lead_id_fkey(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id, schedule_item_type_id, blocks_availability")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
-
-    // 5. Scheduled Planning activities — only tasks with scheduled_date set
-    // (presence). Due-date-only planning tasks stay off the venue Calendar.
-    supabase.from("event_tasks")
-      .select("id, title, event_id, scheduled_date, scheduled_start_time, location, status, assigned_to_staff_id, assignee:assigned_to_staff_id(full_name), events(name, client_id, clients(first_name, last_name))")
-      .eq("venue_id", venue.id)
-      .neq("status", "waived")
-      .not("scheduled_date", "is", null)
-      .gte("scheduled_date", start)
-      .lte("scheduled_date", end),
   ]);
 
   const items: CalendarItem[] = [];
@@ -299,24 +289,6 @@ export async function getCalendarData(
         });
       }
     }
-  }
-
-  // Scheduled Planning activities
-  for (const t of (scheduledTasksRes.data ?? []) as any[]) {
-    const cn = t.events?.clients ? `${t.events.clients.first_name} ${t.events.clients.last_name}` : t.events?.name ?? null;
-    items.push({
-      id: `planning-${t.id}`,
-      type: "planning_activity",
-      date: t.scheduled_date,
-      title: t.title,
-      subtitle: [cn, t.location].filter(Boolean).join(" — ") || null,
-      time: t.scheduled_start_time?.slice(0, 5) ?? null,
-      link: `/events/${t.event_id}#playbook`,
-      eventId: t.event_id,
-      clientId: t.events?.client_id ?? null,
-      assignedToStaffId: t.assigned_to_staff_id ?? null,
-      assignedToName: t.assignee?.full_name ?? null,
-    });
   }
 
   // Sort by date then time

@@ -11,7 +11,7 @@ export type CalendarItemType =
   | "key_date"       // client milestone — Overview / Dashboard / Portal only (not venue Calendar; Slice 1)
   | "date_hold"      // soft reservation (date_holds table) — venue Calendar
   | "calendar_block" // manual schedule / blocked time (calendar_blocks) — venue Calendar
-  | "planning_activity" // scheduled Planning task (event_tasks.scheduled_date) — venue Calendar
+  | "planning_activity" // scheduled Planning task — Booking Schedule only (not venue Calendar)
   | "request_due" // Request due date — Booking Schedule only (not venue Calendar; Slice 1)
   | "contract_expiration" // Contract expires_at — Booking Schedule only (not venue Calendar; Slice 1)
   | "document_expiration" // Document expires_at — Booking Schedule only (not venue Calendar; Slice 1)

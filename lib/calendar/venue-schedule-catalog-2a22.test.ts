@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { PERSPECTIVES } from "@/components/calendar/perspectives";
+import { getPerspectives, PERSPECTIVES } from "@/components/calendar/perspectives";
 import {
   LEGACY_MANUAL_SCHEDULE_TYPE_LABELS,
   isCreatableManualScheduleType,
@@ -65,8 +65,8 @@ describe("Calendar Slice 2A.2.2 — picker from catalog", () => {
     const flat = flattenScheduleItemPickerOptions(groups);
     const values = flat.map((o) => o.value);
     assert.equal(groups[0]?.label, "Appointments");
-    assert.equal(groups.some((g) => g.label === "Reserved & blocked time"), true);
-    assert.equal(groups.some((g) => g.label === "Reserved dates"), true);
+    assert.equal(groups.some((g) => g.label === "Blocked & personal time"), true);
+    assert.equal(groups.some((g) => g.label === "Holds"), true);
     for (const key of ["consultation", "client_meeting", "walkthrough", "vendor_meeting", "personal_appointment", "blocked_time", "other"]) {
       assert.equal(values.includes(key), true, key);
     }
@@ -231,18 +231,21 @@ describe("Calendar Slice 2A.2.2 — create/edit resolve & snapshots", () => {
 });
 
 describe("Calendar Slice 2A.2.2 — perspectives & filters", () => {
-  it("relevant perspectives include custom and newly catalog-backed appointment types", () => {
+  it("relevant perspectives include custom; tasting only when enabled", () => {
     const sales = PERSPECTIVES.find((p) => p.id === "sales")!;
     const planning = PERSPECTIVES.find((p) => p.id === "planning")!;
     const operations = PERSPECTIVES.find((p) => p.id === "operations")!;
     assert.equal(sales.filters.manualTypes?.includes("custom"), true);
-    assert.equal(sales.filters.manualTypes?.includes("tasting"), true);
+    assert.equal(sales.filters.manualTypes?.includes("tasting"), false);
     assert.equal(planning.filters.manualTypes?.includes("custom"), true);
-    assert.equal(planning.filters.manualTypes?.includes("tasting"), true);
+    assert.equal(planning.filters.manualTypes?.includes("tasting"), false);
     assert.equal(operations.filters.manualTypes?.includes("custom"), true);
     assert.equal(operations.filters.manualTypes?.includes("personal_appointment"), true);
     assert.equal(operations.filters.manualTypes?.includes("other"), true);
     assert.equal((sales.filters.manualTypes ?? []).includes("tour"), false);
+    const withTaste = getPerspectives(true);
+    assert.equal(withTaste.find((p) => p.id === "sales")!.filters.manualTypes?.includes("tasting"), true);
+    assert.equal(withTaste.find((p) => p.id === "planning")!.filters.manualTypes?.includes("tasting"), true);
   });
 
   it("sanitize keeps tasting filterable; still strips manual tour and excluded item types", () => {
