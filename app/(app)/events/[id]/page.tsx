@@ -1,5 +1,7 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
+import { EventToBookingRedirect } from "@/components/events/event-to-booking-redirect";
+import { searchParamsToQueryString } from "@/lib/events/event-booking-redirect";
 import { getEvent } from "@/lib/events/service";
 
 type Props = {
@@ -9,9 +11,11 @@ type Props = {
 
 /**
  * The Event workspace moved under its Booking (/clients/[id]) — this route
- * now only resolves which Booking an old Event link belongs to and forwards
- * there. Query params (e.g. ?conversation= for vendor-thread deep links) are
- * forwarded; #hash (e.g. #vendors) is preserved by the browser on redirect.
+ * resolves which Booking an old Event link belongs to and forwards there.
+ *
+ * Query params (e.g. ?conversation= for vendor-thread deep links) are
+ * forwarded from the server. #hash (e.g. #documents) is preserved via a
+ * client-side replace — HTTP redirects cannot carry URL fragments.
  */
 export default async function EventDetailRedirectPage({ params, searchParams }: Props) {
   const { id } = await params;
@@ -19,11 +23,10 @@ export default async function EventDetailRedirectPage({ params, searchParams }: 
   const event = await getEvent(id);
   if (!event || !event.clientId) notFound();
 
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(sp)) {
-    if (typeof value === "string") qs.set(key, value);
-    else if (Array.isArray(value)) for (const v of value) qs.append(key, v);
-  }
-  const suffix = qs.size > 0 ? `?${qs.toString()}` : "";
-  redirect(`/clients/${event.clientId}${suffix}`);
+  return (
+    <EventToBookingRedirect
+      clientId={event.clientId}
+      search={searchParamsToQueryString(sp)}
+    />
+  );
 }
