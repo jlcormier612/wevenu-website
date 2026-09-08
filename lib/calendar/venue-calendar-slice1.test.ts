@@ -22,6 +22,7 @@ import {
   VENUE_CALENDAR_ITEM_TYPES,
 } from "@/lib/calendar/venue-calendar-scope";
 import type { CalendarItemType } from "@/lib/calendar/types";
+import { venueCalendarLegendEntries } from "@/components/calendar/calendar-shared";
 
 const serviceSrc = readFileSync(resolve("lib/calendar/service.ts"), "utf8");
 const bookingSrc = readFileSync(resolve("lib/calendar/booking-schedule.ts"), "utf8");
@@ -171,5 +172,44 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
     });
     assert.deepEqual(cleaned.types, ["event"]);
     assert.deepEqual(cleaned.manualTypes, ["consultation", "tasting"]);
+  });
+
+  it("venue Calendar legend never teaches excluded taxonomy", () => {
+    const labels = venueCalendarLegendEntries().map((e) => e.label);
+    for (const banned of [
+      "Follow-up",
+      "Payment Due",
+      "Key Date",
+      "Request",
+      "Contract Expires",
+      "Document Expires",
+      "Planning Task",
+      "Timeline",
+      "Meeting",
+    ]) {
+      assert.equal(labels.includes(banned), false, `legend must not include ${banned}`);
+    }
+    assert.ok(labels.includes("Event"));
+    assert.ok(labels.includes("Tour"));
+    assert.ok(labels.includes("Date Hold"));
+    assert.ok(labels.includes("Blocked Time"));
+    assert.ok(labels.includes("Planning"));
+    assert.ok(labels.includes("Consultation"));
+    assert.ok(labels.includes("Client Meeting"));
+    assert.doesNotMatch(calendarViewSrc, /Object\.entries\(TYPE_META\)\s*as/);
+    assert.match(calendarViewSrc, /venueCalendarLegendEntries\(\)/);
+    assert.doesNotMatch(calendarViewSrc, /LEGEND_MANUAL_EXTRAS/);
+    assert.match(sharedSrc, /for \(const type of VENUE_CALENDAR_ITEM_TYPES\)/);
+    assert.match(sharedSrc, /for \(const manual of VENUE_CALENDAR_LEGEND_MANUAL_TYPES\)/);
+  });
+
+  it("FilterBar and presentTypes harden against excluded types", () => {
+    assert.match(sharedSrc, /venuePresentTypes = presentTypes\.filter\(isVenueCalendarItemType\)/);
+    assert.match(filtersSrc, /isVenueCalendarItemType/);
+  });
+
+  it("month detail selection resets when navigating to another month", () => {
+    assert.match(calendarViewSrc, /prev\.startsWith\(prefix\)/);
+    assert.match(calendarViewSrc, /\[view, year, month, today\]/);
   });
 });

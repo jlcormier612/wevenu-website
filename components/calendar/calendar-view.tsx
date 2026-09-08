@@ -32,9 +32,18 @@ import {
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import { toast } from "sonner";
 import { describeRecurrence } from "@/lib/calendar/recurrence";
-import type { CalendarItem, CalendarItemType, ScheduleRelationOption } from "@/lib/calendar/types";
+import type { CalendarItem, ScheduleRelationOption } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
-import { FilterBar, formatTime, ItemRow, MANUAL_TYPE_META, MonthYearPicker, PerspectiveSwitcher, resolveItemMeta, TYPE_META } from "@/components/calendar/calendar-shared";
+import {
+  FilterBar,
+  formatTime,
+  ItemRow,
+  MANUAL_TYPE_META,
+  MonthYearPicker,
+  PerspectiveSwitcher,
+  resolveItemMeta,
+  venueCalendarLegendEntries,
+} from "@/components/calendar/calendar-shared";
 import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
 import { ScheduleRelationPicker } from "@/components/calendar/schedule-relation-picker";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
@@ -42,7 +51,7 @@ import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { AgendaView } from "@/components/calendar/agenda-view";
 
-export { TYPE_META, formatTime, ItemRow };
+export { TYPE_META, formatTime, ItemRow, venueCalendarLegendEntries } from "@/components/calendar/calendar-shared";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
@@ -250,33 +259,15 @@ function DayDetail({
 }
 
 // ---- Legend -----------------------------------------------------------------
-// Manual types that reuse an existing TYPE_META color (tour, blocked_time)
-// are skipped here — they already appear once via the main loop below, and
-// a duplicate same-colored swatch with a different label would undercut the
-// whole point of "one color, one thing" (Calendar Manual Type Redesign).
-const LEGEND_MANUAL_EXTRAS: { label: string; dotColor: string }[] = [
-  { label: "Meeting", dotColor: "var(--cal-meeting)" },
-  { label: "Walkthrough", dotColor: "var(--cal-walkthrough)" },
-  { label: "Tasting", dotColor: "var(--cal-date-hold)" },
-  { label: "Personal Appointment", dotColor: "var(--cal-follow-up)" },
-  { label: "Other (manual)", dotColor: "var(--cal-other)" },
-];
-
+// Venue Calendar only — never Object.entries(TYPE_META). Booking Schedule and
+// other lenses may still use excluded TYPE_META entries; this legend must not.
 function Legend() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-      {(Object.entries(TYPE_META) as [CalendarItemType, typeof TYPE_META[CalendarItemType]][]).map(
-        ([type, meta]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: meta.dotColor }} />
-            <span className="text-xs text-muted-foreground">{meta.label}</span>
-          </div>
-        ),
-      )}
-      {LEGEND_MANUAL_EXTRAS.map((extra) => (
-        <div key={extra.label} className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: extra.dotColor }} />
-          <span className="text-xs text-muted-foreground">{extra.label}</span>
+      {venueCalendarLegendEntries().map((entry) => (
+        <div key={entry.key} className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.dotColor }} />
+          <span className="text-xs text-muted-foreground">{entry.label}</span>
         </div>
       ))}
     </div>
@@ -320,6 +311,16 @@ export function CalendarView({
     ?? creatableOptions[0]?.value
     ?? "consultation";
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
+  // Keep the Schedule detail panel coherent with the month being viewed —
+  // navigating away from a month must not leave a stale day from another month.
+  React.useEffect(() => {
+    if (view !== "month") return;
+    const prefix = `${year}-${String(month).padStart(2, "0")}`;
+    setSelectedDate((prev) => {
+      if (prev.startsWith(prefix)) return prev;
+      return today.startsWith(prefix) ? today : `${prefix}-01`;
+    });
+  }, [view, year, month, today]);
   const [showBlockForm, setShowBlockForm] = React.useState(false);
   const [blockTitle, setBlockTitle] = React.useState("");
   // Default to Consultation when enabled; otherwise first creatable catalog/system option.

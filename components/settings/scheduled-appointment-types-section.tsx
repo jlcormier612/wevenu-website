@@ -338,7 +338,9 @@ export function ScheduledAppointmentTypesSection({
                   </div>
                   <div className="flex flex-col gap-2 sm:items-end">
                     <label className="flex items-center justify-between gap-3 sm:justify-end">
-                      <span className="text-xs text-muted-foreground">On</span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.enabled ? "On" : "Off"}
+                      </span>
                       <Switch
                         checked={row.enabled}
                         disabled={!canEdit || locked || busy}

@@ -9,7 +9,7 @@ import * as React from "react";
 
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
-import { sanitizeVenueCalendarFilters } from "@/lib/calendar/venue-calendar-scope";
+import { sanitizeVenueCalendarFilters, isVenueCalendarItemType } from "@/lib/calendar/venue-calendar-scope";
 
 export type CalendarFilterState = {
   types: CalendarItemType[] | null; // null = "all types," never persisted as an explicit exclusion list
@@ -75,7 +75,7 @@ export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) 
   }, [storageKey]);
 
   const presentTypes = React.useMemo(
-    () => [...new Set(items.map((i) => i.type))],
+    () => [...new Set(items.map((i) => i.type))].filter(isVenueCalendarItemType),
     [items],
   );
   const staffOptions = React.useMemo(() => {

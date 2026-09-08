@@ -4,11 +4,9 @@
  * Week View — Calendar Integration Phase 3.
  *
  * Chronological, time-aware: scheduled activities/events show their actual
- * time-of-day; due dates (Requests, Contracts, Documents, Payments,
- * due-date-only Planning — none of the latter appear on Month view either,
- * unchanged here) render as all-day items, exactly like Month view already
- * treats them. Same data, same items, same links — only the window and
- * layout change (§ "Preserve" — no business logic here at all).
+ * time-of-day; all-day schedule items (events, holds, blocks) render as
+ * all-day rows. Same venue Calendar data as Month (Slice 1: scheduled /
+ * reserved / blocked only) — only the window and layout change.
  */
 import * as React from "react";
 

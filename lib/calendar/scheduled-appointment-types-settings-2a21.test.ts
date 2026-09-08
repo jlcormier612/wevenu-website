@@ -234,4 +234,9 @@ describe("Calendar Slice 2A.2.1 — data integrity", () => {
     );
     assert.match(sectionSrc, /onBuiltinEnabled|onEnabledChange/);
   });
+
+  it("enabled state copy reflects catalog enabled, not a static On", () => {
+    assert.match(sectionSrc, /\{row\.enabled \? "On" : "Off"\}/);
+    assert.doesNotMatch(sectionSrc, /<span className="text-xs text-muted-foreground">On<\/span>/);
+  });
 });

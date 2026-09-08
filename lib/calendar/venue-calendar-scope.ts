@@ -67,3 +67,22 @@ export function sanitizeVenueCalendarFilters<T extends {
     manualTypes: manualTypes && manualTypes.length > 0 ? manualTypes : (filters.manualTypes ? [] : null),
   };
 }
+
+/**
+ * Manual subtypes shown on the venue Calendar legend (distinct colors/labels
+ * under calendar_block). Excludes:
+ * - tour (legacy) — real Tours use TYPE_META.tour; legacy rows use item label
+ * - blocked_time — already covered by TYPE_META.calendar_block
+ * - custom — same visual as Other; live labels come from catalogLabel
+ * - private_event — same "Reserved date" label as wedding_event_booking
+ */
+export const VENUE_CALENDAR_LEGEND_MANUAL_TYPES = [
+  "consultation",
+  "client_meeting",
+  "vendor_meeting",
+  "walkthrough",
+  "tasting",
+  "personal_appointment",
+  "other",
+  "wedding_event_booking",
+] as const satisfies readonly ManualScheduleType[];

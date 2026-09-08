@@ -22,6 +22,11 @@ import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import { CALENDAR_MAX_YEAR, CALENDAR_MIN_YEAR } from "@/lib/calendar/types";
 import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
+import {
+  isVenueCalendarItemType,
+  VENUE_CALENDAR_ITEM_TYPES,
+  VENUE_CALENDAR_LEGEND_MANUAL_TYPES,
+} from "@/lib/calendar/venue-calendar-scope";
 import { activePerspectiveId, PERSPECTIVES } from "@/components/calendar/perspectives";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +91,24 @@ export function resolveItemMeta(item: CalendarItem): ItemMeta {
     return MANUAL_TYPE_META[item.manualType];
   }
   return TYPE_META[item.type];
+}
+
+/**
+ * Venue Calendar legend only — never Object.entries(TYPE_META).
+ * TYPE_META remains shared for Booking Schedule / other lenses that still
+ * render payment due, follow-ups, etc.
+ */
+export function venueCalendarLegendEntries(): { key: string; label: string; dotColor: string }[] {
+  const entries: { key: string; label: string; dotColor: string }[] = [];
+  for (const type of VENUE_CALENDAR_ITEM_TYPES) {
+    const meta = TYPE_META[type];
+    entries.push({ key: type, label: meta.label, dotColor: meta.dotColor });
+  }
+  for (const manual of VENUE_CALENDAR_LEGEND_MANUAL_TYPES) {
+    const meta = MANUAL_TYPE_META[manual];
+    entries.push({ key: `manual:${manual}`, label: meta.label, dotColor: meta.dotColor });
+  }
+  return entries;
 }
 
 export function formatTime(hhmm: string | null): string {
@@ -236,14 +259,18 @@ export function FilterBar({
   spaceOptions: [string, string][];
 }) {
   const UNASSIGNED = "__unassigned__";
-  const activeTypes = filters.types ?? presentTypes;
+  // Venue Calendar filter chips — never surface Booking-Schedule-only types
+  // even if a stale item or localStorage edge case leaks one in.
+  const venuePresentTypes = presentTypes.filter(isVenueCalendarItemType);
+  const activeTypes = filters.types ?? venuePresentTypes;
 
   function toggleType(type: CalendarItemType) {
-    const current = filters.types ?? presentTypes;
+    if (!isVenueCalendarItemType(type)) return;
+    const current = filters.types ?? venuePresentTypes;
     const next = current.includes(type) ? current.filter((t) => t !== type) : [...current, type];
     // Selecting everything is equivalent to "no filter" — collapses back to null
     // so a newly-appearing type on a future navigation defaults to visible.
-    onChange({ ...filters, types: next.length === presentTypes.length ? null : next });
+    onChange({ ...filters, types: next.length === venuePresentTypes.length ? null : next });
   }
 
   const hasActiveFilter = filters.types !== null || filters.staffId !== null || filters.spaceId !== null;
@@ -251,7 +278,7 @@ export function FilterBar({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        {presentTypes.map((type) => {
+        {venuePresentTypes.map((type) => {
           const meta = TYPE_META[type];
           const active = activeTypes.includes(type);
           return (
