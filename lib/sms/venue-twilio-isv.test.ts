@@ -126,6 +126,42 @@ describe("venue Twilio fail-closed + tenant isolation", () => {
     assert.equal(await isSmsConfigured(VENUE_A), false);
   });
 
+  it("fails closed for pending_compliance even when Messaging Service SID exists", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.COMMUNICATION_MODE = "real";
+    process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([
+      {
+        venue_id: VENUE_A,
+        twilio_account_sid: AC_A,
+        messaging_service_sid: MG_A,
+        status: "pending_compliance",
+        status_detail: "Awaiting Secondary Customer Profile / A2P",
+      },
+    ]);
+    process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({
+      [AC_A]: {
+        account_sid: AC_A,
+        auth_token: "token-a",
+        api_key_sid: "SKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        api_key_secret: "secret-a",
+      },
+    });
+
+    const resolved = await resolveVenueTwilioForSend(VENUE_A);
+    assert.equal(resolved.ok, false);
+    const result = await sendSms({
+      to: "+16155551234",
+      body: "Hello",
+      venueId: VENUE_A,
+      skipPermissionCheck: true,
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.match(result.message, /Settings → Communications/);
+      assert.doesNotMatch(result.message, /Twilio|A2P|pending_compliance/i);
+    }
+  });
+
   it("resolves venue A credentials, not venue B", async () => {
     installTwoVenueAccounts();
     const a = await resolveVenueTwilioForSend(VENUE_A);

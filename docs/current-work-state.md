@@ -1,20 +1,22 @@
 # Current Work State
 
-**Last verified:** 2026-09-07 — Track A / Messaging Trust ship sequence in progress.
+**Last verified:** 2026-09-07 — Track B active (Sandbox dogfood provisioning started; compliance-gated).
 
-## Ship sequence (authorized)
+## Active milestone: Track B (NOT deferred)
 
-1. Commit + push Track A + Messaging Trust/Deliverability + migrations `20261349`–`20261351` + ECS secret wiring for `SENSITIVE_FIELD_ENCRYPTION_KEY`.
-2. Apply Sandbox migrations `20261349`, `20261350`, `20261351`.
-3. Deploy Sandbox; populate encryption key (SM → ECS, no ad-hoc mechanism); verify task receives it without exposing value.
-4. Live-verify on `app.sandbox.hellotocheers.com`.
-5. **Track B is the NEXT authorized major milestone** after this live-proof — NOT deferred. Status today: NOT STARTED (provisioning not begun).
+Track A / Messaging Trust shipped and live-proven on `00dc52e`.
+
+**Dogfood venue:** Jen’s Fancy Venue `a415ac52-cd74-42a6-8df7-7a8f6e71d080` (synthetic — do not fabricate EIN/legal/A2P facts).
+
+**Provisioned (Sandbox):** venue Twilio subaccount + API key + venue Messaging Service (inbound/status webhooks) + `htc/sandbox/twilio/venues/{AccountSid}` secret + `venue_twilio_accounts` row `pending_compliance`. ECS task role can read venue Twilio secrets.
+
+**Blocked (compliance):** Secondary Customer Profile, A2P Brand/Campaign, SMS/MMS sender — Twilio requires real verified business registration / address / identity that the synthetic tenant cannot legitimately provide. No shared HTC Messaging Service or parent-level venue shortcut.
 
 ## Settled product rules
 
 - Email platform-managed; SMS venue-enableable via HTC onboarding.
 - Deferred provider submit → `information_saved` (never fake Pending).
-- `smsReady` only when `venue_twilio_accounts` is sendable.
+- `smsReady` only when `venue_twilio_accounts` is sendable (`status=ready` + Messaging Service).
 - No customer-facing Twilio / A2P / SID jargon.
 - Locked SMS permission: `not_opted_in` allowed; `opted_out` / `provider_blocked` blocked.
 - Track B dogfood: Jen’s Fancy Venue only; no shared MS/sender; no fabricated A2P legal data.
