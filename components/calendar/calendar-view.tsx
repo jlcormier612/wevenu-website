@@ -18,9 +18,17 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { BLOCK_REASONS, MANUAL_SCHEDULE_TYPE_OPTIONS } from "@/lib/availability/constants";
-import { MANUAL_SCHEDULE_TYPE_GROUPS, isBookingPlaceholder } from "@/lib/availability/types";
+import { BLOCK_REASONS, LEGACY_MANUAL_SCHEDULE_TYPE_LABELS, manualScheduleTypeLabel } from "@/lib/availability/constants";
+import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType, RecurrenceEndMode, RecurrenceRule } from "@/lib/availability/types";
+import {
+  buildScheduleItemPickerGroups,
+  flattenScheduleItemPickerOptions,
+  parseScheduleItemPickerValue,
+  scheduleItemPickerValue,
+  type ScheduleItemPickerOption,
+  type VenueScheduleItemType,
+} from "@/lib/calendar/schedule-item-catalog";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import { toast } from "sonner";
 import { describeRecurrence } from "@/lib/calendar/recurrence";
@@ -225,7 +233,7 @@ function DayDetail({
       <p className="font-heading text-base font-medium text-heading">{label}</p>
       {dateItems.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4 text-center">
-          Nothing scheduled for this day. Use Add Schedule Item above to add a tour, hold, or block.
+          Nothing scheduled for this day. Add a schedule item, or book a tour from Tours.
         </p>
       ) : (
         <div className="space-y-2">
@@ -285,6 +293,7 @@ export function CalendarView({
   dayDate,
   items,
   today,
+  scheduleCatalog = [],
 }: {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
@@ -293,18 +302,30 @@ export function CalendarView({
   dayDate?: string;
   items: CalendarItem[];
   today: string;
+  /** Enabled venue catalog rows for the Schedule Item type picker (2A.2.2). */
+  scheduleCatalog?: VenueScheduleItemType[];
 }) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "month");
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
   const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
+  const pickerGroups = React.useMemo(
+    () => buildScheduleItemPickerGroups(scheduleCatalog),
+    [scheduleCatalog],
+  );
+  const creatableOptions = React.useMemo(
+    () => flattenScheduleItemPickerOptions(pickerGroups),
+    [pickerGroups],
+  );
+  const defaultPickerValue = creatableOptions.find((o) => o.type === "consultation")?.value
+    ?? creatableOptions[0]?.value
+    ?? "consultation";
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
   const [showBlockForm, setShowBlockForm] = React.useState(false);
   const [blockTitle, setBlockTitle] = React.useState("");
-  // "Blocked Time" is the default only because it's the closest analog to
-  // the old single-purpose form this replaces — it is no longer the
-  // primary concept, just the last item in MANUAL_SCHEDULE_TYPE_OPTIONS
-  // (Calendar Manual Type Redesign).
-  const [blockType, setBlockType] = React.useState<ManualScheduleType>("tour");
+  // Default to Consultation when enabled; otherwise first creatable catalog/system option.
+  const [blockPickerValue, setBlockPickerValue] = React.useState<string>(defaultPickerValue);
+  const [blockType, setBlockType] = React.useState<ManualScheduleType>("consultation");
+  const [blockScheduleItemTypeId, setBlockScheduleItemTypeId] = React.useState<string | null>(null);
   const [blockReason, setBlockReason] = React.useState<string>("other");
   const [blockStart, setBlockStart] = React.useState(today);
   const [blockEnd, setBlockEnd] = React.useState(today);
@@ -346,9 +367,41 @@ export function CalendarView({
     return today;
   }
 
+  function applyPickerSelection(value: string) {
+    const fromList = creatableOptions.find((o) => o.value === value);
+    if (fromList) {
+      setBlockPickerValue(fromList.value);
+      setBlockType(fromList.type);
+      setBlockScheduleItemTypeId(fromList.scheduleItemTypeId);
+      return;
+    }
+    const parsed = parseScheduleItemPickerValue(value);
+    if (!parsed) return;
+    setBlockPickerValue(value);
+    setBlockType(parsed.type);
+    setBlockScheduleItemTypeId(parsed.scheduleItemTypeId);
+  }
+
+  function currentTypeDisplayLabel(): string {
+    if (LEGACY_MANUAL_SCHEDULE_TYPE_LABELS[blockType]) {
+      return LEGACY_MANUAL_SCHEDULE_TYPE_LABELS[blockType]!;
+    }
+    const fromCatalog = scheduleCatalog.find((r) =>
+      blockType === "custom"
+        ? r.id === blockScheduleItemTypeId
+        : r.source === "builtin" && r.builtinKey === blockType,
+    );
+    return fromCatalog?.label ?? manualScheduleTypeLabel(blockType);
+  }
+
   function resetBlockForm() {
     const date = defaultFormDate();
-    setBlockTitle(""); setBlockType("tour"); setBlockReason("other"); setBlockStart(date); setBlockEnd(date);
+    const nextDefault = creatableOptions.find((o) => o.type === "consultation")?.value
+      ?? creatableOptions[0]?.value
+      ?? "consultation";
+    setBlockTitle("");
+    applyPickerSelection(nextDefault);
+    setBlockReason("other"); setBlockStart(date); setBlockEnd(date);
     setBlockIsAllDay(false); setBlockStartTime("09:00"); setBlockEndTime("17:00");
     setBlockRecurrence("none"); setBlockRecurrenceCustom(false); setBlockRecurrenceInterval("1");
     setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
@@ -376,6 +429,9 @@ export function CalendarView({
     return {
       title: blockTitle.trim(),
       type: blockType,
+      scheduleItemTypeId: blockType === "custom" ? blockScheduleItemTypeId : (
+        creatableOptions.find((o) => o.value === blockPickerValue)?.scheduleItemTypeId ?? blockScheduleItemTypeId
+      ),
       reason: blockType === "blocked_time" ? (blockReason as import("@/lib/availability/types").BlockReason) : null,
       startDate: blockStart,
       endDate: blockEnd || blockStart,
@@ -392,6 +448,9 @@ export function CalendarView({
       estimatedRevenue: blockEstimatedRevenue,
     };
   }
+
+  const currentPickerCreatable = creatableOptions.some((o) => o.value === blockPickerValue);
+  const editOnlyCurrentType = editingBlockId && !currentPickerCreatable;
 
   function handleDeleteBlock(blockId: string) {
     setDeletingId(blockId);
@@ -423,7 +482,13 @@ export function CalendarView({
         return;
       }
       setBlockTitle(block.title);
+      const pickerValue = scheduleItemPickerValue({
+        type: block.type,
+        scheduleItemTypeId: block.scheduleItemTypeId,
+      });
+      setBlockPickerValue(pickerValue);
       setBlockType(block.type);
+      setBlockScheduleItemTypeId(block.scheduleItemTypeId);
       setBlockReason(block.reason ?? "other");
       setBlockStart(block.startDate);
       setBlockEnd(block.endDate);
@@ -597,7 +662,19 @@ export function CalendarView({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Schedule Item *</Label>
-              <Select value={blockType} onValueChange={(v) => setBlockType(v as ManualScheduleType)} items={MANUAL_SCHEDULE_TYPE_OPTIONS}>
+              <Select
+                value={blockPickerValue}
+                onValueChange={(v) => applyPickerSelection(v)}
+                items={[
+                  ...creatableOptions.map((o) => ({ value: o.value, label: o.label })),
+                  ...(editOnlyCurrentType
+                    ? [{
+                        value: blockPickerValue,
+                        label: currentTypeDisplayLabel(),
+                      }]
+                    : []),
+                ]}
+              >
                 <SelectTrigger>
                   <span className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
@@ -605,31 +682,46 @@ export function CalendarView({
                   </span>
                 </SelectTrigger>
                 <SelectContent>
-                  {MANUAL_SCHEDULE_TYPE_GROUPS.map((group) => (
+                  {pickerGroups.map((group) => (
                     <React.Fragment key={group.label}>
                       <div className="px-2 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground first:pt-1.5">
                         {group.label}
                       </div>
-                      {group.types.map((v) => {
-                        const t = MANUAL_SCHEDULE_TYPE_OPTIONS.find((o) => o.value === v)!;
-                        return (
-                          <SelectItem key={t.value} value={t.value}>
-                            <span className="flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[t.value].dotColor }} />
-                              {t.label}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
+                      {group.options.map((t: ScheduleItemPickerOption) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[t.metaType].dotColor }} />
+                            {t.label}
+                          </span>
+                        </SelectItem>
+                      ))}
                     </React.Fragment>
                   ))}
+                  {editOnlyCurrentType && (
+                    <>
+                      <div className="px-2 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                        Current type
+                      </div>
+                      <SelectItem value={blockPickerValue}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
+                          {currentTypeDisplayLabel()}
+                        </span>
+                      </SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
+              {editOnlyCurrentType && (
+                <p className="text-[11px] text-muted-foreground">
+                  This type is no longer offered for new items. You can keep it, or change it to another type.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Title *</Label>
               <Input value={blockTitle} onChange={(e) => setBlockTitle(e.target.value)}
-                placeholder={isBookingPlaceholder(blockType) ? "e.g. Smith Wedding" : "e.g. Tour with the Smith family"} autoFocus />
+                placeholder={isBookingPlaceholder(blockType) ? "e.g. Smith Wedding" : "e.g. Meeting with the Smith family"} autoFocus />
             </div>
             {blockType === "blocked_time" && (
               <div className="space-y-1.5">

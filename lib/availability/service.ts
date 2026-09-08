@@ -19,6 +19,22 @@ import type {
 } from "@/lib/availability/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { validateScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
+import { isLegacyOnlyManualScheduleType } from "@/lib/calendar/venue-calendar-scope";
+import {
+  isAppointmentCatalogBuiltinKey,
+  resolveScheduleCatalogWrite,
+} from "@/lib/calendar/schedule-item-catalog";
+import {
+  getBuiltinScheduleItemType,
+  getScheduleItemTypeById,
+} from "@/lib/calendar/schedule-item-catalog-repository";
+import { isBookingPlaceholder } from "@/lib/availability/types";
+
+function isCatalogOrSystemWritableType(type: import("@/lib/availability/types").ManualScheduleType): boolean {
+  return isBookingPlaceholder(type)
+    || type === "custom"
+    || isAppointmentCatalogBuiltinKey(type);
+}
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -146,10 +162,36 @@ export async function getBlock(blockId: string): Promise<CalendarBlock | null> {
 export async function createBlock(input: CalendarBlockInput): Promise<{ ok: true; blockId: string } | AvailabilityActionResult> {
   if (!input.title.trim()) return { ok: false, message: "Title is required." };
   if (!input.startDate) return { ok: false, message: "Start date is required." };
+  if (input.type === "tour") {
+    return { ok: false, message: "That schedule item type can’t be created. Book tours from Tours." };
+  }
+  if (input.type === "custom") {
+    if (!input.scheduleItemTypeId) {
+      return { ok: false, message: "Choose a valid custom schedule item type." };
+    }
+  } else if (!isCatalogOrSystemWritableType(input.type)) {
+    return { ok: false, message: "That schedule item type can’t be created. Book tours from Tours." };
+  }
   const timeError = validateScheduleItemTimes(input);
   if (timeError) return timeError;
   const result = await withVenue(async (supabase, venueId) => {
-    const blockId = await repo.insertBlock(supabase, venueId, input);
+    const catalog = input.type === "custom"
+      ? await getScheduleItemTypeById(supabase, venueId, input.scheduleItemTypeId!)
+      : isAppointmentCatalogBuiltinKey(input.type)
+        ? await getBuiltinScheduleItemType(supabase, venueId, input.type)
+        : null;
+    const resolved = resolveScheduleCatalogWrite({
+      type: input.type,
+      catalog,
+      scheduleItemTypeId: input.scheduleItemTypeId,
+    });
+    if (!resolved.ok) return resolved;
+    const blockId = await repo.insertBlock(supabase, venueId, {
+      ...input,
+      type: resolved.resolved.type,
+      scheduleItemTypeId: resolved.resolved.scheduleItemTypeId,
+      blocksAvailability: resolved.resolved.blocksAvailability,
+    });
     return { ok: true, blockId };
   });
   return result as { ok: true; blockId: string } | AvailabilityActionResult;
@@ -161,7 +203,58 @@ export async function updateBlock_(blockId: string, input: CalendarBlockInput): 
   const timeError = validateScheduleItemTimes(input);
   if (timeError) return timeError;
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateBlock(supabase, venueId, blockId, input);
+    const existing = await repo.getBlock(supabase, venueId, blockId);
+    if (!existing) return { ok: false, message: "Schedule item not found." } as AvailabilityActionResult;
+
+    const preservingLegacy =
+      isLegacyOnlyManualScheduleType(input.type) && existing.type === input.type;
+    const preservingSameType = existing.type === input.type
+      && (
+        input.type !== "custom"
+        || (input.scheduleItemTypeId ?? existing.scheduleItemTypeId) === existing.scheduleItemTypeId
+      );
+
+    if (!preservingLegacy) {
+      if (input.type === "custom" && !(input.scheduleItemTypeId || existing.scheduleItemTypeId)) {
+        return { ok: false, message: "Choose a valid custom schedule item type." } as AvailabilityActionResult;
+      }
+      if (
+        input.type !== "custom"
+        && !isCatalogOrSystemWritableType(input.type)
+        && !preservingSameType
+      ) {
+        return { ok: false, message: "That schedule item type can’t be used for new or changed items." } as AvailabilityActionResult;
+      }
+    }
+
+    const catalogTypeId = input.scheduleItemTypeId || existing.scheduleItemTypeId;
+    const catalog = preservingLegacy
+      ? null
+      : input.type === "custom"
+        ? (catalogTypeId ? await getScheduleItemTypeById(supabase, venueId, catalogTypeId) : null)
+        : isAppointmentCatalogBuiltinKey(input.type)
+          ? await getBuiltinScheduleItemType(supabase, venueId, input.type)
+          : null;
+
+    const resolved = resolveScheduleCatalogWrite({
+      type: input.type,
+      catalog,
+      scheduleItemTypeId: catalogTypeId,
+      preserveExisting: preservingLegacy || preservingSameType
+        ? {
+          scheduleItemTypeId: existing.scheduleItemTypeId,
+          blocksAvailability: existing.blocksAvailability,
+        }
+        : null,
+    });
+    if (!resolved.ok) return resolved;
+
+    await repo.updateBlock(supabase, venueId, blockId, {
+      ...input,
+      type: resolved.resolved.type,
+      scheduleItemTypeId: resolved.resolved.scheduleItemTypeId,
+      blocksAvailability: resolved.resolved.blocksAvailability,
+    });
     return { ok: true } as AvailabilityActionResult;
   });
   return result as AvailabilityActionResult;

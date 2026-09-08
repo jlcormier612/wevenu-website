@@ -1,44 +1,17 @@
 /**
  * Calendar Release Completion — Operational Perspectives.
  *
- * A Perspective is nothing but a named `CalendarFilterState` preset —
- * selecting one calls the exact same `setFilters` every manual filter
- * change already calls. No second filtering mechanism, no new query, no
- * new item construction. See docs/calendar-experience-completion.md for
- * the full architecture and docs/planning-execution-release-readiness.md-
- * style reasoning behind each perspective's exact scope.
+ * A Perspective is a named CalendarFilterState preset over the venue Calendar
+ * schedule (Slice 1: scheduled / reserved / blocked only — not dated work).
  *
- * Two things every perspective definition below was checked against before
- * being written, not assumed:
- *   1. Which CalendarItemTypes actually appear on the venue-wide Month/
- *      Week/Day/Agenda views (`lib/calendar/service.ts` + the Tours
- *      projection) — `planning_task` and `timeline_entry` are real types
- *      but Booking-Schedule-lens only (Calendar Integration Phase 3); they
- *      never appear here, so they're deliberately omitted below rather than
- *      included and silently matching nothing.
- *   2. Which of the brief's own named examples don't map to anything real
- *      in the current data model — named honestly in each perspective's
- *      own comment rather than forced or invented:
- *        - "Requests related to leads" (Sales): requests.client_id is
- *          NOT NULL and there is no lead_id column at all; confirmed via
- *          real data that every existing Request's client is already
- *          status='planning' (booked). Requests are always post-booking.
- *          Not included in Sales.
- *        - "Financial reminders" (Finance): task_reminders.scheduled_for
- *          is not a wired Calendar item type (confirmed absent from
- *          getCalendarData's construction) — not included in Finance.
- *        - "Timeline" (Operations): same Booking-Schedule-only constraint
- *          as above — not included.
- *        - "Staff meetings" (Operations): no dedicated manualType exists;
- *          the closest bucket ("Other") is too broad to stand in for it
- *          without also catching unrelated personal/miscellaneous blocks.
- *          Not included.
+ * Finance was removed in Slice 2A.0/2A.1 — payment/expiration dates are not
+ * venue Calendar items.
  */
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
 import type { CalendarFilterState } from "@/components/calendar/use-calendar-filters";
 
-export type PerspectiveId = "everything" | "sales" | "planning" | "finance" | "operations" | "wedding-day";
+export type PerspectiveId = "everything" | "sales" | "planning" | "operations" | "wedding-day";
 
 export type Perspective = {
   id: PerspectiveId;
@@ -59,48 +32,42 @@ export const PERSPECTIVES: Perspective[] = [
     id: "everything",
     label: "Everything",
     emoji: "🗓️",
-    description: "Current behavior — no filter.",
+    description: "All scheduled events, appointments, holds, and blocked time.",
     filters: NO_FILTER,
   },
   {
     id: "sales",
     label: "Sales",
     emoji: "🤝",
-    description: "Tours, consultations, and lead follow-ups — nothing operational after booking.",
-    filters: preset(["tour", "follow_up", "calendar_block"], ["tour", "consultation"]),
+    description: "Tours, consultations, and date holds — pre-booking schedule.",
+    // Include tasting + custom so catalog-driven creates remain visible here.
+    filters: preset(["tour", "date_hold", "calendar_block"], [
+      "consultation", "tasting", "client_meeting", "custom",
+    ]),
   },
   {
     id: "planning",
     label: "Planning",
     emoji: "📋",
-    description: "Everything after booking — scheduled activities, walkthroughs, tastings, vendor and client meetings, Requests. Nothing financial.",
-    // Requests can't be narrowed to "Planning" specifically — request_due
-    // carries no sourceFeature on its CalendarItem — so every Request due
-    // date is included here rather than mischaracterized as excluded; a
-    // Request tied to a booking is, at minimum, still post-booking
-    // operational work, matching this perspective's own "nothing
-    // financial" boundary (Finance is expirations, not Requests).
-    filters: preset(["planning_activity", "request_due", "calendar_block"], ["walkthrough", "tasting", "vendor_meeting", "client_meeting"]),
-  },
-  {
-    id: "finance",
-    label: "Finance",
-    emoji: "💰",
-    description: "Payments, contract expirations, document expirations. Nothing else.",
-    filters: preset(["payment_due", "contract_expiration", "document_expiration"]),
+    description: "Scheduled planning activities, walkthroughs, and client or vendor meetings.",
+    filters: preset(["planning_activity", "calendar_block"], [
+      "walkthrough", "vendor_meeting", "client_meeting", "tasting", "consultation", "custom",
+    ]),
   },
   {
     id: "operations",
     label: "Operations",
     emoji: "🧭",
-    description: "The coordinator's day-to-day operational workload — scheduled activities, vendor meetings, walkthroughs, blocked time, and wedding days.",
-    filters: preset(["planning_activity", "calendar_block", "event"], ["vendor_meeting", "walkthrough"]),
+    description: "Wedding days, scheduled activities, walkthroughs, vendor meetings, and blocked time.",
+    filters: preset(["planning_activity", "calendar_block", "event"], [
+      "vendor_meeting", "walkthrough", "blocked_time", "personal_appointment", "other", "custom",
+    ]),
   },
   {
     id: "wedding-day",
     label: "Wedding Day",
     emoji: "💍",
-    description: "Every wedding, venue-wide — one click still opens the Wedding Day dashboard.",
+    description: "Booked events — one click opens the Wedding Day dashboard.",
     filters: preset(["event"]),
   },
 ];

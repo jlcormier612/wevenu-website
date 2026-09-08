@@ -15,17 +15,17 @@ export function blockReasonLabel(reason: BlockReason): string {
   return BLOCK_REASONS.find((r) => r.value === reason)?.label ?? reason;
 }
 
-// Calendar Manual Type Redesign — every option a coordinator sees in "+ Add
-// Schedule Item"'s Type selector. Order matters: the most commonly manually
-// scheduled activities first, "Blocked Time" (the old, single-purpose
-// "Block" concept) and "Other" last, since neither is the primary case
-// anymore.
+/**
+ * Schedule Item types offered when the venue catalog is unavailable (fallback).
+ * Calendar 2A.2.2: the live picker prefers enabled catalog rows; Tasting is
+ * catalog-gated (default OFF) and is not listed here. Tour is never creatable
+ * here — book via tour_appointments. Legacy DB values remain readable via
+ * LEGACY_MANUAL_SCHEDULE_TYPE_LABELS / catalog labels.
+ */
 export const MANUAL_SCHEDULE_TYPE_OPTIONS: { value: ManualScheduleType; label: string }[] = [
-  { value: "tour",                  label: "Tour" },
   { value: "consultation",          label: "Consultation" },
   { value: "client_meeting",        label: "Client Meeting" },
   { value: "walkthrough",           label: "Walkthrough" },
-  { value: "tasting",               label: "Tasting" },
   { value: "vendor_meeting",        label: "Vendor Meeting" },
   { value: "wedding_event_booking", label: "Wedding / Event Booking" },
   { value: "private_event",         label: "Private Event" },
@@ -34,8 +34,24 @@ export const MANUAL_SCHEDULE_TYPE_OPTIONS: { value: ManualScheduleType; label: s
   { value: "other",                 label: "Other" },
 ];
 
+/** Labels for legacy calendar_blocks.type values that are no longer creatable as new items without catalog enablement. */
+export const LEGACY_MANUAL_SCHEDULE_TYPE_LABELS: Partial<Record<ManualScheduleType, string>> = {
+  tour: "Manual tour (not a booked tour)",
+  tasting: "Tasting",
+};
+
+/**
+ * Hardcoded creatable fallback (no catalog). Does not include Tour or Tasting —
+ * Tasting creatability is catalog-authoritative in createBlock.
+ */
+export function isCreatableManualScheduleType(type: ManualScheduleType): boolean {
+  return MANUAL_SCHEDULE_TYPE_OPTIONS.some((t) => t.value === type);
+}
+
 export function manualScheduleTypeLabel(type: ManualScheduleType): string {
-  return MANUAL_SCHEDULE_TYPE_OPTIONS.find((t) => t.value === type)?.label ?? type;
+  return MANUAL_SCHEDULE_TYPE_OPTIONS.find((t) => t.value === type)?.label
+    ?? LEGACY_MANUAL_SCHEDULE_TYPE_LABELS[type]
+    ?? type;
 }
 
 export const HOLD_STATUS_LABEL: Record<HoldStatus, string> = {

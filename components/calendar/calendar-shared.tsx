@@ -61,24 +61,21 @@ export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
 // own entries rather than duplicating them — a manually-scheduled "Tour" on
 // Calendar should look exactly like a real booked tour, not a lookalike.
 export const MANUAL_TYPE_META: Record<ManualScheduleType, ItemMeta> = {
-  tour:                 TYPE_META.tour,
-  // Consultation/Client Meeting/Vendor Meeting share one color on purpose —
-  // "orange" means "someone's talking to someone," the icon carries the
-  // rest of the distinction.
+  // Legacy manual Tour rows — must not look identical to tour_appointments.
+  tour:                 { label: "Manual tour (not booked)", icon: Ban,      dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
   consultation:         { label: "Consultation",         icon: Phone,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   client_meeting:       { label: "Client Meeting",       icon: Users,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   vendor_meeting:       { label: "Vendor Meeting",       icon: Handshake, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   walkthrough:          { label: "Walkthrough",          icon: Footprints, dotColor: "var(--cal-walkthrough)", textClass: "text-heading" },
-  tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
+  tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
   personal_appointment: { label: "Personal Appointment", icon: User,      dotColor: "var(--cal-follow-up)", textClass: "text-muted-foreground" },
   blocked_time:         TYPE_META.calendar_block,
-  // Calendar Booking Placeholder — deliberately reuses the real Event's own
-  // visual identity, not a lookalike: "is this date available" must read
-  // identically whether the answer is a real booking or a placeholder one
-  // (a coordinator scanning the month shouldn't have to know which).
-  wedding_event_booking: TYPE_META.event,
-  private_event:         TYPE_META.event,
+  // Reserved/held dates — must not reuse Event visual identity (Slice 1).
+  wedding_event_booking: { label: "Reserved date", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
+  private_event:         { label: "Reserved date", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
   other:                { label: "Other",                icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
+  // Custom catalog offerings reuse Other visuals; label comes from catalogLabel.
+  custom:               { label: "Custom",               icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
 };
 
 /** Resolves the correct visual identity for any item — manual schedule items
@@ -114,6 +111,7 @@ export function ItemRow({
 }) {
   const meta = resolveItemMeta(item);
   const Icon = meta.icon;
+  const typeLabel = item.catalogLabel?.trim() || meta.label;
   const isBlock = item.type === "calendar_block";
   // Calendar Booking Placeholder — a not-yet-converted one still gets the
   // block treatment (delete stays available) plus a "Convert to Booking"
@@ -134,7 +132,7 @@ export function ItemRow({
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex items-center gap-2 flex-wrap">
           <p className={cn("text-xs font-semibold uppercase tracking-wide", meta.textClass)}>
-            {meta.label}
+            {typeLabel}
           </p>
           {showDate && (
             <span className="text-xs text-muted-foreground">

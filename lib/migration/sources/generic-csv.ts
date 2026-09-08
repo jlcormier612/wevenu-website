@@ -125,6 +125,13 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
     if (!RECURRENCE_RULES.has(ruleRaw as RecurrenceRule)) {
       return { ok: false, error: `Unrecognized recurrence "${ruleRaw}". Use none, daily, weekly, monthly, or annual.` };
     }
+    if (typeRaw === "custom" && !str(row, "scheduleItemTypeId") && !str(row, "customKey")) {
+      return {
+        ok: false,
+        error:
+          "Custom schedule items need an existing appointment type for this venue (catalog id or custom key). HTC will not invent a new type during import.",
+      };
+    }
     const normalized: NormalizedCalendarBlockLike = {
       title,
       type: typeRaw as ManualScheduleType,
@@ -139,6 +146,8 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
       recurrenceEndsOn: str(row, "recurrenceEndsOn"),
       recurrenceInterval: str(row, "recurrenceInterval"),
       recurrenceCount: str(row, "recurrenceCount"),
+      scheduleItemTypeId: str(row, "scheduleItemTypeId"),
+      customKey: str(row, "customKey"),
       sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
     };
     return { ok: true, entityType, normalized };

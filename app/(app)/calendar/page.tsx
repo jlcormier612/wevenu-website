@@ -3,8 +3,8 @@ import Link from "next/link";
 import { Printer } from "lucide-react";
 
 import { CalendarView } from "@/components/calendar/calendar-view";
-import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { getScheduleItemTypesForPicker } from "@/lib/calendar/schedule-item-catalog-service";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
 
 export const metadata: Metadata = { title: "Calendar" };
@@ -21,7 +21,10 @@ type Props = { searchParams: Promise<CalendarViewParams> };
  */
 export default async function CalendarPage({ searchParams }: Props) {
   const params = await searchParams;
-  const { view, year, month, weekStart, dayDate, items, today } = await resolveCalendarView(params);
+  const [{ view, year, month, weekStart, dayDate, items, today }, scheduleCatalog] = await Promise.all([
+    resolveCalendarView(params),
+    getScheduleItemTypesForPicker(),
+  ]);
 
   const printHref = `/calendar/print?view=${view}&year=${year}&month=${month}&weekStart=${weekStart}&date=${dayDate}`;
 
@@ -30,7 +33,7 @@ export default async function CalendarPage({ searchParams }: Props) {
       <div className="flex items-start justify-between gap-4">
         <PageHeader
           title="Calendar"
-          description="Every important date across your events, leads, and clients — in one view."
+          description="Your venue’s schedule — events, appointments, holds, and blocked time."
         />
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <Link
@@ -40,10 +43,6 @@ export default async function CalendarPage({ searchParams }: Props) {
           >
             <Printer className="h-3.5 w-3.5" /> Print / Export
           </Link>
-          <SetupGuideLink
-            href="/help/understanding-your-calendar"
-            label="What's the difference between these?"
-          />
         </div>
       </div>
       <CalendarView
@@ -54,6 +53,7 @@ export default async function CalendarPage({ searchParams }: Props) {
         dayDate={dayDate}
         items={items}
         today={today}
+        scheduleCatalog={scheduleCatalog}
       />
     </div>
   );

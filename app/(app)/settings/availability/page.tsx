@@ -4,6 +4,7 @@ import { CapacityRulesSection } from "@/components/availability/capacity-rules-s
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { ScheduledAppointmentTypesSection } from "@/components/settings/scheduled-appointment-types-section";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
 import {
@@ -13,17 +14,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getScheduleItemTypesForSettings } from "@/lib/calendar/schedule-item-catalog-service";
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
 import { getTourAvailability } from "@/lib/tours/service";
+import { getCurrentUserRole } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Availability & Capacity — Settings" };
 
 export default async function AvailabilityCapacitySettingsPage() {
-  const [spaces, capacityRules, tourAvailability] = await Promise.all([
-    getSpaces(), getCapacityRules(), getTourAvailability(),
+  const [spaces, capacityRules, tourAvailability, catalogTypes, role] = await Promise.all([
+    getSpaces(),
+    getCapacityRules(),
+    getTourAvailability(),
+    getScheduleItemTypesForSettings(),
+    getCurrentUserRole(),
   ]);
   const { windows, exceptions, loadError } = editorHydrationFromAvailability(tourAvailability);
+  const canEditCatalog = role === "owner" || role === "manager";
 
   return (
     <div className="space-y-6">
@@ -48,6 +56,21 @@ export default async function AvailabilityCapacitySettingsPage() {
             loadError={loadError}
           />
           <SetupGuideLink href="/help/setup-calendar-availability#tour-availability" label="Deciding whether to offer online tours" />
+        </CardContent>
+      </Card>
+
+      <Card id="scheduled-appointment-types" className="scroll-mt-20">
+        <CardHeader>
+          <CardTitle className="text-base">Scheduled appointment types</CardTitle>
+          <CardDescription>
+            Choose the kinds of appointments and reserved time your team can add on the Calendar. You can turn types on or off and add your own.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ScheduledAppointmentTypesSection
+            initialTypes={catalogTypes}
+            canEdit={canEditCatalog}
+          />
         </CardContent>
       </Card>
 

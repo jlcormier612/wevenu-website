@@ -188,6 +188,13 @@ export type NormalizedCalendarBlockLike = {
   recurrenceEndsOn?: string | null;
   recurrenceInterval?: string | null;
   recurrenceCount?: string | null;
+  /**
+   * Required for type=custom imports — existing venue catalog row id.
+   * HTC never invents a catalog type during import.
+   */
+  scheduleItemTypeId?: string | null;
+  /** Alternate custom lookup when scheduleItemTypeId is absent. */
+  customKey?: string | null;
   sourceId?: string | null;
 };
 

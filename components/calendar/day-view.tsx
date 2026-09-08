@@ -31,7 +31,7 @@ export function DayView({
   deletePending?: boolean;
 }) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "day");
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
   const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
   const [y, m, d] = date.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);

@@ -1,19 +1,15 @@
-"use client";
-
 /**
  * Calendar Integration Phase 4 — multi-filtering + saved filters.
  *
  * Client-only, localStorage-persisted filter state (type + assignee +
- * space), shared by Month/Week/Day/Agenda so a coordinator's filter
- * choices carry across views rather than resetting on every navigation.
- * No backend schema — Phase 4 is explicitly "not more data," and no
- * saved-view/preferences table exists anywhere else in the app to build
- * on, so this stays a browser preference, not a synced one.
+ * space + manualTypes). Calendar Slice 1: one shared storage key so Month /
+ * Week / Day / Agenda keep the same filter selections when switching views.
  */
 import * as React from "react";
 
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
+import { sanitizeVenueCalendarFilters } from "@/lib/calendar/venue-calendar-scope";
 
 export type CalendarFilterState = {
   types: CalendarItemType[] | null; // null = "all types," never persisted as an explicit exclusion list
@@ -30,27 +26,51 @@ export type CalendarFilterState = {
 
 export const UNASSIGNED = "__unassigned__";
 
+/** Shared across Month/Week/Day/Agenda — do not per-view-key this. */
+export const CALENDAR_FILTER_STORAGE_KEY = "shared";
+
 const STORAGE_PREFIX = "wevenu-calendar-filters:";
+
+const EMPTY_FILTERS: CalendarFilterState = {
+  types: null,
+  staffId: null,
+  spaceId: null,
+  manualTypes: null,
+};
 
 function loadSaved(key: string): CalendarFilterState | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CalendarFilterState;
+    return sanitizeVenueCalendarFilters({
+      types: parsed.types ?? null,
+      staffId: parsed.staffId ?? null,
+      spaceId: parsed.spaceId ?? null,
+      manualTypes: parsed.manualTypes ?? null,
+    });
   } catch {
     return null;
   }
 }
 
-export function useCalendarFilters(items: CalendarItem[], storageKey: string) {
+/**
+ * @param storageKey Ignored for persistence (always CALENDAR_FILTER_STORAGE_KEY).
+ * Kept optional so call sites can stay readable; pass-through values are
+ * normalized to the shared key.
+ */
+export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) {
+  const storageKey = CALENDAR_FILTER_STORAGE_KEY;
   const [filters, setFiltersState] = React.useState<CalendarFilterState>(
-    () => loadSaved(storageKey) ?? { types: null, staffId: null, spaceId: null, manualTypes: null },
+    () => loadSaved(storageKey) ?? EMPTY_FILTERS,
   );
 
   const setFilters = React.useCallback((next: CalendarFilterState) => {
-    setFiltersState(next);
+    const sanitized = sanitizeVenueCalendarFilters(next);
+    setFiltersState(sanitized);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(next));
+      window.localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(sanitized));
     }
   }, [storageKey]);
 

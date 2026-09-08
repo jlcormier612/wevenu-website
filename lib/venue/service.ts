@@ -264,6 +264,13 @@ export async function submitVenueSetup(
     } catch (seedError) {
       console.error("Could not seed saved report starters:", seedError);
     }
+    try {
+      const { seedVenueScheduleItemTypes } = await import("@/lib/calendar/schedule-item-catalog-repository");
+      // Defensive idempotent seed (SQL AFTER INSERT trigger is the primary path).
+      await seedVenueScheduleItemTypes(supabase, venueId);
+    } catch (seedError) {
+      console.error("Could not seed schedule item catalog:", seedError);
+    }
     pushVenueProfileToCrm(venueId, input, "setup_submit");
     return { ok: true, venueId };
   } catch (error) {

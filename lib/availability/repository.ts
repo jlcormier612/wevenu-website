@@ -25,12 +25,32 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type SpaceRow = { id: string; venue_id: string; name: string; description: string | null; capacity: number | null; is_active: boolean; sort_order: number; created_at: string; updated_at: string; };
 type RulesRow = { id: string; venue_id: string; max_simultaneous_events: number; max_simultaneous_tours: number; min_turnaround_hours: number; created_at: string; updated_at: string; };
 type HoldRow = { id: string; venue_id: string; lead_id: string | null; space_id: string | null; title: string; hold_date: string; start_time: string | null; end_time: string | null; status: DateHold["status"]; expires_at: string | null; notes: string | null; created_at: string; updated_at: string; leads?: { first_name: string; last_name: string } | null; venue_spaces?: { name: string } | null; };
-type BlockRow = { id: string; venue_id: string; title: string; type: CalendarBlock["type"]; reason: CalendarBlock["reason"]; start_date: string; end_date: string; is_all_day: boolean; start_time: string | null; end_time: string | null; notes: string | null; recurrence_rule: string; recurrence_ends_on: string | null; recurrence_interval: number | null; recurrence_count: number | null; lead_id: string | null; client_id: string | null; created_at: string; event_type: string | null; client_name: string | null; guest_count: number | null; estimated_revenue: number | string | null; converted_lead_id: string | null; };
+type BlockRow = {
+  id: string; venue_id: string; title: string; type: CalendarBlock["type"]; reason: CalendarBlock["reason"];
+  start_date: string; end_date: string; is_all_day: boolean; start_time: string | null; end_time: string | null;
+  notes: string | null; recurrence_rule: string; recurrence_ends_on: string | null; recurrence_interval: number | null;
+  recurrence_count: number | null; lead_id: string | null; client_id: string | null; created_at: string;
+  event_type: string | null; client_name: string | null; guest_count: number | null;
+  estimated_revenue: number | string | null; converted_lead_id: string | null;
+  schedule_item_type_id: string | null; blocks_availability: boolean | null;
+};
 
 const mapSpace = (r: SpaceRow): VenueSpace => ({ id: r.id, venueId: r.venue_id, name: r.name, description: r.description, capacity: r.capacity, isActive: r.is_active, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
 const mapRules = (r: RulesRow): VenueCapacityRules => ({ id: r.id, venueId: r.venue_id, maxSimultaneousEvents: r.max_simultaneous_events, maxSimultaneousTours: r.max_simultaneous_tours, minTurnaroundHours: Number(r.min_turnaround_hours), createdAt: r.created_at, updatedAt: r.updated_at });
 const mapHold = (r: HoldRow): DateHold => ({ id: r.id, venueId: r.venue_id, leadId: r.lead_id, spaceId: r.space_id, title: r.title, holdDate: r.hold_date, startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, status: r.status, expiresAt: r.expires_at, notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at, leadName: r.leads ? `${r.leads.first_name} ${r.leads.last_name}` : null, spaceName: r.venue_spaces?.name ?? null });
-const mapBlock = (r: BlockRow): CalendarBlock => ({ id: r.id, venueId: r.venue_id, title: r.title, type: r.type, reason: r.reason, startDate: r.start_date, endDate: r.end_date, isAllDay: r.is_all_day, startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, notes: r.notes, recurrenceRule: (r.recurrence_rule ?? "none") as CalendarBlock["recurrenceRule"], recurrenceEndsOn: r.recurrence_ends_on ?? null, recurrenceInterval: r.recurrence_interval ?? 1, recurrenceCount: r.recurrence_count ?? null, leadId: r.lead_id ?? null, clientId: r.client_id ?? null, createdAt: r.created_at, eventType: r.event_type, clientName: r.client_name, guestCount: r.guest_count, estimatedRevenue: r.estimated_revenue != null ? Number(r.estimated_revenue) : null, convertedLeadId: r.converted_lead_id });
+const mapBlock = (r: BlockRow): CalendarBlock => ({
+  id: r.id, venueId: r.venue_id, title: r.title, type: r.type, reason: r.reason,
+  startDate: r.start_date, endDate: r.end_date, isAllDay: r.is_all_day,
+  startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null,
+  notes: r.notes, recurrenceRule: (r.recurrence_rule ?? "none") as CalendarBlock["recurrenceRule"],
+  recurrenceEndsOn: r.recurrence_ends_on ?? null, recurrenceInterval: r.recurrence_interval ?? 1,
+  recurrenceCount: r.recurrence_count ?? null, leadId: r.lead_id ?? null, clientId: r.client_id ?? null,
+  createdAt: r.created_at, eventType: r.event_type, clientName: r.client_name, guestCount: r.guest_count,
+  estimatedRevenue: r.estimated_revenue != null ? Number(r.estimated_revenue) : null,
+  convertedLeadId: r.converted_lead_id,
+  scheduleItemTypeId: r.schedule_item_type_id ?? null,
+  blocksAvailability: r.blocks_availability ?? true,
+});
 
 // ---- Spaces ------------------------------------------------------------------
 
@@ -170,8 +190,15 @@ export async function getBlocksForDates(client: DbClient, venueId: string, start
  * The full column set for a manual Schedule Item, shared by insert and update
  * so an edit can never persist a different shape than a create — the two
  * drifting apart is exactly how "edit quietly drops a field" bugs happen.
+ *
+ * scheduleItemTypeId / blocksAvailability must be resolved by the caller
+ * (Calendar create/update or Migration Center catalog resolve) before insert/
+ * update. type=custom requires a non-null schedule_item_type_id (DB check).
  */
-function blockColumns(input: CalendarBlockInput) {
+function blockColumns(input: CalendarBlockInput & {
+  scheduleItemTypeId?: string | null;
+  blocksAvailability?: boolean;
+}) {
   const isBooking = BOOKING_SCHEDULE_TYPES.includes(input.type);
   const repeats = !!input.recurrenceRule && input.recurrenceRule !== "none";
   // A date end and a count end are mutually exclusive (DB constraint
@@ -201,10 +228,16 @@ function blockColumns(input: CalendarBlockInput) {
     client_name: isBooking ? (input.clientName.trim() || null) : null,
     guest_count: isBooking && input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
     estimated_revenue: isBooking && input.estimatedRevenue.trim() ? Number(input.estimatedRevenue.replace(/[$,]/g, "")) : null,
+    schedule_item_type_id: input.scheduleItemTypeId ?? null,
+    blocks_availability: input.blocksAvailability ?? true,
   };
 }
 
-export async function insertBlock(client: DbClient, venueId: string, input: CalendarBlockInput): Promise<string> {
+export async function insertBlock(
+  client: DbClient,
+  venueId: string,
+  input: CalendarBlockInput & { scheduleItemTypeId?: string | null; blocksAvailability?: boolean },
+): Promise<string> {
   const { data, error } = await client.from("calendar_blocks")
     .insert({ venue_id: venueId, ...blockColumns(input) })
     .select("id").single<{ id: string }>();
@@ -212,7 +245,12 @@ export async function insertBlock(client: DbClient, venueId: string, input: Cale
   return data.id;
 }
 
-export async function updateBlock(client: DbClient, venueId: string, blockId: string, input: CalendarBlockInput): Promise<void> {
+export async function updateBlock(
+  client: DbClient,
+  venueId: string,
+  blockId: string,
+  input: CalendarBlockInput & { scheduleItemTypeId?: string | null; blocksAvailability?: boolean },
+): Promise<void> {
   // venue_id is never in the update payload and is re-asserted in the filter —
   // an edit must not be able to move a schedule item to another venue.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -281,7 +319,7 @@ export async function checkAvailability(
     : 60;
 
   const blocksQuery = client.from("calendar_blocks")
-    .select("title, type, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_interval, recurrence_ends_on, recurrence_count")
+    .select("title, type, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_interval, recurrence_ends_on, recurrence_count, blocks_availability")
     .eq("venue_id", venueId)
     .or(`and(start_date.lte.${rangeEnd},end_date.gte.${opts.date},recurrence_rule.eq.none),and(recurrence_rule.neq.none,start_date.lte.${rangeEnd},or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${opts.date}))`);
 

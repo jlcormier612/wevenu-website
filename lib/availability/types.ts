@@ -73,17 +73,17 @@ export type RecurrenceEndMode = "never" | "on_date" | "after_count";
 export const MANUAL_SCHEDULE_TYPES = [
   "tour", "consultation", "client_meeting", "walkthrough", "tasting",
   "vendor_meeting", "wedding_event_booking", "private_event",
-  "personal_appointment", "blocked_time", "other",
+  "personal_appointment", "blocked_time", "other", "custom",
 ] as const;
 export type ManualScheduleType = (typeof MANUAL_SCHEDULE_TYPES)[number];
 
-// The "Schedule Item" picker groups types this way — a venue thinks in
-// terms of Meetings/Bookings/Availability/Other, not one flat list.
+// The "Schedule Item" picker groups types this way when the venue catalog is
+// unavailable. Calendar 2A.2.2 prefers catalog-driven groups (Appointments /
+// Reserved & blocked time / Reserved dates) built in schedule-item-catalog.
 export const MANUAL_SCHEDULE_TYPE_GROUPS: { label: string; types: ManualScheduleType[] }[] = [
-  { label: "Meetings", types: ["tour", "consultation", "client_meeting", "walkthrough", "tasting", "vendor_meeting"] },
-  { label: "Bookings", types: ["wedding_event_booking", "private_event"] },
-  { label: "Availability", types: ["blocked_time", "personal_appointment"] },
-  { label: "Other", types: ["other"] },
+  { label: "Appointments", types: ["consultation", "client_meeting", "walkthrough", "vendor_meeting"] },
+  { label: "Reserved & blocked time", types: ["personal_appointment", "blocked_time", "other"] },
+  { label: "Reserved dates", types: ["wedding_event_booking", "private_event"] },
 ];
 
 export const BOOKING_SCHEDULE_TYPES: ManualScheduleType[] = ["wedding_event_booking", "private_event"];
@@ -123,6 +123,10 @@ export type CalendarBlock = {
   estimatedRevenue: number | null;
   /** Set once "Convert to Booking" creates a real Lead from this placeholder — the placeholder stays, as a receipt of where the date's booking came from. */
   convertedLeadId: string | null;
+  /** Catalog offering this block was created from (configuration FK; null for placeholders/legacy). */
+  scheduleItemTypeId: string | null;
+  /** Occupancy snapshot for Event covering — authoritative until this row is edited. */
+  blocksAvailability: boolean;
 };
 
 // ---- Conflict detection types -----------------------------------------------
@@ -196,6 +200,11 @@ export type CalendarBlockInput = {
   /** Optional "Related to". At most one of these is persisted. */
   leadId?: string | null;
   clientId?: string | null;
+  /**
+   * Required when type === "custom". Ignored for builtins (resolved by builtin_key)
+   * and for reserved-time placeholders.
+   */
+  scheduleItemTypeId?: string | null;
   /** Only meaningful when type is one of BOOKING_SCHEDULE_TYPES; ignored otherwise. */
   eventType: string;
   clientName: string;

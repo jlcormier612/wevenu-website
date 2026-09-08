@@ -134,6 +134,28 @@ select prosrc ~* 'plus_one_name' as build_seating_json_selects_plus_one_name
 \echo '-- 20261308000000: no client_key_dates row left that duplicates an agreeing rehearsal_date --'
 select count(*) from public.client_key_dates ckd join public.clients c on c.id = ckd.client_id
   where c.rehearsal_date is not null and ckd.date = c.rehearsal_date and ckd.label ~* '^rehearsal\b';
+\echo ''
+\echo '===== L. Calendar appointment catalog migrations (2A.1–2A.2.4) ====='
+\echo '-- tracking rows present (expect all three after apply-sandbox-migrations.sh) --'
+\echo '-- expected names: venue_schedule_item_types_catalog, venue_schedule_item_types_custom_label_unique, calendar_blocks_custom_requires_catalog_fk --'
+select version, name from supabase_migrations.schema_migrations
+  where version in ('20261352000000','20261353000000','20261354000000')
+     or name in (
+       'venue_schedule_item_types_catalog',
+       'venue_schedule_item_types_custom_label_unique',
+       'calendar_blocks_custom_requires_catalog_fk'
+     )
+  order by version;
+\echo '-- catalog table + custom FK check present --'
+select to_regclass('public.venue_schedule_item_types') is not null as catalog_table_exists;
+select conname from pg_constraint
+  where conrelid = 'public.calendar_blocks'::regclass
+    and conname = 'calendar_blocks_custom_requires_catalog_fk';
+\echo '-- calendar_blocks catalog columns present --'
+select column_name from information_schema.columns
+  where table_schema='public' and table_name='calendar_blocks'
+    and column_name in ('schedule_item_type_id','blocks_availability')
+  order by column_name;
 SQL
 if [ $? -ne 0 ]; then
   echo "One or more verification queries failed to run — paste the full output back, including which query errored."

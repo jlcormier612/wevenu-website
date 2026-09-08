@@ -19,6 +19,13 @@ import { createPackage, createPackageForVenue } from "@/lib/packages/service";
 import * as availRepo from "@/lib/availability/repository";
 import * as eventsRepo from "@/lib/events/repository";
 import * as clientsRepo from "@/lib/clients/repository";
+import { isAppointmentCatalogBuiltinKey } from "@/lib/calendar/schedule-item-catalog";
+import {
+  getBuiltinScheduleItemType,
+  getCustomScheduleItemTypeByKey,
+  getScheduleItemTypeById,
+} from "@/lib/calendar/schedule-item-catalog-repository";
+import { resolveMigrationCalendarBlockCatalog } from "@/lib/migration/calendar-block-catalog";
 import type { ClientInput } from "@/lib/clients/types";
 import type { LeadInput } from "@/lib/leads/types";
 import type { VendorInput } from "@/lib/vendors/types";
@@ -1007,10 +1014,33 @@ async function commitOneRecord(
     }
     if (entityType === "calendar_block") {
       const n = record.normalizedPayload as unknown as NormalizedCalendarBlockLike;
+      const type = n.type as ManualScheduleType;
+      const scheduleItemTypeId = n.scheduleItemTypeId?.trim() || null;
+      const customKey = n.customKey?.trim() || null;
+      const [catalogById, catalogByCustomKey, catalogByBuiltinKey] = await Promise.all([
+        scheduleItemTypeId
+          ? getScheduleItemTypeById(client as never, session.venueId, scheduleItemTypeId)
+          : Promise.resolve(null),
+        customKey && type === "custom"
+          ? getCustomScheduleItemTypeByKey(client as never, session.venueId, customKey)
+          : Promise.resolve(null),
+        isAppointmentCatalogBuiltinKey(type)
+          ? getBuiltinScheduleItemType(client as never, session.venueId, type)
+          : Promise.resolve(null),
+      ]);
+      const catalogResolved = resolveMigrationCalendarBlockCatalog({
+        type,
+        scheduleItemTypeId,
+        customKey,
+        catalogById,
+        catalogByCustomKey,
+        catalogByBuiltinKey,
+      });
+      if (!catalogResolved.ok) return { ok: false, error: catalogResolved.error };
       const input: CalendarBlockInput = {
         title: n.title,
-        type: n.type as ManualScheduleType,
-        reason: (n.reason as BlockReason | null) ?? (n.type === "blocked_time" ? "other" : null),
+        type: catalogResolved.resolved.type,
+        reason: (n.reason as BlockReason | null) ?? (catalogResolved.resolved.type === "blocked_time" ? "other" : null),
         startDate: n.startDate,
         endDate: n.endDate ?? n.startDate,
         isAllDay: n.isAllDay ?? true,
@@ -1025,8 +1055,13 @@ async function commitOneRecord(
         clientName: "",
         guestCount: "",
         estimatedRevenue: "",
+        scheduleItemTypeId: catalogResolved.resolved.scheduleItemTypeId,
       };
-      const blockId = await availRepo.insertBlock(client, session.venueId, input);
+      const blockId = await availRepo.insertBlock(client, session.venueId, {
+        ...input,
+        scheduleItemTypeId: catalogResolved.resolved.scheduleItemTypeId,
+        blocksAvailability: catalogResolved.resolved.blocksAvailability,
+      });
       return { ok: true, entityId: blockId };
     }
     if (entityType === "date_hold") {

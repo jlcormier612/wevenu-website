@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const MIGRATION = "supabase/migrations/20261321000000_calendar_block_recurrence_coverage.sql";
+const CATALOG_MIGRATION = "supabase/migrations/20261352000000_venue_schedule_item_types_catalog.sql";
 const PRECHECK = "lib/availability/precheck.ts";
 const REPO = "lib/availability/repository.ts";
 const CLIENTS = "lib/clients/service.ts";
@@ -11,6 +12,7 @@ const COVERAGE = "lib/availability/calendar-block-coverage.ts";
 
 describe("recurring calendar_blocks seams", () => {
   const sql = readFileSync(resolve(MIGRATION), "utf8");
+  const catalogSql = readFileSync(resolve(CATALOG_MIGRATION), "utf8");
   const precheck = readFileSync(resolve(PRECHECK), "utf8");
   const repo = readFileSync(resolve(REPO), "utf8");
   const clients = readFileSync(resolve(CLIENTS), "utf8");
@@ -50,5 +52,12 @@ describe("recurring calendar_blocks seams", () => {
   it("Tour covering still filters to closing types only", () => {
     assert.match(sql, /array\['blocked_time', 'wedding_event_booking', 'private_event'\]/);
     assert.match(precheck, /TOUR_CLOSING_CALENDAR_BLOCK_TYPES/);
+  });
+
+  it("Slice 2A.1 Event covering requires blocks_availability snapshot", () => {
+    assert.match(catalogSql, /cb\.blocks_availability = true/);
+    assert.match(catalogSql, /p_types null = Event covering \(blocks_availability=true only\)/);
+    assert.match(coverage, /requireAvailabilitySnapshot/);
+    assert.match(coverage, /blocksAvailability === false/);
   });
 });

@@ -34,7 +34,7 @@ export function AgendaView({
   deletePending?: boolean;
 }) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "agenda");
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
   const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
 
   // Same ±1-month semantics as the "ArrowLeft"/"ArrowRight" keyboard

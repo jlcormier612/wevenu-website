@@ -1,19 +1,17 @@
 /**
- * Calendar application service (Sprint 17, extended through Calendar
- * Integration Phase 1, Phase 2, and Phase 3).
+ * Calendar application service (Sprint 17 → Calendar Integration → Slice 1).
  *
- * getCalendarData() aggregates data from existing tables in parallel for one
- * venue-wide month — no new DB tables, and this function's own behavior is
- * unchanged by Phase 3 (see booking-schedule.ts for the new booking-scoped
- * lens, which reuses each feature's own service functions rather than
- * querying tables directly).
- * Returns a flat list of CalendarItems for the given month.
+ * getCalendarData() aggregates venue-wide scheduled / reserved / blocked time
+ * for one month. Calendar Slice 1 removed dated work (payments, follow-ups,
+ * key dates, request dues, expirations) from this aggregation — those remain
+ * on their owning surfaces and on Booking Schedule where appropriate.
+ *
+ * See lib/calendar/venue-calendar-scope.ts and lib/calendar/booking-schedule.ts.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { CalendarData, CalendarItem, ScheduleRelationOption } from "@/lib/calendar/types";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { venueToday } from "@/lib/venue/timezone";
 import { eventTypeLabel, formatCurrency } from "@/lib/leads/constants";
 import { getTourCalendarEntries } from "@/lib/tours/service";
 import { blockReasonLabel } from "@/lib/availability/constants";
@@ -24,15 +22,13 @@ import { calendarDatesForProtectedEvent } from "@/lib/calendar/event-display";
 import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { toScheduleRelationOption, type ScheduleRelationRow } from "@/lib/calendar/schedule-relation-search";
 
-// Calendar Booking Placeholder — the same "is this date available" answer
-// a real Event's own subtitle would carry, built from whatever the
-// coordinator actually filled in (all three fields are optional).
+// Calendar Booking Placeholder — reserved/held time, not a booked Event.
 function bookingPlaceholderSubtitle(guestCount: number | null, estimatedRevenue: number | string | null, convertedLeadId: string | null): string | null {
-  const parts: string[] = [];
+  const parts: string[] = ["Reserved date"];
   if (guestCount != null) parts.push(`${guestCount} guest${guestCount === 1 ? "" : "s"}`);
   if (estimatedRevenue != null) parts.push(formatCurrency(Number(estimatedRevenue)));
   if (convertedLeadId) parts.push("→ Lead");
-  return parts.length > 0 ? parts.join(" · ") : "Booked";
+  return parts.join(" · ");
 }
 
 const SCHEDULE_RELATION_ROW_COLUMNS =
@@ -115,15 +111,10 @@ export async function getCalendarData(
   const start = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-  // The venue's own today, not the server's — on a UTC-deployed server the
-  // two differ for part of every evening, which is exactly when a coordinator
-  // is most likely to be checking whether something is overdue.
-  const todayIso = venueToday(venue.timezone);
 
-  // Ten parallel queries across existing tables, plus tours' own projection
+  // Venue Calendar Slice 1 — scheduled / reserved / blocked only.
   const [
-    eventsRes, tourItems, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes, scheduledTasksRes,
-    requestsRes, contractsRes, documentsRes,
+    eventsRes, tourItems, holdsRes, blocksRes, scheduledTasksRes,
   ] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
@@ -133,10 +124,7 @@ export async function getCalendarData(
       .lte("event_date", end)
       .or(`event_end_date.gte.${start},and(event_end_date.is.null,event_date.gte.${start})`),
 
-    // 2. Venue tours — tours' own calendar projection (TR-B4: this used to
-    // read the legacy leads.tour_date field directly and silently never
-    // reflected publicly-booked tours; tour_appointments is now the single
-    // canonical source regardless of how the tour was scheduled).
+    // 2. Venue tours — tour_appointments is the only Tour SoR on Calendar.
     //
     // Event → Tour conflict is operational-window overlap, enforced by
     // `_is_tour_slot_blocked` / slot generation — not by Calendar. Calendar
@@ -144,32 +132,7 @@ export async function getCalendarData(
     // their intervals do not overlap, or when the Tour was booked first.
     getTourCalendarEntries(supabase, venue.id, start, end, venue.timezone),
 
-    // 3. Follow-up dates (from leads)
-    supabase.from("leads")
-      .select("id, first_name, last_name, partner_first_name, follow_up_date, next_action_text, status")
-      .eq("venue_id", venue.id)
-      .not("follow_up_date", "is", null)
-      .not("status", "in", "(won,lost,cancelled)")
-      .gte("follow_up_date", start)
-      .lte("follow_up_date", end),
-
-    // 4. Payment due dates (pending + overdue)
-    supabase.from("payment_line_items")
-      .select("id, label, amount, due_date, schedule_id, payment_schedules(title, client_id, event_id, clients(first_name, last_name))")
-      .eq("venue_id", venue.id)
-      .in("status", ["pending", "overdue"])
-      .not("due_date", "is", null)
-      .gte("due_date", start)
-      .lte("due_date", end),
-
-    // 5. Client key dates (milestones)
-    supabase.from("client_key_dates")
-      .select("id, label, date, note, client_id, clients(first_name, last_name)")
-      .eq("venue_id", venue.id)
-      .gte("date", start)
-      .lte("date", end),
-
-    // 6. Active date holds (Sprint 20). TR-B5: expires_at was never checked
+    // 3. Active date holds (Sprint 20). TR-B5: expires_at was never checked
     // here, so an expired hold kept showing (and blocking) indefinitely
     // until a human manually released it.
     supabase.from("date_holds")
@@ -180,21 +143,18 @@ export async function getCalendarData(
       .gte("hold_date", start)
       .lte("hold_date", end),
 
-    // 7. Calendar blocks — non-recurring blocks overlapping month, plus all active recurring blocks.
+    // 4. Calendar blocks — non-recurring blocks overlapping month, plus all active recurring blocks.
     // calendar_blocks has two FKs to leads (lead_id — "Related to" — and
     // converted_lead_id, a separate concept read as a raw id below, never
     // embedded), so the leads(...) embed must name which one it means or
     // PostgREST rejects the whole query as ambiguous (PGRST201).
     supabase.from("calendar_blocks")
-      .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads!calendar_blocks_lead_id_fkey(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id")
+      .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads!calendar_blocks_lead_id_fkey(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id, schedule_item_type_id, blocks_availability")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
 
-    // 8. Scheduled Planning activities (Calendar Integration — Phase 1). Only
-    // tasks a coordinator explicitly marked as "I show up somewhere for
-    // this" (scheduled_date set) — plain due-date-only tasks are Planning's
-    // own concern and are deliberately not surfaced here. Waived tasks are
-    // excluded: a waived scheduled activity isn't happening.
+    // 5. Scheduled Planning activities — only tasks with scheduled_date set
+    // (presence). Due-date-only planning tasks stay off the venue Calendar.
     supabase.from("event_tasks")
       .select("id, title, event_id, scheduled_date, scheduled_start_time, location, status, assigned_to_staff_id, assignee:assigned_to_staff_id(full_name), events(name, client_id, clients(first_name, last_name))")
       .eq("venue_id", venue.id)
@@ -202,47 +162,6 @@ export async function getCalendarData(
       .not("scheduled_date", "is", null)
       .gte("scheduled_date", start)
       .lte("scheduled_date", end),
-
-    // 9. Requests — Due Date kind (Calendar Integration — Phase 2). Only
-    // in-flight requests (excludes draft — not yet sent to the client;
-    // completed/cancelled — no longer a live deadline). "Overdue" and
-    // "submitted, awaiting review" are annotated on this same item rather
-    // than queried as separate facts: Request has no dedicated overdue or
-    // submitted-at column, so both are derived the same way Luv already
-    // derives them (dueDate < today; status check) — reused, not reinvented.
-    supabase.from("requests")
-      .select("id, title, due_date, status, client_id, event_id, clients(first_name, last_name)")
-      .eq("venue_id", venue.id)
-      .not("status", "in", "(draft,completed,cancelled)")
-      .not("due_date", "is", null)
-      .gte("due_date", start)
-      .lte("due_date", end),
-
-    // 10. Contract expiration — Expiration kind, not Due Date (§2a): a lapsed
-    // contract wasn't "incomplete," it's invalid. Note: expires_at exists on
-    // every contract row but nothing in this codebase currently writes it —
-    // this query is correct and future-proof, but will surface zero items
-    // until Contracts itself starts populating the field (documented gap,
-    // not fixed here — out of this phase's scope).
-    supabase.from("contracts")
-      .select("id, title, expires_at, status, client_id, event_id, clients(first_name, last_name)")
-      .eq("venue_id", venue.id)
-      .not("status", "in", "(signed,cancelled)")
-      .not("expires_at", "is", null)
-      .gte("expires_at", start)
-      .lte("expires_at", end),
-
-    // 11. Document expiration — Expiration kind (§2a), same shape as
-    // Contracts. Only documents with a real workspace to link back into
-    // (client or event) — a lead/vendor-scoped or unattached document has no
-    // "owning workspace" for Calendar to navigate into (§8 Navigation).
-    supabase.from("documents")
-      .select("id, name, expires_at, client_id, event_id, clients(first_name, last_name), events(client_id, clients(first_name, last_name))")
-      .eq("venue_id", venue.id)
-      .not("expires_at", "is", null)
-      .or("client_id.not.is.null,event_id.not.is.null")
-      .gte("expires_at", start)
-      .lte("expires_at", end),
   ]);
 
   const items: CalendarItem[] = [];
@@ -274,60 +193,24 @@ export async function getCalendarData(
   // Tours — already-built CalendarItems from tours' own projection
   items.push(...tourItems);
 
-  // Follow-ups
-  for (const l of (followUpsRes.data ?? []) as any[]) {
-    const name = [l.first_name, l.last_name].join(" ") +
-      (l.partner_first_name ? ` & ${l.partner_first_name}` : "");
-    items.push({
-      id: `followup-${l.id}`,
-      type: "follow_up",
-      date: l.follow_up_date,
-      title: `Follow-up — ${name}`,
-      subtitle: l.next_action_text ?? null,
-      time: null,
-      link: `/leads/${l.id}`,
-    });
+  const catalogLabelById = new Map<string, string>();
+  const catalogIds = [...new Set(
+    ((blocksRes.data ?? []) as { schedule_item_type_id?: string | null }[])
+      .map((b) => b.schedule_item_type_id)
+      .filter((id): id is string => !!id),
+  )];
+  if (catalogIds.length > 0) {
+    const { data: catalogRows } = await supabase
+      .from("venue_schedule_item_types")
+      .select("id, label")
+      .eq("venue_id", venue.id)
+      .in("id", catalogIds);
+    for (const row of (catalogRows ?? []) as { id: string; label: string }[]) {
+      catalogLabelById.set(row.id, row.label);
+    }
   }
 
-  // Payment due dates
-  for (const p of (paymentsRes.data ?? []) as any[]) {
-    const cn = p.payment_schedules?.clients
-      ? `${p.payment_schedules.clients.first_name} ${p.payment_schedules.clients.last_name}`
-      : p.payment_schedules?.title ?? null;
-    const amt = p.amount != null
-      ? ` — $${Number(p.amount).toLocaleString()}`
-      : "";
-    items.push({
-      id: `payment-${p.id}`,
-      type: "payment_due",
-      date: p.due_date,
-      title: `${p.label}${amt}`,
-      subtitle: cn,
-      time: null,
-      link: `/payments/${p.schedule_id}`,
-      eventId: p.payment_schedules?.event_id ?? null,
-      clientId: p.payment_schedules?.client_id ?? null,
-    });
-  }
-
-  // Key dates
-  for (const k of (keyDatesRes.data ?? []) as any[]) {
-    const cn = k.clients
-      ? `${k.clients.first_name} ${k.clients.last_name}`
-      : null;
-    items.push({
-      id: `keydate-${k.id}`,
-      type: "key_date",
-      date: k.date,
-      title: k.label,
-      subtitle: cn,
-      time: null,
-      link: `/clients/${k.client_id}#overview`,
-      clientId: k.client_id ?? null,
-    });
-  }
-
-  // Date holds (Sprint 20)
+  // Date holds
   for (const h of (holdsRes.data ?? []) as any[]) {
     const ln = h.leads ? `${h.leads.first_name} ${h.leads.last_name}` : null;
     items.push({
@@ -342,8 +225,6 @@ export async function getCalendarData(
   }
 
   // Calendar blocks — expand into individual day entries, handling recurrence.
-  // The rules themselves live in lib/calendar/recurrence.ts (pure, unit-tested,
-  // and free of the server-timezone dependency the previous inline version had).
   const seenBlockDates = new Set<string>();
   for (const b of (blocksRes.data ?? []) as any[]) {
     const duration = durationInDays(b.start_date, b.end_date);
@@ -353,9 +234,6 @@ export async function getCalendarData(
       b.end_time,
     );
 
-    // "Related to" — the Lead/Client this item is about, resolved to a name
-    // and a real destination. Without it, every manual item linked back to
-    // /calendar, i.e. to itself.
     const relatedLeadName = b.leads
       ? [b.leads.first_name, b.leads.last_name].filter(Boolean).join(" ")
       : null;
@@ -383,27 +261,29 @@ export async function getCalendarData(
         const key = `${b.id}-${dateStr}`;
         if (dateStr < start || dateStr > end || seenBlockDates.has(key)) continue;
         seenBlockDates.add(key);
+
+        let subtitle: string | null;
+        if (b.type === "tour") {
+          // Legacy manual Tour rows — do not look like tour_appointments.
+          subtitle = [relatedName, "Manual schedule — not a booked tour"].filter(Boolean).join(" · ");
+        } else if (b.type === "tasting") {
+          subtitle = [relatedName, "Legacy schedule item"].filter(Boolean).join(" · ");
+        } else if (b.type === "blocked_time" && b.reason) {
+          subtitle = blockReasonLabel(b.reason);
+        } else if (isBookingPlaceholder(b.type as ManualScheduleType)) {
+          subtitle = bookingPlaceholderSubtitle(b.guest_count, b.estimated_revenue, b.converted_lead_id);
+        } else {
+          subtitle = relatedName;
+        }
+
         items.push({
           id: `block-${key}`,
           type: "calendar_block",
           date: dateStr,
           title: b.title,
-          // The manual type itself (Tour, Walkthrough, etc.) is already
-          // conveyed by icon/color/label once rendered — reason is only
-          // ever a Blocked Time sub-classification, and guest count/
-          // revenue are the Booking placeholder's own equivalent, so
-          // those plus the "Related to" name are what a subtitle carries.
-          subtitle: b.type === "blocked_time" && b.reason
-            ? blockReasonLabel(b.reason)
-            : isBookingPlaceholder(b.type as ManualScheduleType)
-              ? bookingPlaceholderSubtitle(b.guest_count, b.estimated_revenue, b.converted_lead_id)
-              : relatedName,
+          subtitle,
           time: blockTime,
           endTime: blockEndTime,
-          // Once converted, the placeholder's own real destination is the
-          // Lead it became; otherwise a "Related to" link is the item's
-          // destination. Only a genuinely unattached item routes back to
-          // Calendar itself.
           link: b.converted_lead_id
             ? `/leads/${b.converted_lead_id}`
             : relatedHref ?? "/calendar",
@@ -413,14 +293,15 @@ export async function getCalendarData(
           leadId: b.lead_id ?? null,
           clientId: b.client_id ?? null,
           relatedName,
+          catalogLabel: b.schedule_item_type_id
+            ? (catalogLabelById.get(b.schedule_item_type_id) ?? null)
+            : null,
         });
       }
     }
   }
 
-  // Scheduled Planning activities (Calendar Integration — Phase 1). Calendar
-  // never edits these — it links back into Planning, the same "reveal,
-  // don't duplicate" pattern as every other item type here.
+  // Scheduled Planning activities
   for (const t of (scheduledTasksRes.data ?? []) as any[]) {
     const cn = t.events?.clients ? `${t.events.clients.first_name} ${t.events.clients.last_name}` : t.events?.name ?? null;
     items.push({
@@ -435,59 +316,6 @@ export async function getCalendarData(
       clientId: t.events?.client_id ?? null,
       assignedToStaffId: t.assigned_to_staff_id ?? null,
       assignedToName: t.assignee?.full_name ?? null,
-    });
-  }
-
-  // Requests — Due Date kind (Calendar Integration — Phase 2). Calendar
-  // never edits these — it links back into the Request Center.
-  for (const r of (requestsRes.data ?? []) as any[]) {
-    const cn = r.clients ? `${r.clients.first_name} ${r.clients.last_name}` : null;
-    const overdue = r.due_date < todayIso;
-    const submitted = r.status === "submitted" || r.status === "reviewed";
-    const state = overdue ? "Overdue" : submitted ? "Submitted — awaiting review" : null;
-    items.push({
-      id: `request-${r.id}`,
-      type: "request_due",
-      date: r.due_date,
-      title: r.title,
-      subtitle: [cn, state].filter(Boolean).join(" — ") || null,
-      time: null,
-      link: `/requests/${r.id}`,
-      eventId: r.event_id ?? null,
-      clientId: r.client_id ?? null,
-    });
-  }
-
-  // Contract expiration — Expiration kind, not Due Date (§2a).
-  for (const c of (contractsRes.data ?? []) as any[]) {
-    const cn = c.clients ? `${c.clients.first_name} ${c.clients.last_name}` : null;
-    items.push({
-      id: `contract-${c.id}`,
-      type: "contract_expiration",
-      date: c.expires_at,
-      title: `${c.title} expires`,
-      subtitle: cn,
-      time: null,
-      link: `/contracts/${c.id}`,
-      eventId: c.event_id ?? null,
-      clientId: c.client_id ?? null,
-    });
-  }
-
-  // Document expiration — Expiration kind (§2a), same shape as Contracts.
-  for (const d of (documentsRes.data ?? []) as any[]) {
-    const clientRow = d.clients ?? d.events?.clients;
-    const cn = clientRow ? `${clientRow.first_name} ${clientRow.last_name}` : null;
-    items.push({
-      id: `document-${d.id}`,
-      type: "document_expiration",
-      date: d.expires_at,
-      title: `${d.name} expires`,
-      subtitle: cn,
-      time: null,
-      link: d.event_id ? `/events/${d.event_id}` : `/clients/${d.client_id}`,
-      eventId: d.event_id ?? null,
-      clientId: d.client_id ?? null,
     });
   }
 

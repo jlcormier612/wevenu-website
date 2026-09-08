@@ -98,6 +98,32 @@ describe("genericCsvAdapter.normalizeRow — calendar / operational", () => {
     }
   });
 
+  it("rejects custom calendar blocks without an existing catalog reference", () => {
+    const missing = genericCsvAdapter.normalizeRow(
+      { title: "Planning", type: "custom", startDate: "2026-06-01" },
+      "calendar_block",
+    );
+    assert.equal(missing.ok, false);
+    if (!missing.ok) assert.match(missing.error, /will not invent/i);
+  });
+
+  it("accepts custom calendar blocks when a catalog id or custom key is provided", () => {
+    const withKey = genericCsvAdapter.normalizeRow(
+      {
+        title: "Planning",
+        type: "custom",
+        startDate: "2026-06-01",
+        customKey: "wedding_planning_meeting",
+      },
+      "calendar_block",
+    );
+    assert.equal(withKey.ok, true);
+    if (withKey.ok) {
+      assert.equal(withKey.normalized.type, "custom");
+      assert.equal(withKey.normalized.customKey, "wedding_planning_meeting");
+    }
+  });
+
   it("normalizes a hold", () => {
     const result = genericCsvAdapter.normalizeRow(
       { title: "Soft hold — Rivera", holdDate: "2027-05-01", leadEmail: "jamie@example.com" },

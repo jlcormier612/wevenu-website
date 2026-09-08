@@ -4,19 +4,19 @@
  */
 
 export type CalendarItemType =
-  | "event"          // booked event (events table)
-  | "tour"           // venue tour (tour_appointments — canonical regardless of entry point)
-  | "follow_up"      // lead follow-up (leads.follow_up_date)
-  | "payment_due"    // payment line item (payment_line_items.due_date)
-  | "key_date"       // client milestone (client_key_dates.date)
-  | "date_hold"      // soft reservation (date_holds table)
-  | "calendar_block" // administrative closure (calendar_blocks table)
-  | "planning_activity" // scheduled Planning task (event_tasks.scheduled_date — Calendar Integration Phase 1)
-  | "request_due" // Request Framework due date (requests.due_date — Due Date kind, Calendar Integration Phase 2)
-  | "contract_expiration" // Contract validity lapse (contracts.expires_at — Expiration kind, Calendar Integration Phase 2)
-  | "document_expiration" // Document validity lapse (documents.expires_at — Expiration kind, Calendar Integration Phase 2)
-  | "planning_task" // Planning due-date task, Deadline kind (event_tasks.due_date) — Booking Schedule lens only, Calendar Integration Phase 3
-  | "timeline_entry"; // Booking Timeline / day-of run-of-show entry — Booking Schedule lens only, Calendar Integration Phase 3
+  | "event"          // booked event (events table) — venue Calendar
+  | "tour"           // venue tour (tour_appointments only) — venue Calendar
+  | "follow_up"      // lead follow-up — Booking Schedule / Dashboard only (not venue Calendar; Slice 1)
+  | "payment_due"    // payment line item — Booking Schedule / Dashboard only (not venue Calendar; Slice 1)
+  | "key_date"       // client milestone — Overview / Dashboard / Portal only (not venue Calendar; Slice 1)
+  | "date_hold"      // soft reservation (date_holds table) — venue Calendar
+  | "calendar_block" // manual schedule / blocked time (calendar_blocks) — venue Calendar
+  | "planning_activity" // scheduled Planning task (event_tasks.scheduled_date) — venue Calendar
+  | "request_due" // Request due date — Booking Schedule only (not venue Calendar; Slice 1)
+  | "contract_expiration" // Contract expires_at — Booking Schedule only (not venue Calendar; Slice 1)
+  | "document_expiration" // Document expires_at — Booking Schedule only (not venue Calendar; Slice 1)
+  | "planning_task" // Planning due-date task — Booking Schedule lens only
+  | "timeline_entry"; // Booking Timeline entry — Booking Schedule lens only
 
 export type CalendarItem = {
   id: string;
@@ -70,6 +70,8 @@ export type CalendarItem = {
    */
   leadId?: string | null;
   relatedName?: string | null;
+  /** When set (linked catalog row), preferred over MANUAL_TYPE_META label. */
+  catalogLabel?: string | null;
 };
 
 /**

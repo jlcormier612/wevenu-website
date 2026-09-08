@@ -143,7 +143,7 @@ async function coveringClientEventBlockTitle(
     startTime: input.ceremonyTime,
   });
   const { data: blocks } = await supabase.from("calendar_blocks")
-    .select("title, type, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_interval, recurrence_ends_on, recurrence_count")
+    .select("title, type, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_interval, recurrence_ends_on, recurrence_count, blocks_availability")
     .eq("venue_id", venueId)
     .lte("start_date", interval.rangeEnd);
   return coveringCalendarBlockTitle(

@@ -42,7 +42,7 @@ export function WeekView({
   deletePending?: boolean;
 }) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "week");
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
   const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
   const [y, m, d] = weekStart.split("-").map(Number);
   const start = new Date(y, m - 1, d);

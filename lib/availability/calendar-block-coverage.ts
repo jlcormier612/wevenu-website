@@ -57,6 +57,8 @@ export type CalendarBlockCoverageInput = {
   recurrenceInterval?: number | null;
   recurrenceEndsOn?: string | null;
   recurrenceCount?: number | null;
+  /** Event covering snapshot. Undefined treated as true (legacy unit fixtures). */
+  blocksAvailability?: boolean | null;
 };
 
 export type CalendarBlockCoverage = {
@@ -71,6 +73,7 @@ export type CalendarBlockCoverage = {
   recurrenceInterval: number;
   recurrenceEndsOn: string | null;
   recurrenceCount: number | null;
+  blocksAvailability: boolean;
 };
 
 export type EventCoverageInput = {
@@ -161,6 +164,7 @@ export function normalizeCalendarBlockCoverage(
     recurrenceInterval: block.recurrenceInterval ?? 1,
     recurrenceEndsOn: block.recurrenceEndsOn ?? null,
     recurrenceCount: block.recurrenceCount ?? null,
+    blocksAvailability: block.blocksAvailability !== false,
   };
 }
 
@@ -176,6 +180,7 @@ export function mapCalendarBlockRow(row: {
   recurrence_interval?: number | null;
   recurrence_ends_on?: string | null;
   recurrence_count?: number | null;
+  blocks_availability?: boolean | null;
 }): CalendarBlockCoverage {
   return normalizeCalendarBlockCoverage(
     {
@@ -190,6 +195,7 @@ export function mapCalendarBlockRow(row: {
       recurrenceInterval: row.recurrence_interval,
       recurrenceEndsOn: row.recurrence_ends_on,
       recurrenceCount: row.recurrence_count,
+      blocksAvailability: row.blocks_availability,
     },
     row.start_date,
   );
@@ -232,8 +238,13 @@ export function coveringCalendarBlockTitle(
   opts?: { types?: readonly string[] | null },
 ): string | null {
   const allowed = opts?.types ?? null;
+  // Event covering (no type filter): only occupancy-snapshot rows.
+  // Tour covering (type filter): existing type whitelist only — do not
+  // apply blocks_availability (Slice 2A.1).
+  const requireAvailabilitySnapshot = allowed == null;
   for (const block of blocks) {
     if (allowed && !allowed.includes(block.type)) continue;
+    if (requireAvailabilitySnapshot && block.blocksAvailability === false) continue;
     if (calendarBlockCoversInterval(block, interval)) return block.title;
   }
   return null;
