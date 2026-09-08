@@ -67,10 +67,12 @@ describe("searchParamsToQueryString", () => {
 });
 
 describe("event → booking redirect wiring", () => {
-  it("events/[id] uses client redirect (not server redirect) so hash survives", () => {
+  it("events/[id] uses browser replace (not server redirect) so hash survives", () => {
     const page = readFileSync(resolve("app/(app)/events/[id]/page.tsx"), "utf8");
     assert.match(page, /EventToBookingRedirect/);
     assert.match(page, /searchParamsToQueryString/);
+    assert.match(page, /location\.replace/);
+    assert.match(page, /location\.hash/);
     assert.doesNotMatch(page, /\bredirect\(/);
   });
 
@@ -84,8 +86,9 @@ describe("event → booking redirect wiring", () => {
     assert.match(src, /window\.location\.replace/);
   });
 
-  it("EventDetail still syncs #documents to the Documents tab", () => {
+  it("EventDetail syncs #documents to the Documents tab before paint", () => {
     const src = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
+    assert.match(src, /useLayoutEffect/);
     assert.match(src, /hashchange/);
     assert.match(src, /setActiveTab\(hash\)/);
     assert.match(src, /window\.location\.hash\.replace\("#", ""\)/);

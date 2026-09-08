@@ -372,7 +372,9 @@ export function EventDetail({
   const [statusPending, startStatus] = React.useTransition();
   const [activeTab, setActiveTab] = React.useState(openSetupPayments ? "invoice" : "overview");
   const [setupPaymentsOpen, setSetupPaymentsOpen] = React.useState(openSetupPayments);
-  React.useEffect(() => {
+  // useLayoutEffect so /clients/{id}#documents selects Documents before paint
+  // (avoids Overview flash after /events/{id}#documents → booking replace).
+  React.useLayoutEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
       if (hash === "questionnaires") {
@@ -382,7 +384,7 @@ export function EventDetail({
         });
       } else if (hash) setActiveTab(hash);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
-      // Server redirects drop #vendors; open Vendors when a thread id is present.
+      // Open Vendors when a thread id is present and no hash was supplied.
       else if (new URLSearchParams(window.location.search).get("conversation")) {
         setActiveTab("vendors");
       }

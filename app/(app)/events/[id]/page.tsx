@@ -14,8 +14,9 @@ type Props = {
  * resolves which Booking an old Event link belongs to and forwards there.
  *
  * Query params (e.g. ?conversation= for vendor-thread deep links) are
- * forwarded from the server. #hash (e.g. #documents) is preserved via a
- * client-side replace — HTTP redirects cannot carry URL fragments.
+ * forwarded from the server. #hash (e.g. #documents) cannot travel through
+ * HTTP redirects, so we replace in the browser (inline script + client
+ * fallback) and append location.hash.
  */
 export default async function EventDetailRedirectPage({ params, searchParams }: Props) {
   const { id } = await params;
@@ -23,10 +24,16 @@ export default async function EventDetailRedirectPage({ params, searchParams }: 
   const event = await getEvent(id);
   if (!event || !event.clientId) notFound();
 
+  const search = searchParamsToQueryString(sp);
+  const targetBase = `/clients/${event.clientId}${search}`;
+  // Inline script runs before React hydration so /events/{id}#documents
+  // never strand on the intermediate route.
+  const inline = `location.replace(${JSON.stringify(targetBase)}+location.hash);`;
+
   return (
-    <EventToBookingRedirect
-      clientId={event.clientId}
-      search={searchParamsToQueryString(sp)}
-    />
+    <>
+      <script dangerouslySetInnerHTML={{ __html: inline }} />
+      <EventToBookingRedirect clientId={event.clientId} search={search} />
+    </>
   );
 }
