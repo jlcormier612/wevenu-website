@@ -2,8 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 
-import { sendMessage } from "@/lib/messaging/service";
-import type { ComposeInput, MessageEntityType, SendResult } from "@/lib/messaging/types";
 import * as conversations from "@/lib/conversations/service";
 import type { ConversationComposeContext, ConversationDetail, ConversationSendPreview, ConversationSummary, SendMessageResult } from "@/lib/conversations/types";
 import { getActiveEnrollmentsForRelationship } from "@/lib/message-sequences/service";
@@ -23,25 +21,7 @@ import type { RelationshipContext } from "@/lib/conversations/context";
 import { getActivityTimelineForLeadOrClient } from "@/lib/activity-timeline/service";
 import type { ActivityTimelineEvent } from "@/lib/activity-timeline/types";
 
-export async function sendMessageAction(
-  entityType: MessageEntityType,
-  entityId: string,
-  input: ComposeInput,
-): Promise<SendResult> {
-  const result = await sendMessage(entityType, entityId, input);
-  if (result.ok) {
-    const paths: Record<MessageEntityType, string> = {
-      lead:   `/leads/${entityId}`,
-      client: `/clients/${entityId}`,
-      event:  `/events/${entityId}`,
-    };
-    revalidatePath(paths[entityType]);
-    revalidatePath("/messaging");
-  }
-  return result;
-}
-
-// ---- Program 2 Phase 2B — Conversation actions (flag-gated UI only) --------
+// ---- Conversation actions ----------------------------------------------------
 
 export async function getConversationInboxAction(): Promise<{ conversations: ConversationSummary[]; totalUnread: number }> {
   return conversations.getConversationInbox();

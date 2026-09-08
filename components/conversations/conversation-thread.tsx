@@ -361,18 +361,16 @@ export function ConversationThread({
   onBack?: () => void;
   showHeader?: boolean;
   /**
-   * Enriched header content — name, Client/Booking shortcuts, Assigned
-   * Coordinator, Active Automations (Communication Workspace Completion,
-   * Requirement 3). Only the Inbox passes this; the Booking Workspace's
-   * embedded Conversation tab omits it and stays exactly as it was.
+   * Enriched header content — name, Lead/Booking identity, assignee, and
+   * direct actions. Booking Journey stage lives in the Relationship Context
+   * panel (right), not duplicated here. Only the Inbox passes this; the
+   * Booking Workspace's embedded Conversation tab omits it.
    */
   summary?: ConversationSummary;
   teamMembers?: StaffMember[];
   /**
-   * RC2, Milestone 5 — seeds the compose box (e.g. the Luv→Messages "Use
-   * this draft" bridge in lead-detail.tsx). A subject implies email intent,
-   * so the channel defaults to email when one is present, same as the
-   * legacy MessagesSection this replaces.
+   * Seeds the compose box (e.g. Luv→Messages "Use this draft"). A subject
+   * implies email intent, so the channel defaults to email when present.
    */
   initialBody?: string;
   initialSubject?: string;
@@ -403,7 +401,6 @@ export function ConversationThread({
   // re-sync from the summary prop via an effect.
   const [assignedStaffId, setAssignedStaffId] = React.useState(summary?.assignedStaffId ?? NO_ASSIGNEE);
   const [automations, setAutomations] = React.useState<SequenceEnrollment[]>([]);
-  const [headerStageLabel, setHeaderStageLabel] = React.useState<string | null>(null);
   /** Unambiguous event for Documents links — only when eventCount === 1 / eventUnambiguous. */
   const [docsEventId, setDocsEventId] = React.useState<string | null>(
     summary?.eventCount === 1 ? (summary.eventId ?? null) : null,
@@ -416,7 +413,6 @@ export function ConversationThread({
 
   React.useEffect(() => {
     if (!summary?.leadId && !summary?.clientId) {
-      setHeaderStageLabel(null);
       setDocsEventId(summary?.eventCount === 1 ? (summary.eventId ?? null) : null);
       return;
     }
@@ -424,7 +420,6 @@ export function ConversationThread({
     void getRelationshipContextAction(summary.leadId ?? null, summary.clientId ?? null)
       .then((ctx) => {
         if (cancelled) return;
-        setHeaderStageLabel(ctx.orientation?.bookingStageLabel ?? null);
         // Prefer authoritative relationship context when unambiguous; else summary enrichment.
         if (ctx.orientation?.eventUnambiguous && ctx.orientation.eventId) {
           setDocsEventId(ctx.orientation.eventId);
@@ -435,7 +430,7 @@ export function ConversationThread({
         }
       })
       .catch(() => {
-        /* keep summary-derived docsEventId / stage — do not hang */
+        /* keep summary-derived docsEventId — do not hang */
       });
     return () => { cancelled = true; };
   }, [summary?.leadId, summary?.clientId, summary?.eventCount, summary?.eventId]);
@@ -592,15 +587,7 @@ export function ConversationThread({
                     {summary.displayName ?? "Unnamed relationship"}
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    <span className="font-medium text-foreground/80">
-                      {summary.clientId ? "Booking" : "Lead"}
-                    </span>
-                    {headerStageLabel ? (
-                      <>
-                        <span className="mx-1.5 text-border">·</span>
-                        <span>{headerStageLabel}</span>
-                      </>
-                    ) : null}
+                    {summary.clientId ? "Booking" : "Lead"}
                   </p>
                 </div>
                 <select
@@ -617,7 +604,7 @@ export function ConversationThread({
             )}
           </div>
           {summary && (summary.leadId || summary.clientId) && (
-            <div className="flex flex-wrap items-center gap-3 px-4 pb-3 text-xs">
+            <div className="flex flex-wrap items-center gap-3 px-4 pb-2.5 text-xs">
               {summary.leadId && (
                 <Link href={`/leads/${summary.leadId}`} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
                   <User className="h-3 w-3" /> Open lead

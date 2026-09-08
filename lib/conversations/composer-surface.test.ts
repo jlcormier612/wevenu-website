@@ -21,7 +21,7 @@ describe("conversation composer send surface", () => {
   it("keeps Internal note as a separate staff mode, not an outbound channel option", () => {
     assert.match(compose, /Compose mode/);
     assert.match(compose, /Internal note/);
-    assert.match(compose, /staff note for your venue team/);
+    assert.match(compose, /Staff note for your venue team/);
     assert.match(compose, /switchMode\("internal_note"\)/);
     const outboundSelect = compose.match(/OUTBOUND_CHANNELS\.map\(\(c\) => \{[\s\S]*?\}\)/)?.[0] ?? "";
     assert.ok(outboundSelect.length > 0, "outbound channel select should map OUTBOUND_CHANNELS");
@@ -31,8 +31,8 @@ describe("conversation composer send surface", () => {
   it("does not use a one-line Enter-to-send footer", () => {
     assert.doesNotMatch(compose, /rows=\{1\}/);
     assert.doesNotMatch(compose, /e\.key === "Enter"/);
-    assert.match(compose, /rows=\{6\}/);
-    assert.match(compose, /min-h-\[8\.5rem\]/);
+    assert.match(compose, /rows=\{4\}/);
+    assert.match(compose, /min-h-\[6rem\]/);
     assert.match(compose, /Send email now/);
     assert.match(compose, /Send text now/);
     assert.match(compose, /Send portal message/);
@@ -41,13 +41,14 @@ describe("conversation composer send surface", () => {
     assert.match(compose, /Enter does not send/);
   });
 
-  it("shows relationship, destination, subject, and preview for the real send", () => {
-    assert.match(compose, /Relationship/);
-    assert.match(compose, /relationshipLabel/);
+  it("shows destination and progressive preview/template (not permanent chrome)", () => {
+    assert.match(compose, /recipientLine/);
     assert.match(compose, /Email subject/);
     assert.match(compose, /Email preview/);
     assert.match(compose, /Text preview/);
     assert.match(compose, /previewConversationSendAction/);
+    assert.match(compose, /Template \(optional\)/);
+    assert.doesNotMatch(compose, /max-h-\[min\(42vh,26rem\)\]/);
   });
 
   it("allows attachments on Email, Text, Portal, and Internal note with channel constraints", () => {
@@ -67,10 +68,12 @@ describe("conversation composer send surface", () => {
     assert.doesNotMatch(thread, /> Client</);
   });
 
-  it("shows hierarchical relationship type then Booking Journey stage in the thread header", () => {
-    assert.match(thread, /headerStageLabel/);
+  it("middle header keeps identity and actions without booking-stage orientation (D02)", () => {
     assert.match(thread, /summary\.clientId \? "Booking" : "Lead"/);
     assert.match(thread, /Open lead/);
     assert.match(thread, /Open booking/);
+    assert.match(thread, /Create Request/);
+    assert.doesNotMatch(thread, /headerStageLabel/);
+    assert.doesNotMatch(thread, /bookingStageLabel/);
   });
 });

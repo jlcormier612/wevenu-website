@@ -33,6 +33,10 @@ import {
   type AttachmentChannel,
 } from "@/lib/conversations/attachment-constraints";
 import {
+  shouldShowEmailReadinessBanner,
+  shouldShowSmsReadinessBanner,
+} from "@/lib/conversations/compose-readiness-ui";
+import {
   confirmationAfterSend,
   isAuthoritativeSendSuccess,
   toSentMessageAck,
@@ -232,29 +236,33 @@ export function ConversationCompose({
   }, [channel, mode]); // eslint-disable-line react-hooks/exhaustive-deps -- revalidate when channel changes
 
   const who = context?.displayName ?? "this relationship";
-  const relationshipLine = context
-    ? `${who}${relationshipLabel ? ` · ${relationshipLabel}` : ""}`
-    : "Loading relationship…";
+  const showEmailReadiness = shouldShowEmailReadinessBanner({
+    mode, channel, emailReady,
+  });
+  const showSmsReadiness = shouldShowSmsReadinessBanner({
+    mode, channel, smsReady,
+  });
 
   const recipientLine = (() => {
+    if (mode === "internal_note") {
+      return "Visible only to your venue team.";
+    }
     if (!context) return "Loading recipient…";
     if (channel === "email") {
       return context.recipientEmail
         ? `To: ${context.recipientEmail}`
-        : "No email address on file for this person — add one to their record before sending.";
+        : "No email address on file — add one before sending.";
     }
     if (channel === "sms") {
       return context.recipientPhoneDisplay || context.recipientPhone
         ? `To: ${context.recipientPhoneDisplay ?? context.recipientPhone}`
-        : "No phone number on file for this person — add one to their record before sending.";
+        : "No phone number on file — add one before sending.";
     }
     if (channel === "portal") {
-      const kind = context.conversationKind === "venue_vendor"
-        ? `${who} (vendor)`
-        : who;
-      return `Portal message to ${kind} in Hello to Cheers — they will see this in their portal, not as a separate email or text.`;
+      const kind = context.conversationKind === "venue_vendor" ? `${who} (vendor)` : who;
+      return `Portal · ${kind}${relationshipLabel ? ` · ${relationshipLabel}` : ""}`;
     }
-    return "Visible only to your venue team. Couples and vendors will never see this.";
+    return null;
   })();
 
   async function send() {
@@ -417,7 +425,7 @@ export function ConversationCompose({
 
   return (
     <div
-      className={`max-h-[min(42vh,26rem)] shrink-0 space-y-3 overflow-y-auto border-t p-3 sm:p-4 ${
+      className={`shrink-0 space-y-2.5 overflow-y-auto border-t p-3 sm:px-4 sm:py-3 ${
         isNote
           ? "border-amber-500/25 bg-amber-500/[0.04]"
           : "border-border/60 bg-card"
@@ -442,44 +450,35 @@ export function ConversationCompose({
         </p>
       )}
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Compose mode">
-        <button
-          type="button"
-          onClick={() => switchMode("outbound")}
-          className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition-colors ${
-            !isNote
-              ? "bg-primary text-primary-foreground"
-              : "border border-border bg-background text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Message
-        </button>
-        <button
-          type="button"
-          onClick={() => switchMode("internal_note")}
-          className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${
-            isNote
-              ? "bg-amber-700 text-amber-50"
-              : "border border-border bg-background text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <StickyNote className="h-3.5 w-3.5" />
-          Internal note
-        </button>
-      </div>
-
-      <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {isNote ? "About" : "Relationship"}
-        </p>
-        <p className="text-sm font-medium text-heading">{relationshipLine}</p>
-        <p className="text-sm text-muted-foreground">{recipientLine}</p>
-      </div>
-
-      {!isNote && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Channel</span>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Compose mode">
+          <button
+            type="button"
+            onClick={() => switchMode("outbound")}
+            className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition-colors ${
+              !isNote
+                ? "bg-primary text-primary-foreground"
+                : "border border-border bg-background text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Message
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode("internal_note")}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${
+              isNote
+                ? "bg-amber-700 text-amber-50"
+                : "border border-border bg-background text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <StickyNote className="h-3.5 w-3.5" />
+            Internal note
+          </button>
+        </div>
+        {!isNote && (
+          <label className="min-w-[9rem] flex-1 space-y-0.5 sm:max-w-[14rem]">
+            <span className="sr-only">Channel</span>
             <select
               aria-label="Channel"
               value={outboundChannel}
@@ -489,7 +488,7 @@ export function ConversationCompose({
                 setConfirm(null);
                 setSchedulePanelOpen(false);
               }}
-              className="h-10 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm"
             >
               {OUTBOUND_CHANNELS.map((c) => {
                 const disabled = (c === "email" && !emailReady) || (c === "sms" && !smsReady);
@@ -502,69 +501,56 @@ export function ConversationCompose({
               })}
             </select>
           </label>
-          {templatesForChannel.length > 0 ? (
-            <label className="space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Template</span>
-              <select
-                aria-label="Use a template"
-                value={templateId}
-                onChange={(e) => void applyTemplate(e.target.value)}
-                className="h-10 w-full rounded-lg border border-border bg-background px-2 text-sm"
-              >
-                <option value="">Optional — use a template…</option>
-                {templatesForChannel.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </label>
-          ) : (
-            <div />
-          )}
-        </div>
+        )}
+      </div>
+
+      {recipientLine && (
+        <p className="text-xs text-muted-foreground">{recipientLine}</p>
       )}
 
       {isNote && (
-        <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
-          This is a staff note for your venue team — not a message to the couple or vendor.
+        <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-1.5 text-xs text-muted-foreground">
+          Staff note for your venue team — not a message to the couple or vendor.
         </p>
       )}
 
-      {!isNote && !channelDisabledReason && (!emailReady || !smsReady) && (
-        <div className="space-y-1 text-xs text-muted-foreground">
-          {!emailReady && (
-            <p>
-              {context?.emailPermissionMessage
-                ?? (context?.sendingDisabled
-                  ? "Email sending is turned off in this environment."
-                  : "Email isn’t ready to send yet.")}
-              {!context?.emailPermissionMessage && (
-                <>
-                  {" "}
-                  <Link href="/messaging/health" className="underline hover:text-foreground">
-                    Communication Health
-                  </Link>
-                </>
-              )}
-            </p>
+      {showEmailReadiness && (
+        <p className="text-xs text-muted-foreground">
+          {context?.emailPermissionMessage
+            ?? (context?.sendingDisabled
+              ? "Email sending is turned off in this environment."
+              : "Email isn’t ready to send yet.")}
+          {!context?.emailPermissionMessage && (
+            <>
+              {" "}
+              <Link href="/messaging/health" className="underline hover:text-foreground">
+                Communication Health
+              </Link>
+            </>
           )}
-          {!smsReady && (
-            <p>
-              {context?.smsPermissionMessage
-                ?? (context?.sendingDisabled
-                  ? "Text sending is turned off in this environment."
-                  : "Texting isn’t set up yet for your venue.")}
-              {context?.textingSetupHref && !context?.smsPermissionMessage ? (
-                <>
-                  {" "}
-                  <Link href={context.textingSetupHref} className="underline hover:text-foreground">
-                    Enable text messaging
-                  </Link>
-                </>
-              ) : null}
-            </p>
-          )}
-        </div>
+        </p>
       )}
 
-      {channelDisabledReason && (
+      {showSmsReadiness && (
+        <p className="text-xs text-muted-foreground">
+          {context?.smsPermissionMessage
+            ?? (context?.sendingDisabled
+              ? "Text sending is turned off in this environment."
+              : "Texting isn’t set up yet for your venue.")}
+          {context?.textingSetupHref && !context?.smsPermissionMessage ? (
+            <>
+              {" "}
+              <Link href={context.textingSetupHref} className="underline hover:text-foreground">
+                Enable text messaging
+              </Link>
+            </>
+          ) : null}
+        </p>
+      )}
+
+      {/* Selected-channel disabled copy when helpers already cover readiness — keep
+          channelDisabledReason for permission-detail variants that differ. */}
+      {channelDisabledReason && !showEmailReadiness && !showSmsReadiness && (
         <p className="text-xs text-muted-foreground">
           {channelDisabledReason}
           {channel === "sms" && context?.textingSetupHref && !context?.smsPermissionMessage ? (
@@ -597,7 +583,7 @@ export function ConversationCompose({
             value={emailSubject}
             onChange={(e) => setEmailSubject(e.target.value)}
             placeholder="Subject"
-            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm"
+            className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
           />
         </label>
       )}
@@ -614,8 +600,8 @@ export function ConversationCompose({
             : channel === "portal" ? "Write a portal message…"
             : "Write the message…"
           }
-          rows={6}
-          className="min-h-[8.5rem] w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm leading-relaxed"
+          rows={4}
+          className="min-h-[6rem] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm leading-relaxed"
         />
       </label>
 
@@ -647,11 +633,30 @@ export function ConversationCompose({
         </div>
       )}
 
+      {!isNote && templatesForChannel.length > 0 && (
+        <details className="rounded-lg border border-border/60 bg-muted/10">
+          <summary className="cursor-pointer list-none px-3 py-1.5 text-[11px] font-medium text-muted-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+            Template (optional)
+          </summary>
+          <div className="border-t border-border/50 px-3 py-2">
+            <select
+              aria-label="Use a template"
+              value={templateId}
+              onChange={(e) => void applyTemplate(e.target.value)}
+              className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            >
+              <option value="">Choose a template…</option>
+              {templatesForChannel.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+        </details>
+      )}
+
       {(channel === "email" || channel === "sms") && (body.trim() || emailSubject.trim()) && (
         <details className="rounded-lg border border-border bg-muted/20 open:pb-0">
-          <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+          <summary className="cursor-pointer list-none px-3 py-1.5 text-[11px] font-medium text-muted-foreground marker:content-none [&::-webkit-details-marker]:hidden">
             {channel === "email" ? "Email preview" : "Text preview"}
-            {previewing ? " · updating…" : " — tap to review what will send"}
+            {previewing ? " · updating…" : ""}
           </summary>
           <div className="space-y-2 border-t border-border/50 px-3 py-3">
             {preview?.unresolvedMessage && (
@@ -678,7 +683,7 @@ export function ConversationCompose({
                     title="Email preview"
                     sandbox=""
                     srcDoc={preview.html}
-                    className="h-44 w-full bg-background"
+                    className="h-36 w-full bg-background"
                   />
                 ) : (
                   <p className="whitespace-pre-wrap px-3 py-3 text-sm">{preview?.body || body}</p>
@@ -699,14 +704,14 @@ export function ConversationCompose({
               type="datetime-local"
               value={scheduledFor}
               onChange={(e) => setScheduledFor(e.target.value)}
-              className="h-10 flex-1 rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-9 flex-1 rounded-lg border border-border bg-background px-2 text-sm"
             />
             <button type="button" onClick={() => void confirmSchedule()} disabled={!body.trim() || scheduling}
-              className="h-10 shrink-0 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-40">
+              className="h-9 shrink-0 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-40">
               {scheduling ? "Scheduling…" : "Confirm schedule"}
             </button>
             <button type="button" onClick={() => setSchedulePanelOpen(false)}
-              className="h-10 shrink-0 rounded-lg px-3 text-sm text-muted-foreground hover:text-foreground">
+              className="h-9 shrink-0 rounded-lg px-3 text-sm text-muted-foreground hover:text-foreground">
               Cancel
             </button>
           </div>
@@ -725,7 +730,7 @@ export function ConversationCompose({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:text-foreground"
         >
           <Paperclip className="h-4 w-4" /> Attach
         </button>
@@ -733,7 +738,7 @@ export function ConversationCompose({
           <button
             type="button"
             onClick={() => setSchedulePanelOpen((p) => !p)}
-            className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-sm ${
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm ${
               schedulePanelOpen ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -744,7 +749,7 @@ export function ConversationCompose({
           type="button"
           onClick={() => void send()}
           disabled={sendDisabled}
-          className={`ml-auto inline-flex h-10 items-center rounded-lg px-4 text-sm font-medium disabled:opacity-40 ${
+          className={`ml-auto inline-flex h-9 items-center rounded-lg px-4 text-sm font-medium disabled:opacity-40 ${
             isNote
               ? "bg-amber-700 text-amber-50 hover:bg-amber-800"
               : "bg-primary text-primary-foreground"
@@ -754,9 +759,7 @@ export function ConversationCompose({
         </button>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        {isNote
-          ? "Saving is explicit — Enter does not save this note."
-          : "Sending is explicit — Enter does not send. Review the channel and recipient above before you send."}
+        {isNote ? "Enter does not save." : "Enter does not send."}
       </p>
     </div>
   );

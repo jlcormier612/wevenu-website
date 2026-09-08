@@ -1,13 +1,9 @@
 /**
  * Inbox — the canonical Conversation workspace for venues.
  *
- * RC2, Milestone 5: conversation_experience_enabled now defaults true for
- * every venue (no toggle UI was ever built, so there was never a real "off"
- * state to preserve) — this page no longer branches on it. The legacy
- * couple_threads-backed inbox this used to fall back to still exists at
- * app/(app)/messaging/legacy-inbox.tsx as a compatibility artifact (see
- * docs/rc2-messaging-conversations-final-report.md), just no longer wired
- * into any live route.
+ * RC2, Milestone 5: conversation_experience_enabled defaults true for every
+ * venue. The pre-Conversations couple_threads inbox was removed in Debt Gate
+ * Pass 1 (D04) after confirmation it was unreachable from live routes.
  */
 import type { Metadata } from "next";
 import { Suspense } from "react";
