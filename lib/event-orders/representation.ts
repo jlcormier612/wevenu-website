@@ -62,6 +62,9 @@ async function uploadEventOrderPdfBytes(
     return { ok: false, message: "Could not store the Event Order PDF. Please try sharing again." };
   }
 
+  // Copy into an ArrayBuffer-backed view so BlobPart / BodyInit accept it
+  // under Next's DOM lib (Buffer/Uint8Array generics otherwise fail tsc).
+  const bodyBytes = Uint8Array.from(pdfBytes);
   const res = await fetch(`${baseUrl}/storage/v1/object/${BUCKET}/${storagePath}`, {
     method: "POST",
     headers: {
@@ -70,7 +73,7 @@ async function uploadEventOrderPdfBytes(
       "Content-Type": "application/pdf",
       "x-upsert": "true",
     },
-    body: pdfBytes,
+    body: bodyBytes,
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -205,7 +208,7 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   return { ok: true };
 }
 
-/** A fresh, short-lived signed URL — never a stored/public path, same discipline as lib/contracts/finalize.ts getContractPdfUrl. */
+/** A fresh, short-lived signed URL for the durable shared PDF — never regenerated from live editable lines. */
 export async function getEventOrderPdfUrl(eventOrderId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
@@ -216,42 +219,21 @@ export async function getEventOrderPdfUrl(eventOrderId: string): Promise<{ ok: t
   if (!eventOrder.sharedAt) return { ok: false, message: "This Event Order hasn't been shared yet." };
 
   const documentId = await documentIntegration.getEventOrderDocumentId(supabase, eventOrderId);
+  if (!documentId) return { ok: false, message: "This Event Order hasn't been shared yet." };
+
+  const service = (await import("@/lib/document-domain/integration/service")).createDocumentService(supabase);
+  const representation = await service.getCurrentRepresentation(documentId);
+  if (!representation?.storagePath) return { ok: false, message: "This Event Order hasn't been shared yet." };
+
   const serviceClient = getServiceClient();
-  let storagePath: string | null = null;
-
-  if (documentId) {
-    const service = (await import("@/lib/document-domain/integration/service")).createDocumentService(supabase);
-    const representation = await service.getCurrentRepresentation(documentId);
-    storagePath = representation?.storagePath ?? null;
+  // Fail closed: Download must serve the stored share artifact, never rebuild
+  // from the current (possibly reopened/edited) Event Order.
+  const { error: missingError } = await serviceClient.storage.from(BUCKET).download(representation.storagePath);
+  if (missingError) {
+    return { ok: false, message: "The shared Event Order PDF is missing from storage. Re-share to publish a new copy." };
   }
 
-  // If the Document Domain path is missing on disk (orphan representation),
-  // rebuild a readable PDF at a fresh path so Download still works.
-  if (storagePath) {
-    const { error: headError } = await serviceClient.storage.from(BUCKET).download(storagePath);
-    if (headError) storagePath = null;
-  }
-
-  if (!storagePath) {
-    const full = await getEventOrder(eventOrder.eventId);
-    if (!full) return { ok: false, message: "Event Order not found." };
-    const event = await getEvent(eventOrder.eventId);
-    if (!event) return { ok: false, message: "Event not found." };
-    const [client, spaces] = await Promise.all([
-      event.clientId ? getClient(event.clientId) : Promise.resolve(null),
-      getSpaces(),
-    ]);
-    const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
-    const clientName = client ? clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName) : null;
-    const pdfBuffer = await generateEventOrderPdf(full, venue, {
-      eventName: event.name, eventDate: event.eventDate, guestCount: event.guestCount, spaceName, clientName,
-    });
-    storagePath = `${venue.id}/${eventOrderId}/eo-dl-${Date.now()}.pdf`;
-    const rebuilt = await uploadEventOrderPdfBytes(storagePath, new Uint8Array(pdfBuffer));
-    if (!rebuilt.ok) return { ok: false, message: "Could not generate a download link." };
-  }
-
-  const { data, error } = await serviceClient.storage.from(BUCKET).createSignedUrl(storagePath, 300);
+  const { data, error } = await serviceClient.storage.from(BUCKET).createSignedUrl(representation.storagePath, 300);
   if (error || !data) return { ok: false, message: "Could not generate a download link." };
   return { ok: true, url: data.signedUrl };
 }
