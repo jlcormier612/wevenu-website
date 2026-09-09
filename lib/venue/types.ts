@@ -140,6 +140,11 @@ export type Venue = {
   // posture as conversationExperienceEnabled above. False leaves a venue's
   // Booking Workspace with no Event Order tab at all; nothing else changes.
   eventOrderEnabled: boolean;
+  /** Optional planning surfaces — not Playbook applications. Defaults true. */
+  planningTimelineEnabled: boolean;
+  planningFloorPlanEnabled: boolean;
+  planningSeatingEnabled: boolean;
+  planningVendorsEnabled: boolean;
   /** CRM Suspend / unpaid dunning hard-lock. Data is preserved when true. */
   accessDisabled: boolean;
   /** Mirrors accessDisabled today: active | suspended. */

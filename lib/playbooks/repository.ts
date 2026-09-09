@@ -7,6 +7,7 @@ import type {
   EventTask,
   EventTaskContextLink,
   EventTaskContextSourceType,
+  PlaybookKind,
   PlaybookMilestone,
   PlaybookTask,
   PlaybookTaskAttachment,
@@ -359,12 +360,75 @@ export async function getEventPlaybookApplications(client: DbClient, venueId: st
 
 export type ApplyPlaybookResult = { ok: true } | { ok: false; reason: "already_applied" };
 
+export type UnapplyPlaybookResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "already_released" };
+
+/**
+ * Remove a planning application and its generated event tasks for one kind.
+ * Client Planning that has been released cannot be wholesale-removed.
+ * Venue Planning can always be removed (internal, no client release gate).
+ */
+export async function unapplyPlaybookFromEvent(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  kind: PlaybookKind,
+): Promise<UnapplyPlaybookResult> {
+  const { data: appRow, error: fetchError } = await client.from("event_playbook_applications")
+    .select("released_at")
+    .eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
+    .maybeSingle<{ released_at: string | null }>();
+  if (fetchError) throw fetchError;
+  if (!appRow) return { ok: false, reason: "not_found" };
+  if (kind === "client" && appRow.released_at) {
+    return { ok: false, reason: "already_released" };
+  }
+
+  const tasks = await getEventTasks(client, venueId, eventId);
+  const kindTasks = tasks.filter((t) =>
+    kind === "client" ? t.ownerType === "couple" : t.ownerType !== "couple",
+  );
+
+  for (const t of kindTasks) {
+    await cancelRemindersForTask(client, venueId, t.id);
+  }
+
+  if (kindTasks.length > 0) {
+    const ids = kindTasks.map((t) => t.id);
+    // Clear cross-task dependency pointers first so deletes are not blocked.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("event_tasks") as any)
+      .update({ depends_on_event_task_id: null })
+      .eq("venue_id", venueId)
+      .eq("event_id", eventId)
+      .in("depends_on_event_task_id", ids);
+
+    const { error: delTasksError } = await client.from("event_tasks")
+      .delete()
+      .eq("venue_id", venueId)
+      .eq("event_id", eventId)
+      .in("id", ids);
+    if (delTasksError) throw delTasksError;
+  }
+
+  const { error: delAppError } = await client.from("event_playbook_applications")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("venue_id", venueId)
+    .eq("kind", kind);
+  if (delAppError) throw delAppError;
+
+  return { ok: true };
+}
+
 export async function applyPlaybookToEvent(
   client: DbClient,
   venueId: string,
   eventId: string,
   templateId: string,
   eventDate: string,
+  capabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
 ): Promise<ApplyPlaybookResult> {
   const template = await getTemplate(client, venueId, templateId);
   if (!template) throw new Error("Template not found.");
@@ -391,10 +455,13 @@ export async function applyPlaybookToEvent(
     throw markerError;
   }
 
-  const [tasks, milestones] = await Promise.all([
+  const [tasksRaw, milestones] = await Promise.all([
     getTemplateTasks(client, venueId, templateId),
     getMilestones(client, venueId, templateId),
   ]);
+  const { filterTasksForVenueCapabilities } = await import("@/lib/playbooks/capabilities");
+  const { DEFAULT_PLANNING_CAPABILITIES } = await import("@/lib/playbooks/capabilities");
+  const tasks = filterTasksForVenueCapabilities(tasksRaw, capabilities ?? DEFAULT_PLANNING_CAPABILITIES);
   if (!tasks.length) return { ok: true };
 
   const milestoneById = new Map(milestones.map((m) => [m.id, m]));

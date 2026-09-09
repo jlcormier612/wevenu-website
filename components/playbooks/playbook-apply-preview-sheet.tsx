@@ -126,7 +126,7 @@ export function PlaybookApplyPreviewSheet({
           {!loading && !loadError && (
             <>
               <p className="text-xs text-muted-foreground">
-                {groups.length} section{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"}
+                {groups.length} milestone{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"}
               </p>
               {groups.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4">

@@ -17,6 +17,7 @@ import {
 } from "@/lib/portal/couple-share-timeline";
 import {
   buildUnifiedTaskList,
+  groupUnifiedTasksByMilestone,
   unifiedTaskCompletionCounts,
   type UnifiedTask,
 } from "@/lib/portal/unified-tasks";
@@ -25,6 +26,10 @@ import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import { vendorConfirmCouplePhase } from "@/lib/vendor-tasks/vendor-confirm-state";
 import type { PortalSection, PortalTask, PortalVendorTask } from "@/lib/portal/types";
 import type { PortalRequestSummary } from "@/lib/requests/types";
+import {
+  DEFAULT_PLANNING_CAPABILITIES,
+  type VenuePlanningCapabilities,
+} from "@/lib/playbooks/capabilities";
 
 const KIND_ICON: Record<UnifiedTask["kind"], React.ComponentType<{ className?: string }>> = {
   venue_task: CheckCircle2, request: MessageSquare, contract: FileSignature,
@@ -51,6 +56,7 @@ function dueLabel(item: UnifiedTask): string {
  */
 export function UnifiedTasksSection({
   token, initialTasks, initialVendorTasks = [], initialTimelineHasUnpublishedChanges = false, venueName, onNavigate,
+  planningCapabilities = DEFAULT_PLANNING_CAPABILITIES,
 }: {
   token: string;
   initialTasks: PortalTask[];
@@ -58,6 +64,7 @@ export function UnifiedTasksSection({
   initialTimelineHasUnpublishedChanges?: boolean;
   venueName: string;
   onNavigate: (section: PortalSection, focus?: PortalWorkspaceFocus | null) => void;
+  planningCapabilities?: VenuePlanningCapabilities;
 }) {
   const [venueTasks, setVenueTasks] = React.useState(initialTasks);
   const [vendorTasks, setVendorTasks] = React.useState(initialVendorTasks);
@@ -217,6 +224,7 @@ export function UnifiedTasksSection({
   const allItems = buildUnifiedTaskList({
     venueTasks, requests, paymentSchedules, questionnaire, documents,
     timelineHasUnpublishedChanges: timelineUnpublished,
+    planningCapabilities,
   });
   // Caption must match cards above COMPLETED — not raw venue_tasks alone.
   const { done: doneVenueTasks, total: totalVenueTasks } = unifiedTaskCompletionCounts(allItems);
@@ -228,6 +236,8 @@ export function UnifiedTasksSection({
     isComplete: (t) => t.completed,
     getDueDate: (t) => t.dueDate,
   });
+  const openMilestoneGroups = groupUnifiedTasksByMilestone(openItems);
+  const completedMilestoneGroups = groupUnifiedTasksByMilestone(completedVenueItems);
   const { open: pendingVendor, completed: completedVendor } = partitionByCompletion(vendorTasks, {
     isComplete: (t) => t.status === "complete",
     getDueDate: (t) => t.dueDate,
@@ -508,14 +518,30 @@ export function UnifiedTasksSection({
             <p className="text-xs mt-1">You&apos;re caught up on venue tasks.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {openItems.map(renderVenueItem)}
-            {completedVenueItems.length > 0 && (
-              <div className="space-y-2 pt-2">
+          <div className="space-y-5">
+            {openMilestoneGroups.map((group) => (
+              <div key={`open-${group.milestoneName}`} className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.milestoneName}
+                </p>
+                {group.items.map(renderVenueItem)}
+              </div>
+            ))}
+            {completedMilestoneGroups.length > 0 && (
+              <div className="space-y-4 pt-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Completed
                 </p>
-                {completedVenueItems.map(renderVenueItem)}
+                {completedMilestoneGroups.map((group) => (
+                  <div key={`done-${group.milestoneName}`} className="space-y-2">
+                    {openMilestoneGroups.length + completedMilestoneGroups.length > 1 && (
+                      <p className="text-[11px] font-medium text-muted-foreground">
+                        {group.milestoneName}
+                      </p>
+                    )}
+                    {group.items.map(renderVenueItem)}
+                  </div>
+                ))}
               </div>
             )}
           </div>

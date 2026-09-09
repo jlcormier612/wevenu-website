@@ -211,6 +211,14 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     floorPlans: event.floorPlans, inventoryUsage, requests: eventRequests,
     contracts, invoices: eventInvoices, documents,
     conversationMessages,
+    planningCapabilities: venue
+      ? {
+          timeline: venue.planningTimelineEnabled,
+          floorPlan: venue.planningFloorPlanEnabled,
+          seating: venue.planningSeatingEnabled,
+          vendors: venue.planningVendorsEnabled,
+        }
+      : undefined,
   });
 
   return (

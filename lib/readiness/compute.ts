@@ -21,6 +21,8 @@ import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { ConversationMessage } from "@/lib/conversations/types";
 import type { EventReadinessSummary, ReadinessSection, ReadinessStatus } from "@/lib/readiness/types";
+import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
+import { DEFAULT_PLANNING_CAPABILITIES } from "@/lib/playbooks/capabilities";
 
 const STATUS_PRIORITY: Record<ReadinessStatus, number> = {
   needs_attention: 0, waiting: 1, not_started: 2, complete: 3,
@@ -279,19 +281,23 @@ export function buildEventReadiness(input: {
   invoices: Invoice[];
   documents: Document[];
   conversationMessages: ConversationMessage[];
+  /** When omitted, all planning surfaces count toward readiness (legacy default). */
+  planningCapabilities?: VenuePlanningCapabilities;
 }): EventReadinessSummary {
+  const caps = input.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES;
   const sections = [
     computePlanningReadiness(input.readinessByKind),
-    computeTimelineReadiness(input.timelineEntries),
+    caps.timeline ? computeTimelineReadiness(input.timelineEntries) : null,
     computeGuestsReadiness(input.guestSummary),
-    computeSeatingReadiness(input.eventId, input.seatingSummary),
-    computeFloorPlansReadiness(input.floorPlans, input.inventoryUsage),
+    caps.seating ? computeSeatingReadiness(input.eventId, input.seatingSummary) : null,
+    caps.floorPlan ? computeFloorPlansReadiness(input.floorPlans, input.inventoryUsage) : null,
     computeRequestsReadiness(input.requests),
     computeContractsReadiness(input.contracts),
     computePaymentsReadiness(input.invoices),
     computeDocumentsReadiness(input.documents),
     computeCommunicationReadiness({ conversationMessages: input.conversationMessages }),
-  ].sort((a, b) => STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status]);
+  ].filter((s): s is ReadinessSection => s != null)
+    .sort((a, b) => STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status]);
 
   const overallStatus = sections.reduce<ReadinessStatus>(
     (worst, s) => (STATUS_PRIORITY[s.status] < STATUS_PRIORITY[worst] ? s.status : worst),

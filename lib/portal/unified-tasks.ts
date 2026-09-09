@@ -25,6 +25,11 @@ import type { PortalTask } from "@/lib/portal/types";
 import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 import { FINAL_PAYMENT_OBLIGATION_TRIGGER } from "@/lib/payments/obligation-constants";
+import {
+  DEFAULT_PLANNING_CAPABILITIES,
+  shouldHideIncompleteTaskForCapabilities,
+  type VenuePlanningCapabilities,
+} from "@/lib/playbooks/capabilities";
 
 export type UnifiedTaskKind = "venue_task" | "request" | "contract" | "payment" | "questionnaire" | "timeline";
 
@@ -94,6 +99,8 @@ export type UnifiedTask = {
   confirmLabel: string | null;
   /** Honest empty-state copy when a null-trigger task has no configured URL. */
   missingLinkHint: string | null;
+  /** Snapshotted Planning milestone name (venue_task only). */
+  milestoneName: string | null;
 };
 
 type PaymentSchedule = {
@@ -394,7 +401,10 @@ export function buildUnifiedTaskList(input: {
   questionnaire: { status: string } | null;
   documents: ContractDoc[];
   timelineHasUnpublishedChanges: boolean;
+  /** When a capability is off, hide incomplete work that requires it. */
+  planningCapabilities?: VenuePlanningCapabilities;
 }): UnifiedTask[] {
+  const caps = input.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES;
   const out: UnifiedTask[] = [];
   const today = todayIso();
 
@@ -424,6 +434,7 @@ export function buildUnifiedTaskList(input: {
   const hasUnpaidPaymentObligation = unpaidPaymentLines.length > 0;
 
   for (const t of input.venueTasks) {
+    if (shouldHideIncompleteTaskForCapabilities(t, caps)) continue;
     // Impl 2 + Impl 7: when money is owed on a canonical line, hide payment
     // checklist mirrors (broad + Final Payment verified) from couple attention.
     // DB row stays; auto-complete path stays. Never title-dedupe.
@@ -446,6 +457,7 @@ export function buildUnifiedTaskList(input: {
       undoableHere: presentation.undoableHere,
       confirmLabel: presentation.confirmLabel,
       missingLinkHint: presentation.missingLinkHint,
+      milestoneName: t.milestoneName?.trim() || null,
     });
   }
 
@@ -461,6 +473,7 @@ export function buildUnifiedTaskList(input: {
       actionLabel: r.requestType === "approval" ? "Review & respond" : r.requestType === "upload" ? "Upload" : "Respond",
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
+      milestoneName: null,
     });
   }
 
@@ -472,6 +485,7 @@ export function buildUnifiedTaskList(input: {
       targetSection: "documents", targetFocus: "sign", actionLabel: "Review & sign",
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
+      milestoneName: null,
     });
   }
 
@@ -483,6 +497,7 @@ export function buildUnifiedTaskList(input: {
       targetSection: "payments", targetFocus: null, actionLabel: "Pay now",
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
+      milestoneName: null,
     });
   }
 
@@ -494,10 +509,11 @@ export function buildUnifiedTaskList(input: {
       targetSection: "questionnaire", targetFocus: "form", actionLabel: "Complete form",
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
+      milestoneName: null,
     });
   }
 
-  if (input.timelineHasUnpublishedChanges) {
+  if (input.timelineHasUnpublishedChanges && caps.timeline) {
     out.push({
       id: "timeline", kind: "timeline", title: "Submit your timeline updates",
       description: "You've made changes your venue hasn't seen yet.",
@@ -505,6 +521,7 @@ export function buildUnifiedTaskList(input: {
       targetSection: "timeline", targetFocus: "submit", actionLabel: "Review & submit",
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
+      milestoneName: null,
     });
   }
 
@@ -517,4 +534,29 @@ export function buildUnifiedTaskList(input: {
     if (b.dueDate) return 1;
     return 0;
   });
+}
+
+/** Group attention-sorted tasks by snapshotted milestone (venue Planning Tasks). */
+export function groupUnifiedTasksByMilestone(
+  items: readonly UnifiedTask[],
+): { milestoneName: string; items: UnifiedTask[] }[] {
+  const order: string[] = [];
+  const buckets = new Map<string, UnifiedTask[]>();
+  for (const item of items) {
+    const key =
+      item.kind === "venue_task" && item.milestoneName
+        ? item.milestoneName
+        : item.kind === "venue_task"
+          ? "Other"
+          : "Also from your venue";
+    if (!buckets.has(key)) {
+      buckets.set(key, []);
+      order.push(key);
+    }
+    buckets.get(key)!.push(item);
+  }
+  return order.map((milestoneName) => ({
+    milestoneName,
+    items: buckets.get(milestoneName)!,
+  }));
 }

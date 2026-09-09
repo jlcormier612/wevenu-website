@@ -60,6 +60,13 @@ export type PortalContext = {
     city: string | null;
     stateRegion: string | null;
     postalCode: string | null;
+    /** Optional planning surfaces this venue offers (defaults all true). */
+    planningCapabilities?: {
+      timeline: boolean;
+      floorPlan: boolean;
+      seating: boolean;
+      vendors: boolean;
+    };
   };
 };
 

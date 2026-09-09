@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask, applyPlaybookToEvent, completeEventTask_,
+  addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, completeEventTask_,
   createStandardClientPlanningTemplate, createStandardVenueWorkflowTemplate, createTemplate, createTemplateFromImport,
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   getMilestones, getTemplate, getTemplateTasks,
-  releasePlaybookApplication,
+  releasePlaybookApplication, unapplyPlaybookFromEvent,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
   setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
   updateEventTaskSchedule, updateTemplateTask_,
@@ -82,12 +82,24 @@ export async function getPlaybookApplyPreviewAction(templateId: string): Promise
   milestones: PlaybookMilestone[];
   tasks: PlaybookTask[];
 } | { ok: false; message: string }> {
-  const [template, milestones, tasks] = await Promise.all([
+  const [template, milestones, tasksRaw] = await Promise.all([
     getTemplate(templateId),
     getMilestones(templateId),
     getTemplateTasks(templateId),
   ]);
   if (!template) return { ok: false, message: "That checklist template could not be found." };
+  const { getCurrentVenue } = await import("@/lib/venue/service");
+  const { filterTasksForVenueCapabilities } = await import("@/lib/playbooks/capabilities");
+  const venue = await getCurrentVenue();
+  const caps = venue
+    ? {
+        timeline: venue.planningTimelineEnabled,
+        floorPlan: venue.planningFloorPlanEnabled,
+        seating: venue.planningSeatingEnabled,
+        vendors: venue.planningVendorsEnabled,
+      }
+    : undefined;
+  const tasks = caps ? filterTasksForVenueCapabilities(tasksRaw, caps) : tasksRaw;
   return {
     ok: true,
     template: { id: template.id, name: template.name, kind: template.kind },
@@ -98,6 +110,15 @@ export async function getPlaybookApplyPreviewAction(templateId: string): Promise
 
 export async function releasePlaybookAction(eventId: string, clientId: string, coupleName: string): Promise<PlaybookActionResult> {
   const result = await releasePlaybookApplication(eventId, clientId, coupleName);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/clients");
+  }
+  return result;
+}
+
+export async function unapplyPlaybookAction(eventId: string, kind: PlaybookKind): Promise<PlaybookActionResult> {
+  const result = await unapplyPlaybookFromEvent(eventId, kind);
   if (result.ok) {
     revalidatePath(`/events/${eventId}`);
     revalidatePath("/clients");

@@ -14,7 +14,7 @@ import {
   addEventTaskContextLinkAction, completeTaskAction,
   createRequestForTaskAction,
   releasePlaybookAction,
-  removeEventTaskContextLinkAction, setTaskStatusAction, updateEventTaskAssignmentAction,
+  removeEventTaskContextLinkAction, setTaskStatusAction, unapplyPlaybookAction, updateEventTaskAssignmentAction,
   updateEventTaskDaysOffsetAction, updateEventTaskDueDateAction, updateEventTaskNotesAction,
   updateEventTaskScheduleAction,
 } from "@/app/(app)/playbooks/actions";
@@ -34,7 +34,7 @@ import { sortByDueDateAsc } from "@/lib/tasks/group-by-completion";
 import {
   categoryColor, categoryLabel, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
   formatScheduledTime, isScheduledActivity, offsetForDirection,
-  PLAYBOOK_KINDS, STATUS_CONFIG, taskActionHref, taskActionLabel,
+  PLAYBOOK_KINDS, STATUS_CONFIG, TASK_VISIBILITY, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
@@ -510,6 +510,10 @@ function TaskRow({
             <span>·</span>
             <span>{task.ownerType === "couple" ? "Client" : task.ownerType === "vendor" ? "Vendor" : "Coordinator"}</span>
             <span>·</span>
+            <span title={TASK_VISIBILITY.find((v) => v.value === task.visibility)?.hint}>
+              {TASK_VISIBILITY.find((v) => v.value === task.visibility)?.label ?? task.visibility}
+            </span>
+            <span>·</span>
             <span>{formatEventRelativeDue({
               daysOffset: task.daysOffset,
               dueDate: task.dueDate,
@@ -650,6 +654,7 @@ export function PlaybookApplyRow({
   const meta = PLAYBOOK_KINDS.find((k) => k.value === kind)!;
   const [selectedTemplate, setSelectedTemplate] = React.useState(preselectTemplateId ?? templates[0]?.id ?? "");
   const [releasing, startRelease] = React.useTransition();
+  const [removing, startRemove] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
 
   function handleEditDraft() {
@@ -667,6 +672,22 @@ export function PlaybookApplyRow({
     });
   }
 
+  function handleRemovePlanning() {
+    const label = kind === "client" ? "Client Planning" : "Venue Planning";
+    if (!confirm(
+      `Remove ${label} from this event and start over?\n\nThis deletes the checklist tasks created for this event. It does not change your Library template. You can apply a different template afterward.`,
+    )) return;
+    startRemove(async () => {
+      const result = await unapplyPlaybookAction(eventId, kind);
+      if (result.ok) {
+        toast.success(`${label} removed — you can apply a different template.`);
+        onApplied();
+      } else {
+        toast.error(result.message ?? "Could not remove planning.");
+      }
+    });
+  }
+
   if (application) {
     // The underlying model is always Client Planning — what's shown here is
     // the event-specific presentation of it, not the template's own name
@@ -679,6 +700,7 @@ export function PlaybookApplyRow({
     // percentage.
     const needsAttention = readiness ? readiness.blockedCount + readiness.overdueCount : 0;
     const isDraft = kind === "client" && !application.releasedAt;
+    const canStartOver = kind === "venue" || isDraft;
 
     if (isDraft) {
       return (
@@ -699,6 +721,16 @@ export function PlaybookApplyRow({
             </Button>
             <Button type="button" size="sm" onClick={handleRelease} disabled={releasing} className="h-7 px-2 text-xs">
               {releasing ? <Loader2 className="h-3 w-3 animate-spin" /> : `Release to ${clientName ?? "Client"}`}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={handleRemovePlanning}
+              disabled={removing}
+              className="h-7 px-2 text-xs text-muted-foreground"
+            >
+              {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Remove Planning / Start Over"}
             </Button>
             <p className="w-full text-[11px] text-muted-foreground">
               You&apos;re editing this event&apos;s copy — changes here don&apos;t update the Library template.
@@ -736,6 +768,25 @@ export function PlaybookApplyRow({
               </span>
             )}
           </div>
+        )}
+        {canStartOver && (
+          <div className="mt-2 pl-6">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={handleRemovePlanning}
+              disabled={removing}
+              className="h-7 px-2 text-xs text-muted-foreground"
+            >
+              {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Remove Planning / Start Over"}
+            </Button>
+          </div>
+        )}
+        {kind === "client" && application.releasedAt && (
+          <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground">
+            Released Client Planning can&apos;t be removed wholesale — edit individual tasks below.
+          </p>
         )}
       </div>
     );

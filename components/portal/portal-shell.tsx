@@ -47,6 +47,11 @@ import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
 import {
+  DEFAULT_PLANNING_CAPABILITIES,
+  isPortalSectionEnabledByCapabilities,
+} from "@/lib/playbooks/capabilities";
+import { shouldOfferPreferredVendorsNavigation } from "@/lib/portal/preferred-vendors-surfaces";
+import {
   buildUnifiedTaskList,
   unifiedTaskCompletionCounts,
   type UnifiedTask,
@@ -1859,6 +1864,7 @@ function OverviewSection({
         token={token}
         venueName={venueName}
         canSeeFinancial={canSeeFinancial}
+        planningCapabilities={context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES}
         onNavigate={onNavigate}
       />
 
@@ -1885,6 +1891,7 @@ function OverviewSection({
         profile={profile}
         accessLevel={accessLevel}
         experienceProfile={context.experienceProfile}
+        planningCapabilities={context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES}
         onNavigate={onNavigate}
       />
 
@@ -1898,6 +1905,7 @@ function OverviewSection({
           bracket={bracket}
           recentActivity={recentActivity}
           venueAttentionCount={p1Count ?? 0}
+          planningCapabilities={context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES}
           onNavigate={onNavigate}
         />
         {showLuvIntro && (
@@ -1965,11 +1973,12 @@ function VenueRequestsBanner({
 }
 
 function WorkingWithYourVenue({
-  token, venueName, canSeeFinancial, onNavigate,
+  token, venueName, canSeeFinancial, planningCapabilities = DEFAULT_PLANNING_CAPABILITIES, onNavigate,
 }: {
   token: string;
   venueName: string;
   canSeeFinancial: boolean;
+  planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
   return (
@@ -1988,10 +1997,12 @@ function WorkingWithYourVenue({
           className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
           Explore your Venue Guide
         </button>
-        <button type="button" onClick={() => onNavigate("vendors")}
-          className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
-          Preferred vendors
-        </button>
+        {shouldOfferPreferredVendorsNavigation(planningCapabilities) && (
+          <button type="button" onClick={() => onNavigate("vendors")}
+            className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
+            Preferred vendors
+          </button>
+        )}
       </div>
     </div>
   );
@@ -4410,6 +4421,22 @@ export function PortalShell({
     React.useState(false);
 
   const hasServerLegalGate = Boolean(initialLegalGate);
+  const planningCapabilities =
+    context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES;
+  const navItems = NAV_ITEMS
+    .map((item) => ({
+      ...item,
+      available:
+        item.available && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities),
+    }))
+    .filter((item) => item.available);
+
+  React.useEffect(() => {
+    if (!isPortalSectionEnabledByCapabilities(activeSection, planningCapabilities)) {
+      setActiveSection("overview");
+      setWorkspaceFocus(null);
+    }
+  }, [activeSection, planningCapabilities]);
 
   React.useEffect(() => {
     // Re-check on every visit/mount so version bumps are caught even when SSR
@@ -4730,7 +4757,7 @@ export function PortalShell({
             venue-shared and lives in this top row with other venue surfaces. */}
         <div className="max-w-6xl mx-auto px-2 sm:px-3">
           <nav className="flex items-stretch justify-between gap-0 py-0.5" aria-label="Portal">
-            {NAV_ITEMS.map(item => {
+            {navItems.map(item => {
               const isActive = activeSection === item.id;
               const badge =
                 item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
@@ -4808,13 +4835,19 @@ export function PortalShell({
           </div>
         ) : activeSection === "seating" ? (
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <SeatingPortalSection token={token} />
+            {planningCapabilities.seating
+              ? <SeatingPortalSection token={token} />
+              : (
+                <div className="max-w-2xl mx-auto px-4 py-16 text-center text-muted-foreground">
+                  <p className="text-sm font-medium">Seating isn&apos;t part of planning with this venue.</p>
+                </div>
+              )}
           </div>
         ) : isSharedListColumn ? (
           /* Tasks | Timeline | Documents | Venue Guide — identical outer column (max-w + pad). */
           <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
-            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} initialTimelineHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} venueName={context.venue.name} onNavigate={navigateTo} />}
-            {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} eventDate={context.event?.eventDate} eventEndDate={context.event?.eventEndDate} />}
+            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} initialTimelineHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} venueName={context.venue.name} onNavigate={navigateTo} planningCapabilities={planningCapabilities} />}
+            {activeSection === "timeline"  && planningCapabilities.timeline && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} eventDate={context.event?.eventDate} eventEndDate={context.event?.eventEndDate} />}
             {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={navigateTo} />}
             {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={navigateTo} />}
           </div>
@@ -4829,8 +4862,8 @@ export function PortalShell({
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
             {activeSection === "inventory" && <InventoryPortalSection token={token} />}
             {activeSection === "event-order" && <EventOrderPortalSection token={token} />}
-            {activeSection === "floor_plans" && <FloorPlanSection token={token} />}
-            {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
+            {activeSection === "floor_plans" && planningCapabilities.floorPlan && <FloorPlanSection token={token} />}
+            {activeSection === "vendors"   && planningCapabilities.vendors && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
             {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
@@ -5649,7 +5682,7 @@ function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | nul
 // via resolveLuvHomeSuggestion — warm, optional, never silently acts, and
 // skips venue-owned signals when Your Next Steps already has attention.
 function LuvDailyCard({
-  token, du, guestStats, readiness, bracket, recentActivity, venueAttentionCount, onNavigate,
+  token, du, guestStats, readiness, bracket, recentActivity, venueAttentionCount, planningCapabilities = DEFAULT_PLANNING_CAPABILITIES, onNavigate,
 }: {
   token: string;
   du: number | null;
@@ -5658,6 +5691,7 @@ function LuvDailyCard({
   bracket: string;
   recentActivity: RecentActivity | null;
   venueAttentionCount: number;
+  planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
   const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
@@ -5714,6 +5748,7 @@ function LuvDailyCard({
     soonKeyDate: soonKeyDate ? { label: soonKeyDate.label, date: soonKeyDate.date } : null,
     venueAttentionCount,
     dayOfMonth: today.getDate(),
+    disabledDestinations: planningCapabilities.vendors ? [] : ["vendors"],
   });
 
   const hasCta = Boolean(suggestion.destination && suggestion.ctaLabel);
@@ -5778,10 +5813,11 @@ function LuvDailyCard({
   );
 }
 
-function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel = "couple", experienceProfile, onNavigate }: {
+function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel = "couple", experienceProfile, planningCapabilities = DEFAULT_PLANNING_CAPABILITIES, onNavigate }: {
   token: string; guestStats: GuestStats | null; todoCount: number; profile: CoupleProfile | null;
   accessLevel?: PortalContext["accessLevel"];
   experienceProfile: PortalContext["experienceProfile"];
+  planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
   const showBudget = accessLevel !== "view_only";
@@ -5803,7 +5839,7 @@ function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel
         <WebsiteLaunchCard token={token} onNavigate={onNavigate} />
         <GuestsLaunchCard guestStats={guestStats} onNavigate={onNavigate} />
         {showBudget && <BudgetLaunchCard token={token} onNavigate={onNavigate} />}
-        <SeatingLaunchCard token={token} onNavigate={onNavigate} />
+        {planningCapabilities.seating && <SeatingLaunchCard token={token} onNavigate={onNavigate} />}
         <PlansLaunchCard todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
         <StoryLaunchCard profile={profile} onNavigate={onNavigate} />
       </div>

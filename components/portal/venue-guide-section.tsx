@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Search, Globe, Phone, Mail, ChevronDown, ChevronUp, ExternalLink, Users } from "lucide-react";
 import type { PortalContext, PortalSection, PortalVenueTeamMember, PortalVenueSpace } from "@/lib/portal/types";
+import { shouldOfferPreferredVendorsNavigation } from "@/lib/portal/preferred-vendors-surfaces";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -499,8 +500,11 @@ export function VenueGuideSection({ token, context, onNavigate }: { token: strin
       )}
 
       {/* ── Preferred Vendors cross-link — Phase 6: the Guide points to the
-          venue's own preferred vendor list rather than duplicating it. ── */}
-      {!loading && (!q || matches("preferred vendors", q)) && (
+          venue's own preferred vendor list rather than duplicating it.
+          Hidden when the venue has disabled the Preferred Vendors planning capability. ── */}
+      {!loading
+        && shouldOfferPreferredVendorsNavigation(context.venue.planningCapabilities)
+        && (!q || matches("preferred vendors", q)) && (
         <GuideSection emoji="🤝" title="Preferred Vendors">
           <button type="button" onClick={() => onNavigate("vendors")}
             className={`${CONTENT_BAR} text-left flex items-center justify-between gap-3 hover:opacity-90 transition-opacity`}>

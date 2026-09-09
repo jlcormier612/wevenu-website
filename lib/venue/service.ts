@@ -588,6 +588,23 @@ export async function updateVenueEmailSignature(
   return { ok: true };
 }
 
+/** Which optional planning surfaces this venue offers (Timeline, Floor Plan, etc.). */
+export async function updateVenuePlanningCapabilities(
+  caps: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Venue not found." };
+  await repository.updateVenueFields(supabase, venue.id, {
+    planning_timeline_enabled: caps.timeline,
+    planning_floor_plan_enabled: caps.floorPlan,
+    planning_seating_enabled: caps.seating,
+    planning_vendors_enabled: caps.vendors,
+  });
+  return { ok: true };
+}
+
 // connectStripeAccount()/disconnectStripeAccount() moved to
 // lib/stripe/service.ts (Sprint 4 — Venue Payment Processing), which reads
 // Stripe's real charges_enabled flag and calls Stripe's own deauthorize

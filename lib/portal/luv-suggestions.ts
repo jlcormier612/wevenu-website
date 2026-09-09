@@ -50,6 +50,11 @@ export type LuvHomeSuggestionInput = {
   venueAttentionCount: number;
   /** Day of month (1–31) — preserves existing even/odd milestone vs social rotation. */
   dayOfMonth: number;
+  /**
+   * Portal destinations that must not receive a Luv CTA (e.g. Preferred Vendors
+   * when the venue has disabled that planning capability).
+   */
+  disabledDestinations?: readonly PortalSection[];
 };
 
 /** Soft language patterns Luv Home must not use. */
@@ -199,7 +204,11 @@ export function resolveLuvHomeSuggestion(input: LuvHomeSuggestionInput): LuvHome
     soonKeyDate,
     venueAttentionCount,
     dayOfMonth,
+    disabledDestinations = [],
   } = input;
+
+  const destinationAllowed = (dest: PortalSection | null): boolean =>
+    dest == null || !disabledDestinations.includes(dest);
 
   // 1. Near key-date — observational gentle reminder
   if (soonKeyDate) {
@@ -282,12 +291,16 @@ export function resolveLuvHomeSuggestion(input: LuvHomeSuggestionInput): LuvHome
         guestTotal === 0 && bracket !== "<1"
           ? NEXT_MILESTONE_BY_BRACKET["12+"]
           : (NEXT_MILESTONE_BY_BRACKET[bracket] ?? NEXT_MILESTONE_BY_BRACKET["6-9"]);
-      return finish(
-        "milestone",
-        `${milestone.title}. ${milestone.desc}`,
-        milestone.ctaLabel,
-        milestone.destination,
-      );
+      if (destinationAllowed(milestone.destination)) {
+        return finish(
+          "milestone",
+          `${milestone.title}. ${milestone.desc}`,
+          milestone.ctaLabel,
+          milestone.destination,
+        );
+      }
+      // Destination gated off (e.g. Preferred Vendors capability) — fall through
+      // to social proof rather than deep-linking a disabled surface.
     }
     const proof = SOCIAL_PROOF_BY_BRACKET[bracket] ?? SOCIAL_PROOF_BY_BRACKET["6-9"];
     return finish("social_proof", proof, null, null);

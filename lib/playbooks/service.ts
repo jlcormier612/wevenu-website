@@ -235,13 +235,47 @@ export async function getEventPlaybookApplications(eventId: string): Promise<Eve
 
 export async function applyPlaybookToEvent(eventId: string, templateId: string, eventDate: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
-    const applied = await repo.applyPlaybookToEvent(c, venueId, eventId, templateId, eventDate);
+    const { data: venueRow } = await c.from("venues")
+      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .eq("id", venueId)
+      .maybeSingle();
+    const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
+    const caps = capabilitiesFromVenueRow(venueRow);
+    const applied = await repo.applyPlaybookToEvent(c, venueId, eventId, templateId, eventDate, caps);
     if (!applied.ok) {
       const template = await repo.getTemplate(c, venueId, templateId);
       const kindLabel = template?.kind === "client" ? "Client Planning" : "Venue Planning";
+      const startOver =
+        template?.kind === "client"
+          ? "Use Remove Planning / Start Over while this checklist is still a draft, then apply a different template."
+          : "Use Remove Planning / Start Over on Venue Planning, then apply a different template.";
       return {
         ok: false,
-        message: `This event already has a ${kindLabel} checklist applied. Remove its existing tasks first if you need to start over — replacing or merging isn't supported yet.`,
+        message: `This event already has a ${kindLabel} checklist applied. ${startOver}`,
+      } as PlaybookActionResult;
+    }
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+/** Explicit Remove Planning / Start Over — never silent replace/merge. */
+export async function unapplyPlaybookFromEvent(
+  eventId: string,
+  kind: PlaybookKind,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const removed = await repo.unapplyPlaybookFromEvent(c, venueId, eventId, kind);
+    if (!removed.ok) {
+      if (removed.reason === "already_released") {
+        return {
+          ok: false,
+          message: "Client Planning has already been released. It can't be removed wholesale — edit individual tasks instead.",
+        } as PlaybookActionResult;
+      }
+      return {
+        ok: false,
+        message: "No planning checklist of that kind is applied to this event.",
       } as PlaybookActionResult;
     }
     return { ok: true } as PlaybookActionResult;

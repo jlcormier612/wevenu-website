@@ -7,10 +7,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  applyPlaybookAction,
-  getPlaybookApplyPreviewAction,
-} from "@/app/(app)/playbooks/actions";
+import { getPlaybookApplyPreviewAction } from "@/app/(app)/playbooks/actions";
 import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply-preview-sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,7 +87,6 @@ function PreparePlanningKind({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [groups, setGroups] = React.useState<ApplyPreviewMilestoneGroup[]>([]);
   const [loadingPreview, setLoadingPreview] = React.useState(false);
-  const [applying, startApply] = React.useTransition();
   const kindCopy = applyPreviewKindCopy(kind);
   const label = playbookKindLabel(kind);
   const selected = recommendation.choices.find((t) => t.id === selectedId) ?? null;
@@ -120,23 +116,6 @@ function PreparePlanningKind({
     };
   }, [selectedId, application]);
 
-  function handleApply() {
-    if (!eventId || !eventDate || !selectedId) return;
-    startApply(async () => {
-      const result = await applyPlaybookAction(eventId, selectedId, eventDate);
-      if (result.ok) {
-        toast.success(
-          kind === "client"
-            ? "Client Planning applied as a draft — it is not visible to the client until you release it."
-            : "Venue Planning applied — it is active for your team on this event.",
-        );
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not apply this Planning Template.");
-      }
-    });
-  }
-
   const taskCount = groups.reduce((n, g) => n + g.tasks.length, 0);
 
   return (
@@ -149,10 +128,10 @@ function PreparePlanningKind({
       {application ? (
         <p className="text-sm" style={{ color: "#3D2F30" }}>
           {kind === "client" && !application.releasedAt
-            ? `Applied as a draft — ${application.templateName}. Not yet released to the client.`
+            ? `Applied as a draft — ${application.templateName}. Not yet released to the client. Use Remove Planning / Start Over on the event Planning tab to change templates.`
             : kind === "client"
               ? `Released to the client — ${application.templateName}.`
-              : `Configured — ${application.templateName}.`}
+              : `Configured — ${application.templateName}. Use Remove Planning / Start Over on the event Planning tab to change templates.`}
         </p>
       ) : !eventId || !eventDate ? (
         <p className="text-sm text-muted-foreground">
@@ -211,7 +190,7 @@ function PreparePlanningKind({
           {!loadingPreview && selected && groups.length > 0 && (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                {groups.length} section{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"} will be created for this event.
+                {groups.length} milestone{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"} will be created for this event.
               </p>
               {groups.map((g) => (
                 <div key={g.milestoneId} className="space-y-1">
@@ -244,9 +223,9 @@ function PreparePlanningKind({
 
           {!loadingPreview && selected && groups.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              This Planning Template doesn&apos;t have any tasks yet.{" "}
+              This Planning Template doesn&apos;t have any tasks yet for your venue&apos;s enabled planning capabilities.{" "}
               <Link href={`/library/playbooks/${selected.id}`} className="underline-offset-2 hover:underline" style={{ color: "#5A3235" }}>
-                Add tasks in Library
+                Review in Library
               </Link>{" "}
               before applying.
             </p>
@@ -256,34 +235,21 @@ function PreparePlanningKind({
             <Button
               type="button"
               size="sm"
-              onClick={handleApply}
-              disabled={applying || !selectedId || loadingPreview || taskCount === 0}
-            >
-              {applying ? (
-                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Applying…</>
-              ) : (
-                `Apply ${label}`
-              )}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
               onClick={() => setPreviewOpen(true)}
-              disabled={!selectedId}
+              disabled={!selectedId || loadingPreview || taskCount === 0}
             >
-              Review
+              Preview &amp; Apply {label}
             </Button>
           </div>
 
-          {selectedId ? (
+          {selectedId && eventId && eventDate ? (
             <PlaybookApplyPreviewSheet
               open={previewOpen}
               onOpenChange={setPreviewOpen}
               templateId={selectedId}
               kind={kind}
               eventId={eventId}
-              eventDate={eventDate ?? undefined}
+              eventDate={eventDate}
               onApplied={() => router.refresh()}
             />
           ) : null}

@@ -16,13 +16,18 @@ describe("Phase 2 planning apply seams", () => {
     assert.match(sheet, /formatTemplateReminder/);
   });
 
-  it("Apply uses applyPlaybookToEvent and does not call release", () => {
+  it("Apply uses Preview sheet only (no celebration direct Apply)", () => {
     const panel = readFileSync(resolve("components/clients/prepare-planning-panel.tsx"), "utf8");
-    assert.match(panel, /applyPlaybookAction/);
     assert.match(panel, /PlaybookApplyPreviewSheet/);
-    assert.match(panel, /recommendPlanningTemplate/);
+    assert.match(panel, /Preview & Apply|getPlaybookApplyPreviewAction/);
+    assert.doesNotMatch(panel, /applyPlaybookAction/);
     assert.doesNotMatch(panel, /releasePlaybookAction/);
     assert.doesNotMatch(panel, /Standard Wedding/);
+    const sheet = readFileSync(resolve("components/playbooks/playbook-apply-preview-sheet.tsx"), "utf8");
+    assert.match(sheet, /applyPlaybookAction/);
+    const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+    assert.match(celebration, /PreparePlanningPanel/);
+    assert.doesNotMatch(celebration, /applyPlaybookAction/);
   });
 
   it("Client Planning apply remains Draft until Release; Venue Planning is active on apply", () => {
@@ -46,6 +51,8 @@ describe("Phase 2 planning apply seams", () => {
     assert.match(fn, /return \{ ok: false, reason: "already_applied" \}/);
     const service = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
     assert.match(service, /already has a \$\{kindLabel\} checklist applied/);
+    assert.match(service, /Remove Planning \/ Start Over/);
+    assert.doesNotMatch(service, /Remove its existing tasks first/);
   });
 
   it("Event Confirmed no longer silently applies default playbooks", async () => {

@@ -54,7 +54,7 @@ export default async function PlaybookTemplatePreviewPage({ params }: Props) {
           <h1 className="font-heading text-xl font-medium text-heading">{template.name}</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">{kindCopy.explanation}</p>
           <p className="text-xs text-muted-foreground">
-            {groups.length} section{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"}
+            {groups.length} milestone{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"}
           </p>
         </div>
         <div className="rounded-lg border border-border bg-background p-6">
