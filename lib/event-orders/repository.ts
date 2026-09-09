@@ -1,7 +1,8 @@
 import { createClient } from "@/integrations/supabase/server";
 import type {
-  AddCustomLineInput, AddInventoryLineInput,
-  EventOrder, EventOrderActivity, EventOrderLine, EventOrderSection, EventOrderWithDetails,
+  AddCustomLineInput, AddInventoryLineInput, AddOfferingLineInput, UpdateLineInput,
+  EventOrder, EventOrderActivity, EventOrderLine, EventOrderSection, EventOrderSharePayload,
+  EventOrderWithDetails,
 } from "@/lib/event-orders/types";
 import { sumLines } from "@/lib/event-orders/constants";
 
@@ -18,8 +19,11 @@ type SectionRow = {
 };
 type LineRow = {
   id: string; event_order_id: string; venue_id: string; section_id: string | null;
-  provenance: "package" | "inventory" | "custom"; package_id: string | null; inventory_item_id: string | null;
-  description: string; quantity: number; unit_price: number; amount: number; sort_order: number;
+  provenance: "package" | "inventory" | "custom" | "offering";
+  package_id: string | null; inventory_item_id: string | null; offering_id: string | null;
+  description: string; description_detail: string | null;
+  quantity: number; unit: string | null; unit_price: number | null; amount: number;
+  is_included: boolean; notes: string | null; sort_order: number;
   created_at: string; updated_at: string;
 };
 type ActivityRow = {
@@ -39,13 +43,28 @@ const mapSection = (r: SectionRow): EventOrderSection => ({
 const mapLine = (r: LineRow): EventOrderLine => ({
   id: r.id, eventOrderId: r.event_order_id, venueId: r.venue_id, sectionId: r.section_id,
   provenance: r.provenance, packageId: r.package_id, inventoryItemId: r.inventory_item_id,
-  description: r.description, quantity: Number(r.quantity), unitPrice: Number(r.unit_price),
-  amount: Number(r.amount), sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+  offeringId: r.offering_id ?? null,
+  description: r.description, descriptionDetail: r.description_detail ?? null,
+  quantity: Number(r.quantity), unit: r.unit ?? null,
+  unitPrice: r.unit_price == null ? null : Number(r.unit_price),
+  amount: Number(r.amount), isIncluded: r.is_included ?? true, notes: r.notes ?? null,
+  sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapActivity = (r: ActivityRow): EventOrderActivity => ({
   id: r.id, eventOrderId: r.event_order_id, venueId: r.venue_id, type: r.type,
   title: r.title, description: r.description, createdAt: r.created_at,
 });
+
+function parseOptionalPrice(raw: string): number | null {
+  const cleaned = raw.replace(/[$,]/g, "").trim();
+  if (cleaned === "") return null;
+  const n = parseFloat(cleaned);
+  return Number.isNaN(n) ? null : n;
+}
+
+function lineAmount(quantity: number, unitPrice: number | null): number {
+  return quantity * (unitPrice ?? 0);
+}
 
 // ---- reads --------------------------------------------------------------------
 
@@ -80,7 +99,7 @@ export async function getEventOrderById(client: DbClient, venueId: string, event
   return data ? mapOrder(data) : null;
 }
 
-// ---- event order lifecycle -----------------------------------------------------
+// ---- lifecycle -----------------------------------------------------
 
 export async function insertEventOrder(client: DbClient, venueId: string, eventId: string, templateId: string | null = null): Promise<string> {
   const { data, error } = await client.from("event_orders")
@@ -105,13 +124,47 @@ export async function reopenEventOrder(client: DbClient, venueId: string, eventO
   if (error) throw error;
 }
 
-/** D5C — set only from shareEventOrderWithClient(); never cleared by reopen (the client's last-shared view stays visible/valid — the D4 pattern's own "private until shared, symmetrically" nuance doesn't apply here since Event Order has no draft-content-leak risk the way a live invoice projection does). */
+/** Never cleared by reopen — client continues seeing the last share snapshot until re-share. */
 export async function setSharedAt(client: DbClient, venueId: string, eventOrderId: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_orders") as any)
     .update({ shared_at: new Date().toISOString() })
     .eq("id", eventOrderId).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+export async function insertShareSnapshot(
+  client: DbClient,
+  venueId: string,
+  eventOrderId: string,
+  revision: number,
+  payload: EventOrderSharePayload,
+): Promise<void> {
+  const { error } = await client.from("event_order_share_snapshots").insert({
+    venue_id: venueId,
+    event_order_id: eventOrderId,
+    revision,
+    payload,
+  });
+  if (error) throw error;
+}
+
+export function buildSharePayload(order: EventOrderWithDetails): EventOrderSharePayload {
+  return {
+    sections: order.sections.map((s) => ({ id: s.id, name: s.name, sortOrder: s.sortOrder })),
+    lines: order.lines.map((l) => ({
+      id: l.id,
+      sectionId: l.sectionId,
+      description: l.description,
+      quantity: l.quantity,
+      unit: l.unit,
+      unitPrice: l.unitPrice,
+      amount: l.amount,
+      isIncluded: l.isIncluded,
+      notes: l.notes,
+      sortOrder: l.sortOrder,
+    })),
+  };
 }
 
 // ---- sections -------------------------------------------------------------------
@@ -124,12 +177,6 @@ export async function insertSection(client: DbClient, venueId: string, eventOrde
   return mapSection(data);
 }
 
-/**
- * Phase 4 — links (or unlinks, when floorPlanId is null) this Section to a
- * Floor Plan for reconciliation. Pure Event Order authoring — Event Order
- * owns which Section corresponds to which Floor Plan; this never touches
- * the Floor Plan itself.
- */
 export async function updateSectionFloorPlan(
   client: DbClient, venueId: string, sectionId: string, floorPlanId: string | null,
 ): Promise<void> {
@@ -139,7 +186,6 @@ export async function updateSectionFloorPlan(
   if (error) throw error;
 }
 
-/** Unsets section_id on every line first — removing a Section must never delete the commitments recorded on its lines. */
 export async function removeSection(client: DbClient, venueId: string, sectionId: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: unlinkError } = await (client.from("event_order_lines") as any)
@@ -161,7 +207,7 @@ export async function insertLineFromPackage(
       event_order_id: eventOrderId, venue_id: venueId, section_id: input.sectionId,
       provenance: "package", package_id: input.packageId,
       description: input.description, quantity: 1, unit_price: input.unitPrice, amount: input.unitPrice,
-      sort_order: sortOrder,
+      is_included: true, sort_order: sortOrder,
     }).select().single<LineRow>();
   if (error) throw error;
   return mapLine(data);
@@ -171,12 +217,35 @@ export async function insertLineFromInventory(
   client: DbClient, venueId: string, eventOrderId: string, input: AddInventoryLineInput, sortOrder: number,
 ): Promise<EventOrderLine> {
   const quantity = parseFloat(input.quantity);
-  const unitPrice = parseFloat(input.unitPrice.replace(/[$,]/g, ""));
+  const unitPrice = parseOptionalPrice(input.unitPrice);
   const { data, error } = await client.from("event_order_lines")
     .insert({
       event_order_id: eventOrderId, venue_id: venueId, section_id: input.sectionId,
       provenance: "inventory", inventory_item_id: input.inventoryItemId,
-      description: input.description.trim(), quantity, unit_price: unitPrice, amount: quantity * unitPrice,
+      description: input.description.trim(), quantity, unit: input.unit?.trim() || null,
+      unit_price: unitPrice, amount: lineAmount(quantity, unitPrice),
+      is_included: input.isIncluded ?? true, notes: input.notes?.trim() || null,
+      sort_order: sortOrder,
+    }).select().single<LineRow>();
+  if (error) throw error;
+  return mapLine(data);
+}
+
+export async function insertLineFromOffering(
+  client: DbClient, venueId: string, eventOrderId: string, input: AddOfferingLineInput, sortOrder: number,
+): Promise<EventOrderLine> {
+  const quantity = parseFloat(input.quantity);
+  const unitPrice = parseOptionalPrice(input.unitPrice);
+  const { data, error } = await client.from("event_order_lines")
+    .insert({
+      event_order_id: eventOrderId, venue_id: venueId, section_id: input.sectionId,
+      provenance: "offering", offering_id: input.offeringId,
+      inventory_item_id: input.inventoryItemId ?? null,
+      description: input.description.trim(),
+      description_detail: input.descriptionDetail?.trim() || null,
+      quantity, unit: input.unit?.trim() || null,
+      unit_price: unitPrice, amount: lineAmount(quantity, unitPrice),
+      is_included: input.isIncluded ?? true, notes: input.notes?.trim() || null,
       sort_order: sortOrder,
     }).select().single<LineRow>();
   if (error) throw error;
@@ -187,15 +256,43 @@ export async function insertCustomLine(
   client: DbClient, venueId: string, eventOrderId: string, input: AddCustomLineInput, sortOrder: number,
 ): Promise<EventOrderLine> {
   const quantity = parseFloat(input.quantity);
-  const unitPrice = parseFloat(input.unitPrice.replace(/[$,]/g, ""));
+  const unitPrice = parseOptionalPrice(input.unitPrice);
   const { data, error } = await client.from("event_order_lines")
     .insert({
       event_order_id: eventOrderId, venue_id: venueId, section_id: input.sectionId,
-      provenance: "custom", description: input.description.trim(), quantity, unit_price: unitPrice,
-      amount: quantity * unitPrice, sort_order: sortOrder,
+      provenance: "custom", description: input.description.trim(),
+      description_detail: input.descriptionDetail?.trim() || null,
+      quantity, unit: input.unit?.trim() || null,
+      unit_price: unitPrice, amount: lineAmount(quantity, unitPrice),
+      is_included: input.isIncluded ?? true, notes: input.notes?.trim() || null,
+      sort_order: sortOrder,
     }).select().single<LineRow>();
   if (error) throw error;
   return mapLine(data);
+}
+
+export async function updateLine(
+  client: DbClient, venueId: string, lineId: string, input: UpdateLineInput,
+): Promise<EventOrderLine> {
+  const quantity = parseFloat(input.quantity);
+  const unitPrice = parseOptionalPrice(input.unitPrice);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_order_lines") as any)
+    .update({
+      description: input.description.trim(),
+      description_detail: input.descriptionDetail?.trim() || null,
+      quantity,
+      unit: input.unit?.trim() || null,
+      unit_price: unitPrice,
+      amount: lineAmount(quantity, unitPrice),
+      is_included: input.isIncluded,
+      notes: input.notes?.trim() || null,
+      section_id: input.sectionId,
+    })
+    .eq("id", lineId).eq("venue_id", venueId)
+    .select().single();
+  if (error) throw error;
+  return mapLine(data as LineRow);
 }
 
 export async function removeLine(client: DbClient, venueId: string, lineId: string): Promise<void> {

@@ -93,6 +93,11 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   }
 
   const isResend = !!eventOrder.sharedAt;
+  // Freeze client-visible content now. Reopen may edit live lines; portal
+  // continues reading this snapshot until the next share.
+  await repo.insertShareSnapshot(
+    supabase, venue.id, eventOrderId, full.revision, repo.buildSharePayload(full),
+  );
   await repo.setSharedAt(supabase, venue.id, eventOrderId);
   await repo.insertActivity(supabase, venue.id, eventOrderId, "shared", isResend ? "Updated shared copy" : "Shared with client");
 

@@ -24,6 +24,8 @@ import { getSavedReports } from "@/lib/saved-reports/service";
 import { getPaymentPlanStarters } from "@/lib/payments/starters";
 import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
 import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/provision";
+import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
+import { listOfferings } from "@/lib/offerings/service";
 
 export const metadata: Metadata = { title: "Library" };
 
@@ -82,11 +84,12 @@ export default async function LibraryPage() {
   await Promise.all([
     ensureBrochureStartersForCurrentVenue(),
     ensureSavedReportStartersForCurrentVenue(),
+    ensureOfferingStartersForCurrentVenue(),
   ]);
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
     packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates, inventoryTemplates,
-    questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports,
+    questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports, offeringsAll,
   ] = await Promise.all([
     getContractTemplates(),
     getPlaybookTemplates(),
@@ -101,6 +104,7 @@ export default async function LibraryPage() {
     getEventOrderTemplates(true),
     getBrochures(true),
     getSavedReports(),
+    listOfferings(true),
   ]);
   const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
   const brochures = brochuresAll.filter((b) => !b.isArchived);
@@ -109,6 +113,7 @@ export default async function LibraryPage() {
   const floorPlanTemplates = floorPlanTemplatesAll.filter((t) => !t.isArchived);
   const inventoryItems = inventoryItemsAll.filter((i) => !i.isArchived);
   const packages = packagesAll;
+  const offerings = offeringsAll.filter((o) => !o.isArchived);
 
   return (
     <div className="space-y-8">
@@ -123,11 +128,8 @@ export default async function LibraryPage() {
       </Group>
 
       <Group title="Pricing &amp; Packages">
-        <ToolboxCard title="Packages" description="What you offer — customize inclusions and set your price before adding to an event or invoice." href="/packages" count={packages.length} icon={Boxes} />
-        {/* D8 — count was a hardcoded literal 3; matched today's real
-            starter list by coincidence, but would have silently gone stale
-            the moment a starter was added or removed. Every other Library
-            card computes its own count — this now does too. */}
+        <ToolboxCard title="Packages" description="What you sell commercially — customize inclusions and set your price." href="/packages" count={packages.length} icon={Boxes} />
+        <ToolboxCard title="Offerings" description="Menus, bar, services, and rentals you provide." href="/library/offerings" count={offerings.length} icon={Package} />
         <ToolboxCard title="Payment plan starters" description="Starting structures (percentages + timing before the Event). Start with one, then create the real schedule on a couple’s invoice." href="/library/payment-schedules" count={getPaymentPlanStarters().length} icon={ClipboardList} />
       </Group>
 
@@ -135,9 +137,9 @@ export default async function LibraryPage() {
         <ToolboxCard title="Planning Templates" description="The task checklists you've refined over the years." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
         <ToolboxCard title="Timeline Templates" description="Reusable day-of schedules for any booking." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
         <ToolboxCard title="Floor Plan Templates" description="Reusable room layouts for any booking." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
-        <ToolboxCard title="Event Order Templates" description="Reusable starting points for the Event Orders you create for your events." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={ClipboardList} />
-        <ToolboxCard title="Available Inventory Items" description="What your venue provides — customize examples, then use them on events." href="/library/inventory" count={inventoryItems.length} icon={Package} />
-        <ToolboxCard title="Inventory Templates" description="What you typically use for a wedding — Ceremony + Reception or Reception Only starters." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
+        <ToolboxCard title="Event Order Templates" description="Reusable delivery structures for Event Orders (sections only)." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={ClipboardList} />
+        <ToolboxCard title="Available Inventory Items" description="Physical stock your venue owns — chairs, tables, linens, equipment." href="/library/inventory" count={inventoryItems.length} icon={Package} />
+        <ToolboxCard title="Inventory Templates" description="What you typically allocate for a wedding — Ceremony + Reception or Reception Only." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
       </Group>
 
       <Group title="Communication">

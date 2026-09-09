@@ -90,7 +90,8 @@ describe("event → booking redirect wiring", () => {
     const src = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
     assert.match(src, /useLayoutEffect/);
     assert.match(src, /hashchange/);
-    assert.match(src, /setActiveTab\(hash\)/);
+    assert.match(src, /setActiveTab\(tab\)/);
     assert.match(src, /window\.location\.hash\.replace\("#", ""\)/);
+    assert.match(src, /URLSearchParams\(window\.location\.search\)\.get\("tab"\)/);
   });
 });

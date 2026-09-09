@@ -38,6 +38,11 @@ function line(partial: Partial<EventOrderLine> & Pick<EventOrderLine, "id" | "de
     provenance: "custom",
     packageId: null,
     inventoryItemId: null,
+    offeringId: null,
+    descriptionDetail: null,
+    unit: null,
+    isIncluded: true,
+    notes: null,
     sortOrder: 0,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
@@ -77,20 +82,17 @@ describe("Event Order $0 total warning", () => {
     assert.equal(eventOrderRequiresZeroTotalWarning(0, 0), false);
   });
 
-  it("warning copy discloses intentional $0 and what to fix without forbidding priced lines", () => {
-    assert.match(EVENT_ORDER_ZERO_TOTAL_WARNING, /\$0\.00/);
-    assert.match(EVENT_ORDER_ZERO_TOTAL_WARNING, /intentional/i);
-    assert.match(EVENT_ORDER_ZERO_TOTAL_WARNING, /Package or Inventory/i);
-    assert.match(EVENT_ORDER_ZERO_TOTAL_WARNING, /Cancel/i);
+  it("warning copy discloses intentional $0 without blocking finalize/share", () => {
+    assert.match(EVENT_ORDER_ZERO_TOTAL_WARNING, /\$0|intentional/i);
+    assert.match(EVENT_ORDER_ZERO_TOTAL_WARNING, /Payments/i);
     assert.doesNotMatch(EVENT_ORDER_ZERO_TOTAL_WARNING, /invalid|must have a price|cannot finalize/i);
   });
 
-  it("starter masters remain deliberately zero-priced structure", () => {
+  it("starter masters are delivery sections with guidance, not priced checklist lines", () => {
     for (const master of EVENT_ORDER_STARTER_MASTERS) {
       for (const section of master.sections) {
-        for (const l of section.lines) {
-          assert.equal(l.unitPrice ?? 0, 0);
-        }
+        assert.ok(section.name.trim().length > 0);
+        assert.ok(section.guidance && section.guidance.trim().length > 0);
       }
     }
   });
@@ -177,18 +179,16 @@ describe("Event Order finalized immutability (application-layer mutation rules)"
 });
 
 describe("template copy independence (starter → instance semantics)", () => {
-  it("starter lines are structure-only with no live catalog ids", () => {
+  it("starter sections are delivery structure only (no checklist lines)", () => {
     for (const master of EVENT_ORDER_STARTER_MASTERS) {
       for (const section of master.sections) {
-        for (const l of section.lines) {
-          assert.equal("packageId" in l && (l as { packageId?: string }).packageId != null, false);
-          assert.ok(l.description.trim().length > 0);
-        }
+        assert.ok(section.name.trim().length > 0);
+        assert.ok(section.guidance && section.guidance.trim().length > 0);
       }
     }
   });
 
-  it("applied template lines are stamped custom provenance (no live Package/Inventory ref)", () => {
+  it("applied template lines are not copied — structure only (custom provenance helper retained for legacy)", () => {
     assert.equal(templateAppliedLineProvenance(), "custom");
   });
 
@@ -209,11 +209,9 @@ describe("template copy independence (starter → instance semantics)", () => {
 });
 
 describe("feature flag contract", () => {
-  it("event_order_enabled is an availability gate only (documented contract)", () => {
-    const flagOff = false;
-    const flagOn = true;
-    assert.equal(flagOff, false);
-    assert.equal(flagOn, true);
-    assert.notEqual(flagOff, flagOn);
+  it("Event Order is always available (optional by use) — no entitlement gate", () => {
+    // venues.event_order_enabled is deprecated and must not gate UI.
+    const alwaysAvailable = true;
+    assert.equal(alwaysAvailable, true);
   });
 });

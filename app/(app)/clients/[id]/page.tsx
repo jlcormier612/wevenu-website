@@ -46,6 +46,7 @@ import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
+import { listActiveOfferings } from "@/lib/offerings/service";
 import { getPackages, getPackagesWithItems } from "@/lib/packages/service";
 import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
 import { getActiveSelectedPackageForClient } from "@/lib/commercial-selections/service";
@@ -186,14 +187,11 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     getSeatingReadinessSummary(portalToken),
   ]);
 
-  // Booking Financial Architecture Phase 2 — gated by venues.event_order_enabled;
-  // false skips these entirely rather than fetching and simply not rendering,
-  // since most venues won't have the flag on.
-  const eventOrderEnabled = venue?.eventOrderEnabled ?? false;
-  const [eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney] = await Promise.all([
-    eventOrderEnabled ? getEventOrder(eventId) : Promise.resolve(null),
-    eventOrderEnabled ? getPackages() : Promise.resolve([]),
-    eventOrderEnabled ? getEventOrderTemplates() : Promise.resolve([]),
+  // Event Order is always available (optional by use). No feature gate.
+  const [eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings] = await Promise.all([
+    getEventOrder(eventId),
+    getPackages(),
+    getEventOrderTemplates(),
     getPackagesWithItems(true),
     getActiveSelectedPackageForClient(client.id),
     loadBookingJourneyForClient({
@@ -201,9 +199,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       eventId,
       leadId: client.leadId,
     }),
+    listActiveOfferings(),
   ]);
-  // Reused by both Event Order's Add-from-Inventory sheet (when the flag is
-  // on) and the always-on Event Inventory panel — one catalog fetch, not two.
+  // Shared catalog fetch for Event Order Add-from-Inventory and Event Inventory.
   const inventoryItems = inventoryCatalogItems;
   const readinessSummary = buildEventReadiness({
     eventId: event.id,
@@ -251,17 +249,17 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       requestsByTaskId={requestsByTaskId}
       requests={eventRequests}
       readinessSummary={readinessSummary}
-      eventOrderEnabled={eventOrderEnabled}
       eventOrder={eventOrder}
       packages={packages}
+      offerings={offerings}
       inventoryItems={inventoryItems}
       eventInventory={eventInventory}
       inventoryTemplates={inventoryTemplates}
       eventOrderTemplates={eventOrderTemplates}
+      packagesWithItems={packagesWithItems}
       keyDates={client.keyDates}
       clientRehearsalDate={client.rehearsalDate}
       bookingJourney={bookingJourney}
-      packagesWithItems={packagesWithItems}
       selectedPackage={selectedPackage}
       openSetupPayments={sp.setupPayments === "1"}
     />

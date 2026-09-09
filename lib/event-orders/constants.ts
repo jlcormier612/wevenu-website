@@ -30,7 +30,13 @@ export const PROVENANCE_LABEL: Record<EventOrderLineProvenance, string> = {
   package: "Package",
   inventory: "Inventory",
   custom: "Custom",
+  offering: "Offering",
 };
+
+export function formatOptionalMoney(amount: number | null | undefined): string {
+  if (amount == null) return "—";
+  return formatMoney(amount);
+}
 
 /**
  * Booking Financial Architecture Phase 3b — a deterministic fingerprint of
@@ -41,7 +47,7 @@ export const PROVENANCE_LABEL: Record<EventOrderLineProvenance, string> = {
  */
 export function eventOrderLinesFingerprint(lines: Pick<EventOrderLine, "id" | "quantity" | "unitPrice" | "description">[]): string {
   return lines
-    .map((l) => `${l.id}:${l.quantity}:${l.unitPrice}:${l.description}`)
+    .map((l) => `${l.id}:${l.quantity}:${l.unitPrice ?? ""}:${l.description}`)
     .sort()
     .join("|");
 }

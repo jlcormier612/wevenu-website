@@ -1,12 +1,5 @@
 /**
- * Event Order — Booking Financial Architecture, Phase 2.
- *
- * The single governed record of what a booked Event will actually receive,
- * per docs/booking-financial-architecture-event-order-model.md and
- * docs/booking-financial-architecture-sections-and-catalogs.md. Belongs to
- * exactly one Event (never a Client — a Client with two Events gets two
- * Event Orders). Nothing downstream (Invoice, Floor Plan) consumes this
- * yet — that's Phase 3 and Phase 4.
+ * Event Order — Booking Financial Architecture + Offerings delivery model.
  */
 
 export type EventOrderStatus = "open" | "finalized";
@@ -14,7 +7,7 @@ export type EventOrderStatus = "open" | "finalized";
 /** Derived, never stored — see lib/event-orders/constants.ts::eventOrderDisplayStatus. */
 export type EventOrderDisplayStatus = "open" | "finalized" | "amended";
 
-export type EventOrderLineProvenance = "package" | "inventory" | "custom";
+export type EventOrderLineProvenance = "package" | "inventory" | "custom" | "offering";
 
 export type EventOrder = {
   id: string;
@@ -23,9 +16,8 @@ export type EventOrder = {
   status: EventOrderStatus;
   revision: number;
   finalizedAt: string | null;
-  /** D5C — set only by shareEventOrderWithClient(); null = never shared, the client sees nothing (get_event_order_for_portal requires this to be set). */
+  /** Set by share; never cleared by reopen. Client sees last share snapshot until re-share. */
   sharedAt: string | null;
-  /** D7A — provenance only, set once at creation. Never re-read live: editing or deleting the template afterward never touches this Event Order. */
   templateId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -50,10 +42,16 @@ export type EventOrderLine = {
   provenance: EventOrderLineProvenance;
   packageId: string | null;
   inventoryItemId: string | null;
+  offeringId: string | null;
   description: string;
+  descriptionDetail: string | null;
   quantity: number;
-  unitPrice: number;
+  unit: string | null;
+  /** Null = unpriced delivery line. */
+  unitPrice: number | null;
   amount: number;
+  isIncluded: boolean;
+  notes: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -73,12 +71,7 @@ export type EventOrderWithDetails = EventOrder & {
   sections: EventOrderSection[];
   lines: EventOrderLine[];
   activities: EventOrderActivity[];
-  /**
-   * Sum of this Event Order's own lines only — not the same figure as a
-   * future linked Invoice's total (Phase 3), which will also include tax
-   * and billing-only adjustments Event Order deliberately never owns (see
-   * the "delivered vs. money-mechanics" litmus test in the Sections doc).
-   */
+  /** Informational delivery subtotal — not amount owed. */
   total: number;
 };
 
@@ -87,6 +80,10 @@ export type AddCustomLineInput = {
   quantity: string;
   unitPrice: string;
   sectionId: string | null;
+  unit?: string;
+  isIncluded?: boolean;
+  notes?: string;
+  descriptionDetail?: string;
 };
 
 export type AddInventoryLineInput = {
@@ -94,6 +91,33 @@ export type AddInventoryLineInput = {
   description: string;
   quantity: string;
   unitPrice: string;
+  sectionId: string | null;
+  unit?: string;
+  isIncluded?: boolean;
+  notes?: string;
+};
+
+export type AddOfferingLineInput = {
+  offeringId: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  sectionId: string | null;
+  unit?: string;
+  isIncluded?: boolean;
+  notes?: string;
+  descriptionDetail?: string;
+  inventoryItemId?: string | null;
+};
+
+export type UpdateLineInput = {
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  unit?: string;
+  isIncluded: boolean;
+  notes?: string;
+  descriptionDetail?: string;
   sectionId: string | null;
 };
 
@@ -114,3 +138,20 @@ export type AddLineResult =
 export type AddSectionResult =
   | { ok: true; section: EventOrderSection }
   | { ok: false; message: string };
+
+/** Frozen client-visible share payload. */
+export type EventOrderSharePayload = {
+  sections: { id: string; name: string; sortOrder: number }[];
+  lines: {
+    id: string;
+    sectionId: string | null;
+    description: string;
+    quantity: number;
+    unit: string | null;
+    unitPrice: number | null;
+    amount: number;
+    isIncluded: boolean;
+    notes: string | null;
+    sortOrder: number;
+  }[];
+};

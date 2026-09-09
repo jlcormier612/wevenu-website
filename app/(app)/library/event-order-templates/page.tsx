@@ -21,7 +21,7 @@ export default async function EventOrderTemplatesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Event Order Templates"
-        description="Reusable starting points for the Event Orders you create for your events — sections and standard lines, ready to customize."
+        description="Reusable delivery structures for Event Orders — section names and optional guidance. Not checklists or invoices."
       />
       <EventOrderTemplateList
         templates={templates}

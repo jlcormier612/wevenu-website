@@ -4377,6 +4377,7 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "timeline",    icon: "🕒", label: "Timeline",          available: true, group: "venue" },
   { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
   { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
+  { id: "event-order", icon: "📋", label: "Event Order",       shortLabel: "Order",    available: true, group: "venue" },
   { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
   { id: "messages",    icon: "💬", label: "Messages",          available: true, group: "venue" },
   { id: "guide",       icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",    available: true, group: "venue" },
@@ -4408,6 +4409,7 @@ export function PortalShell({
   const [paymentsOverdueCount, setPaymentsOverdueCount] = React.useState(0);
   /** Messages nav badge — unread venue messages. */
   const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
+  const [hasSharedEventOrder, setHasSharedEventOrder] = React.useState(false);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
@@ -4427,9 +4429,24 @@ export function PortalShell({
     .map((item) => ({
       ...item,
       available:
-        item.available && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities),
+        item.available
+        && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities)
+        && (item.id !== "event-order" || hasSharedEventOrder),
     }))
     .filter((item) => item.available);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/portal/event-order?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d: { eventOrder?: unknown }) => {
+        if (!cancelled) setHasSharedEventOrder(!!d?.eventOrder);
+      })
+      .catch(() => {
+        if (!cancelled) setHasSharedEventOrder(false);
+      });
+    return () => { cancelled = true; };
+  }, [token]);
 
   React.useEffect(() => {
     if (!isPortalSectionEnabledByCapabilities(activeSection, planningCapabilities)) {

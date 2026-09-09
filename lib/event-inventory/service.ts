@@ -149,9 +149,11 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
       ? await addLineFromInventory(ensured.eventOrderId, {
           inventoryItemId: item.inventoryItemId, description: item.name,
           quantity: String(item.quantity), unitPrice: String(item.unitPrice), sectionId: null,
+          isIncluded: item.isIncluded,
         })
       : await addCustomLine(ensured.eventOrderId, {
           description: item.name, quantity: String(item.quantity), unitPrice: String(item.unitPrice), sectionId: null,
+          isIncluded: item.isIncluded,
         });
     if (lineResult.ok) {
       added++;

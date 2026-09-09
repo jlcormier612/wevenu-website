@@ -365,7 +365,7 @@ export async function commitActiveCommitment(
           "package" | "inventory" | "item",
         description: l.description,
         quantity: l.quantity,
-        unitPrice: l.unitPrice,
+        unitPrice: l.unitPrice ?? 0,
         amount: l.amount,
         sortOrder: l.sortOrder,
       })),

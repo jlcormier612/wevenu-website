@@ -19,12 +19,11 @@ export default async function EventOrderTemplatePreviewPage({ params }: Props) {
   if (!template) notFound();
 
   const sections = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
-  const unsectioned = template.lines.filter((l) => !l.sectionId).sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 max-w-xl mx-auto">
-        <p className="text-sm text-muted-foreground">Preview as your clients will see it</p>
+        <p className="text-sm text-muted-foreground">Delivery structure preview (sections only — not a client invoice)</p>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" render={<Link href={`/library/event-order-templates/${template.id}`} />}>
             Back to edit
@@ -37,34 +36,22 @@ export default async function EventOrderTemplatePreviewPage({ params }: Props) {
       <div className="max-w-xl mx-auto px-4 pb-10 space-y-4">
         <div className="space-y-1">
           <h1 className="font-heading text-xl font-medium text-heading">{template.name}</h1>
-          <p className="text-xs text-muted-foreground">Event Order Template</p>
+          <p className="text-xs text-muted-foreground">Event Order Template — structure applied to events</p>
         </div>
         <div className="rounded-lg border border-border bg-background p-6 space-y-4">
-          {sections.length === 0 && unsectioned.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No sections or lines yet.</p>
+          {sections.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No sections yet.</p>
           ) : (
-            <>
-              {sections.map((s) => {
-                const lines = template.lines.filter((l) => l.sectionId === s.id).sort((a, b) => a.sortOrder - b.sortOrder);
-                return (
-                  <div key={s.id} className="space-y-1.5">
-                    <p className="text-xs font-medium text-heading">{s.name}</p>
-                    <ul className="space-y-1">
-                      {lines.map((l) => (
-                        <li key={l.id} className="text-sm text-foreground">· {l.description}</li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-              {unsectioned.length > 0 && (
-                <ul className="space-y-1">
-                  {unsectioned.map((l) => (
-                    <li key={l.id} className="text-sm text-foreground">· {l.description}</li>
-                  ))}
-                </ul>
-              )}
-            </>
+            sections.map((s) => (
+              <div key={s.id} className="space-y-1">
+                <p className="text-sm font-medium text-heading">{s.name}</p>
+                {s.guidance ? (
+                  <p className="text-xs text-muted-foreground">{s.guidance}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No guidance — fill with Offerings on the Event Order.</p>
+                )}
+              </div>
+            ))
           )}
         </div>
       </div>

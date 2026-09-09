@@ -55,7 +55,7 @@ function NewTemplateSheet() {
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader className="mb-6">
           <SheetTitle>New Event Order Template</SheetTitle>
-          <p className="text-sm text-muted-foreground">A reusable starting point — sections and standard lines you can apply to any event, then customize.</p>
+          <p className="text-sm text-muted-foreground">A reusable delivery structure — section names and optional guidance. Applying it copies structure only; add Offerings on the Event Order.</p>
         </SheetHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -336,7 +336,7 @@ export function EventOrderTemplateList({
       {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No Event Order Templates yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create one to reuse the same starting point — sections and standard lines — for every event that fits it.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Create one to reuse the same delivery sections — Catering, Bar, Rentals, Services — for every event that fits it.</p>
         </div>
       ) : (
         <div className="space-y-2">

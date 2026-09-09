@@ -359,9 +359,7 @@ export function YourOfferingsStep({ goToStep }: { goToStep?: (step: SetupStepId)
           <Package className="h-4.5 w-4.5" />
         </span>
         <p className="text-sm text-muted-foreground">
-          Your packages and inventory are what couples see and what your team
-          books against — worth having in place early, but not required to
-          continue.
+          Packages are what couples buy. Offerings (menus, bar, services, rentals) are what you provide on an Event Order. Inventory is physical stock. Worth having early, but not required to continue.
         </p>
       </div>
 
@@ -371,6 +369,9 @@ export function YourOfferingsStep({ goToStep }: { goToStep?: (step: SetupStepId)
         <div className="space-y-2 rounded-lg border border-border p-4">
           <ReadyLine count={counts.packages} label="packages ready" />
           <ReadyLine count={counts.inventory} label="inventory items ready" />
+          <p className="text-xs text-muted-foreground pt-1">
+            Add menus, bar, and services anytime from Library → Offerings.
+          </p>
         </div>
       ) : (
         <div className="space-y-3 rounded-lg border border-border p-4">
@@ -382,7 +383,7 @@ export function YourOfferingsStep({ goToStep }: { goToStep?: (step: SetupStepId)
               Bring these over now
             </Button>
             <p className="self-center text-xs text-muted-foreground">
-              or add them anytime from the Library once you&apos;re in.
+              or add Packages, Offerings, and Inventory anytime from the Library once you&apos;re in.
             </p>
           </div>
         </div>

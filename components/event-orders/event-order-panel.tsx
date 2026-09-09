@@ -2,8 +2,7 @@
 
 import * as React from "react";
 
-import Link from "next/link";
-import { ExternalLink, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -12,6 +11,7 @@ import {
   shareEventOrderWithClientAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
+import { EditLineSheet } from "@/components/event-orders/edit-line-sheet";
 import { EventOrderInvoiceLink } from "@/components/event-orders/event-order-invoice-link";
 import { EventOrderZeroTotalConfirmDialog } from "@/components/event-orders/zero-total-confirm";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
@@ -26,7 +26,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney } from "@/lib/event-orders/constants";
+import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
@@ -34,7 +34,9 @@ import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
-import type { Package } from "@/lib/packages/types";
+import type { Offering } from "@/lib/offerings/types";
+import type { Package, PackageWithItems } from "@/lib/packages/types";
+import { useRouter } from "next/navigation";
 
 const STATUS_VARIANT: Record<EventOrderDisplayStatus, "outline" | "accent" | "muted"> = {
   open: "outline", finalized: "accent", amended: "muted",
@@ -50,38 +52,45 @@ type EventOrderOverview = {
   receptionStartTime: string | null;
 };
 
-function paymentSummaryFromInvoices(invoices: Invoice[]) {
-  const active = invoices.filter((i) => i.status !== "void");
-  if (active.length === 0) return null;
-  const contractedTotal = active.reduce((s, i) => s + i.total, 0);
-  const balance = active.reduce((s, i) => s + i.balanceDue, 0);
-  const amountPaid = Math.max(0, contractedTotal - balance);
-  const next = active
-    .filter((i) => i.balanceDue > 0 && i.dueDate)
-    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))[0] ?? null;
-  return {
-    contractedTotal,
-    amountPaid,
-    balance,
-    nextPaymentDue: next?.balanceDue ?? null,
-    nextPaymentDueDate: next?.dueDate ?? null,
-  };
-}
-
-function LineRow({ line, onRemove, removing }: { line: EventOrderLine; onRemove: () => void; removing: boolean }) {
+function LineRow({
+  line, sections, eventOrderId, eventId, canEdit, onRemove, removing,
+}: {
+  line: EventOrderLine;
+  sections: EventOrderSection[];
+  eventOrderId: string;
+  eventId: string;
+  canEdit: boolean;
+  onRemove: () => void;
+  removing: boolean;
+}) {
   return (
-    <div className="group grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center py-2 border-b border-border last:border-0 text-sm">
+    <div className="grid grid-cols-1 gap-2 border-b border-border py-3 last:border-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:items-center sm:gap-2 text-sm">
       <div className="min-w-0">
-        <span className="text-foreground">{line.description}</span>
-        <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">{PROVENANCE_LABEL[line.provenance]}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-foreground">{line.description}</span>
+          <Badge variant={line.isIncluded ? "muted" : "accent"} className="text-[10px]">
+            {line.isIncluded ? "Included" : "Additional"}
+          </Badge>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{PROVENANCE_LABEL[line.provenance]}</span>
+        </div>
+        {(line.notes || line.unit) && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {[line.unit ? `Unit: ${line.unit}` : null, line.notes].filter(Boolean).join(" · ")}
+          </p>
+        )}
       </div>
-      <span className="text-muted-foreground text-right w-14">{line.quantity}×</span>
-      <span className="text-muted-foreground text-right w-20">{formatMoney(line.unitPrice)}</span>
-      <span className="font-medium text-right w-20">{formatMoney(line.amount)}</span>
-      <button type="button" onClick={onRemove} disabled={removing}
-        className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity" aria-label="Remove">
-        {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-      </button>
+      <span className="text-muted-foreground sm:text-right sm:w-14">{line.quantity}×</span>
+      <span className="text-muted-foreground sm:text-right sm:w-20">{formatOptionalMoney(line.unitPrice)}</span>
+      <span className="font-medium sm:text-right sm:w-20">{formatMoney(line.amount)}</span>
+      {canEdit && (
+        <div className="flex items-center gap-1 sm:justify-end">
+          <EditLineSheet eventOrderId={eventOrderId} eventId={eventId} line={line} sections={sections} />
+          <button type="button" onClick={onRemove} disabled={removing}
+            className="rounded p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" aria-label="Remove">
+            {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -163,7 +172,8 @@ function SectionFloorPlanLink({
 }
 
 export function EventOrderPanel({
-  eventId, clientId, clientName, clientEmail, venueName, eventOrder, packages, inventoryItems, invoices, floorPlans, overview,
+  eventId, clientId, clientName, clientEmail, venueName, eventOrder, packages, packagesWithItems = [],
+  selectedPackageName = null, offerings = [], inventoryItems, invoices, floorPlans, overview,
   templates = [],
 }: {
   eventId: string;
@@ -173,14 +183,16 @@ export function EventOrderPanel({
   venueName?: string;
   eventOrder: EventOrderWithDetails | null;
   packages: Package[];
+  packagesWithItems?: PackageWithItems[];
+  selectedPackageName?: string | null;
+  offerings?: Offering[];
   inventoryItems: InventoryItem[];
   invoices: Invoice[];
   floorPlans: FloorPlan[];
-  /** D5C — read-only display of already-authoritative upstream data (Event/Guest Count/Questionnaire). Never a second source of truth — Event Order never stores any of this itself. */
   overview?: EventOrderOverview | null;
-  /** D7A — Event Order Templates, applied only at creation (mirrors EventInventoryPanel's own templates prop exactly). */
   templates?: EventOrderTemplate[];
 }) {
+  const router = useRouter();
   const [starting, startStarting] = React.useTransition();
   const [templateId, setTemplateId] = React.useState("blank");
   const [lifecyclePending, startLifecycle] = React.useTransition();
@@ -190,7 +202,8 @@ export function EventOrderPanel({
   const [zeroTotalConfirm, setZeroTotalConfirm] = React.useState<null | { kind: "finalize" | "share" }>(null);
   const shareConfirmResolveRef = React.useRef<((result: { ok: boolean; message?: string; cancelled?: boolean }) => void) | null>(null);
   const shareConfirmMessageRef = React.useRef<string>("");
-  const paymentSummary = paymentSummaryFromInvoices(invoices);
+
+  function refresh() { router.refresh(); }
 
   // Work Package D5E — unified Share experience.
   const shareRecipient = clientName ? { name: clientName, contact: clientEmail ?? null, relationshipLabel: "Client" } : null;
@@ -268,32 +281,54 @@ export function EventOrderPanel({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Event Order</CardTitle>
-          <CardDescription>The single record of what this event will actually receive.</CardDescription>
+          <CardDescription>
+            What this event is receiving.
+            <br />
+            Not your invoice, contract, or task list.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-            <p className="text-sm text-muted-foreground">No Event Order yet.</p>
-            <div className="flex items-center gap-2">
-              {templates.length > 0 && (
-                <Select
-                  value={templateId}
-                  onValueChange={setTemplateId}
-                  items={[{ value: "blank", label: "Start blank" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
-                >
-                  <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="blank">Start blank</SelectItem>
-                    {templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
+          <div className="flex flex-col items-center justify-center gap-4 py-10 text-center">
+            {selectedPackageName && (
+              <p className="text-sm text-muted-foreground">
+                Package on this event: <span className="font-medium text-foreground">{selectedPackageName}</span>
+              </p>
+            )}
+            <p className="max-w-md text-sm text-muted-foreground">
+              Optional — use when you need a detailed delivery list. Package-only events can skip this.
+            </p>
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
                 onClick={() => startStarting(async () => {
-                  const result = await ensureEventOrderAction(eventId, templateId === "blank" ? null : templateId);
+                  const result = await ensureEventOrderAction(eventId, null);
                   if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
+                  else refresh();
                 })}>
-                {starting ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Starting…</> : "Start Event Order"}
+                {starting ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Starting…</> : "Start blank"}
               </Button>
+              {templates.length > 0 && (
+                <>
+                  <Select
+                    value={templateId}
+                    onValueChange={setTemplateId}
+                    items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
+                  >
+                    <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="blank">Choose a template…</SelectItem>
+                      {templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}
+                    onClick={() => startStarting(async () => {
+                      const result = await ensureEventOrderAction(eventId, templateId);
+                      if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
+                      else refresh();
+                    })}>
+                    Use a template
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -362,8 +397,22 @@ export function EventOrderPanel({
           }
         />
         <p className="text-xs text-muted-foreground -mt-1">
-          The single record of what this event will actually receive. Running total: <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
+          What this event is receiving. Delivery subtotal (for reference):{" "}
+          <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
+          {" "}— amount due is on Invoice / Payments.
         </p>
+        {selectedPackageName && (
+          <p className="text-xs text-muted-foreground -mt-1">
+            Package context: <span className="font-medium text-foreground">{selectedPackageName}</span> (commercial purchase — not this Event Order)
+          </p>
+        )}
+        {!isFinalized && eventOrder.sharedAt && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
+            Clients still see the shared version from{" "}
+            {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
+            Re-share when you are ready to publish revisions.
+          </div>
+        )}
         {isFinalized && (
           <div className="flex items-center gap-2 -mt-1">
             {eventOrder.sharedAt && (
@@ -381,17 +430,16 @@ export function EventOrderPanel({
               onClick={() => startLifecycle(async () => {
                 const result = await reopenEventOrderAction(eventOrder.id, eventId);
                 if (!result.ok) toast.error(result.message ?? "Could not reopen.");
+                else refresh();
               })}>
               {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Reopen for Editing"}
             </Button>
           </div>
         )}
-        {eventOrder.sharedAt && (
+        {eventOrder.sharedAt && isFinalized && (
           <p className="text-xs text-muted-foreground -mt-1">
             Shared with client {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
-            {isFinalized
-              ? " Re-sharing updates what they see. There is no separate revoke — the shared timestamp stays once first shared."
-              : " Reopening won't remove what they already have — share again once you're ready. The shared timestamp is not cleared on reopen."}
+            Re-sharing publishes a new frozen copy for the client.
           </p>
         )}
         {clientId && (
@@ -414,69 +462,16 @@ export function EventOrderPanel({
               {overview?.eventDate && (
                 <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>
               )}
-              {overview?.eventType && (
-                <div><span className="text-muted-foreground">Type </span><span className="font-medium text-foreground capitalize">{overview.eventType}</span></div>
-              )}
-              {venueName && (
-                <div><span className="text-muted-foreground">Venue </span><span className="font-medium text-foreground">{venueName}</span></div>
-              )}
               {overview?.guestCount != null && (
                 <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{overview.guestCount}</span></div>
               )}
               {overview?.spaceName && (
                 <div><span className="text-muted-foreground">Spaces </span><span className="font-medium text-foreground">{overview.spaceName}</span></div>
               )}
-              {overview?.ceremonyStartTime && (
-                <div><span className="text-muted-foreground">Ceremony </span><span className="font-medium text-foreground">{overview.ceremonyStartTime}</span></div>
-              )}
-              {overview?.receptionStartTime && (
-                <div><span className="text-muted-foreground">Reception </span><span className="font-medium text-foreground">{overview.receptionStartTime}</span></div>
-              )}
             </div>
             <p className="text-xs text-muted-foreground">Drawn from the event booking — edit those details on Overview, not here.</p>
           </div>
         )}
-
-        {paymentSummary && (
-          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment Summary</p>
-              <Link href={`/events/${eventId}#invoice`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                Open payments <ExternalLink className="h-3 w-3" />
-              </Link>
-            </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              <div><span className="text-muted-foreground">Contracted </span><span className="font-medium text-foreground">{formatMoney(paymentSummary.contractedTotal)}</span></div>
-              <div><span className="text-muted-foreground">Paid </span><span className="font-medium text-foreground">{formatMoney(paymentSummary.amountPaid)}</span></div>
-              <div><span className="text-muted-foreground">Balance </span><span className="font-medium text-foreground">{formatMoney(paymentSummary.balance)}</span></div>
-              {paymentSummary.nextPaymentDue != null && (
-                <div>
-                  <span className="text-muted-foreground">Next due </span>
-                  <span className="font-medium text-foreground">
-                    {formatMoney(paymentSummary.nextPaymentDue)}
-                    {paymentSummary.nextPaymentDueDate
-                      ? ` · ${new Date(paymentSummary.nextPaymentDueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                      : ""}
-                  </span>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">From invoices for this event — not recalculated by the Event Order.</p>
-          </div>
-        )}
-
-        <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Final Event Readiness</p>
-          <p className="text-xs text-muted-foreground">Complete the real work in each area — this Event Order does not mark those workflows done.</p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#overview`} />}>Final Details / Overview</Button>
-            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#inventory`} />}>Working Inventory</Button>
-            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#floorplan`} />}>Floor Plan</Button>
-            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#vendors`} />}>Vendors</Button>
-            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#timeline`} />}>Timeline</Button>
-            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#invoice`} />}>Payments</Button>
-          </div>
-        </div>
 
         {eventOrder.sections.map((section) => {
           const lines = eventOrder.lines.filter((l) => l.sectionId === section.id);
@@ -488,21 +483,41 @@ export function EventOrderPanel({
                   <SectionFloorPlanLink eventOrderId={eventOrder.id} eventId={eventId} section={section} floorPlans={floorPlans} disabled={isFinalized} />
                 </div>
                 <div className="flex items-center gap-2">
-                  {!isFinalized && <AddLineSheet eventOrderId={eventOrder.id} eventId={eventId} sectionId={section.id} packages={packages} inventoryItems={inventoryItems} onAdded={() => {}} />}
+                  {!isFinalized && (
+                    <AddLineSheet
+                      eventOrderId={eventOrder.id}
+                      eventId={eventId}
+                      sectionId={section.id}
+                      offerings={offerings}
+                      packages={packages}
+                      packagesWithItems={packagesWithItems}
+                      inventoryItems={inventoryItems}
+                      onAdded={() => refresh()}
+                    />
+                  )}
                   {!isFinalized && (
                     <button type="button" onClick={() => handleRemoveSection(section.id, section.name)} disabled={removingSectionId === section.id}
-                      className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" aria-label="Remove section">
+                      className="rounded p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" aria-label="Remove section">
                       {removingSectionId === section.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </button>
                   )}
                 </div>
               </div>
               {lines.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No lines in this section yet.</p>
+                <p className="text-xs text-muted-foreground py-2">No items in this section yet.</p>
               ) : (
                 <div>
                   {lines.map((line) => (
-                    <LineRow key={line.id} line={line} removing={removingId === line.id} onRemove={() => handleRemoveLine(line)} />
+                    <LineRow
+                      key={line.id}
+                      line={line}
+                      sections={eventOrder.sections}
+                      eventOrderId={eventOrder.id}
+                      eventId={eventId}
+                      canEdit={!isFinalized}
+                      removing={removingId === line.id}
+                      onRemove={() => handleRemoveLine(line)}
+                    />
                   ))}
                 </div>
               )}
@@ -517,19 +532,37 @@ export function EventOrderPanel({
           ) : (
             <div>
               {unsectioned.map((line) => (
-                <LineRow key={line.id} line={line} removing={removingId === line.id} onRemove={() => handleRemoveLine(line)} />
+                <LineRow
+                  key={line.id}
+                  line={line}
+                  sections={eventOrder.sections}
+                  eventOrderId={eventOrder.id}
+                  eventId={eventId}
+                  canEdit={!isFinalized}
+                  removing={removingId === line.id}
+                  onRemove={() => handleRemoveLine(line)}
+                />
               ))}
             </div>
           )}
           {eventOrder.lines.length === 0 && eventOrder.sections.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nothing added yet. Add a line, or organize with sections first.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">Nothing added yet. Add items from Offerings, or add sections first.</p>
           )}
         </div>
 
         {!isFinalized && (
-          <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/60">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
             <AddSectionInline eventOrderId={eventOrder.id} eventId={eventId} disabled={lifecyclePending} />
-            <AddLineSheet eventOrderId={eventOrder.id} eventId={eventId} sectionId={null} packages={packages} inventoryItems={inventoryItems} onAdded={() => {}} />
+            <AddLineSheet
+              eventOrderId={eventOrder.id}
+              eventId={eventId}
+              sectionId={null}
+              offerings={offerings}
+              packages={packages}
+              packagesWithItems={packagesWithItems}
+              inventoryItems={inventoryItems}
+              onAdded={() => refresh()}
+            />
           </div>
         )}
 
