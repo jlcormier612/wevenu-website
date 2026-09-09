@@ -122,7 +122,9 @@ describe("Calendar Slice 1 — Tour / Tasting manual types", () => {
   it("manual Tour presentation is disambiguated from booked tours", () => {
     assert.match(serviceSrc, /Manual schedule — not a booked tour/);
     assert.match(sharedSrc, /Manual tour \(not booked\)/);
-    assert.doesNotMatch(sharedSrc, /tour:\s*TYPE_META\.tour/);
+    // Manual TYPE meta must not alias the booked-tour visual identity.
+    assert.doesNotMatch(sharedSrc, /tour:\s*TYPE_META\.tour\s*[,}]/);
+    assert.match(sharedSrc, /tour:\s*\{\s*label:\s*"Manual tour \(not booked\)"/);
   });
 
   it("booking placeholders use Hold taxonomy — not Reserved date", () => {
@@ -190,9 +192,11 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
     assert.deepEqual(cleaned.manualTypes, ["consultation", "tasting"]);
   });
 
-  it("venue Calendar legend gates Tasting and omits planning", () => {
+  it("venue Calendar legend is locked top-level taxonomy only", () => {
     const off = venueCalendarLegendEntries({ tastingEnabled: false }).map((e) => e.label);
     const on = venueCalendarLegendEntries({ tastingEnabled: true }).map((e) => e.label);
+    assert.deepEqual(off, ["Event", "Tour", "Appointment", "Hold", "Blocked Time"]);
+    assert.deepEqual(on, ["Event", "Tour", "Appointment", "Hold", "Blocked Time"]);
     for (const banned of [
       "Follow-up",
       "Payment Due",
@@ -205,21 +209,23 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
       "Meeting",
       "Planning",
       "Reserved date",
+      "Date Hold",
+      "Consultation",
+      "Client Meeting",
+      "Vendor Meeting",
+      "Walkthrough",
+      "Tasting",
+      "Personal Appointment",
+      "Other",
     ]) {
       assert.equal(off.includes(banned), false, `legend must not include ${banned}`);
       assert.equal(on.includes(banned), false, `legend must not include ${banned}`);
     }
-    assert.ok(off.includes("Event"));
-    assert.ok(off.includes("Tour"));
-    assert.ok(off.includes("Date Hold"));
-    assert.ok(off.includes("Blocked Time"));
-    assert.ok(off.includes("Consultation"));
-    assert.ok(off.includes("Hold"));
-    assert.equal(off.includes("Tasting"), false);
-    assert.equal(on.includes("Tasting"), true);
+    assert.equal(off.filter((l) => l === "Hold").length, 1, "Hold appears once");
     assert.doesNotMatch(calendarViewSrc, /Object\.entries\(TYPE_META\)\s*as/);
     assert.match(calendarViewSrc, /venueCalendarLegendEntries\(\{ tastingEnabled \}\)/);
-    assert.match(sharedSrc, /manual === "tasting" && !tastingEnabled/);
+    assert.match(sharedSrc, /Locked taxonomy/);
+    assert.match(sharedSrc, /date_hold:\s*\{\s*label:\s*"Hold"/);
   });
 
   it("FilterBar uses Appointments & blocks for calendar_block chip", () => {

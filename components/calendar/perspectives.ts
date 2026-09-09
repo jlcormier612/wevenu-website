@@ -41,7 +41,7 @@ export const PERSPECTIVES: Perspective[] = [
     id: "sales",
     label: "Sales",
     emoji: "🤝",
-    description: "Tours, consultations, and date holds — pre-booking schedule.",
+    description: "Tours, consultations, and holds — pre-booking schedule.",
     filters: preset(["tour", "date_hold", "calendar_block"], [
       "consultation", "client_meeting", "custom",
     ]),

@@ -69,15 +69,22 @@ export function sanitizeVenueCalendarFilters<T extends {
 }
 
 /**
- * Manual subtypes shown on the venue Calendar legend (distinct colors/labels
- * under calendar_block). Excludes:
- * - tour (legacy) — real Tours use TYPE_META.tour; legacy rows use item label
- * - blocked_time — already covered by TYPE_META.calendar_block
- * - custom — same visual as Other; live labels come from catalogLabel
- * - private_event — same Hold label as wedding_event_booking
- * - tasting — included here but omitted from the live legend unless the venue
- *   catalog has Tasting enabled (see venueCalendarLegendEntries).
+ * Manual schedule subtypes that are Appointment classifications (not
+ * top-level Calendar concepts). Used for nested filtering / perspectives —
+ * never as peer-level venue Calendar legend entries.
  */
+export const VENUE_CALENDAR_APPOINTMENT_CLASSIFICATIONS = [
+  "consultation",
+  "client_meeting",
+  "vendor_meeting",
+  "walkthrough",
+  "tasting",
+  "personal_appointment",
+  "other",
+  "custom",
+] as const satisfies readonly ManualScheduleType[];
+
+/** @deprecated Prefer VENUE_CALENDAR_APPOINTMENT_CLASSIFICATIONS — legend no longer lists these. */
 export const VENUE_CALENDAR_LEGEND_MANUAL_TYPES = [
   "consultation",
   "client_meeting",
@@ -88,3 +95,50 @@ export const VENUE_CALENDAR_LEGEND_MANUAL_TYPES = [
   "other",
   "wedding_event_booking",
 ] as const satisfies readonly ManualScheduleType[];
+
+/** Hold placeholders stored as calendar_block rows. */
+export const VENUE_CALENDAR_HOLD_MANUAL_TYPES = [
+  "wedding_event_booking",
+  "private_event",
+] as const satisfies readonly ManualScheduleType[];
+
+/**
+ * Locked top-level venue Calendar taxonomy (Product).
+ * Appointment classifications are never peers of these concepts.
+ */
+export const VENUE_CALENDAR_TAXONOMY = [
+  "event",
+  "tour",
+  "appointment",
+  "hold",
+  "blocked_time",
+] as const;
+
+export type VenueCalendarTaxonomyKey = (typeof VENUE_CALENDAR_TAXONOMY)[number];
+
+export function venueCalendarTaxonomyKey(item: {
+  type: CalendarItemType;
+  manualType?: ManualScheduleType | null;
+}): VenueCalendarTaxonomyKey | null {
+  if (item.type === "event") return "event";
+  if (item.type === "tour") return "tour";
+  if (item.type === "date_hold") return "hold";
+  if (item.type === "calendar_block") {
+    const mt = item.manualType ?? null;
+    if (mt === "blocked_time") return "blocked_time";
+    if (mt && (VENUE_CALENDAR_HOLD_MANUAL_TYPES as readonly string[]).includes(mt)) return "hold";
+    // Appointments (including legacy manual tour rows and unclassified other)
+    return "appointment";
+  }
+  return null;
+}
+
+export function venueCalendarTaxonomyLabel(key: VenueCalendarTaxonomyKey): string {
+  switch (key) {
+    case "event": return "Event";
+    case "tour": return "Tour";
+    case "appointment": return "Appointment";
+    case "hold": return "Hold";
+    case "blocked_time": return "Blocked Time";
+  }
+}

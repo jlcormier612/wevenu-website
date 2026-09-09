@@ -51,6 +51,10 @@ import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { AgendaView } from "@/components/calendar/agenda-view";
+import {
+  venueCalendarTaxonomyKey,
+  venueCalendarTaxonomyLabel,
+} from "@/lib/calendar/venue-calendar-scope";
 
 export { TYPE_META, formatTime, ItemRow, venueCalendarLegendEntries } from "@/components/calendar/calendar-shared";
 
@@ -1102,29 +1106,26 @@ export function CalendarView({
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {(() => {
-                // Grouped by resolved label, not raw CalendarItemType — a
-                // manually-scheduled "Tour" and a real booked tour must
-                // merge into one "Tour" count, and calendar_block items
-                // must split back out into their own manual types (Tour,
-                // Walkthrough, Blocked Time, ...) rather than all counting
-                // as one misleading "Blocked Time" bucket (Calendar Manual
-                // Type Redesign).
-                const groups = new Map<string, { meta: ReturnType<typeof resolveItemMeta>; count: number }>();
+                // Group by locked top-level Calendar taxonomy — never by
+                // appointment classification (Consultation, Walkthrough, …).
+                const groups = new Map<string, { label: string; dotColor: string; count: number }>();
                 for (const item of filteredItems) {
+                  const key = venueCalendarTaxonomyKey(item);
+                  if (!key) continue;
+                  const label = venueCalendarTaxonomyLabel(key);
                   const meta = resolveItemMeta(item);
-                  const existing = groups.get(meta.label);
+                  const existing = groups.get(key);
                   if (existing) existing.count++;
-                  else groups.set(meta.label, { meta, count: 1 });
+                  else groups.set(key, { label, dotColor: meta.dotColor, count: 1 });
                 }
-                return [...groups.entries()].map(([label, { meta, count }]) => {
-                  const Icon = meta.icon;
+                return [...groups.entries()].map(([key, { label, dotColor, count }]) => {
                   return (
-                    <div key={label} className="flex items-center gap-2">
+                    <div key={key} className="flex items-center gap-2">
                       <span
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                        style={{ backgroundColor: `${meta.dotColor}20`, color: meta.dotColor }}
+                        style={{ backgroundColor: `${dotColor}20`, color: dotColor }}
                       >
-                        <Icon className="h-3 w-3" />
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
                       </span>
                       <span className="text-sm text-foreground">
                         {count} {label}{count !== 1 ? "s" : ""}

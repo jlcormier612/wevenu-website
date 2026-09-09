@@ -24,8 +24,9 @@ import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
 import {
   isVenueCalendarItemType,
-  VENUE_CALENDAR_ITEM_TYPES,
-  VENUE_CALENDAR_LEGEND_MANUAL_TYPES,
+  venueCalendarTaxonomyLabel,
+  type VenueCalendarTaxonomyKey,
+  VENUE_CALENDAR_TAXONOMY,
 } from "@/lib/calendar/venue-calendar-scope";
 import { activePerspectiveId, getPerspectives } from "@/components/calendar/perspectives";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,8 @@ export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
   follow_up:      { label: "Follow-up",   icon: Phone,         dotColor: "var(--cal-follow-up)",   textClass: "text-muted-foreground" },
   payment_due:    { label: "Payment Due", icon: DollarSign,    dotColor: "var(--cal-payment-due)", textClass: "text-destructive" },
   key_date:       { label: "Key Date",    icon: Star,          dotColor: "var(--cal-key-date)",    textClass: "text-heading" },
-  date_hold:      { label: "Date Hold",   icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
+  // One human-facing Hold concept — backend may still use date_holds table.
+  date_hold:      { label: "Hold",        icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
   // "Blocked Time" — no longer the primary manual concept, just one of
   // several a coordinator can pick from "+ Add Schedule Item" (Calendar
   // Manual Type Redesign). Charcoal, not red — a closed date is a neutral
@@ -94,27 +96,29 @@ export function resolveItemMeta(item: CalendarItem): ItemMeta {
 }
 
 /**
- * Venue Calendar legend only — never Object.entries(TYPE_META).
- * TYPE_META remains shared for Booking Schedule / other lenses that still
- * render payment due, follow-ups, etc.
+ * Venue Calendar legend only — never Object.entries(TYPE_META), and never
+ * appointment classifications as peer Calendar object types.
  *
- * Tasting appears only when the venue catalog has it enabled.
+ * Locked taxonomy: Event · Tour · Appointment · Hold · Blocked Time.
+ * Tasting (when enabled) is an Appointment classification only — not a
+ * legend entry. `tastingEnabled` is accepted for call-site compatibility
+ * and does not change legend membership.
  */
-export function venueCalendarLegendEntries(options?: {
+export function venueCalendarLegendEntries(_options?: {
   tastingEnabled?: boolean;
 }): { key: string; label: string; dotColor: string }[] {
-  const tastingEnabled = options?.tastingEnabled === true;
-  const entries: { key: string; label: string; dotColor: string }[] = [];
-  for (const type of VENUE_CALENDAR_ITEM_TYPES) {
-    const meta = TYPE_META[type];
-    entries.push({ key: type, label: meta.label, dotColor: meta.dotColor });
-  }
-  for (const manual of VENUE_CALENDAR_LEGEND_MANUAL_TYPES) {
-    if (manual === "tasting" && !tastingEnabled) continue;
-    const meta = MANUAL_TYPE_META[manual];
-    entries.push({ key: `manual:${manual}`, label: meta.label, dotColor: meta.dotColor });
-  }
-  return entries;
+  const colorByKey: Record<VenueCalendarTaxonomyKey, string> = {
+    event: TYPE_META.event.dotColor,
+    tour: TYPE_META.tour.dotColor,
+    appointment: MANUAL_TYPE_META.consultation.dotColor,
+    hold: TYPE_META.date_hold.dotColor,
+    blocked_time: TYPE_META.calendar_block.dotColor,
+  };
+  return VENUE_CALENDAR_TAXONOMY.map((key) => ({
+    key,
+    label: venueCalendarTaxonomyLabel(key),
+    dotColor: colorByKey[key],
+  }));
 }
 
 export function formatTime(hhmm: string | null): string {
