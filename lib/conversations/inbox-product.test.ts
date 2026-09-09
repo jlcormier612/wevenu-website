@@ -45,6 +45,18 @@ describe("Inbox Product two-column workspace", () => {
     assert.doesNotMatch(inbox, /listInboxFilterEventsAction/);
   });
 
+  it("composes Event as full-width half/half — not a narrow equal grid cell", () => {
+    assert.doesNotMatch(inbox, /lg:grid-cols-3/);
+    assert.match(inbox, /md:grid-cols-2 md:items-start/);
+    // Event type list and date/status/lookup are siblings in that two-column row
+    const eventBlock = inbox.slice(inbox.indexOf(">Event</legend>"), inbox.indexOf(">Assignment</legend>"));
+    assert.match(eventBlock, /Event type/);
+    assert.match(eventBlock, /Event date/);
+    assert.match(eventBlock, /Event status/);
+    assert.match(eventBlock, /Specific event/);
+    assert.match(eventBlock, /md:grid-cols-2/);
+  });
+
   it("keeps Sort as a sort control with event-date and name options", () => {
     assert.match(inbox, /Sort conversations/);
     assert.match(inbox, /INBOX_SORT_OPTIONS/);

@@ -398,7 +398,8 @@ export function ConversationInbox({
 
       {filtersOpen && (
         <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Top row: compact peer filters — equal weight, no empty cells */}
+          <div className="grid gap-4 sm:grid-cols-3">
             <fieldset className="space-y-2">
               <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Attention</legend>
               <div className="flex flex-col gap-1.5 text-xs">
@@ -463,13 +464,15 @@ export function ConversationInbox({
                 <option value="internal_note">Internal note</option>
               </select>
             </fieldset>
+          </div>
 
-            <fieldset className="space-y-2">
-              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Event</legend>
-
-              <div className="space-y-1">
+          {/* Event: full width — type list ~half, date/status/lookup stacked on the other half */}
+          <fieldset className="space-y-2">
+            <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Event</legend>
+            <div className="grid gap-4 md:grid-cols-2 md:items-start">
+              <div className="space-y-1 min-w-0">
                 <p className="text-[10px] text-muted-foreground">Event type</p>
-                <div className="max-h-28 space-y-1 overflow-y-auto rounded-lg border border-border bg-background px-2 py-1.5">
+                <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border bg-background px-2 py-1.5 sm:max-h-52">
                   {INBOX_EVENT_TYPE_OPTIONS.map((t) => {
                     const checked = filters.eventTypes.includes(t.value);
                     return (
@@ -488,131 +491,136 @@ export function ConversationInbox({
                 </div>
               </div>
 
-              <label className="block space-y-0.5">
-                <span className="text-[10px] text-muted-foreground">Event date</span>
-                <select
-                  aria-label="Filter by event date"
-                  value={filters.eventDatePreset}
-                  onChange={(e) => {
-                    const preset = e.target.value as InboxEventDatePreset;
-                    setFilters((f) => ({
-                      ...f,
-                      eventDatePreset: preset,
-                      ...(preset !== "custom" ? { eventDateFrom: "", eventDateTo: "" } : {}),
-                    }));
-                  }}
-                  className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-                >
-                  {INBOX_EVENT_DATE_PRESET_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="min-w-0 space-y-2">
+                <label className="block space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground">Event date</span>
+                  <select
+                    aria-label="Filter by event date"
+                    value={filters.eventDatePreset}
+                    onChange={(e) => {
+                      const preset = e.target.value as InboxEventDatePreset;
+                      setFilters((f) => ({
+                        ...f,
+                        eventDatePreset: preset,
+                        ...(preset !== "custom" ? { eventDateFrom: "", eventDateTo: "" } : {}),
+                      }));
+                    }}
+                    className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                  >
+                    {INBOX_EVENT_DATE_PRESET_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </label>
 
-              {filters.eventDatePreset === "custom" && (
-                <div className="flex gap-2">
-                  <label className="min-w-0 flex-1 space-y-0.5">
-                    <span className="text-[10px] text-muted-foreground">From</span>
-                    <input
-                      type="date"
-                      aria-label="Custom event date from"
-                      value={filters.eventDateFrom}
-                      onChange={(e) => setFilters((f) => ({ ...f, eventDateFrom: e.target.value }))}
-                      className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-                    />
-                  </label>
-                  <label className="min-w-0 flex-1 space-y-0.5">
-                    <span className="text-[10px] text-muted-foreground">To</span>
-                    <input
-                      type="date"
-                      aria-label="Custom event date to"
-                      value={filters.eventDateTo}
-                      onChange={(e) => setFilters((f) => ({ ...f, eventDateTo: e.target.value }))}
-                      className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-                    />
-                  </label>
-                </div>
-              )}
-
-              <label className="block space-y-0.5">
-                <span className="text-[10px] text-muted-foreground">Event status</span>
-                <select
-                  aria-label="Filter by event status"
-                  value={filters.eventStatus}
-                  onChange={(e) => setFilters((f) => ({ ...f, eventStatus: e.target.value }))}
-                  className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-                >
-                  <option value={INBOX_FILTER_ALL}>Any status</option>
-                  <option value="draft">Draft</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="complete">Complete</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </label>
-
-              <div className="space-y-1 border-t border-border/60 pt-2">
-                <p className="text-[10px] text-muted-foreground">Specific event</p>
-                {filters.eventId !== INBOX_FILTER_ALL && selectedEventLabel ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-2 py-1.5">
-                    <span className="min-w-0 flex-1 truncate text-xs text-foreground">{selectedEventLabel}</span>
-                    <button
-                      type="button"
-                      className="shrink-0 text-[10px] font-medium text-primary hover:underline"
-                      onClick={() => {
-                        setFilters((f) => ({ ...f, eventId: INBOX_FILTER_ALL }));
-                        setEventSearch("");
-                        setEventSearchResults([]);
-                      }}
-                    >
-                      Clear
-                    </button>
+                {filters.eventDatePreset === "custom" && (
+                  <div className="flex gap-2">
+                    <label className="min-w-0 flex-1 space-y-0.5">
+                      <span className="text-[10px] text-muted-foreground">From</span>
+                      <input
+                        type="date"
+                        aria-label="Custom event date from"
+                        value={filters.eventDateFrom}
+                        onChange={(e) => setFilters((f) => ({ ...f, eventDateFrom: e.target.value }))}
+                        className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                      />
+                    </label>
+                    <label className="min-w-0 flex-1 space-y-0.5">
+                      <span className="text-[10px] text-muted-foreground">To</span>
+                      <input
+                        type="date"
+                        aria-label="Custom event date to"
+                        value={filters.eventDateTo}
+                        onChange={(e) => setFilters((f) => ({ ...f, eventDateTo: e.target.value }))}
+                        className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                      />
+                    </label>
                   </div>
-                ) : (
-                  <>
-                    <input
-                      type="search"
-                      aria-label="Search for a specific event"
-                      placeholder="Search by event name…"
-                      value={eventSearch}
-                      onChange={(e) => setEventSearch(e.target.value)}
-                      className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-                    />
-                    {eventSearch.trim().length >= 2 && (
-                      <div className="max-h-28 overflow-y-auto rounded-lg border border-border bg-background">
-                        {eventSearchPending ? (
-                          <p className="px-2 py-1.5 text-[10px] text-muted-foreground">Searching…</p>
-                        ) : eventSearchResults.length === 0 ? (
-                          <p className="px-2 py-1.5 text-[10px] text-muted-foreground">No matching events</p>
-                        ) : (
-                          eventSearchResults.map((ev) => (
-                            <button
-                              key={ev.id}
-                              type="button"
-                              className="block w-full truncate px-2 py-1.5 text-left text-xs hover:bg-muted/50"
-                              onClick={() => {
-                                setFilters((f) => ({ ...f, eventId: ev.id }));
-                                setEventSearch("");
-                                setEventSearchResults([]);
-                                const date = ev.eventDate
-                                  ? new Date(`${ev.eventDate}T12:00:00`).toLocaleDateString("en-US", {
-                                      month: "short", day: "numeric", year: "numeric",
-                                    })
-                                  : null;
-                                setSelectedEventLabel(date ? `${ev.name} · ${date}` : ev.name);
-                              }}
-                            >
-                              {ev.name}{ev.eventDate ? ` · ${ev.eventDate}` : ""}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </>
                 )}
-              </div>
-            </fieldset>
 
+                <label className="block space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground">Event status</span>
+                  <select
+                    aria-label="Filter by event status"
+                    value={filters.eventStatus}
+                    onChange={(e) => setFilters((f) => ({ ...f, eventStatus: e.target.value }))}
+                    className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                  >
+                    <option value={INBOX_FILTER_ALL}>Any status</option>
+                    <option value="draft">Draft</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="complete">Complete</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+
+                <div className="space-y-1 border-t border-border/60 pt-2">
+                  <p className="text-[10px] text-muted-foreground">Specific event</p>
+                  {filters.eventId !== INBOX_FILTER_ALL && selectedEventLabel ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-2 py-1.5">
+                      <span className="min-w-0 flex-1 truncate text-xs text-foreground">{selectedEventLabel}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-[10px] font-medium text-primary hover:underline"
+                        onClick={() => {
+                          setFilters((f) => ({ ...f, eventId: INBOX_FILTER_ALL }));
+                          setEventSearch("");
+                          setEventSearchResults([]);
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="search"
+                        aria-label="Search for a specific event"
+                        placeholder="Search by event name…"
+                        value={eventSearch}
+                        onChange={(e) => setEventSearch(e.target.value)}
+                        className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                      />
+                      {eventSearch.trim().length >= 2 && (
+                        <div className="max-h-28 overflow-y-auto rounded-lg border border-border bg-background">
+                          {eventSearchPending ? (
+                            <p className="px-2 py-1.5 text-[10px] text-muted-foreground">Searching…</p>
+                          ) : eventSearchResults.length === 0 ? (
+                            <p className="px-2 py-1.5 text-[10px] text-muted-foreground">No matching events</p>
+                          ) : (
+                            eventSearchResults.map((ev) => (
+                              <button
+                                key={ev.id}
+                                type="button"
+                                className="block w-full truncate px-2 py-1.5 text-left text-xs hover:bg-muted/50"
+                                onClick={() => {
+                                  setFilters((f) => ({ ...f, eventId: ev.id }));
+                                  setEventSearch("");
+                                  setEventSearchResults([]);
+                                  const date = ev.eventDate
+                                    ? new Date(`${ev.eventDate}T12:00:00`).toLocaleDateString("en-US", {
+                                        month: "short", day: "numeric", year: "numeric",
+                                      })
+                                    : null;
+                                  setSelectedEventLabel(date ? `${ev.name} · ${date}` : ev.name);
+                                }}
+                              >
+                                {ev.name}{ev.eventDate ? ` · ${ev.eventDate}` : ""}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          {/* Bottom row: remaining filters share the width evenly */}
+          <div className="grid gap-4 sm:grid-cols-3">
             <fieldset className="space-y-2">
               <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Assignment</legend>
               <select
