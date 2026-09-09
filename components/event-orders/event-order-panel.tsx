@@ -199,9 +199,10 @@ export function EventOrderPanel({
   const [downloading, startDownload] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [removingSectionId, setRemovingSectionId] = React.useState<string | null>(null);
-  const [zeroTotalConfirm, setZeroTotalConfirm] = React.useState<null | { kind: "finalize" | "share" }>(null);
-  const shareConfirmResolveRef = React.useRef<((result: { ok: boolean; message?: string; cancelled?: boolean }) => void) | null>(null);
-  const shareConfirmMessageRef = React.useRef<string>("");
+  const [zeroTotalConfirm, setZeroTotalConfirm] = React.useState<null | { kind: "finalize" | "share-open" }>(null);
+  const [shareOpen, setShareOpen] = React.useState(false);
+  const [updateShareOpen, setUpdateShareOpen] = React.useState(false);
+  const shareOpenTargetRef = React.useRef<"initial" | "update">("initial");
 
   function refresh() { router.refresh(); }
 
@@ -225,15 +226,14 @@ export function EventOrderPanel({
     return result;
   }
 
-  async function handleShareSend(eventOrderId: string, message: string) {
+  function requestShareDialog(which: "initial" | "update") {
+    shareOpenTargetRef.current = which;
     if (eventOrder && eventOrderRequiresZeroTotalWarning(eventOrder.total, eventOrder.lines.length)) {
-      return new Promise<{ ok: boolean; message?: string; cancelled?: boolean }>((resolve) => {
-        shareConfirmResolveRef.current = resolve;
-        shareConfirmMessageRef.current = message;
-        setZeroTotalConfirm({ kind: "share" });
-      });
+      setZeroTotalConfirm({ kind: "share-open" });
+      return;
     }
-    return runShare(eventOrderId, message);
+    if (which === "update") setUpdateShareOpen(true);
+    else setShareOpen(true);
   }
 
   function requestFinalize(eventOrderId: string, total: number, lineCount: number) {
@@ -245,27 +245,20 @@ export function EventOrderPanel({
   }
 
   function handleZeroTotalCancel() {
-    const resolve = shareConfirmResolveRef.current;
-    shareConfirmResolveRef.current = null;
     setZeroTotalConfirm(null);
-    if (resolve) resolve({ ok: false, cancelled: true });
   }
 
   function handleZeroTotalContinue() {
     const kind = zeroTotalConfirm?.kind;
-    const resolve = shareConfirmResolveRef.current;
-    const message = shareConfirmMessageRef.current;
-    shareConfirmResolveRef.current = null;
     setZeroTotalConfirm(null);
     if (!eventOrder || !kind) return;
     if (kind === "finalize") {
       startLifecycle(async () => { await runFinalize(eventOrder.id); });
       return;
     }
-    startLifecycle(async () => {
-      const result = await runShare(eventOrder.id, message);
-      if (resolve) resolve(result);
-    });
+    // share-open: $0 already disclosed — open the Share sheet next.
+    if (shareOpenTargetRef.current === "update") setUpdateShareOpen(true);
+    else setShareOpen(true);
   }
 
   function handleDownload(eventOrderId: string) {
@@ -384,15 +377,20 @@ export function EventOrderPanel({
                 {downloading ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Opening…</> : "Download PDF"}
               </Button>
             ) : (
-              <ShareDialog
-                trigger={<Button type="button" size="sm">Share with Client</Button>}
-                title="Share Event Order"
-                recipient={shareRecipient}
-                whatHappensNext="They'll review the Event Order. Applying a Library template earlier only built this working order — Share is what makes it visible to the client."
-                defaultMessage={shareDefaultMessage}
-                sendLabel="Share"
-                onSend={(message) => handleShareSend(eventOrder.id, message)}
-              />
+              <>
+                <Button type="button" size="sm" onClick={() => requestShareDialog("initial")}>Share with Client</Button>
+                <ShareDialog
+                  open={shareOpen}
+                  onOpenChange={setShareOpen}
+                  title="Share Event Order"
+                  recipient={shareRecipient}
+                  whatHappensNext="They'll review the Event Order. Applying a Library template earlier only built this working order — Share is what makes it visible to the client."
+                  defaultMessage={shareDefaultMessage}
+                  sendLabel="Share"
+                  onSend={(message) => runShare(eventOrder.id, message)}
+                  onSent={() => { setShareOpen(false); refresh(); }}
+                />
+              </>
             )
           }
         />
@@ -416,15 +414,20 @@ export function EventOrderPanel({
         {isFinalized && (
           <div className="flex items-center gap-2 -mt-1">
             {eventOrder.sharedAt && (
-              <ShareDialog
-                trigger={<Button type="button" variant="ghost" size="sm">Update Shared Copy</Button>}
-                title="Update Shared Copy"
-                recipient={shareRecipient}
-                whatHappensNext="They'll see the current version — you're sharing an updated version of what they already have."
-                defaultMessage={shareDefaultMessage}
-                sendLabel="Share"
-                onSend={(message) => handleShareSend(eventOrder.id, message)}
-              />
+              <>
+                <Button type="button" variant="ghost" size="sm" onClick={() => requestShareDialog("update")}>Update Shared Copy</Button>
+                <ShareDialog
+                  open={updateShareOpen}
+                  onOpenChange={setUpdateShareOpen}
+                  title="Update Shared Copy"
+                  recipient={shareRecipient}
+                  whatHappensNext="They'll see the current version — you're sharing an updated version of what they already have."
+                  defaultMessage={shareDefaultMessage}
+                  sendLabel="Share"
+                  onSend={(message) => runShare(eventOrder.id, message)}
+                  onSent={() => { setUpdateShareOpen(false); refresh(); }}
+                />
+              </>
             )}
             <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={lifecyclePending}
               onClick={() => startLifecycle(async () => {
@@ -579,7 +582,7 @@ export function EventOrderPanel({
     </Card>
     <EventOrderZeroTotalConfirmDialog
       open={zeroTotalConfirm !== null}
-      actionLabel={zeroTotalConfirm?.kind === "share" ? "Share" : "Finalize"}
+      actionLabel={zeroTotalConfirm?.kind === "share-open" ? "Share" : "Finalize"}
       onCancel={handleZeroTotalCancel}
       onContinue={handleZeroTotalContinue}
     />
