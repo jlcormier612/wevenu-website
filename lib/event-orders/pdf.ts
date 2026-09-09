@@ -64,7 +64,7 @@ function fmtDate(iso: string | null): string {
 
 function LineRow({ description, quantity, amount, isIncluded }: { description: string; quantity: number; amount: number; isIncluded: boolean }) {
   return React.createElement(View, { style: styles.lineRow },
-    React.createElement(Text, { style: styles.lineDescription }, `${description}${isIncluded ? "" : " (Additional)"}`),
+    React.createElement(Text, { style: styles.lineDescription }, `${description}${isIncluded ? " (Included)" : " (Additional)"}`),
     React.createElement(Text, { style: styles.lineQty }, `×${quantity}`),
     React.createElement(Text, { style: styles.lineAmount }, formatMoney(amount)),
   );
