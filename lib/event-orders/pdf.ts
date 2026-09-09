@@ -62,9 +62,14 @@ function fmtDate(iso: string | null): string {
   return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
+/** Line label suffix on the Event Order PDF — Included vs Additional. */
+export function eventOrderPdfLineLabel(description: string, isIncluded: boolean): string {
+  return `${description}${isIncluded ? " (Included)" : " (Additional)"}`;
+}
+
 function LineRow({ description, quantity, amount, isIncluded }: { description: string; quantity: number; amount: number; isIncluded: boolean }) {
   return React.createElement(View, { style: styles.lineRow },
-    React.createElement(Text, { style: styles.lineDescription }, `${description}${isIncluded ? " (Included)" : " (Additional)"}`),
+    React.createElement(Text, { style: styles.lineDescription }, eventOrderPdfLineLabel(description, isIncluded)),
     React.createElement(Text, { style: styles.lineQty }, `×${quantity}`),
     React.createElement(Text, { style: styles.lineAmount }, formatMoney(amount)),
   );

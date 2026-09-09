@@ -215,3 +215,11 @@ describe("feature flag contract", () => {
     assert.equal(alwaysAvailable, true);
   });
 });
+
+describe("Event Order PDF Included / Additional labels", () => {
+  it("labels Included and Additional lines distinctly on the PDF description", async () => {
+    const { eventOrderPdfLineLabel } = await import("@/lib/event-orders/pdf");
+    assert.equal(eventOrderPdfLineLabel("Chiavari chair rental — HOLD", true), "Chiavari chair rental — HOLD (Included)");
+    assert.equal(eventOrderPdfLineLabel("Extra hour of staff", false), "Extra hour of staff (Additional)");
+  });
+});
