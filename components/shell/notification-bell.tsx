@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 
+import { normalizeVenueNotificationHref } from "@/lib/notifications/venue-deep-links";
+
 type VenueNotification = {
   id: string;
   type: string;
@@ -23,7 +25,8 @@ type NotificationsResponse = {
 
 const NOTIFICATION_CTA: Record<string, string> = {
   new_lead:               "Review inquiry",
-  rsvp_received:          "View guest list",
+  // Destination is Booking Documents (#documents) — there is no venue Guest List tab.
+  rsvp_received:          "Open documents",
   task_completed_couple:  "Open playbook",
   task_completed_vendor:  "Open playbook",
   vendor_checked_in:      "Open day view",
@@ -175,6 +178,7 @@ export function NotificationBell() {
               <div className="divide-y divide-border/50">
                 {notifications.map(n => {
                   const isUnread = !n.readAt;
+                  const href = normalizeVenueNotificationHref(n.link, n.type);
 
                   const itemContent = (
                     <div
@@ -204,7 +208,7 @@ export function NotificationBell() {
                             {n.body}
                           </p>
                         )}
-                        {n.link && (
+                        {href && (
                           <p className="mt-1.5 text-[10px] font-semibold" style={{ color: "#9B4F54" }}>
                             {getCta(n.type)} →
                           </p>
@@ -216,8 +220,8 @@ export function NotificationBell() {
                     </div>
                   );
 
-                  return n.link ? (
-                    <Link key={n.id} href={n.link} className="block">
+                  return href ? (
+                    <Link key={n.id} href={href} className="block">
                       {itemContent}
                     </Link>
                   ) : (

@@ -377,14 +377,16 @@ export function EventDetail({
   React.useLayoutEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
-      if (hash === "questionnaires") {
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      const tab = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
+      if (tab === "questionnaires") {
         setActiveTab("playbook");
         requestAnimationFrame(() => {
           document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
-      } else if (hash) setActiveTab(hash);
+      } else if (tab) setActiveTab(tab);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
-      // Open Vendors when a thread id is present and no hash was supplied.
+      // Open Vendors when a thread id is present and no Conversation/hash was supplied.
       else if (new URLSearchParams(window.location.search).get("conversation")) {
         setActiveTab("vendors");
       }

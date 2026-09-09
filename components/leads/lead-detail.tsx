@@ -111,7 +111,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   React.useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
-      if (hash) setActiveTab(hash);
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      const tab = hash || (tabParam === "conversation" ? "messages" : tabParam) || "";
+      if (tab) setActiveTab(tab);
     };
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);

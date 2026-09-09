@@ -20,7 +20,9 @@ describe("I2 lead Documents deep link", () => {
     const src = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
     assert.match(src, /hashchange/);
     assert.match(src, /window\.location\.hash\.replace\("#", ""\)/);
-    assert.match(src, /setActiveTab\(hash\)/);
+    // Prefer hash; accept legacy ?tab= (e.g. conversation → messages) when no hash.
+    assert.match(src, /const tab = hash \|\| \(tabParam === "conversation" \? "messages" : tabParam\) \|\| ""/);
+    assert.match(src, /if \(tab\) setActiveTab\(tab\)/);
     assert.match(src, /window\.location\.hash = v/);
     // Ordinary tabs still controlled — no hash required to change tabs.
     assert.match(src, /onValueChange=\{\(v\) => \{ setActiveTab\(v\);/);

@@ -163,6 +163,11 @@ export function ConversationInbox({
   const [nowMs, setNowMs] = React.useState<number | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    const fromUrl = searchParams.get("conversation");
+    if (fromUrl) setActiveId(fromUrl);
+  }, [searchParams]);
+
   const [search, setSearch] = React.useState("");
   const [searchDebounced, setSearchDebounced] = React.useState("");
   const [filters, setFilters] = React.useState<InboxFilterState>(defaultInboxFilters);

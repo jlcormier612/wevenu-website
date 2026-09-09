@@ -374,6 +374,10 @@ export function ConversationThread({
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  /** Stick to newest unless the user scrolls up into history. */
+  const stickToBottomRef = React.useRef(true);
+  const initialScrollDoneRef = React.useRef(false);
   const [scheduled, setScheduled] = React.useState<ScheduledMessage[]>([]);
   const [prefill, setPrefill] = React.useState<{ body: string; channel: ConversationChannel; nonce: number } | null>(null);
   const openedNotifiedRef = React.useRef(false);
@@ -433,6 +437,9 @@ export function ConversationThread({
   React.useEffect(() => {
     let cancelled = false;
     openedNotifiedRef.current = false;
+    stickToBottomRef.current = true;
+    initialScrollDoneRef.current = false;
+    setMessages(null);
     void getConversationAction(conversationId)
       .then((detail) => {
         if (cancelled) return;
@@ -458,9 +465,40 @@ export function ConversationThread({
       cancelled = true;
     };
   }, [conversationId]);
-  React.useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages?.length]);
+
+  function scrollMessagesToBottom(behavior: ScrollBehavior) {
+    const el = scrollRef.current;
+    if (!el) {
+      bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+      return;
+    }
+    if (behavior === "smooth") {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
+  function handleMessagesScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < 96;
+  }
+
+  // Open at newest; keep sticking only while the user is at (or near) the bottom.
+  React.useLayoutEffect(() => {
+    if (messages === null) return;
+    if (!initialScrollDoneRef.current) {
+      scrollMessagesToBottom("auto");
+      initialScrollDoneRef.current = true;
+      stickToBottomRef.current = true;
+      return;
+    }
+    if (stickToBottomRef.current) {
+      scrollMessagesToBottom("smooth");
+    }
+  }, [messages]);
 
   async function handleSent(ack?: SentMessageAck) {
     try {
@@ -574,7 +612,11 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6">
+      <div
+        ref={scrollRef}
+        onScroll={handleMessagesScroll}
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6"
+      >
         {messages === null ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
         ) : messages.length === 0 ? (
