@@ -425,7 +425,7 @@ export function ConversationCompose({
 
   return (
     <div
-      className={`shrink-0 space-y-2.5 overflow-y-auto border-t p-3 sm:px-4 sm:py-3 ${
+      className={`shrink-0 space-y-2.5 overflow-y-auto border-t p-3 sm:px-6 sm:py-3 ${
         isNote
           ? "border-amber-500/25 bg-amber-500/[0.04]"
           : "border-border/60 bg-card"

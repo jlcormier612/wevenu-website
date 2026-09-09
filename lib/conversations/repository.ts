@@ -238,6 +238,14 @@ export type InboxPageQuery = {
   channel?: string | null;
   bookingStage?: string | null;
   assignedStaffId?: string | null;
+  /** When true, only conversations with no assignee (ignores assignedStaffId). */
+  unassignedOnly?: boolean;
+  eventId?: string | null;
+  eventDateFrom?: string | null;
+  eventDateTo?: string | null;
+  eventStatus?: string | null;
+  hasAttachments?: boolean;
+  sort?: "recent" | "oldest";
 };
 
 export type InboxPageResult = {
@@ -247,11 +255,8 @@ export type InboxPageResult = {
   nextCursor: { lastMessageAt: string | null; id: string } | null;
 };
 
-export async function getConversationInboxPage(
-  client: DbClient,
-  query: InboxPageQuery = {},
-): Promise<InboxPageResult> {
-  const { data, error } = await client.rpc("get_conversation_inbox_page", {
+function inboxPageRpcArgs(query: InboxPageQuery) {
+  return {
     p_limit: query.limit ?? 40,
     p_cursor_last_message_at: query.cursorLastMessageAt ?? null,
     p_cursor_id: query.cursorId ?? null,
@@ -261,8 +266,23 @@ export async function getConversationInboxPage(
     p_relationship: query.relationship ?? "all",
     p_channel: query.channel ?? null,
     p_booking_stage: null, // applied in app via Booking Journey after enrich
-    p_assigned_staff_id: query.assignedStaffId ?? null,
-  });
+    p_assigned_staff_id: query.unassignedOnly ? null : (query.assignedStaffId ?? null),
+    p_event_id: query.eventId ?? null,
+    p_event_date_from: query.eventDateFrom ?? null,
+    p_event_date_to: query.eventDateTo ?? null,
+    p_event_status: query.eventStatus ?? null,
+    p_has_attachments: query.hasAttachments ?? false,
+    p_unassigned_only: query.unassignedOnly ?? false,
+    p_sort: query.sort ?? "recent",
+  };
+}
+
+export async function getConversationInboxPage(
+  client: DbClient,
+  query: InboxPageQuery = {},
+): Promise<InboxPageResult> {
+  const rpcArgs = inboxPageRpcArgs(query);
+  const { data, error } = await client.rpc("get_conversation_inbox_page", rpcArgs);
   if (error) throw error;
   if (!data || "error" in data) {
     return { conversations: [], totalUnread: 0, hasMore: false, nextCursor: null };
@@ -343,18 +363,13 @@ export async function getConversationInboxPage(
       }
       cursorAt = next.last_message_at;
       cursorId = next.id;
-      const more = await client.rpc("get_conversation_inbox_page", {
-        p_limit: want,
-        p_cursor_last_message_at: cursorAt,
-        p_cursor_id: cursorId,
-        p_search: query.search ?? null,
-        p_unread_only: query.unreadOnly ?? false,
-        p_needs_response_only: query.needsResponseOnly ?? false,
-        p_relationship: query.relationship ?? "all",
-        p_channel: query.channel ?? null,
-        p_booking_stage: null,
-        p_assigned_staff_id: query.assignedStaffId ?? null,
-      });
+      const more = await client.rpc("get_conversation_inbox_page", inboxPageRpcArgs({
+        ...query,
+        limit: want,
+        cursorLastMessageAt: cursorAt,
+        cursorId,
+        bookingStage: null, // still applied in app via Booking Journey
+      }));
       if (!more.data || "error" in more.data) break;
       hasMore = !!more.data.has_more;
       next = more.data.next_cursor as { last_message_at: string | null; id: string } | null;

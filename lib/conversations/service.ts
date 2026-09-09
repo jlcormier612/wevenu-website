@@ -62,6 +62,32 @@ export async function getConversationInboxPage(
   return repo.getConversationInboxPage(supabase, query);
 }
 
+/** Events for Inbox Event filter selector (server-side filter dimension). */
+export async function listInboxFilterEvents(): Promise<Array<{
+  id: string;
+  name: string;
+  eventDate: string | null;
+  status: string;
+}>> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, name, event_date, status")
+    .eq("venue_id", venue.id)
+    .order("event_date", { ascending: true })
+    .limit(500);
+  if (error) return [];
+  return ((data ?? []) as Array<{ id: string; name: string; event_date: string | null; status: string }>).map((e) => ({
+    id: e.id,
+    name: e.name,
+    eventDate: e.event_date,
+    status: e.status,
+  }));
+}
+
 export async function getConversation(conversationId: string): Promise<ConversationDetail | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();

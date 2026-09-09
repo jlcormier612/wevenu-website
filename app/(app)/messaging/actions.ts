@@ -33,6 +33,16 @@ export async function getConversationInboxPageAction(
   return conversations.getConversationInboxPage(query);
 }
 
+/** Slim event list for Inbox Event filter — not a second Events workspace. */
+export async function listInboxFilterEventsAction(): Promise<Array<{
+  id: string;
+  name: string;
+  eventDate: string | null;
+  status: string;
+}>> {
+  return conversations.listInboxFilterEvents();
+}
+
 export async function getConversationAction(conversationId: string): Promise<ConversationDetail | null> {
   return conversations.getConversation(conversationId);
 }

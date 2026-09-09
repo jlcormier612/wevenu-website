@@ -13,7 +13,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  ArrowLeft, Bot, Calendar, CheckCircle2, Clock, FileText, ListTodo, Mail, MessageSquare, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
+  ArrowLeft, Bot, CheckCircle2, Clock, FileText, ListTodo, Mail, MessageSquare, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,6 +34,7 @@ import {
   conversationNeedsResponse,
   latestMeaningfulFromMessages,
 } from "@/lib/conversations/inbox-attention";
+import { conversationHeaderOrientation } from "@/lib/conversations/inbox-header";
 import { SENDABLE_CHANNEL_LABEL } from "@/lib/conversations/channels";
 import {
   mergeSentAckIntoMessages,
@@ -276,7 +277,7 @@ function Bubble({
   return (
     <div className={`flex flex-col ${isVenue ? "items-end" : "items-start"}`}>
       <div
-        className={`max-w-[72%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
+        className={`max-w-[min(42rem,88%)] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
           isVenue ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
         } ${failed ? "ring-1 ring-destructive/50" : ""}`}
       >
@@ -361,10 +362,9 @@ export function ConversationThread({
   onBack?: () => void;
   showHeader?: boolean;
   /**
-   * Enriched header content — name, Lead/Booking identity, assignee, and
-   * direct actions. Booking Journey stage lives in the Relationship Context
-   * panel (right), not duplicated here. Only the Inbox passes this; the
-   * Booking Workspace's embedded Conversation tab omits it.
+   * Enriched header content — name, Lead/Booking identity, compact event
+   * orientation, assignee, and workspace link. Only the Inbox passes this;
+   * the Booking Workspace's embedded Conversation tab omits it.
    */
   summary?: ConversationSummary;
   teamMembers?: StaffMember[];
@@ -567,28 +567,43 @@ export function ConversationThread({
     else grouped.push({ label, msgs: [m] });
   }
 
+  const headerOrientation = summary ? conversationHeaderOrientation(summary) : null;
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       {showHeader && (
         <div className="shrink-0 border-b border-border/60">
-          <div className="flex items-center gap-2 px-4 py-3">
+          <div className="flex items-start gap-2 px-4 py-3 sm:px-6">
             {onBack && (
-              <button type="button" onClick={onBack} className="md:hidden -ml-1 p-1 text-muted-foreground">
+              <button type="button" onClick={onBack} className="md:hidden -ml-1 mt-0.5 p-1 text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" />
               </button>
             )}
             {summary ? (
               <>
-                <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="mt-0.5 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                   <span className="text-xs font-semibold text-primary">{threadInitials(summary.displayName)}</span>
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="truncate text-sm font-medium text-heading">
                     {summary.displayName ?? "Unnamed relationship"}
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    {summary.clientId ? "Booking" : "Lead"}
+                    {headerOrientation?.relationshipLabel}
                   </p>
+                  {headerOrientation?.eventLine && (
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {headerOrientation.eventLine}
+                    </p>
+                  )}
+                  {headerOrientation?.workspaceHref && headerOrientation.workspaceLabel && (
+                    <Link
+                      href={headerOrientation.workspaceHref}
+                      className="inline-flex items-center gap-1 pt-0.5 text-[11px] font-medium text-primary hover:underline"
+                    >
+                      {headerOrientation.workspaceLabel}
+                    </Link>
+                  )}
                 </div>
                 <select
                   aria-label="Assigned coordinator" value={assignedStaffId}
@@ -603,34 +618,20 @@ export function ConversationThread({
               <p className="text-sm font-medium">Conversation</p>
             )}
           </div>
-          {summary && (summary.leadId || summary.clientId) && (
-            <div className="flex flex-wrap items-center gap-3 px-4 pb-2.5 text-xs">
-              {summary.leadId && (
-                <Link href={`/leads/${summary.leadId}`} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                  <User className="h-3 w-3" /> Open lead
-                </Link>
-              )}
-              {summary.clientId && (
-                <Link href={`/clients/${summary.clientId}`} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                  <Calendar className="h-3 w-3" /> Open booking
-                </Link>
-              )}
-              {/* RC2, Milestone 4 — Requests need a Client, not just a Lead
-                  (requests.client_id is not-null), so this only appears once
-                  the relationship has booked. */}
-              {summary.clientId && (
-                <button
-                  type="button"
-                  onClick={() => setRequestFormOpen((v) => !v)}
-                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                >
-                  <CheckCircle2 className="h-3 w-3" /> Create Request
-                </button>
-              )}
+          {summary?.clientId && (
+            <div className="flex flex-wrap items-center gap-3 px-4 pb-2.5 text-xs sm:px-6">
+              {/* Requests need a Client — keep Create Request without recreating the dossier. */}
+              <button
+                type="button"
+                onClick={() => setRequestFormOpen((v) => !v)}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+              >
+                <CheckCircle2 className="h-3 w-3" /> Create Request
+              </button>
             </div>
           )}
           {requestFormOpen && (
-            <div className="flex items-center gap-2 border-t border-border/60 px-4 py-2">
+            <div className="flex items-center gap-2 border-t border-border/60 px-4 py-2 sm:px-6">
               <input
                 type="text"
                 autoFocus
@@ -653,7 +654,7 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6">
         {messages === null ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
         ) : messages.length === 0 ? (

@@ -1,31 +1,43 @@
 "use client";
 
 /**
- * ConversationInbox — Pass 2 multi-channel communication workspace.
- * Three zones: list · thread · context (drawer below lg).
- * Server-side pagination; progressive filters; unambiguous event cues only.
+ * ConversationInbox — communication workspace (list | conversation).
+ * Server-side pagination, search, and progressive filters. No dossier panel.
  */
 
 import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Filter, PanelRight, Paperclip, Search } from "lucide-react";
+import { Filter, Paperclip, Search, X } from "lucide-react";
 
-import { getConversationInboxPageAction } from "@/app/(app)/messaging/actions";
-import { CHANNEL_META, ConversationThread } from "@/components/conversations/conversation-thread";
 import {
-  RelationshipContextPanel,
-  RelationshipContextSheet,
-} from "@/components/conversations/relationship-context-panel";
+  getConversationInboxPageAction,
+  listInboxFilterEventsAction,
+} from "@/app/(app)/messaging/actions";
+import { CHANNEL_META, ConversationThread } from "@/components/conversations/conversation-thread";
 import {
   conversationNeedsResponseFromSummary,
   isMeaningfulCommunication,
 } from "@/lib/conversations/inbox-attention";
+import {
+  clearInboxChip,
+  defaultInboxFilters,
+  INBOX_FILTER_ALL,
+  inboxActiveChips,
+  inboxFiltersAreDefault,
+  inboxFiltersToQuery,
+  type InboxFilterState,
+} from "@/lib/conversations/inbox-filters";
+import { formatInboxListEventCue } from "@/lib/conversations/inbox-header";
 import type { ConversationMessagePreview, ConversationSummary } from "@/lib/conversations/types";
 import type { StaffMember } from "@/lib/team/types";
 
-const ALL = "__all__";
-type RelationshipFilter = "all" | "leads" | "bookings";
+type InboxEventOption = {
+  id: string;
+  name: string;
+  eventDate: string | null;
+  status: string;
+};
 
 function initials(name: string | null): string {
   if (!name) return "?";
@@ -41,19 +53,6 @@ function formatListTime(iso: string | null, nowMs: number | null): string {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatEventCue(c: ConversationSummary): string | null {
-  if (c.eventCount !== 1 || !c.eventDate) return null;
-  const d = new Date(`${c.eventDate}T12:00:00`);
-  const dateLabel = Number.isNaN(d.getTime())
-    ? c.eventDate
-    : d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-  const type = c.eventType ? ` ${c.eventType}` : c.eventName ? ` ${c.eventName}` : "";
-  // Prefer "October 18 Wedding" style when type is short; fall back to event name.
-  if (c.eventType) return `${dateLabel} ${c.eventType}`;
-  if (c.eventName) return `${dateLabel} · ${c.eventName}`;
-  return dateLabel + type;
 }
 
 function needsResponseForRow(
@@ -83,7 +82,7 @@ function ConversationRow({
     ? `${preview.senderType === "venue_staff" ? "You: " : ""}${preview.body || (preview.channel === "sms" ? "Photo or file" : "Attachment")}`
     : "No messages yet";
   const ChannelIcon = preview ? CHANNEL_META[preview.channel]?.icon : null;
-  const eventCue = formatEventCue(conversation);
+  const eventCue = formatInboxListEventCue(conversation);
 
   return (
     <button
@@ -133,28 +132,30 @@ function ConversationRow({
   );
 }
 
-export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMember[] }) {
+export function ConversationInbox({
+  teamMembers = [],
+  currentStaffId = null,
+}: {
+  teamMembers?: StaffMember[];
+  currentStaffId?: string | null;
+}) {
   const searchParams = useSearchParams();
   const [items, setItems] = React.useState<ConversationSummary[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [hasMore, setHasMore] = React.useState(false);
   const [nextCursor, setNextCursor] = React.useState<{ lastMessageAt: string | null; id: string } | null>(null);
   const [totalUnread, setTotalUnread] = React.useState(0);
   const [needsResponseOverrides, setNeedsResponseOverrides] = React.useState<Record<string, boolean>>({});
   const [activeId, setActiveId] = React.useState<string | null>(() => searchParams.get("conversation"));
   const [nowMs, setNowMs] = React.useState<number | null>(null);
-  const [contextOpen, setContextOpen] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const [search, setSearch] = React.useState("");
   const [searchDebounced, setSearchDebounced] = React.useState("");
-  const [relationshipFilter, setRelationshipFilter] = React.useState<RelationshipFilter>("all");
-  const [unreadOnly, setUnreadOnly] = React.useState(false);
-  const [needsResponseOnly, setNeedsResponseOnly] = React.useState(false);
-  const [channelFilter, setChannelFilter] = React.useState(ALL);
-  const [bookingStageFilter, setBookingStageFilter] = React.useState(ALL);
-  const [assignedFilter, setAssignedFilter] = React.useState(ALL);
+  const [filters, setFilters] = React.useState<InboxFilterState>(defaultInboxFilters);
+  const [eventOptions, setEventOptions] = React.useState<InboxEventOption[]>([]);
 
   React.useEffect(() => {
     setNowMs(Date.now());
@@ -165,62 +166,96 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
     return () => clearTimeout(t);
   }, [search]);
 
-  const queryKey = React.useMemo(() => JSON.stringify({
-    searchDebounced, relationshipFilter, unreadOnly, needsResponseOnly,
-    channelFilter, bookingStageFilter, assignedFilter,
-  }), [
-    searchDebounced, relationshipFilter, unreadOnly, needsResponseOnly,
-    channelFilter, bookingStageFilter, assignedFilter,
-  ]);
+  React.useEffect(() => {
+    void listInboxFilterEventsAction()
+      .then(setEventOptions)
+      .catch(() => setEventOptions([]));
+  }, []);
+
+  const queryFields = React.useMemo(
+    () => inboxFiltersToQuery(filters, currentStaffId),
+    [filters, currentStaffId],
+  );
+
+  const queryKey = React.useMemo(
+    () => JSON.stringify({ searchDebounced, queryFields }),
+    [searchDebounced, queryFields],
+  );
+
+  const hasActiveFilters = !inboxFiltersAreDefault(filters) || !!searchDebounced.trim();
+
+  const selectedEventLabel = React.useMemo(() => {
+    if (filters.eventId === INBOX_FILTER_ALL) return null;
+    const ev = eventOptions.find((e) => e.id === filters.eventId);
+    if (!ev) return "Selected event";
+    const date = ev.eventDate
+      ? new Date(`${ev.eventDate}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : null;
+    return date ? `${ev.name} · ${date}` : ev.name;
+  }, [filters.eventId, eventOptions]);
+
+  const staffLabel = React.useMemo(() => {
+    if (filters.assignment.mode !== "staff") return null;
+    const staffId = filters.assignment.staffId;
+    return teamMembers.find((m) => m.id === staffId)?.name ?? null;
+  }, [filters.assignment, teamMembers]);
+
+  const chips = inboxActiveChips(filters, {
+    eventLabel: selectedEventLabel,
+    staffLabel,
+  });
 
   const loadPage = React.useCallback(async (mode: "replace" | "append") => {
     if (mode === "replace") setLoading(true);
     else setLoadingMore(true);
-    const page = await getConversationInboxPageAction({
-      limit: 40,
-      cursorLastMessageAt: mode === "append" ? nextCursor?.lastMessageAt : null,
-      cursorId: mode === "append" ? nextCursor?.id : null,
-      search: searchDebounced || null,
-      unreadOnly,
-      needsResponseOnly,
-      relationship: relationshipFilter,
-      channel: channelFilter === ALL ? null : channelFilter,
-      bookingStage: bookingStageFilter === ALL ? null : bookingStageFilter,
-      assignedStaffId: assignedFilter === ALL ? null : assignedFilter,
-    });
-    setItems((prev) => (mode === "append" ? [...prev, ...page.conversations] : page.conversations));
-    setHasMore(page.hasMore);
-    setNextCursor(page.nextCursor);
-    setTotalUnread(page.totalUnread);
-    if (mode === "replace") setNeedsResponseOverrides({});
-    setLoading(false);
-    setLoadingMore(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- nextCursor only for append; replace ignores it
-  }, [
-    searchDebounced, unreadOnly, needsResponseOnly, relationshipFilter,
-    channelFilter, bookingStageFilter, assignedFilter, nextCursor,
-  ]);
+    setLoadError(null);
+    try {
+      const page = await getConversationInboxPageAction({
+        limit: 40,
+        cursorLastMessageAt: mode === "append" ? nextCursor?.lastMessageAt : null,
+        cursorId: mode === "append" ? nextCursor?.id : null,
+        search: searchDebounced || null,
+        ...queryFields,
+      });
+      setItems((prev) => (mode === "append" ? [...prev, ...page.conversations] : page.conversations));
+      setHasMore(page.hasMore);
+      setNextCursor(page.nextCursor);
+      setTotalUnread(page.totalUnread);
+      if (mode === "replace") setNeedsResponseOverrides({});
+    } catch {
+      setLoadError("Couldn’t load conversations. Try again.");
+      if (mode === "replace") setItems([]);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nextCursor only for append
+  }, [searchDebounced, queryFields, nextCursor]);
 
   React.useEffect(() => {
     setNextCursor(null);
     void (async () => {
       setLoading(true);
-      const page = await getConversationInboxPageAction({
-        limit: 40,
-        search: searchDebounced || null,
-        unreadOnly,
-        needsResponseOnly,
-        relationship: relationshipFilter,
-        channel: channelFilter === ALL ? null : channelFilter,
-        bookingStage: bookingStageFilter === ALL ? null : bookingStageFilter,
-        assignedStaffId: assignedFilter === ALL ? null : assignedFilter,
-      });
-      setItems(page.conversations);
-      setHasMore(page.hasMore);
-      setNextCursor(page.nextCursor);
-      setTotalUnread(page.totalUnread);
-      setNeedsResponseOverrides({});
-      setLoading(false);
+      setLoadError(null);
+      try {
+        const page = await getConversationInboxPageAction({
+          limit: 40,
+          search: searchDebounced || null,
+          ...queryFields,
+        });
+        setItems(page.conversations);
+        setHasMore(page.hasMore);
+        setNextCursor(page.nextCursor);
+        setTotalUnread(page.totalUnread);
+        setNeedsResponseOverrides({});
+      } catch {
+        setLoadError("Couldn’t load conversations. Try again.");
+        setItems([]);
+        setHasMore(false);
+        setNextCursor(null);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -251,6 +286,12 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
         : c
     )));
     setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: needsResponse }));
+  }
+
+  function clearAllFilters() {
+    setFilters(defaultInboxFilters());
+    setSearch("");
+    setSearchDebounced("");
   }
 
   return (
@@ -286,169 +327,296 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
         <button
           type="button"
           onClick={() => setFiltersOpen((o) => !o)}
+          aria-expanded={filtersOpen}
           className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs ${
-            filtersOpen ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+            filtersOpen || !inboxFiltersAreDefault(filters)
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border text-muted-foreground"
           }`}
         >
           <Filter className="h-3.5 w-3.5" /> Filters
+          {!inboxFiltersAreDefault(filters) && (
+            <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+              {chips.length}
+            </span>
+          )}
         </button>
       </div>
 
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {chips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => setFilters((prev) => clearInboxChip(prev, chip.id))}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-foreground"
+            >
+              {chip.label}
+              <X className="h-3 w-3 text-muted-foreground" aria-hidden />
+              <span className="sr-only">Remove {chip.label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="text-[11px] font-medium text-primary hover:underline"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {filtersOpen && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Attention</p>
-            <div className="flex flex-wrap gap-3">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} className="h-3.5 w-3.5" />
-                Unread
-              </label>
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input type="checkbox" checked={needsResponseOnly} onChange={(e) => setNeedsResponseOnly(e.target.checked)} className="h-3.5 w-3.5" />
-                Needs response
-              </label>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Relationship</p>
-            <div className="flex flex-wrap gap-2">
+        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <fieldset className="space-y-2">
+              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Attention</legend>
+              <div className="flex flex-col gap-1.5 text-xs">
+                {([
+                  ["all", "All"],
+                  ["unread", "Unread"],
+                  ["needs_response", "Needs response"],
+                ] as const).map(([value, label]) => (
+                  <label key={value} className="flex items-center gap-2 text-muted-foreground">
+                    <input
+                      type="radio"
+                      name="inbox-attention"
+                      checked={filters.attention === value}
+                      onChange={() => setFilters((f) => ({ ...f, attention: value }))}
+                      className="h-3.5 w-3.5"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Relationship</legend>
               <select
                 aria-label="Filter by lead or booking"
-                value={relationshipFilter}
-                onChange={(e) => setRelationshipFilter(e.target.value as RelationshipFilter)}
-                className="h-8 rounded-lg border border-border bg-background px-2 text-xs"
+                value={filters.relationship}
+                onChange={(e) => setFilters((f) => ({ ...f, relationship: e.target.value as InboxFilterState["relationship"] }))}
+                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
               >
                 <option value="all">All</option>
                 <option value="leads">Leads</option>
-                <option value="bookings">Clients</option>
+                <option value="bookings">Bookings</option>
               </select>
               <select
                 aria-label="Filter by booking stage"
-                value={bookingStageFilter}
-                onChange={(e) => setBookingStageFilter(e.target.value)}
-                className="h-8 rounded-lg border border-border bg-background px-2 text-xs"
+                value={filters.bookingStage}
+                onChange={(e) => setFilters((f) => ({ ...f, bookingStage: e.target.value }))}
+                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
               >
-                <option value={ALL}>Any stage</option>
+                <option value={INBOX_FILTER_ALL}>Any stage</option>
                 <option value="package">Package</option>
                 <option value="agreement">Agreement</option>
                 <option value="deposit">Deposit</option>
                 <option value="booked">Booked</option>
                 <option value="planning">Planning</option>
               </select>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Communication</p>
-            <div className="flex flex-wrap gap-2">
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Channel</legend>
               <select
                 aria-label="Filter by channel"
-                value={channelFilter}
-                onChange={(e) => setChannelFilter(e.target.value)}
-                className="h-8 rounded-lg border border-border bg-background px-2 text-xs"
+                value={filters.channel}
+                onChange={(e) => setFilters((f) => ({ ...f, channel: e.target.value }))}
+                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
               >
-                <option value={ALL}>Any channel</option>
+                <option value={INBOX_FILTER_ALL}>Any channel</option>
                 <option value="email">Email</option>
                 <option value="sms">Text</option>
                 <option value="portal">Portal</option>
+                <option value="internal_note">Internal note</option>
               </select>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Event</legend>
               <select
-                aria-label="Filter by assigned coordinator"
-                value={assignedFilter}
-                onChange={(e) => setAssignedFilter(e.target.value)}
-                className="h-8 rounded-lg border border-border bg-background px-2 text-xs"
+                aria-label="Filter by event"
+                value={filters.eventId}
+                onChange={(e) => setFilters((f) => ({ ...f, eventId: e.target.value }))}
+                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
               >
-                <option value={ALL}>Anyone</option>
-                {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                <option value={INBOX_FILTER_ALL}>Any event</option>
+                {eventOptions.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.name}{ev.eventDate ? ` · ${ev.eventDate}` : ""}
+                  </option>
+                ))}
               </select>
-            </div>
+              <div className="flex gap-2">
+                <label className="min-w-0 flex-1 space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground">From</span>
+                  <input
+                    type="date"
+                    value={filters.eventDateFrom}
+                    onChange={(e) => setFilters((f) => ({ ...f, eventDateFrom: e.target.value }))}
+                    className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                  />
+                </label>
+                <label className="min-w-0 flex-1 space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground">To</span>
+                  <input
+                    type="date"
+                    value={filters.eventDateTo}
+                    onChange={(e) => setFilters((f) => ({ ...f, eventDateTo: e.target.value }))}
+                    className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                  />
+                </label>
+              </div>
+              <select
+                aria-label="Filter by event status"
+                value={filters.eventStatus}
+                onChange={(e) => setFilters((f) => ({ ...f, eventStatus: e.target.value }))}
+                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+              >
+                <option value={INBOX_FILTER_ALL}>Any event status</option>
+                <option value="draft">Draft</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="in_progress">In progress</option>
+                <option value="complete">Complete</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Assignment</legend>
+              <select
+                aria-label="Filter by assignment"
+                value={
+                  filters.assignment.mode === "staff"
+                    ? filters.assignment.staffId
+                    : filters.assignment.mode
+                }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "any" || v === "unassigned" || v === "me") {
+                    setFilters((f) => ({ ...f, assignment: { mode: v } }));
+                  } else {
+                    setFilters((f) => ({ ...f, assignment: { mode: "staff", staffId: v } }));
+                  }
+                }}
+                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+              >
+                <option value="any">Anyone</option>
+                <option value="me">Assigned to me</option>
+                <option value="unassigned">Unassigned</option>
+                {teamMembers.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">More</legend>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={filters.hasAttachments}
+                  onChange={(e) => setFilters((f) => ({ ...f, hasAttachments: e.target.checked }))}
+                  className="h-3.5 w-3.5"
+                />
+                Has attachments
+              </label>
+              <select
+                aria-label="Sort conversations"
+                value={filters.sort}
+                onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value as InboxFilterState["sort"] }))}
+                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+              >
+                <option value="recent">Most recently active</option>
+                <option value="oldest">Oldest activity</option>
+              </select>
+            </fieldset>
           </div>
         </div>
       )}
 
       <div className="flex h-[calc(100svh-9rem)] min-h-[28rem] overflow-hidden rounded-sm border border-border bg-card">
-        <div className="flex h-full w-full min-h-0">
-          <div className={`w-full shrink-0 overflow-y-auto border-r border-border/60 md:w-80 ${activeId ? "hidden md:block" : ""}`}>
-            {loading ? (
-              <p className="p-4 text-xs text-muted-foreground">Loading…</p>
-            ) : items.length === 0 ? (
-              <div className="space-y-1 p-4">
-                <p className="text-sm font-medium text-heading">No conversations match</p>
-                <p className="text-xs text-muted-foreground">Try clearing search or filters.</p>
-              </div>
-            ) : (
-              <>
-                {items.map((c) => (
-                  <ConversationRow
-                    key={c.id}
-                    conversation={c}
-                    isActive={c.id === activeId}
-                    needsResponse={needsResponseForRow(c, needsResponseOverrides)}
-                    timeLabel={formatListTime(c.lastMessageAt, nowMs)}
-                    onClick={() => { setActiveId(c.id); setContextOpen(false); }}
-                  />
-                ))}
-                {hasMore && (
-                  <button
-                    type="button"
-                    disabled={loadingMore}
-                    onClick={() => void loadPage("append")}
-                    className="w-full px-4 py-3 text-center text-xs font-medium text-primary hover:underline disabled:opacity-50"
-                  >
-                    {loadingMore ? "Loading…" : "Load more"}
+        <div className={`w-full shrink-0 overflow-y-auto border-r border-border/60 md:w-80 lg:w-96 ${activeId ? "hidden md:block" : ""}`}>
+          {loading ? (
+            <p className="p-4 text-xs text-muted-foreground">Loading…</p>
+          ) : loadError ? (
+            <div className="space-y-2 p-4">
+              <p className="text-sm font-medium text-heading">{loadError}</p>
+              <button type="button" onClick={() => void loadPage("replace")} className="text-xs font-medium text-primary hover:underline">
+                Try again
+              </button>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="space-y-2 p-4">
+              {hasActiveFilters ? (
+                <>
+                  <p className="text-sm font-medium text-heading">No matching conversations</p>
+                  <p className="text-xs text-muted-foreground">
+                    Nothing matches this search or filter. Clear them to see more.
+                  </p>
+                  <button type="button" onClick={clearAllFilters} className="text-xs font-medium text-primary hover:underline">
+                    Clear search and filters
                   </button>
-                )}
-              </>
-            )}
-          </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-heading">No conversations yet</p>
+                  <p className="text-xs text-muted-foreground">
+                    When someone emails, texts, or messages through the portal, it will show up here.
+                  </p>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              {items.map((c) => (
+                <ConversationRow
+                  key={c.id}
+                  conversation={c}
+                  isActive={c.id === activeId}
+                  needsResponse={needsResponseForRow(c, needsResponseOverrides)}
+                  timeLabel={formatListTime(c.lastMessageAt, nowMs)}
+                  onClick={() => setActiveId(c.id)}
+                />
+              ))}
+              {hasMore && (
+                <button
+                  type="button"
+                  disabled={loadingMore}
+                  onClick={() => void loadPage("append")}
+                  className="w-full px-4 py-3 text-center text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </button>
+              )}
+            </>
+          )}
+        </div>
 
-          <div className={`flex min-h-0 min-w-0 flex-1 ${activeId ? "" : "hidden md:flex md:items-center md:justify-center"}`}>
-            {activeId ? (
-              <>
-                <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-                  <div className="flex items-center justify-end gap-2 border-b border-border/40 px-3 py-1.5 lg:hidden">
-                    <button
-                      type="button"
-                      onClick={() => setContextOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
-                    >
-                      <PanelRight className="h-3.5 w-3.5" /> Context
-                    </button>
-                  </div>
-                  <ConversationThread
-                    key={activeId}
-                    conversationId={activeId}
-                    onBack={() => setActiveId(null)}
-                    summary={activeSummary ?? undefined}
-                    teamMembers={teamMembers}
-                    onInboxOpened={(needsResponse) => markConversationOpened(activeId, needsResponse)}
-                    onInboxSent={(latestMessage, needsResponse) => {
-                      markConversationSent(activeId, latestMessage, needsResponse);
-                    }}
-                  />
-                </div>
-                <RelationshipContextPanel
-                  key={`ctx-${activeId}`}
-                  conversationId={activeId}
-                  leadId={activeSummary?.leadId ?? null}
-                  clientId={activeSummary?.clientId ?? null}
-                />
-                <RelationshipContextSheet
-                  open={contextOpen}
-                  onClose={() => setContextOpen(false)}
-                  conversationId={activeId}
-                  leadId={activeSummary?.leadId ?? null}
-                  clientId={activeSummary?.clientId ?? null}
-                />
-              </>
-            ) : (
-              <div className="max-w-xs space-y-1 px-6 text-center">
-                <p className="text-sm font-medium text-heading">Select a conversation</p>
-                <p className="text-xs text-muted-foreground">
-                  Choose someone from the list to read and reply by email or text.
-                </p>
-              </div>
-            )}
-          </div>
+        <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${activeId ? "" : "hidden md:flex md:items-center md:justify-center"}`}>
+          {activeId ? (
+            <ConversationThread
+              key={activeId}
+              conversationId={activeId}
+              onBack={() => setActiveId(null)}
+              summary={activeSummary ?? undefined}
+              teamMembers={teamMembers}
+              onInboxOpened={(needsResponse) => markConversationOpened(activeId, needsResponse)}
+              onInboxSent={(latestMessage, needsResponse) => {
+                markConversationSent(activeId, latestMessage, needsResponse);
+              }}
+            />
+          ) : (
+            <div className="max-w-xs space-y-1 px-6 text-center">
+              <p className="text-sm font-medium text-heading">Select a conversation</p>
+              <p className="text-xs text-muted-foreground">
+                Choose someone from the list to read and reply by email or text.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

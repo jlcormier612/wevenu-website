@@ -68,12 +68,14 @@ describe("conversation composer send surface", () => {
     assert.doesNotMatch(thread, /> Client</);
   });
 
-  it("middle header keeps identity and actions without booking-stage orientation (D02)", () => {
-    assert.match(thread, /summary\.clientId \? "Booking" : "Lead"/);
-    assert.match(thread, /Open lead/);
-    assert.match(thread, /Open booking/);
+  it("middle header keeps identity and workspace escape without booking-stage orientation (D02)", () => {
+    assert.match(thread, /conversationHeaderOrientation/);
     assert.match(thread, /Create Request/);
     assert.doesNotMatch(thread, /headerStageLabel/);
     assert.doesNotMatch(thread, /bookingStageLabel/);
+    const header = readFileSync(resolve("lib/conversations/inbox-header.ts"), "utf8");
+    assert.match(header, /Open lead workspace/);
+    assert.match(header, /Open booking workspace/);
+    assert.match(header, /"Lead" \| "Booking"/);
   });
 });
