@@ -11,6 +11,7 @@ import type {
   PaymentScheduleWithDetails,
 } from "@/lib/payments/types";
 import { computeTotalPaid, deriveScheduleStatus } from "@/lib/payments/constants";
+import { computeInvoiceBalanceDue } from "@/lib/payments/invoice-balance";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -391,36 +392,44 @@ export async function revertItemToPending(client: DbClient, venueId: string, ite
 }
 
 /**
- * After marking a payment paid, reconcile the linked invoice's balance_due.
- * Sums all paid amounts across every schedule linked to the same invoice,
- * then writes balance_due = invoice.total - totalPaid.
- * Auto-updates invoice status to "paid" when balance_due reaches zero.
+ * After marking a payment paid / refunded / cancelled, reconcile the linked
+ * invoice's balance_due.
+ *
+ * invoice.total stays the historical contracted amount. Cancelled unpaid
+ * schedule lines are subtracted once (no longer owed). Net paid is refund-aware.
+ * balance_due = max(0, total − cancelled − netPaid).
+ * Sets status to paid when balance hits zero; reopens to sent if a refund
+ * restores a positive balance on a previously-paid invoice.
  */
 export async function reconcileInvoiceBalance(client: DbClient, venueId: string, invoiceId: string): Promise<void> {
-  // Get invoice total
-  const { data: inv } = await client.from("invoices").select("total").eq("id", invoiceId).eq("venue_id", venueId).maybeSingle<{ total: number }>();
+  const { data: inv } = await client.from("invoices").select("total, status").eq("id", invoiceId).eq("venue_id", venueId)
+    .maybeSingle<{ total: number; status: string }>();
   if (!inv) return;
 
-  // Sum all paid line items across all schedules linked to this invoice
   const { data: schedules } = await client.from("payment_schedules").select("id").eq("invoice_id", invoiceId).eq("venue_id", venueId);
   const scheduleIds = (schedules ?? []).map((s: { id: string }) => s.id);
   if (scheduleIds.length === 0) return;
 
-  const { data: paidItems } = await client.from("payment_line_items")
-    .select("amount, paid_amount, refunded_amount")
-    .in("schedule_id", scheduleIds).in("status", ["paid", "partially_refunded", "refunded"]);
-  const totalPaid = (paidItems ?? []).reduce(
-    (sum: number, item: { amount: number; paid_amount: number | null; refunded_amount: number | null }) =>
-      sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)) - Number(item.refunded_amount ?? 0),
-    0,
-  );
+  const { data: items } = await client.from("payment_line_items")
+    .select("amount, paid_amount, refunded_amount, status")
+    .in("schedule_id", scheduleIds);
+  const lines = (items ?? []).map((item: {
+    amount: number; paid_amount: number | null; refunded_amount: number | null; status: string;
+  }) => ({
+    amount: Number(item.amount),
+    status: item.status,
+    paidAmount: item.paid_amount != null ? Number(item.paid_amount) : null,
+    refundedAmount: item.refunded_amount != null ? Number(item.refunded_amount) : null,
+  }));
 
-  const invoiceTotal = Number(inv.total);
-  const balanceDue = Math.max(0, invoiceTotal - totalPaid);
-  const newStatus = balanceDue <= 0 ? "paid" : undefined;
-
+  const balanceDue = computeInvoiceBalanceDue(Number(inv.total), lines);
   const patch: Record<string, unknown> = { balance_due: balanceDue };
-  if (newStatus) patch.status = newStatus;
+  if (balanceDue <= 0) {
+    patch.status = "paid";
+  } else if (inv.status === "paid") {
+    // Refund (or cancel unwind) restored an amount owed — leave void alone.
+    patch.status = "sent";
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("invoices") as any).update(patch).eq("id", invoiceId).eq("venue_id", venueId);
 }
@@ -430,9 +439,9 @@ export async function reconcileInvoiceBalance(client: DbClient, venueId: string,
  * 'partially_refunded' items are eligible; the refund amount can't exceed
  * what's still refundable (collected minus any prior refund). Sets status
  * to 'refunded' once the full collected amount has been refunded, otherwise
- * 'partially_refunded' — getTotalPaidForInvoice/reconcileInvoiceBalance treat
- * both net of refunded_amount, so the invoice balance updates correctly
- * without a separate code path.
+ * 'partially_refunded' — reconcileInvoiceBalance treats both net of
+ * refunded_amount (and subtracts cancelled plan commitments), so the invoice
+ * balance updates correctly without a separate code path.
  */
 export async function refundLineItem(
   client: DbClient,
@@ -474,6 +483,27 @@ export async function cancelLineItem(client: DbClient, venueId: string, itemId: 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("payment_line_items") as any).update({ status: "cancelled" }).eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+/**
+ * After cancelling (or deleting) a schedule line, set schedule.total_amount to
+ * the sum of non-cancelled line amounts so venue schedule totals match the
+ * active plan (portal planTotal).
+ */
+export async function syncScheduleTotalFromActiveLines(
+  client: DbClient,
+  venueId: string,
+  scheduleId: string,
+): Promise<number> {
+  const { data: items } = await client.from("payment_line_items")
+    .select("amount, status")
+    .eq("schedule_id", scheduleId)
+    .eq("venue_id", venueId);
+  const activeTotal = (items ?? [])
+    .filter((i: { status: string }) => i.status !== "cancelled")
+    .reduce((sum: number, i: { amount: number }) => sum + Number(i.amount), 0);
+  await updateScheduleTotalAmount(client, venueId, scheduleId, activeTotal);
+  return activeTotal;
 }
 
 /**

@@ -22,12 +22,17 @@ export function InvoicePrintDocument({
   venue,
   milestone = null,
   amountDueNow = null,
+  paidToDateOverride = null,
+  cancelledPlanAmount = 0,
 }: {
   invoice: InvoiceWithLineItems;
   venue: Venue;
   /** Next unpaid schedule item, when a linked Payment Plan exists. */
   milestone?: InvoicePrintMilestone | null;
   amountDueNow?: AmountDueNowResult | null;
+  /** Net retained collections when a linked schedule exists (refund-aware). */
+  paidToDateOverride?: number | null;
+  cancelledPlanAmount?: number;
 }) {
   // Prefer branding frozen at send time; pre-existing sent invoices without a
   // snapshot fall back to live venue branding (documented — no silent backfill).
@@ -46,7 +51,9 @@ export function InvoicePrintDocument({
   const neutralColor = brand.neutral;
   const hasDiscount = invoice.discountAmount > 0;
   const hasTax = invoice.taxAmount > 0;
-  const paidToDate = Math.max(0, invoice.total - invoice.balanceDue);
+  const paidToDate = paidToDateOverride != null
+    ? paidToDateOverride
+    : Math.max(0, invoice.total - invoice.balanceDue);
   const dueNowAmount =
     amountDueNow?.kind === "next_installment" ? amountDueNow.amount : null;
   const showDueNowHero = dueNowAmount != null && dueNowAmount > 0;
@@ -216,6 +223,12 @@ export function InvoicePrintDocument({
               <span>Paid to Date</span>
               <span>{formatCurrency(paidToDate)}</span>
             </div>
+            {cancelledPlanAmount > 0 && (
+              <div className="flex justify-between text-gray-700">
+                <span>Cancelled on payment plan</span>
+                <span>−{formatCurrency(cancelledPlanAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-gray-700">
               <span>Balance Remaining</span>
               <span>{formatCurrency(invoice.balanceDue)}</span>

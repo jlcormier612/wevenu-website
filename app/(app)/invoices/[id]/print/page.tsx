@@ -4,6 +4,10 @@ import { InvoicePrintDocument } from "@/components/invoices/invoice-print-docume
 import { PrintButton } from "@/components/events/day-sheet/print-button";
 import { resolveAmountDueNow } from "@/lib/invoices/amount-due-now";
 import { getInvoice } from "@/lib/invoices/service";
+import {
+  computeCancelledPlanAmount,
+  computeNetPaid,
+} from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -46,6 +50,8 @@ export default async function InvoicePrintPage({ params }: Props) {
             && (i.status === "pending" || i.status === "overdue" || i.status === "processing"),
         ) ?? null
       : null;
+  const paidToDateOverride = linked ? computeNetPaid(linked.lineItems) : null;
+  const cancelledPlanAmount = linked ? computeCancelledPlanAmount(linked.lineItems) : 0;
 
   return (
     <>
@@ -57,6 +63,8 @@ export default async function InvoicePrintPage({ params }: Props) {
         venue={venue}
         milestone={nextOpen ? { label: nextOpen.label, obligationKind: nextOpen.obligationKind ?? null } : null}
         amountDueNow={amountDueNow}
+        paidToDateOverride={paidToDateOverride}
+        cancelledPlanAmount={cancelledPlanAmount}
       />
     </>
   );

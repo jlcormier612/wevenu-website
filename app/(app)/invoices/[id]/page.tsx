@@ -6,6 +6,10 @@ import { isEmailConfigured } from "@/lib/email/send";
 import { resolveAmountDueNow } from "@/lib/invoices/amount-due-now";
 import { getEventOrderDrift, getInvoice } from "@/lib/invoices/service";
 import { getPackages } from "@/lib/packages/service";
+import {
+  computeCancelledPlanAmount,
+  computeNetPaid,
+} from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
@@ -43,6 +47,8 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
         }))
       : null,
   });
+  const paidToDate = linked ? computeNetPaid(linked.lineItems) : null;
+  const cancelledPlanAmount = linked ? computeCancelledPlanAmount(linked.lineItems) : 0;
   // Booking Financial Architecture Phase 3b — null for any invoice that
   // isn't sent+Event-Order-linked, or that has no undismissed drift.
   const eventOrderDrift = await getEventOrderDrift(id);
@@ -54,6 +60,8 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       emailConfigured={isEmailConfigured()}
       returnToPaymentSchedule={returnTo}
       amountDueNow={amountDueNow}
+      paidToDate={paidToDate}
+      cancelledPlanAmount={cancelledPlanAmount}
     />
   );
 }

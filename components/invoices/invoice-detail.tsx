@@ -46,6 +46,8 @@ export function InvoiceDetail({
   emailConfigured = true,
   returnToPaymentSchedule = null,
   amountDueNow = null,
+  paidToDate = null,
+  cancelledPlanAmount = 0,
 }: {
   invoice: InvoiceWithLineItems;
   packages: Package[];
@@ -55,6 +57,13 @@ export function InvoiceDetail({
   returnToPaymentSchedule?: string | null;
   /** Next open installment — never the full outstanding under "Amount Due Now". */
   amountDueNow?: AmountDueNowResult | null;
+  /**
+   * Net retained collections from the linked payment plan (refund-aware).
+   * When null, fall back to total − balanceDue (no schedule / legacy).
+   */
+  paidToDate?: number | null;
+  /** Sum of cancelled schedule commitments still shown on the plan history. */
+  cancelledPlanAmount?: number;
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
@@ -62,6 +71,9 @@ export function InvoiceDetail({
   const [emailPending, startEmail] = React.useTransition();
   const transition = STATUS_TRANSITIONS[status];
   const continueToSchedule = safePaymentScheduleReturnPath(returnToPaymentSchedule);
+  const displayPaidToDate = paidToDate != null
+    ? paidToDate
+    : Math.max(0, invoice.total - invoice.balanceDue);
 
   function handleStatusChange(next: InvoiceStatus) {
     startTransition(async () => {
@@ -169,11 +181,16 @@ export function InvoiceDetail({
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Paid to Date</p>
-              <p className="text-xl font-semibold text-success">{formatCurrency(Math.max(0, invoice.total - invoice.balanceDue))}</p>
+              <p className="text-xl font-semibold text-success">{formatCurrency(displayPaidToDate)}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Balance Remaining</p>
               <p className="text-xl font-semibold text-heading">{formatCurrency(invoice.balanceDue)}</p>
+              {cancelledPlanAmount > 0 && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {formatCurrency(cancelledPlanAmount)} cancelled on the payment plan
+                </p>
+              )}
             </div>
             <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
               {amountDueNow?.kind === "paid_in_full" || (!(invoice.balanceDue > 0) && !amountDueNow) ? (

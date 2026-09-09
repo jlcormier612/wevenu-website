@@ -1,5 +1,6 @@
 import { createClient } from "@/integrations/supabase/server";
 import { computeInvoiceTotals, deriveRevenueCategory, generateInvoiceNumber } from "@/lib/invoices/constants";
+import { computeInvoiceBalanceDue } from "@/lib/payments/invoice-balance";
 import type {
   AddLineItemResult,
   Invoice,
@@ -307,9 +308,8 @@ export async function revertToDraft(client: DbClient, venueId: string, invoiceId
  * every time a line item was added or removed — a couple could pay a
  * deposit, and a completely routine invoice edit later would reset the
  * displayed balance back to the full amount. Now payment-aware: subtracts
- * everything already paid toward this invoice, the same computation
- * `reconcileInvoiceBalance` (lib/payments/repository.ts) uses after a
- * payment is recorded, so the two can never disagree.
+ * net paid and cancelled payment-plan commitments, matching
+ * `reconcileInvoiceBalance` (lib/payments/repository.ts).
  */
 async function recomputeInvoiceTotals(client: DbClient, venueId: string, invoiceId: string): Promise<void> {
   const { data } = await client.from("invoice_line_items").select("type, amount").eq("invoice_id", invoiceId);
@@ -317,30 +317,36 @@ async function recomputeInvoiceTotals(client: DbClient, venueId: string, invoice
     (data ?? []) as { type: InvoiceLineItem["type"]; amount: number }[]
   );
 
-  const totalPaid = await getTotalPaidForInvoice(client, venueId, invoiceId);
-  const balanceDue = Math.max(0, total - totalPaid);
+  const balanceDue = await getBalanceDueForInvoice(client, venueId, invoiceId, total);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("invoices") as any).update({ subtotal, discount_amount: discountAmount, tax_amount: taxAmount, total, balance_due: balanceDue }).eq("id", invoiceId).eq("venue_id", venueId);
 }
 
 /**
- * Sums every payment_line_item across every schedule linked to this invoice
- * that's been collected, net of any refund (TR-M3) — 'paid', 'partially_refunded',
- * and 'refunded' all contribute paid_amount - refunded_amount, so a full refund
- * naturally nets to zero without a separate branch.
+ * Same formula as reconcileInvoiceBalance: contracted total minus cancelled
+ * unpaid schedule commitments minus net paid (refund-aware).
  */
-async function getTotalPaidForInvoice(client: DbClient, venueId: string, invoiceId: string): Promise<number> {
+async function getBalanceDueForInvoice(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  invoiceTotal: number,
+): Promise<number> {
   const { data: schedules } = await client.from("payment_schedules").select("id").eq("invoice_id", invoiceId).eq("venue_id", venueId);
   const scheduleIds = (schedules ?? []).map((s: { id: string }) => s.id);
-  if (scheduleIds.length === 0) return 0;
+  if (scheduleIds.length === 0) return Math.max(0, invoiceTotal);
 
-  const { data: paidItems } = await client.from("payment_line_items")
-    .select("amount, paid_amount, refunded_amount")
-    .in("schedule_id", scheduleIds).in("status", ["paid", "partially_refunded", "refunded"]);
-  return (paidItems ?? []).reduce(
-    (sum: number, item: { amount: number; paid_amount: number | null; refunded_amount: number | null }) =>
-      sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)) - Number(item.refunded_amount ?? 0),
-    0,
-  );
+  const { data: items } = await client.from("payment_line_items")
+    .select("amount, paid_amount, refunded_amount, status")
+    .in("schedule_id", scheduleIds);
+  const lines = (items ?? []).map((item: {
+    amount: number; paid_amount: number | null; refunded_amount: number | null; status: string;
+  }) => ({
+    amount: Number(item.amount),
+    status: item.status,
+    paidAmount: item.paid_amount != null ? Number(item.paid_amount) : null,
+    refundedAmount: item.refunded_amount != null ? Number(item.refunded_amount) : null,
+  }));
+  return computeInvoiceBalanceDue(invoiceTotal, lines);
 }

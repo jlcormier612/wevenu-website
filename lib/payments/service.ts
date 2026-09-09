@@ -559,7 +559,36 @@ export async function refundLineItem_(
 
 export async function cancelLineItem_(itemId: string): Promise<PaymentActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    const { data: item } = await supabase.from("payment_line_items")
+      .select("id, schedule_id, label, amount, status")
+      .eq("id", itemId).eq("venue_id", venueId)
+      .maybeSingle<{ id: string; schedule_id: string; label: string; amount: number; status: string }>();
+    if (!item) return { ok: false, message: "Payment not found." } as PaymentActionResult;
+    if (item.status === "cancelled") return { ok: true } as PaymentActionResult;
+    if (item.status === "paid" || item.status === "partially_refunded" || item.status === "refunded" || item.status === "processing") {
+      return { ok: false, message: "Only an unpaid installment can be cancelled." } as PaymentActionResult;
+    }
+
     await repo.cancelLineItem(supabase, venueId, itemId);
+    await repo.syncScheduleTotalFromActiveLines(supabase, venueId, item.schedule_id);
+    await repo.insertPaymentActivity(
+      supabase, venueId, item.schedule_id, "cancelled",
+      `Cancelled installment: ${item.label} ($${Number(item.amount).toLocaleString()}) — no longer owed on this payment plan.`,
+    );
+
+    const { data: sch } = await supabase.from("payment_schedules")
+      .select("invoice_id").eq("id", item.schedule_id).maybeSingle<{ invoice_id: string | null }>();
+    if (sch?.invoice_id) {
+      const { data: inv } = await supabase.from("invoices").select("total")
+        .eq("id", sch.invoice_id).eq("venue_id", venueId).maybeSingle<{ total: number }>();
+      if (inv) {
+        // Cancel intentionally lowers the active plan below contracted total —
+        // acknowledge so Needs Review does not treat this as an unresolved drift.
+        await repo.setAcknowledgedInvoiceTotal(supabase, venueId, item.schedule_id, Number(inv.total));
+      }
+      await repo.reconcileInvoiceBalance(supabase, venueId, sch.invoice_id);
+    }
+
     return { ok: true } as PaymentActionResult;
   });
   return result as PaymentActionResult;
