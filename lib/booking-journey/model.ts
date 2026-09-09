@@ -214,7 +214,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryAction = "setup_payments";
     }
   } else if (!planningDone) {
-    direction = `They're booked. ${formatCurrency(remaining ?? 0)} remains on the payment plan. Invite them to the portal and start planning when you're ready — optional if they won't use planning.`;
+    direction = `They're Booked. ${formatCurrency(remaining ?? 0)} remains on the payment plan. Invite them to the portal and start planning when you're ready — optional if they won't use planning.`;
     primaryLabel = input.portalInvited ? "Start planning" : "Invite to portal";
     primaryHref = input.clientId
       ? input.portalInvited

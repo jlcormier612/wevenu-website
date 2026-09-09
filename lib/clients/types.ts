@@ -110,5 +110,12 @@ export type ClientActionResult =
   | { ok: false; errors?: ClientErrors; message?: string };
 
 export type CreateClientResult =
-  | { ok: true; clientId: string; eventId: string | null; invitationSent: boolean }
+  | {
+      ok: true;
+      clientId: string;
+      eventId: string | null;
+      invitationSent: boolean;
+      /** Present when Client/Event succeeded but a follow-on link (e.g. package) failed. */
+      warning?: string;
+    }
   | { ok: false; errors?: ClientErrors; message?: string; code?: OccupancyCode };

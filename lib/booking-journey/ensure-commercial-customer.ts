@@ -75,8 +75,9 @@ export async function ensureCommercialCustomerForSelection(input: {
 
   // Reuse convertLeadToClient — creates Client (+ Event when a date exists and
   // space is available), never invites the portal (invitationSent is always false).
-  // commercialOnly keeps the lead on the sales pipeline (does not set sales
-  // Booked / stamp booked_at) — Start booking file remains the explicit planning step.
+  // commercialOnly keeps the lead on the sales pipeline (does not set Booking
+  // Started / sales_stage booked) — Start booking file remains the explicit
+  // booking-file step.
   const converted = await convertLeadToClient(lead, {
     commercialOnly: true,
     spaceId: input.spaceId,

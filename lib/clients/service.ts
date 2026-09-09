@@ -34,8 +34,8 @@ import {
   weddingWeekEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
-import { getEventIdForClient, insertEvent, ensureEventBookedAt } from "@/lib/events/repository";
-import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
+import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
+import { venueToday } from "@/lib/venue/timezone";
 import type { Lead } from "@/lib/leads/types";
 import { updateLeadSalesStage } from "@/lib/leads/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -46,16 +46,6 @@ import { exitEnrollmentsForBooking } from "@/lib/message-sequences/service";
  * Called inside the same withVenue callback as insertClient so both rows
  * share the same authenticated Supabase client and venue context.
  */
-async function stampBookingDateIfNeeded(
-  supabase: Parameters<typeof insertEvent>[0],
-  venueId: string,
-  eventId: string | null | undefined,
-): Promise<void> {
-  if (!eventId) return;
-  const tz = await getVenueTimezone(supabase, venueId);
-  await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
-}
-
 async function autoCreateEvent(
   supabase: Parameters<typeof insertEvent>[0],
   venueId: string,
@@ -94,7 +84,8 @@ async function autoCreateEvent(
     clientId,
     spaceId: opts.spaceId ?? "",
   });
-  await stampBookingDateIfNeeded(supabase, venueId, eventId);
+  // events.booked_at is stamped only at commercial Booked (agreement + deposit),
+  // never when the booking workspace / Event is first created.
   return eventId;
 }
 
@@ -286,12 +277,8 @@ async function createClientCore(
       );
       clientId = row.clientId;
       eventId = row.eventId;
-      // Direct Add of a dated future booking IS the booking commitment moment
-      // for payment timing (events.booked_at) — distinct from lifecycle Booking.
-      // Historical past-event imports do not invent a booking date.
-      if (!asHistorical) {
-        await stampBookingDateIfNeeded(supabase, venueId, eventId);
-      }
+      // events.booked_at is commercial Booked only (agreement + deposit).
+      // Direct Add / Start booking file create the workspace without stamping it.
     } catch (err) {
       const fail = occupancyClientFailure(err);
       if (fail) return fail;
@@ -472,11 +459,10 @@ export async function convertLeadToClient(
           throw err;
         }
       }
-      // Planning workspace ("Start booking file") sets sales Booked. Quiet
-      // commercial ensure (contract/payments) must not move the pipeline stage.
+      // Planning workspace ("Start booking file") sets sales Booking Started.
+      // Quiet commercial ensure (contract/payments) must not move the pipeline stage.
       if (!commercialOnly) {
         await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: existingClient.id });
-        await stampBookingDateIfNeeded(supabase, venueId, eventId);
       }
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
@@ -489,9 +475,6 @@ export async function convertLeadToClient(
         );
         clientId = row.clientId;
         eventId = row.eventId;
-        if (!commercialOnly) {
-          await stampBookingDateIfNeeded(supabase, venueId, eventId);
-        }
       } else {
         clientId = await repo.insertClient(supabase, venueId, input, lead.id);
       }
@@ -507,7 +490,6 @@ export async function convertLeadToClient(
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
           if (!commercialOnly) {
-            await stampBookingDateIfNeeded(supabase, venueId, raceEventId);
             await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: raceClient.id });
           }
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;

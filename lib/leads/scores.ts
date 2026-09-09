@@ -173,7 +173,7 @@ export function momentumLabel(score: number, status: string): {
   label: string;
   tier: "hot" | "warm" | "growing" | "early" | "quiet";
 } {
-  if (status === "booked" || status === "won") return { label: "Booked", tier: "hot" };
+  if (status === "booked" || status === "won") return { label: "Booking Started", tier: "hot" };
   if (status === "lost" || status === "cancelled") return { label: "Closed", tier: "quiet" };
   if (score >= 70) return { label: "Strong momentum", tier: "hot" };
   if (score >= 45) return { label: "Progressing", tier: "warm" };

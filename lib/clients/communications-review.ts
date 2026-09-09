@@ -96,7 +96,7 @@ function automatedMessagesRow(
     return {
       key: "automated_messages",
       label: "Automated messages",
-      detail: "Nothing is scheduled to send automatically after booking.",
+      detail: "Nothing is scheduled to send automatically when Booking Started.",
       onFile: false,
       needsAttention: false,
       href: "/communication/series",
@@ -107,9 +107,9 @@ function automatedMessagesRow(
   const plan =
     booked.length === 1
       ? booked[0].name.trim()
-        ? `${booked[0].name} is set to start after booking.`
-        : "1 message plan is set to start after booking."
-      : `${booked.length} message plans are set to start after booking.`;
+        ? `${booked[0].name} is set to start when Booking Started.`
+        : "1 message plan is set to start when Booking Started."
+      : `${booked.length} message plans are set to start when Booking Started.`;
   const detail = started ? `${plan} Messages for this client have already started.` : plan;
 
   return {

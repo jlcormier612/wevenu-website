@@ -68,11 +68,7 @@ export function ClientForm({
     startTransition(async () => {
       const result = await createClientAction(input);
       if (result.ok) {
-        const params = new URLSearchParams();
-        if (result.eventId) params.set("eventId", result.eventId);
-        if (result.invitationSent) params.set("invited", "1");
-        const qs = params.toString();
-        router.push(`/clients/${result.clientId}/booked${qs ? `?${qs}` : ""}`);
+        router.push(`/clients/${result.clientId}`);
         return;
       }
       if (result.errors) setErrors(result.errors);

@@ -79,5 +79,11 @@ export async function recordExternallyExecutedContract(
     "This agreement was signed in another system. Hello to Cheers did not collect e-signatures for it. The original signed file should be attached as an Event document.",
   );
 
+  const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
+  await maybeStampCommercialBookedAt(client, venueId, {
+    clientId: input.clientId,
+    eventId: input.eventId,
+  });
+
   return { ok: true, contractId };
 }

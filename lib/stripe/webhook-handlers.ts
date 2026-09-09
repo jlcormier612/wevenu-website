@@ -139,6 +139,16 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
   if (clientId) {
     await postPaymentReceivedReceipt(admin, venueId, clientId, scheduleId, paidAmount, method);
   }
+
+  // Commercial Booked → stamp events.booked_at when agreement + deposit are both done.
+  if (clientId) {
+    const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await maybeStampCommercialBookedAt(admin as any, venueId, {
+      clientId,
+      eventId: eventId ?? null,
+    });
+  }
 }
 
 /** payment_intent.processing — ACH only. Debit initiated, not yet settled. */

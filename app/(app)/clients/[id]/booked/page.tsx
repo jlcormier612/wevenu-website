@@ -122,13 +122,13 @@ export default async function BookedPage({ params, searchParams }: Props) {
   });
 
   // Override celebration copy for commercial Booked (agreement + deposit).
-  handoff.eyebrow = "They're booked";
+  handoff.eyebrow = "They're Booked";
   handoff.bookingLine = selection
     ? `${selection.name} · ${formatCurrency(selection.totalAmount)} · Deposit ${formatCurrency(selection.depositAmount)} received · ${formatCurrency(remaining ?? 0)} remaining`
     : "Agreement complete and deposit received.";
   handoff.prepareHeading = "What to do next";
   handoff.tagline =
-    "Invite them to the portal and start planning when you're ready — planning is optional. Review the remaining payment plan anytime.";
+    "Client Planning is optional and separate. Invite them to the portal and release planning only when those are ready — Booked does not mean planning is released.";
   handoff.primaryLabel = "Continue to booking";
   handoff.primaryHref = `/clients/${client.id}`;
 

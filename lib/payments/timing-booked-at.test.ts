@@ -74,20 +74,32 @@ describe("Payment timing — financial paths never stamp booked_at", () => {
   });
 });
 
-describe("Payment timing — genuine booking moment stamps", () => {
-  it("lead conversion stamps booked_at including race return path", () => {
+describe("Payment timing — genuine commercial booking moment stamps", () => {
+  it("lead conversion does not stamp booked_at; commercial helper does", () => {
     const src = readFileSync(resolve("lib/clients/service.ts"), "utf8");
     const convert = src.slice(src.indexOf("export async function convertLeadToClient"));
-    assert.match(convert, /stampBookingDateIfNeeded/);
-    assert.match(convert, /raceEventId[\s\S]*stampBookingDateIfNeeded/);
+    assert.doesNotMatch(convert, /stampBookingDateIfNeeded|ensureEventBookedAt/);
+    const stamp = readFileSync(resolve("lib/booking-journey/stamp-commercial-booked-at.ts"), "utf8");
+    assert.match(stamp, /maybeStampCommercialBookedAt/);
+    assert.match(stamp, /isCommerciallyBooked/);
   });
 
-  it("Direct Add stamps booked_at for live dated bookings, not historical records", () => {
+  it("Direct Add does not stamp booked_at for live dated bookings", () => {
     const src = readFileSync(resolve("lib/clients/service.ts"), "utf8");
     const core = src.slice(src.indexOf("async function createClientCore"));
     const body = core.slice(0, core.indexOf("export async function createClient_"));
-    assert.match(body, /if \(!asHistorical\)/);
-    assert.match(body, /stampBookingDateIfNeeded/);
+    assert.doesNotMatch(body, /stampBookingDateIfNeeded|ensureEventBookedAt/);
+  });
+
+  it("markLineItemPaid and Stripe success call commercial stamp", () => {
+    assert.match(
+      readFileSync(resolve("lib/payments/service.ts"), "utf8"),
+      /maybeStampCommercialBookedAt/,
+    );
+    assert.match(
+      readFileSync(resolve("lib/stripe/webhook-handlers.ts"), "utf8"),
+      /maybeStampCommercialBookedAt/,
+    );
   });
 });
 
@@ -109,14 +121,15 @@ describe("Payment timing — migration booked_at", () => {
   });
 });
 
-describe("Payment timing — contract signing can never establish booked_at", () => {
-  it("no contract file references booked_at/bookedAt at all — regression lock", () => {
-    // Only two write sites for booked_at exist anywhere in the codebase
-    // (ensureEventBookedAt, setEventBookedAt) and neither is reachable from
-    // any contract-signing path. If a future change ever wires contract
-    // signing to booked_at, one of these files will start matching and this
-    // lock fails — catching the regression before it ships.
-    const contractFiles = [
+describe("Payment timing — contract signing stamps booked_at only via commercial Booked helper", () => {
+  it("contract paths may call maybeStampCommercialBookedAt but not write booked_at directly", () => {
+    // Commercial Booked = agreement + deposit. Signing may complete that milestone
+    // when a deposit is already paid — via maybeStampCommercialBookedAt only.
+    const service = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
+    const external = readFileSync(resolve("lib/contracts/external-execution.ts"), "utf8");
+    assert.match(service, /maybeStampCommercialBookedAt/);
+    assert.match(external, /maybeStampCommercialBookedAt/);
+    for (const file of [
       "lib/contracts/service.ts",
       "lib/contracts/finalize.ts",
       "lib/contracts/external-execution.ts",
@@ -124,10 +137,9 @@ describe("Payment timing — contract signing can never establish booked_at", ()
       "lib/contracts/pdf.ts",
       "lib/contracts/preview.ts",
       "lib/contracts/signature-blocks.ts",
-    ];
-    for (const file of contractFiles) {
+    ]) {
       const src = readFileSync(resolve(file), "utf8");
-      assert.doesNotMatch(src, /booked_at|bookedAt/, `${file} must never reference booked_at`);
+      assert.doesNotMatch(src, /ensureEventBookedAt|setEventBookedAt|\.booked_at|bookedAt:/, `${file}`);
     }
   });
 });

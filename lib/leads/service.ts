@@ -239,7 +239,7 @@ export async function updateLeadSalesStage(
   if (!validateStatus(stage) || !isSalesStage(stage))
     return { ok: false, message: `"${stage}" is not a valid sales stage.` };
   if (stage === "booked" && !opts?.allowBooked) {
-    return { ok: false, message: "Booked sales stage is only set by starting a booking file." };
+    return { ok: false, message: "Booking Started is only set by starting a booking file." };
   }
   if (!opts?.allowBooked && !isManuallyAssignableSalesStage(stage)) {
     return { ok: false, message: "That stage cannot be set manually." };
@@ -261,7 +261,7 @@ export async function updateLeadSalesStage(
     ) {
       return {
         ok: false,
-        message: "Use Move back to Sales Pipeline to leave Booked.",
+        message: "Use Move back to Sales Pipeline to leave Booking Started.",
       } as LeadActionResult;
     }
 
@@ -387,7 +387,7 @@ export async function moveLeadBackToSalesPipeline(leadId: string): Promise<LeadA
       .maybeSingle<{ sales_stage: string | null }>();
     if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
     if (row.sales_stage !== "booked") {
-      return { ok: false, message: "This lead is not currently Booked." } as LeadActionResult;
+      return { ok: false, message: "This lead is not currently in Booking Started." } as LeadActionResult;
     }
     return updateLeadSalesStage(leadId, SALES_PIPELINE_RETURN_STAGE, { allowLeaveBooked: true });
   });
@@ -413,7 +413,7 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
     if (!linked) {
       return {
         ok: false,
-        message: "There is no client linked to this inquiry yet. Create a contract or set up payments from the Booking Journey first, or open the planning workspace.",
+        message: "There is no client linked to this inquiry yet. Create a contract or set up payments from the Booking Journey first, or start the booking file.",
       } as LeadActionResult;
     }
     return updateLeadSalesStage(leadId, "booked", { allowBooked: true, clientId: linked.id });

@@ -191,7 +191,7 @@ export function BookingJourneyPanel({
               Sending an offer lets them accept {selection.name}. After they accept, you&apos;ll
               collect the {formatCurrency(selection.depositAmount)} deposit. Or create a contract
               from this package — they sign, then you collect the deposit. You do not need to start
-              a planning workspace first.
+              a booking file first.
             </p>
           )}
           {journey.primaryAction === "setup_payments" && (

@@ -5,7 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Lightweight lifecycle confirmation (Book This Lead / Move back / Return to Booked).
+ * Lightweight lifecycle confirmation (Start booking file / Move back / Return to Booking Started).
  * Same interaction pattern as PipelineAutomationConfirmDialog — Cancel is safe default.
  */
 export function LeadLifecycleConfirmDialog({

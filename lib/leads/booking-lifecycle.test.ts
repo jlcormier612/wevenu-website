@@ -21,21 +21,22 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.equal(SALES_PIPELINE_RETURN_STAGE, "new_inquiry");
   });
 
-  it("Booked is not manually assignable; move-back destination is", () => {
+  it("Booking Started is not manually assignable; move-back destination is", () => {
     assert.equal(isManuallyAssignableSalesStage("booked"), false);
     assert.equal(isManuallyAssignableSalesStage(SALES_PIPELINE_RETURN_STAGE), true);
   });
 
-  it("Booked copy does not imply contract or payment", () => {
+  it("Booking Started copy does not imply contract or payment complete", () => {
     const booked = SALES_STAGE_META.find((s) => s.value === "booked");
     assert.ok(booked);
-    assert.doesNotMatch(booked!.description, /contract|payment|deposit|signed/i);
-    assert.match(booked!.description, /won|ready|event/i);
+    assert.equal(booked!.label, "Booking Started");
+    assert.doesNotMatch(booked!.description, /deposit is paid|agreement is signed/i);
+    assert.match(booked!.description, /not commercially Booked/i);
   });
 
-  it("server requires allowLeaveBooked to leave Booked for active pipeline stages", () => {
+  it("server requires allowLeaveBooked to leave Booking Started for active pipeline stages", () => {
     assert.match(service, /allowLeaveBooked/);
-    assert.match(service, /Use Move back to Sales Pipeline to leave Booked/);
+    assert.match(service, /Use Move back to Sales Pipeline to leave Booking Started/);
     assert.match(service, /stage !== "lost"/);
   });
 
@@ -53,7 +54,7 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.match(fn, /no client linked/i);
   });
 
-  it("convertLeadToClient still sets Booked via allowBooked and is idempotent on existing client", () => {
+  it("convertLeadToClient still sets Booking Started via allowBooked and is idempotent on existing client", () => {
     const convert = clientsSvc.slice(clientsSvc.indexOf("export async function convertLeadToClient"));
     assert.match(convert, /allowBooked:\s*true/);
     assert.match(convert, /existingClient/);
@@ -62,27 +63,28 @@ describe("Sales → Booking lifecycle product rules", () => {
 
   it("UI confirms Start booking file before mutation", () => {
     assert.match(detail, /Start booking file\?/);
-    assert.match(detail, /not Booked until the agreement is done and the deposit is paid/i);
-    assert.match(detail, /optional for contracts and payments/i);
+    assert.match(detail, /not commercially Booked until/i);
+    assert.match(detail, /Booking Started/);
     assert.match(detail, /setConfirmBookOpen\(true\)/);
     assert.match(detail, /confirmBookThisLead/);
+    // Mutation runs only after confirm (and optional automation disclose), not on request.
     assert.doesNotMatch(
-      detail.slice(detail.indexOf("function requestBookThisLead"), detail.indexOf("function confirmBookThisLead")),
-      /convertLeadToClientAction|startBookingFileAction/,
+      detail.slice(detail.indexOf("function requestBookThisLead"), detail.indexOf("async function runStartBookingFile")),
+      /startBookingFileAction/,
     );
   });
 
-  it("UI exposes Move back and Return to booking file with confirmations", () => {
+  it("UI exposes Move back and Return to Booking Started with confirmations", () => {
     assert.match(detail, /Move back to Sales Pipeline/);
-    assert.match(detail, /Return to booking file/);
+    assert.match(detail, /Return to Booking Started/);
     assert.match(detail, /client, event, documents, messages, and financial information/i);
-    assert.match(detail, /commercially Booked after agreement and deposit/i);
+    assert.match(detail, /commercially Booked only after/i);
     assert.match(actions, /moveLeadBackToSalesPipelineAction/);
     assert.match(actions, /returnLeadToBookedAction/);
   });
 
-  it("pipeline board blocks leaving Booked except via dedicated path", () => {
+  it("pipeline board blocks leaving Booking Started except via dedicated path", () => {
     assert.match(board, /Move back to Sales Pipeline/);
-    assert.match(board, /Booked sales stage is only set by starting a booking file/);
+    assert.match(board, /Booking Started is only set by starting a booking file/);
   });
 });

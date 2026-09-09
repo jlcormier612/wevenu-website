@@ -67,10 +67,10 @@ describe("Payment Plan starters", () => {
   });
 
   it("explains timing in venue-owner language (at booking ≠ event day)", () => {
-    assert.equal(formatTimingLabel({ type: "at_booking" }), "At booking");
+    assert.equal(formatTimingLabel({ type: "at_booking" }), "At booking (when Booked)");
     assert.equal(formatTimingLabel({ type: "before_event", days: 60 }), "60 days before the event");
     assert.equal(formatTimingLabel({ type: "before_event", days: 0 }), "On the event day");
-    assert.equal(formatTimingLabel({ type: "after_booking", days: 30 }), "30 days after booking");
+    assert.equal(formatTimingLabel({ type: "after_booking", days: 30 }), "30 days after booking (when Booked)");
     assert.notEqual(
       formatTimingLabel({ type: "at_booking" }),
       formatTimingLabel({ type: "before_event", days: 0 }),

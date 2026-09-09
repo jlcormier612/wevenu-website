@@ -29,7 +29,12 @@ export const SALES_STAGE_META: SalesStageMeta[] = [
   { value: "enrolled_in_sequence", label: "In Follow-Up", order: 2, description: "Active sales follow-up" },
   { value: "tour_scheduled", label: "Tour Scheduled", order: 3, description: "A real tour appointment exists" },
   { value: "proposal_sent", label: "Proposal Sent", order: 4, description: "Proposal has been sent" },
-  { value: "booked", label: "Booked", order: 5, description: "Business is won — ready to set up the event" },
+  {
+    value: "booked",
+    label: "Booking Started",
+    order: 5,
+    description: "Booking file opened — not commercially Booked until agreement and deposit",
+  },
   { value: "lost", label: "Lost", order: 6, description: "Opportunity marked lost" },
 ];
 

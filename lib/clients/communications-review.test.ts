@@ -84,7 +84,7 @@ describe("buildCommunicationsReview", () => {
       ],
     });
     const automated = model.rows.find((r) => r.key === "automated_messages");
-    assert.equal(automated?.detail, "Nothing is scheduled to send automatically after booking.");
+    assert.equal(automated?.detail, "Nothing is scheduled to send automatically when Booking Started.");
     assert.equal(automated?.onFile, false);
     assert.equal(
       isActiveBookedStageAutomation({
@@ -111,7 +111,7 @@ describe("buildCommunicationsReview", () => {
       ],
     });
     const automated = model.rows.find((r) => r.key === "automated_messages");
-    assert.equal(automated?.detail, "Post-Booking Follow-up is set to start after booking.");
+    assert.equal(automated?.detail, "Post-Booking Follow-up is set to start when Booking Started.");
     assert.equal(automated?.href, "/communication/series/booked-1/edit");
     assert.equal(automated?.actionLabel, "Edit");
     assert.doesNotMatch(automated?.detail ?? "", /enroll/i);

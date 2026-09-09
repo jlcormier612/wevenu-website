@@ -331,6 +331,20 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       entityId:  itemId,
     });
 
+    // Commercial Booked → stamp events.booked_at when agreement + deposit are both done.
+    {
+      const { data: scheduleClient } = await supabase.from("payment_schedules")
+        .select("client_id, event_id").eq("id", scheduleId)
+        .maybeSingle<{ client_id: string | null; event_id: string | null }>();
+      if (scheduleClient?.client_id) {
+        const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
+        await maybeStampCommercialBookedAt(supabase, venueId, {
+          clientId: scheduleClient.client_id,
+          eventId: scheduleClient.event_id ?? sch?.event_id ?? null,
+        });
+      }
+    }
+
     // Final Payment obligation Luv (Impl 7) — typed final line paid once.
     // Distinct from paid-in-full final_payment_received below.
     let obligationCelebrated = false;

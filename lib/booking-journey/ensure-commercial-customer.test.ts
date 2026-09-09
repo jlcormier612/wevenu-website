@@ -45,8 +45,9 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
 
   it("Start booking file copy keeps planning optional vs commercial", () => {
     const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
-    assert.match(detail, /optional for contracts and payments/i);
-    assert.match(detail, /not Booked until the agreement is done and the deposit is paid/i);
+    assert.match(detail, /not commercially Booked until/i);
+    assert.match(detail, /does not invite them to the portal/i);
+    assert.match(detail, /Client Planning/i);
   });
 
   it("couple offer accept path is public (not redirected to login)", () => {

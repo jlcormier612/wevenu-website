@@ -908,6 +908,15 @@ export async function signContractByToken(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
       }
+      if (contractRow.clientId) {
+        const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
+        const admin = createAdminClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await maybeStampCommercialBookedAt(admin as any, contractRow.venueId, {
+          clientId: contractRow.clientId,
+          eventId: contractRow.eventId,
+        });
+      }
     }
 
     return {
@@ -943,6 +952,15 @@ export async function signContractByToken(
       const admin = createAdminClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
+    }
+    if (contractRow.clientId) {
+      const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
+      const admin = createAdminClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await maybeStampCommercialBookedAt(admin as any, contractRow.venueId, {
+        clientId: contractRow.clientId,
+        eventId: contractRow.eventId,
+      });
     }
   }
 

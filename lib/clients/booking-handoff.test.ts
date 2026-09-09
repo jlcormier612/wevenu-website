@@ -15,7 +15,7 @@ function baseInput(overrides: Partial<Parameters<typeof buildBookingHandoff>[0]>
     playbookApplications: [],
     financialSummary: "Nothing on file yet. Contract and payment plan are optional.",
     communicationsSummary:
-      "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically after booking.",
+      "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically when Booking Started.",
     experienceSummary: "Your client's experience is set up for a wedding.",
     ...overrides,
   };
@@ -50,18 +50,18 @@ describe("buildBookingHandoff", () => {
 
   it("represents invitation state truthfully on the Communications row", () => {
     const pending = buildBookingHandoff(baseInput({
-      communicationsSummary: "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically after booking.",
+      communicationsSummary: "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically when Booking Started.",
     }));
     assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /will be invited when you release their planning/);
     assert.equal(pending.items.find((i) => i.key === "communications")?.complete, false);
 
     const noEmail = buildBookingHandoff(baseInput({
-      communicationsSummary: "Not sent — no client email on file. Nothing is scheduled to send automatically after booking.",
+      communicationsSummary: "Not sent — no client email on file. Nothing is scheduled to send automatically when Booking Started.",
     }));
     assert.match(noEmail.items.find((i) => i.key === "communications")?.detail ?? "", /no client email on file/);
 
     const sent = buildBookingHandoff(baseInput({
-      communicationsSummary: "Invitation sent. Nothing is scheduled to send automatically after booking.",
+      communicationsSummary: "Invitation sent. Nothing is scheduled to send automatically when Booking Started.",
     }));
     assert.match(sent.items.find((i) => i.key === "communications")?.detail ?? "", /Invitation sent/);
   });

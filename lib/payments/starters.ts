@@ -69,9 +69,11 @@ export function addCalendarDays(isoDate: string, days: number): string {
 /** Human timing for venue owners — never expose implementation field names. */
 export function formatTimingLabel(timing?: PaymentTiming | null): string {
   if (!timing) return "You set the date when you create the schedule";
-  if (timing.type === "at_booking") return "At booking";
+  if (timing.type === "at_booking") return "At booking (when Booked)";
   if (timing.type === "after_booking") {
-    return timing.days === 1 ? "1 day after booking" : `${timing.days} days after booking`;
+    return timing.days === 1
+      ? "1 day after booking (when Booked)"
+      : `${timing.days} days after booking (when Booked)`;
   }
   // before_event — days 0 means the event day, not "at booking"
   if (timing.days === 0) return "On the event day";

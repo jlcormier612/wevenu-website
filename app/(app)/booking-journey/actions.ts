@@ -37,7 +37,10 @@ export async function createSelectedPackageAction(input: {
 }
 
 /**
- * Explicit planning/workspace action — not required for contracts or payments.
+ * Canonical Lead → Booking Started path.
+ * Creates Client (+ Event when applicable), moves sales_stage to booked
+ * (UI label: Booking Started), attaches selected package when present.
+ * Never stamps events.booked_at and never invites the portal.
  */
 export async function startBookingFileAction(
   lead: Lead,
@@ -45,29 +48,38 @@ export async function startBookingFileAction(
   selectionId?: string,
 ): Promise<CreateClientResult> {
   const result = await convertLeadToClient(lead, { spaceId });
-  if (result.ok) {
-    if (selectionId) {
-      await attachSelectionToBookingFile(selectionId, {
-        clientId: result.clientId,
-        eventId: result.eventId,
-        leadId: lead.id,
-      });
-    } else {
-      const { getActiveSelectedPackageForLead } = await import("@/lib/commercial-selections/service");
-      const active = await getActiveSelectedPackageForLead(lead.id);
-      if (active) {
-        await attachSelectionToBookingFile(active.id, {
-          clientId: result.clientId,
-          eventId: result.eventId,
-          leadId: lead.id,
-        });
-      }
+  if (!result.ok) return result;
+
+  let warning: string | undefined;
+  const attachId = selectionId
+    ?? (await import("@/lib/commercial-selections/service").then((m) =>
+      m.getActiveSelectedPackageForLead(lead.id),
+    ).then((s) => s?.id ?? null));
+
+  if (attachId) {
+    const attached = await attachSelectionToBookingFile(attachId, {
+      clientId: result.clientId,
+      eventId: result.eventId,
+      leadId: lead.id,
+    });
+    if (!attached.ok) {
+      warning =
+        attached.message
+          ? `Booking file started, but the selected package could not be linked: ${attached.message}. Open the booking file and select the package again.`
+          : "Booking file started, but the selected package could not be linked. Open the booking file and select the package again.";
     }
-    revalidatePath("/clients");
-    revalidatePath(`/leads/${lead.id}`);
-    revalidatePath(`/clients/${result.clientId}`);
   }
-  return result;
+
+  revalidatePath("/clients");
+  revalidatePath(`/leads/${lead.id}`);
+  revalidatePath(`/clients/${result.clientId}`);
+  return {
+    ok: true,
+    clientId: result.clientId,
+    eventId: result.eventId,
+    invitationSent: false,
+    warning,
+  };
 }
 
 /**

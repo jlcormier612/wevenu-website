@@ -18,11 +18,15 @@ export function PipelineAutomationConfirmDialog({
   onContinue,
   onCancel,
   preview = null,
+  message = CONFIRM_MESSAGE,
+  title = "Move this lead?",
 }: {
   open: boolean;
   onContinue: () => void;
   onCancel: () => void;
   preview?: AutomationMessagePreview | null;
+  message?: string;
+  title?: string;
 }) {
   React.useEffect(() => {
     if (!open) return;
@@ -51,10 +55,10 @@ export function PipelineAutomationConfirmDialog({
         className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg"
       >
         <h2 id="pipeline-automation-confirm-title" className="text-base font-semibold text-heading">
-          Move this lead?
+          {title}
         </h2>
         <p id="pipeline-automation-confirm-desc" className="mt-2 text-sm text-muted-foreground leading-relaxed">
-          {CONFIRM_MESSAGE}
+          {message}
         </p>
         {preview && (
           <div className="mt-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2">

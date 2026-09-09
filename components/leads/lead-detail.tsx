@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { startBookingFileAction } from "@/app/(app)/booking-journey/actions";
+import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
@@ -32,6 +33,7 @@ import { ActivityTimelineView } from "@/components/conversations/activity-timeli
 import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm-dialog";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
+import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
 import { Badge } from "@/components/ui/badge";
 import { NotesSection } from "@/components/leads/notes-section";
 import { RelationshipCard } from "@/components/leads/relationship-card";
@@ -125,11 +127,14 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [convertPending, startConvert] = React.useTransition();
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [confirmStageId, setConfirmStageId] = React.useState<string | null>(null);
-  const [confirmPreview, setConfirmPreview] = React.useState<import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null>(null);
+  const [confirmPreview, setConfirmPreview] = React.useState<AutomationMessagePreview | null>(null);
   const [bookingSpaceId, setBookingSpaceId] = React.useState("");
   const [confirmBookOpen, setConfirmBookOpen] = React.useState(false);
   const [confirmMoveBackOpen, setConfirmMoveBackOpen] = React.useState(false);
   const [confirmReturnBookedOpen, setConfirmReturnBookedOpen] = React.useState(false);
+  const [eventDateBlocked, setEventDateBlocked] = React.useState(false);
+  const [pendingBookAfterAutomation, setPendingBookAfterAutomation] = React.useState(false);
+  const [bookAutomationPreview, setBookAutomationPreview] = React.useState<AutomationMessagePreview | null>(null);
   const spacesRequired = maxSimultaneousEvents >= 2 && !!lead.eventDate && !lead.linkedClientId;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
 
@@ -138,24 +143,55 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       toast.error("Assign an Event Space before starting the booking file.");
       return;
     }
+    if (lead.eventDate && eventDateBlocked) {
+      toast.error("That date is already protected. Resolve the conflict before starting the booking file.");
+      return;
+    }
     setConfirmBookOpen(true);
+  }
+
+  async function runStartBookingFile() {
+    const result = await startBookingFileAction(
+      lead,
+      bookingSpaceId || undefined,
+      bookingJourney.selection?.id,
+    );
+    if (result.ok) {
+      if (result.warning) toast.warning(result.warning);
+      else {
+        toast.success(
+          "Booking Started. Next: finish the agreement and collect the deposit to mark them Booked.",
+        );
+      }
+      router.push(`/clients/${result.clientId}${result.eventId ? `?eventId=${result.eventId}` : ""}`);
+    } else {
+      toast.error(result.message ?? "Could not start the booking file.");
+    }
   }
 
   function confirmBookThisLead() {
     if (convertPending) return;
     setConfirmBookOpen(false);
     startConvert(async () => {
-      const result = await startBookingFileAction(
-        lead,
-        bookingSpaceId || undefined,
-        bookingJourney.selection?.id,
-      );
-      if (result.ok) {
-        toast.success("Booking file started. Finish the agreement and deposit to mark them Booked.");
-        router.push(`/clients/${result.clientId}${result.eventId ? `?eventId=${result.eventId}` : ""}`);
-      } else {
-        toast.error(result.message ?? "Could not start the booking file.");
+      const check = await wouldEnrollOnPipelineStageMoveAction(lead.id, "booked");
+      if (!check.ok) {
+        toast.error(check.message ?? "Could not check automations for this move.");
+        return;
       }
+      if (check.wouldEnroll) {
+        setBookAutomationPreview(check.preview);
+        setPendingBookAfterAutomation(true);
+        return;
+      }
+      await runStartBookingFile();
+    });
+  }
+
+  function confirmBookAfterAutomation() {
+    setPendingBookAfterAutomation(false);
+    setBookAutomationPreview(null);
+    startConvert(async () => {
+      await runStartBookingFile();
     });
   }
 
@@ -177,10 +213,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     startLifecycle(async () => {
       const result = await returnLeadToBookedAction(lead.id);
       if (result.ok) {
-        toast.success("Returned to booking file.");
+        toast.success("Returned to Booking Started.");
         router.refresh();
       } else {
-        toast.error(result.message ?? "Could not return to booking file.");
+        toast.error(result.message ?? "Could not return to Booking Started.");
       }
     });
   }
@@ -225,13 +261,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   }
 
   const currentStage = (lead.salesStage ?? lead.status) as SalesStage;
-  const isBooked = currentStage === "booked";
+  const isBookingStarted = currentStage === "booked";
   const previouslyConverted = !!lead.linkedClientId;
-  // When Booked, only Lost remains in the generic stage menu — leaving Booked
-  // for an active sales stage uses Move back to Sales Pipeline.
+  // When Booking Started, only Lost remains in the generic stage menu — leaving
+  // Booking Started for an active sales stage uses Move back to Sales Pipeline.
   const assignableStages = LEAD_STATUSES.filter((s) => {
     if (!isManuallyAssignableSalesStage(s.value)) return false;
-    if (isBooked) return s.value === "lost";
+    if (isBookingStarted) return s.value === "lost";
     return true;
   });
 
@@ -254,10 +290,21 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           commitStageChange(stageId);
         }}
       />
+      <PipelineAutomationConfirmDialog
+        open={pendingBookAfterAutomation}
+        preview={bookAutomationPreview}
+        title="Start booking file?"
+        message="Starting the booking file moves this lead to Booking Started. An Automation is configured for that stage and will enroll them — messages may send as you've set them up."
+        onCancel={() => {
+          setPendingBookAfterAutomation(false);
+          setBookAutomationPreview(null);
+        }}
+        onContinue={confirmBookAfterAutomation}
+      />
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
         title="Start booking file?"
-        description="This opens their planning workspace (client and event). It is optional for contracts and payments — those work from the Booking Journey on the lead. They are not Booked until the agreement is done and the deposit is paid. This does not invite them to the portal."
+        description="This moves the lead to Booking Started and opens their booking file (Client and Event when a date applies). The Event stays a draft — they are not commercially Booked until the agreement is complete and the required deposit is paid. The event date is protected by existing availability rules when it applies. Sales follow-ups stop as designed; any Booking Started Automation is disclosed before enrollment. This does not invite them to the portal or start Client Planning. Contracts and payments can still run from the Booking Journey without this step."
         confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}
@@ -274,9 +321,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       />
       <LeadLifecycleConfirmDialog
         open={confirmReturnBookedOpen}
-        title="Return to booking file?"
-        description="This returns the sales stage to the booking-file workspace. Your existing client, event, documents, messages, and financial information stay in place. They are only commercially Booked after agreement and deposit."
-        confirmLabel="Return to booking file"
+        title="Return to Booking Started?"
+        description="This returns the sales stage to Booking Started (booking file open). Your existing client, event, documents, messages, and financial information stay in place. They are commercially Booked only after the agreement is complete and the required deposit is paid."
+        confirmLabel="Return to Booking Started"
         confirming={lifecyclePending}
         onCancel={() => setConfirmReturnBookedOpen(false)}
         onConfirm={confirmReturnToBooked}
@@ -352,6 +399,17 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               />
             </div>
           )}
+          {lead.eventDate && !lead.linkedClientId && currentStage !== "lost" && (
+            <div className="w-full max-w-md text-left">
+              <ConflictWarning
+                date={lead.eventDate}
+                endDate={lead.endDate ?? undefined}
+                spaceId={bookingSpaceId || undefined}
+                type="event"
+                onStatusChange={setEventDateBlocked}
+              />
+            </div>
+          )}
           <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
           <LeadStatusBadge status={currentStage} />
           {assignableStages.length > 0 && (
@@ -385,7 +443,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
           </Button>
-          {isBooked && (
+          {isBookingStarted && (
             <Button
               variant="outline"
               size="sm"
@@ -395,23 +453,33 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               Move back to Sales Pipeline
             </Button>
           )}
-          {previouslyConverted && !isBooked && currentStage !== "lost" && (
+          {previouslyConverted && !isBookingStarted && currentStage !== "lost" && (
             <Button
               size="sm"
               disabled={lifecyclePending}
               onClick={() => setConfirmReturnBookedOpen(true)}
             >
-              Return to booking file
+              Return to Booking Started
             </Button>
           )}
           {previouslyConverted ? (
-            <Button size="sm" variant={isBooked || currentStage === "lost" ? "default" : "outline"}
+            <Button size="sm" variant={isBookingStarted || currentStage === "lost" ? "default" : "outline"}
               render={<Link href={`/clients/${lead.linkedClientId}`} />}>
               Open booking file →
             </Button>
           ) : currentStage !== "lost" ? (
-            <Button size="sm" disabled={convertPending || convertBlocked} onClick={requestBookThisLead}
-              title={convertBlocked ? "Add an Event Space in Availability settings before starting the booking file." : undefined}>
+            <Button
+              size="sm"
+              disabled={convertPending || convertBlocked || (!!lead.eventDate && eventDateBlocked)}
+              onClick={requestBookThisLead}
+              title={
+                convertBlocked
+                  ? "Add an Event Space in Availability settings before starting the booking file."
+                  : lead.eventDate && eventDateBlocked
+                    ? "That date is already protected. Resolve the conflict before starting the booking file."
+                    : undefined
+              }
+            >
               {convertPending
                 ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Starting…</>
                 : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Start booking file</>}

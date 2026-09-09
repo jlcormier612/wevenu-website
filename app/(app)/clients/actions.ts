@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient_, convertLeadToClient } from "@/lib/clients/service";
+import { startBookingFileAction } from "@/app/(app)/booking-journey/actions";
+import { createClient_ } from "@/lib/clients/service";
 import type { ClientInput, CreateClientResult } from "@/lib/clients/types";
 import type { Lead } from "@/lib/leads/types";
 
@@ -12,8 +13,13 @@ export async function createClientAction(input: ClientInput): Promise<CreateClie
   return result;
 }
 
-export async function convertLeadToClientAction(lead: Lead, spaceId?: string): Promise<CreateClientResult> {
-  const result = await convertLeadToClient(lead, { spaceId });
-  if (result.ok) { revalidatePath("/clients"); revalidatePath(`/leads/${lead.id}`); }
-  return result;
+/**
+ * @deprecated Prefer startBookingFileAction — canonical Lead → Booking Started path.
+ * Delegates to startBookingFileAction so behavior cannot diverge.
+ */
+export async function convertLeadToClientAction(
+  lead: Lead,
+  spaceId?: string,
+): Promise<CreateClientResult> {
+  return startBookingFileAction(lead, spaceId);
 }
