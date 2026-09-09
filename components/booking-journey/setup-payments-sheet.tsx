@@ -26,6 +26,7 @@ export function SetupPaymentsSheet({
   selection,
   clientId,
   eventId,
+  eventDate,
   leadId,
   spaceId,
 }: {
@@ -34,6 +35,8 @@ export function SetupPaymentsSheet({
   selection: CommercialSelection;
   clientId?: string;
   eventId?: string;
+  /** YYYY-MM-DD — when present, used as remaining-balance due date. */
+  eventDate?: string | null;
   leadId?: string;
   spaceId?: string;
 }) {
@@ -42,11 +45,12 @@ export function SetupPaymentsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       {open ? (
         <SetupPaymentsSheetBody
-          key={`${selection.id}:${selection.depositAmount}`}
+          key={`${selection.id}:${selection.depositAmount}:${eventDate ?? ""}`}
           onOpenChange={onOpenChange}
           selection={selection}
           clientId={clientId}
           eventId={eventId}
+          eventDate={eventDate}
           leadId={leadId}
           spaceId={spaceId}
         />
@@ -60,6 +64,7 @@ function SetupPaymentsSheetBody({
   selection,
   clientId,
   eventId,
+  eventDate,
   leadId,
   spaceId,
 }: {
@@ -67,21 +72,30 @@ function SetupPaymentsSheetBody({
   selection: CommercialSelection;
   clientId?: string;
   eventId?: string;
+  eventDate?: string | null;
   leadId?: string;
   spaceId?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [deposit, setDeposit] = React.useState(String(selection.depositAmount));
+  const [remainingDueDate, setRemainingDueDate] = React.useState(eventDate ?? "");
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState("");
 
   const depositAmount = parseFloat(deposit.replace(/[$,]/g, "")) || 0;
   const remaining = remainingAmount(selection.totalAmount, depositAmount);
+  const needsRemainingDue = remaining > 0;
+  const hasEventDue = Boolean(eventDate);
 
   function create(requestDeposit: boolean) {
     if (!(depositAmount >= 0) || depositAmount > selection.totalAmount) {
       setError("Enter a valid deposit amount.");
+      return;
+    }
+    if (needsRemainingDue && !hasEventDue && !remainingDueDate.trim()) {
+      setError("Set a due date for the remaining balance.");
+      setStep(2);
       return;
     }
     startTransition(async () => {
@@ -89,6 +103,8 @@ function SetupPaymentsSheetBody({
         selectionId: selection.id,
         clientId,
         eventId,
+        eventDate: eventDate ?? undefined,
+        remainingDueDate: needsRemainingDue && !hasEventDue ? remainingDueDate : undefined,
         leadId,
         spaceId,
         depositAmount,
@@ -156,9 +172,35 @@ function SetupPaymentsSheetBody({
               }}
               inputMode="decimal"
             />
+            <p className="text-xs text-muted-foreground">Deposit is due today.</p>
           </div>
+          {needsRemainingDue && (
+            <div className="space-y-2">
+              <Label htmlFor="setup-remaining-due">Remaining balance due date</Label>
+              {hasEventDue ? (
+                <p className="text-sm text-heading">
+                  Event date — {eventDate}
+                </p>
+              ) : (
+                <Input
+                  id="setup-remaining-due"
+                  type="date"
+                  value={remainingDueDate}
+                  onChange={(e) => {
+                    setRemainingDueDate(e.target.value);
+                    setError("");
+                  }}
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                {hasEventDue
+                  ? "Remaining balance is due on the event date."
+                  : "Required when there is no event date yet."}
+              </p>
+            </div>
+          )}
           <div className="rounded-lg border border-border px-4 py-3 text-sm">
-            <p>Deposit: <strong>{formatCurrency(depositAmount)}</strong></p>
+            <p>Deposit: <strong>{formatCurrency(depositAmount)}</strong> (due today)</p>
             <p className="mt-1">Remaining balance: <strong>{formatCurrency(remaining)}</strong></p>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -173,7 +215,12 @@ function SetupPaymentsSheetBody({
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm space-y-2">
             <p><strong>{selection.name}</strong> — {formatCurrency(selection.totalAmount)}</p>
-            <p>Deposit {formatCurrency(depositAmount)} · Remaining {formatCurrency(remaining)}</p>
+            <p>Deposit {formatCurrency(depositAmount)} (due today) · Remaining {formatCurrency(remaining)}</p>
+            {needsRemainingDue && (
+              <p className="text-xs text-muted-foreground">
+                Remaining due {hasEventDue ? eventDate : remainingDueDate || "—"}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               Creates one invoice and one payment schedule. Existing Library package prices are not changed.
             </p>

@@ -4,7 +4,12 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
-import { createInvoice, addLineItem as addInvoiceLineItem, getInvoice } from "@/lib/invoices/service";
+import {
+  createInvoice,
+  addLineItem as addInvoiceLineItem,
+  getInvoice,
+  updateInvoiceStatus,
+} from "@/lib/invoices/service";
 import * as repo from "@/lib/payments/repository";
 import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import type { Invoice } from "@/lib/invoices/types";
@@ -210,6 +215,135 @@ export async function createPaymentSchedule(
   return result as CreateScheduleResult;
 }
 
+export type CreateRetainerDeps = {
+  findRecoverable: (clientId: string, eventId: string, amount: number) => Promise<{
+    invoiceId: string;
+    scheduleId: string;
+  } | null>;
+  createInvoice: typeof createInvoice;
+  addInvoiceLineItem: typeof addInvoiceLineItem;
+  createPaymentSchedule: typeof createPaymentSchedule;
+  addLineItem: typeof addLineItem;
+  compensate: (invoiceId: string, scheduleId: string | null) => Promise<void>;
+  today: string;
+};
+
+/**
+ * Injectable retainer create — fail-after-invoice / fail-after-schedule safe.
+ */
+export async function runCreateRetainerInvoiceAndSchedule(
+  input: { clientId: string; eventId: string; amount: string; dueDate?: string },
+  deps: CreateRetainerDeps,
+): Promise<CreateRetainerResult> {
+  const amount = parseFloat(input.amount.replace(/[$,]/g, ""));
+  if (!(amount > 0)) return { ok: false, message: "Enter a valid retainer amount." };
+  const dueDate = (input.dueDate?.trim() || deps.today);
+
+  const recovered = await deps.findRecoverable(input.clientId, input.eventId, amount);
+  if (recovered) {
+    return { ok: true, invoiceId: recovered.invoiceId, scheduleId: recovered.scheduleId };
+  }
+
+  let invoiceId: string | null = null;
+  let scheduleId: string | null = null;
+
+  try {
+    const invoiceResult = await deps.createInvoice({
+      clientId: input.clientId, eventId: input.eventId, notes: "", dueDate,
+    });
+    if (!invoiceResult.ok) {
+      return { ok: false, message: invoiceResult.message ?? "Could not create the invoice." };
+    }
+    invoiceId = invoiceResult.invoiceId;
+
+    // Work Package D8 — action label stays "Create Retainer Invoice"; client-
+    // facing content is "Deposit" (matches obligationKind: "deposit").
+    const lineResult = await deps.addInvoiceLineItem(invoiceId, {
+      type: "item", description: "Deposit", quantity: "1", unitPrice: input.amount, packageId: "",
+    });
+    if (!lineResult.ok) {
+      await deps.compensate(invoiceId, null);
+      return { ok: false, message: lineResult.message ?? "Could not add the deposit line item." };
+    }
+
+    const scheduleResult = await deps.createPaymentSchedule({
+      title: "Deposit", invoiceId, notes: "",
+    }, "custom");
+    if (!scheduleResult.ok) {
+      await deps.compensate(invoiceId, null);
+      return { ok: false, message: scheduleResult.message ?? "Could not create the payment schedule." };
+    }
+    scheduleId = scheduleResult.scheduleId;
+
+    const scheduleLineResult = await deps.addLineItem(scheduleId, {
+      label: "Deposit", amount: input.amount, dueDate,
+      obligationKind: "deposit",
+    });
+    if (!scheduleLineResult.ok) {
+      await deps.compensate(invoiceId, scheduleId);
+      return { ok: false, message: scheduleLineResult.message ?? "Could not add the retainer installment." };
+    }
+
+    return { ok: true, invoiceId, scheduleId };
+  } catch (err) {
+    if (invoiceId) await deps.compensate(invoiceId, scheduleId).catch(() => {});
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Could not create the retainer.",
+    };
+  }
+}
+
+async function findRecoverableRetainer(
+  clientId: string,
+  eventId: string,
+  amount: number,
+): Promise<{ invoiceId: string; scheduleId: string } | null> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { data: invoices } = await supabase
+      .from("invoices")
+      .select("id, total, status")
+      .eq("venue_id", venueId)
+      .eq("client_id", clientId)
+      .eq("event_id", eventId)
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    for (const inv of (invoices ?? []) as { id: string; total: number; status: string }[]) {
+      if (Math.abs(Number(inv.total) - amount) > 0.009) continue;
+      const { data: schedule } = await supabase
+        .from("payment_schedules")
+        .select("id")
+        .eq("venue_id", venueId)
+        .eq("invoice_id", inv.id)
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (!schedule) continue;
+      const { data: paid } = await supabase
+        .from("payment_line_items")
+        .select("id")
+        .eq("schedule_id", schedule.id)
+        .in("status", ["paid", "processing", "partially_refunded", "refunded"])
+        .limit(1);
+      if (paid && paid.length > 0) continue;
+      return { invoiceId: inv.id, scheduleId: schedule.id };
+    }
+    return null;
+  });
+  if (result && "ok" in result && result.ok === false) return null;
+  return (result as { invoiceId: string; scheduleId: string } | null) ?? null;
+}
+
+async function compensateRetainerWrites(invoiceId: string, scheduleId: string | null): Promise<void> {
+  if (scheduleId) {
+    await deletePaymentSchedule(scheduleId).catch(() => {});
+  }
+  const role = await getCurrentUserRole();
+  if (role === "owner" || role === "manager") {
+    await updateInvoiceStatus(invoiceId, "void").catch(() => {});
+  }
+}
+
 /**
  * Booking Financial Architecture Phase 1 (docs/booking-financial-architecture-
  * roadmap.md): the "booking-confirmation moment" shortcut. A coordinator can
@@ -223,38 +357,16 @@ export async function createPaymentSchedule(
 export async function createRetainerInvoiceAndSchedule(input: {
   clientId: string; eventId: string; amount: string; dueDate?: string;
 }): Promise<CreateRetainerResult> {
-  const amount = parseFloat(input.amount.replace(/[$,]/g, ""));
-  if (!(amount > 0)) return { ok: false, message: "Enter a valid retainer amount." };
-
-  const invoiceResult = await createInvoice({
-    clientId: input.clientId, eventId: input.eventId, notes: "", dueDate: input.dueDate ?? "",
+  const today = new Date().toISOString().slice(0, 10);
+  return runCreateRetainerInvoiceAndSchedule(input, {
+    findRecoverable: findRecoverableRetainer,
+    createInvoice,
+    addInvoiceLineItem,
+    createPaymentSchedule,
+    addLineItem,
+    compensate: compensateRetainerWrites,
+    today,
   });
-  if (!invoiceResult.ok) return { ok: false, message: invoiceResult.message ?? "Could not create the invoice." };
-
-  // Work Package D8 — the action itself stays "Create Retainer Invoice"
-  // (a recognizable, deliberate venue-side term for what's happening), but
-  // the actual generated content a client reads is labeled "Deposit" —
-  // matching the obligationKind: "deposit" this already sets, and the same
-  // word a venue building a schedule by hand would see for this same
-  // obligation kind. Two different words for one concept was the real gap,
-  // not the shortcut's own name.
-  const lineResult = await addInvoiceLineItem(invoiceResult.invoiceId, {
-    type: "item", description: "Deposit", quantity: "1", unitPrice: input.amount, packageId: "",
-  });
-  if (!lineResult.ok) return { ok: false, message: lineResult.message ?? "Could not add the deposit line item." };
-
-  const scheduleResult = await createPaymentSchedule({
-    title: "Deposit", invoiceId: invoiceResult.invoiceId, notes: "",
-  }, "custom");
-  if (!scheduleResult.ok) return { ok: false, message: scheduleResult.message ?? "Could not create the payment schedule." };
-
-  const scheduleLineResult = await addLineItem(scheduleResult.scheduleId, {
-    label: "Deposit", amount: input.amount, dueDate: input.dueDate ?? "",
-    obligationKind: "deposit",
-  });
-  if (!scheduleLineResult.ok) return { ok: false, message: scheduleLineResult.message ?? "Could not add the retainer installment." };
-
-  return { ok: true, invoiceId: invoiceResult.invoiceId, scheduleId: scheduleResult.scheduleId };
 }
 
 // ---- line items -------------------------------------------------------------

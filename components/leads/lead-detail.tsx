@@ -541,6 +541,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               leadId={lead.id}
               clientId={lead.linkedClientId ?? undefined}
               eventId={lead.linkedEventId ?? undefined}
+              eventDate={lead.eventDate ?? undefined}
               spaceId={bookingSpaceId || undefined}
             />
           </div>

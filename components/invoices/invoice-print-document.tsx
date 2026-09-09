@@ -5,6 +5,7 @@
  */
 
 import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel } from "@/lib/invoices/constants";
+import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import type { InvoiceWithLineItems } from "@/lib/invoices/types";
 import { paymentMilestoneDescription } from "@/lib/payments/starters";
 import type { PaymentObligationKind } from "@/lib/payments/types";
@@ -20,11 +21,13 @@ export function InvoicePrintDocument({
   invoice,
   venue,
   milestone = null,
+  amountDueNow = null,
 }: {
   invoice: InvoiceWithLineItems;
   venue: Venue;
   /** Next unpaid schedule item, when a linked Payment Plan exists. */
   milestone?: InvoicePrintMilestone | null;
+  amountDueNow?: AmountDueNowResult | null;
 }) {
   // Prefer branding frozen at send time; pre-existing sent invoices without a
   // snapshot fall back to live venue branding (documented — no silent backfill).
@@ -44,7 +47,9 @@ export function InvoicePrintDocument({
   const hasDiscount = invoice.discountAmount > 0;
   const hasTax = invoice.taxAmount > 0;
   const paidToDate = Math.max(0, invoice.total - invoice.balanceDue);
-  const amountDueNow = invoice.balanceDue;
+  const dueNowAmount =
+    amountDueNow?.kind === "next_installment" ? amountDueNow.amount : null;
+  const showDueNowHero = dueNowAmount != null && dueNowAmount > 0;
   const venueDisplayName = snap?.businessName ?? snap?.name ?? venue.businessName ?? venue.name;
   const logoUrl = snap?.logoUrl ?? venue.logoUrl;
   const displayName = snap?.name ?? venue.name;
@@ -94,13 +99,13 @@ export function InvoicePrintDocument({
       </div>
 
       {/* ── Amount Due Now ─────────────────────────────────────────────── */}
-      {amountDueNow > 0 && (
+      {showDueNowHero && (
         <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Amount Due Now</p>
-          <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(amountDueNow)}</p>
-          {invoice.dueDate && (
+          <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(dueNowAmount)}</p>
+          {amountDueNow?.kind === "next_installment" && amountDueNow.dueDate && (
             <p className="text-sm text-gray-600 mt-1">
-              Due {new Date(invoice.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              Due {new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </p>
           )}
           {milestone && (
@@ -109,6 +114,17 @@ export function InvoicePrintDocument({
               {paymentMilestoneDescription(milestone.obligationKind, milestone.label)}
             </p>
           )}
+        </div>
+      )}
+      {!showDueNowHero && invoice.balanceDue > 0 && (
+        <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Balance Remaining</p>
+          <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(invoice.balanceDue)}</p>
+          <p className="text-sm text-gray-600 mt-1">
+            {amountDueNow?.kind === "balance_only" && amountDueNow.reason === "no_schedule"
+              ? "No payment schedule yet — the next installment due is not determined."
+              : "No open installment on the payment schedule."}
+          </p>
         </div>
       )}
 
@@ -204,10 +220,16 @@ export function InvoicePrintDocument({
               <span>Balance Remaining</span>
               <span>{formatCurrency(invoice.balanceDue)}</span>
             </div>
-            <div className={`flex justify-between font-semibold pt-1 ${amountDueNow > 0 ? "" : "text-green-700"}`}
-              style={amountDueNow > 0 ? { color: accentColor } : undefined}>
-              <span>Amount Due Now</span>
-              <span>{amountDueNow > 0 ? formatCurrency(amountDueNow) : "Paid in Full"}</span>
+            <div className={`flex justify-between font-semibold pt-1 ${dueNowAmount != null && dueNowAmount > 0 ? "" : invoice.balanceDue <= 0 ? "text-green-700" : ""}`}
+              style={dueNowAmount != null && dueNowAmount > 0 ? { color: accentColor } : undefined}>
+              <span>{dueNowAmount != null ? "Amount Due Now" : invoice.balanceDue > 0 ? "Outstanding" : "Amount Due Now"}</span>
+              <span>
+                {dueNowAmount != null && dueNowAmount > 0
+                  ? formatCurrency(dueNowAmount)
+                  : invoice.balanceDue <= 0
+                    ? "Paid in Full"
+                    : formatCurrency(invoice.balanceDue)}
+              </span>
             </div>
           </div>
         </div>

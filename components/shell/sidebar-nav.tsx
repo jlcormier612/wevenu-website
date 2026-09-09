@@ -5,9 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { NAV_SECTIONS } from "@/lib/navigation";
+import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
 import { cn } from "@/lib/utils";
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarNav({
+  onNavigate,
+  staffRole = null,
+}: {
+  onNavigate?: () => void;
+  staffRole?: string | null;
+}) {
   const pathname   = usePathname();
   const [unread, setUnread] = React.useState(0);
 
@@ -20,10 +27,14 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   }, [pathname]);
 
   const isAdmin  = process.env.NEXT_PUBLIC_WEVENU_ADMIN === "true";
+  const sections = filterNavSectionsForRole(
+    NAV_SECTIONS.filter(s => !s.adminOnly || isAdmin),
+    staffRole,
+  );
 
   return (
     <nav className="flex flex-col gap-6 px-3 py-5" aria-label="Primary">
-      {NAV_SECTIONS.filter(s => !s.adminOnly || isAdmin).map((section) => (
+      {sections.map((section) => (
         <div key={section.label} className="flex flex-col gap-1">
           <p className="px-3 pb-1.5 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-sidebar-foreground/60">
             {section.label}

@@ -35,6 +35,7 @@ export function BookingJourneyPanel({
   leadId,
   clientId,
   eventId,
+  eventDate,
   spaceId,
 }: {
   journey: BookingJourneyModel;
@@ -42,6 +43,7 @@ export function BookingJourneyPanel({
   leadId?: string;
   clientId?: string;
   eventId?: string;
+  eventDate?: string | null;
   /** Event Space selected on the Lead — used when quietly creating a dated Event. */
   spaceId?: string;
 }) {
@@ -219,6 +221,7 @@ export function BookingJourneyPanel({
           selection={selection}
           clientId={clientId}
           eventId={eventId}
+          eventDate={eventDate}
           leadId={leadId}
           spaceId={spaceId}
         />

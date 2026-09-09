@@ -10,12 +10,16 @@
  * grandfathered schedules with no invoice_id stay distinct.
  */
 
+import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
+
 export type PortalPaymentLineItem = {
   id: string;
   label: string;
   amount: number;
   dueDate: string | null;
   status: string;
+  paidAmount?: number | null;
+  refundedAmount?: number | null;
 };
 
 export type PortalPaymentScheduleLike = {
@@ -56,13 +60,13 @@ export function selectCanonicalPaymentSchedules<T extends PortalPaymentScheduleL
   });
 }
 
-/** Unpaid / non-cancelled remaining across canonical schedules only. */
+/** Unpaid remaining across canonical schedules — refund-net, cancelled excluded. */
 export function remainingBalanceFromSchedules(
   schedules: PortalPaymentScheduleLike[],
 ): number {
   const canonical = selectCanonicalPaymentSchedules(schedules);
-  return canonical
-    .flatMap((s) => s.lineItems)
-    .filter((li) => li.status !== "paid" && li.status !== "cancelled")
-    .reduce((sum, li) => sum + li.amount, 0);
+  return canonical.reduce(
+    (sum, s) => sum + computePortalScheduleTotals(s.lineItems).remaining,
+    0,
+  );
 }

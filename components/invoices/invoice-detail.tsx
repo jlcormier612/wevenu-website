@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, invoiceStatusLabel } from "@/lib/invoices/constants";
+import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
@@ -39,7 +40,12 @@ const INVOICE_WAITING_ON: Record<InvoiceStatus, WaitingOn> = {
 };
 
 export function InvoiceDetail({
-  invoice, packages, eventOrderDrift = null, emailConfigured = true, returnToPaymentSchedule = null,
+  invoice,
+  packages,
+  eventOrderDrift = null,
+  emailConfigured = true,
+  returnToPaymentSchedule = null,
+  amountDueNow = null,
 }: {
   invoice: InvoiceWithLineItems;
   packages: Package[];
@@ -47,6 +53,8 @@ export function InvoiceDetail({
   emailConfigured?: boolean;
   /** When set (from payment-schedule handoff), show continue CTA after amount exists. */
   returnToPaymentSchedule?: string | null;
+  /** Next open installment — never the full outstanding under "Amount Due Now". */
+  amountDueNow?: AmountDueNowResult | null;
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
@@ -151,7 +159,7 @@ export function InvoiceDetail({
         />
       )}
 
-      {/* Amount Due Now — contracted vs paid vs remaining */}
+      {/* Contracted vs paid vs remaining vs next installment due */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -168,14 +176,34 @@ export function InvoiceDetail({
               <p className="text-xl font-semibold text-heading">{formatCurrency(invoice.balanceDue)}</p>
             </div>
             <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount Due Now</p>
-              <p className={`text-2xl font-semibold ${invoice.balanceDue > 0 ? "text-heading" : "text-success"}`}>
-                {invoice.balanceDue > 0 ? formatCurrency(invoice.balanceDue) : "Paid in Full"}
-              </p>
-              {invoice.dueDate && invoice.balanceDue > 0 && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Due {new Date(invoice.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                </p>
+              {amountDueNow?.kind === "paid_in_full" || (!(invoice.balanceDue > 0) && !amountDueNow) ? (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount Due Now</p>
+                  <p className="text-2xl font-semibold text-success">Paid in Full</p>
+                </>
+              ) : amountDueNow?.kind === "next_installment" ? (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount Due Now</p>
+                  <p className="text-2xl font-semibold text-heading">{formatCurrency(amountDueNow.amount)}</p>
+                  {amountDueNow.label && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{amountDueNow.label}</p>
+                  )}
+                  {amountDueNow.dueDate && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Due {new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Outstanding</p>
+                  <p className="text-2xl font-semibold text-heading">{formatCurrency(invoice.balanceDue)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {amountDueNow?.reason === "no_schedule"
+                      ? "No payment schedule yet — create one to see the next installment due."
+                      : "No open installment on the payment schedule."}
+                  </p>
+                </>
               )}
             </div>
           </div>

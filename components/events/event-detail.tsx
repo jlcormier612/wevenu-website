@@ -589,6 +589,7 @@ export function EventDetail({
               leadId={originatingLeadId ?? undefined}
               clientId={event.clientId ?? undefined}
               eventId={event.id}
+              eventDate={event.eventDate}
             />
           )}
           <EventReadinessCard

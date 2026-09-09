@@ -11,6 +11,8 @@ export async function setupPaymentsAction(input: {
   selectionId: string;
   clientId?: string;
   eventId?: string | null;
+  eventDate?: string | null;
+  remainingDueDate?: string | null;
   leadId?: string;
   spaceId?: string;
   depositAmount?: number;
@@ -34,6 +36,8 @@ export async function setupPaymentsAction(input: {
     selectionId: input.selectionId,
     clientId,
     eventId: eventId ?? "",
+    eventDate: input.eventDate,
+    remainingDueDate: input.remainingDueDate,
     depositAmount: input.depositAmount,
     requestDeposit: input.requestDeposit,
   });

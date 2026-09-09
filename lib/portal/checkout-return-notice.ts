@@ -32,15 +32,20 @@ export type CheckoutNoticeLineItem = {
   amount: number;
   paidAmount?: number | null;
   paidAt?: string | null;
+  refundedAmount?: number | null;
 };
 
 export const CHECKOUT_BASELINE_STORAGE_KEY = "htc.portal.checkoutBaseline";
 
-/** Settled amount HTC already counts as paid on the plan. */
+/** Settled amount HTC already counts as paid on the plan (refund-net). */
 export function settledPaidTotal(lineItems: readonly CheckoutNoticeLineItem[]): number {
   return lineItems
-    .filter((i) => i.status === "paid" || i.status === "partially_refunded")
-    .reduce((sum, i) => sum + (i.paidAmount ?? i.amount), 0);
+    .filter((i) => i.status === "paid" || i.status === "partially_refunded" || i.status === "refunded")
+    .reduce((sum, i) => {
+      const paid = i.paidAmount ?? i.amount;
+      const refunded = i.refundedAmount ?? 0;
+      return sum + Math.max(0, paid - refunded);
+    }, 0);
 }
 
 export function parseCheckoutReturnQuery(paymentParam: string | null | undefined): CheckoutReturnQuery {

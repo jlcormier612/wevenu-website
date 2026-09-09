@@ -6,7 +6,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
 
 // Reads cookies via createClient()/redirects based on isSupabaseConfigured
@@ -63,12 +63,14 @@ export default async function WorkspaceLayout({
   }
 
   void recordStaffActivity(user.id);
+  const staffRole = await getCurrentUserRole();
 
   return (
     <WorkspaceShell
       email={user.email ?? ""}
       venueName={venue.name}
       venueLogo={venue.logoUrl}
+      staffRole={staffRole}
     >
       {children}
     </WorkspaceShell>

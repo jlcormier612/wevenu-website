@@ -12,6 +12,7 @@ import {
   type CheckoutBaseline,
   type CheckoutNoticeKind,
 } from "@/lib/portal/checkout-return-notice";
+import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ type PortalPaymentItem = {
   status: PaymentStatus;
   paidAt: string | null;
   paidAmount: number | null;
+  refundedAmount?: number | null;
   paymentMethod: string | null;
   notes: string | null;
   sortOrder: number;
@@ -83,12 +85,12 @@ function daysUntilDate(iso: string): number {
 }
 
 function computeTotals(schedule: PortalPaymentSchedule) {
-  const paid = schedule.lineItems
-    .filter(i => i.status === "paid" || i.status === "partially_refunded")
-    .reduce((s, i) => s + (i.paidAmount ?? i.amount) - 0, 0);
-  // Refunded rows contribute 0 remaining owed from that line; portal RPC may
-  // not expose refundedAmount — prefer paidAmount when present.
-  return { paid, remaining: Math.max(0, schedule.totalAmount - paid) };
+  const totals = computePortalScheduleTotals(schedule.lineItems);
+  return {
+    paid: totals.paid,
+    remaining: totals.remaining,
+    planTotal: totals.planTotal,
+  };
 }
 
 function nextUnpaidItem(items: PortalPaymentItem[]): PortalPaymentItem | null {
@@ -189,8 +191,9 @@ function SummaryBar({
   token: string;
   paidTotal: number;
 }) {
-  const { remaining } = computeTotals(schedule);
-  const paidPct = schedule.totalAmount > 0 ? Math.round((paidTotal / schedule.totalAmount) * 100) : 0;
+  const { remaining, planTotal, paid } = computeTotals(schedule);
+  const displayPaid = paidTotal > 0 ? paidTotal : paid;
+  const paidPct = planTotal > 0 ? Math.round((displayPaid / planTotal) * 100) : 0;
   const allPaid = remaining <= 0;
   const next = nextUnpaidItem(schedule.lineItems);
 
@@ -206,7 +209,7 @@ function SummaryBar({
               Your Payment Plan
             </p>
             <p className="font-heading text-3xl font-medium text-heading">
-              {formatMoney(schedule.totalAmount, schedule.currency)}
+              {formatMoney(planTotal, schedule.currency)}
             </p>
             <p className="text-sm text-muted-foreground mt-0.5">Total</p>
           </div>
@@ -234,7 +237,7 @@ function SummaryBar({
         <div className="flex gap-4">
           <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.7)" }}>
             <p className="text-xs text-muted-foreground mb-0.5">Paid</p>
-            <p className="text-base font-semibold" style={{ color: SAGE }}>{formatMoney(paidTotal, schedule.currency)}</p>
+            <p className="text-base font-semibold" style={{ color: SAGE }}>{formatMoney(displayPaid, schedule.currency)}</p>
           </div>
           {!allPaid && (
             <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.7)" }}>

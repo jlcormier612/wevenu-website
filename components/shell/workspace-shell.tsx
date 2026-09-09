@@ -29,11 +29,13 @@ export function WorkspaceShell({
   email,
   venueName,
   venueLogo,
+  staffRole = null,
   children,
 }: {
   email: string;
   venueName?: string;
   venueLogo?: string | null;
+  staffRole?: string | null;
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen]   = React.useState(false);
@@ -47,7 +49,7 @@ export function WorkspaceShell({
           <Wordmark sizeClassName="h-[66.8px] w-auto" />
         </div>
         <div className="flex-1 overflow-y-auto">
-          <SidebarNav />
+          <SidebarNav staffRole={staffRole} />
         </div>
         <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
           <FeedbackSheet surface="venue" />
@@ -81,7 +83,7 @@ export function WorkspaceShell({
                 </SheetTitle>
               </SheetHeader>
               <div className="overflow-y-auto">
-                <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
+                <SidebarNav staffRole={staffRole} onNavigate={() => setMobileNavOpen(false)} />
               </div>
             </SheetContent>
           </Sheet>

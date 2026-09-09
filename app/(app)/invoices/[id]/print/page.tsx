@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { InvoicePrintDocument } from "@/components/invoices/invoice-print-document";
 import { PrintButton } from "@/components/events/day-sheet/print-button";
+import { resolveAmountDueNow } from "@/lib/invoices/amount-due-now";
 import { getInvoice } from "@/lib/invoices/service";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -22,9 +23,29 @@ export default async function InvoicePrintPage({ params }: Props) {
 
   const linkedSummary = scheduleSummaries.find((s) => s.invoiceId === invoice.id) ?? null;
   const linked = linkedSummary ? await getPaymentSchedule(linkedSummary.id) : null;
-  const nextOpen = linked?.lineItems
-    .filter((i) => i.status === "pending" || i.status === "overdue" || i.status === "processing")
-    .sort((a, b) => String(a.dueDate ?? "9999").localeCompare(String(b.dueDate ?? "9999")))[0] ?? null;
+  const scheduleLines = linked
+    ? linked.lineItems.map((i) => ({
+        amount: i.amount,
+        dueDate: i.dueDate,
+        status: i.status,
+        label: i.label,
+        obligationKind: i.obligationKind,
+        sortOrder: i.sortOrder,
+      }))
+    : null;
+  const amountDueNow = resolveAmountDueNow({
+    balanceDue: invoice.balanceDue,
+    scheduleLines,
+  });
+  const nextOpen =
+    amountDueNow.kind === "next_installment"
+      ? linked?.lineItems.find(
+          (i) =>
+            i.amount === amountDueNow.amount
+            && i.label === (amountDueNow.label ?? i.label)
+            && (i.status === "pending" || i.status === "overdue" || i.status === "processing"),
+        ) ?? null
+      : null;
 
   return (
     <>
@@ -35,6 +56,7 @@ export default async function InvoicePrintPage({ params }: Props) {
         invoice={invoice}
         venue={venue}
         milestone={nextOpen ? { label: nextOpen.label, obligationKind: nextOpen.obligationKind ?? null } : null}
+        amountDueNow={amountDueNow}
       />
     </>
   );

@@ -52,5 +52,8 @@ describe("Selected Package freeze (source locks)", () => {
     const src = readFileSync(resolve("lib/booking-journey/setup-payments.ts"), "utf8");
     assert.match(src, /selection\.invoiceId/);
     assert.match(src, /Payments are already set up/);
+    assert.match(src, /findRecoverable/);
+    assert.match(src, /compensate/);
+    assert.match(src, /linkSelection/);
   });
 });
