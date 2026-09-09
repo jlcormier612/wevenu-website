@@ -12,24 +12,51 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { formatContractDate } from "@/lib/contracts/constants";
-import type { Contract, ContractStatus } from "@/lib/contracts/types";
+import { deriveContractSigningUiState } from "@/lib/contracts/signers";
+import type { Contract } from "@/lib/contracts/types";
 
-const STATUSES: { value: ContractStatus | "all"; label: string }[] = [
+type FilterKey =
+  | "all"
+  | "draft"
+  | "ready_to_send"
+  | "awaiting_client_signature"
+  | "fully_signed"
+  | "cancelled";
+
+const FILTERS: { value: FilterKey; label: string }[] = [
   { value: "all", label: "All" },
   { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "signed", label: "Signed" },
+  { value: "ready_to_send", label: "Ready to send" },
+  { value: "awaiting_client_signature", label: "Awaiting client signature" },
+  { value: "fully_signed", label: "Fully signed" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
+function contractFilterKey(c: Contract): FilterKey {
+  if (c.status === "cancelled") return "cancelled";
+  if (c.status === "expired") return "cancelled";
+  const progressive = deriveContractSigningUiState({
+    status: c.status,
+    venueSigned: c.venueSigned ?? false,
+    requiredClientTotal: c.requiredClientTotal ?? 1,
+    requiredClientSigned: c.requiredClientSigned ?? 0,
+    expiresAt: c.expiresAt,
+  });
+  if (progressive.state === "fully_signed") return "fully_signed";
+  if (progressive.state === "awaiting_client_signature") return "awaiting_client_signature";
+  if (progressive.state === "ready_to_send") return "ready_to_send";
+  if (progressive.state === "draft") return "draft";
+  return "all";
+}
+
 export function ContractList({ contracts }: { contracts: Contract[] }) {
   const [query, setQuery] = React.useState("");
-  const [filter, setFilter] = React.useState<ContractStatus | "all">("all");
+  const [filter, setFilter] = React.useState<FilterKey>("all");
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase();
     return contracts.filter((c) => {
-      if (filter !== "all" && c.status !== filter) return false;
+      if (filter !== "all" && contractFilterKey(c) !== filter) return false;
       if (!q) return true;
       return [c.title, c.clientName].some((s) => s?.toLowerCase().includes(q));
     });
@@ -45,8 +72,10 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {STATUSES.map(({ value, label }) => {
-          const count = value === "all" ? contracts.length : contracts.filter((c) => c.status === value).length;
+        {FILTERS.map(({ value, label }) => {
+          const count = value === "all"
+            ? contracts.length
+            : contracts.filter((c) => contractFilterKey(c) === value).length;
           const active = filter === value;
           return (
             <button key={value} type="button" onClick={() => setFilter(value)}
@@ -105,7 +134,16 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
                   <TableCell className="text-sm text-muted-foreground">
                     {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
                   </TableCell>
-                  <TableCell><ContractStatusBadge status={contract.status} executionOrigin={contract.executionOrigin} /></TableCell>
+                  <TableCell>
+                    <ContractStatusBadge
+                      status={contract.status}
+                      executionOrigin={contract.executionOrigin}
+                      venueSigned={contract.venueSigned}
+                      requiredClientTotal={contract.requiredClientTotal}
+                      requiredClientSigned={contract.requiredClientSigned}
+                      expiresAt={contract.expiresAt}
+                    />
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatContractDate(contract.createdAt.slice(0, 10))}
                   </TableCell>

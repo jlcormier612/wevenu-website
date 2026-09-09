@@ -33,12 +33,13 @@ export type ContractSigner = {
   updatedAt: string;
 };
 
-/** Derived UI labels — never engineering jargon. */
+/**
+ * Human-facing progressive labels (approved product language).
+ * Underlying status enum stays draft | sent | signed | cancelled | expired.
+ */
 export type ContractSigningUiState =
-  | "review"
-  | "sign_contract"
-  | "signed_by_venue"
-  | "ready_for_client"
+  | "draft"
+  | "ready_to_send"
   | "awaiting_client_signature"
   | "fully_signed"
   | "cancelled"
@@ -66,6 +67,11 @@ export function deriveContractSigningUiState(opts: {
     }
     return { state: "awaiting_client_signature", label: "Awaiting client signature" };
   }
-  if (venueSigned) return { state: "ready_for_client", label: "Ready for client" };
-  return { state: "sign_contract", label: "Sign contract" };
+  if (venueSigned) return { state: "ready_to_send", label: "Ready to send" };
+  return { state: "draft", label: "Draft" };
+}
+
+/** True when any required (or any) client signer has completed a signature. */
+export function anyClientHasSigned(signers: Pick<ContractSigner, "signerType" | "signedAt" | "isRequired">[]): boolean {
+  return signers.some((s) => s.signerType === "client" && s.signedAt != null);
 }

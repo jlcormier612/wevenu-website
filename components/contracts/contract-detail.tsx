@@ -21,6 +21,7 @@ import { toast } from "sonner";
 
 import {
   cancelContractAction,
+  cloneAndResendContractAction,
   createAmendmentFromContractAction,
   deleteContractAction,
   finalizeContractAction,
@@ -46,7 +47,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatContractDate } from "@/lib/contracts/constants";
-import { CONTRACT_SIGNATURE_CONSENT_TEXT, deriveContractSigningUiState } from "@/lib/contracts/signers";
+import {
+  anyClientHasSigned,
+  CONTRACT_SIGNATURE_CONSENT_TEXT,
+  deriveContractSigningUiState,
+} from "@/lib/contracts/signers";
 import type { ContractStatus, ContractWithDetails } from "@/lib/contracts/types";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 
@@ -68,6 +73,7 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
   const [amendPending, startAmend] = React.useTransition();
   const [venueSignPending, startVenueSign] = React.useTransition();
   const [withdrawPending, startWithdraw] = React.useTransition();
+  const [clonePending, startClone] = React.useTransition();
   const [venueSignerName, setVenueSignerName] = React.useState("");
   const [venueConsent, setVenueConsent] = React.useState(false);
   const [showVenueSign, setShowVenueSign] = React.useState(false);
@@ -78,6 +84,7 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
   const requiredClients = clientSigners.filter((s) => s.isRequired);
   const requiredClientSigned = requiredClients.filter((s) => s.signedAt).length;
   const venueSigned = Boolean(venueSigner?.signedAt);
+  const clientSigned = anyClientHasSigned(signers);
   const uiState = deriveContractSigningUiState({
     status: contract.status,
     venueSigned,
@@ -99,7 +106,14 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
     shareMergeData,
   );
 
-  const canEditContent = contract.status === "draft" && !venueSigned;
+  const canEditContent = contract.status === "draft" && !venueSigned && !clientSigned;
+  /**
+   * Reopen-for-editing is retired after venue signature (content immutable).
+   * Kept false so the action cannot circumvent DB immutability by clearing venue signed_at.
+   */
+  const canReopen = false;
+  /** Clone & Resend once venue signature locks content (released / partial / fully signed). */
+  const canCloneAndResend = venueSigned || clientSigned || contract.status === "signed";
 
   function handleSaveEdit() {
     startSave(async () => {
@@ -145,11 +159,10 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
   }
 
   function handleReopen() {
-    // Work Package D4 — reverts a sent-but-unsigned contract back to
-    // draft so the venue can edit it; the client's old link becomes
-    // stale until it's resent. Confirm because it un-does "waiting on
-    // client" state the venue may not have meant to disturb.
-    if (!confirm("Reopen this contract for editing? You'll need to resend it to your client afterward.")) return;
+    if (!confirm(
+      "Reopen this contract for editing?\n\n"
+      + "No client has signed yet. You'll need to sign for the venue again and release it afterward.",
+    )) return;
     startReopen(async () => {
       const result = await reopenContractForEditingAction(contract.id);
       if (result.ok) { toast.success("Contract reopened for editing."); router.refresh(); }
@@ -157,14 +170,35 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
     });
   }
 
+  function handleCloneAndResend() {
+    if (!confirm(
+      "Clone & Resend creates a new draft based on this contract.\n\n"
+      + "The original contract stays unchanged as the historical record (including any signatures).\n"
+      + "Signatures are not copied — the new draft goes through the normal signing cycle.",
+    )) return;
+    startClone(async () => {
+      const result = await cloneAndResendContractAction(contract.id);
+      if (result.ok) {
+        toast.success("New draft created. The original contract is unchanged.");
+        router.push(`/contracts/${result.contractId}`);
+      } else {
+        toast.error(result.message ?? "Could not clone contract.");
+      }
+    });
+  }
+
   function handleFinalize() {
-    // Explicit, separate step from signing itself (Step 31) — this is
-    // what actually locks the signed content and produces the real PDF
-    // final representation via the Document Domain.
-    if (!confirm("Finalize this contract? This locks the signed agreement and generates the official final PDF. This cannot be undone.")) return;
+    // Explicit, separate step from signing itself — locks signed content and
+    // produces the official final PDF (Document Domain). Distinct from Fully signed.
+    if (!confirm(
+      "Finalize this contract?\n\n"
+      + "This generates the official final PDF for the fully signed agreement.\n"
+      + "It does not collect payment or mark them commercially Booked.\n"
+      + "This cannot be undone.",
+    )) return;
     startFinalize(async () => {
       const result = await finalizeContractAction(contract.id);
-      if (result.ok) { toast.success("Contract finalized."); router.refresh(); }
+      if (result.ok) { toast.success("Final PDF generated."); router.refresh(); }
       else toast.error(result.message ?? "Could not finalize contract.");
     });
   }
@@ -229,10 +263,16 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         title={contract.title}
         status={
           <div className="flex items-center gap-1.5 flex-wrap">
-            <ContractStatusBadge status={contract.status} executionOrigin={contract.executionOrigin} />
-            <Badge variant="outline">{uiState.label}</Badge>
+            <ContractStatusBadge
+              status={contract.status}
+              executionOrigin={contract.executionOrigin}
+              venueSigned={venueSigned}
+              requiredClientTotal={requiredClients.length || 1}
+              requiredClientSigned={requiredClientSigned}
+              expiresAt={contract.expiresAt}
+            />
             {finalized && (
-              <Badge variant="success"><Lock className="mr-1 h-3 w-3" />Finalized</Badge>
+              <Badge variant="success"><Lock className="mr-1 h-3 w-3" />Final PDF ready</Badge>
             )}
           </div>
         }
@@ -242,7 +282,7 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         primaryAction={
           contract.status === "draft" && !venueSigned ? (
             <Button size="sm" onClick={() => setShowVenueSign(true)}>
-              <Pencil className="mr-1 h-3.5 w-3.5" />Sign contract
+              <Pencil className="mr-1 h-3.5 w-3.5" />Sign as venue
             </Button>
           ) : contract.status === "draft" && venueSigned ? (
             <ShareDialog
@@ -277,6 +317,16 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
           ) : null
         }
       />
+      {contract.status === "draft" && venueSigned && (
+        <p className="text-xs text-muted-foreground">
+          Status: Ready to send — release to the client when you&apos;re ready. This does not collect a deposit or mark them Booked.
+        </p>
+      )}
+      {contract.status === "signed" && !finalized && (
+        <p className="text-xs text-muted-foreground">
+          Fully signed means all required signatures are complete. Finalize Contract generates the official PDF — separate from payment or booking.
+        </p>
+      )}
       {expiry && (
         <p className={`text-xs ${expiry.expired ? "text-destructive font-medium" : expiry.soon ? "text-warning-foreground font-medium" : "text-muted-foreground"}`}>{expiry.text}</p>
       )}
@@ -292,9 +342,14 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
               {withdrawPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Withdrawing…</> : "Withdraw signature"}
             </Button>
           )}
-          {contract.status === "sent" && (
+          {canReopen && (
             <Button variant="outline" size="sm" onClick={handleReopen} disabled={reopenPending}>
               {reopenPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Reopening…</> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Reopen for Editing</>}
+            </Button>
+          )}
+          {canCloneAndResend && (
+            <Button variant="outline" size="sm" onClick={handleCloneAndResend} disabled={clonePending}>
+              {clonePending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Cloning…</> : <><FilePlus2 className="mr-1 h-3.5 w-3.5" />Clone &amp; Resend</>}
             </Button>
           )}
           {finalized && (
@@ -352,7 +407,7 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
             </div>
             <div className="flex gap-2">
               <Button onClick={handleVenueSign} disabled={venueSignPending}>
-                {venueSignPending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Signing…</> : "Sign contract"}
+                {venueSignPending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Signing…</> : "Sign as venue"}
               </Button>
               <Button variant="outline" onClick={() => setShowVenueSign(false)} disabled={venueSignPending}>Cancel</Button>
             </div>
@@ -392,13 +447,14 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         </Card>
       )}
 
-      {/* Amendment lineage — this contract was cloned from an earlier finalized one (Step 33). */}
+      {/* Lineage — amendment or Clone & Resend */}
       {contract.amendsContractId && (
         <p className="text-xs text-muted-foreground">
-          This is an amendment of{" "}
+          Based on{" "}
           <a href={`/contracts/${contract.amendsContractId}`} className="underline hover:text-foreground">
             an earlier contract
-          </a>. The original remains unchanged and preserved.
+          </a>
+          . The original remains unchanged.
         </p>
       )}
 
@@ -445,8 +501,10 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
                   {contract.signedAt ? ` on ${formatContractDate(contract.signedAt.slice(0, 10))}` : ""}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Agreement signed. Next: collect the deposit. Booking isn&apos;t complete until the deposit is paid.
-                  {finalized ? " This agreement is finalized." : " You can finalize the PDF anytime — it does not block collecting the deposit."}
+                  Agreement fully signed. Next: collect the deposit if you haven&apos;t already. Booking isn&apos;t complete until the deposit is paid.
+                  {finalized
+                    ? " The final PDF is ready to download."
+                    : " Finalize Contract generates the official PDF — it does not collect payment."}
                 </p>
               </div>
             </div>

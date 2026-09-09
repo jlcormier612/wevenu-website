@@ -7,18 +7,18 @@ import { wrapConversationMessageHtml, plainTextToEmailHtml } from "@/lib/email/c
 import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
 
 describe("contract signing UI labels", () => {
-  it("shows Sign contract while draft and venue unsigned", () => {
+  it("shows Draft while draft and venue unsigned", () => {
     const r = deriveContractSigningUiState({
       status: "draft", venueSigned: false, requiredClientTotal: 1, requiredClientSigned: 0, expiresAt: null,
     });
-    assert.equal(r.label, "Sign contract");
+    assert.equal(r.label, "Draft");
   });
 
-  it("shows Ready for client after venue signed", () => {
+  it("shows Ready to send after venue signed", () => {
     const r = deriveContractSigningUiState({
       status: "draft", venueSigned: true, requiredClientTotal: 1, requiredClientSigned: 0, expiresAt: null,
     });
-    assert.equal(r.label, "Ready for client");
+    assert.equal(r.label, "Ready to send");
   });
 
   it("shows awaiting client signature with count for two signers", () => {

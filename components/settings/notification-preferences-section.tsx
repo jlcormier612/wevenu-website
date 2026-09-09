@@ -88,8 +88,8 @@ const BUCKETS: { title: string; rows: PrefRow[] }[] = [
       {
         key:   "prefContractSigned",
         emoji: "✅",
-        label: "Contract signed",
-        desc:  "A client signs their contract.",
+        label: "A client signed the contract",
+        desc:  "A required client signer completes their signature (not necessarily fully signed yet).",
       },
       {
         key:   "prefFinalGuestCountSubmitted",

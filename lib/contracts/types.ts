@@ -57,6 +57,14 @@ export type Contract = {
   clientName: string | null;
   clientEmail: string | null;
   eventDate: string | null;
+  /**
+   * Optional signing summary for progressive human-facing labels
+   * (list + badge). Detail views usually derive this from `signers`.
+   */
+  venueSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
+  anyClientSigned?: boolean;
   // Venue Brand Experience Phase 1 — only populated by getContractByToken
   // (the public sign page's own read); every other Contract-producing
   // function leaves this undefined, since they don't join venues.

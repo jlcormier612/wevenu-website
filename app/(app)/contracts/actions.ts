@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/integrations/supabase/server";
 import {
-  buildContractMergeData,
   cancelContract,
   createAmendmentFromContract,
+  cloneAndResendContract,
   createContract,
   createTemplate,
   deleteContract_,
@@ -21,6 +21,7 @@ import {
   updateTemplate_,
   venueSignContract,
   withdrawVenueSignature,
+  buildContractMergeData,
 } from "@/lib/contracts/service";
 import { finalizeContract, getContractPdfUrl } from "@/lib/contracts/finalize";
 import type {
@@ -174,6 +175,16 @@ export async function cancelContractAction(id: string): Promise<ContractActionRe
 export async function reopenContractForEditingAction(id: string): Promise<ContractActionResult> {
   const result = await reopenContractForEditing(id);
   if (result.ok) revalidatePath(`/contracts/${id}`);
+  return result;
+}
+
+export async function cloneAndResendContractAction(id: string): Promise<CreateContractResult> {
+  const result = await cloneAndResendContract(id);
+  if (result.ok) {
+    revalidatePath("/contracts");
+    revalidatePath(`/contracts/${id}`);
+    revalidatePath(`/contracts/${result.contractId}`);
+  }
   return result;
 }
 

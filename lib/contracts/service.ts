@@ -236,15 +236,34 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
         return { ok: false, message: "This template is archived. Restore it in the Library before creating a contract." } as CreateContractResult;
       }
     }
-    const signerSeeds = await resolveClientSignerSeeds(input.clientId, input.clientSignerContactIds);
+
+    // Contextual Event auto-link: when client is known and no event was
+    // provided, attach their associated dated Event when one exists.
+    let eventId = input.eventId?.trim() || "";
+    if (!eventId && input.clientId) {
+      const { data: datedEvent } = await supabase
+        .from("events")
+        .select("id")
+        .eq("venue_id", venueId)
+        .eq("client_id", input.clientId)
+        .not("event_date", "is", null)
+        .order("event_date", { ascending: true })
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (datedEvent?.id) eventId = datedEvent.id;
+    }
+
+    const resolvedInput: NewContractInput = { ...input, eventId };
+
+    const signerSeeds = await resolveClientSignerSeeds(resolvedInput.clientId, resolvedInput.clientSignerContactIds);
     if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message } as CreateContractResult;
 
     const mergeData = await buildContractMergeData({
-      clientId: input.clientId, eventId: input.eventId, contractTitle: input.title,
-      selectionId: input.selectionId,
+      clientId: resolvedInput.clientId, eventId: resolvedInput.eventId, contractTitle: resolvedInput.title,
+      selectionId: resolvedInput.selectionId,
     });
     const resolvedContent = applyRequiredSignerSignatureBlocks(
-      mergeContent(input.content, mergeData),
+      mergeContent(resolvedInput.content, mergeData),
       signerSeeds.seeds.map((s) => s.signerName),
     );
     // Drafts may still hold venue-policy placeholders (filled before send).
@@ -256,16 +275,16 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
         message: `Some details couldn't be filled in yet: ${leftover.map((t) => `{{${t}}}`).join(", ")}. Check the booking, client, and event, or remove those tokens before creating the agreement.`,
       } as CreateContractResult;
     }
-    const contractId = await repo.insertContract(supabase, venueId, { ...input, content: resolvedContent });
+    const contractId = await repo.insertContract(supabase, venueId, { ...resolvedInput, content: resolvedContent });
     await repo.insertContractSigners(supabase, venueId, contractId, signerSeeds.seeds);
     const actor = await currentActor(venueId);
     await repo.insertContractActivity(
       supabase, venueId, contractId, "contract_created", "Contract created",
       undefined, actor.userId, actor.label,
     );
-    if (input.selectionId) {
+    if (resolvedInput.selectionId) {
       const { linkSelectionContract } = await import("@/lib/commercial-selections/service");
-      await linkSelectionContract(input.selectionId, contractId);
+      await linkSelectionContract(resolvedInput.selectionId, contractId);
     }
     return { ok: true, contractId } as CreateContractResult;
   });
@@ -812,15 +831,87 @@ export async function cancelContract(id: string): Promise<ContractActionResult> 
   return result as ContractActionResult;
 }
 
-/** Work Package D4 — closes the negotiation-loop gap; see repository.ts's own comment on reopenForEditing. */
+/**
+ * Reopen-for-editing is retired after venue signature (content immutable).
+ * Owner/Manager gate retained; repository always fails closed → Clone & Resend.
+ */
 export async function reopenContractForEditing(id: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (role !== "owner" && role !== "manager") {
+      return { ok: false, message: "Only an Owner or Manager can reopen a contract for editing." } as ContractActionResult;
+    }
     const actor = await currentActor(venueId);
     const outcome = await repo.reopenForEditing(supabase, venueId, id, actor.userId, actor.label);
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
+}
+
+/**
+ * Clone & Resend — after venue signature locks content (released / partial / fully signed).
+ * Creates a NEW draft with copied content/client/event; fresh signers/tokens;
+ * original remains completely unchanged. Uses amends_contract_id for a simple
+ * "Based on" relationship (not a general versioning system).
+ */
+export async function cloneAndResendContract(sourceContractId: string): Promise<CreateContractResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const source = await repo.getContract(supabase, venueId, sourceContractId);
+    if (!source) return { ok: false, message: "Original contract not found." } as CreateContractResult;
+    if (source.executionOrigin === "external") {
+      return {
+        ok: false,
+        message: "Externally executed agreements cannot be cloned for HTC e-signature. Attach a revised signed file as a document instead.",
+      } as CreateContractResult;
+    }
+
+    const anyClientSigned = (source.signers ?? []).some(
+      (s) => s.signerType === "client" && s.signedAt != null,
+    );
+    const venueSigned = (source.signers ?? []).some(
+      (s) => s.signerType === "venue" && s.signedAt != null,
+    );
+    if (!venueSigned && !anyClientSigned && source.status !== "signed") {
+      return {
+        ok: false,
+        message: "Clone & Resend is available after the venue has signed (content is then immutable).",
+      } as CreateContractResult;
+    }
+
+    if (!source.clientId) {
+      return { ok: false, message: "This contract has no client — cannot clone." } as CreateContractResult;
+    }
+
+    const priorContactIds = (source.signers ?? [])
+      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
+      .map((s) => s.clientContactId as string);
+    const seeds = await resolveClientSignerSeeds(
+      source.clientId,
+      priorContactIds.length > 0 ? priorContactIds : undefined,
+    );
+    if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
+
+    const newContractId = await repo.insertContract(supabase, venueId, {
+      templateId: source.templateId ?? "",
+      clientId: source.clientId,
+      eventId: source.eventId ?? "",
+      title: source.title,
+      content: source.content,
+      amendsContractId: sourceContractId,
+    });
+    await repo.insertContractSigners(supabase, venueId, newContractId, seeds.seeds);
+    const actor = await currentActor(venueId);
+    await repo.insertContractActivity(
+      supabase, venueId, newContractId, "contract_created",
+      `Cloned from "${source.title}"`,
+      "New draft for a revised signing cycle. The original signed contract is unchanged.",
+      actor.userId, actor.label,
+    );
+
+    return { ok: true, contractId: newContractId } as CreateContractResult;
+  });
+  return result as CreateContractResult;
 }
 
 export async function deleteContract_(id: string): Promise<ContractActionResult> {

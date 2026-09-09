@@ -23,7 +23,7 @@ const PREFERENCE_MATRIX: {
   { prefKey: "pref_payment_overdue", notificationType: "payment_overdue", uiLabel: "Payment overdue", channel: "email_optional" },
   { prefKey: "pref_payment_received", notificationType: "payment_received", uiLabel: "Payment received", channel: "email_optional" },
   { prefKey: "pref_contract_requires_attention", notificationType: "contract_requires_attention", uiLabel: "Contract requires attention", channel: "email_optional" },
-  { prefKey: "pref_contract_signed", notificationType: "contract_signed", uiLabel: "Contract signed", channel: "email_optional" },
+  { prefKey: "pref_contract_signed", notificationType: "contract_signed", uiLabel: "A client signed the contract", channel: "email_optional" },
   { prefKey: "pref_final_guest_count_submitted", notificationType: "final_guest_count_submitted", uiLabel: "Final guest count submitted", channel: "email_optional" },
   { prefKey: "pref_vendor_checked_in", notificationType: "vendor_checked_in", uiLabel: "Vendor check-in", channel: "email_optional" },
   { prefKey: "pref_feedback_received", notificationType: "feedback_received", uiLabel: "Feedback received", channel: "email_optional" },

@@ -91,19 +91,120 @@ export function recordRequiredClientSignature(
   };
 }
 
+/**
+ * Reopen-for-editing is retired once the venue has signed.
+ * Content is immutable after venue signature; use Clone & Resend for revisions.
+ * (Kept as an explicit guard so any leftover callers fail closed.)
+ */
 export function canReopenContractForEditing(opts: {
   status: string;
+  venueSigned: boolean;
   clientSigners: { signedAt: string | null }[];
 }): { ok: true } | { ok: false; message: string } {
-  if (opts.status !== "sent") {
-    return { ok: false, message: "Only a sent contract can be reopened for editing." };
-  }
-  if (opts.clientSigners.some((s) => s.signedAt)) {
+  if (opts.venueSigned || opts.clientSigners.some((s) => s.signedAt)) {
     return {
       ok: false,
       message:
-        "This contract already has a client signature. Reopening would change the agreement after someone has signed. Cancel and start a new contract, or create an amendment once this one is fully executed and finalized.",
+        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Clone & Resend to create a new draft.",
     };
   }
-  return { ok: true };
+  if (opts.status !== "sent") {
+    return { ok: false, message: "Only a sent contract can be reopened for editing." };
+  }
+  return {
+    ok: false,
+    message:
+      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Clone & Resend to create a new draft.",
+  };
+}
+
+/** Clone & Resend once venue signature locks content (including released / partial / fully signed). */
+export function canCloneAndResendContract(opts: {
+  venueSigned: boolean;
+  status: string;
+  anyClientSigned: boolean;
+  executionOrigin?: string | null;
+}): { ok: true } | { ok: false; message: string } {
+  if (opts.executionOrigin === "external") {
+    return {
+      ok: false,
+      message:
+        "Externally executed agreements cannot be cloned for HTC e-signature. Attach a revised signed file as a document instead.",
+    };
+  }
+  if (opts.venueSigned || opts.anyClientSigned || opts.status === "signed") {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    message: "Clone & Resend is available after the venue has signed (content is then immutable).",
+  };
+}
+
+/**
+ * Pure projection of Clone & Resend outcomes for audit/regression tests.
+ * Mirrors cloneAndResendContract: original untouched; clone is a fresh draft.
+ */
+export type CloneSourceSnapshot = {
+  id: string;
+  status: string;
+  title: string;
+  content: string;
+  clientId: string | null;
+  eventId: string | null;
+  templateId: string | null;
+  executionOrigin?: string | null;
+  finalizedAt?: string | null;
+  sentAt?: string | null;
+  signers: {
+    id: string;
+    signerType: "venue" | "client";
+    isRequired: boolean;
+    signedAt: string | null;
+    signToken: string;
+    contentHash: string | null;
+    consentText: string | null;
+    signerIp: string | null;
+  }[];
+};
+
+export function projectCloneDraftFromSource(source: CloneSourceSnapshot): {
+  originalUnchanged: CloneSourceSnapshot;
+  clone: {
+    status: "draft";
+    title: string;
+    content: string;
+    clientId: string | null;
+    eventId: string | null;
+    templateId: string | null;
+    amendsContractId: string;
+    finalizedAt: null;
+    sentAt: null;
+    signers: { signerType: "venue" | "client"; signedAt: null; inheritsToken: false; inheritsEvidence: false }[];
+  };
+} {
+  const clientSigners = source.signers.filter((s) => s.signerType === "client" && s.isRequired);
+  return {
+    originalUnchanged: structuredClone(source),
+    clone: {
+      status: "draft",
+      title: source.title,
+      content: source.content,
+      clientId: source.clientId,
+      eventId: source.eventId,
+      templateId: source.templateId,
+      amendsContractId: source.id,
+      finalizedAt: null,
+      sentAt: null,
+      signers: [
+        { signerType: "venue", signedAt: null, inheritsToken: false, inheritsEvidence: false },
+        ...clientSigners.map(() => ({
+          signerType: "client" as const,
+          signedAt: null as null,
+          inheritsToken: false as const,
+          inheritsEvidence: false as const,
+        })),
+      ],
+    },
+  };
 }
