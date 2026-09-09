@@ -33,14 +33,18 @@ export async function getConversationInboxPageAction(
   return conversations.getConversationInboxPage(query);
 }
 
-/** Slim event list for Inbox Event filter — not a second Events workspace. */
-export async function listInboxFilterEventsAction(): Promise<Array<{
+/** Searchable specific-event lookup for Inbox (secondary to type/date). */
+export async function searchInboxFilterEventsAction(query: string): Promise<Array<{
   id: string;
   name: string;
   eventDate: string | null;
   status: string;
 }>> {
-  return conversations.listInboxFilterEvents();
+  return conversations.searchInboxFilterEvents(query);
+}
+
+export async function getInboxFilterEventLabelAction(eventId: string): Promise<string | null> {
+  return conversations.getInboxFilterEventLabel(eventId);
 }
 
 export async function getConversationAction(conversationId: string): Promise<ConversationDetail | null> {

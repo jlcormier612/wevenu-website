@@ -231,6 +231,8 @@ export type InboxPageQuery = {
   limit?: number;
   cursorLastMessageAt?: string | null;
   cursorId?: string | null;
+  /** Sort key for event-date / client-name pagination (not used for activity sorts). */
+  cursorSortKey?: string | null;
   search?: string | null;
   unreadOnly?: boolean;
   needsResponseOnly?: boolean;
@@ -241,18 +243,25 @@ export type InboxPageQuery = {
   /** When true, only conversations with no assignee (ignores assignedStaffId). */
   unassignedOnly?: boolean;
   eventId?: string | null;
+  eventTypes?: string[] | null;
   eventDateFrom?: string | null;
   eventDateTo?: string | null;
   eventStatus?: string | null;
   hasAttachments?: boolean;
-  sort?: "recent" | "oldest";
+  sort?:
+    | "recent"
+    | "oldest"
+    | "event_date_asc"
+    | "event_date_desc"
+    | "client_name_asc"
+    | "client_name_desc";
 };
 
 export type InboxPageResult = {
   conversations: ConversationSummary[];
   totalUnread: number;
   hasMore: boolean;
-  nextCursor: { lastMessageAt: string | null; id: string } | null;
+  nextCursor: { lastMessageAt: string | null; id: string; sortKey?: string | null } | null;
 };
 
 function inboxPageRpcArgs(query: InboxPageQuery) {
@@ -274,6 +283,8 @@ function inboxPageRpcArgs(query: InboxPageQuery) {
     p_has_attachments: query.hasAttachments ?? false,
     p_unassigned_only: query.unassignedOnly ?? false,
     p_sort: query.sort ?? "recent",
+    p_event_types: query.eventTypes && query.eventTypes.length > 0 ? query.eventTypes : null,
+    p_cursor_sort_key: query.cursorSortKey ?? null,
   };
 }
 
@@ -329,7 +340,9 @@ export async function getConversationInboxPage(
   });
 
   let hasMore = !!data.has_more;
-  let next = data.next_cursor as { last_message_at: string | null; id: string } | null;
+  let next = data.next_cursor as {
+    last_message_at: string | null; id: string; sort_key?: string | null;
+  } | null;
 
   // Booking stage uses authoritative Booking Journey. When filtering, keep
   // walking pages until we fill the requested limit or exhaust results —
@@ -341,6 +354,7 @@ export async function getConversationInboxPage(
     let guard = 0;
     let cursorAt = query.cursorLastMessageAt ?? null;
     let cursorId = query.cursorId ?? null;
+    let cursorSortKey = query.cursorSortKey ?? null;
     let batch = conversations;
 
     while (guard < 8) {
@@ -353,7 +367,11 @@ export async function getConversationInboxPage(
       if (matched.length >= want) {
         hasMore = true;
         const last = matched[matched.length - 1]!;
-        next = { last_message_at: last.lastMessageAt, id: last.id };
+        next = {
+          last_message_at: last.lastMessageAt,
+          id: last.id,
+          sort_key: next?.sort_key ?? null,
+        };
         break;
       }
       if (!hasMore || !next) {
@@ -363,16 +381,20 @@ export async function getConversationInboxPage(
       }
       cursorAt = next.last_message_at;
       cursorId = next.id;
+      cursorSortKey = next.sort_key ?? null;
       const more = await client.rpc("get_conversation_inbox_page", inboxPageRpcArgs({
         ...query,
         limit: want,
         cursorLastMessageAt: cursorAt,
         cursorId,
+        cursorSortKey,
         bookingStage: null, // still applied in app via Booking Journey
       }));
       if (!more.data || "error" in more.data) break;
       hasMore = !!more.data.has_more;
-      next = more.data.next_cursor as { last_message_at: string | null; id: string } | null;
+      next = more.data.next_cursor as {
+        last_message_at: string | null; id: string; sort_key?: string | null;
+      } | null;
       batch = ((more.data.conversations ?? []) as PageRow[]).map((r) => {
         const base = mapInboxRow(r);
         const meaningful = r.latest_meaningful_message
@@ -408,7 +430,13 @@ export async function getConversationInboxPage(
     conversations,
     totalUnread: data.total_unread ?? 0,
     hasMore,
-    nextCursor: next ? { lastMessageAt: next.last_message_at, id: next.id } : null,
+    nextCursor: next
+      ? {
+          lastMessageAt: next.last_message_at,
+          id: next.id,
+          sortKey: next.sort_key ?? null,
+        }
+      : null,
   };
 }
 

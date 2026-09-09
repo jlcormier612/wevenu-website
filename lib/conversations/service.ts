@@ -62,8 +62,8 @@ export async function getConversationInboxPage(
   return repo.getConversationInboxPage(supabase, query);
 }
 
-/** Events for Inbox Event filter selector (server-side filter dimension). */
-export async function listInboxFilterEvents(): Promise<Array<{
+/** Searchable specific-event lookup for Inbox (secondary to type/date filters). */
+export async function searchInboxFilterEvents(query: string): Promise<Array<{
   id: string;
   name: string;
   eventDate: string | null;
@@ -72,13 +72,16 @@ export async function listInboxFilterEvents(): Promise<Array<{
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
+  const q = query.trim();
+  if (q.length < 2) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")
     .select("id, name, event_date, status")
     .eq("venue_id", venue.id)
+    .ilike("name", `%${q}%`)
     .order("event_date", { ascending: true })
-    .limit(500);
+    .limit(20);
   if (error) return [];
   return ((data ?? []) as Array<{ id: string; name: string; event_date: string | null; status: string }>).map((e) => ({
     id: e.id,
@@ -86,6 +89,36 @@ export async function listInboxFilterEvents(): Promise<Array<{
     eventDate: e.event_date,
     status: e.status,
   }));
+}
+
+/** Prefer searchInboxFilterEvents for the specific-event lookup. */
+export async function listInboxFilterEvents(): Promise<Array<{
+  id: string;
+  name: string;
+  eventDate: string | null;
+  status: string;
+}>> {
+  return [];
+}
+
+export async function getInboxFilterEventLabel(eventId: string): Promise<string | null> {
+  if (!isSupabaseConfigured || !eventId) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select("name, event_date")
+    .eq("venue_id", venue.id)
+    .eq("id", eventId)
+    .maybeSingle<{ name: string; event_date: string | null }>();
+  if (!data) return null;
+  const date = data.event_date
+    ? new Date(`${data.event_date}T12:00:00`).toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric",
+      })
+    : null;
+  return date ? `${data.name} · ${date}` : data.name;
 }
 
 export async function getConversation(conversationId: string): Promise<ConversationDetail | null> {

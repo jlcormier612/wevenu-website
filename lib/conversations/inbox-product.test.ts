@@ -33,10 +33,25 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(inbox, /needs_response/);
   });
 
-  it("exposes Event filtering in the Filters UI", () => {
-    assert.match(inbox, /Filter by event/);
-    assert.match(inbox, /eventDateFrom/);
-    assert.match(inbox, /Filter by event status/);
+  it("exposes Event attribute filters — not a giant event directory", () => {
+    assert.match(inbox, /Event type/);
+    assert.match(inbox, /Filter by event date/);
+    assert.match(inbox, /Specific event/);
+    assert.match(inbox, /Search for a specific event/);
+    assert.match(inbox, /INBOX_EVENT_TYPE_OPTIONS/);
+    assert.match(inbox, /INBOX_EVENT_DATE_PRESET_OPTIONS/);
+    assert.doesNotMatch(inbox, /Filter by event"/);
+    assert.doesNotMatch(inbox, /Any event<\/option>/);
+    assert.doesNotMatch(inbox, /listInboxFilterEventsAction/);
+  });
+
+  it("keeps Sort as a sort control with event-date and name options", () => {
+    assert.match(inbox, /Sort conversations/);
+    assert.match(inbox, /INBOX_SORT_OPTIONS/);
+    const filtersSrc = readFileSync(resolve("lib/conversations/inbox-filters.ts"), "utf8");
+    assert.match(filtersSrc, /event_date_asc/);
+    assert.match(filtersSrc, /client_name_asc/);
+    assert.match(filtersSrc, /Most recent activity/);
   });
 
   it("thread header uses compact orientation + workspace link", () => {
@@ -52,18 +67,25 @@ describe("Inbox Product two-column workspace", () => {
     assert.doesNotMatch(thread, /max-w-\[72%\]/);
   });
 
-  it("migration extends inbox page RPC with event/sort filters", () => {
-    assert.match(migration, /p_event_id/);
-    assert.match(migration, /p_event_date_from/);
-    assert.match(migration, /p_event_status/);
+  it("migration extends inbox page RPC with event attribute + sort filters", () => {
+    const attrMigration = readFileSync(
+      resolve("supabase/migrations/20261358000000_inbox_event_attribute_filters.sql"),
+      "utf8",
+    );
+    assert.match(attrMigration, /p_event_types/);
+    assert.match(attrMigration, /p_event_date_from/);
+    assert.match(attrMigration, /p_event_status/);
+    assert.match(attrMigration, /event_date_asc/);
+    assert.match(attrMigration, /client_name_asc/);
+    assert.match(attrMigration, /p_cursor_sort_key/);
     assert.match(migration, /p_has_attachments/);
     assert.match(migration, /p_unassigned_only/);
-    assert.match(migration, /p_sort/);
-    assert.match(migration, /from public\.events ev/);
   });
 
-  it("repository passes new filter args to the RPC", () => {
+  it("repository passes event type + sort cursor args to the RPC", () => {
     assert.match(repo, /p_event_id/);
+    assert.match(repo, /p_event_types/);
+    assert.match(repo, /p_cursor_sort_key/);
     assert.match(repo, /p_sort/);
     assert.match(repo, /unassignedOnly/);
     assert.match(repo, /hasAttachments/);
