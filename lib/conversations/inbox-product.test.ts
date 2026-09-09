@@ -66,12 +66,25 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(filtersSrc, /Most recent activity/);
   });
 
-  it("thread header uses compact orientation + workspace link", () => {
+  it("thread header is minimal — workspace link + assignment, no duplicate identity", () => {
     assert.match(thread, /conversationHeaderOrientation/);
-    assert.match(thread, /headerOrientation\.workspaceHref/);
-    assert.match(thread, /headerOrientation\.workspaceLabel/);
+    const headerBlock = thread.slice(
+      thread.indexOf("Inbox list card holds identity"),
+      thread.indexOf("min-h-0 flex-1 overflow-y-auto"),
+    );
+    assert.match(headerBlock, /headerOrientation\.workspaceHref/);
+    assert.match(headerBlock, /headerOrientation\.workspaceLabel/);
+    assert.match(headerBlock, /Assigned coordinator/);
+    assert.doesNotMatch(headerBlock, /headerOrientation\?\.relationshipLabel/);
+    assert.doesNotMatch(headerBlock, /headerOrientation\?\.eventLine/);
+    assert.doesNotMatch(headerBlock, /summary\.displayName/);
+    assert.doesNotMatch(headerBlock, /threadInitials/);
+    assert.doesNotMatch(headerBlock, /Create Request/);
+    assert.doesNotMatch(headerBlock, /createRequestFromConversation/);
     const header = readFileSync(resolve("lib/conversations/inbox-header.ts"), "utf8");
     assert.match(header, /Open booking workspace →/);
+    assert.match(header, /Open lead workspace →/);
+    assert.match(header, /year: "numeric"/);
   });
 
   it("message bubbles are not locked to the old narrow middle-column width", () => {

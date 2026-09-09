@@ -68,11 +68,18 @@ describe("conversation composer send surface", () => {
     assert.doesNotMatch(thread, /> Client</);
   });
 
-  it("middle header keeps identity and workspace escape without booking-stage orientation (D02)", () => {
+  it("thread header is workspace + assignment only — identity lives on the list card (D02)", () => {
     assert.match(thread, /conversationHeaderOrientation/);
-    assert.match(thread, /Create Request/);
     assert.doesNotMatch(thread, /headerStageLabel/);
     assert.doesNotMatch(thread, /bookingStageLabel/);
+    const headerBlock = thread.slice(
+      thread.indexOf("Inbox list card holds identity"),
+      thread.indexOf("min-h-0 flex-1 overflow-y-auto"),
+    );
+    assert.doesNotMatch(headerBlock, /Create Request/);
+    assert.doesNotMatch(headerBlock, /createRequestFromConversation/);
+    assert.doesNotMatch(headerBlock, /headerOrientation\?\.eventLine/);
+    assert.doesNotMatch(headerBlock, /summary\.displayName/);
     const header = readFileSync(resolve("lib/conversations/inbox-header.ts"), "utf8");
     assert.match(header, /Open lead workspace/);
     assert.match(header, /Open booking workspace/);

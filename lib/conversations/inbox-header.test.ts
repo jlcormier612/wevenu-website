@@ -65,8 +65,8 @@ describe("conversationHeaderOrientation", () => {
 });
 
 describe("formatInboxListEventCue", () => {
-  it("uses date + type for list rows", () => {
-    assert.equal(formatInboxListEventCue(row({})), "November 11 Wedding");
+  it("uses date + year + type for list rows", () => {
+    assert.equal(formatInboxListEventCue(row({})), "November 11, 2027 Wedding");
   });
 
   it("shows Multiple events when count > 1", () => {

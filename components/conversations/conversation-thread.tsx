@@ -13,7 +13,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  ArrowLeft, Bot, CheckCircle2, Clock, FileText, ListTodo, Mail, MessageSquare, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
+  ArrowLeft, Bot, Clock, FileText, ListTodo, Mail, MessageSquare, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,7 +24,6 @@ import {
 import {
   addTaskAction,
 } from "@/app/(app)/leads/[id]/actions";
-import { createRequestAction } from "@/app/(app)/requests/actions";
 import { ConversationCompose } from "@/components/conversations/conversation-compose";
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
 import { documentsWorkspaceHref } from "@/lib/conversations/attachment-document";
@@ -49,12 +48,6 @@ import type {
 import type { SequenceEnrollment } from "@/lib/message-sequences/types";
 import type { ScheduledMessage } from "@/lib/scheduled-messages/types";
 import type { StaffMember } from "@/lib/team/types";
-
-function threadInitials(name: string | null): string {
-  if (!name) return "?";
-  const parts = name.split(/[\s&]+/).filter(Boolean);
-  return parts.slice(0, 2).map((p) => p[0]).join("").toUpperCase();
-}
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -389,13 +382,6 @@ export function ConversationThread({
   onInboxOpenedRef.current = onInboxOpened;
   onInboxSentRef.current = onInboxSent;
 
-  // RC2, Milestone 4 — "Create Request" from this Conversation. source_id
-  // is the conversation's id (not one specific message), so the Request's
-  // "Open Related Item" always lands back on the discussion.
-  const [requestFormOpen, setRequestFormOpen] = React.useState(false);
-  const [requestTitle, setRequestTitle] = React.useState("");
-  const [creatingRequest, setCreatingRequest] = React.useState(false);
-
   // Initializer-only — the Inbox remounts this component (key={conversationId})
   // whenever the selected conversation changes, so this never needs to
   // re-sync from the summary prop via an effect.
@@ -531,27 +517,6 @@ export function ConversationThread({
     else toast.error(result.message ?? "Could not create the task.");
   }
 
-  async function createRequestFromConversation() {
-    const title = requestTitle.trim();
-    if (!title || !summary?.clientId || creatingRequest) return;
-    setCreatingRequest(true);
-    const result = await createRequestAction({
-      clientId: summary.clientId,
-      title,
-      requestType: "information",
-      sourceFeature: "conversation",
-      sourceId: conversationId,
-    });
-    setCreatingRequest(false);
-    if (result.ok) {
-      toast.success("Request created.");
-      setRequestTitle("");
-      setRequestFormOpen(false);
-    } else {
-      toast.error(result.error ?? "Could not create the request.");
-    }
-  }
-
   async function cancelScheduled(id: string) {
     if (!confirm("Cancel this scheduled message?")) return;
     const result = await cancelScheduledMessageAction(id);
@@ -573,38 +538,26 @@ export function ConversationThread({
     <div className="flex h-full min-h-0 flex-1 flex-col">
       {showHeader && (
         <div className="shrink-0 border-b border-border/60">
-          <div className="flex items-start gap-2 px-4 py-3 sm:px-6">
+          {/* Inbox list card holds identity + event context — header is workspace + controls only. */}
+          <div className="flex items-center gap-2 px-4 py-2 sm:px-6">
             {onBack && (
-              <button type="button" onClick={onBack} className="md:hidden -ml-1 mt-0.5 p-1 text-muted-foreground">
+              <button type="button" onClick={onBack} className="md:hidden -ml-1 shrink-0 p-1 text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" />
               </button>
             )}
             {summary ? (
               <>
-                <div className="mt-0.5 h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-primary">{threadInitials(summary.displayName)}</span>
-                </div>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="truncate text-sm font-medium text-heading">
-                    {summary.displayName ?? "Unnamed relationship"}
-                  </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {headerOrientation?.relationshipLabel}
-                  </p>
-                  {headerOrientation?.eventLine && (
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {headerOrientation.eventLine}
-                    </p>
-                  )}
-                  {headerOrientation?.workspaceHref && headerOrientation.workspaceLabel && (
-                    <Link
-                      href={headerOrientation.workspaceHref}
-                      className="inline-flex items-center gap-1 pt-0.5 text-[11px] font-medium text-primary hover:underline"
-                    >
-                      {headerOrientation.workspaceLabel}
-                    </Link>
-                  )}
-                </div>
+                {headerOrientation?.workspaceHref && headerOrientation.workspaceLabel ? (
+                  <Link
+                    href={headerOrientation.workspaceHref}
+                    className="shrink-0 text-xs font-medium text-primary hover:underline"
+                  >
+                    {headerOrientation.workspaceLabel}
+                  </Link>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Conversation</span>
+                )}
+                <div className="min-w-0 flex-1" />
                 <select
                   aria-label="Assigned coordinator" value={assignedStaffId}
                   onChange={(e) => handleAssignedStaffChange(e.target.value)}
@@ -618,39 +571,6 @@ export function ConversationThread({
               <p className="text-sm font-medium">Conversation</p>
             )}
           </div>
-          {summary?.clientId && (
-            <div className="flex flex-wrap items-center gap-3 px-4 pb-2.5 text-xs sm:px-6">
-              {/* Requests need a Client — keep Create Request without recreating the dossier. */}
-              <button
-                type="button"
-                onClick={() => setRequestFormOpen((v) => !v)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-              >
-                <CheckCircle2 className="h-3 w-3" /> Create Request
-              </button>
-            </div>
-          )}
-          {requestFormOpen && (
-            <div className="flex items-center gap-2 border-t border-border/60 px-4 py-2 sm:px-6">
-              <input
-                type="text"
-                autoFocus
-                value={requestTitle}
-                onChange={(e) => setRequestTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void createRequestFromConversation(); if (e.key === "Escape") setRequestFormOpen(false); }}
-                placeholder="Request title — e.g. Confirm final guest count"
-                className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-xs"
-              />
-              <button type="button" onClick={() => void createRequestFromConversation()} disabled={!requestTitle.trim() || creatingRequest}
-                className="h-8 shrink-0 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground disabled:opacity-40">
-                {creatingRequest ? "Creating…" : "Create"}
-              </button>
-              <button type="button" onClick={() => setRequestFormOpen(false)}
-                className="h-8 shrink-0 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground">
-                Cancel
-              </button>
-            </div>
-          )}
         </div>
       )}
 

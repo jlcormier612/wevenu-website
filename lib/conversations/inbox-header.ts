@@ -29,7 +29,7 @@ export function formatInboxListEventCue(c: ConversationSummary): string | null {
     const d = new Date(`${c.eventDate}T12:00:00`);
     const dateLabel = Number.isNaN(d.getTime())
       ? c.eventDate
-      : d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+      : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     if (c.eventType) return `${dateLabel} ${c.eventType}`;
     if (c.eventName) return `${dateLabel} · ${c.eventName}`;
     return dateLabel;
