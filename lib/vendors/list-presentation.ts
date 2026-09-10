@@ -2,13 +2,34 @@
  * Pure Vendor list presentation helpers.
  * Preference (ranking) and claim state stay distinct; invitation is never inferred.
  */
-import type { VendorPreferenceLevel } from "@/lib/vendors/types";
+import type { VendorPreferenceLevel, VendorRelationshipStatus } from "@/lib/vendors/types";
 
 /** Claim-state labels for the list — never "Invited". */
 export type VendorClaimStateLabel = "Claimed" | "Not claimed";
 
 export function vendorClaimStateLabel(isClaimed: boolean): VendorClaimStateLabel {
   return isClaimed ? "Claimed" : "Not claimed";
+}
+
+/**
+ * Client-facing approved directory / new pick eligibility.
+ * invited + active are available; inactive must not appear or be newly selected.
+ * Mirrors get_venue_vendor_directory / toggle_directory_vendor_pick predicates.
+ */
+export function venueRelationshipAvailableToClients(
+  status: VendorRelationshipStatus | string,
+): boolean {
+  return status === "invited" || status === "active";
+}
+
+/**
+ * Vendor home immersion / "active venue" — any non-inactive relationship.
+ * Inactive must not become the active partnership hero.
+ */
+export function venueRelationshipEligibleForActiveVenue(
+  status: VendorRelationshipStatus | string,
+): boolean {
+  return status !== "inactive";
 }
 
 /**
