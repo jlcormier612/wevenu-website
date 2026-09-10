@@ -90,7 +90,19 @@ describe("Inbox Product two-column workspace", () => {
   it("Inbox uses full-height workspace without a fixed calc-height pane", () => {
     assert.doesNotMatch(inbox, /h-\[calc\(100svh-9rem\)\]/);
     assert.match(inbox, /flex min-h-0 flex-1 overflow-hidden rounded-sm border/);
+    assert.match(inbox, /flex h-full min-h-0 flex-1 flex-col gap-3/);
     assert.match(thread, /flex h-full min-h-0 flex-1 flex-col overflow-y-auto/);
+  });
+
+  it("WorkspaceShell pins Inbox to remaining viewport under h-svh without broadening to /messaging/health", () => {
+    const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
+    assert.match(shell, /flex h-svh w-full overflow-hidden/);
+    assert.match(shell, /flex min-h-0 min-w-0 flex-1 flex-col/);
+    assert.match(shell, /pathname === "\/messaging"/);
+    assert.match(shell, /isInboxWorkspace \? "flex flex-col overflow-hidden"/);
+    assert.doesNotMatch(shell, /pathname\.startsWith\("\/messaging"\)/);
+    const page = readFileSync(resolve("app/(app)/messaging/page.tsx"), "utf8");
+    assert.match(page, /flex h-full min-h-0 flex-1 flex-col/);
   });
 
   it("email preview is tall enough to read comfortably", () => {

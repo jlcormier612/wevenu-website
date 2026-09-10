@@ -64,9 +64,9 @@ export function WorkspaceShell({
         </div>
       </aside>
 
-      {/* Main column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Main column — min-h-0 so flex-1 children can shrink/fill under h-svh */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           {/* Mobile nav trigger */}
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetTrigger
@@ -150,15 +150,15 @@ export function WorkspaceShell({
 
         <main
           className={cn(
-            "flex-1 bg-background",
-            isInboxWorkspace ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto",
+            "min-h-0 flex-1 bg-background",
+            isInboxWorkspace ? "flex flex-col overflow-hidden" : "overflow-y-auto",
           )}
         >
           <div
             className={cn(
               "w-full",
               isInboxWorkspace
-                ? "mx-auto flex min-h-0 max-w-[90rem] flex-1 flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
+                ? "mx-auto flex h-full min-h-0 max-w-[90rem] flex-1 flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
                 : "mx-auto max-w-6xl p-4 sm:p-6 lg:p-10",
             )}
           >

@@ -24,7 +24,7 @@ export default async function MessagingPage() {
   // requires a Suspense boundary in the app router.
   return (
     <Suspense fallback={null}>
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex h-full min-h-0 flex-1 flex-col">
         <ConversationInbox
           teamMembers={teamMembers}
           currentStaffId={currentStaff?.id ?? null}
