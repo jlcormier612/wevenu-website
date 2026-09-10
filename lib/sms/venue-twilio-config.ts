@@ -149,10 +149,16 @@ export async function getVenueTwilioAccountByAccountSid(
   return data ? mapRow(data as Row) : null;
 }
 
-/** Ready to send customer SMS/MMS for this venue. */
+/**
+ * Ready to send customer SMS/MMS for this venue.
+ * Fail closed until status is ready AND a real sender is present
+ * (E.164 + phone number SID on the venue Messaging Service).
+ */
 export function isVenueTwilioSendReady(account: VenueTwilioAccount | null): boolean {
   return !!account
     && account.status === "ready"
-    && !!account.twilioAccountSid
-    && !!account.messagingServiceSid;
+    && !!account.twilioAccountSid?.trim()
+    && !!account.messagingServiceSid?.trim()
+    && !!account.defaultFromE164?.trim()
+    && !!account.phoneNumberSid?.trim();
 }

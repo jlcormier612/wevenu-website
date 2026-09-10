@@ -78,14 +78,16 @@ describe("communication architecture locks", () => {
     assert.match(inboundSmsRoute, /registerMessageAttachmentAsDocument/);
   });
 
-  it("inbound SMS routes by AccountSid → venue, not global phone matching", () => {
+  it("inbound SMS routes by AccountSid → venue and attaches venue_couple only", () => {
     assert.match(inboundSmsRoute, /AccountSid/);
     assert.match(inboundSmsRoute, /resolveVenueTwilioForWebhookAccountSid/);
     assert.match(inboundSmsRoute, /find_relationship_by_phone_for_venue/);
+    assert.match(inboundSmsRoute, /findOrCreateVenueCoupleConversation/);
     assert.doesNotMatch(inboundSmsRoute, /find_relationship_by_phone[^_]/);
     const smsStatus = readFileSync(resolve("app/api/messaging/sms-status/route.ts"), "utf8");
     assert.match(smsStatus, /AccountSid/);
     assert.match(smsStatus, /resolveVenueTwilioForWebhookAccountSid/);
+    assert.match(scheduledProcessor, /findOrCreateVenueCoupleConversation/);
   });
 
   it("outbound SMS resolves venue Twilio and does not use global Messaging Service SID", () => {

@@ -153,7 +153,7 @@ describe("texting lifecycle honesty", () => {
         ok: true,
         accepted: false,
         deferred: true,
-        reason: "Provider provisioning is not enabled yet.",
+        reason: "Your information is saved. Hello to Cheers is setting up texting for your venue.",
       }),
       "information_saved",
     );

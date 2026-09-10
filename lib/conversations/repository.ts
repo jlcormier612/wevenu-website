@@ -15,6 +15,7 @@ import {
   NON_MEANINGFUL_CHANNELS,
   pickLatestMeaningfulPerConversation,
 } from "@/lib/conversations/inbox-attention";
+import { findVenueCoupleConversationId } from "@/lib/conversations/venue-couple-conversation";
 import type {
   ConversationDetail,
   ConversationKind,
@@ -783,13 +784,9 @@ export async function getConversationIdForRelationship(
   client: DbClient,
   relationshipId: string,
 ): Promise<string | null> {
-  const { data, error } = await client
-    .from("conversations")
-    .select("id")
-    .eq("relationship_id", relationshipId)
-    .maybeSingle<{ id: string }>();
-  if (error) throw error;
-  return data?.id ?? null;
+  // Venue Network: relationship_id alone is ambiguous (venue_couple vs inquiry).
+  // Relationship SMS / customer threads always resolve to venue_couple.
+  return findVenueCoupleConversationId(client, relationshipId);
 }
 
 export async function getConversationUnreadCount(client: DbClient): Promise<number> {

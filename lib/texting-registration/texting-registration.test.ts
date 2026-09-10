@@ -14,7 +14,7 @@ import {
   phaseAfterProviderSubmit,
 } from "@/lib/texting-registration/lifecycle";
 import {
-  DeferredTextingProviderOrchestrator,
+  OpsFirstTextingProviderOrchestrator,
 } from "@/lib/texting-registration/provider-contract";
 import {
   decryptSensitiveField,
@@ -117,7 +117,7 @@ describe("texting registration lifecycle", () => {
         ok: true,
         accepted: false,
         deferred: true,
-        reason: "Provider provisioning is not enabled yet.",
+        reason: "Your information is saved. Hello to Cheers is setting up texting for your venue.",
       }),
       "information_saved",
     );
@@ -143,14 +143,18 @@ describe("texting registration lifecycle", () => {
   });
 });
 
-describe("deferred provider orchestrator honesty", () => {
-  it("DeferredTextingProviderOrchestrator does not claim acceptance", async () => {
-    const orch = new DeferredTextingProviderOrchestrator();
+describe("ops-first provider orchestrator honesty", () => {
+  it("OpsFirstTextingProviderOrchestrator does not claim acceptance or leak dead-end copy", async () => {
+    const orch = new OpsFirstTextingProviderOrchestrator();
     const result = await orch.submitRegistration("venue");
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.equal(result.accepted, false);
       assert.equal("deferred" in result && result.deferred, true);
+      if ("deferred" in result) {
+        assert.doesNotMatch(result.reason, /Provider provisioning is not enabled/i);
+        assertNoProviderLeak(result.reason);
+      }
     }
     const phase = phaseAfterProviderSubmit(result);
     assert.equal(phase, "information_saved");
@@ -176,7 +180,7 @@ describe("deferred provider orchestrator honesty", () => {
     assertNoProviderLeak(JSON.stringify(panel));
   });
 
-  it("under_review remains available for Track B accepted submissions", () => {
+  it("under_review remains available for ops-in-progress display", () => {
     const panel = buildTextingStatusPanel({
       registration: sampleView({
         phase: "under_review",
@@ -187,7 +191,25 @@ describe("deferred provider orchestrator honesty", () => {
       textingNumberE164: null,
     });
     assert.equal(panel.messagingRegistration.label, "Pending");
+    assert.equal(panel.texting.label, "Pending");
     assert.equal(panel.smsReady, false);
+    assert.ok(panel.attention);
+    assert.match(panel.attention!.message!, /in progress/i);
+  });
+
+  it("ready + number when smsReady", () => {
+    const panel = buildTextingStatusPanel({
+      registration: sampleView({
+        phase: "ready",
+        businessConfirmedAt: new Date().toISOString(),
+      }),
+      phase: "ready",
+      smsReady: true,
+      textingNumberE164: "+15551112222",
+    });
+    assert.equal(panel.smsReady, true);
+    assert.equal(panel.texting.label, "Ready");
+    assert.equal(panel.textingNumber.e164, "+15551112222");
   });
 });
 
@@ -293,7 +315,22 @@ describe("status panel + smsReady coupling", () => {
     assert.equal(paused.messagingRegistration.label, "Paused");
   });
 
-  it("never treats pending_compliance provider status as HTC smsReady", () => {
+  it("never treats pending_compliance or incomplete sender as HTC smsReady", () => {
+    assert.equal(
+      isVenueTwilioSendReady({
+        venueId: "x",
+        twilioAccountSid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        messagingServiceSid: "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        defaultFromE164: "+15551112222",
+        phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        secondaryProfileSid: null,
+        a2pBrandSid: null,
+        a2pCampaignSid: null,
+        status: "pending_compliance",
+        statusDetail: null,
+      }),
+      false,
+    );
     assert.equal(
       isVenueTwilioSendReady({
         venueId: "x",
@@ -304,7 +341,7 @@ describe("status panel + smsReady coupling", () => {
         secondaryProfileSid: null,
         a2pBrandSid: null,
         a2pCampaignSid: null,
-        status: "pending_compliance",
+        status: "ready",
         statusDetail: null,
       }),
       false,

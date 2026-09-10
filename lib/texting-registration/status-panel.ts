@@ -1,10 +1,11 @@
 /**
- * Derive venue-facing status panel rows from HTC phase + provider send readiness.
+ * Derive venue-facing status panel rows from HTC phase + venue Twilio readiness.
  * Never labels business info “Verified” without a real verification event —
  * use Confirmed / Ready / Pending / Needs attention / Not ready / Paused / Saved.
  *
- * information_saved = HTC has details; provider registration is NOT underway.
- * under_review = provider registration actually accepted/submitted.
+ * information_saved = HTC has venue details; ops setup may still be pending.
+ * under_review / setting_up_number = ops provisioning in progress (from venue_twilio_accounts).
+ * ready = genuinely sendable (smsReady).
  */
 import type {
   TextingPhase,
@@ -12,7 +13,7 @@ import type {
   TextingRegistrationView,
   TextingStatusPanel,
 } from "@/lib/texting-registration/types";
-import { INFORMATION_SAVED_STATUS_COPY } from "@/lib/texting-registration/types";
+import { INFORMATION_SAVED_STATUS_COPY, TEXTING_SETUP_IN_PROGRESS_COPY } from "@/lib/texting-registration/types";
 import { canResubmitTextingRegistration } from "@/lib/texting-registration/lifecycle";
 import { isBusinessIdentityComplete, toTextingInput } from "@/lib/texting-registration/validation";
 
@@ -44,7 +45,7 @@ export function buildTextingStatusPanel(input: {
       messagingRegistration = row("Not ready", "not_ready");
       break;
     case "information_saved":
-      // Honest Track A: saved with HTC, not pending provider approval.
+      // Details saved with HTC; ops may still be setting up texting.
       messagingRegistration = row("Saved", "confirmed");
       break;
     case "under_review":
@@ -74,7 +75,7 @@ export function buildTextingStatusPanel(input: {
       tone: "ready",
       e164: textingNumberE164,
     };
-  } else if (phase === "setting_up_number") {
+  } else if (phase === "setting_up_number" || phase === "under_review") {
     textingNumber = { label: "Pending", tone: "pending", e164: null };
   } else if (phase === "paused") {
     textingNumber = {
@@ -89,6 +90,8 @@ export function buildTextingStatusPanel(input: {
   else if (phase === "paused") texting = row("Paused", "paused");
   else if (phase === "failed" || phase === "needs_attention") {
     texting = row("Needs attention", "needs_attention");
+  } else if (phase === "under_review" || phase === "setting_up_number") {
+    texting = row("Pending", "pending");
   }
 
   const attention =
@@ -102,6 +105,12 @@ export function buildTextingStatusPanel(input: {
           fixHint: registration?.attentionFixHint
             ?? "Update the highlighted details, then resubmit.",
         }
+      : phase === "under_review" || phase === "setting_up_number"
+        ? {
+            code: "setup_in_progress",
+            message: TEXTING_SETUP_IN_PROGRESS_COPY,
+            fixHint: null,
+          }
       : phase === "information_saved"
         ? {
             code: "information_saved",
