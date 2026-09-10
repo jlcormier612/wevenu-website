@@ -26,7 +26,7 @@ export const metadata: Metadata = { title: "Messages — Vendor Portal" };
  */
 export default async function VendorConversationPage({ params }: Props) {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const { conversationId } = await params;
   const result = await getVendorConversation(conversationId);

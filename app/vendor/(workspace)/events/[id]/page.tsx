@@ -46,7 +46,7 @@ export default async function VendorEventDetailPage({
     thread: threadParam,
   } = await searchParams;
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const detail = await getVendorEventDetail(id, vendorUser.vendorId);
   if (!detail) notFound();

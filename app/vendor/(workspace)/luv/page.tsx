@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Luv — Vendor Portal" };
 
 export default async function VendorLuvPage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const { briefing, showIntro, greetingName } = await getVendorLuvPageData(vendorUser.vendorId);
 

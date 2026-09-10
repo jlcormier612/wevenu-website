@@ -8,7 +8,7 @@ import { getVendorTasks } from "@/lib/vendor-tasks/service";
 export default async function VendorInquiryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const [inquiry, tasks] = await Promise.all([
     getVendorInquiry(id, vendorUser.vendorId),

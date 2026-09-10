@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Your Venues — Vendor Portal" };
 // accordingly — "Your Venues" describes what it actually is.
 export default async function VendorPartnershipsPage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const partnerships = await getVendorPartnerships();
 

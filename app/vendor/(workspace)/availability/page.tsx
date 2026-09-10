@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Availability — Vendor Portal" };
 
 export default async function VendorAvailabilityPage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const now = new Date();
   const [profile, availability] = await Promise.all([
@@ -18,7 +18,7 @@ export default async function VendorAvailabilityPage() {
     getVendorAvailability(vendorUser.vendorId, now.getFullYear(), now.getMonth() + 1),
   ]);
 
-  if (!profile) redirect("/login");
+  if (!profile) redirect("/vendor/login");
 
   return (
     <div className="space-y-6">

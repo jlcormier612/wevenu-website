@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Inquiries — Vendor Portal" };
 
 export default async function VendorInquiriesPage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const [inquiries, counts] = await Promise.all([
     getVendorInquiries(vendorUser.vendorId),

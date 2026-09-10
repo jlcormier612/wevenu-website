@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Task Templates — Vendor Portal" };
 
 export default async function VendorTaskTemplatesPage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const [templates, packages] = await Promise.all([
     getVendorTaskTemplates(vendorUser.vendorId),

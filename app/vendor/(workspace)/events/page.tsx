@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Events — Vendor Portal" };
 
 export default async function VendorEventsPage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const events = await getVendorEvents();
   return <VendorEventsList events={events} />;
