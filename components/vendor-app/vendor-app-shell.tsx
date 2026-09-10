@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeftRight, CalendarDays, CheckSquare, FileText, Heart,
+  ArrowLeftRight, CalendarDays, FileText,
   LayoutDashboard, LogOut, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
@@ -22,15 +22,16 @@ import { cn } from "@/lib/utils";
 // stay out of primary nav. Timeline lives per-event (not a global nav item).
 const NAV = [
   { href: "/vendor/dashboard", label: "Home",         icon: LayoutDashboard },
-  { href: "/vendor/luv",       label: "Luv",           icon: Heart,          badge: "luv" as const },
   { href: "/vendor/events",    label: "Events",        icon: CalendarDays    },
-  { href: "/vendor/task-templates", label: "Task Templates", icon: CheckSquare },
-  { href: "/vendor/documents", label: "Document Library", icon: FileText    },
   { href: "/vendor/messages",  label: "Messages",      icon: MessageSquare,  badge: "message" as const },
+  { href: "/vendor/documents", label: "Documents",     icon: FileText    },
   { href: "/vendor/profile",   label: "Profile",       icon: User            },
 ];
 
-type BadgeKey = "message" | "luv";
+// Supporting surfaces stay reachable from Home/Profile, not primary nav:
+// Luv, Task Templates, Partnerships, Handbook.
+
+type BadgeKey = "message";
 
 function NavItem({
   href, label, icon: Icon, badgeCount, onNavigate,
@@ -90,7 +91,7 @@ export function VendorAppShell({
   /** @deprecated Task templates nav no longer shows a pending badge. */
   pendingTaskCount?: number;
   unreadMessageCount?: number;
-  /** Count for Luv nav badge — needsAttentionNow from shared briefing. */
+  /** Reserved for Home / Luv surfaces — not primary nav. */
   luvAttentionCount?: number;
   children:         React.ReactNode;
 }) {
@@ -98,7 +99,6 @@ export function VendorAppShell({
 
   const badges: Record<BadgeKey, number | undefined> = {
     message: unreadMessageCount,
-    luv:     luvAttentionCount,
   };
 
   const closeMobile = () => setMobileOpen(false);

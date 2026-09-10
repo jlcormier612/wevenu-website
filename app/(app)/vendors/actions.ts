@@ -30,3 +30,12 @@ export async function sendVendorInviteAction(vendorId: string): Promise<VendorAc
   if (!venue) return { ok: false, message: "Session expired." };
   return sendVendorInvite(venue.id, venue.name, vendorId);
 }
+
+export async function setRequiredVendorCategoriesAction(
+  categories: string[],
+): Promise<VendorActionResult> {
+  const { setVenueRequiredVendorCategories } = await import("@/lib/vendors/required-categories");
+  const result = await setVenueRequiredVendorCategories(categories);
+  if (result.ok) revalidatePath("/vendors");
+  return result;
+}

@@ -106,9 +106,9 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
       {/* Empty state */}
       {vendors.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No vendors yet</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            Build your vendor directory to quickly assign team members to events.
+          <p className="font-heading text-lg font-medium text-heading">No approved vendors yet</p>
+          <p className="mt-1 mb-4 max-w-md text-sm text-muted-foreground">
+            Add the vendors you make available to couples. You can recommend or prefer them, mark required or in-house vendors, and invite them to claim their profile.
           </p>
           <Button render={<Link href="/vendors/new" />}>+ Add Vendor</Button>
         </div>
@@ -157,16 +157,28 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                     {vendor.phone ?? "—"}
                   </TableCell>
                   <TableCell>
-                    {preferenceBadge === "featured" && (
-                      <Badge className="gap-1 bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
-                        ⭐ Featured
-                      </Badge>
-                    )}
-                    {preferenceBadge === "preferred" && (
-                      <Badge variant="outline" className="gap-1 text-[#3D5040] border-[#5D6F5D]/30">
-                        ✓ Preferred
-                      </Badge>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {preferenceBadge === "preferred" && (
+                        <Badge variant="outline" className="gap-1 text-[#3D5040] border-[#5D6F5D]/30">
+                          Preferred
+                        </Badge>
+                      )}
+                      {preferenceBadge === "recommended" && (
+                        <Badge variant="outline" className="gap-1">
+                          Recommended
+                        </Badge>
+                      )}
+                      {vendor.isRequired && (
+                        <Badge className="gap-1 bg-foreground text-background hover:bg-foreground">
+                          Required
+                        </Badge>
+                      )}
+                      {vendor.isInHouse && (
+                        <Badge variant="secondary" className="gap-1">
+                          In-house
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span

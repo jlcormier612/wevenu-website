@@ -24,33 +24,30 @@ export function buildVendorInviteHtml({
           Invitation from ${escapeHtml(venueName)}
         </p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#111827;line-height:1.3">
-          ${escapeHtml(venueName)} would love to connect with you on Hello to Cheers
+          ${escapeHtml(venueName)} has included you as one of the vendors they make available to couples
         </h1>
         ${message ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">${escapeHtml(message)}</p>` : ""}
         <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6">
-          They've added ${escapeHtml(vendorName)} to their trusted vendor network and created a starting profile for your business.
+          They've added ${escapeHtml(vendorName)} to their approved vendor list on Hello to Cheers and created a starting profile for your business.
         </p>
         <p style="margin:0 0 8px;font-size:15px;color:#374151;line-height:1.6">
-          Claiming your profile lets you:
+          Claiming your vendor profile is free and lets you:
         </p>
         <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;color:#374151;line-height:1.7">
-          <li>Keep your business information up to date</li>
-          <li>Manage the services and packages you offer</li>
-          <li>Share your availability with venues you work with</li>
-          <li>Build and manage your venue relationships — all in one place</li>
+          <li>Take ownership of your business information</li>
+          <li>Share a richer profile with packages and FAQs</li>
+          <li>Receive messages from couples who discover you</li>
+          <li>Collaborate on events once you're selected — messaging, timeline, tasks, and documents</li>
         </ul>
         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
           It only takes a minute to get started.
         </p>
-        <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
-          By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.
-        </p>
         <a href="${acceptUrl}"
           style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          Accept Invitation →
+          Claim My Vendor Profile →
         </a>
         <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
-          This link expires in 7 days. If you weren't expecting this invitation, you can safely ignore it.<br>
+          This invitation expires in 7 days. If you weren't expecting this, you can safely ignore it.<br>
           <a href="${acceptUrl}" style="color:#9ca3af;word-break:break-all">${acceptUrl}</a>
         </p>
       </td>
@@ -75,23 +72,21 @@ export function buildVendorInviteText({
   acceptUrl:  string;
 }): string {
   return [
-    `${venueName} would love to connect with you on Hello to Cheers`,
+    `${venueName} has included you as one of the vendors they make available to couples`,
     "",
-    `They've added ${vendorName} to their trusted vendor network and created a starting profile for your business.`,
+    `They've added ${vendorName} to their approved vendor list on Hello to Cheers and created a starting profile for your business.`,
     "",
-    "Claiming your profile lets you:",
-    "- Keep your business information up to date",
-    "- Manage the services and packages you offer",
-    "- Share your availability with venues you work with",
-    "- Build and manage your venue relationships — all in one place",
+    "Claiming your vendor profile is free and lets you:",
+    "- Take ownership of your business information",
+    "- Share a richer profile with packages and FAQs",
+    "- Receive messages from couples who discover you",
+    "- Collaborate on events once you're selected",
     "",
     "It only takes a minute to get started.",
     "",
-    "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
+    `Claim My Vendor Profile: ${acceptUrl}`,
     "",
-    `Accept your invitation: ${acceptUrl}`,
-    "",
-    "This link expires in 7 days.",
+    "This invitation expires in 7 days.",
   ].join("\n");
 }
 

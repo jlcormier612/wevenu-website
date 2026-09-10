@@ -8,7 +8,8 @@
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
-export type VendorPreferenceLevel = "featured" | "preferred" | "recommended";
+/** Approved list baseline = standard; Recommended / Preferred are optional rankings. */
+export type VendorPreferenceLevel = "standard" | "recommended" | "preferred";
 export type VendorPricingTier     = "budget" | "mid_range" | "premium" | "luxury";
 export type VendorRole            = "owner" | "manager" | "staff" | "contractor";
 // Relationship is the sole authoritative owner of the vendor lifecycle (ADR-0001,
@@ -65,6 +66,8 @@ export type VenueVendorRelationship = {
   status:             VendorRelationshipStatus;
   preferenceLevel:    VendorPreferenceLevel;
   displayOrder:       number;
+  isRequired:         boolean;
+  isInHouse:          boolean;
   notes:              string | null;
   specialPricingNote: string | null;
   addedAt:            string;
@@ -83,6 +86,8 @@ export type Vendor = VendorProfile & {
   isPreferred:         boolean;
   preferenceLevel:    VendorPreferenceLevel;
   displayOrder:       number;
+  isRequired:         boolean;
+  isInHouse:          boolean;
   notes:              string | null;
   specialPricingNote: string | null;
 };
@@ -296,6 +301,8 @@ export type VendorInput = {
   pinterestUrl:       string;
   tiktokUrl:          string;
   preferenceLevel:    VendorPreferenceLevel;
+  isRequired:         boolean;
+  isInHouse:          boolean;
   description:        string;
   logoUrl:            string;
   pricingTier:        string;

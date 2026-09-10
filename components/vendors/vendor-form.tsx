@@ -134,8 +134,11 @@ export function VendorFormFields({
 
       <Separator />
       <p className="text-sm font-medium text-heading">Your relationship with this vendor</p>
-      <Field label="Recommendation level" htmlFor="vpref"
-        hint="Controls how prominently this vendor appears to clients in their portal.">
+      <p className="text-xs text-muted-foreground -mt-3">
+        Everyone on your list is an approved vendor couples can discover. Optionally mark how strongly you recommend them, and whether they are required or in-house.
+      </p>
+      <Field label="How you present them to couples" htmlFor="vpref"
+        hint="Approved = on your list. Recommended = you suggest them. Preferred = stronger preference, shown more prominently.">
         <Select
           value={input.preferenceLevel}
           onValueChange={(v) => set("preferenceLevel", v as VendorInput["preferenceLevel"])}
@@ -152,6 +155,37 @@ export function VendorFormFields({
           </SelectContent>
         </Select>
       </Field>
+
+      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+        <p className="text-xs font-medium text-foreground">Process options</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="vreq" className="text-sm font-medium">Required</Label>
+            <p className="text-xs text-muted-foreground">
+              Couples must use this specific vendor for your process.
+            </p>
+          </div>
+          <Switch
+            id="vreq"
+            checked={input.isRequired}
+            onCheckedChange={(v) => set("isRequired", v)}
+          />
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="vinh" className="text-sm font-medium">In-house</Label>
+            <p className="text-xs text-muted-foreground">
+              This service is operated by your venue. Can combine with Required.
+            </p>
+          </div>
+          <Switch
+            id="vinh"
+            checked={input.isInHouse}
+            onCheckedChange={(v) => set("isInHouse", v)}
+          />
+        </div>
+      </div>
+
       <Field label="Special pricing or promotion" htmlFor="vspecial"
         hint="A discount or arrangement specific to your venue — not shown to clients.">
         <Input id="vspecial" value={input.specialPricingNote} onChange={(e) => set("specialPricingNote", e.target.value)}

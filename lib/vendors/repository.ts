@@ -39,6 +39,7 @@ type VendorRow = {
 type VVRRow = {
   id: string; venue_id: string; vendor_id: string; status: string;
   preference_level: string; display_order: number;
+  is_required?: boolean; is_in_house?: boolean;
   notes: string | null; special_pricing_note: string | null;
   added_at: string; updated_at: string;
   vendors: VendorRow | null;
@@ -108,16 +109,24 @@ function mapVendorProfile(r: VendorRow) {
 
 function mapVVR(r: VVRRow): Vendor | null {
   if (!r.vendors) return null;
-  const preferenceLevel = (r.preference_level ?? "recommended") as import("./types").VendorPreferenceLevel;
+  const raw = r.preference_level ?? "standard";
+  const preferenceLevel = (
+    raw === "featured" || raw === "preferred"
+      ? "preferred"
+      : raw === "recommended"
+        ? "recommended"
+        : "standard"
+  ) as import("./types").VendorPreferenceLevel;
   return {
     ...mapVendorProfile(r.vendors),
     venueId:            r.venue_id,
     status:             (r.status as import("./types").VendorRelationshipStatus) ?? "active",
-    // Computed convenience, not a second independently-writable fact (Standard #1) —
-    // preferenceLevel alone is the one owner of "how prominently featured."
-    isPreferred:        preferenceLevel !== "recommended",
+    // Preferred / Recommended are rankings; Approved (standard) is baseline.
+    isPreferred:        preferenceLevel === "preferred",
     preferenceLevel,
     displayOrder:       r.display_order ?? 0,
+    isRequired:         r.is_required === true,
+    isInHouse:          r.is_in_house === true,
     notes:              r.notes,
     specialPricingNote: r.special_pricing_note,
   };
@@ -276,6 +285,8 @@ export async function insertVendor(client: DbClient, venueId: string, input: Ven
       description: input.description.trim(),
       pricingTier: input.pricingTier,
       preferenceLevel: input.preferenceLevel,
+      isRequired: input.isRequired,
+      isInHouse: input.isInHouse,
       notes: input.notes.trim(),
       specialPricingNote: input.specialPricingNote.trim(),
     },
@@ -303,7 +314,9 @@ export async function updateVendor(client: DbClient, venueId: string, vendorId: 
     Promise.resolve(
       client.from("venue_vendor_relationships")
         .update({
-          preference_level:     input.preferenceLevel || "recommended",
+          preference_level:     input.preferenceLevel || "standard",
+          is_required:          input.isRequired === true,
+          is_in_house:          input.isInHouse === true,
           notes:                input.notes.trim() || null,
           special_pricing_note: input.specialPricingNote.trim() || null,
         })

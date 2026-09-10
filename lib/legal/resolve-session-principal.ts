@@ -36,19 +36,20 @@ export async function resolveLegalSessionPrincipal(
     const admin = createAdminClient();
     const prefer = options?.prefer;
 
-    const [{ data: vendorRow }, { data: staffRow }] = await Promise.all([
+    const [{ data: vendorRows }, { data: staffRow }] = await Promise.all([
       admin
         .from("vendor_users")
         .select("vendor_id")
         .eq("user_id", userId)
         .eq("is_active", true)
-        .maybeSingle<{ vendor_id: string }>(),
+        .limit(1),
       admin
         .from("venue_staff")
         .select("role, is_owner")
         .eq("user_id", userId)
         .maybeSingle<{ role: string; is_owner: boolean }>(),
     ]);
+    const vendorRow = Array.isArray(vendorRows) ? vendorRows[0] : vendorRows;
 
     const asVendor = (): ResolvedLegalSessionPrincipal | null => {
       if (!vendorRow?.vendor_id) return null;

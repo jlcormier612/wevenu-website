@@ -6,9 +6,21 @@ import type { InquiryStatus, Vendor, VendorInput, VendorPreferenceLevel } from "
 export type Option = { value: string; label: string };
 
 export const PREFERENCE_LEVELS: { value: VendorPreferenceLevel; label: string; description: string }[] = [
-  { value: "featured",    label: "Featured",    description: "Highlighted at the top of client recommendations" },
-  { value: "preferred",   label: "Preferred",   description: "Vendors you actively recommend" },
-  { value: "recommended", label: "Recommended", description: "Quality vendors in your directory" },
+  {
+    value: "standard",
+    label: "Approved",
+    description: "On your approved list — couples can discover them",
+  },
+  {
+    value: "recommended",
+    label: "Recommended",
+    description: "You suggest this vendor to couples",
+  },
+  {
+    value: "preferred",
+    label: "Preferred",
+    description: "Stronger preference — shown more prominently",
+  },
 ];
 
 export const PRICING_TIERS: Option[] = [
@@ -82,11 +94,21 @@ export function createInitialVendorInput(source?: Vendor | null): VendorInput {
     facebookUrl:        source?.facebookUrl ?? "",
     pinterestUrl:       source?.pinterestUrl ?? "",
     tiktokUrl:          source?.tiktokUrl ?? "",
-    preferenceLevel:    source?.preferenceLevel ?? "recommended",
+    preferenceLevel:    normalizePreferenceLevel(source?.preferenceLevel),
+    isRequired:         source?.isRequired ?? false,
+    isInHouse:          source?.isInHouse ?? false,
     description:        source?.description ?? "",
     logoUrl:            source?.logoUrl ?? "",
     pricingTier:        source?.pricingTier ?? "",
     notes:              source?.notes ?? "",
     specialPricingNote: source?.specialPricingNote ?? "",
   };
+}
+
+function normalizePreferenceLevel(
+  value: string | null | undefined,
+): VendorPreferenceLevel {
+  if (value === "preferred" || value === "featured") return "preferred";
+  if (value === "recommended") return "recommended";
+  return "standard";
 }

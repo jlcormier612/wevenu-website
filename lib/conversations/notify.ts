@@ -16,8 +16,8 @@ import { createVendorNotification } from "@/lib/vendor-notifications/create";
 
 type VendorConvoNotifyContext = {
   conversationId: string;
-  conversationKind: "venue_vendor" | "couple_vendor";
-  eventId: string;
+  conversationKind: "venue_vendor" | "couple_vendor" | "couple_vendor_inquiry";
+  eventId: string | null;
   eventName: string;
   venueId: string;
   venueName: string;
@@ -26,7 +26,7 @@ type VendorConvoNotifyContext = {
   vendorId: string;
   vendorName: string;
   vendorEmail: string | null;
-  assignmentId: string;
+  assignmentId: string | null;
   coupleName: string;
   coupleEmail: string | null;
   clientId: string | null;
@@ -67,17 +67,71 @@ async function loadVendorConversationNotifyContext(
 
   const { data: convo } = await client
     .from("conversations")
-    .select("id, venue_id, assigned_staff_id, event_vendor_assignment_id, conversation_kind")
+    .select(
+      "id, venue_id, assigned_staff_id, event_vendor_assignment_id, vendor_relationship_id, conversation_kind, inquiry_context",
+    )
     .eq("id", conversationId)
     .maybeSingle<{
       id: string;
       venue_id: string;
       assigned_staff_id: string | null;
       event_vendor_assignment_id: string | null;
+      vendor_relationship_id: string | null;
       conversation_kind: string | null;
+      inquiry_context: Record<string, unknown> | null;
     }>();
 
-  if (!convo?.event_vendor_assignment_id) return null;
+  if (!convo) return null;
+
+  if (convo.conversation_kind === "couple_vendor_inquiry") {
+    if (!convo.vendor_relationship_id) return null;
+    const { data: vvr } = await client
+      .from("venue_vendor_relationships")
+      .select("vendor_id, vendors(id, business_name, email)")
+      .eq("id", convo.vendor_relationship_id)
+      .maybeSingle<{
+        vendor_id: string;
+        vendors:
+          | { id: string; business_name: string | null; email: string | null }
+          | { id: string; business_name: string | null; email: string | null }[]
+          | null;
+      }>();
+    if (!vvr) return null;
+    const vendor = Array.isArray(vvr.vendors) ? vvr.vendors[0] : vvr.vendors;
+    const { data: venue } = await client
+      .from("venues")
+      .select("name, email")
+      .eq("id", convo.venue_id)
+      .maybeSingle<{ name: string; email: string | null }>();
+    const ctx = convo.inquiry_context ?? {};
+    return {
+      conversationId: convo.id,
+      conversationKind: "couple_vendor_inquiry",
+      eventId: typeof ctx.eventId === "string" ? ctx.eventId : null,
+      eventName:
+        typeof ctx.eventType === "string" && ctx.eventType
+          ? ctx.eventType
+          : "an upcoming event",
+      venueId: convo.venue_id,
+      venueName:
+        (typeof ctx.venueName === "string" && ctx.venueName)
+        || venue?.name
+        || "Your venue",
+      venueEmail: venue?.email ?? null,
+      assignedStaffEmail: null,
+      vendorId: vendor?.id ?? vvr.vendor_id,
+      vendorName: vendor?.business_name || "Vendor",
+      vendorEmail: vendor?.email ?? null,
+      assignmentId: null,
+      coupleName:
+        (typeof ctx.coupleName === "string" && ctx.coupleName)
+        || "A couple",
+      coupleEmail: null,
+      clientId: null,
+    };
+  }
+
+  if (!convo.event_vendor_assignment_id) return null;
   if (convo.conversation_kind !== "venue_vendor" && convo.conversation_kind !== "couple_vendor") {
     return null;
   }
@@ -426,22 +480,31 @@ export function notifyCoupleOfVenuePortalMessage(conversationId: string, bodyPre
   })();
 }
 
-/** Couple portal → vendor (couple_vendor threads). */
+/** Couple portal → vendor (couple_vendor + pre-selection inquiry threads). */
 export function notifyVendorOfCouplePortalMessage(conversationId: string, bodyPreview: string): void {
   void (async () => {
     try {
       const ctx = await loadVendorConversationNotifyContext(conversationId);
-      if (!ctx || ctx.conversationKind !== "couple_vendor") return;
+      if (
+        !ctx
+        || (ctx.conversationKind !== "couple_vendor"
+          && ctx.conversationKind !== "couple_vendor_inquiry")
+      ) {
+        return;
+      }
 
       const preview = bodyPreview.trim() || "(attachment)";
       const deepLinkPath = `/vendor/messages/${ctx.conversationId}`;
+      const isInquiry = ctx.conversationKind === "couple_vendor_inquiry";
 
       await createVendorNotification({
         vendorId: ctx.vendorId,
-        eventId: ctx.eventId,
-        assignmentId: ctx.assignmentId,
+        eventId: ctx.eventId || undefined,
+        assignmentId: ctx.assignmentId || undefined,
         type: "new_message",
-        title: `New message from ${ctx.coupleName}`,
+        title: isInquiry
+          ? `New message from ${ctx.coupleName}`
+          : `New message from ${ctx.coupleName}`,
         body: preview.slice(0, 100),
         link: deepLinkPath,
         emoji: "💬",
@@ -452,7 +515,9 @@ export function notifyVendorOfCouplePortalMessage(conversationId: string, bodyPr
 
       const base = appBaseUrl();
       const ctaUrl = `${base}${deepLinkPath}`;
-      const subject = `You have a new message — ${ctx.eventName}`;
+      const subject = isInquiry
+        ? `You have a new message from ${ctx.coupleName} at ${ctx.venueName}`
+        : `You have a new message — ${ctx.eventName}`;
       await Promise.all(
         recipients.map((to) =>
           sendMessageEmail({

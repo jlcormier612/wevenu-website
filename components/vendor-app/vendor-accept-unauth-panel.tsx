@@ -44,21 +44,21 @@ export function VendorAcceptUnauthPanel({
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Sign in with an existing Hello to Cheers account, or create one to claim this profile.
+        Sign in with an existing Hello to Cheers vendor account, or create one to claim this profile.
       </p>
-      <a
-        href={signInHref}
-        className="block w-full text-center rounded-lg bg-foreground text-background font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
-      >
-        Sign in
-      </a>
       <button
         type="button"
         onClick={() => setMode("create")}
+        className="block w-full text-center rounded-lg bg-foreground text-background font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
+      >
+        Claim My Vendor Profile
+      </button>
+      <a
+        href={signInHref}
         className="block w-full text-center rounded-lg border border-border bg-background font-semibold py-3 text-sm text-foreground hover:bg-muted/50 transition-colors"
       >
-        Create account
-      </button>
+        Sign in to claim
+      </a>
     </div>
   );
 }

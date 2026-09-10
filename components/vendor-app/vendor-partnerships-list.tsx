@@ -13,7 +13,12 @@ const STATUS_LABELS: Record<string, string> = { active: "Active", invited: "Invi
 const STATUS_VARIANTS: Record<string, "default" | "outline" | "secondary"> = {
   active: "default", invited: "outline", inactive: "secondary",
 };
-const PREFERENCE_LABELS: Record<string, string> = { featured: "Featured", preferred: "Preferred", recommended: "Recommended" };
+const PREFERENCE_LABELS: Record<string, string> = {
+  featured: "Preferred",
+  preferred: "Preferred",
+  recommended: "Recommended",
+  standard: "Approved",
+};
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

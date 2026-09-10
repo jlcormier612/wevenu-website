@@ -902,9 +902,9 @@ export async function getVendorRelationshipRollup(
 }
 
 type VendorInboxRow = {
-  conversation_id: string; event_id: string; event_name: string; event_date: string | null;
+  conversation_id: string; event_id: string | null; event_name: string | null; event_date: string | null;
   last_message_at: string | null; contact_unread: number;
-  conversation_kind: "venue_vendor" | "couple_vendor";
+  conversation_kind: "venue_vendor" | "couple_vendor" | "couple_vendor_inquiry";
   counterparty_label: "Venue" | "Couple";
   venue_name: string | null;
   couple_name: string | null;
@@ -927,8 +927,11 @@ export async function getVendorConversationInbox(
     conversations: rows.map((r): VendorConversationSummary => ({
       conversationId: r.conversation_id, eventId: r.event_id, eventName: r.event_name, eventDate: r.event_date,
       lastMessageAt: r.last_message_at, contactUnread: r.contact_unread,
-      conversationKind: r.conversation_kind ?? "venue_vendor",
-      counterpartyLabel: r.counterparty_label ?? (r.conversation_kind === "couple_vendor" ? "Couple" : "Venue"),
+      conversationKind: (r.conversation_kind ?? "venue_vendor") as VendorConversationSummary["conversationKind"],
+      counterpartyLabel: r.counterparty_label
+        ?? (r.conversation_kind === "couple_vendor" || r.conversation_kind === "couple_vendor_inquiry"
+          ? "Couple"
+          : "Venue"),
       venueName: r.venue_name ?? null,
       coupleName: r.couple_name ?? null,
       latestMessage: r.latest_message
@@ -951,19 +954,25 @@ export async function getVendorConversation(
     contact_read_at: string | null; venue_read_at: string | null;
     attachments: { id: string; fileUrl: string; fileName: string; fileSize: number | null; mimeType: string | null }[];
   };
-  const kind = (data.conversation_kind as "venue_vendor" | "couple_vendor" | undefined) ?? null;
+  const kind = (data.conversation_kind as VendorConversationDetail["conversationKind"]) ?? null;
   const messages = ((data.messages ?? []) as Row[]).map((m): VendorConversationMessage => ({
     id: m.id, senderType: m.sender_type, body: m.body, sentAt: m.sent_at,
     contactReadAt: m.contact_read_at, venueReadAt: m.venue_read_at,
     attachments: m.attachments ?? [],
   }));
+  const inquiryCtx = (data.inquiry_context ?? {}) as Record<string, unknown>;
   return {
     conversationId: data.conversation_id,
     conversationKind: kind,
-    eventName: null,
-    venueName: null,
-    coupleName: null,
-    counterpartyLabel: kind === "couple_vendor" ? "Couple" : kind === "venue_vendor" ? "Venue" : null,
+    eventName: typeof inquiryCtx.eventType === "string" ? inquiryCtx.eventType : null,
+    venueName: typeof inquiryCtx.venueName === "string" ? inquiryCtx.venueName : null,
+    coupleName: typeof inquiryCtx.coupleName === "string" ? inquiryCtx.coupleName : null,
+    counterpartyLabel:
+      kind === "couple_vendor" || kind === "couple_vendor_inquiry"
+        ? "Couple"
+        : kind === "venue_vendor"
+          ? "Venue"
+          : null,
     messages,
   };
 }

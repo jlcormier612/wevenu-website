@@ -125,7 +125,11 @@ export type PortalConversationResult =
 // ── RC2, Milestone 3 — vendor conversations (event-anchored) ────────────────
 
 /** Pairwise conversation kinds. couple_vendor is assignment-anchored too. */
-export type ConversationKind = "venue_couple" | "venue_vendor" | "couple_vendor";
+export type ConversationKind =
+  | "venue_couple"
+  | "venue_vendor"
+  | "couple_vendor"
+  | "couple_vendor_inquiry";
 
 /** What the composer needs to show destination and channel readiness. */
 export type ConversationComposeContext = {
@@ -164,15 +168,15 @@ export type VendorRollupConversation = {
   latestMessage: ConversationMessagePreview | null;
 };
 
-/** The vendor portal's inbox row — venue↔vendor and couple↔vendor per event. */
+/** The vendor portal's inbox row — venue↔vendor, couple↔vendor, and pre-selection inquiries. */
 export type VendorConversationSummary = {
   conversationId: string;
-  eventId: string;
-  eventName: string;
+  eventId: string | null;
+  eventName: string | null;
   eventDate: string | null;
   lastMessageAt: string | null;
   contactUnread: number;
-  conversationKind: "venue_vendor" | "couple_vendor";
+  conversationKind: "venue_vendor" | "couple_vendor" | "couple_vendor_inquiry";
   counterpartyLabel: "Venue" | "Couple";
   venueName: string | null;
   coupleName: string | null;
@@ -191,7 +195,7 @@ export type VendorConversationMessage = {
 
 export type VendorConversationDetail = {
   conversationId: string;
-  conversationKind: "venue_vendor" | "couple_vendor" | null;
+  conversationKind: "venue_vendor" | "couple_vendor" | "couple_vendor_inquiry" | null;
   eventName: string | null;
   venueName: string | null;
   coupleName: string | null;
