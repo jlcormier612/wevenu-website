@@ -68,10 +68,10 @@ describe("Inbox Product two-column workspace", () => {
 
   it("thread header is minimal — workspace link + assignment, no duplicate identity", () => {
     assert.match(thread, /conversationHeaderOrientation/);
-    const headerBlock = thread.slice(
-      thread.indexOf("Inbox list card holds identity"),
-      thread.indexOf("min-h-0 flex-1 overflow-y-auto"),
-    );
+    const headerStart = thread.indexOf("Inbox list card holds identity");
+    const headerEnd = thread.indexOf("No messages yet — say hello");
+    assert.ok(headerStart >= 0 && headerEnd > headerStart);
+    const headerBlock = thread.slice(headerStart, headerEnd);
     assert.match(headerBlock, /headerOrientation\.workspaceHref/);
     assert.match(headerBlock, /headerOrientation\.workspaceLabel/);
     assert.match(headerBlock, /Assigned coordinator/);
@@ -85,6 +85,18 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(header, /Open booking workspace →/);
     assert.match(header, /Open lead workspace →/);
     assert.match(header, /year: "numeric"/);
+  });
+
+  it("Inbox uses full-height workspace without a fixed calc-height pane", () => {
+    assert.doesNotMatch(inbox, /h-\[calc\(100svh-9rem\)\]/);
+    assert.match(inbox, /flex min-h-0 flex-1 overflow-hidden rounded-sm border/);
+    assert.match(thread, /flex h-full min-h-0 flex-1 flex-col overflow-y-auto/);
+  });
+
+  it("email preview is tall enough to read comfortably", () => {
+    const compose = readFileSync(resolve("components/conversations/conversation-compose.tsx"), "utf8");
+    assert.match(compose, /min-h-\[20rem\] h-\[min\(45vh,36rem\)\]/);
+    assert.doesNotMatch(compose, /className="h-36 w-full bg-background"/);
   });
 
   it("message bubbles are not locked to the old narrow middle-column width", () => {

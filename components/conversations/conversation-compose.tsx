@@ -425,10 +425,10 @@ export function ConversationCompose({
 
   return (
     <div
-      className={`shrink-0 space-y-2.5 overflow-y-auto border-t p-3 sm:px-6 sm:py-3 ${
+      className={`mt-0 space-y-2.5 p-3 sm:px-6 sm:py-3 ${
         isNote
           ? "border-amber-500/25 bg-amber-500/[0.04]"
-          : "border-border/60 bg-card"
+          : "bg-card"
       }`}
     >
       {confirm?.kind === "sent" && (
@@ -683,10 +683,10 @@ export function ConversationCompose({
                     title="Email preview"
                     sandbox=""
                     srcDoc={preview.html}
-                    className="h-36 w-full bg-background"
+                    className="min-h-[20rem] h-[min(45vh,36rem)] w-full bg-background"
                   />
                 ) : (
-                  <p className="whitespace-pre-wrap px-3 py-3 text-sm">{preview?.body || body}</p>
+                  <p className="max-h-[min(45vh,36rem)] overflow-y-auto whitespace-pre-wrap px-3 py-3 text-sm">{preview?.body || body}</p>
                 )}
               </div>
             )}

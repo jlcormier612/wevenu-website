@@ -573,9 +573,13 @@ export function ConversationThread({
   const headerOrientation = summary ? conversationHeaderOrientation(summary) : null;
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
+    <div
+      ref={scrollRef}
+      onScroll={handleMessagesScroll}
+      className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto"
+    >
       {showHeader && (
-        <div className="shrink-0 border-b border-border/60">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-border/60 bg-card">
           {/* Inbox list card holds identity + event context — header is workspace + controls only. */}
           <div className="flex items-center gap-2 px-4 py-2 sm:px-6">
             {onBack && (
@@ -612,11 +616,7 @@ export function ConversationThread({
         </div>
       )}
 
-      <div
-        ref={scrollRef}
-        onScroll={handleMessagesScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6"
-      >
+      <div className="px-4 py-3 sm:px-6">
         {messages === null ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
         ) : messages.length === 0 ? (
@@ -688,15 +688,17 @@ export function ConversationThread({
         </details>
       )}
 
-      <ConversationCompose
-        conversationId={conversationId}
-        initialBody={initialBody}
-        initialSubject={initialSubject}
-        relationshipLabel={summary ? (summary.clientId ? "Booking" : "Lead") : null}
-        prefill={prefill}
-        onSent={handleSent}
-        onScheduled={loadScheduled}
-      />
+      <div className="mt-auto shrink-0 border-t border-border/60 bg-card">
+        <ConversationCompose
+          conversationId={conversationId}
+          initialBody={initialBody}
+          initialSubject={initialSubject}
+          relationshipLabel={summary ? (summary.clientId ? "Booking" : "Lead") : null}
+          prefill={prefill}
+          onSent={handleSent}
+          onScheduled={loadScheduled}
+        />
+      </div>
     </div>
   );
 }

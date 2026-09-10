@@ -329,8 +329,8 @@ export function ConversationInbox({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex shrink-0 items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-medium text-heading">Inbox</h1>
           <p className="text-[0.95rem] text-muted-foreground">
@@ -347,7 +347,7 @@ export function ConversationInbox({
         </Link>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -378,7 +378,7 @@ export function ConversationInbox({
       </div>
 
       {chips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {chips.map((chip) => (
             <button
               key={chip.id}
@@ -402,7 +402,7 @@ export function ConversationInbox({
       )}
 
       {filtersOpen && (
-        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+        <div className="max-h-[min(40vh,22rem)] shrink-0 space-y-4 overflow-y-auto rounded-lg border border-border/60 bg-muted/20 p-4">
           {/* Top row: compact peer filters — equal weight, no empty cells */}
           <div className="grid gap-4 sm:grid-cols-3">
             <fieldset className="space-y-2">
@@ -684,7 +684,7 @@ export function ConversationInbox({
         </div>
       )}
 
-      <div className="flex h-[calc(100svh-9rem)] min-h-[28rem] overflow-hidden rounded-sm border border-border bg-card">
+      <div className="flex min-h-0 flex-1 overflow-hidden rounded-sm border border-border bg-card">
         <div className={`w-full shrink-0 overflow-y-auto border-r border-border/60 md:w-80 lg:w-96 ${activeId ? "hidden md:block" : ""}`}>
           {loading ? (
             <p className="p-4 text-xs text-muted-foreground">Loading…</p>

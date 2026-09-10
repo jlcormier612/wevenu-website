@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 
 import { Building2, Menu, Search } from "lucide-react";
 
@@ -19,11 +20,16 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 /**
  * Responsive workspace shell: a fixed left sidebar on desktop, a top navigation
  * bar, and a slide-out navigation sheet on mobile. Renders the active module
  * page as `children`.
+ *
+ * Inbox (`/messaging` only) uses a full-height flex main so the conversation
+ * workspace can fill the viewport without nesting page scroll inside a fixed
+ * pane. Other messaging routes (e.g. Communication Health) keep normal scroll.
  */
 export function WorkspaceShell({
   email,
@@ -38,6 +44,8 @@ export function WorkspaceShell({
   staffRole?: string | null;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isInboxWorkspace = pathname === "/messaging";
   const [mobileNavOpen, setMobileNavOpen]   = React.useState(false);
   const [searchOpen,    setSearchOpen]      = React.useState(false);
 
@@ -140,8 +148,20 @@ export function WorkspaceShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-background">
-          <div className="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-10">
+        <main
+          className={cn(
+            "flex-1 bg-background",
+            isInboxWorkspace ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto",
+          )}
+        >
+          <div
+            className={cn(
+              "w-full",
+              isInboxWorkspace
+                ? "mx-auto flex min-h-0 max-w-[90rem] flex-1 flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
+                : "mx-auto max-w-6xl p-4 sm:p-6 lg:p-10",
+            )}
+          >
             {children}
           </div>
         </main>
