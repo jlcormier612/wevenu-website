@@ -349,11 +349,19 @@ const NO_ASSIGNEE = "__none__";
 
 export function ConversationThread({
   conversationId, onBack, showHeader = true, summary, teamMembers = [], initialBody, initialSubject,
-  onInboxOpened, onInboxSent,
+  onInboxOpened, onInboxSent, flow = "contained",
 }: {
   conversationId: string;
   onBack?: () => void;
   showHeader?: boolean;
+  /**
+   * `contained` — the thread owns a bounded scroll area and fills its parent
+   * box (Booking Workspace tab, event vendor thread: both give it a fixed-ish
+   * frame). `page` — the thread has natural document height and scrolls with
+   * whatever surface it sits in, so a long conversation is never cut off at
+   * the bottom of a box (Inbox).
+   */
+  flow?: "contained" | "page";
   /**
    * Enriched header content — name, Lead/Booking identity, compact event
    * orientation, assignee, and workspace link. Only the Inbox passes this;
@@ -466,8 +474,8 @@ export function ConversationThread({
     };
   }, [conversationId]);
 
-  function scrollMessagesToBottom(behavior: ScrollBehavior) {
-    const el = scrollRef.current;
+  const scrollMessagesToBottom = React.useCallback((behavior: ScrollBehavior) => {
+    const el = flow === "contained" ? scrollRef.current : null;
     if (!el) {
       bottomRef.current?.scrollIntoView({ behavior, block: "end" });
       return;
@@ -477,7 +485,7 @@ export function ConversationThread({
     } else {
       el.scrollTop = el.scrollHeight;
     }
-  }
+  }, [flow]);
 
   function handleMessagesScroll() {
     const el = scrollRef.current;
@@ -485,6 +493,23 @@ export function ConversationThread({
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     stickToBottomRef.current = distanceFromBottom < 96;
   }
+
+  // In `page` flow the thread has no scrollport of its own, so "am I still at
+  // the newest message?" is answered by whichever surface scrolls it.
+  React.useEffect(() => {
+    if (flow !== "page") return;
+    let host: HTMLElement | null = scrollRef.current?.parentElement ?? null;
+    while (host && !/(auto|scroll|overlay)/.test(getComputedStyle(host).overflowY)) {
+      host = host.parentElement;
+    }
+    if (!host) return;
+    const onScroll = () => {
+      const distanceFromBottom = host!.scrollHeight - host!.scrollTop - host!.clientHeight;
+      stickToBottomRef.current = distanceFromBottom < 96;
+    };
+    host.addEventListener("scroll", onScroll, { passive: true });
+    return () => host?.removeEventListener("scroll", onScroll);
+  }, [flow]);
 
   // Open at newest; keep sticking only while the user is at (or near) the bottom.
   React.useLayoutEffect(() => {
@@ -498,7 +523,7 @@ export function ConversationThread({
     if (stickToBottomRef.current) {
       scrollMessagesToBottom("smooth");
     }
-  }, [messages]);
+  }, [messages, scrollMessagesToBottom]);
 
   async function handleSent(ack?: SentMessageAck) {
     try {
@@ -575,8 +600,12 @@ export function ConversationThread({
   return (
     <div
       ref={scrollRef}
-      onScroll={handleMessagesScroll}
-      className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto"
+      onScroll={flow === "contained" ? handleMessagesScroll : undefined}
+      className={
+        flow === "contained"
+          ? "flex h-full min-h-0 flex-1 flex-col overflow-y-auto"
+          : "flex w-full flex-col"
+      }
     >
       {showHeader && (
         <div className="sticky top-0 z-10 shrink-0 border-b border-border/60 bg-card">

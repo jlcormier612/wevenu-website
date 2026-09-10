@@ -28,15 +28,13 @@ import { cn } from "@/lib/utils";
  * page as `children`.
  *
  * The shell is `fixed inset-0` so it always covers the browser viewport. That
- * matches Calendar/Dashboard’s “fills the window” geometry and prevents the
- * Inbox short-shell failure mode where `h-svh` alone still left a cream band of
- * document background below the app (sidebar + workspace ending mid-viewport).
+ * prevents the short-shell failure mode where `h-svh` alone still left a cream
+ * band of document background below the app.
  *
- * Inbox (`/messaging` only) fills the main column with an absolutely positioned
- * pane (`inset-0`) so the conversation workspace gets a definite height from the
- * fixed shell → `flex-1` main, without relying on percentage `h-full` against a
- * flex item (which Calendar/Dashboard never need — they scroll inside `main`).
- * Other messaging routes (e.g. Communication Health) keep normal overflow scroll.
+ * `main` is the module scroll surface for every route: the sidebar and global
+ * header stay put while page content scrolls inside it. Inbox only differs in
+ * content width (`max-w-[90rem]`), not in scroll model — its conversation
+ * column must be free to grow past the viewport and keep scrolling.
  */
 export function WorkspaceShell({
   email,
@@ -155,18 +153,13 @@ export function WorkspaceShell({
           </div>
         </header>
 
-        <main
-          className={cn(
-            "min-h-0 flex-1 bg-background",
-            isInboxWorkspace ? "relative overflow-hidden" : "overflow-y-auto",
-          )}
-        >
+        <main className="min-h-0 flex-1 overflow-y-auto bg-background">
           <div
             className={cn(
-              "w-full",
+              "mx-auto w-full",
               isInboxWorkspace
-                ? "absolute inset-0 mx-auto flex max-w-[90rem] flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
-                : "mx-auto max-w-6xl p-4 sm:p-6 lg:p-10",
+                ? "max-w-[90rem] px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
+                : "max-w-6xl p-4 sm:p-6 lg:p-10",
             )}
           >
             {children}

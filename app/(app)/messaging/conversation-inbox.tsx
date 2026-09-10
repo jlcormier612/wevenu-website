@@ -329,7 +329,7 @@ export function ConversationInbox({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-3">
+    <div className="flex w-full flex-col gap-3">
       <div className="flex shrink-0 items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-medium text-heading">Inbox</h1>
@@ -684,8 +684,17 @@ export function ConversationInbox({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-sm border border-border bg-card">
-        <div className={`w-full shrink-0 overflow-y-auto border-r border-border/60 md:w-80 lg:w-96 ${activeId ? "hidden md:block" : ""}`}>
+      {/*
+       * Two-column workspace with no bounded correspondence box: the pane grows
+       * to the conversation's natural height and the module scroller carries it,
+       * so a long thread keeps scrolling instead of ending at a box edge. The
+       * list is the only anchored column — sticky inside the pane, capped to the
+       * visible workspace so "who am I talking to" stays on screen.
+       */}
+      <div className="flex min-h-[calc(100svh-13rem)] items-start rounded-sm border border-border bg-card">
+        <div
+          className={`w-full shrink-0 self-start overflow-y-auto border-r border-border/60 md:sticky md:top-0 md:max-h-[calc(100svh-4rem)] md:w-80 lg:w-96 ${activeId ? "hidden md:block" : ""}`}
+        >
           {loading ? (
             <p className="p-4 text-xs text-muted-foreground">Loading…</p>
           ) : loadError ? (
@@ -742,10 +751,11 @@ export function ConversationInbox({
           )}
         </div>
 
-        <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${activeId ? "" : "hidden md:flex md:items-center md:justify-center"}`}>
+        <div className={`flex min-w-0 flex-1 flex-col self-stretch ${activeId ? "" : "hidden min-h-[24rem] md:flex md:items-center md:justify-center"}`}>
           {activeId ? (
             <ConversationThread
               key={activeId}
+              flow="page"
               conversationId={activeId}
               onBack={() => setActiveId(null)}
               summary={activeSummary ?? undefined}

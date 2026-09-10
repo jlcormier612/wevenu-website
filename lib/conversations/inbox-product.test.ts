@@ -87,24 +87,37 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(header, /year: "numeric"/);
   });
 
-  it("Inbox uses full-height workspace without a fixed calc-height pane", () => {
+  it("conversation column is an unbounded reading surface — no fixed-height correspondence box", () => {
     assert.doesNotMatch(inbox, /h-\[calc\(100svh-9rem\)\]/);
-    assert.match(inbox, /flex min-h-0 flex-1 overflow-hidden rounded-sm border/);
-    assert.match(inbox, /flex h-full min-h-0 flex-1 flex-col gap-3/);
+    // Workspace pane grows with the conversation instead of clipping it.
+    // A floor so a short conversation still fills the workspace — never a cap.
+    assert.match(inbox, /flex min-h-\[calc\(100svh-13rem\)\] items-start rounded-sm border border-border bg-card/);
+    assert.doesNotMatch(inbox, /max-h-\[calc\(100svh[^\]]*\)\] (?:min-w|flex-1)/);
+    assert.doesNotMatch(inbox, /flex min-h-0 flex-1 overflow-hidden rounded-sm border/);
+    assert.match(inbox, /flex w-full flex-col gap-3/);
+    // Inbox renders the thread in page flow; embedded surfaces keep the bounded one.
+    assert.match(inbox, /flow="page"/);
+    assert.match(thread, /flow = "contained"/);
     assert.match(thread, /flex h-full min-h-0 flex-1 flex-col overflow-y-auto/);
+    assert.match(thread, /"flex w-full flex-col"/);
   });
 
-  it("WorkspaceShell pins Inbox to the viewport with fixed shell + absolute pane without broadening to /messaging/health", () => {
+  it("conversation list stays anchored while the conversation scrolls", () => {
+    assert.match(inbox, /md:sticky md:top-0 md:max-h-\[calc\(100svh-4rem\)\]/);
+    assert.match(inbox, /shrink-0 self-start overflow-y-auto/);
+  });
+
+  it("WorkspaceShell scrolls modules in main, with Inbox differing only in width", () => {
     const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
     assert.match(shell, /fixed inset-0 flex min-h-0 w-full overflow-hidden/);
     assert.match(shell, /flex min-h-0 min-w-0 flex-1 flex-col/);
+    assert.match(shell, /min-h-0 flex-1 overflow-y-auto bg-background/);
     assert.match(shell, /pathname === "\/messaging"/);
-    // Definite height via absolute inset inside relative flex-1 main — not h-full on a flex item.
-    assert.match(shell, /isInboxWorkspace \? "relative overflow-hidden"/);
-    assert.match(shell, /absolute inset-0 mx-auto flex max-w-\[90rem\] flex-col/);
+    assert.match(shell, /max-w-\[90rem\] px-3 py-3/);
+    assert.doesNotMatch(shell, /absolute inset-0 mx-auto/);
     assert.doesNotMatch(shell, /pathname\.startsWith\("\/messaging"\)/);
     const page = readFileSync(resolve("app/(app)/messaging/page.tsx"), "utf8");
-    assert.match(page, /flex h-full min-h-0 flex-1 flex-col/);
+    assert.match(page, /flex w-full flex-col/);
     const css = readFileSync(resolve("app/globals.css"), "utf8");
     assert.match(css, /html:has\(\.htc-staff\) body/);
     assert.match(css, /overflow:\s*hidden/);
