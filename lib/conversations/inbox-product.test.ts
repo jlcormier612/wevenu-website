@@ -94,15 +94,20 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(thread, /flex h-full min-h-0 flex-1 flex-col overflow-y-auto/);
   });
 
-  it("WorkspaceShell pins Inbox to remaining viewport under h-svh without broadening to /messaging/health", () => {
+  it("WorkspaceShell pins Inbox to the viewport with fixed shell + absolute pane without broadening to /messaging/health", () => {
     const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
-    assert.match(shell, /flex h-svh w-full overflow-hidden/);
+    assert.match(shell, /fixed inset-0 flex min-h-0 w-full overflow-hidden/);
     assert.match(shell, /flex min-h-0 min-w-0 flex-1 flex-col/);
     assert.match(shell, /pathname === "\/messaging"/);
-    assert.match(shell, /isInboxWorkspace \? "flex flex-col overflow-hidden"/);
+    // Definite height via absolute inset inside relative flex-1 main — not h-full on a flex item.
+    assert.match(shell, /isInboxWorkspace \? "relative overflow-hidden"/);
+    assert.match(shell, /absolute inset-0 mx-auto flex max-w-\[90rem\] flex-col/);
     assert.doesNotMatch(shell, /pathname\.startsWith\("\/messaging"\)/);
     const page = readFileSync(resolve("app/(app)/messaging/page.tsx"), "utf8");
     assert.match(page, /flex h-full min-h-0 flex-1 flex-col/);
+    const css = readFileSync(resolve("app/globals.css"), "utf8");
+    assert.match(css, /html:has\(\.htc-staff\) body/);
+    assert.match(css, /overflow:\s*hidden/);
   });
 
   it("email preview is tall enough to read comfortably", () => {

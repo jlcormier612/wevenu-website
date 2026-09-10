@@ -176,6 +176,16 @@
  * though they mount outside the `.htc-staff` node. Client portal never mounts
  * `.htc-staff`, so these selectors do not apply there.
  */
+/*
+ * Staff shell is viewport-owned (`fixed inset-0` on `.htc-staff`). Lock the
+ * document so a cream body band cannot appear below a short or scrolled shell.
+ */
+html:has(.htc-staff),
+html:has(.htc-staff) body {
+  height: 100%;
+  overflow: hidden;
+}
+
 .htc-staff,
 html:has(.htc-staff) {
   --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;

@@ -27,9 +27,16 @@ import { cn } from "@/lib/utils";
  * bar, and a slide-out navigation sheet on mobile. Renders the active module
  * page as `children`.
  *
- * Inbox (`/messaging` only) uses a full-height flex main so the conversation
- * workspace can fill the viewport without nesting page scroll inside a fixed
- * pane. Other messaging routes (e.g. Communication Health) keep normal scroll.
+ * The shell is `fixed inset-0` so it always covers the browser viewport. That
+ * matches Calendar/Dashboard’s “fills the window” geometry and prevents the
+ * Inbox short-shell failure mode where `h-svh` alone still left a cream band of
+ * document background below the app (sidebar + workspace ending mid-viewport).
+ *
+ * Inbox (`/messaging` only) fills the main column with an absolutely positioned
+ * pane (`inset-0`) so the conversation workspace gets a definite height from the
+ * fixed shell → `flex-1` main, without relying on percentage `h-full` against a
+ * flex item (which Calendar/Dashboard never need — they scroll inside `main`).
+ * Other messaging routes (e.g. Communication Health) keep normal overflow scroll.
  */
 export function WorkspaceShell({
   email,
@@ -50,7 +57,7 @@ export function WorkspaceShell({
   const [searchOpen,    setSearchOpen]      = React.useState(false);
 
   return (
-    <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
+    <div className="htc-staff fixed inset-0 flex min-h-0 w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar */}
       <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <div className="flex h-20 items-center border-b border-sidebar-border px-5">
@@ -151,14 +158,14 @@ export function WorkspaceShell({
         <main
           className={cn(
             "min-h-0 flex-1 bg-background",
-            isInboxWorkspace ? "flex flex-col overflow-hidden" : "overflow-y-auto",
+            isInboxWorkspace ? "relative overflow-hidden" : "overflow-y-auto",
           )}
         >
           <div
             className={cn(
               "w-full",
               isInboxWorkspace
-                ? "mx-auto flex h-full min-h-0 max-w-[90rem] flex-1 flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
+                ? "absolute inset-0 mx-auto flex max-w-[90rem] flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
                 : "mx-auto max-w-6xl p-4 sm:p-6 lg:p-10",
             )}
           >
