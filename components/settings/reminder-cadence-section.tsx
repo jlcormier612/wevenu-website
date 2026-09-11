@@ -96,9 +96,9 @@ export function ReminderCadenceSection({
         due date — not relative to booking.
       </p>
       <p className="text-xs text-muted-foreground rounded-sm border border-border bg-muted/30 px-3 py-2">
-        Payment due dates themselves (At booking, days before the event, etc.) are set on{" "}
-        <Link href="/library/payment-schedules" className="underline underline-offset-2 text-heading">
-          Payment schedules
+        Payment due dates themselves (At booking, days before the event, etc.) are set in the{" "}
+        <Link href="/payments/new" className="underline underline-offset-2 text-heading">
+          Payment Plan Builder
         </Link>
         . Reminder cadence never invents a booking date.
       </p>

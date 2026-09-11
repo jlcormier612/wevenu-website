@@ -161,6 +161,7 @@ function TemplateCard({
     <LibraryAssetCard
       layout="row"
       title={template.name}
+      isStarter={Boolean(template.sourceMasterKey)}
       isArchived={template.isArchived}
       badges={
         <>

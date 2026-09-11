@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { LibraryPreviewChrome } from "@/components/library/library-preview-chrome";
 import { getTemplate } from "@/lib/event-order-templates/service";
 
 type Props = { params: Promise<{ id: string }> };
@@ -21,19 +20,13 @@ export default async function EventOrderTemplatePreviewPage({ params }: Props) {
   const sections = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 max-w-xl mx-auto">
-        <p className="text-sm text-muted-foreground">Delivery structure preview (sections only — not a client invoice)</p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" render={<Link href={`/library/event-order-templates/${template.id}`} />}>
-            Back to edit
-          </Button>
-          <Button size="sm" variant="outline" render={<Link href="/library/event-order-templates" />}>
-            Library
-          </Button>
-        </div>
-      </div>
-      <div className="max-w-xl mx-auto px-4 pb-10 space-y-4">
+    <LibraryPreviewChrome
+      caption="Delivery structure preview (sections only — not a client invoice or live package commitment)."
+      editHref={`/library/event-order-templates/${template.id}`}
+      libraryHref="/library/event-order-templates"
+      contentMaxWidthClassName="max-w-xl"
+    >
+      <div className="space-y-4 pb-10">
         <div className="space-y-1">
           <h1 className="font-heading text-xl font-medium text-heading">{template.name}</h1>
           <p className="text-xs text-muted-foreground">Event Order Template — structure applied to events</p>
@@ -55,6 +48,6 @@ export default async function EventOrderTemplatePreviewPage({ params }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </LibraryPreviewChrome>
   );
 }

@@ -1,12 +1,8 @@
-/**
- * Library preview — real couple renderer with resolved template fields.
- */
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CoupleFamilyQuestionnaireForm } from "@/components/form/couple-family-questionnaire-form";
-import { Button } from "@/components/ui/button";
+import { LibraryPreviewChrome } from "@/components/library/library-preview-chrome";
 import { getQuestionnaireMasterByKind } from "@/lib/questionnaire-family/definitions";
 import { getTemplate } from "@/lib/questionnaire-templates/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -33,18 +29,12 @@ export default async function QuestionnaireTemplatePreviewPage({ params }: Props
     : master.fields.filter((f) => f.required).map((f) => f.id);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 max-w-xl mx-auto">
-        <p className="text-sm text-muted-foreground">Preview as your clients will see it</p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" render={<Link href={`/library/questionnaire-templates/${template.id}`} />}>
-            Back to edit
-          </Button>
-          <Button size="sm" variant="outline" render={<Link href="/library/questionnaire-templates" />}>
-            Library
-          </Button>
-        </div>
-      </div>
+    <LibraryPreviewChrome
+      caption="Preview as your clients will see it"
+      editHref={`/library/questionnaire-templates/${template.id}`}
+      libraryHref="/library/questionnaire-templates"
+      contentMaxWidthClassName="max-w-xl"
+    >
       <CoupleFamilyQuestionnaireForm
         accessKey=""
         previewMode
@@ -78,6 +68,6 @@ export default async function QuestionnaireTemplatePreviewPage({ params }: Props
           client_primary_name: "Alex & Jordan",
         }}
       />
-    </div>
+    </LibraryPreviewChrome>
   );
 }

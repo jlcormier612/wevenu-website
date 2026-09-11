@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import {
-  BookOpen, Boxes, CalendarClock, ClipboardList, FileSignature, FileText,
+  BookOpen, Boxes, CalendarClock, FileSignature, FileText,
   Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
 } from "lucide-react";
 
@@ -21,7 +21,6 @@ import { getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { getBrochures } from "@/lib/brochures/service";
 import { getSavedReports } from "@/lib/saved-reports/service";
-import { getPaymentPlanStarters } from "@/lib/payments/starters";
 import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
 import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/provision";
 import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
@@ -130,14 +129,13 @@ export default async function LibraryPage() {
       <Group title="Pricing &amp; Packages">
         <ToolboxCard title="Packages" description="What you sell commercially — customize inclusions and set your price." href="/packages" count={packages.length} icon={Boxes} />
         <ToolboxCard title="Offerings" description="Menus, bar, services, and rentals you provide." href="/library/offerings" count={offerings.length} icon={Package} />
-        <ToolboxCard title="Payment plan starters" description="Starting structures (percentages + timing before the Event). Start with one, then create the real schedule on a couple’s invoice." href="/library/payment-schedules" count={getPaymentPlanStarters().length} icon={ClipboardList} />
       </Group>
 
       <Group title="Planning">
         <ToolboxCard title="Planning Templates" description="The task checklists you've refined over the years." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
         <ToolboxCard title="Timeline Templates" description="Reusable day-of schedules for any booking." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
         <ToolboxCard title="Floor Plan Templates" description="Reusable room layouts for any booking." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
-        <ToolboxCard title="Event Order Templates" description="Reusable delivery structures for Event Orders (sections only)." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={ClipboardList} />
+        <ToolboxCard title="Event Order Templates" description="Reusable delivery structures for Event Orders (sections only)." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
         <ToolboxCard title="Available Inventory Items" description="Physical stock your venue owns — chairs, tables, linens, equipment." href="/library/inventory" count={inventoryItems.length} icon={Package} />
         <ToolboxCard title="Inventory Templates" description="What you typically allocate for a wedding — Ceremony + Reception or Reception Only." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
       </Group>

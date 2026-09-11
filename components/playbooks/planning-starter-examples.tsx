@@ -23,9 +23,8 @@ export function PlanningStarterExamples({ templates }: { templates: PlaybookTemp
   const router = useRouter();
   const [pending, setPending] = React.useState<"client" | "venue" | null>(null);
 
-  const hasClient = templates.some((t) => t.kind === "client");
-  const hasVenue = templates.some((t) => t.kind === "venue");
-  if (hasClient && hasVenue) return null;
+  const hasClientMaster = templates.some((t) => t.sourceMasterKey === "PB-CLIENT-01");
+  const hasVenueMaster = templates.some((t) => t.sourceMasterKey === "PB-VENUE-01");
 
   async function create(kind: "client" | "venue") {
     setPending(kind);
@@ -47,41 +46,47 @@ export function PlanningStarterExamples({ templates }: { templates: PlaybookTemp
         <Sparkles className="h-4 w-4 text-muted-foreground" />
         <div>
           <p className="text-sm font-medium text-heading">Hello to Cheers starter examples</p>
-          <p className="text-xs text-muted-foreground">Start with a complete checklist, then make it your own.</p>
+          <p className="text-xs text-muted-foreground">
+            Persistent starters — use again anytime. Applying to an event always creates that event&apos;s own copy.
+          </p>
         </div>
       </div>
 
-      {!hasClient && (
-        <LibraryAssetCard
-          title="Standard Wedding — Client Planning"
-          description="A client-facing checklist from booking through post-event, ready for your venue to customize."
-          meta={`${STANDARD_CLIENT_PLANNING_TASKS.length} tasks · ${STANDARD_CLIENT_PLANNING_MILESTONES.length} milestones`}
-          isStarter
-          primaryActions={[{
-            id: "use-client",
-            label: pending === "client" ? "Creating…" : "Use this starter",
-            onClick: () => create("client"),
-            emphasis: "use",
-            disabled: pending !== null,
-          }]}
-        />
-      )}
+      <LibraryAssetCard
+        title="Standard Wedding — Client Planning"
+        description="A client-facing checklist from booking through post-event, ready for your venue to customize."
+        meta={`${STANDARD_CLIENT_PLANNING_TASKS.length} tasks · ${STANDARD_CLIENT_PLANNING_MILESTONES.length} milestones`}
+        isStarter
+        primaryActions={[{
+          id: "use-client",
+          label: pending === "client"
+            ? "Creating…"
+            : hasClientMaster
+              ? "Add again"
+              : "Use this starter",
+          onClick: () => create("client"),
+          emphasis: "use",
+          disabled: pending !== null,
+        }]}
+      />
 
-      {!hasVenue && (
-        <LibraryAssetCard
-          title="Standard Wedding — Venue Planning"
-          description="An internal team checklist from booking through post-event, ready for your venue to customize."
-          meta={`${STANDARD_VENUE_WORKFLOW_TASKS.length} tasks · ${STANDARD_VENUE_WORKFLOW_MILESTONES.length} milestones`}
-          isStarter
-          primaryActions={[{
-            id: "use-venue",
-            label: pending === "venue" ? "Creating…" : "Use this starter",
-            onClick: () => create("venue"),
-            emphasis: "use",
-            disabled: pending !== null,
-          }]}
-        />
-      )}
+      <LibraryAssetCard
+        title="Standard Wedding — Venue Planning"
+        description="An internal team checklist from booking through post-event, ready for your venue to customize."
+        meta={`${STANDARD_VENUE_WORKFLOW_TASKS.length} tasks · ${STANDARD_VENUE_WORKFLOW_MILESTONES.length} milestones`}
+        isStarter
+        primaryActions={[{
+          id: "use-venue",
+          label: pending === "venue"
+            ? "Creating…"
+            : hasVenueMaster
+              ? "Add again"
+              : "Use this starter",
+          onClick: () => create("venue"),
+          emphasis: "use",
+          disabled: pending !== null,
+        }]}
+      />
 
       {pending && <Button variant="ghost" size="sm" disabled><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Creating starter…</Button>}
     </section>

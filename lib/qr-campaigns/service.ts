@@ -6,14 +6,14 @@ import type { QrCampaign, QrCampaignActionResult, QrCampaignAnalytics, QrCampaig
 type CampaignRow = {
   id: string; venue_id: string; name: string; code: string;
   destination_type: QrCampaign["destinationType"]; destination_url: string | null;
-  status: QrCampaign["status"]; created_at: string;
+  status: QrCampaign["status"]; source_master_key: string | null; created_at: string;
 };
 
 function mapCampaign(r: CampaignRow): QrCampaign {
   return {
     id: r.id, venueId: r.venue_id, name: r.name, code: r.code,
     destinationType: r.destination_type, destinationUrl: r.destination_url,
-    status: r.status, createdAt: r.created_at,
+    status: r.status, sourceMasterKey: r.source_master_key ?? null, createdAt: r.created_at,
   };
 }
 

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { LibraryPreviewChrome } from "@/components/library/library-preview-chrome";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   applyPreviewKindCopy,
   formatTemplateReminder,
@@ -32,24 +31,23 @@ export default async function PlaybookTemplatePreviewPage({ params }: Props) {
   const kindCopy = applyPreviewKindCopy(template.kind);
   const groups = groupTasksForApplyPreview(milestones, tasks);
   const taskCount = groups.reduce((n, g) => n + g.taskTitles.length, 0);
+  const caption =
+    template.kind === "client"
+      ? "Preview of the client planning checklist structure. Clients see tasks only after you apply and release this on an event."
+      : "Venue planning checklist preview — for your team, not shown to clients as this Library template.";
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 max-w-xl mx-auto">
-        <p className="text-sm text-muted-foreground">Preview as your clients will see it</p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" render={<Link href={`/library/playbooks/${template.id}`} />}>
-            Back to edit
-          </Button>
-          <Button size="sm" variant="outline" render={<Link href="/library/playbooks" />}>
-            Library
-          </Button>
-        </div>
-      </div>
-      <div className="max-w-xl mx-auto px-4 pb-10 space-y-4">
+    <LibraryPreviewChrome
+      caption={caption}
+      editHref={`/library/playbooks/${template.id}`}
+      libraryHref="/library/playbooks"
+      contentMaxWidthClassName="max-w-xl"
+    >
+      <div className="space-y-4 pb-10">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="accent" className="text-[10px]">{kindCopy.label}</Badge>
+            {template.sourceMasterKey && <Badge variant="muted" className="text-[10px]">Starter</Badge>}
           </div>
           <h1 className="font-heading text-xl font-medium text-heading">{template.name}</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">{kindCopy.explanation}</p>
@@ -59,12 +57,7 @@ export default async function PlaybookTemplatePreviewPage({ params }: Props) {
         </div>
         <div className="rounded-lg border border-border bg-background p-6">
           {groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              This template doesn&apos;t have any tasks yet.{" "}
-              <Link href={`/library/playbooks/${template.id}`} className="text-primary hover:underline">
-                Add tasks in Library
-              </Link>.
-            </p>
+            <p className="text-sm text-muted-foreground">This template doesn&apos;t have any tasks yet.</p>
           ) : (
             <div className="space-y-4">
               {groups.map((g) => (
@@ -94,6 +87,6 @@ export default async function PlaybookTemplatePreviewPage({ params }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </LibraryPreviewChrome>
   );
 }

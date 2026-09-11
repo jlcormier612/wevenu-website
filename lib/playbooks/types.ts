@@ -33,6 +33,8 @@ export type PlaybookTemplate = {
   isDefault: boolean;
   isArchived: boolean;
   description: string | null;
+  /** Hello to Cheers starter master key when provisioned from a protected master. */
+  sourceMasterKey: string | null;
   createdAt: string;
   updatedAt: string;
 };

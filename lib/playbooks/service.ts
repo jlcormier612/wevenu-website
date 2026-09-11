@@ -537,8 +537,11 @@ async function createFromReference(
   name: string, kind: PlaybookKind, eventType: string | null, description: string,
   milestones: { name: string; kind: import("@/lib/playbooks/types").MilestoneKind | null }[],
   tasks: (Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt" | "milestoneId" | "needsReview"> & { milestoneIndex: number; needsReview?: boolean })[],
+  sourceMasterKey?: string | null,
 ): Promise<string> {
-  const templateId = await repo.insertTemplate(c, venueId, name, kind, eventType, description);
+  const templateId = await repo.insertTemplate(c, venueId, name, kind, eventType, description, {
+    sourceMasterKey: sourceMasterKey ?? null,
+  });
   const milestoneIds: string[] = [];
   for (let i = 0; i < milestones.length; i++) {
     const m = milestones[i];
@@ -552,10 +555,27 @@ async function createFromReference(
 
 export async function createStandardClientPlanningTemplate(): Promise<CreatePlaybookResult> {
   const result = await withVenue(async (c, venueId) => {
+    const { data: existing } = await c
+      .from("playbook_templates")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("source_master_key", "PB-CLIENT-01")
+      .maybeSingle<{ id: string }>();
+    if (existing) {
+      // Add-again: venue copy without unique master key.
+      const templateId = await createFromReference(
+        c, venueId, "Standard Wedding — Client Planning (Copy)", "client", "wedding",
+        "Guides your client through their own to-dos, from booking through post-event.",
+        STANDARD_CLIENT_PLANNING_MILESTONES, STANDARD_CLIENT_PLANNING_TASKS,
+        null,
+      );
+      return { ok: true, templateId } as CreatePlaybookResult;
+    }
     const templateId = await createFromReference(
-      c, venueId, "Standard Wedding", "client", "wedding",
+      c, venueId, "Standard Wedding — Client Planning", "client", "wedding",
       "Guides your client through their own to-dos, from booking through post-event.",
       STANDARD_CLIENT_PLANNING_MILESTONES, STANDARD_CLIENT_PLANNING_TASKS,
+      "PB-CLIENT-01",
     );
     return { ok: true, templateId } as CreatePlaybookResult;
   });
@@ -564,10 +584,26 @@ export async function createStandardClientPlanningTemplate(): Promise<CreatePlay
 
 export async function createStandardVenueWorkflowTemplate(): Promise<CreatePlaybookResult> {
   const result = await withVenue(async (c, venueId) => {
+    const { data: existing } = await c
+      .from("playbook_templates")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("source_master_key", "PB-VENUE-01")
+      .maybeSingle<{ id: string }>();
+    if (existing) {
+      const templateId = await createFromReference(
+        c, venueId, "Standard Wedding — Venue Planning (Copy)", "venue", "wedding",
+        "Runs your team's internal checklist, from booking through post-event.",
+        STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
+        null,
+      );
+      return { ok: true, templateId } as CreatePlaybookResult;
+    }
     const templateId = await createFromReference(
-      c, venueId, "Standard Wedding", "venue", "wedding",
+      c, venueId, "Standard Wedding — Venue Planning", "venue", "wedding",
       "Runs your team's internal checklist, from booking through post-event.",
       STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
+      "PB-VENUE-01",
     );
     return { ok: true, templateId } as CreatePlaybookResult;
   });

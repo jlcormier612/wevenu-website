@@ -133,21 +133,24 @@ export function LibraryAssetCard({
 
   return (
     <Card className={cn("col-span-full", isArchived && "opacity-60", className)}>
-      <CardContent className="flex items-center justify-between gap-4 py-4">
-        {href ? (
-          <Link href={href} className="min-w-0 flex-1">
-            {titleBlock}
-            {children}
-          </Link>
-        ) : (
-          <div className="min-w-0 flex-1">
-            {titleBlock}
-            {children}
-          </div>
-        )}
-        <div className="flex shrink-0 items-center gap-2">
+      <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex min-w-0 flex-1 items-start justify-between gap-2 sm:items-center">
+          {href ? (
+            <Link href={href} className="min-w-0 flex-1">
+              {titleBlock}
+              {children}
+            </Link>
+          ) : (
+            <div className="min-w-0 flex-1">
+              {titleBlock}
+              {children}
+            </div>
+          )}
+          <div className="sm:hidden">{headerTrailing}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
           {actionsRow}
-          {headerTrailing}
+          <div className="hidden sm:block">{headerTrailing}</div>
         </div>
       </CardContent>
     </Card>

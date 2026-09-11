@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { FloorPlanLayoutPreview } from "@/components/floor-plan/floor-plan-layout-preview";
+import { LibraryPreviewChrome } from "@/components/library/library-preview-chrome";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { getObjects, getTemplate } from "@/lib/floor-plan-templates/service";
 import { getFloorPlanStarterMaster } from "@/lib/floor-plan-templates/starters";
 
@@ -24,19 +23,13 @@ export default async function FloorPlanTemplatePreviewPage({ params }: Props) {
   const master = template.sourceMasterKey ? getFloorPlanStarterMaster(template.sourceMasterKey) : undefined;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 max-w-2xl mx-auto">
-        <p className="text-sm text-muted-foreground">Preview as your clients will see it</p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" render={<Link href={`/library/floor-plan-templates/${template.id}`} />}>
-            Back to edit
-          </Button>
-          <Button size="sm" variant="outline" render={<Link href="/library/floor-plan-templates" />}>
-            Library
-          </Button>
-        </div>
-      </div>
-      <div className="max-w-2xl mx-auto px-4 pb-10 space-y-4">
+    <LibraryPreviewChrome
+      caption="Floor plan template preview — illustrative layout only. Not a capacity claim. Clients see a working floor plan after you apply this to an event."
+      editHref={`/library/floor-plan-templates/${template.id}`}
+      libraryHref="/library/floor-plan-templates"
+      contentMaxWidthClassName="max-w-2xl"
+    >
+      <div className="space-y-4 pb-10">
         <div className="space-y-1">
           <h1 className="font-heading text-xl font-medium text-heading">{template.name}</h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -61,6 +54,6 @@ export default async function FloorPlanTemplatePreviewPage({ params }: Props) {
           />
         </div>
       </div>
-    </div>
+    </LibraryPreviewChrome>
   );
 }

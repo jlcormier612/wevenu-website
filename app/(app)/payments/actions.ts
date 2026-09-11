@@ -14,8 +14,14 @@ import type {
 export async function createScheduleAction(
   input: ScheduleInput,
   presetId?: string,
+  builderLines?: {
+    label: string;
+    amount: string;
+    dueDate: string;
+    obligationKind: "deposit" | "installment" | "final" | "other";
+  }[],
 ): Promise<CreateScheduleResult> {
-  const result = await createPaymentSchedule(input, presetId);
+  const result = await createPaymentSchedule(input, presetId, null, builderLines);
   if (result.ok) revalidatePath("/payments");
   return result;
 }

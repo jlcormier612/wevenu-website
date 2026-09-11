@@ -37,6 +37,7 @@ import type {
   MarkPaidInput,
   PaymentActionResult,
   PaymentLineItem,
+  PaymentObligationKind,
   PaymentScheduleSummary,
   PaymentScheduleWithDetails,
   ScheduleInput,
@@ -138,11 +139,20 @@ export async function getUpcomingPayments(daysAhead = 30): Promise<PaymentLineIt
 
 // ---- create -----------------------------------------------------------------
 
+export type CreateScheduleBuilderLine = {
+  label: string;
+  amount: string;
+  dueDate: string;
+  obligationKind: PaymentObligationKind;
+};
+
 export async function createPaymentSchedule(
   input: ScheduleInput,
   presetId?: string,
   /** @deprecated Prefer DB event anchors from the invoice; kept for call-site compat. */
   _eventDate?: string | null,
+  /** Explicit builder lines — preferred path for Payment Plan Builder commits. */
+  builderLines?: CreateScheduleBuilderLine[],
 ): Promise<CreateScheduleResult> {
   const errors = validateScheduleInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -166,19 +176,47 @@ export async function createPaymentSchedule(
     const totalAmount = invoice.total;
     const eventDate = invoice.eventDate;
     const bookingDate = invoice.bookedAt;
-    const needsBookingDate = Boolean(
-      presetId
-      && presetId !== "custom"
-      && SCHEDULE_PRESETS.find((p) => p.id === presetId)?.items.some(
-        (i) => i.timing.type === "at_booking" || i.timing.type === "after_booking",
-      ),
-    );
-    // Never invent booked_at from schedule-create day — that is not a booking occurrence.
-    if (needsBookingDate && !bookingDate) {
-      return {
-        ok: false,
-        message: "This payment plan includes a payment due at booking. Add the booking date on the Event to continue.",
-      } as CreateScheduleResult;
+
+    const hasBuilderLines = Array.isArray(builderLines) && builderLines.length > 0;
+    if (hasBuilderLines) {
+      const parsed = builderLines.map((l) => ({
+        ...l,
+        amountNum: parseFloat(String(l.amount).replace(/[$,]/g, "")),
+      }));
+      if (parsed.some((l) => !(l.amountNum > 0) || !l.label.trim())) {
+        return {
+          ok: false,
+          message: "Each payment needs a name and an amount greater than zero.",
+        } as CreateScheduleResult;
+      }
+      const scheduled = Math.round(parsed.reduce((s, l) => s + l.amountNum, 0) * 100) / 100;
+      if (Math.abs(scheduled - totalAmount) > 0.005) {
+        return {
+          ok: false,
+          message: `Payment schedule total (${scheduled}) must equal the invoice total (${totalAmount}).`,
+        } as CreateScheduleResult;
+      }
+      for (const line of parsed) {
+        const kind = line.obligationKind;
+        if (!kind || !["deposit", "installment", "final", "other"].includes(kind)) {
+          return { ok: false, message: "Each payment needs a valid payment type." } as CreateScheduleResult;
+        }
+      }
+    } else {
+      const needsBookingDate = Boolean(
+        presetId
+        && presetId !== "custom"
+        && SCHEDULE_PRESETS.find((p) => p.id === presetId)?.items.some(
+          (i) => i.timing.type === "at_booking" || i.timing.type === "after_booking",
+        ),
+      );
+      // Never invent booked_at from schedule-create day — that is not a booking occurrence.
+      if (needsBookingDate && !bookingDate) {
+        return {
+          ok: false,
+          message: "This payment plan includes a payment due at booking. Add the booking date on the Event to continue.",
+        } as CreateScheduleResult;
+      }
     }
 
     const scheduleId = await repo.insertSchedule(supabase, venueId, {
@@ -186,8 +224,25 @@ export async function createPaymentSchedule(
       totalAmount, notes: input.notes, invoiceId: input.invoiceId,
     });
 
-    // Apply preset line items with authoritative obligation_kind (never from label later).
-    if (presetId && presetId !== "custom") {
+    if (hasBuilderLines && builderLines) {
+      for (let i = 0; i < builderLines.length; i++) {
+        const line = builderLines[i];
+        const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
+          label: line.label.trim(),
+          amount: line.amount,
+          dueDate: line.dueDate,
+          obligationKind: line.obligationKind,
+        }, i);
+        await bindFinalPaymentTaskToLine(
+          supabase, venueId, invoice.eventId, item.id, line.obligationKind,
+        );
+        if (line.dueDate) {
+          const cadence = await getReminderCadence();
+          await createRemindersForPaymentLineItem(supabase, venueId, item.id, line.dueDate, cadence);
+        }
+      }
+    } else if (presetId && presetId !== "custom") {
+      // Apply preset line items with authoritative obligation_kind (never from label later).
       const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
       if (preset) {
         const amounts = allocatePresetAmounts(totalAmount, preset.items);

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { LibraryPreviewChrome } from "@/components/library/library-preview-chrome";
 import { LIBRARY_LABELS } from "@/components/library/labels";
+import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/packages/constants";
 import { getPackageStarterMaster } from "@/lib/packages/starters";
 import { getPackage } from "@/lib/packages/service";
@@ -24,19 +23,13 @@ export default async function PackagePreviewPage({ params }: Props) {
   const master = pkg.sourceMasterKey ? getPackageStarterMaster(pkg.sourceMasterKey) : undefined;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 max-w-xl mx-auto">
-        <p className="text-sm text-muted-foreground">Preview as your clients will see it</p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" render={<Link href={`/packages/${pkg.id}`} />}>
-            Back to edit
-          </Button>
-          <Button size="sm" variant="outline" render={<Link href="/packages" />}>
-            Library
-          </Button>
-        </div>
-      </div>
-      <div className="max-w-xl mx-auto px-4 pb-10 space-y-4">
+    <LibraryPreviewChrome
+      caption="Client-facing package presentation preview."
+      editHref={`/packages/${pkg.id}`}
+      libraryHref="/packages"
+      contentMaxWidthClassName="max-w-xl"
+    >
+      <div className="space-y-4 pb-10">
         <div className="space-y-1">
           <h1 className="font-heading text-xl font-medium text-heading">{pkg.name}</h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -76,6 +69,6 @@ export default async function PackagePreviewPage({ params }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </LibraryPreviewChrome>
   );
 }

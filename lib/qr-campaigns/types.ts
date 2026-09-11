@@ -8,6 +8,7 @@ export type QrCampaign = {
   destinationType: QrDestinationType;
   destinationUrl: string | null;
   status: "active" | "archived";
+  sourceMasterKey: string | null;
   createdAt: string;
 };
 
