@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import type { WorkspaceDocument, WorkspaceVersion } from "@/lib/document-workspace/types";
@@ -9,38 +11,37 @@ function fmtDate(iso: string) {
 }
 
 /**
- * Step 5 — every version history behaves identically. No producer in this
- * app carries a real multi-version chain today (Step 1 finding): this
- * builds the honest version list derivable from what each producer
- * actually stores — one "Version 1" entry, plus a second "Edited" entry
- * only when updatedAt genuinely differs from createdAt. Nothing further is
- * invented; a true version chain is Document Domain producer-integration
- * work, out of this phase's scope.
+ * Version History — prefer real producer lineage (contracts via amends_contract_id).
+ * Do not invent Version 2 from createdAt/updatedAt timestamps.
  */
 function buildVersions(doc: WorkspaceDocument): WorkspaceVersion[] {
-  const versions: WorkspaceVersion[] = [
+  if (doc.versionFamily && doc.versionFamily.length > 0) {
+    return [...doc.versionFamily].sort((a, b) => b.versionNumber - a.versionNumber);
+  }
+  if (doc.isCompanionUpload) {
+    return [
+      {
+        versionNumber: 1,
+        createdBy: doc.uploadedByType === "vendor" ? "Vendor" : "Venue",
+        createdAt: doc.createdAt,
+        reason: "Uploaded file (not the authoritative signed contract)",
+        current: true,
+        locked: false,
+        representation: "File",
+      },
+    ];
+  }
+  return [
     {
-      versionNumber: 1,
+      versionNumber: doc.currentVersion || 1,
       createdBy: doc.uploadedByType === "vendor" ? "Vendor" : "Venue",
       createdAt: doc.createdAt,
       reason: doc.docType === "document" ? "Uploaded" : "Created",
-      current: doc.updatedAt === doc.createdAt,
+      current: true,
       locked: doc.status === "complete",
       representation: doc.fileUrl ? "File" : "Record",
     },
   ];
-  if (doc.updatedAt !== doc.createdAt) {
-    versions.push({
-      versionNumber: 2,
-      createdBy: doc.uploadedByType === "vendor" ? "Vendor" : "Venue",
-      createdAt: doc.updatedAt,
-      reason: "Edited",
-      current: true,
-      locked: doc.status === "complete",
-      representation: doc.fileUrl ? "File" : "Record",
-    });
-  }
-  return versions.sort((a, b) => b.versionNumber - a.versionNumber);
 }
 
 export function VersionHistorySheet({
@@ -61,8 +62,13 @@ export function VersionHistorySheet({
           <SheetTitle>Version History{doc ? ` — ${doc.name}` : ""}</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-4 space-y-2 overflow-y-auto">
+          {doc?.isCompanionUpload && (
+            <p className="text-xs text-muted-foreground mb-2">
+              This is an uploaded file. The authoritative signed contract lives on the Contracts record / Final PDF when present.
+            </p>
+          )}
           {versions.map((v) => (
-            <div key={v.versionNumber} className="rounded-sm border border-border p-3 space-y-1">
+            <div key={`${v.versionNumber}-${v.createdAt}`} className="rounded-sm border border-border p-3 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-heading">Version {v.versionNumber}</span>
                 <div className="flex gap-1">
@@ -72,6 +78,11 @@ export function VersionHistorySheet({
               </div>
               <p className="text-xs text-muted-foreground">{v.createdBy} · {fmtDate(v.createdAt)}</p>
               <p className="text-xs text-muted-foreground">{v.reason} · {v.representation}</p>
+              {v.href && (
+                <Link href={v.href} className="text-xs underline text-muted-foreground hover:text-foreground">
+                  Open this version
+                </Link>
+              )}
             </div>
           ))}
         </div>

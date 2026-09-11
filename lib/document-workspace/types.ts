@@ -65,6 +65,15 @@ export type WorkspaceDocument = {
   signedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Contract BO lineage (amends_contract_id) — presentation only. */
+  amendsContractId?: string | null;
+  /** Real version family for contracts; empty/undefined for other producers. */
+  versionFamily?: WorkspaceVersion[];
+  /**
+   * Generic uploaded file categorized as "contract" — not the Contracts BO
+   * or finalized PDF. Surfaced so UI does not treat it as a second signed truth.
+   */
+  isCompanionUpload?: boolean;
 };
 
 export type WorkspaceScope = {
@@ -83,7 +92,7 @@ export type WorkspaceFilters = {
 
 export type WorkspaceSort = "recent" | "name" | "relationship" | "category" | "created" | "modified" | "status";
 
-/** Version History — Step 5. Producers today carry no real multi-version chain (confirmed in Step 1); every document normalizes to at least one entry, honestly labeled, not fabricated. */
+/** Version History — real producer lineage when available; otherwise a single honest current entry. */
 export type WorkspaceVersion = {
   versionNumber: number;
   createdBy: string;
@@ -92,6 +101,7 @@ export type WorkspaceVersion = {
   current: boolean;
   locked: boolean;
   representation: string;
+  href?: string | null;
 };
 
 /** Document Activity — Step 2, Section 5. */

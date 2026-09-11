@@ -125,12 +125,19 @@ export function DocumentPreviewSheet({
             {doc.docType === "contract" && (
               <>
                 <Row label="Status" value={doc.rawStatus} />
+                <Row label="Version" value={`Version ${doc.currentVersion}`} />
+                {doc.amendsContractId && (
+                  <Row label="Based on" value={`Prior version (${doc.amendsContractId.slice(0, 8)}…)`} />
+                )}
                 {doc.signedAt && <Row label="Signed" value={fmtDate(doc.signedAt)} />}
                 {doc.signToken && (
                   <a href={`/sign/${doc.signToken}`} target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="sm" variant="outline" className="mt-1">Open signing link</Button>
                   </a>
                 )}
+                <a href={`/contracts/${doc.id}`} className="block">
+                  <Button size="sm" variant="ghost" className="mt-1">Open contract</Button>
+                </a>
               </>
             )}
             {doc.docType === "invoice" && (
@@ -141,7 +148,16 @@ export function DocumentPreviewSheet({
             )}
             {doc.docType === "floor_plan" && <Row label="Background reference" value={doc.fileUrl ? "Attached" : "None"} />}
             {doc.docType === "questionnaire" && <Row label="Status" value={doc.rawStatus} />}
-            {doc.docType === "document" && <Row label="Sharing" value={doc.isCoupleVisible ? "Shared with couple" : doc.isVendorVisible ? "Shared with vendors" : "Private"} />}
+            {doc.docType === "document" && (
+              <>
+                <Row label="Sharing" value={doc.isCoupleVisible ? "Shared with couple" : doc.isVendorVisible ? "Shared with vendors" : "Private"} />
+                {doc.isCompanionUpload && (
+                  <p className="text-xs text-muted-foreground">
+                    Uploaded file — not the authoritative signed contract or Final PDF.
+                  </p>
+                )}
+              </>
+            )}
           </section>
 
           {/* Activity */}

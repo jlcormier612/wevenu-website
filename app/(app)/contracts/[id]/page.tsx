@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ContractDetail } from "@/components/contracts/contract-detail";
-import { getContractDetail } from "@/lib/contracts/service";
+import { getContractDetail, getContractVersionFamily } from "@/lib/contracts/service";
 import { isContractFinalized } from "@/lib/contracts/document-integration";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -17,9 +17,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ContractDetailPage({ params }: Props) {
   const { id } = await params;
-  const [contract, venue] = await Promise.all([getContractDetail(id), getCurrentVenue()]);
+  const [contract, venue, versionFamily] = await Promise.all([
+    getContractDetail(id),
+    getCurrentVenue(),
+    getContractVersionFamily(id),
+  ]);
   if (!contract) notFound();
   const supabase = await createClient();
   const finalized = await isContractFinalized(supabase, id);
-  return <ContractDetail contract={contract} finalized={finalized} venueName={venue?.name ?? "Your venue"} />;
+  return (
+    <ContractDetail
+      contract={contract}
+      finalized={finalized}
+      venueName={venue?.name ?? "Your venue"}
+      versionFamily={versionFamily}
+    />
+  );
 }

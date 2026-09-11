@@ -6,7 +6,7 @@ import { createClient } from "@/integrations/supabase/server";
 import {
   cancelContract,
   createAmendmentFromContract,
-  cloneAndResendContract,
+  createNewVersionFromContract,
   createContract,
   createTemplate,
   deleteContract_,
@@ -178,14 +178,20 @@ export async function reopenContractForEditingAction(id: string): Promise<Contra
   return result;
 }
 
-export async function cloneAndResendContractAction(id: string): Promise<CreateContractResult> {
-  const result = await cloneAndResendContract(id);
+export async function createNewVersionFromContractAction(id: string): Promise<CreateContractResult> {
+  const result = await createNewVersionFromContract(id);
   if (result.ok) {
     revalidatePath("/contracts");
     revalidatePath(`/contracts/${id}`);
     revalidatePath(`/contracts/${result.contractId}`);
+    revalidatePath("/documents");
   }
   return result;
+}
+
+/** @deprecated Prefer createNewVersionFromContractAction — same engine. */
+export async function cloneAndResendContractAction(id: string): Promise<CreateContractResult> {
+  return createNewVersionFromContractAction(id);
 }
 
 export async function finalizeContractAction(id: string): Promise<ContractActionResult> {
@@ -198,6 +204,7 @@ export async function getContractPdfUrlAction(id: string) {
   return getContractPdfUrl(id);
 }
 
+/** Internal Document Domain path retained; not exposed as a primary UI action. */
 export async function createAmendmentFromContractAction(id: string): Promise<CreateContractResult> {
   return createAmendmentFromContract(id);
 }

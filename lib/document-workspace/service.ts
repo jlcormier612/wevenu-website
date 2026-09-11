@@ -1,12 +1,17 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { normalizeWorkspaceDocument, workspaceDocKey } from "@/lib/document-workspace/normalize";
+import {
+  applyContractVersionLineage,
+  normalizeWorkspaceDocument,
+  workspaceDocKey,
+} from "@/lib/document-workspace/normalize";
 import type {
   WorkspaceActivityEntry,
   WorkspaceDocument,
   WorkspaceScope,
 } from "@/lib/document-workspace/types";
+import * as contractRepo from "@/lib/contracts/repository";
 
 /** Global Documents (no scope) or a Relationship/Vendor/Event-filtered view — same one RPC, same one shape, per the brief's own "filtered view, not another document system." */
 export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Promise<WorkspaceDocument[]> {
@@ -25,7 +30,25 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
     return [];
   }
   const rows = (data?.documents ?? []) as Parameters<typeof normalizeWorkspaceDocument>[0][];
-  return rows.map(normalizeWorkspaceDocument);
+  const docs = rows.map(normalizeWorkspaceDocument);
+
+  const contractIds = docs.filter((d) => d.docType === "contract").map((d) => d.id);
+  if (contractIds.length === 0) return docs;
+
+  try {
+    const nodes = await contractRepo.listContractLineageNodes(supabase, venue.id, contractIds);
+    const { isContractFinalized } = await import("@/lib/contracts/document-integration");
+    const withFinal = await Promise.all(
+      nodes.map(async (n) => ({
+        ...n,
+        finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
+      })),
+    );
+    return applyContractVersionLineage(docs, withFinal);
+  } catch (err) {
+    console.error("[getVenueWorkspaceDocuments] lineage enrich failed", err);
+    return docs;
+  }
 }
 
 // ── Pinned Documents (Step 2, Section 2) ────────────────────────────────────

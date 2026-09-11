@@ -203,6 +203,40 @@ export async function getContractDetail(id: string): Promise<ContractWithDetails
   return repo.getContract(await createClient(), venue.id, id);
 }
 
+/** Version family for a contract (derived from amends_contract_id). */
+export async function getContractVersionFamily(contractId: string): Promise<
+  import("@/lib/contracts/version-lineage").ContractVersionEntry[]
+> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const nodes = await repo.listContractLineageNodes(supabase, venue.id, [contractId]);
+  const { isContractFinalized } = await import("@/lib/contracts/document-integration");
+  const ids = nodes.map((n) => n.id);
+  const { data: venueSigners } = ids.length
+    ? await supabase
+        .from("contract_signers")
+        .select("contract_id, signed_at")
+        .eq("venue_id", venue.id)
+        .eq("signer_type", "venue")
+        .in("contract_id", ids)
+    : { data: [] as { contract_id: string; signed_at: string | null }[] };
+  const venueSignedByContract = new Map<string, boolean>();
+  for (const row of (venueSigners ?? []) as { contract_id: string; signed_at: string | null }[]) {
+    venueSignedByContract.set(row.contract_id, Boolean(row.signed_at));
+  }
+  const withFinal = await Promise.all(
+    nodes.map(async (n) => ({
+      ...n,
+      venueSigned: venueSignedByContract.get(n.id) ?? false,
+      finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
+    })),
+  );
+  const { buildContractVersionFamily } = await import("@/lib/contracts/version-lineage");
+  return buildContractVersionFamily(contractId, withFinal);
+}
+
 /** Get a contract by its public sign_token (no auth required). */
 export async function getContractByToken(token: string): Promise<(Contract & {
   tokenSigner?: {
@@ -850,10 +884,18 @@ export async function reopenContractForEditing(id: string): Promise<ContractActi
 }
 
 /**
- * Clone & Resend — after venue signature locks content (released / partial / fully signed).
+ * Create New Version — product entry point for locked contracts.
+ * Reuses cloneAndResendContract (new contract id, fresh signers, amends_contract_id).
+ * Does not mutate the source. Does not copy signing evidence.
+ */
+export async function createNewVersionFromContract(sourceContractId: string): Promise<CreateContractResult> {
+  return cloneAndResendContract(sourceContractId);
+}
+
+/**
+ * Clone engine used by Create New Version.
  * Creates a NEW draft with copied content/client/event; fresh signers/tokens;
- * original remains completely unchanged. Uses amends_contract_id for a simple
- * "Based on" relationship (not a general versioning system).
+ * original remains completely unchanged. Uses amends_contract_id for lineage.
  */
 export async function cloneAndResendContract(sourceContractId: string): Promise<CreateContractResult> {
   const result = await withVenue(async (supabase, venueId) => {
@@ -862,7 +904,7 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
     if (source.executionOrigin === "external") {
       return {
         ok: false,
-        message: "Externally executed agreements cannot be cloned for HTC e-signature. Attach a revised signed file as a document instead.",
+        message: "Externally executed agreements cannot start a new Hello to Cheers signing version. Attach a revised signed file as a document instead.",
       } as CreateContractResult;
     }
 
@@ -875,12 +917,12 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
     if (!venueSigned && !anyClientSigned && source.status !== "signed") {
       return {
         ok: false,
-        message: "Clone & Resend is available after the venue has signed (content is then immutable).",
+        message: "Create New Version is available after the venue has signed (content is then immutable).",
       } as CreateContractResult;
     }
 
     if (!source.clientId) {
-      return { ok: false, message: "This contract has no client — cannot clone." } as CreateContractResult;
+      return { ok: false, message: "This contract has no client — cannot create a new version." } as CreateContractResult;
     }
 
     const priorContactIds = (source.signers ?? [])
@@ -904,8 +946,8 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
     const actor = await currentActor(venueId);
     await repo.insertContractActivity(
       supabase, venueId, newContractId, "contract_created",
-      `Cloned from "${source.title}"`,
-      "New draft for a revised signing cycle. The original signed contract is unchanged.",
+      `New version of "${source.title}"`,
+      "New draft for a revised signing cycle. The original contract remains unchanged.",
       actor.userId, actor.label,
     );
 

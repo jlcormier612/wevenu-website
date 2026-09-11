@@ -21,8 +21,7 @@ import { toast } from "sonner";
 
 import {
   cancelContractAction,
-  cloneAndResendContractAction,
-  createAmendmentFromContractAction,
+  createNewVersionFromContractAction,
   deleteContractAction,
   finalizeContractAction,
   getContractPdfUrlAction,
@@ -53,13 +52,28 @@ import {
   deriveContractSigningUiState,
 } from "@/lib/contracts/signers";
 import type { ContractStatus, ContractWithDetails } from "@/lib/contracts/types";
+import {
+  formatVersionLabel,
+  statusLabelForVersion,
+  type ContractVersionEntry,
+} from "@/lib/contracts/version-lineage";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 
 const CONTRACT_WAITING_ON: Record<ContractStatus, WaitingOn> = {
   draft: "venue", sent: "client", signed: "completed", cancelled: "none", expired: "none",
 };
 
-export function ContractDetail({ contract, finalized, venueName }: { contract: ContractWithDetails; finalized: boolean; venueName: string }) {
+export function ContractDetail({
+  contract,
+  finalized,
+  venueName,
+  versionFamily = [],
+}: {
+  contract: ContractWithDetails;
+  finalized: boolean;
+  venueName: string;
+  versionFamily?: ContractVersionEntry[];
+}) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
   const [editTitle, setEditTitle] = React.useState(contract.title);
@@ -70,10 +84,9 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
   const [reopenPending, startReopen] = React.useTransition();
   const [finalizePending, startFinalize] = React.useTransition();
   const [pdfPending, startPdf] = React.useTransition();
-  const [amendPending, startAmend] = React.useTransition();
   const [venueSignPending, startVenueSign] = React.useTransition();
   const [withdrawPending, startWithdraw] = React.useTransition();
-  const [clonePending, startClone] = React.useTransition();
+  const [newVersionPending, startNewVersion] = React.useTransition();
   const [venueSignerName, setVenueSignerName] = React.useState("");
   const [venueConsent, setVenueConsent] = React.useState(false);
   const [showVenueSign, setShowVenueSign] = React.useState(false);
@@ -112,8 +125,14 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
    * Kept false so the action cannot circumvent DB immutability by clearing venue signed_at.
    */
   const canReopen = false;
-  /** Clone & Resend once venue signature locks content (released / partial / fully signed). */
-  const canCloneAndResend = venueSigned || clientSigned || contract.status === "signed";
+  /** Create New Version once venue signature locks content (released / partial / fully signed). */
+  const canCreateNewVersion = venueSigned || clientSigned || contract.status === "signed";
+
+  const currentVersion = versionFamily.find((v) => v.current) ?? null;
+  const basedOn = currentVersion?.amendsContractId
+    ? versionFamily.find((v) => v.id === currentVersion.amendsContractId) ?? null
+    : null;
+  const versionNumber = currentVersion?.versionNumber ?? 1;
 
   function handleSaveEdit() {
     startSave(async () => {
@@ -170,19 +189,19 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
     });
   }
 
-  function handleCloneAndResend() {
+  function handleCreateNewVersion() {
     if (!confirm(
-      "Clone & Resend creates a new draft based on this contract.\n\n"
-      + "The original contract stays unchanged as the historical record (including any signatures).\n"
+      "Create New Version starts a new draft based on this contract.\n\n"
+      + "The original stays locked as the historical record (including any signatures and final PDF).\n"
       + "Signatures are not copied — the new draft goes through the normal signing cycle.",
     )) return;
-    startClone(async () => {
-      const result = await cloneAndResendContractAction(contract.id);
+    startNewVersion(async () => {
+      const result = await createNewVersionFromContractAction(contract.id);
       if (result.ok) {
-        toast.success("New draft created. The original contract is unchanged.");
+        toast.success("New version created as a draft. The original contract is unchanged.");
         router.push(`/contracts/${result.contractId}`);
       } else {
-        toast.error(result.message ?? "Could not clone contract.");
+        toast.error(result.message ?? "Could not create a new version.");
       }
     });
   }
@@ -208,14 +227,6 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
       const result = await getContractPdfUrlAction(contract.id);
       if (result.ok) window.open(result.url, "_blank", "noopener,noreferrer");
       else toast.error(result.message ?? "Could not open the final contract.");
-    });
-  }
-
-  function handleCreateAmendment() {
-    startAmend(async () => {
-      const result = await createAmendmentFromContractAction(contract.id);
-      if (result.ok) { toast.success("Amendment created as a new draft."); router.push(`/contracts/${result.contractId}`); }
-      else toast.error(result.message ?? "Could not create amendment.");
     });
   }
 
@@ -263,6 +274,7 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         title={contract.title}
         status={
           <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge variant="muted">{formatVersionLabel(versionNumber)}</Badge>
             <ContractStatusBadge
               status={contract.status}
               executionOrigin={contract.executionOrigin}
@@ -271,6 +283,9 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
               requiredClientSigned={requiredClientSigned}
               expiresAt={contract.expiresAt}
             />
+            {(venueSigned || clientSigned || contract.status === "signed" || finalized) && (
+              <Badge variant="muted"><Lock className="mr-1 h-3 w-3" />Locked</Badge>
+            )}
             {finalized && (
               <Badge variant="success"><Lock className="mr-1 h-3 w-3" />Final PDF ready</Badge>
             )}
@@ -347,14 +362,9 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
               {reopenPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Reopening…</> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Reopen for Editing</>}
             </Button>
           )}
-          {canCloneAndResend && (
-            <Button variant="outline" size="sm" onClick={handleCloneAndResend} disabled={clonePending}>
-              {clonePending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Cloning…</> : <><FilePlus2 className="mr-1 h-3.5 w-3.5" />Clone &amp; Resend</>}
-            </Button>
-          )}
-          {finalized && (
-            <Button variant="outline" size="sm" onClick={handleCreateAmendment} disabled={amendPending}>
-              {amendPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Creating…</> : <><FilePlus2 className="mr-1 h-3.5 w-3.5" />Create Amendment</>}
+          {canCreateNewVersion && (
+            <Button variant="outline" size="sm" onClick={handleCreateNewVersion} disabled={newVersionPending}>
+              {newVersionPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Creating…</> : <><FilePlus2 className="mr-1 h-3.5 w-3.5" />Create New Version</>}
             </Button>
           )}
           {["draft", "sent"].includes(contract.status) && (
@@ -447,15 +457,49 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         </Card>
       )}
 
-      {/* Lineage — amendment or Clone & Resend */}
-      {contract.amendsContractId && (
-        <p className="text-xs text-muted-foreground">
-          Based on{" "}
-          <a href={`/contracts/${contract.amendsContractId}`} className="underline hover:text-foreground">
-            an earlier contract
-          </a>
-          . The original remains unchanged.
-        </p>
+      {/* Version lineage — derived from amends_contract_id */}
+      {(versionFamily.length > 0 || basedOn) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Version history</CardTitle>
+            <CardDescription>
+              {formatVersionLabel(versionNumber)}
+              {currentVersion ? ` · ${statusLabelForVersion({ ...currentVersion, finalized: finalized || currentVersion.finalized })}` : null}
+              {basedOn ? (
+                <>
+                  {" · Based on "}
+                  <a href={`/contracts/${basedOn.id}`} className="underline hover:text-foreground">
+                    {formatVersionLabel(basedOn.versionNumber)} · {statusLabelForVersion(basedOn)}
+                  </a>
+                </>
+              ) : null}
+            </CardDescription>
+          </CardHeader>
+          {versionFamily.length > 1 && (
+            <CardContent className="space-y-2">
+              {versionFamily.map((v) => (
+                <div key={v.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    {v.current ? (
+                      <span className="font-medium text-heading">
+                        {formatVersionLabel(v.versionNumber)} · {statusLabelForVersion(v.current && finalized ? { ...v, finalized: true } : v)}
+                        {" · Current"}
+                      </span>
+                    ) : (
+                      <a href={`/contracts/${v.id}`} className="text-muted-foreground underline hover:text-foreground">
+                        {formatVersionLabel(v.versionNumber)} · {statusLabelForVersion(v)}
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {v.locked && <Badge variant="muted"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}
+                    {v.current && <Badge variant="success">Current</Badge>}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          )}
+        </Card>
       )}
 
       {/* Signing link banner (sent state) */}

@@ -1,4 +1,9 @@
-import type { WorkspaceCategory, WorkspaceDocument, WorkspaceStatus } from "@/lib/document-workspace/types";
+import type { WorkspaceCategory, WorkspaceDocument, WorkspaceStatus, WorkspaceVersion } from "@/lib/document-workspace/types";
+import {
+  buildContractVersionFamily,
+  deriveVersionNumber,
+  statusLabelForVersion,
+} from "@/lib/contracts/version-lineage";
 
 /** Raw shape returned by get_venue_documents() — one row per producer leg, already jsonb_build_object'd in SQL. */
 type RawRow = {
@@ -76,10 +81,11 @@ function mapStatus(row: RawRow): WorkspaceStatus {
 }
 
 export function normalizeWorkspaceDocument(row: RawRow): WorkspaceDocument {
+  const isCompanionUpload = row.docType === "document" && row.category === "contract";
   return {
     docType: row.docType,
     id: row.id,
-    name: row.name,
+    name: isCompanionUpload ? `${row.name} (uploaded file)` : row.name,
     category: mapCategory(row),
     rawStatus: row.status,
     status: mapStatus(row),
@@ -103,7 +109,53 @@ export function normalizeWorkspaceDocument(row: RawRow): WorkspaceDocument {
     signedAt: row.signedAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    isCompanionUpload,
   };
+}
+
+/**
+ * Apply real amends_contract_id version ordinals to contract BO rows.
+ * Companion uploads are left alone (not a second signed-contract version chain).
+ */
+export function applyContractVersionLineage(
+  docs: WorkspaceDocument[],
+  lineageNodes: {
+    id: string;
+    title: string;
+    status: string;
+    amendsContractId: string | null;
+    createdAt: string;
+    signedAt: string | null;
+    finalized?: boolean;
+  }[],
+): WorkspaceDocument[] {
+  if (lineageNodes.length === 0) return docs;
+  const byId = new Map(lineageNodes.map((n) => [n.id, n]));
+
+  return docs.map((doc) => {
+    if (doc.docType !== "contract") return doc;
+    if (!byId.has(doc.id)) return doc;
+    const family = buildContractVersionFamily(doc.id, lineageNodes);
+    const versionNumber = deriveVersionNumber(doc.id, byId);
+    const current = family.find((v) => v.current);
+    const versions: WorkspaceVersion[] = family.map((v) => ({
+      versionNumber: v.versionNumber,
+      createdBy: "Venue",
+      createdAt: v.createdAt,
+      reason: statusLabelForVersion(v),
+      current: v.current,
+      locked: v.locked || v.finalized,
+      representation: v.finalized ? "Final PDF" : "Contract record",
+      href: v.current ? null : `/contracts/${v.id}`,
+    }));
+    return {
+      ...doc,
+      currentVersion: versionNumber,
+      amendsContractId: current?.amendsContractId ?? byId.get(doc.id)?.amendsContractId ?? null,
+      versionFamily: versions,
+      name: family.length > 1 ? `${doc.name} · Version ${versionNumber}` : doc.name,
+    };
+  });
 }
 
 export function workspaceDocKey(docType: string, id: string): string {
