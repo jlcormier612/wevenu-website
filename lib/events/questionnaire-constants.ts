@@ -9,7 +9,45 @@
  * turbopack correctly refused to bundle next/headers into the client.
  */
 
-export type QuestionnaireStatus = "draft" | "sent" | "submitted" | "reviewed";
+export type QuestionnaireStatus =
+  | "draft"
+  | "sent"
+  | "in_progress"
+  | "submitted"
+  | "changes_requested"
+  | "resubmitted"
+  | "complete";
+
+/** Customer-facing status labels for venue + couple surfaces. */
+export const QUESTIONNAIRE_STATUS_LABEL: Record<QuestionnaireStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  in_progress: "In Progress",
+  submitted: "Submitted",
+  changes_requested: "Changes Requested",
+  resubmitted: "Resubmitted",
+  complete: "Complete",
+};
+
+/** Statuses where the couple may edit answers. */
+export const QUESTIONNAIRE_COUPLE_EDITABLE: readonly QuestionnaireStatus[] = [
+  "sent",
+  "in_progress",
+  "changes_requested",
+] as const;
+
+/** Statuses awaiting venue review (Review step). */
+export const QUESTIONNAIRE_NEEDS_VENUE_REVIEW: readonly QuestionnaireStatus[] = [
+  "submitted",
+  "resubmitted",
+] as const;
+
+/** Terminal / locked for couple edits. */
+export const QUESTIONNAIRE_COUPLE_LOCKED: readonly QuestionnaireStatus[] = [
+  "submitted",
+  "resubmitted",
+  "complete",
+] as const;
 
 // The six genuinely-optional couple-facing fields a questionnaire_templates
 // row can toggle include/require on. The three safety/logistics fields
@@ -21,3 +59,15 @@ export const CONFIGURABLE_FIELDS = [
   "first_dance_song", "parent_dances", "special_requests",
 ] as const;
 export type ConfigurableField = (typeof CONFIGURABLE_FIELDS)[number];
+
+export function isQuestionnaireCoupleEditable(status: string): boolean {
+  return (QUESTIONNAIRE_COUPLE_EDITABLE as readonly string[]).includes(status);
+}
+
+export function isQuestionnaireNeedsVenueReview(status: string): boolean {
+  return (QUESTIONNAIRE_NEEDS_VENUE_REVIEW as readonly string[]).includes(status);
+}
+
+export function questionnaireStatusLabel(status: string): string {
+  return QUESTIONNAIRE_STATUS_LABEL[status as QuestionnaireStatus] ?? status;
+}

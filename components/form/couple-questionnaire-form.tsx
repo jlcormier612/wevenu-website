@@ -83,7 +83,7 @@ export function CoupleQuestionnaireForm({
   /** Work Package D5D — reuses this exact component for "Preview as Client" (venue-side). No network calls fire; Submit just shows what the couple would see. */
   previewMode?: boolean;
 }) {
-  const alreadySubmitted = !previewMode && (data.status === "submitted" || data.status === "reviewed");
+  const alreadySubmitted = !previewMode && (data.status === "submitted" || data.status === "resubmitted" || data.status === "complete" || data.status === "reviewed");
   const primary = data.venue_primary_color || "#5D6F5D";
   const included = data.included_fields ?? ["meal_notes", "processional_song", "recessional_song", "first_dance_song", "parent_dances", "special_requests"];
   const required = data.required_fields ?? [];

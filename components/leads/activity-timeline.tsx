@@ -10,11 +10,13 @@ import {
   Clock,
   Eye,
   FileText,
+  MessageSquareWarning,
   Pencil,
   PlusCircle,
   Phone,
   RotateCcw,
   Send,
+  ShieldOff,
   UserPlus,
 } from "lucide-react";
 
@@ -45,7 +47,11 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   opened:              Eye,
   submitted:           Check,
   reviewed:            Check,
+  completed:           Check,
+  resubmitted:         Check,
+  changes_requested:   MessageSquareWarning,
   reopened:            RotateCcw,
+  access_withdrawn:    ShieldOff,
   shared:              Send,
 };
 
@@ -66,7 +72,11 @@ const TYPE_COLOR: Record<string, string> = {
   opened:              "bg-accent/60 text-heading",
   submitted:           "bg-success/15 text-success",
   reviewed:            "bg-success/15 text-success",
+  completed:           "bg-success/15 text-success",
+  resubmitted:         "bg-success/15 text-success",
+  changes_requested:   "bg-warning/15 text-warning-foreground",
   reopened:            "bg-warning/15 text-warning-foreground",
+  access_withdrawn:    "bg-muted text-muted-foreground",
   shared:              "bg-primary/15 text-primary",
 };
 

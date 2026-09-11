@@ -73,9 +73,10 @@ function mapStatus(row: RawRow): WorkspaceStatus {
     return "none"; // void
   }
   if (row.docType === "questionnaire") {
-    if (row.status === "reviewed") return "complete";
-    if (row.status === "submitted") return "in_progress";
-    return "action_needed"; // sent, awaiting the couple
+    if (row.status === "complete" || row.status === "reviewed") return "complete";
+    if (row.status === "submitted" || row.status === "resubmitted") return "action_needed"; // venue review
+    if (row.status === "in_progress") return "in_progress";
+    return "action_needed"; // sent / changes_requested / draft-equivalent waiting
   }
   return "none"; // document / floor_plan — no producer status concept
 }

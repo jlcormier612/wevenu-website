@@ -222,7 +222,11 @@ export function computePlanningProgress(input: {
   const qInScope = Boolean(questionnaire);
   const qDone =
     questionnaire &&
-    (questionnaire.status === "submitted" || questionnaire.status === "completed")
+    (questionnaire.status === "submitted"
+      || questionnaire.status === "resubmitted"
+      || questionnaire.status === "complete"
+      || questionnaire.status === "completed"
+      || questionnaire.status === "reviewed")
       ? 1
       : 0;
 

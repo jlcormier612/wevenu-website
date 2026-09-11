@@ -500,12 +500,21 @@ export function buildUnifiedTaskList(input: {
     });
   }
 
-  if (input.questionnaire && input.questionnaire.status === "sent") {
+  if (input.questionnaire && (
+    input.questionnaire.status === "sent"
+    || input.questionnaire.status === "in_progress"
+    || input.questionnaire.status === "changes_requested"
+  )) {
+    const changes = input.questionnaire.status === "changes_requested";
     out.push({
-      id: "questionnaire", kind: "questionnaire", title: "Complete your final details form",
-      description: "Guest count, songs, meal preferences, and day-of contacts.",
+      id: "questionnaire", kind: "questionnaire",
+      title: changes ? "Update your questionnaire" : "Complete your final details form",
+      description: changes
+        ? "Your venue asked for changes — edit and resubmit."
+        : "Guest count, songs, meal preferences, and day-of contacts.",
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
-      targetSection: "questionnaire", targetFocus: "form", actionLabel: "Complete form",
+      targetSection: "questionnaire", targetFocus: "form",
+      actionLabel: changes ? "Update form" : "Complete form",
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,

@@ -52,6 +52,8 @@ export type Questionnaire = {
   specialRequests: string | null;
   additional: { family?: Record<string, string> } | null;
   submittedAt: string | null;
+  changesRequestedNote: string | null;
+  changesRequestedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -69,7 +71,10 @@ type QRow = {
   emergency_contact_name: string | null; emergency_contact_phone: string | null;
   vendor_notes: string | null; special_requests: string | null;
   additional: { family?: Record<string, string> } | null;
-  submitted_at: string | null; created_at: string; updated_at: string;
+  submitted_at: string | null;
+  changes_requested_note?: string | null;
+  changes_requested_at?: string | null;
+  created_at: string; updated_at: string;
 };
 
 function mapQ(r: QRow): Questionnaire {
@@ -93,13 +98,19 @@ function mapQ(r: QRow): Questionnaire {
     emergencyContactName: r.emergency_contact_name, emergencyContactPhone: r.emergency_contact_phone,
     vendorNotes: r.vendor_notes, specialRequests: r.special_requests,
     additional: r.additional ?? null,
-    submittedAt: r.submitted_at, createdAt: r.created_at, updatedAt: r.updated_at,
+    submittedAt: r.submitted_at,
+    changesRequestedNote: r.changes_requested_note ?? null,
+    changesRequestedAt: r.changes_requested_at ?? null,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 
 async function logActivity(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, questionnaireId: string,
-  type: "sent" | "resent" | "opened" | "submitted" | "reviewed" | "reopened" | "access_withdrawn", title: string, description?: string,
+  type:
+    | "sent" | "resent" | "opened" | "submitted" | "reviewed" | "reopened"
+    | "access_withdrawn" | "changes_requested" | "resubmitted" | "completed",
+  title: string, description?: string,
 ): Promise<void> {
   try {
     await supabase.from("questionnaire_activities").insert({
@@ -205,7 +216,9 @@ export async function sendQuestionnaireToCouple(
   const formUrl = `${appUrl}/questionnaire/${accessKey}`;
 
   const patch: Record<string, unknown> = {
-    status: existing?.status === "submitted" || existing?.status === "reviewed" ? existing.status : "sent",
+    status: existing?.status === "submitted" || existing?.status === "resubmitted" || existing?.status === "complete" || existing?.status === "changes_requested" || existing?.status === "in_progress"
+      ? existing.status
+      : "sent",
     sent_at: new Date().toISOString(),
     kind,
   };
@@ -349,10 +362,16 @@ export async function reopenQuestionnaire(
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
 
+  // Administrative reopen — distinct from Request Changes. Returns the form
+  // to Sent so the couple can use the link again without a formal change note.
   const { data, error } = await supabase.from("event_questionnaires")
-    .update({ status: "sent" })
+    .update({
+      status: "sent",
+      changes_requested_note: null,
+      changes_requested_at: null,
+    })
     .eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
-    .in("status", ["submitted", "reviewed"])
+    .in("status", ["submitted", "resubmitted", "complete", "changes_requested"])
     .select("id").maybeSingle<{ id: string }>();
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "That form isn't currently submitted." };
@@ -361,9 +380,132 @@ export async function reopenQuestionnaire(
 }
 
 /**
+ * Venue review action: ask the couple to revise. Distinct from Reopen.
+ * Preserves prior submission snapshots; live answers stay until the couple edits.
+ */
+export async function requestQuestionnaireChanges(
+  eventId: string,
+  note: string,
+  kind: QuestionnaireKind = "final_details",
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const trimmed = note.trim();
+  if (!trimmed) return { ok: false, message: "Add a short note so the couple knows what to change." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("event_questionnaires")
+    .update({
+      status: "changes_requested",
+      changes_requested_note: trimmed,
+      changes_requested_at: new Date().toISOString(),
+    })
+    .eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
+    .in("status", ["submitted", "resubmitted"])
+    .select("id, event_id").maybeSingle<{ id: string; event_id: string }>();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: "Only a submitted form can receive a change request." };
+
+  await logActivity(
+    supabase, venue.id, data.id, "changes_requested",
+    `${kindLabel(kind)} — changes requested`,
+    trimmed,
+  );
+
+  // Re-open couple questionnaire tasks so attention returns to the client.
+  try {
+    await supabase.from("event_tasks")
+      .update({ status: "pending", completed_at: null, completed_by: null })
+      .eq("venue_id", venue.id)
+      .eq("event_id", eventId)
+      .eq("auto_complete_trigger", "questionnaire_submitted")
+      .eq("status", "complete");
+  } catch { /* non-blocking */ }
+
+  try {
+    const { data: ev } = await supabase.from("events")
+      .select("client_id").eq("id", eventId).eq("venue_id", venue.id)
+      .maybeSingle<{ client_id: string | null }>();
+    if (ev?.client_id) {
+      await supabase.rpc("create_couple_notification", {
+        p_client_id: ev.client_id,
+        p_type: "questionnaire_changes_requested",
+        p_title: "Changes requested on your form",
+        p_body: trimmed.length > 180 ? `${trimmed.slice(0, 177)}…` : trimmed,
+        p_link: "/portal#questionnaire",
+        p_conversation_id: null,
+      });
+    }
+  } catch { /* non-blocking */ }
+
+  return { ok: true };
+}
+
+/** Venue review action: mark the questionnaire Complete (retires dead `reviewed`). */
+export async function completeQuestionnaire(
+  eventId: string,
+  kind: QuestionnaireKind = "final_details",
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.from("event_questionnaires")
+    .update({
+      status: "complete",
+      changes_requested_note: null,
+      changes_requested_at: null,
+    })
+    .eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
+    .in("status", ["submitted", "resubmitted"])
+    .select("id").maybeSingle<{ id: string }>();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: "Only a submitted form can be marked complete." };
+  await logActivity(supabase, venue.id, data.id, "completed", `${kindLabel(kind)} marked complete`, "Coordinator completed review");
+  return { ok: true };
+}
+
+export type QuestionnaireSubmission = {
+  id: string;
+  submissionNumber: number;
+  outcomeStatus: string;
+  snapshot: Record<string, unknown>;
+  submittedBy: string;
+  createdAt: string;
+};
+
+export async function getQuestionnaireSubmissions(
+  questionnaireId: string,
+): Promise<QuestionnaireSubmission[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.from("questionnaire_submissions")
+    .select("id, submission_number, outcome_status, snapshot, submitted_by, created_at")
+    .eq("questionnaire_id", questionnaireId)
+    .eq("venue_id", venue.id)
+    .order("submission_number", { ascending: true });
+  return ((data ?? []) as {
+    id: string; submission_number: number; outcome_status: string;
+    snapshot: Record<string, unknown>; submitted_by: string; created_at: string;
+  }[]).map((r) => ({
+    id: r.id,
+    submissionNumber: r.submission_number,
+    outcomeStatus: r.outcome_status,
+    snapshot: r.snapshot ?? {},
+    submittedBy: r.submitted_by,
+    createdAt: r.created_at,
+  }));
+}
+
+/**
  * Stops couple access via the public /questionnaire/{access_key} link without
- * deleting answers or rotating the key. Public RPC only serves sent|submitted|reviewed,
- * so draft removes access. Only sent → draft (submitted/reviewed use Reopen instead).
+ * deleting answers or rotating the key. Public RPC only serves active couple
+ * statuses, so draft removes access. Only sent|in_progress → draft
+ * (submitted/resubmitted/complete use Reopen or Request Changes instead).
  * Does NOT recall emails already delivered.
  */
 export async function withdrawQuestionnaireAccess(
@@ -378,7 +520,7 @@ export async function withdrawQuestionnaireAccess(
   const { data, error } = await supabase.from("event_questionnaires")
     .update({ status: "draft" })
     .eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
-    .eq("status", "sent")
+    .in("status", ["sent", "in_progress"])
     .select("id").maybeSingle<{ id: string }>();
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "Only a sent (not yet submitted) form can have client access stopped." };

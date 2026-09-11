@@ -10,6 +10,10 @@ import * as React from "react";
 
 import { AlertTriangle, CheckCircle, ExternalLink, Loader2 } from "lucide-react";
 
+import {
+  isQuestionnaireCoupleEditable,
+  questionnaireStatusLabel,
+} from "@/lib/events/questionnaire-constants";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import {
@@ -56,6 +60,8 @@ export type FamilyQuestionnaireData = {
   field_order?: string[] | null;
   additional?: { family?: Record<string, string> } | null;
   updated_at?: string;
+  changes_requested_note?: string | null;
+  changes_requested_at?: string | null;
   known_vendors?: { name: string; role?: string | null }[];
   client_primary_name?: string | null;
 };
@@ -117,7 +123,9 @@ export function CoupleFamilyQuestionnaireForm({
 }) {
   const kind = data.kind || "final_details";
   const master = getQuestionnaireMasterByKind(kind);
-  const alreadySubmitted = !previewMode && (data.status === "submitted" || data.status === "reviewed");
+  const editable = previewMode || isQuestionnaireCoupleEditable(data.status);
+  const alreadySubmitted = !previewMode && !editable;
+  const isChangesRequested = data.status === "changes_requested";
   const primary = data.venue_primary_color || "#5D6F5D";
   const fields = resolveQuestionnaireFields({
     kind,
@@ -320,16 +328,23 @@ export function CoupleFamilyQuestionnaireForm({
         <CheckCircle className="mx-auto h-10 w-10" style={{ color: primary }} />
         <p className="font-heading text-xl text-heading">Thank you</p>
         <p className="text-sm text-muted-foreground">
-          {kind === "post_event_feedback"
-            ? "Your feedback is with our team."
-            : "Your answers are with your venue team."}
+          {data.status === "complete"
+            ? "This form is complete with your venue."
+            : kind === "post_event_feedback"
+              ? "Your feedback is with our team."
+              : isChangesRequested || state === "success"
+                ? "Your answers are with your venue team for review."
+                : "Your answers are with your venue team."}
         </p>
+        {data.status === "complete" && (
+          <p className="text-xs text-muted-foreground">Status: {questionnaireStatusLabel("complete")}</p>
+        )}
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto px-4 py-8 space-y-6">
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto px-4 py-8 space-y-6 pb-24">
       <header className="space-y-3 text-center">
         {data.venue_logo_url && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -344,6 +359,17 @@ export function CoupleFamilyQuestionnaireForm({
         {saveState === "saving" && <p className="text-xs text-muted-foreground">Saving…</p>}
         {saveState === "saved" && <p className="text-xs text-muted-foreground">Progress saved</p>}
       </header>
+
+      {isChangesRequested && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left space-y-1">
+          <p className="text-sm font-medium text-heading">Your venue requested changes</p>
+          {data.changes_requested_note ? (
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{data.changes_requested_note}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Please review your answers, update what is needed, and resubmit.</p>
+          )}
+        </div>
+      )}
 
       {sections.map((section) => (
         <section key={section} className="space-y-4">
@@ -562,7 +588,7 @@ export function CoupleFamilyQuestionnaireForm({
         className="w-full rounded-lg px-4 py-3 text-sm font-medium text-white"
         style={{ background: primary }}
       >
-        {state === "submitting" ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Submit"}
+        {state === "submitting" ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : isChangesRequested ? "Resubmit" : "Submit"}
       </button>
     </form>
   );

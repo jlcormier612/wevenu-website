@@ -118,7 +118,12 @@ export async function computeLeadCommitmentScore(
   if (contractStatus === "signed") score += 25;
   if (hasPaymentSchedule)          score += 5;
   if (hasPayment)                  score += 15;
-  if (questionnaireStatus === "submitted" || questionnaireStatus === "reviewed") score += 10;
+  if (
+    questionnaireStatus === "submitted"
+    || questionnaireStatus === "resubmitted"
+    || questionnaireStatus === "complete"
+    || questionnaireStatus === "reviewed"
+  ) score += 10;
 
   return Math.min(100, Math.max(0, score));
 }

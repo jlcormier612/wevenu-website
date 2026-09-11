@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/integrations/supabase/server";
 import {
+  completeQuestionnaire,
   reopenQuestionnaire,
+  requestQuestionnaireChanges,
   saveQuestionnaire,
   sendQuestionnaireToCouple,
   withdrawQuestionnaireAccess,
@@ -78,6 +80,25 @@ export async function reopenQuestionnaireAction(
   kind: QuestionnaireKind = "final_details",
 ): Promise<{ ok: boolean; message?: string }> {
   const result = await reopenQuestionnaire(eventId, kind);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function requestQuestionnaireChangesAction(
+  eventId: string,
+  note: string,
+  kind: QuestionnaireKind = "final_details",
+): Promise<{ ok: boolean; message?: string }> {
+  const result = await requestQuestionnaireChanges(eventId, note, kind);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function completeQuestionnaireAction(
+  eventId: string,
+  kind: QuestionnaireKind = "final_details",
+): Promise<{ ok: boolean; message?: string }> {
+  const result = await completeQuestionnaire(eventId, kind);
   if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }
