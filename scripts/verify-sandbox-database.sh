@@ -94,7 +94,7 @@ echo "=== 4. Storage buckets ==="
 # undercounted this at 10 - couple-messages was missing from it).
 declare -A EXPECTED_BUCKETS=(
   ["client-media"]="t" ["contract-representations"]="f" ["couple-messages"]="t"
-  ["documents"]="t" ["event-order-representations"]="f" ["feedback-screenshots"]="t"
+  ["documents"]="f" ["event-order-representations"]="f" ["feedback-screenshots"]="t"
   ["floor-plans"]="t" ["inventory"]="t" ["request-uploads"]="t" ["uploads"]="t" ["vendors"]="t"
 )
 for b in "${!EXPECTED_BUCKETS[@]}"; do

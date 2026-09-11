@@ -45,4 +45,11 @@ describe("get_venue_documents workspace union", () => {
     assert.match(migration, /create or replace function public\.replace_document_file/);
     assert.match(migration, /if v_doc\.storage_path = p_storage_path then/);
   });
+
+  it("makes the documents bucket private and keeps the sandbox verifier aligned", () => {
+    assert.match(migration, /update storage\.buckets\s+set public = false\s+where id = 'documents'/);
+    const verify = readFileSync(join(root, "scripts/verify-sandbox-database.sh"), "utf8");
+    assert.match(verify, /\["documents"\]="f"/);
+    assert.doesNotMatch(verify, /\["documents"\]="t"/);
+  });
 });
