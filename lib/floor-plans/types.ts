@@ -19,9 +19,9 @@ export type ObjectType =
   | "text_label"
   | "other";
 
-// Reserved for Client Collaboration (not built yet) — which floor plans a
-// client may see/edit on their booking. No UI or logic reads this today.
-export type FloorPlanClientAccess = "edit" | "view" | "hidden";
+// Share for Seating uses view | hidden. The reserved 'edit' value was never
+// written by application code and is retired.
+export type FloorPlanClientAccess = "view" | "hidden";
 
 // Display-only — canvas units are always inches internally (an Inventory
 // item's width/length are already plain-number inches, e.g. a "60" Round"

@@ -96,31 +96,51 @@ export function computeSeatingReadiness(eventId: string, summary: SeatingReadine
   let status: ReadinessStatus;
   let detail: string;
 
-  if (!summary || !summary.floorPlanShared) {
+  if (!summary) {
     status = "not_started";
-    detail = "No floor plan shared with the couple for seating yet.";
+    detail = "Seating status unavailable.";
+  } else if (summary.planCount === 0) {
+    status = "not_started";
+    detail = "There is no floor plan available for seating.";
+  } else if (!summary.floorPlanShared) {
+    status = "not_started";
+    detail = "Floor plan exists, but seating has not been shared with the client yet.";
+  } else if (summary.isDelegated) {
+    status = "waiting";
+    detail = "Client asked the venue to assist with seating.";
+  } else if (summary.hasSubmission && summary.needsReassignmentCount > 0) {
+    status = "needs_attention";
+    detail = `${summary.needsReassignmentCount} guest${summary.needsReassignmentCount === 1 ? "" : "s"} need a new table.`;
+  } else if (summary.hasSubmission && summary.totalAttending > 0 && summary.totalAssigned >= summary.totalAttending) {
+    status = "complete";
+    detail = "Seating has been submitted.";
+  } else if (summary.hasSubmission) {
+    status = "waiting";
+    detail = summary.totalAttending > 0
+      ? `Submitted — ${summary.totalAssigned} of ${summary.totalAttending} guests seated.`
+      : "Seating has been submitted.";
   } else if (summary.totalAttending === 0) {
     status = "not_started";
-    detail = "Floor plan shared — no attending guests to seat yet.";
+    detail = "Floor plan shared for seating — no attending guests to seat yet.";
   } else if (summary.needsReassignmentCount > 0) {
     status = "needs_attention";
     detail = `${summary.needsReassignmentCount} guest${summary.needsReassignmentCount === 1 ? "" : "s"} need a new table.`;
   } else if (summary.totalAssigned >= summary.totalAttending) {
-    status = "complete";
-    detail = "Everyone is seated.";
-  } else {
     status = "waiting";
-    detail = `${summary.totalAssigned} of ${summary.totalAttending} guests seated.`;
+    detail = "Everyone is seated privately — waiting for the client to submit.";
+  } else if (summary.totalAssigned > 0) {
+    status = "waiting";
+    detail = `Client is seating privately — ${summary.totalAssigned} of ${summary.totalAttending} seated.`;
+  } else {
+    status = "not_started";
+    detail = "Floor plan shared for seating — seating has not started yet.";
   }
 
   return {
     key: "seating", label: "Seating", status, detail,
     metric: summary && summary.totalAttending > 0 ? `${summary.totalAssigned}/${summary.totalAttending}` : undefined,
-    // Wedding Day Seating (Seating Final Release Completion) — a read-only
-    // staff lookup, not the couple's own live-editable chart. Reviewing
-    // seating from Readiness should never risk an accidental edit; a
-    // coordinator who genuinely needs to open the couple's own editor still
-    // can, via the existing "View Client Portal" links elsewhere.
+    // Event Day Seating — operational lookup / assistance under delegation.
+    // Reviewing from Readiness should never imply venue ownership of seating.
     nav: { kind: "link", href: `/events/${eventId}/seating` },
   };
 }

@@ -1,17 +1,12 @@
 "use client";
 
 /**
- * Venue Seating Editor — the coordinator's editing surface while a floor
- * plan is delegated (docs/commitment-lifecycle-architecture.md §7).
+ * Venue Seating Assistance — the coordinator's editing surface while a
+ * client has asked the venue to assist with a floor plan's seating.
  *
- * Deliberately not a pixel-for-pixel rebuild of the couple's drag-and-drop
- * canvas — same underlying data model and RPC-authorized write path
- * (assign_guest_to_table_as_venue / remove_guest_assignment_as_venue,
- * gated on an active delegation), same guest/table shapes, but a simpler
- * assign-via-list interaction. A full drag-and-drop canvas reusing the
- * couple's exact component is the natural next iteration once this
- * (correct architecture, real delegated write path, real Submit) is
- * confirmed working end to end — "the UI can start simple and grow."
+ * List/dropdown interaction (not a pixel rebuild of the couple canvas).
+ * Same data model and RPC-authorized write path, gated on active
+ * delegation + owner/manager/coordinator role.
  */
 
 import { useEffect, useState } from "react";
@@ -32,14 +27,39 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
   const [revoking, setRevoking] = useState(false);
 
   function load() {
-    setLoading(true);
-    fetch(`/api/venue/seating?eventId=${eventId}&floorPlanId=${floorPlanId}`)
+    return fetch(`/api/venue/seating?eventId=${eventId}&floorPlanId=${floorPlanId}`)
       .then((r) => r.json())
-      .then((d: OperationalSeatingData) => setData(d))
-      .finally(() => setLoading(false));
+      .then((d: OperationalSeatingData) => setData(d));
   }
 
-  useEffect(() => { load(); }, [eventId, floorPlanId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const r = await fetch(
+          `/api/venue/seating?eventId=${eventId}&floorPlanId=${floorPlanId}`,
+          { signal: controller.signal },
+        );
+        const d = await r.json() as OperationalSeatingData & { error?: string };
+        if (cancelled) return;
+        setData(!r.ok || d.error ? null : d);
+      } catch {
+        if (cancelled) return;
+        setData(null);
+      } finally {
+        // Always leave the loading gate even if this run was superseded —
+        // a remounted editor starts with loading=true again via useState.
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [eventId, floorPlanId]);
 
   async function assign(guestId: string, tableId: string) {
     setBusyGuestId(guestId);
@@ -75,8 +95,8 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
         body: JSON.stringify({ floorPlanId }),
       });
       const json = await res.json() as { ok?: boolean };
-      if (json.ok) toast.success("Seating plan updated — this is now the operational plan.");
-      else toast.error("Couldn't submit.");
+      if (json.ok) toast.success("Seating changes submitted — this is now the committed seating snapshot.");
+      else toast.error("Couldn't submit seating changes.");
     } finally { setSubmitting(false); }
   }
 
@@ -89,16 +109,19 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
         body: JSON.stringify({ delegationId: data.delegationId }),
       });
       const json = await res.json() as { ok?: boolean };
-      if (json.ok) { toast.success(`Seating management handed back to ${coupleName}.`); load(); }
-      else toast.error("Couldn't revoke delegation.");
+      if (json.ok) { toast.success(`Seating assistance handed back to ${coupleName}.`); load(); }
+      else toast.error("Couldn't end seating assistance.");
     } finally { setRevoking(false); }
   }
 
   if (loading) return <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>;
   if (!data || !data.isDelegated) {
     return (
-      <div className="rounded-sm border border-dashed border-border py-10 text-center">
-        <p className="text-sm text-muted-foreground">This plan isn&apos;t currently delegated — nothing to manage here.</p>
+      <div className="rounded-sm border border-dashed border-border py-10 text-center px-4">
+        <p className="text-sm font-medium text-heading">Venue seating assistance is not active</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+          The client has not asked the venue to assist with this seating plan, or assistance was revoked. Venue staff do not get seating authority from event access alone.
+        </p>
       </div>
     );
   }
@@ -106,18 +129,27 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
   return (
     <div className="space-y-5">
       <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-amber-900">✋ Managing seating on behalf of {coupleName}</p>
+        <div>
+          <p className="text-sm text-amber-900">Assisting with seating for {coupleName}</p>
+          <p className="text-xs text-amber-800 mt-0.5">
+            You are helping under the client&apos;s request — this does not transfer ownership of the seating plan.
+          </p>
+        </div>
         <Button type="button" size="sm" variant="outline" disabled={revoking} onClick={revoke}>
-          {revoking ? "Handing back…" : "Hand Back to Couple"}
+          {revoking ? "Ending…" : "End Venue Assistance"}
         </Button>
       </div>
 
-      <div className="flex items-center justify-between">
+      {data.floorPlan?.name && (
+        <p className="text-xs text-muted-foreground">Floor plan: {data.floorPlan.name}</p>
+      )}
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm text-muted-foreground">
           {data.stats.totalAssigned} of {data.stats.totalAttending} guests seated
         </p>
         <Button type="button" size="sm" disabled={submitting} onClick={submit}>
-          {submitting ? "Updating…" : "Update Operational Plan"}
+          {submitting ? "Submitting…" : "Submit Seating Changes"}
         </Button>
       </div>
 

@@ -13,7 +13,9 @@ const ERROR_STATUS: Record<string, number> = {
   not_authorized: 403,
   event_not_found: 404,
   floor_plan_not_found: 404,
+  floor_plan_required: 400,
   not_delegated: 409,
+  missing_params: 400,
 };
 
 export function seatingRpcHttpResult(result: SeatingRpcResult): SeatingHttpResult {

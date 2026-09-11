@@ -34,7 +34,7 @@ import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
   GuestStats, JournalEntry, PortalContext, PortalKeyDate, PortalSection, PortalTask,
-  PortalVendorTask, RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
+  PortalVendorTask, RecentActivity, SeatingData, SeatingFloorPlanSummary, TodoCategory, PortalParticipant, PortalActivity,
   PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
@@ -5658,20 +5658,32 @@ function BudgetLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s
 }
 
 function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [plans, setPlans] = React.useState<SeatingFloorPlanSummary[] | null>(null);
   const [data, setData] = React.useState<SeatingData | null>(null);
 
   React.useEffect(() => {
-    fetch(`/api/portal/seating?token=${token}`).then(r => r.json())
-      .then((d: SeatingData) => setData(d?.floorPlan !== undefined ? d : null)).catch(() => setData(null));
+    fetch(`/api/portal/seating/floor-plans?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { floorPlans?: SeatingFloorPlanSummary[] }) => {
+        const list = d.floorPlans ?? [];
+        setPlans(list);
+        if (list.length === 1) {
+          return fetch(`/api/portal/seating?token=${token}&floorPlanId=${list[0]!.id}`)
+            .then((r) => r.json())
+            .then((seating: SeatingData) => setData(seating?.floorPlan !== undefined ? seating : null));
+        }
+        setData(null);
+      })
+      .catch(() => { setPlans([]); setData(null); });
   }, [token]);
 
   const unassigned = data ? data.unassignedGuests.length + data.needsReassignment.length : 0;
   const model = resolveSeatingLaunch(
-    data
+    plans
       ? {
-          hasFloorPlan: Boolean(data.floorPlan),
-          hadPriorWork: Boolean(data.hadPriorWork),
-          unassignedCount: unassigned,
+          hasFloorPlan: plans.length > 0,
+          hadPriorWork: plans.some((p) => p.hasAssignments || p.lastSubmission != null) || Boolean(data?.hadPriorWork),
+          unassignedCount: plans.length === 1 ? unassigned : 0,
         }
       : null,
   );

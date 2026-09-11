@@ -184,7 +184,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // capability's readiness is computed from data already on this page.
   const [guestSummary, seatingSummary] = await Promise.all([
     getGuestReadinessSummary(id),
-    getSeatingReadinessSummary(portalToken),
+    getSeatingReadinessSummary(null, eventId),
   ]);
 
   // Event Order is always available (optional by use). No feature gate.

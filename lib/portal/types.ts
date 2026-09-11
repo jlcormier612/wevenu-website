@@ -509,11 +509,16 @@ export type SeatingData = {
   hadPriorWork: boolean;
   stats: SeatingStats;
   // Commitment Lifecycle Architecture §7 — Delegation. When isDelegated is
-  // true, the venue is currently managing this plan; the couple's own
-  // canvas should read-only + show the delegation banner.
+  // true, the venue is assisting with this plan; the couple's own canvas
+  // should read-only + show the assistance banner.
   isDelegated?: boolean;
   delegationId?: string | null;
   delegatedNote?: string | null;
+  /** Last committed snapshot for this plan, if any. */
+  lastSubmission?: { count: number; submittedAt: string; submittedBy: "couple" | "venue" } | null;
+  /** Live seating differs from lastSubmission — couple should resubmit. */
+  hasUnpublishedChanges?: boolean;
+  error?: string;
 };
 
 /** One of the couple's floor plans, for the Seating plan picker — each an independent Commitment Lifecycle (docs/commitment-lifecycle-architecture.md §9). */
@@ -521,6 +526,7 @@ export type SeatingFloorPlanSummary = {
   id: string;
   name: string;
   isDelegated: boolean;
+  hasAssignments?: boolean;
   lastSubmission: { count: number; submittedAt: string; submittedBy: "couple" | "venue" } | null;
 };
 

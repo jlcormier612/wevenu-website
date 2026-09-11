@@ -1,16 +1,12 @@
 "use client";
 
 /**
- * Wedding Day Seating — the venue-side operational lookup. Not an editor:
+ * Event Day Seating — the venue-side operational lookup. Not an editor:
  * no assign/remove, no drag-and-drop, no table creation (that's
- * VenueSeatingEditor, reachable only while a plan is delegated). Per the
- * Commitment Lifecycle Architecture (docs/commitment-lifecycle-architecture.md
- * §9), reads the couple's latest Submitted snapshot by default — never
- * their live in-progress work — or the live plan when explicitly
- * delegated (lib/seating/service.ts's getOperationalSeatingPlan). Optimized
- * for a coordinator standing in a room full of guests who needs an answer
- * in under five seconds: where does this person sit, who's at this table,
- * who needs a wheelchair-accessible seat, how many chicken dinners.
+ * VenueSeatingEditor / Assist with Seating, reachable only while a plan is
+ * delegated). Per the Commitment Lifecycle Architecture, reads the client's
+ * latest Submitted snapshot by default — never their live private draft —
+ * or the live plan when they explicitly asked the venue to assist.
  */
 
 import { useMemo, useState } from "react";
@@ -19,6 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ACCESSIBILITY_LABELS, MEAL_EMOJI } from "@/lib/portal/types";
 import type { SeatingData, SeatingGuest, SeatingTable } from "@/lib/portal/types";
+import {
+  classifyVenueSeatingSituation,
+  venueSeatingSituationCopy,
+} from "@/lib/seating/situation";
 
 function mealEmoji(choice: string | null) {
   if (!choice) return null;
@@ -111,15 +111,52 @@ type OperationalSeatingData = SeatingData & {
   submittedAt?: string;
   submittedBy?: "couple" | "venue";
   delegatedAt?: string;
+  isDelegated?: boolean;
 };
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-sm border border-dashed border-border py-16 text-center px-4">
+      <div className="text-3xl mb-3">🪑</div>
+      <p className="text-sm font-medium text-heading">{title}</p>
+      <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">{body}</p>
+    </div>
+  );
+}
 
 export function WeddingDaySeating({
   eventId, eventName, coupleName, data, floorPlanId,
+  planCount = 0, sharedPlanCount = 0,
+  selectedSharedForSeating = false, selectedHasAssignments = false, selectedHasSubmission = false,
+  canView = true, canAssist = false,
 }: {
-  eventId: string; eventName: string; coupleName: string; data: OperationalSeatingData | null; floorPlanId?: string | null;
+  eventId: string;
+  eventName: string;
+  coupleName: string;
+  data: OperationalSeatingData | null;
+  floorPlanId?: string | null;
+  planCount?: number;
+  sharedPlanCount?: number;
+  selectedSharedForSeating?: boolean;
+  selectedHasAssignments?: boolean;
+  selectedHasSubmission?: boolean;
+  canView?: boolean;
+  canAssist?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
+
+  const situation = classifyVenueSeatingSituation({
+    notAuthorized: !canView,
+    planCount,
+    sharedPlanCount,
+    selectedPlanId: floorPlanId ?? null,
+    sharedForSeating: selectedSharedForSeating,
+    isDelegated: Boolean(data?.isDelegated),
+    hasAssignments: selectedHasAssignments,
+    hasSubmission: selectedHasSubmission || Boolean(data?.submittedAt),
+    notYetSubmitted: data?.notYetSubmitted,
+  });
 
   const allGuests = useMemo(() => (data ? flattenAllGuests(data) : []), [data]);
 
@@ -148,7 +185,7 @@ export function WeddingDaySeating({
   const mealCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const g of allGuests) {
-      if (g.isVendorMeal) continue; // tracked separately below — a caterer isn't a wedding-guest meal count
+      if (g.isVendorMeal) continue;
       const label = g.mealChoice?.trim() || "Not yet chosen";
       counts.set(label, (counts.get(label) ?? 0) + 1);
     }
@@ -159,62 +196,66 @@ export function WeddingDaySeating({
   const vendorMealGuests = useMemo(() => allGuests.filter((g) => g.isVendorMeal), [allGuests]);
   const childGuests = useMemo(() => allGuests.filter((g) => g.isChild), [allGuests]);
 
-  if (!data) {
-    return (
-      <div className="rounded-sm border border-dashed border-border py-16 text-center">
-        <div className="text-3xl mb-3">🪑</div>
-        <p className="text-sm font-medium text-heading">No Client Workspace link exists for this client yet.</p>
-        <p className="text-xs text-muted-foreground mt-1">Create one from the Client record to enable seating.</p>
-      </div>
-    );
+  if (
+    situation === "not_authorized"
+    || situation === "no_floor_plans"
+    || situation === "no_shared_for_seating"
+    || situation === "choose_plan"
+  ) {
+    const copy = venueSeatingSituationCopy(situation, coupleName);
+    return <EmptyState title={copy.title} body={copy.body} />;
   }
 
-  // Commitment Lifecycle Architecture §9 — Private Until Committed: this
-  // read is always the couple's last Submitted snapshot, never their live
-  // in-progress work, unless they've explicitly delegated this plan.
-  if (data.notYetSubmitted && !data.isDelegated) {
-    return (
-      <div className="rounded-sm border border-dashed border-border py-16 text-center">
-        <div className="text-3xl mb-3">🪑</div>
-        <p className="text-sm font-medium text-heading">{coupleName} hasn&apos;t submitted a seating plan yet.</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-          Their seating chart stays private while they work on it — you&apos;ll see it here once they submit it, or you can ask them to delegate seating to your team.
-        </p>
-      </div>
+  if (!data || (data.notYetSubmitted && !data.isDelegated)) {
+    const copy = venueSeatingSituationCopy(
+      selectedHasAssignments ? "private_in_progress" : "not_started",
+      coupleName,
     );
+    return <EmptyState title={copy.title} body={copy.body} />;
   }
 
   const emptySeatsTotal = data.tables.reduce(
     (sum, t) => sum + (t.capacity != null ? Math.max(0, t.capacity - t.guests.length) : 0), 0,
   );
 
+  const printHref = floorPlanId
+    ? `/events/${eventId}/seating-print?plan=${floorPlanId}`
+    : `/events/${eventId}/seating-print`;
+
   return (
     <div className="space-y-5">
       {data.isDelegated ? (
         <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-amber-900">✋ Delegated by {coupleName}</p>
-            <p className="text-xs text-amber-800">Changes made here update the active operational seating plan until delegation is revoked.</p>
+            <p className="text-sm font-medium text-amber-900">
+              {coupleName} asked the venue to assist with seating
+            </p>
+            <p className="text-xs text-amber-800">
+              Authorized venue users can update this seating plan while assistance is active. This does not transfer ownership of the seating plan.
+            </p>
           </div>
-          {floorPlanId && (
+          {floorPlanId && canAssist && (
             <a href={`/events/${eventId}/seating/manage?plan=${floorPlanId}`}
               className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
-              Manage Seating
+              Assist with Seating
             </a>
           )}
         </div>
       ) : data.submittedAt && (
         <p className="text-xs text-muted-foreground">
-          Submitted by {data.submittedBy === "venue" ? "your team" : "the client"} · {new Date(data.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          Submitted by {data.submittedBy === "venue" ? "your team (while assisting)" : "the client"} · {new Date(data.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </p>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-heading">Event Day Seating</h1>
           <p className="text-sm text-muted-foreground">{coupleName} — {eventName}</p>
+          {data.floorPlan?.name && (
+            <p className="text-xs text-muted-foreground mt-0.5">Floor plan: {data.floorPlan.name}</p>
+          )}
         </div>
         <a
-          href={`/events/${eventId}/seating-print`} target="_blank" rel="noreferrer"
+          href={printHref} target="_blank" rel="noreferrer"
           className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary/40 transition-colors"
         >
           <Printer className="h-3.5 w-3.5" />
@@ -223,11 +264,10 @@ export function WeddingDaySeating({
       </div>
 
       {!data.floorPlan ? (
-        <div className="rounded-sm border border-dashed border-border py-16 text-center">
-          <div className="text-3xl mb-3">🪑</div>
-          <p className="text-sm font-medium text-heading">No floor plan is currently shared for seating.</p>
-          <p className="text-xs text-muted-foreground mt-1">Once a plan is shared and the client seats guests, they&apos;ll show up here.</p>
-        </div>
+        <EmptyState
+          title="There is no floor plan available for seating"
+          body="Once a floor plan is shared for seating and seating is submitted (or assistance is active), rosters appear here."
+        />
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

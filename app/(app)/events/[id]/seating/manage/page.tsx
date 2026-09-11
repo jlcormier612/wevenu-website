@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const event = await getEvent(id);
   if (!event) return { title: "Event not found" };
-  return { title: `Manage Seating — ${event.name}` };
+  return { title: `Assist with Seating — ${event.name}` };
 }
 
 export default async function ManageSeatingPage({ params, searchParams }: Props) {
@@ -36,7 +36,7 @@ export default async function ManageSeatingPage({ params, searchParams }: Props)
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to seating
         </Link>
-        <VenueSeatingEditor eventId={id} floorPlanId={plan} coupleName={coupleName} />
+        <VenueSeatingEditor key={plan} eventId={id} floorPlanId={plan} coupleName={coupleName} />
       </div>
     </div>
   );
