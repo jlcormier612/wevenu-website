@@ -19,7 +19,6 @@ import { toast } from "sonner";
 
 import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
-import { KeyDatesSection } from "@/components/clients/key-dates-section";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
@@ -27,7 +26,6 @@ import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
-import type { ClientKeyDate } from "@/lib/clients/types";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
@@ -287,8 +285,6 @@ export function EventDetail({
   requests = [],
   readinessSummary,
   originatingLeadId = null,
-  keyDates = [],
-  clientRehearsalDate = null,
   bookingJourney = null,
   packagesWithItems = [],
   selectedPackage = null,
@@ -356,11 +352,6 @@ export function EventDetail({
   // Lead's own activity history (status changes, prior notes) had no
   // reachable path once converted, even though it was never deleted.
   originatingLeadId?: string | null;
-  // Key Dates — already fetched on the Booking Workspace page via getClient();
-  // mounted in Overview beside Event summary (existing KeyDatesSection).
-  keyDates?: ClientKeyDate[];
-  /** The client's structured Rehearsal Date (Client Info) — passed through so KeyDatesSection can synthesize a single canonical Rehearsal entry instead of allowing a second, independently-editable one. */
-  clientRehearsalDate?: string | null;
   bookingJourney?: BookingJourneyModel | null;
   packagesWithItems?: PackageWithItems[];
   selectedPackage?: CommercialSelection | null;
@@ -634,10 +625,9 @@ export function EventDetail({
             templates={timelineTemplates} hasTimeline={(event.timeline ?? []).length > 0}
             onApplied={() => router.refresh()}
           />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
                 {[
                   { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },
                   { icon: Clock, label: multiDay ? "Overall start" : "Start", value: formatTime(event.startTime) },
@@ -664,15 +654,8 @@ export function EventDetail({
                     </Link>
                   </p>
                 )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-base">Key Dates</CardTitle></CardHeader>
-              <CardContent>
-                <KeyDatesSection clientId={event.clientId!} initialKeyDates={keyDates} clientRehearsalDate={clientRehearsalDate} />
-              </CardContent>
-            </Card>
-          </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Playbook ─────────────────────────────────────────────── */}

@@ -14,7 +14,6 @@ import type {
   NormalizedDateHoldLike,
   NormalizedDocumentLike,
   NormalizedEventLike,
-  NormalizedKeyDateLike,
   NormalizedLeadLike,
   NormalizedPackageLike,
   NormalizedTourLike,
@@ -239,25 +238,11 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   }
 
   if (entityType === "key_date") {
-    const label = str(row, "label") ?? str(row, "title");
-    const date = str(row, "date") ?? str(row, "keyDate");
-    if (!label || !date) {
-      return { ok: false, error: "Key dates need a label and a date." };
-    }
-    const clientId = str(row, "clientId");
-    const clientEmail = str(row, "clientEmail") ?? str(row, "email");
-    if (!clientId && !clientEmail) {
-      return { ok: false, error: "Key dates need a client email or client id." };
-    }
-    const normalized: NormalizedKeyDateLike = {
-      label,
-      date,
-      note: str(row, "note") ?? str(row, "notes"),
-      clientEmail,
-      clientId,
-      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
+    // Key Dates product retired — do not normalize new imports into client_key_dates.
+    return {
+      ok: false,
+      error: "Key Dates have been retired and can no longer be imported.",
     };
-    return { ok: true, entityType, normalized };
   }
 
   if (entityType === "payment") {

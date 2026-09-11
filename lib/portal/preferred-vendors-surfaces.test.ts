@@ -21,7 +21,6 @@ function base(over: Partial<LuvHomeSuggestionInput> = {}): LuvHomeSuggestionInpu
     bracket: "9-12",
     totalThisWeek: 0,
     questionnaireOpen: false,
-    soonKeyDate: null,
     venueAttentionCount: 0,
     dayOfMonth: 2,
     ...over,

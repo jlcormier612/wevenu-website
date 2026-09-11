@@ -162,15 +162,6 @@ export type PortalVenueSpace = {
   capacity: number | null;
 };
 
-// Program 4, Initiative C, Phase 3 (2026-07-23) — venue-authored Key Dates
-// (client_key_dates), previously only ever shown on the venue's own
-// Dashboard, now also readable from the Couple Workspace.
-export type PortalKeyDate = {
-  id: string;
-  label: string;
-  date: string;
-  note: string | null;
-};
 
 export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "inventory" | "floor_plans" | "event-order";
 

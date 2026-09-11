@@ -4,9 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   addClientNote,
-  addKeyDate,
   deleteClientNote_,
-  deleteKeyDate_,
   updateClientInfo,
   updateClientNote_,
   updateClientStatus_,
@@ -14,7 +12,6 @@ import {
 import type {
   ClientActionResult,
   ClientInput,
-  KeyDateInput,
 } from "@/lib/clients/types";
 
 function revalidateClient(clientId: string) {
@@ -50,12 +47,3 @@ export async function deleteClientNoteAction(noteId: string): Promise<ClientActi
   return deleteClientNote_(noteId);
 }
 
-export async function addKeyDateAction(clientId: string, input: KeyDateInput): Promise<ClientActionResult> {
-  const result = await addKeyDate(clientId, input);
-  if (result.ok) revalidateClient(clientId);
-  return result;
-}
-
-export async function deleteKeyDateAction(kdId: string): Promise<ClientActionResult> {
-  return deleteKeyDate_(kdId);
-}

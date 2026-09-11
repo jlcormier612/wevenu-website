@@ -183,7 +183,7 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
 
   it("sanitizeVenueCalendarFilters strips excluded types and legacy manual tour", () => {
     const cleaned = sanitizeVenueCalendarFilters({
-      types: ["event", "payment_due", "follow_up", "key_date", "planning_activity"] as CalendarItemType[],
+      types: ["event", "payment_due", "follow_up", "planning_activity"] as CalendarItemType[],
       manualTypes: ["tour", "consultation", "tasting"] as never,
       staffId: null,
       spaceId: null,

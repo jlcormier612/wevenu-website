@@ -5,7 +5,7 @@ import { resolveExperienceProfileForClientEvent } from "@/lib/event-experience";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { applyLiveVenueBrandingUrls } from "@/lib/venue/branding-assets";
 import { recordEngagementEvent } from "@/lib/activation/service";
-import type { PortalContext, PortalKeyDate, PortalSession, PortalTask, PortalTaskLink, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
+import type { PortalContext, PortalSession, PortalTask, PortalTaskLink, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
 
 // ---- Token resolution (uses server Supabase client; SECURITY DEFINER functions
 //      validate the portal token internally so no coordinator session is needed) -
@@ -150,16 +150,6 @@ export async function resolvePortalVendorTasks(token: string): Promise<PortalVen
   }));
 }
 
-// Program 4, Initiative C, Phase 3 (2026-07-23) — Key Dates the venue has
-// already set (rehearsal, tasting, final headcount, etc.) so the couple
-// feels the venue has already prepared everything for them.
-export async function resolvePortalKeyDates(token: string): Promise<PortalKeyDate[]> {
-  if (!isSupabaseConfigured) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_portal_key_dates", { p_token: token });
-  if (error || !data || (data as Record<string, unknown>).error) return [];
-  return ((data as Record<string, unknown>).keyDates ?? []) as PortalKeyDate[];
-}
 
 export async function completePortalTask(token: string, taskId: string): Promise<{ ok: boolean; error?: string }> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };

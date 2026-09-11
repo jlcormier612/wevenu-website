@@ -67,12 +67,14 @@ export type PlaybookMilestone = {
 // Task Destination Audit (2026-09-03): extended from the original 4 to
 // cover every native HTC workflow that has a real place to do the work —
 // questionnaire/contract/timeline/floor_plan/event_order/wedding_website/
-// key_dates/event_details. wedding_website has no venue-side page today
+// event_details. wedding_website has no venue-side page today
 // (see TASK_ACTION_TYPES' comment) — offered to Client Planning tasks only.
 export type TaskActionType =
   | "vendor_library" | "payments" | "documents" | "guest_list"
   | "questionnaire" | "contract" | "timeline" | "floor_plan"
-  | "event_order" | "wedding_website" | "key_dates" | "event_details";
+  | "event_order" | "wedding_website" | "event_details"
+  /** @deprecated Key Dates product retired — kept only so historical playbook/task rows still typecheck. */
+  | "key_dates";
 
 export type PlaybookTask = {
   id: string;

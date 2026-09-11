@@ -8,7 +8,6 @@ export type CalendarItemType =
   | "tour"           // venue tour (tour_appointments only) — venue Calendar
   | "follow_up"      // lead follow-up — Booking Schedule / Dashboard only (not venue Calendar; Slice 1)
   | "payment_due"    // payment line item — Booking Schedule / Dashboard only (not venue Calendar; Slice 1)
-  | "key_date"       // client milestone — Overview / Dashboard / Portal only (not venue Calendar; Slice 1)
   | "date_hold"      // soft reservation (date_holds table) — venue Calendar
   | "calendar_block" // manual schedule / blocked time (calendar_blocks) — venue Calendar
   | "planning_activity" // scheduled Planning task — Booking Schedule only (not venue Calendar)

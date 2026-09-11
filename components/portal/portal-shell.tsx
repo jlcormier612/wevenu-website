@@ -33,7 +33,7 @@ import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
-  GuestStats, JournalEntry, PortalContext, PortalKeyDate, PortalSection, PortalTask,
+  GuestStats, JournalEntry, PortalContext, PortalSection, PortalTask,
   PortalVendorTask, RecentActivity, SeatingData, SeatingFloorPlanSummary, TodoCategory, PortalParticipant, PortalActivity,
   PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
@@ -1991,7 +1991,6 @@ function WorkingWithYourVenue({
           <TimelineCard token={token} onNavigate={onNavigate} />
         </div>
       </div>
-      <KeyDatesCard token={token} maxUpcoming={2} />
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-0.5">
         <button type="button" onClick={() => onNavigate("guide")}
           className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
@@ -4906,49 +4905,6 @@ export function PortalShell({
 
 // ── Desktop Quick Actions Sidebar ─────────────────────────────────────────────
 
-// ── Key Dates card — venue-authored (Program 4, Initiative C, Phase 3):
-// "the couple should feel that the venue has already prepared everything
-// for them." Self-fetching like RequestsSummaryCard; renders nothing until
-// the venue has actually set at least one date.
-function KeyDatesCard({ token, maxUpcoming = 2 }: { token: string; maxUpcoming?: number }) {
-  const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
-
-  React.useEffect(() => {
-    fetch(`/api/portal/key-dates?token=${token}`)
-      .then((r) => r.json())
-      .then((d: { keyDates?: PortalKeyDate[] }) => setKeyDates(d.keyDates ?? []));
-  }, [token]);
-
-  if (!keyDates || keyDates.length === 0) return null;
-
-  const today = new Date().toISOString().slice(0, 10);
-  const next = keyDates.find((k) => k.date >= today) ?? keyDates[0];
-  const upcoming = keyDates.filter((k) => k.id !== next.id).slice(0, maxUpcoming);
-
-  return (
-    <div className="w-full rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Next key date</p>
-      <p className="text-sm font-semibold text-heading leading-snug">{next.label}</p>
-      <p className="text-[11px] text-muted-foreground mt-1">
-        {new Date(next.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-      </p>
-      {next.note && <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{next.note}</p>}
-      {upcoming.length > 0 && (
-        <div className="mt-3 pt-3 border-t space-y-1.5" style={{ borderColor: "#E8E3DC" }}>
-          {upcoming.map((k) => (
-            <div key={k.id} className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">{k.label}</span>
-              <span className="text-[11px] font-medium text-heading">
-                {new Date(k.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Program 4, Initiative D, Phase 4 (2026-07-23) — the four cards that sit
 // "immediately below the hero" and "represent the operational relationship
 // with the venue": Your Venue Team, Your Next Steps, Payments, Timeline.
@@ -5723,17 +5679,14 @@ function LuvDailyCard({
   planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
-  const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
 
   React.useEffect(() => {
-    fetch(`/api/portal/key-dates?token=${token}`).then((r) => r.json())
-      .then((d: { keyDates?: PortalKeyDate[] }) => setKeyDates(d.keyDates ?? [])).catch(() => setKeyDates([]));
     fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json())
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
   }, [token]);
 
-  if (keyDates === null || questionnaire === undefined) {
+  if (questionnaire === undefined) {
     return (
       <section
         className="rounded-2xl px-4 py-3.5"
@@ -5754,14 +5707,6 @@ function LuvDailyCard({
   }
 
   const today = new Date();
-  const inSevenDays = new Date(today.getTime() + 7 * 86400000);
-  const soonKeyDate = keyDates
-    .filter((k) => {
-      const d = new Date(k.date + "T12:00:00");
-      return d >= today && d <= inSevenDays;
-    })
-    .sort((a, b) => (a.date < b.date ? -1 : 1))[0] ?? null;
-
   const questionnaireOpen = Boolean(
     questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed",
   );
@@ -5774,7 +5719,6 @@ function LuvDailyCard({
     bracket,
     totalThisWeek: recentActivity?.totalThisWeek ?? 0,
     questionnaireOpen,
-    soonKeyDate: soonKeyDate ? { label: soonKeyDate.label, date: soonKeyDate.date } : null,
     venueAttentionCount,
     dayOfMonth: today.getDate(),
     disabledDestinations: planningCapabilities.vendors ? [] : ["vendors"],

@@ -257,8 +257,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       inventoryTemplates={inventoryTemplates}
       eventOrderTemplates={eventOrderTemplates}
       packagesWithItems={packagesWithItems}
-      keyDates={client.keyDates}
-      clientRehearsalDate={client.rehearsalDate}
       bookingJourney={bookingJourney}
       selectedPackage={selectedPackage}
       openSetupPayments={sp.setupPayments === "1"}

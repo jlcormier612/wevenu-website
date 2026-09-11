@@ -22,7 +22,6 @@ export type VenueCalendarItemType = (typeof VENUE_CALENDAR_ITEM_TYPES)[number];
 export const VENUE_CALENDAR_EXCLUDED_ITEM_TYPES = [
   "follow_up",
   "payment_due",
-  "key_date",
   "request_due",
   "contract_expiration",
   "document_expiration",

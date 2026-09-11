@@ -18,7 +18,6 @@ import { createVendor, createVendorForVenue } from "@/lib/vendors/service";
 import { createPackage, createPackageForVenue } from "@/lib/packages/service";
 import * as availRepo from "@/lib/availability/repository";
 import * as eventsRepo from "@/lib/events/repository";
-import * as clientsRepo from "@/lib/clients/repository";
 import { isAppointmentCatalogBuiltinKey } from "@/lib/calendar/schedule-item-catalog";
 import {
   getBuiltinScheduleItemType,
@@ -70,7 +69,6 @@ import type {
   NormalizedDateHoldLike,
   NormalizedEventLike,
   NormalizedDocumentLike,
-  NormalizedKeyDateLike,
   NormalizedLeadLike,
   NormalizedPackageLike,
   NormalizedTourLike,
@@ -421,7 +419,7 @@ export async function getSessionSummary(client: AnyDbClient, session: MigrationS
 }
 
 const COMMITTABLE_ENTITY_TYPES: MigrationEntityType[] = [
-  "calendar_block", "date_hold", "vendor", "lead", "client", "package", "event", "tour", "key_date",
+  "calendar_block", "date_hold", "vendor", "lead", "client", "package", "event", "tour",
   "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
   "floor_plan",
 ];
@@ -1155,15 +1153,9 @@ async function commitOneRecord(
       return { ok: true, entityId: eventId };
     }
     if (entityType === "key_date") {
-      const n = record.normalizedPayload as unknown as NormalizedKeyDateLike;
-      const clientRef = await resolveClientIdByEmail(client, session.venueId, n.clientId, n.clientEmail);
-      if (!clientRef.ok) return clientRef;
-      const kd = await clientsRepo.insertKeyDate(client, session.venueId, clientRef.clientId, {
-        label: n.label,
-        date: n.date,
-        note: n.note ?? "",
-      });
-      return { ok: true, entityId: kd.id };
+      // Product retired: do not create new client_key_dates via Migration Center.
+      // Historical migration_records with target_entity_type=key_date remain readable.
+      return { ok: false, error: "Key Dates have been retired and can no longer be imported. Use Event, Calendar, Tasks, Financials, or Client Info (rehearsal date) instead." };
     }
     if (entityType === "document") {
       const n = record.normalizedPayload as unknown as NormalizedDocumentLike;

@@ -165,10 +165,9 @@ const ACTION_TYPE_WORKSPACE: Record<
   floor_plan: { section: "floor_plans", focus: null, actionLabel: "Open Floor Plan" },
   event_order: { section: "event-order", focus: null, actionLabel: "Open Event Order" },
   wedding_website: { section: "website", focus: null, actionLabel: "Open Wedding Website" },
-  // No dedicated portal section exists for either — Overview is the honest
-  // destination (Key Dates render there; there's no couple "event details"
-  // page distinct from Overview at all).
-  key_dates: { section: "overview", focus: null, actionLabel: "Open Key Dates" },
+  // Historical playbook action_type only — Key Dates product is retired.
+  // Overview is the honest destination (same as event_details).
+  key_dates: { section: "overview", focus: null, actionLabel: "Open overview" },
   event_details: { section: "overview", focus: null, actionLabel: "Open Event Details" },
 };
 

@@ -41,7 +41,6 @@ import type {
   DashboardClient,
   DashboardData,
   DashboardEvent,
-  DashboardKeyDate,
   DashboardPayment,
   OnboardingStatus,
   OnboardingStep,
@@ -124,14 +123,6 @@ type DashClientRow = {
   created_at: string;
 };
 
-type DashKDRow = {
-  id: string;
-  client_id: string;
-  label: string;
-  date: string;
-  clients: { first_name: string; last_name: string } | null;
-};
-
 function mapDashClient(r: DashClientRow): DashboardClient {
   return {
     id: r.id, firstName: r.first_name, lastName: r.last_name,
@@ -184,7 +175,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -215,15 +206,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .neq("status", "cancelled")
       .order("created_at", { ascending: false }),
 
-    // Key dates in the next 14 days with embedded client names
-    supabase
-      .from("client_key_dates")
-      .select("id, client_id, label, date, clients(first_name, last_name)")
-      .eq("venue_id", venue.id)
-      .gte("date", today)
-      .lte("date", twoWeeksOut)
-      .order("date", { ascending: true })
-      .limit(10),
 
     // Upcoming events (canonical source) — replaces client-based event dates
     supabase
@@ -297,7 +279,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (tasksRes.error) throw tasksRes.error;
   if (activityRes.error) throw activityRes.error;
   if (clientsRes.error) throw clientsRes.error;
-  if (keyDatesRes.error) throw keyDatesRes.error;
   if (eventsRes.error) throw eventsRes.error;
   // payments error is non-fatal for the dashboard
 
@@ -398,17 +379,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     };
   });
 
-  const upcomingKeyDates: DashboardKeyDate[] = (keyDatesRes.data as unknown as DashKDRow[]).map(
-    (r) => ({
-      id: r.id,
-      clientId: r.client_id,
-      label: r.label,
-      date: r.date,
-      clientName: r.clients
-        ? [r.clients.first_name, r.clients.last_name].filter(Boolean).join(" ")
-        : "Unknown client",
-    }),
-  );
 
   // ---- Payment dashboard data -----------------------------------------------
   type PaymentItemDash = {
@@ -641,7 +611,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     upcomingEventCount: clientListCounts.upcoming,
     clientListCounts,
     recentBookings,
-    upcomingKeyDates,
     totalClients: clients.length,
     luvObservations,
     trendObservations,

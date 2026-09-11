@@ -149,7 +149,6 @@
   --cal-tour:           var(--soft-sage);        /* #B9D1C2 — light sage green — shared by real booked tours AND manual "Tour" schedule items, deliberately identical */
   --cal-follow-up:      var(--taupe-dark);       /* #B8AEA1 — taupe       */
   --cal-payment-due:    var(--dusty-rose);       /* #D8A7AA — rose        */
-  --cal-key-date:       var(--forest-sage);      /* #4F5F4F — dark green  */
   --cal-date-hold:      #C7A66A;                 /* amber (tint, same hue as taupe) */
   --cal-blocked:        #5A5A5A;                 /* charcoal — Blocked Time is "unavailable," not an alarm; also reused by the manual "Blocked Time" schedule type */
   --cal-planning-activity: #7A8FA6;              /* muted slate blue — distinct from every other item type */
@@ -456,7 +455,6 @@ html:has(.htc-staff) [data-slot="table"] {
 
   /* Calendar item dot colors (dark mode — light dots on dark surface) */
   --cal-event:       #C4AEDA;               /* light lavender — keeps the purple identity legible on dark, rather than reverting to plain white */
-  --cal-key-date:    var(--taupe-light);    /* #DED6CA warm cream — visible, distinct */
   --cal-blocked:     #9A9A9A;               /* lighter charcoal — the light-mode #5A5A5A would vanish against a dark surface */
 }
 
