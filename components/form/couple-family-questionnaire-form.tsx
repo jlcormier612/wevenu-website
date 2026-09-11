@@ -158,7 +158,7 @@ export function CoupleFamilyQuestionnaireForm({
     return c;
   });
   const [guestConfirm, setGuestConfirm] = React.useState<"yes" | "no" | "">(
-    data.final_guest_count != null || data.event_guest_count != null ? "" : "no",
+    data.final_guest_count != null || data.event_guest_count != null ? "yes" : "no",
   );
   const [guestCount, setGuestCount] = React.useState(String(data.final_guest_count ?? data.event_guest_count ?? ""));
   const [timingChanging, setTimingChanging] = React.useState(false);
