@@ -199,6 +199,97 @@ export async function getEventDocumentsFromVendors(
   }));
 }
 
+export async function getDocumentForAccess(
+  client: DbClient,
+  documentId: string,
+): Promise<{
+  id: string;
+  venueId: string;
+  clientId: string | null;
+  eventId: string | null;
+  storagePath: string;
+  isCoupleVisible: boolean;
+  sharedWithVendors: boolean;
+  fileName: string;
+} | null> {
+  const { data, error } = await client
+    .from("documents")
+    .select("id, venue_id, client_id, event_id, storage_path, is_couple_visible, shared_with_vendors, file_name")
+    .eq("id", documentId)
+    .maybeSingle<{
+      id: string;
+      venue_id: string;
+      client_id: string | null;
+      event_id: string | null;
+      storage_path: string;
+      is_couple_visible: boolean;
+      shared_with_vendors: boolean;
+      file_name: string;
+    }>();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id,
+    venueId: data.venue_id,
+    clientId: data.client_id,
+    eventId: data.event_id,
+    storagePath: data.storage_path,
+    isCoupleVisible: data.is_couple_visible,
+    sharedWithVendors: data.shared_with_vendors,
+    fileName: data.file_name,
+  };
+}
+
+export async function listDocumentFileVersions(
+  client: DbClient,
+  venueId: string,
+  documentId: string,
+): Promise<{
+  versionNumber: number;
+  fileName: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  createdAt: string;
+  replacedBy: string | null;
+}[]> {
+  const { data, error } = await client
+    .from("document_file_versions")
+    .select("version_number, file_name, file_size, mime_type, created_at, replaced_by")
+    .eq("venue_id", venueId)
+    .eq("document_id", documentId)
+    .order("version_number", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as {
+    version_number: number;
+    file_name: string;
+    file_size: number | null;
+    mime_type: string | null;
+    created_at: string;
+    replaced_by: string | null;
+  }[]).map((r) => ({
+    versionNumber: r.version_number,
+    fileName: r.file_name,
+    fileSize: r.file_size,
+    mimeType: r.mime_type,
+    createdAt: r.created_at,
+    replacedBy: r.replaced_by,
+  }));
+}
+
+export async function listDocumentFileVersionPaths(
+  client: DbClient,
+  venueId: string,
+  documentId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("document_file_versions")
+    .select("storage_path")
+    .eq("venue_id", venueId)
+    .eq("document_id", documentId);
+  if (error) throw error;
+  return ((data ?? []) as { storage_path: string }[]).map((r) => r.storage_path).filter(Boolean);
+}
+
 export async function deleteDocument(
   client: DbClient,
   venueId: string,

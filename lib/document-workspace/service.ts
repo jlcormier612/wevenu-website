@@ -10,6 +10,7 @@ import type {
   WorkspaceActivityEntry,
   WorkspaceDocument,
   WorkspaceScope,
+  WorkspaceVersion,
 } from "@/lib/document-workspace/types";
 import * as contractRepo from "@/lib/contracts/repository";
 
@@ -45,10 +46,42 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
       })),
     );
     return applyContractVersionLineage(docs, withFinal);
+    return applyContractVersionLineage(docs, withFinal);
   } catch (err) {
     console.error("[getVenueWorkspaceDocuments] lineage enrich failed", err);
     return docs;
   }
+}
+
+export async function getWorkspaceFileVersions(doc: WorkspaceDocument): Promise<WorkspaceVersion[]> {
+  if (doc.docType !== "document") return doc.versionFamily ?? [];
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const { listDocumentFileVersions } = await import("@/lib/documents/repository");
+  const rows = await listDocumentFileVersions(supabase, venue.id, doc.id);
+  const archived: WorkspaceVersion[] = rows.map((r) => ({
+    versionNumber: r.versionNumber,
+    createdBy: doc.uploadedByType === "vendor" ? "Vendor" : "Venue",
+    createdAt: r.createdAt,
+    reason: `Replaced — ${r.fileName}`,
+    current: false,
+    locked: false,
+    representation: "Prior file",
+  }));
+  return [
+    {
+      versionNumber: doc.currentVersion || archived.length + 1,
+      createdBy: doc.uploadedByType === "vendor" ? "Vendor" : "Venue",
+      createdAt: doc.updatedAt,
+      reason: "Current file",
+      current: true,
+      locked: false,
+      representation: "File",
+    },
+    ...archived,
+  ];
 }
 
 // ── Pinned Documents (Step 2, Section 2) ────────────────────────────────────

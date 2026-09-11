@@ -68,6 +68,10 @@ describe("storage path helpers", () => {
   it("documents bucket paths remain deletable from documents storage", () => {
     assert.equal(isDocumentsBucketPath("venue/lead/id/doc.pdf"), true);
   });
+
+  it("promoted conversation files are not removed when the Documents row is deleted", () => {
+    assert.equal(isDocumentsBucketPath("conversations/v1/c1/file.pdf"), false);
+  });
 });
 
 describe("documentsWorkspaceHref", () => {
@@ -107,6 +111,36 @@ describe("documentsWorkspaceHref", () => {
     assert.equal(
       documentsWorkspaceHref({ leadId: "l1", clientId: "c1" }),
       "/clients/c1#documents",
+    );
+  });
+
+  it("attachment with no event context stays on lead or client", () => {
+    assert.deepEqual(
+      chooseAttachmentDocumentTarget({ leadId: "lead-1", clientId: null, eventIds: [] }),
+      { entityType: "lead", entityId: "lead-1" },
+    );
+    assert.deepEqual(
+      chooseAttachmentDocumentTarget({ leadId: "lead-1", clientId: "client-1", eventIds: [] }),
+      { entityType: "client", entityId: "client-1" },
+    );
+  });
+
+  it("lead→client conversion prefers client, and only uses event when unambiguous", () => {
+    assert.deepEqual(
+      chooseAttachmentDocumentTarget({
+        leadId: "lead-1",
+        clientId: "client-1",
+        eventIds: ["event-1", "event-2"],
+      }),
+      { entityType: "client", entityId: "client-1" },
+    );
+    assert.deepEqual(
+      chooseAttachmentDocumentTarget({
+        leadId: "lead-1",
+        clientId: "client-1",
+        eventIds: ["event-1"],
+      }),
+      { entityType: "event", entityId: "event-1" },
     );
   });
 });

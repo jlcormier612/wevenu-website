@@ -1,9 +1,11 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { getWorkspaceFileVersionsAction } from "@/lib/document-workspace/actions";
 import type { WorkspaceDocument, WorkspaceVersion } from "@/lib/document-workspace/types";
 
 function fmtDate(iso: string) {
@@ -53,7 +55,21 @@ export function VersionHistorySheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const versions = doc ? buildVersions(doc) : [];
+  const [fileVersions, setFileVersions] = React.useState<WorkspaceVersion[] | null>(null);
+
+  React.useEffect(() => {
+    if (!open || !doc || doc.docType !== "document") {
+      setFileVersions(null);
+      return;
+    }
+    getWorkspaceFileVersionsAction(doc).then(setFileVersions).catch(() => setFileVersions(null));
+  }, [open, doc]);
+
+  const versions = fileVersions && fileVersions.length > 0
+    ? fileVersions
+    : doc
+      ? buildVersions(doc)
+      : [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

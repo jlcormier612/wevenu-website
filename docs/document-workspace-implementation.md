@@ -1,6 +1,8 @@
 # Work Package D1 — Canonical Document Workspace — Implementation Report
 
-**Date:** 2026-08-08
+**Updated:** 2026-09-11 — Documents / Assets completion pass. The Workspace is still a thin experience layer over producer BOs. Event Orders now join the venue union (Planning). Human-facing status uses Draft / In Progress / With Someone / Review / Changes Requested / Complete / Final. Generic uploads support replace + prior-file history. The `documents` bucket is private with authorized signed retrieval. Questionnaire `reviewed` is retired to `complete`. Inbox attachments are still not dumped into the Workspace. Contracts / Inbox architecture were not reopened.
+
+**Original date:** 2026-08-08
 **Scope:** Real assembly of the customer-facing Document Workspace, per `docs/document-workspace-inventory.md` (Step 1). The Document Domain, Contracts, and Invoices were not touched — confirmed below.
 
 ---

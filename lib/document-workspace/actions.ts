@@ -74,3 +74,18 @@ export async function recordDocumentInteractionAction(
 export async function getDocumentActivityAction(doc: WorkspaceDocument): Promise<WorkspaceActivityEntry[]> {
   return getDocumentActivity(doc);
 }
+
+export async function getWorkspaceFileVersionsAction(doc: WorkspaceDocument) {
+  const { getWorkspaceFileVersions } = await import("@/lib/document-workspace/service");
+  return getWorkspaceFileVersions(doc);
+}
+
+export async function downloadContractFinalPdfAction(contractId: string) {
+  const { getContractPdfUrl } = await import("@/lib/contracts/finalize");
+  return getContractPdfUrl(contractId);
+}
+
+export async function downloadEventOrderPdfAction(eventOrderId: string) {
+  const { getEventOrderPdfUrl } = await import("@/lib/event-orders/representation");
+  return getEventOrderPdfUrl(eventOrderId);
+}

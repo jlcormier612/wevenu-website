@@ -14,6 +14,7 @@ import type { VendorEventDetail } from "@/lib/vendors/types";
 import type { VendorFloorPlanSummary } from "@/lib/floor-plans/types";
 import type { VendorEventUpload, VendorLibraryDocument } from "@/lib/vendor-documents/types";
 import type { WorkspaceCategory, WorkspaceDocument } from "@/lib/document-workspace/types";
+import { vendorFileHref } from "@/lib/documents/access";
 
 function mapRawCategory(category: string): WorkspaceCategory {
   switch (category) {
@@ -49,6 +50,11 @@ export function normalizeVendorLibraryDocuments(library: VendorLibraryDocument[]
     uploadedByType: "vendor",
     createdAt: d.createdAt,
     updatedAt: d.createdAt,
+    experienceStatus: "none",
+    nextActor: null,
+    nextActionLabel: null,
+    producerHref: null,
+    artifactAuthority: "uploaded_file",
   }));
 }
 
@@ -72,7 +78,7 @@ export function normalizeVendorEventDocuments(
     leadId: null, clientId: null, eventId: detail.eventId, vendorId: null,
     relationshipName: null,
     eventName: detail.eventName,
-    fileUrl: d.storageUrl,
+    fileUrl: vendorFileHref(d.id),
     fileSize: null,
     mimeType: d.mimeType,
     isCoupleVisible: false,
@@ -80,6 +86,11 @@ export function normalizeVendorEventDocuments(
     uploadedByType: "venue",
     createdAt: d.createdAt ?? now,
     updatedAt: d.createdAt ?? now,
+    experienceStatus: "none",
+    nextActor: null,
+    nextActionLabel: null,
+    producerHref: null,
+    artifactAuthority: "uploaded_file",
   }));
 
   const plans: WorkspaceDocument[] = floorPlans.map((p) => ({
@@ -102,6 +113,11 @@ export function normalizeVendorEventDocuments(
     uploadedByType: "venue",
     createdAt: p.updatedAt,
     updatedAt: p.updatedAt,
+    experienceStatus: "none",
+    nextActor: null,
+    nextActionLabel: null,
+    producerHref: `/vendor/floor-plans/${p.id}?from=${encodeURIComponent(detail.assignmentId)}`,
+    artifactAuthority: "working_record",
   }));
 
   const yours: WorkspaceDocument[] = uploads.map((d) => ({
@@ -124,6 +140,11 @@ export function normalizeVendorEventDocuments(
     uploadedByType: "vendor",
     createdAt: d.createdAt ?? now,
     updatedAt: d.createdAt ?? now,
+    experienceStatus: "none",
+    nextActor: null,
+    nextActionLabel: null,
+    producerHref: null,
+    artifactAuthority: "uploaded_file",
   }));
 
   return [...venueDocs, ...plans, ...yours];

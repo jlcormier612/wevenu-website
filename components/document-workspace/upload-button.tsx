@@ -111,7 +111,7 @@ export function WorkspaceUploadButton({
           vendorId: entityType === "vendor" ? entityId : null,
           relationshipName: null,
           eventName: null,
-          fileUrl: urlData.publicUrl,
+          fileUrl: `/api/documents/${result.documentId}/file`,
           fileSize: file.size,
           mimeType: file.type,
           isCoupleVisible: false,
@@ -119,6 +119,11 @@ export function WorkspaceUploadButton({
           uploadedByType: "venue",
           createdAt: now,
           updatedAt: now,
+          experienceStatus: "none",
+          nextActor: null,
+          nextActionLabel: null,
+          producerHref: null,
+          artifactAuthority: "uploaded_file",
         });
         toast.success("Document uploaded.");
         reset();

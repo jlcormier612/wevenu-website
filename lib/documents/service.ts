@@ -95,17 +95,55 @@ export async function updateDocument(
   return result as DocumentActionResult;
 }
 
+export async function replaceDocumentFile(payload: {
+  documentId: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  storagePath: string;
+  storageUrl: string;
+}): Promise<CreateDocumentResult & { version?: number; idempotent?: boolean }> {
+  if (!payload.documentId || !payload.storagePath) {
+    return { ok: false, message: "Missing required fields." };
+  }
+  const result = await withVenue(async (c) => {
+    const { data, error } = await c.rpc("replace_document_file", {
+      p_document_id: payload.documentId,
+      p_file_name: payload.fileName,
+      p_file_size: payload.fileSize,
+      p_mime_type: payload.mimeType,
+      p_storage_path: payload.storagePath,
+      p_storage_url: payload.storageUrl,
+    });
+    const { parseReplaceDocumentResult } = await import("@/lib/documents/replace");
+    if (error) return { ok: false, message: error.message } as CreateDocumentResult;
+    const parsed = parseReplaceDocumentResult(data);
+    if (!parsed.ok) return { ok: false, message: parsed.message ?? parsed.reason } as CreateDocumentResult;
+    return { ok: true, documentId: parsed.documentId, version: parsed.version, idempotent: parsed.idempotent };
+  });
+  return result as CreateDocumentResult & { version?: number; idempotent?: boolean };
+}
+
+export async function getDocumentFileVersions(documentId: string) {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.listDocumentFileVersions(await createClient(), venue.id, documentId);
+}
+
 export async function deleteDocument(documentId: string): Promise<DocumentActionResult> {
   const result = await withVenue(async (c, venueId) => {
+    const versionPaths = await repo.listDocumentFileVersionPaths(c, venueId, documentId);
     const storagePath = await repo.deleteDocument(c, venueId, documentId);
     // Only remove objects that live in the documents bucket. Conversation
     // attachments may share a Documents row that references couple-messages
     // storage — deleting the workspace document must not destroy that file
     // while a message attachment still points at it (and vice versa).
     const { isDocumentsBucketPath } = await import("@/lib/conversations/attachment-document");
-    if (storagePath && isDocumentsBucketPath(storagePath)) {
-      const browser = createBrowserClient();
-      await browser.storage.from("documents").remove([storagePath]);
+    const browser = createBrowserClient();
+    const paths = [storagePath, ...versionPaths].filter((p): p is string => !!p && isDocumentsBucketPath(p));
+    if (paths.length > 0) {
+      await browser.storage.from("documents").remove(paths);
     }
     return { ok: true } as DocumentActionResult;
   });
