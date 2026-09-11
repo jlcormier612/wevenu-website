@@ -6,7 +6,7 @@ import { VENDOR_TERMS } from "@/lib/marketing/legal";
 export const metadata: Metadata = {
   title: "Vendor Terms",
   description:
-    "Vendor Terms for invited vendors using Hello to Cheers. Draft for counsel review.",
+    "Vendor Terms for invited vendors using Hello to Cheers.",
 };
 
 export default function VendorTermsPage() {

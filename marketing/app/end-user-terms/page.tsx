@@ -6,7 +6,7 @@ import { END_USER_TERMS } from "@/lib/marketing/legal";
 export const metadata: Metadata = {
   title: "End User Terms",
   description:
-    "Terms for couples, clients, guests, and invited participants using Hello to Cheers. Draft for counsel review.",
+    "Terms for couples, clients, guests, and invited participants using Hello to Cheers.",
 };
 
 export default function EndUserTermsPage() {

@@ -6,7 +6,7 @@ import { TERMS_OF_SERVICE } from "@/lib/marketing/legal";
 export const metadata: Metadata = {
   title: "Venue Subscription Agreement",
   description:
-    "Month-to-month terms built to earn your business—not lock you into it. Draft for counsel review.",
+    "Month-to-month terms built to earn your business—not lock you into it.",
 };
 
 export default function TermsPage() {

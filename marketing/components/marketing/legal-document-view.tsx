@@ -3,7 +3,7 @@ import type { LegalDocument } from "@/lib/marketing/legal";
 import { TrustRule } from "@/components/marketing/brand-accents";
 
 /**
- * Calm editorial renderer for Trust legal drafts.
+ * Editorial renderer for Hello to Cheers public legal pages.
  */
 export function LegalDocumentView({ document }: { document: LegalDocument }) {
   return (
@@ -24,9 +24,6 @@ export function LegalDocumentView({ document }: { document: LegalDocument }) {
             {document.notice}
           </p>
         ) : null}
-        <p className="mt-6 text-sm italic text-[var(--forest-sage)]/50">
-          Draft for counsel review before launch.
-        </p>
 
         <div className="mt-16 space-y-14">
           {document.sections.map((section) => (
