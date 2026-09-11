@@ -95,13 +95,13 @@ export const AUTO_COMPLETE_TRIGGERS: { value: string; label: string }[] = [
   { value: "vendor_selected",       label: "Client chooses a recommended vendor" },
 ];
 
-// "waiting" replaces the old lock icon (2026-07-09) — a task waiting on
-// another task is still just a task, not something restricted. The default
-// visual should read "this is a task," never "this is locked."
+// "blocked" remains in the union for schema/history compatibility only.
+// Planning tasks are independent — product code must not treat blocked as
+// "waiting on another task." Read paths normalize blocked → pending/overdue.
 export const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; icon: "check" | "clock" | "waiting" | "alert" | "minus" }> = {
   complete: { label: "Complete",  color: "var(--success)",              icon: "check" },
   pending:  { label: "Pending",   color: "var(--muted-foreground)",     icon: "clock" },
-  blocked:  { label: "Waiting",   color: "#C7A66A",                    icon: "waiting" },
+  blocked:  { label: "Pending",   color: "var(--muted-foreground)",     icon: "clock" },
   overdue:  { label: "Overdue",   color: "var(--destructive)",          icon: "alert" },
   waived:   { label: "Waived",    color: "var(--muted-foreground)",     icon: "minus" },
 };

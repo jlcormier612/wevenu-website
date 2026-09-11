@@ -432,7 +432,6 @@ function TaskRow({
   const cfg = STATUS_CONFIG[task.status];
   const Icon = STATUS_ICONS[task.status];
   const isComplete = task.status === "complete";
-  const isBlocked = task.status === "blocked";
 
   function handleComplete() {
     startAction(async () => {
@@ -482,7 +481,7 @@ function TaskRow({
 
   return (
     <div className="border-b border-border/50 last:border-0">
-      <div className={`group flex items-start gap-3 py-3 ${isBlocked ? "opacity-70" : ""}`}>
+      <div className="group flex items-start gap-3 py-3">
         <button type="button" onClick={onToggleExpand} className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground" aria-label="Expand">
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
@@ -533,11 +532,6 @@ function TaskRow({
             )}
             {contextLinks.length > 0 && <><span>·</span><span>{contextLinks.length} attached</span></>}
           </div>
-          {isBlocked && task.dependsOnTitle && (
-            <p className="text-xs text-warning-foreground">
-              <CircleDashed className="inline h-3 w-3 mr-0.5" /> Waiting on: {task.dependsOnTitle}
-            </p>
-          )}
           {task.autoCompleteTrigger && !isComplete && (
             <p className="text-[10px] text-muted-foreground italic">Auto-completes on trigger</p>
           )}
@@ -560,7 +554,7 @@ function TaskRow({
           </Button>
         )}
 
-        {!isComplete && !isBlocked && task.actionType && (
+        {!isComplete && task.actionType && (
           // Navigation into the platform, not a static checklist item — "Choose
           // a florist" opens the Vendor Library, etc. (Vendor Management —
           // Next Iteration, 2026-07-10). Always visible, not hover-only, since
@@ -574,7 +568,7 @@ function TaskRow({
           </Button>
         )}
 
-        {!isComplete && !isBlocked && (
+        {!isComplete && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             {!request && (
               <Button type="button" size="sm" variant="ghost" onClick={handleCreateRequest} disabled={creatingRequest} className="h-7 px-2 text-xs text-muted-foreground">
@@ -961,7 +955,6 @@ export function EventTaskList({
   const byDue = (list: EventTask[]) =>
     sortByDueDateAsc(list, (t) => t.dueDate);
   const overdue   = byDue(tasks.filter((t) => t.status === "overdue"));
-  const blocked   = byDue(tasks.filter((t) => t.status === "blocked"));
   const pending   = byDue(tasks.filter((t) => t.status === "pending"));
   const complete  = byDue(tasks.filter((t) => t.status === "complete"));
   const waived    = byDue(tasks.filter((t) => t.status === "waived"));
@@ -1002,7 +995,7 @@ export function EventTaskList({
   const mostRecentUpdate = tasks.length > 0
     ? tasks.reduce((latest, t) => t.updatedAt > latest ? t.updatedAt : latest, tasks[0].updatedAt)
     : null;
-  const openCount = overdue.length + blocked.length + pending.length;
+  const openCount = overdue.length + pending.length;
 
   return (
     <div className="space-y-4">
@@ -1063,7 +1056,6 @@ export function EventTaskList({
         ) : (
           <>
             {renderGroup(overdue,  "Overdue",  true)}
-            {renderGroup(blocked,  "Waiting",  true)}
             {renderGroup(pending,  "Upcoming", true)}
             {renderGroup(complete, "Completed", true)}
             {renderGroup(waived,   "Waived",   waived.length > 0)}

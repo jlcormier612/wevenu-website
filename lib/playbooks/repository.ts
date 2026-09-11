@@ -30,12 +30,15 @@ type EventTaskRow = { id: string; venue_id: string; event_id: string; template_t
 
 const mapTemplate = (r: TemplateRow): PlaybookTemplate => ({ id: r.id, venueId: r.venue_id, name: r.name, kind: r.kind as PlaybookTemplate["kind"], eventType: r.event_type, isDefault: r.is_default, isArchived: r.is_archived, description: r.description, sourceMasterKey: r.source_master_key ?? null, createdAt: r.created_at, updatedAt: r.updated_at });
 const mapMilestone = (r: MilestoneRow): PlaybookMilestone => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, name: r.name, kind: (r.kind as PlaybookMilestone["kind"]) ?? null, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
-const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as PlaybookTask["dueDateRuleKind"], category: r.category as PlaybookTask["category"], milestoneId: r.milestone_id, autoCompleteTrigger: r.auto_complete_trigger, dependsOnTaskId: r.depends_on_task_id, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, actionType: (r.action_type as PlaybookTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, needsReview: r.needs_review });
-const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as EventTask["dueDateRuleKind"], dueDateLocked: r.due_date_locked, category: r.category as EventTask["category"], milestoneName: r.milestone_name, milestoneKind: (r.milestone_kind as EventTask["milestoneKind"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, paymentLineItemId: r.payment_line_item_id ?? null, isRequired: r.is_required, status: computeStatus(r), dependsOnEventTaskId: r.depends_on_event_task_id, dependsOnTitle: r.depends_on_title ?? null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, assignedToStaffId: r.assigned_to_staff_id ?? null, assignedToName: r.assigned_to_name ?? null, actionType: (r.action_type as EventTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, requestId: r.request_id ?? null, scheduledDate: r.scheduled_date ?? null, scheduledStartTime: r.scheduled_start_time ?? null, scheduledEndTime: r.scheduled_end_time ?? null, location: r.location ?? null });
+const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as PlaybookTask["dueDateRuleKind"], category: r.category as PlaybookTask["category"], milestoneId: r.milestone_id, autoCompleteTrigger: r.auto_complete_trigger, // Compatibility column retained in DB but inert for Planning workflow.
+  dependsOnTaskId: null, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, actionType: (r.action_type as PlaybookTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, needsReview: r.needs_review });
+const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as EventTask["dueDateRuleKind"], dueDateLocked: r.due_date_locked, category: r.category as EventTask["category"], milestoneName: r.milestone_name, milestoneKind: (r.milestone_kind as EventTask["milestoneKind"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, paymentLineItemId: r.payment_line_item_id ?? null, isRequired: r.is_required, status: computeStatus(r), // Compatibility columns retained in DB but inert for Planning workflow.
+  dependsOnEventTaskId: null, dependsOnTitle: null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, assignedToStaffId: r.assigned_to_staff_id ?? null, assignedToName: r.assigned_to_name ?? null, actionType: (r.action_type as EventTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, requestId: r.request_id ?? null, scheduledDate: r.scheduled_date ?? null, scheduledStartTime: r.scheduled_start_time ?? null, scheduledEndTime: r.scheduled_end_time ?? null, location: r.location ?? null });
 
 function computeStatus(r: EventTaskRow): TaskStatus {
   if (r.status === "complete" || r.status === "waived") return r.status as TaskStatus;
-  if (r.status === "blocked") return "blocked";
+  // Planning tasks are independent: historical dependency-blocked rows are
+  // treated as actionable (pending/overdue). Migration clears status=blocked.
   if (new Date(r.due_date) < new Date(new Date().toISOString().slice(0, 10) + "T00:00:00")) return "overdue";
   return "pending";
 }
@@ -174,10 +177,7 @@ export async function duplicateTemplateInto(
     milestoneIdMap.set(m.id, newId);
   }
 
-  // Two passes, same shape as applyPlaybookToEvent's idMap: insert every task
-  // first (dependencies temporarily dropped), then backfill dependsOnTaskId
-  // once every old-task-id -> new-task-id mapping is known.
-  const taskIdMap = new Map<string, string>();
+  // Planning tasks are independent — never copy dependency relationships.
   for (const t of tasks) {
     const newMilestoneId = milestoneIdMap.get(t.milestoneId);
     if (!newMilestoneId) continue; // shouldn't happen; skip defensively rather than insert an orphaned task
@@ -192,17 +192,7 @@ export async function duplicateTemplateInto(
       action_type: t.actionType, action_label: t.actionLabel,
     }).select("id").single<{ id: string }>();
     if (error) throw error;
-    taskIdMap.set(t.id, inserted.id);
     await copyTaskAttachments(client, venueId, t.id, inserted.id);
-  }
-
-  for (const t of tasks) {
-    if (!t.dependsOnTaskId) continue;
-    const newTaskId = taskIdMap.get(t.id);
-    const newDependsOnId = taskIdMap.get(t.dependsOnTaskId);
-    if (!newTaskId || !newDependsOnId) continue;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client.from("playbook_tasks") as any).update({ depends_on_task_id: newDependsOnId }).eq("id", newTaskId).eq("venue_id", venueId);
   }
 
   return newTemplateId;
@@ -298,7 +288,7 @@ export async function insertTemplateTask(
     visibility: task.visibility, days_offset: clampDaysOffset(task.daysOffset), due_date_rule_kind: task.dueDateRuleKind, category: task.category,
     milestone_id: task.milestoneId,
     auto_complete_trigger: task.autoCompleteTrigger || null,
-    depends_on_task_id: task.dependsOnTaskId || null,
+    depends_on_task_id: null,
     is_required: task.isRequired, sort_order: task.sortOrder,
     reminder_before_days: task.reminderBeforeDays, escalation_after_days: task.escalationAfterDays,
     notify_on_assign: task.notifyOnAssign, notify_on_complete: task.notifyOnComplete,
@@ -319,7 +309,8 @@ export async function updateTemplateTask(client: DbClient, venueId: string, task
   if (task.category !== undefined) patch.category = task.category;
   if (task.milestoneId !== undefined) patch.milestone_id = task.milestoneId;
   if (task.autoCompleteTrigger !== undefined) patch.auto_complete_trigger = task.autoCompleteTrigger || null;
-  if (task.dependsOnTaskId !== undefined) patch.depends_on_task_id = task.dependsOnTaskId || null;
+  // Always clear dependency FK — Planning tasks do not wait on other tasks.
+  if (task.dependsOnTaskId !== undefined) patch.depends_on_task_id = null;
   if (task.isRequired !== undefined) patch.is_required = task.isRequired;
   if (task.reminderBeforeDays !== undefined) patch.reminder_before_days = task.reminderBeforeDays;
   if (task.escalationAfterDays !== undefined) patch.escalation_after_days = task.escalationAfterDays;
@@ -345,12 +336,12 @@ export async function deleteTemplateTask(client: DbClient, venueId: string, task
 
 export async function getEventTasks(client: DbClient, venueId: string, eventId: string): Promise<EventTask[]> {
   const { data, error } = await client.from("event_tasks")
-    .select("*, dep:depends_on_event_task_id(title), assignee:assigned_to_staff_id(full_name)")
+    .select("*, assignee:assigned_to_staff_id(full_name)")
     .eq("venue_id", venueId).eq("event_id", eventId)
     .order("sort_order").order("due_date");
   if (error) throw error;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map((r) => mapEventTask({ ...r, depends_on_title: r.dep?.title ?? null, assigned_to_name: r.assignee?.full_name ?? null }));
+  return (data as any[]).map((r) => mapEventTask({ ...r, assigned_to_name: r.assignee?.full_name ?? null }));
 }
 
 export async function getEventPlaybookApplications(client: DbClient, venueId: string, eventId: string): Promise<EventPlaybookApplication[]> {
@@ -476,7 +467,6 @@ export async function applyPlaybookToEvent(
 
   for (const t of tasks.sort((a, b) => a.sortOrder - b.sortOrder)) {
     const dueDate = offsetDate(eventDate, t.daysOffset);
-    const dependsOnEventTaskId = t.dependsOnTaskId ? idMap.get(t.dependsOnTaskId) ?? null : null;
     const milestone = milestoneById.get(t.milestoneId);
 
     const { data: inserted, error } = await client.from("event_tasks")
@@ -493,9 +483,9 @@ export async function applyPlaybookToEvent(
         milestone_name: milestone?.name ?? "Planning",
         milestone_kind: milestone?.kind ?? null,
         auto_complete_trigger: t.autoCompleteTrigger,
-        depends_on_event_task_id: dependsOnEventTaskId,
+        depends_on_event_task_id: null,
         is_required: t.isRequired, sort_order: t.sortOrder,
-        status: dependsOnEventTaskId !== null ? "blocked" : "pending",
+        status: "pending",
         // Propagate notification rules from template
         reminder_before_days: t.reminderBeforeDays,
         escalation_after_days: t.escalationAfterDays,
@@ -780,8 +770,6 @@ export async function completeEventTask(
   if (error) throw error;
   // Cancel pending reminders — task is done, no more notifications needed
   await cancelRemindersForTask(client, venueId, taskId);
-  // Unblock dependent tasks
-  await unblockedependents(client, venueId, taskId);
 
   // notify_on_complete audit (Planning Execution — Release Completion): the
   // DB trigger notify_task_completed already covers completedBy IN
@@ -814,12 +802,6 @@ export async function updateEventTaskStatus(
   if (status === "pending") patch.completed_at = null; // un-complete or un-waive
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("event_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
-  // Waiving a required task is a deliberate, coordinator-approved decision
-  // not to do it — exactly like completing it, anything waiting on it
-  // should unblock. Without this, a waived (not completed) blocking task
-  // left every dependent permanently stuck in "blocked" (Planning Release
-  // Readiness Fixes).
-  if (status === "waived") await unblockedependents(client, venueId, taskId);
 }
 
 /** Auto-complete tasks matching a trigger for a given event. */
@@ -837,15 +819,6 @@ export async function autoCompleteTrigger(
     .in("status", ["pending", "blocked", "overdue"]);
   for (const { id } of (data ?? []) as { id: string }[]) {
     await completeEventTask(client, venueId, id, "system", sourceType, sourceId);
-  }
-}
-
-async function unblockedependents(client: DbClient, venueId: string, completedTaskId: string): Promise<void> {
-  const { data: blocked } = await client.from("event_tasks").select("id")
-    .eq("depends_on_event_task_id", completedTaskId).eq("status", "blocked").eq("venue_id", venueId);
-  for (const { id } of (blocked ?? []) as { id: string }[]) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client.from("event_tasks") as any).update({ status: "pending" }).eq("id", id).eq("venue_id", venueId);
   }
 }
 

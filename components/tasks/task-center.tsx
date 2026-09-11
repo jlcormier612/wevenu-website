@@ -15,7 +15,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, CalendarDays, Check, ChevronRight, Clock, Eye, Lock, Loader2, Search,
+  AlertTriangle, CalendarDays, Check, ChevronRight, Clock, Eye, Loader2, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,7 +35,7 @@ export type TaskRow = {
   id: string;
   title: string;
   status: string;
-  computedStatus: "overdue" | "blocked" | "pending" | "complete";
+  computedStatus: "overdue" | "pending" | "complete";
   due_date: string;
   days_offset: number | null;
   due_date_locked: boolean;
@@ -70,7 +70,6 @@ const PERSPECTIVES: { id: Perspective; label: string }[] = [
 
 const STATUS_ICON = {
   overdue:  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" aria-hidden />,
-  blocked:  <Lock className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-hidden />,
   pending:  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />,
   complete: <Check className="h-3.5 w-3.5 text-success shrink-0" aria-hidden />,
 };
@@ -154,13 +153,11 @@ function DoTaskItem({
         </div>
       </div>
       <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
-        {task.computedStatus !== "blocked" && (
-          <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs"
-            disabled={isActing} onClick={() => onComplete(task.id, eventId)}
-            aria-label={`Mark complete: ${task.title}`}>
-            {completing === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-          </Button>
-        )}
+        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs"
+          disabled={isActing} onClick={() => onComplete(task.id, eventId)}
+          aria-label={`Mark complete: ${task.title}`}>
+          {completing === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+        </Button>
         <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
           disabled={isActing} onClick={() => onWaive(task.id, eventId)}
           aria-label={`Waive: ${task.title}`}>
@@ -182,7 +179,6 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
   const { eventId, couple, eventDate } = eventMeta(task);
   const reason =
     task.computedStatus === "overdue" ? "Overdue — client may be falling behind"
-    : task.computedStatus === "blocked" ? "Waiting on another step"
     : "Coming up soon for this couple";
 
   return (
@@ -378,7 +374,7 @@ function DoSection({
 }
 
 export function TaskCenter({
-  doOverdue, doBlocked, doDueToday, doDueSoon, doUpcoming,
+  doOverdue, doDueToday, doDueSoon, doUpcoming,
   watchTasks,
   searchableEvents,
   hasAnyDoTasks,
@@ -386,7 +382,6 @@ export function TaskCenter({
   currentRole = null,
 }: {
   doOverdue: TaskRow[];
-  doBlocked: TaskRow[];
   doDueToday: TaskRow[];
   doDueSoon: TaskRow[];
   doUpcoming: TaskRow[];
@@ -442,11 +437,10 @@ export function TaskCenter({
 
   const doBuckets = React.useMemo(() => ({
     overdue: notRemoved(doOverdue),
-    blocked: notRemoved(doBlocked),
     dueToday: notRemoved(doDueToday),
     dueSoon: notRemoved(doDueSoon),
     upcoming: notRemoved(doUpcoming),
-  }), [doOverdue, doBlocked, doDueToday, doDueSoon, doUpcoming, notRemoved]);
+  }), [doOverdue, doDueToday, doDueSoon, doUpcoming, notRemoved]);
 
   const scopedDo = React.useMemo(() => {
     const applyLens = (rows: TaskRow[]) => {
@@ -458,7 +452,6 @@ export function TaskCenter({
     };
     return {
       overdue: applyLens(doBuckets.overdue),
-      blocked: applyLens(doBuckets.blocked),
       dueToday: applyLens(doBuckets.dueToday),
       dueSoon: applyLens(doBuckets.dueSoon),
       upcoming: applyLens(doBuckets.upcoming),
@@ -493,10 +486,10 @@ export function TaskCenter({
   }
 
   const doImmediate =
-    scopedDo.overdue.length + scopedDo.blocked.length + scopedDo.dueToday.length + scopedDo.dueSoon.length;
+    scopedDo.overdue.length + scopedDo.dueToday.length + scopedDo.dueSoon.length;
   const doUpcomingCount = scopedDo.upcoming.length;
   const doTotalAll =
-    doBuckets.overdue.length + doBuckets.blocked.length + doBuckets.dueToday.length
+    doBuckets.overdue.length + doBuckets.dueToday.length
     + doBuckets.dueSoon.length + doBuckets.upcoming.length;
 
   const myWorkEmpty =
@@ -695,12 +688,6 @@ export function TaskCenter({
               title="Overdue" icon={<AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />}
               tasks={scopedDo.overdue}
               priority="high" onComplete={handleComplete} onWaive={handleWaive}
-              completing={completing} waiving={waiving} groupBy={groupBy}
-            />
-            <DoSection
-              title="Blocked" icon={<Lock className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />}
-              tasks={scopedDo.blocked}
-              onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}
             />
             <DoSection

@@ -239,7 +239,6 @@ type TaskForm = {
   category: TaskCategory;
   visibility: TaskVisibility;
   autoCompleteTrigger: string;
-  dependsOnTaskId: string;
   isRequired: boolean;
   escalationAfterDays: string;  // "" = none
   actionType: string;           // "" = no action, just a checklist item
@@ -250,7 +249,7 @@ function emptyForm(kind: PlaybookKind): TaskForm {
   return {
     title: "", ownerType: kind === "client" ? "couple" : "coordinator", direction: "before", days: "30", instructions: "",
     reminderDays: "", category: "custom", visibility: kind === "client" ? "client_owned" : "coordinator_only",
-    autoCompleteTrigger: "", dependsOnTaskId: "", isRequired: true, escalationAfterDays: "",
+    autoCompleteTrigger: "", isRequired: true, escalationAfterDays: "",
     actionType: "", actionLabel: "",
   };
 }
@@ -261,7 +260,7 @@ function taskToForm(t: PlaybookTask): TaskForm {
     instructions: t.description ?? "",
     reminderDays: t.reminderBeforeDays?.[0] != null ? String(t.reminderBeforeDays[0]) : "",
     category: t.category, visibility: t.visibility,
-    autoCompleteTrigger: t.autoCompleteTrigger ?? "", dependsOnTaskId: t.dependsOnTaskId ?? "",
+    autoCompleteTrigger: t.autoCompleteTrigger ?? "",
     isRequired: t.isRequired,
     escalationAfterDays: t.escalationAfterDays != null ? String(t.escalationAfterDays) : "",
     actionType: t.actionType ?? "", actionLabel: t.actionLabel ?? "",
@@ -269,14 +268,13 @@ function taskToForm(t: PlaybookTask): TaskForm {
 }
 
 function TaskFormPanel({
-  kind, templateId, playbookTaskId, initial, allTasks, attachments, venueDocuments,
+  kind, templateId, playbookTaskId, initial, attachments, venueDocuments,
   onSave, onCancel, onAttachmentsChanged, pending, submitLabel,
 }: {
   kind: PlaybookKind;
   templateId: string;
   playbookTaskId: string | null;
   initial: TaskForm;
-  allTasks: PlaybookTask[];
   attachments: PlaybookTaskAttachment[];
   venueDocuments: Document[];
   onSave: (f: TaskForm) => void;
@@ -405,22 +403,6 @@ function TaskFormPanel({
                 <SelectContent>{AUTO_COMPLETE_TRIGGERS.map((t) => <SelectItem key={t.value || "__none__"} value={t.value || "__none__"}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            {isVenue && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Wait until this is done first</Label>
-                <Select
-                  value={f.dependsOnTaskId || "__none__"}
-                  onValueChange={(v) => set("dependsOnTaskId", v === "__none__" ? "" : v)}
-                  items={[{ value: "__none__", label: "Nothing — can start anytime" }, ...allTasks.map((t) => ({ value: t.id, label: t.title }))]}
-                >
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Nothing — can start anytime</SelectItem>
-                    {allTasks.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
           {isVenue && (
@@ -466,9 +448,8 @@ function TaskFormPanel({
 // ---- Task row ---------------------------------------------------------------
 
 function TaskRow({
-  kind, task, allTasks, attachmentCount, onEdit, onDelete,
-}: { kind: PlaybookKind; task: PlaybookTask; allTasks: PlaybookTask[]; attachmentCount: number; onEdit: () => void; onDelete: () => void }) {
-  const dep = allTasks.find((t) => t.id === task.dependsOnTaskId);
+  kind, task, attachmentCount, onEdit, onDelete,
+}: { kind: PlaybookKind; task: PlaybookTask; attachmentCount: number; onEdit: () => void; onDelete: () => void }) {
   const audience = AUDIENCE_CHIPS.find((a) => a.value !== "all" && matchesAudience(task, a.value)) ?? AUDIENCE_CHIPS[1];
 
   return (
@@ -499,7 +480,6 @@ function TaskRow({
           {task.reminderBeforeDays && <><span>·</span><span>reminds {task.reminderBeforeDays[0]}d before</span></>}
           {task.escalationAfterDays != null && <><span>·</span><span className="text-warning-foreground">notifies manager after {task.escalationAfterDays}d</span></>}
           {task.autoCompleteTrigger && <><span>·</span><span className="italic">auto-completes</span></>}
-          {dep && <><span>·</span><span>after &ldquo;{dep.title}&rdquo;</span></>}
           {attachmentCount > 0 && <><span>·</span><span>{attachmentCount} attachment{attachmentCount === 1 ? "" : "s"}</span></>}
         </div>
       </div>
@@ -518,13 +498,12 @@ function TaskRow({
 // ---- Milestone chapter -------------------------------------------------------
 
 function MilestoneChapter({
-  kind, milestone, tasks, allTasks, isFirst, isLast, templateId, audienceFilter, attachmentsByTask, venueDocuments,
+  kind, milestone, tasks, isFirst, isLast, templateId, audienceFilter, attachmentsByTask, venueDocuments,
   onTaskAdded, onTaskUpdated, onTaskDeleted, onAttachmentsChanged,
 }: {
   kind: PlaybookKind;
   milestone: PlaybookMilestone;
   tasks: PlaybookTask[];
-  allTasks: PlaybookTask[];
   isFirst: boolean;
   isLast: boolean;
   templateId: string;
@@ -599,7 +578,7 @@ function MilestoneChapter({
         dueDateRuleKind: "relative_to_event",
         category: f.category, milestoneId: milestone.id,
         autoCompleteTrigger: f.autoCompleteTrigger || null,
-        dependsOnTaskId: kind === "venue" ? (f.dependsOnTaskId || null) : null,
+        dependsOnTaskId: null,
         isRequired: f.isRequired, sortOrder: tasks.length,
         reminderBeforeDays: f.reminderDays ? [parseInt(f.reminderDays, 10)] : null,
         escalationAfterDays: kind === "venue" && f.isRequired && f.escalationAfterDays ? parseInt(f.escalationAfterDays, 10) || null : null,
@@ -621,7 +600,7 @@ function MilestoneChapter({
         visibility: f.visibility,
         daysOffset: offsetForDirection(parseInt(f.days, 10) || 0, f.direction),
         category: f.category, autoCompleteTrigger: f.autoCompleteTrigger || null,
-        dependsOnTaskId: kind === "venue" ? (f.dependsOnTaskId || null) : null,
+        dependsOnTaskId: null,
         isRequired: f.isRequired,
         reminderBeforeDays: f.reminderDays ? [parseInt(f.reminderDays, 10)] : null,
         escalationAfterDays: kind === "venue" && f.isRequired && f.escalationAfterDays ? parseInt(f.escalationAfterDays, 10) || null : null,
@@ -706,7 +685,6 @@ function MilestoneChapter({
               <TaskFormPanel
                 kind={kind} templateId={templateId} playbookTaskId={task.id}
                 initial={taskToForm(task)}
-                allTasks={allTasks.filter((t) => t.id !== task.id)}
                 attachments={attachmentsByTask[task.id] ?? []}
                 venueDocuments={venueDocuments}
                 onSave={(f) => handleEdit(task.id, f)} onCancel={() => setEditingId(null)}
@@ -715,7 +693,7 @@ function MilestoneChapter({
               />
             </div>
           ) : (
-            <TaskRow key={task.id} kind={kind} task={task} allTasks={allTasks}
+            <TaskRow key={task.id} kind={kind} task={task}
               attachmentCount={(attachmentsByTask[task.id] ?? []).length}
               onEdit={() => setEditingId(task.id)} onDelete={() => handleDelete(task.id, task.title)} />
           )
@@ -726,7 +704,7 @@ function MilestoneChapter({
         {showAdd ? (
           <TaskFormPanel
             kind={kind} templateId={templateId} playbookTaskId={null}
-            initial={emptyForm(kind)} allTasks={allTasks} attachments={[]} venueDocuments={venueDocuments}
+            initial={emptyForm(kind)} attachments={[]} venueDocuments={venueDocuments}
             onSave={handleAdd}
             onCancel={() => setShowAdd(false)}
             onAttachmentsChanged={onAttachmentsChanged}
@@ -806,7 +784,6 @@ export function PlaybookBuilder({
             kind={kind}
             milestone={m}
             tasks={tasksByMilestone(m.id)}
-            allTasks={tasks}
             isFirst={i === 0}
             isLast={i === sortedMilestones.length - 1}
             templateId={templateId}

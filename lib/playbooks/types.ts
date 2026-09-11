@@ -2,6 +2,10 @@ export type TaskOwner = "coordinator" | "couple" | "vendor" | "team";
 export type TaskVisibility = "coordinator_only" | "client_visible" | "client_owned" | "vendor_visible" | "vendor_owned";
 export type TaskCategory = "communication" | "financial" | "planning" | "document" | "meeting" | "internal" | "custom";
 export type TaskStatus = "pending" | "blocked" | "complete" | "overdue" | "waived";
+// Note: "blocked" is retained for DB/schema compatibility only. Venue Planning
+// does not use task dependencies — read/write paths treat historical blocked
+// rows as independently actionable (pending/overdue). Do not use blocked as
+// "waiting on another task" in product UI.
 
 // A milestone's `kind` is the small, fixed, system-meaningful fact a venue's
 // own custom-named chapter can optionally carry (Engineering Standard #11 —
@@ -91,6 +95,7 @@ export type PlaybookTask = {
   category: TaskCategory;
   milestoneId: string;   // which chapter this task belongs to
   autoCompleteTrigger: string | null;
+  /** @deprecated Compatibility only — always null in product paths. Planning has no task dependencies. */
   dependsOnTaskId: string | null;
   isRequired: boolean;
   sortOrder: number;
@@ -155,7 +160,9 @@ export type EventTask = {
   paymentLineItemId: string | null;
   isRequired: boolean;
   status: TaskStatus;
+  /** @deprecated Compatibility only — always null in product paths. Planning has no task dependencies. */
   dependsOnEventTaskId: string | null;
+  /** @deprecated Compatibility only — always null in product paths. */
   dependsOnTitle: string | null;
   completedAt: string | null;
   completedBy: string | null;

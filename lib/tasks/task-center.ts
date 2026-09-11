@@ -13,7 +13,6 @@
 
 export type TaskCenterUrgency =
   | "overdue"
-  | "blocked"
   | "due_today"
   | "due_soon"
   | "upcoming";
@@ -48,7 +47,8 @@ export function computeTaskCenterUrgency(
   today: string,
   weekOut: string,
 ): TaskCenterUrgency {
-  if (status === "blocked") return "blocked";
+  // Planning tasks are independent — historical "blocked" (dependency-waiting)
+  // is treated as a normal open task for urgency bucketing.
   if (status === "complete" || status === "waived") return "upcoming";
   const due = dueDate.slice(0, 10);
   if (due < today || status === "overdue") return "overdue";
@@ -71,7 +71,7 @@ export function qualifiesForWatch(
   if (!input.clientPlanningReleased) return false;
 
   const urgency = computeTaskCenterUrgency(input.status, input.dueDate, today, weekOut);
-  if (urgency === "blocked" || urgency === "overdue") return true;
+  if (urgency === "overdue") return true;
 
   if (urgency === "due_today" || urgency === "due_soon") {
     // Near-term client work is always awareness-worthy once released.

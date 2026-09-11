@@ -47,7 +47,7 @@ export default async function TaskCenterPage() {
         .from("event_tasks")
         .select(`
           id, title, status, due_date, days_offset, due_date_locked, category, owner_type, visibility,
-          is_required, depends_on_event_task_id, completed_at, auto_complete_trigger,
+          is_required, completed_at, auto_complete_trigger,
           assigned_to_staff_id, milestone_kind,
           assignee:assigned_to_staff_id ( full_name ),
           events (
@@ -91,7 +91,6 @@ export default async function TaskCenterPage() {
       ...t,
       auto_complete_trigger: t.auto_complete_trigger ?? null,
       computedStatus: (urgency === "overdue" ? "overdue"
-        : urgency === "blocked" ? "blocked"
         : t.status === "complete" ? "complete"
         : "pending") as TaskRow["computedStatus"],
     };
@@ -117,7 +116,6 @@ export default async function TaskCenterPage() {
     doTasks.filter((t) => computeTaskCenterUrgency(t.status, t.due_date, today, weekOut) === urgency);
 
   const doOverdue = bucketDo("overdue");
-  const doBlocked = bucketDo("blocked");
   const doDueToday = bucketDo("due_today");
   const doDueSoon = bucketDo("due_soon");
   const doUpcoming = bucketDo("upcoming");
@@ -145,7 +143,7 @@ export default async function TaskCenterPage() {
     };
   });
 
-  const doAttention = doOverdue.length + doBlocked.length + doDueToday.length;
+  const doAttention = doOverdue.length + doDueToday.length;
   const watchCount = watchTasks.length;
 
   return (
@@ -168,7 +166,6 @@ export default async function TaskCenterPage() {
       </div>
       <TaskCenter
         doOverdue={doOverdue}
-        doBlocked={doBlocked}
         doDueToday={doDueToday}
         doDueSoon={doDueSoon}
         doUpcoming={doUpcoming}
