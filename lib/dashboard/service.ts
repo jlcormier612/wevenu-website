@@ -87,6 +87,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     id: r.id, venueId: r.venue_id, salesStage, status: salesStage,
     source: r.source, firstName: r.first_name, lastName: r.last_name,
     email: r.email, phone: r.phone,
+    preferredCommunicationChannels: [],
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
     partnerEmail: r.partner_email, eventType: r.event_type,
     eventDate: r.event_date, endDate: r.end_date,

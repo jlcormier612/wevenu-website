@@ -162,3 +162,16 @@ export function isVenueTwilioSendReady(account: VenueTwilioAccount | null): bool
     && !!account.defaultFromE164?.trim()
     && !!account.phoneNumberSid?.trim();
 }
+
+/**
+ * Whether the public inquiry/tour form may offer optional SMS consent.
+ * True once a real sender number exists and compliance is in progress or ready —
+ * so reviewers and end users can see/opt-in before A2P campaign approval.
+ * Does NOT authorize outbound sends (see isVenueTwilioSendReady).
+ */
+export function isVenueTwilioConsentOfferAvailable(account: VenueTwilioAccount | null): boolean {
+  if (!account) return false;
+  if (!account.twilioAccountSid?.trim() || !account.messagingServiceSid?.trim()) return false;
+  if (!account.defaultFromE164?.trim()) return false;
+  return account.status === "ready" || account.status === "pending_compliance";
+}

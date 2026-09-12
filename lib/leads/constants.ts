@@ -55,6 +55,7 @@ export function createInitialLeadInput(): LeadInput {
     lastName: "",
     email: "",
     phone: "",
+    preferredCommunicationChannels: [],
     partnerFirstName: "",
     partnerLastName: "",
     partnerEmail: "",

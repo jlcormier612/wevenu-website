@@ -1,3 +1,7 @@
+import type { InquiryCommunicationSettings } from "@/lib/communication/sms-consent";
+
+export type { InquiryCommunicationSettings };
+
 export type InquiryMode = "request_information" | "schedule_tour";
 
 export type InquiryEventDateMode = "choose_available" | "request_preferred";
@@ -56,6 +60,12 @@ export type PublicInquiryFormConfig = {
    * Never an HTC marketing property ID.
    */
   ga4MeasurementId: string | null;
+  /** Effective public communication prefs / SMS permission request settings. */
+  inquiryCommunicationSettings: InquiryCommunicationSettings & {
+    showPreferences: boolean;
+    showSmsPermission: boolean;
+    offeredChannels: Array<"email" | "sms" | "phone_call">;
+  };
 };
 
 export type InquiryFormSettings = {
@@ -64,6 +74,14 @@ export type InquiryFormSettings = {
   /** Subset of PUBLIC_INQUIRY_EVENT_TYPES this venue accepts. Never empty. */
   acceptedEventTypes: string[];
   customQuestions: InquiryFormQuestion[];
+  inquiryCommunicationSettings: InquiryCommunicationSettings;
+  /** Whether HTC texting is send-ready (outbound). */
+  smsConfigured: boolean;
+  /**
+   * Whether the venue may offer optional SMS consent on public forms.
+   * True with a provisioned sender while A2P is pending or ready.
+   */
+  smsConsentOfferAvailable: boolean;
 };
 
 export type TourBookingConfirmation = {

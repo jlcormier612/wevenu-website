@@ -240,7 +240,7 @@ describe("texting registration validation (no invented compliance)", () => {
       repJobPosition: "ceo",
       messagingPurpose: "Booking questions and tour reminders",
       sampleMessage1: "Hi — confirming your tour Saturday at 2pm.",
-      optInDescription: "Couples share their mobile number on our inquiry form.",
+      optInDescription: "Couples check a separate text-permission box on our inquiry form.",
       privacyPolicyUrl: "https://example.com/privacy",
       termsUrl: "https://example.com/terms",
     });

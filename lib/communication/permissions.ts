@@ -1,28 +1,21 @@
 /**
  * Minimal communication permission / suppression layer.
  *
- * ── SMS product decision (LOCKED for current release) ──────────────────────
- *   not_opted_in  → ALLOWED for relationship SMS (no first-party consent UX yet)
+ * ── SMS product decision (LOCKED) ──────────────────────────────────────────
+ * Application-originated outbound SMS requires prior express opt-in.
+ *   not_opted_in  → BLOCKED
  *   opted_in      → ALLOWED
  *   opted_out     → BLOCKED (STOP / keyword / Twilio 21610)
  *   provider_blocked → BLOCKED
  *
- * Do NOT hard-block not_opted_in in this pass — that would disable SMS for
- * existing relationships before consent-capture UX exists.
+ * Phone number entry is not consent. Selecting Text as a preference is not
+ * consent. Only the explicit inquiry/tour form SMS permission checkbox
+ * (or START / UNSTOP after a prior relationship) records opted_in.
  *
  * STOP must immediately persist + enforce opted_out.
  * START restores opted_in (Twilio OptOutType or start/unstop keywords only).
  * Ordinary inbound SMS is NEVER indefinite permission for future messaging.
- * Do NOT build a full consent-management subsystem here.
- *
- * P1 / product backlog (NOT implemented in this pass):
- *   "First-party SMS consent capture and consent evidence"
- *   — explicit opt-in UX
- *   — consent source
- *   — timestamp
- *   — language/version where applicable
- *   — persistent audit evidence
- * After that ships, product may choose to hard-block not_opted_in.
+ * Inquiry-form checkbox → opted_in with consent_text + evidence (source inquiry_form).
  *
  * ── Email ──────────────────────────────────────────────────────────────────
  * Conversation + scheduled paths hard-block opted_out / provider_blocked.
@@ -40,10 +33,10 @@ export type CommunicationPermissionStatus =
   | "provider_blocked";
 
 /**
- * Locked release rule: relationship SMS is allowed without an affirmative
- * opt-in row. Only hard blocks refuse outbound SMS.
+ * Application-originated outbound SMS requires an opted_in row.
+ * not_opted_in is not sendable.
  */
-export const SMS_ALLOWS_NOT_OPTED_IN = true as const;
+export const SMS_ALLOWS_NOT_OPTED_IN = false as const;
 
 export type PermissionCheck =
   | { ok: true; status: CommunicationPermissionStatus }
@@ -81,6 +74,9 @@ function blockMessage(channel: CommunicationChannel, status: CommunicationPermis
     if (status === "opted_out") {
       return "Texting isn't available for this contact because they opted out of texts. Try email instead.";
     }
+    if (status === "not_opted_in") {
+      return "Texting isn't available for this contact because they haven't given permission to be texted. Ask them to opt in, or try email instead.";
+    }
     if (status === "provider_blocked") {
       return "Texting isn't available for this contact — delivery was blocked for this number. Try email instead.";
     }
@@ -102,7 +98,7 @@ export function smsPermissionStatusLabel(status: CommunicationPermissionStatus):
     case "opted_in":
       return "Texting is ready for this contact.";
     case "not_opted_in":
-      return "Texting permission hasn’t been collected for this contact.";
+      return "Texting permission hasn’t been collected for this contact. Texts can’t be sent until they opt in.";
     case "opted_out":
       return "Texting is currently opted out for this contact.";
     case "provider_blocked":
@@ -132,8 +128,7 @@ export function isHardBlocked(status: CommunicationPermissionStatus): boolean {
 }
 
 /**
- * Whether outbound SMS may proceed for this permission status under the
- * locked release rule (not_opted_in and opted_in allowed).
+ * Whether outbound SMS may proceed. Only opted_in is sendable.
  */
 export function isSmsOutboundAllowed(status: CommunicationPermissionStatus): boolean {
   if (isHardBlocked(status)) return false;
@@ -181,8 +176,8 @@ export async function assertChannelAllowed(
   if (isHardBlocked(status)) {
     return { ok: false, status, message: blockMessage(input.channel, status) };
   }
-  // SMS: not_opted_in remains allowed (SMS_ALLOWS_NOT_OPTED_IN). Email has no
-  // opt-in gate at this layer — only hard blocks refuse.
+  // SMS: explicit opt-in required. Email has no opt-in gate at this layer —
+  // only hard blocks refuse.
   if (input.channel === "sms" && !isSmsOutboundAllowed(status)) {
     return { ok: false, status, message: blockMessage(input.channel, status) };
   }

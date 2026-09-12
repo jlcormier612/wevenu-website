@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
     eventType, eventDate, guestCount, estimatedBudget,
     message: inquiryMessage,
     sourceData,
+    preferredCommunicationChannels,
+    smsPermissionGranted,
     turnstileToken,
     __hp,
   } = body as Record<string, unknown>;
@@ -100,9 +102,6 @@ export async function POST(request: NextRequest) {
         const errKey = (data?.error as string | undefined) ?? error?.message;
         return { ok: false, error: INQUIRY_API_ERRORS[errKey ?? ""] ?? errKey ?? "Could not submit inquiry." };
       }
-      // Prefer relationship fields from the RPC (post-migration). Fallback:
-      // service-role read — anon RLS hides leads, which previously caused a
-      // false "Lead created without a relationship" after a successful create.
       const parsed = parsePublicLeadRpcSuccess(data as Record<string, unknown>);
       if (parsed) {
         return {
@@ -133,6 +132,23 @@ export async function POST(request: NextRequest) {
   if (!outcome.ok) {
     const msg = typeof outcome.error === "string" ? outcome.error : "Could not submit inquiry.";
     return NextResponse.json({ ok: false, message: msg, error: msg }, { status: 400 });
+  }
+
+  // First-party prefs + SMS permission (independent of phone presence alone).
+  try {
+    const { applyInquiryCommunicationCapture } = await import("@/lib/communication/apply-inquiry-consent");
+    await applyInquiryCommunicationCapture({
+      venueId: venue.id,
+      venueName: venue.name,
+      leadId: outcome.leadId,
+      relationshipId: outcome.relationshipId ?? null,
+      phone: phone ? String(phone) : null,
+      preferredChannels: preferredCommunicationChannels,
+      smsPermissionGranted: smsPermissionGranted === true || smsPermissionGranted === "true",
+      embedKey: String(embedKey),
+    });
+  } catch {
+    // Lead already created — do not fail the inquiry if permission write fails.
   }
 
   const inquirerName = `${firstName} ${lastName}`;

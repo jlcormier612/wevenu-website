@@ -13,6 +13,8 @@ type BookPayload = {
   turnstileToken?: string | null;
   qrCampaignId?: string | null;
   sourceData?: Record<string, unknown>;
+  preferredCommunicationChannels?: unknown;
+  smsPermissionGranted?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -30,18 +32,31 @@ export async function POST(request: Request) {
     }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null, sourceData: body.sourceData ?? {} });
 
     if (result.ok && result.appointmentId) {
-      // The couple's confirmation email is sent inside bookTour() itself now
-      // (lib/tours/communication.ts) — through the real sendEmail() +
-      // Message History pipeline, the same one every other message in this
-      // platform goes through, identically to a coordinator-scheduled tour.
-      // Previously this route sent its own raw-fetch confirmation that
-      // never touched Message History, sandbox mode, or status tracking —
-      // a real, separate communication path this fixes.
+      // Couple confirmation email is sent inside bookTour().
       void Promise.all([
         sendCoordinatorNotification(result).catch(() => {}),
         scheduleTourReminders(result).catch(() => {}),
         trackTourBooked(result).catch(() => {}),
       ]);
+
+      if (result.leadId && result.venueId) {
+        try {
+          const { applyInquiryCommunicationCapture } = await import("@/lib/communication/apply-inquiry-consent");
+          await applyInquiryCommunicationCapture({
+            venueId: result.venueId,
+            venueName: result.venueName ?? "Venue",
+            leadId: result.leadId,
+            relationshipId: result.relationshipId ?? null,
+            phone: body.phone ?? null,
+            preferredChannels: body.preferredCommunicationChannels,
+            smsPermissionGranted: body.smsPermissionGranted === true,
+            embedKey: body.key,
+            source: "tour_form",
+          });
+        } catch {
+          /* lead already created */
+        }
+      }
     }
 
     return NextResponse.json(result, { status: result.ok ? 200 : 422 });

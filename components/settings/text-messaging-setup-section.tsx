@@ -556,7 +556,7 @@ export function TextMessagingSetupSection({
                 <Textarea id="sampleMessage2" rows={2} value={form.sampleMessage2} onChange={(e) => setField("sampleMessage2", e.target.value)} />
               </Field>
               <Field id="optInDescription" label="How people opt in" error={errors.optInDescription}
-                hint="e.g. They share their mobile number on our inquiry form and agree to receive texts.">
+                hint="e.g. They check a separate text-permission box on our inquiry form. A phone number or Text preference alone is not permission.">
                 <Textarea id="optInDescription" rows={2} value={form.optInDescription} onChange={(e) => setField("optInDescription", e.target.value)} />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">

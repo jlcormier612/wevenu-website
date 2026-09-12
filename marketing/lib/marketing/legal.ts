@@ -120,11 +120,11 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "Text Messages (Hello to Cheers)",
       paragraphs: [
-        "Hello to Cheers is a product operated by QuickCloud LLC. Venues that use Hello to Cheers may communicate with leads and clients by text message about their inquiry, tour or appointment, event planning, and related booking logistics.",
+        "Venues that use Hello to Cheers may communicate with leads and clients by text message about their inquiry, tour or appointment, event planning, and related booking logistics.",
         "How we collect mobile numbers: A mobile number may be collected when you submit a venue’s Hello to Cheers inquiry or tour-booking form, or when you otherwise provide it to the venue in connection with your event.",
         "Phone number is not SMS consent: Entering or providing a mobile number is not, by itself, permission to send SMS.",
         "Communication preference is not SMS consent: Selecting “Text message” as a preferred way to be contacted is a preference only and is not SMS permission.",
-        "Explicit SMS permission: When the venue enables the text-message permission request on its form, you may separately check a box authorizing texts. The permission language presented on that form is the consent language we record when you opt in.",
+        "Explicit SMS permission: When the venue enables the text-message permission request on its form, you may separately check an optional box (unchecked by default) authorizing texts. Checking that box is voluntary. You can submit an inquiry or book a tour without agreeing to text messages. SMS consent is not required to use Hello to Cheers or to complete the underlying inquiry or tour transaction. The permission language presented on that form is the consent language we record when you opt in.",
         "Message frequency: Message frequency varies with your inquiry, tour, and event planning. You may receive occasional texts when the venue team needs to reach you about your visit or celebration; you will not receive a fixed daily message volume.",
         "Message and data rates may apply.",
         "Opt out / opt in: Reply STOP to opt out of further texts from that venue messaging program. Reply START to opt back in. Ordinary inbound replies, other than STOP/START and related carrier keywords, are not treated as ongoing SMS permission.",

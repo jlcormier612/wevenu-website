@@ -32,6 +32,8 @@ describe("communication architecture locks", () => {
     assert.match(conversationService, /assertChannelAllowed/);
     assert.match(scheduledProcessor, /assertChannelAllowed/);
     assert.match(inboundSmsRoute, /permissionFromTwilioOptOut|OptOutType/);
+    assert.match(inboundSmsRoute, /opted_out/);
+    assert.match(inboundSmsRoute, /exitActiveEnrollmentsForRelationship/);
     const smsStatus = readFileSync(resolve("app/api/messaging/sms-status/route.ts"), "utf8");
     assert.match(smsStatus, /upsertCommunicationPermission/);
     const emailWebhook = readFileSync(resolve("app/api/messaging/webhook/route.ts"), "utf8");

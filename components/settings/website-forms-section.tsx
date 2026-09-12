@@ -79,6 +79,8 @@ export function WebsiteFormsSection({
             initialFields={inquiryFormSettings.inquiryFormFields}
             initialAcceptedEventTypes={inquiryFormSettings.acceptedEventTypes}
             initialQuestions={inquiryFormSettings.customQuestions}
+            initialCommunicationSettings={inquiryFormSettings.inquiryCommunicationSettings}
+            smsConsentOfferAvailable={inquiryFormSettings.smsConsentOfferAvailable}
             canEdit={canEditInquiryForm}
           />
         </div>

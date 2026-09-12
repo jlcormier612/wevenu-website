@@ -96,6 +96,15 @@ export async function POST(request: NextRequest) {
       evidence: { optOutType, body, messageSid, accountSid },
       relationshipId: match.relationship_id,
     });
+    // STOP with empty body still exits sequences so automation cannot keep retrying.
+    if (permChange.status === "opted_out") {
+      void exitActiveEnrollmentsForRelationship(
+        supabase,
+        match.venue_id,
+        match.relationship_id,
+        "exited_reply",
+      ).catch((e) => console.error("Series exit-on-STOP failed:", e));
+    }
   }
 
   // STOP/START/HELP may still create a conversation note when there is body text,

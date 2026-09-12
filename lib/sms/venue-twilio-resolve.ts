@@ -8,6 +8,7 @@
 import {
   getVenueTwilioAccountByAccountSid,
   getVenueTwilioAccountByVenueId,
+  isVenueTwilioConsentOfferAvailable,
   isVenueTwilioSendReady,
   type VenueTwilioAccount,
 } from "@/lib/sms/venue-twilio-config";
@@ -89,4 +90,20 @@ export async function resolveVenueTwilioForWebhookAccountSid(
 export async function isVenueSmsConfigured(venueId: string): Promise<boolean> {
   const resolved = await resolveVenueTwilioForSend(venueId);
   return resolved.ok;
+}
+
+/**
+ * True when the venue may show the optional SMS consent checkbox / SMS preference.
+ * Independent of send-ready: consent can be collected while A2P is pending.
+ */
+export async function isVenueSmsConsentOfferAvailable(venueId: string): Promise<boolean> {
+  if (!venueId?.trim()) return false;
+  const supabase = await adminClientOrNull();
+  let account: VenueTwilioAccount | null;
+  try {
+    account = await getVenueTwilioAccountByVenueId(supabase, venueId);
+  } catch {
+    return false;
+  }
+  return isVenueTwilioConsentOfferAvailable(account);
 }
