@@ -22,9 +22,11 @@ export const CHANNEL_HAS_VERIFICATION: Record<LeadCaptureChannelKey, boolean> = 
   manual: false, // nothing to verify — choosing it is the whole action
 };
 
+export type OnboardingType = "self_setup" | "white_glove";
+
 export type SetupHubState = {
   venueId: string;
-  onboardingType: "self_setup" | "white_glove";
+  onboardingType: OnboardingType;
 
   yourVenueReviewedAt: string | null;
   calendarAvailabilityReviewedAt: string | null;

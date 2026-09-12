@@ -6,10 +6,11 @@ import { ChevronRight } from "lucide-react";
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
 import { setBringYourBusinessManualAction } from "@/app/(app)/setup-hub/actions";
 import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
+import { BRING_BUSINESS_OPTIONS } from "@/lib/onboarding/types";
 
 /**
  * Setup Hub — Bring Your Business decision.
- * Routes into Migration Center (cutover) or CSV Import (small adds).
+ * Exact four customer-facing choices from the product specification.
  */
 export function BringYourBusinessChoices({
   done,
@@ -20,7 +21,6 @@ export function BringYourBusinessChoices({
   done: boolean;
   hasImportedData: boolean;
   manualConfirmed: boolean;
-  /** Conditional hard gate when spaces/capacity are not ready for dated Events. */
   calendarReadyHint?: string | null;
 }) {
   if (done) {
@@ -57,31 +57,38 @@ export function BringYourBusinessChoices({
           </Link>
         </p>
       ) : null}
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <Link
-          href={BRING_YOUR_BUSINESS_ROUTES.migrationCenter}
-          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-        >
-          Bring my existing business
-          <ChevronRight className="h-3 w-3" />
-        </Link>
-        <Link
-          href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
-        >
-          Just a small spreadsheet
-          <ChevronRight className="h-3 w-3" />
-        </Link>
-        <StageAcknowledgeButton
-          action={setBringYourBusinessManualAction}
-          label="I'm starting fresh"
-        />
+      <div className="space-y-2">
+        {BRING_BUSINESS_OPTIONS.filter((o) => o.key !== "starting_fresh").map((opt) => {
+          const href =
+            opt.key === "honeybook"
+              ? `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=honeybook`
+              : opt.key === "tripleseat"
+                ? `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=tripleseat`
+                : `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`;
+          return (
+            <Link
+              key={opt.key}
+              href={href}
+              className="block rounded-md border p-3 text-sm hover:border-primary"
+            >
+              <span className="font-medium">{opt.title}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{opt.description}</span>
+            </Link>
+          );
+        })}
+        <div className="rounded-md border p-3 text-sm">
+          <p className="font-medium">No — I&apos;m starting fresh</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            We&apos;ll set you up with everything you need to get started.
+          </p>
+          <div className="mt-2">
+            <StageAcknowledgeButton
+              action={setBringYourBusinessManualAction}
+              label="I'm starting fresh"
+            />
+          </div>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Migration Center moves clients and calendar (events, tours, holds, blocks)
-        into real Hello to Cheers records — with review before commit. Conflicts
-        are shown; nothing is silently changed.
-      </p>
     </div>
   );
 }

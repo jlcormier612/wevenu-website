@@ -25,6 +25,9 @@ type Props = {
   ownerEmail?: string;
   ownerFirstName?: string;
   venueName?: string;
+  /** Product venue UUID for Configure Workspace (no customer access). */
+  productVenueId?: string | null;
+  configureWorkspaceUrl?: string | null;
 };
 
 export function LifecycleActions({
@@ -43,6 +46,8 @@ export function LifecycleActions({
   ownerEmail,
   ownerFirstName,
   venueName,
+  productVenueId,
+  configureWorkspaceUrl,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -271,12 +276,22 @@ export function LifecycleActions({
           status === "onboarding" ||
           onboardingType === "white_glove") ? (
           <>
+            {configureWorkspaceUrl && productVenueId ? (
+              <a
+                href={configureWorkspaceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] px-3 py-1.5 text-sm text-[var(--forest-sage)] hover:bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)]"
+              >
+                Configure Workspace
+              </a>
+            ) : null}
             <ActionButton
               disabled={pending}
               onClick={() => run("launch_workspace")}
               primary
             >
-              Launch Workspace
+              Mark Implementation Complete
             </ActionButton>
             {canManualSub ? (
               <ActionButton
@@ -284,7 +299,7 @@ export function LifecycleActions({
                 onClick={() => {
                   if (
                     !window.confirm(
-                      "Owner override: launch even if checklist incomplete?",
+                      "Owner override: mark implementation complete even if checklist incomplete?",
                     )
                   ) {
                     return;
@@ -292,7 +307,7 @@ export function LifecycleActions({
                   void run("launch_workspace", { ownerOverride: true });
                 }}
               >
-                Launch (Owner Override)
+                Mark Complete (Owner Override)
               </ActionButton>
             ) : null}
           </>

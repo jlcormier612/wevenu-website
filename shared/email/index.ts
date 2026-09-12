@@ -29,6 +29,7 @@ export {
   activationBaseUrl,
   productAppBaseUrl,
   productPostActivationLoginUrl,
+  whiteGloveIntakeUrlFromToken,
 } from "./templates/helpers";
 export {
   getEmailTemplate,

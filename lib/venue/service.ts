@@ -190,87 +190,9 @@ export async function submitVenueSetup(
 
   try {
     const venueId = await repository.insertVenueSetup(supabase, input);
-    try {
-      const { seedStarterInventory } = await import("@/lib/inventory/service");
-      await seedStarterInventory(venueId);
-    } catch (seedError) {
-      // Non-fatal — a new venue without a seeded starter catalog can still
-      // add Inventory by hand; it should never block venue creation itself.
-      console.error("Could not seed starter inventory:", seedError);
-    }
-    try {
-      const { seedStarterMessageTemplates } = await import("@/lib/message-templates/provision");
-      await seedStarterMessageTemplates(venueId);
-    } catch (seedError) {
-      console.error("Could not seed starter message templates:", seedError);
-    }
-    try {
-      const { seedStarterAutomations } = await import("@/lib/message-sequences/provision");
-      await seedStarterAutomations(venueId);
-    } catch (seedError) {
-      console.error("Could not seed starter automations:", seedError);
-    }
-    try {
-      const { seedContractStarters } = await import("@/lib/contracts/provision");
-      await seedContractStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed contract starters:", seedError);
-    }
-    try {
-      const { seedQuestionnaireFamily } = await import("@/lib/questionnaire-family/provision");
-      await seedQuestionnaireFamily(venueId);
-    } catch (seedError) {
-      console.error("Could not seed questionnaire family:", seedError);
-    }
-    try {
-      const { seedEventOrderStarters } = await import("@/lib/event-order-templates/provision");
-      await seedEventOrderStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed event order starters:", seedError);
-    }
-    try {
-      const { seedTimelineStarters } = await import("@/lib/timeline-templates/provision");
-      await seedTimelineStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed timeline starters:", seedError);
-    }
-    try {
-      const { seedFloorPlanStarters } = await import("@/lib/floor-plan-templates/provision");
-      await seedFloorPlanStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed floor plan starters:", seedError);
-    }
-    try {
-      const { seedPackageStarters } = await import("@/lib/packages/provision");
-      await seedPackageStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed package starters:", seedError);
-    }
-    try {
-      const { seedFaqStarters } = await import("@/lib/venue-guide/provision");
-      await seedFaqStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed FAQ starters:", seedError);
-    }
-    try {
-      const { seedBrochureStarters } = await import("@/lib/brochures/provision");
-      await seedBrochureStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed brochure starters:", seedError);
-    }
-    try {
-      const { seedSavedReportStarters } = await import("@/lib/saved-reports/provision");
-      await seedSavedReportStarters(venueId);
-    } catch (seedError) {
-      console.error("Could not seed saved report starters:", seedError);
-    }
-    try {
-      const { seedVenueScheduleItemTypes } = await import("@/lib/calendar/schedule-item-catalog-repository");
-      // Defensive idempotent seed (SQL AFTER INSERT trigger is the primary path).
-      await seedVenueScheduleItemTypes(supabase, venueId);
-    } catch (seedError) {
-      console.error("Could not seed schedule item catalog:", seedError);
-    }
+    // Starters live in the shared provisioning layer — not owned by the wizard.
+    const { seedWorkspaceStarters } = await import("@/lib/provisioning/starters");
+    await seedWorkspaceStarters(venueId);
     pushVenueProfileToCrm(venueId, input, "setup_submit");
     return { ok: true, venueId };
   } catch (error) {

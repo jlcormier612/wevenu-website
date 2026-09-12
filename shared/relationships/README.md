@@ -47,7 +47,7 @@ Every marketing event appends a `TimelineEvent` (and usually a `Communication`).
 
 See also [`../../workspace/README.md`](../../workspace/README.md#customer-lifecycle-engine-phase-1).
 
-After `ingestSubscriptionPurchased`: status is forced to **subscribed**, then `enterOnboardingAfterPurchase` advances to **onboarding** (Launch Yourself) or **white_glove_implementation** (White Glove). Product Sync is deferred for White Glove until Launch Workspace.
+After `ingestSubscriptionPurchased`: status is forced to **subscribed**, then `enterOnboardingAfterPurchase` advances to **onboarding** (Self-Setup / Launch Yourself) or **white_glove_implementation** (White Glove). Product venue provisioning runs at purchase for both paths; White Glove customer access waits for Product HQ **Finish White Glove Setup**. CRM **Mark Implementation Complete** (`launch_workspace` action id) is internal checklist only.
 
 New helpers: `enterOnboardingAfterPurchase`, `createManualSubscription`, `launchWhiteGloveWorkspace`, `recordPaymentFailed`, `tickPaymentDunning`, `tickRenewalStages`, `computeRelationshipHealth`, `suspendRelationshipAccount`, `reactivateRelationshipAccount`.
 

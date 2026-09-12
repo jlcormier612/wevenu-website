@@ -62,6 +62,7 @@ import { formatDateTime } from "@/lib/utils";
 import {
   clearRelationshipAutoArrival,
   hasLiveRelationshipsSync,
+  productConfigureWorkspaceUrl,
   refreshRelationshipHealth,
   tickRenewalStageForRelationship,
 } from "@shared/relationships";
@@ -255,6 +256,12 @@ export default async function RelationshipDetailPage({
         ownerEmail={relationship.owner.email}
         ownerFirstName={relationship.owner.firstName}
         venueName={relationship.venue.name}
+        productVenueId={relationship.productSync?.venueId ?? null}
+        configureWorkspaceUrl={
+          relationship.productSync?.venueId
+            ? productConfigureWorkspaceUrl(relationship.productSync.venueId)
+            : null
+        }
       />
       <StatusMoveControl relationship={relationship} />
       <CustomerSuccessPanels relationship={relationship} />

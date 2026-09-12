@@ -69,8 +69,9 @@ One Relationship. Status changes. Never duplicate. Everything appends to the tim
 - Route: **`/relationships/[id]/implementation`** (team-only)
 - Link from Relationship Snapshot when WG applies
 - Checklist, branding/contracts/packages/questionnaires/website notes, internal notes
-- **Launch Workspace** when all 8 tasks complete (Owner/Admin override available)
-- On launch: status → `active`, product sync, **Welcome Home** email with Activate Account link
+- **Mark Implementation Complete** when all 8 tasks complete (Owner/Admin override available)
+- Checklist completion is CRM-only; customer access requires Product HQ **Finish White Glove Setup**
+- **Configure Workspace** opens Product HQ when `productSync.venueId` is bound
 
 ### Lifecycle stages
 
@@ -127,7 +128,7 @@ Logic: `shared/relationships/renewal-stages.ts` (`tickRenewalStages`).
 
 **Always (Sales + CS, with edit/comms permission):** Set a Task · Send a Message · Make a Note
 
-**Lifecycle:** Send Subscription Link · Copy Link · Manual Subscription · Resend Welcome · Launch Workspace · Suspend / Reactivate · Send Payment Reminder · View Billing (Stripe portal)
+**Lifecycle:** Send Subscription Link · Copy Link · Manual Subscription · Resend Welcome · Mark Implementation Complete · Configure Workspace · Suspend / Reactivate · Send Payment Reminder · View Billing (Stripe portal)
 
 API: `POST /api/relationships/owner-actions` (`create_task` | `send_message` | `add_note`).
 
@@ -155,11 +156,17 @@ Health-based suggestions only (WG overdue, no login after activation, onboarding
 4. Open the Checkout URL (not `/pricing`) · complete test payment in Stripe
 5. Confirm status moves Subscribed → Onboarding or White Glove Implementation
 
-**Launch Workspace**
+**Mark Implementation Complete**
 
 1. Open a White Glove Relationship → **White Glove Implementation**
 2. Complete the 8 checklist tasks (or use Owner Override)
-3. **Launch Workspace** → status Active · Welcome Home email · activation token on timeline
+3. **Mark Implementation Complete** → CRM checklist complete · access still pending Product HQ
+4. In Product HQ → **Finish White Glove Setup** → Welcome Home / Set Up Your Login email · activation
+
+**Configure Workspace**
+
+1. Relationship with `productSync.venueId` set (after purchase provisioning)
+2. Click **Configure Workspace** → opens Product HQ onboarding for that venue (no customer access)
 
 **Dunning tick**
 

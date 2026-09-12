@@ -55,7 +55,7 @@ FOUNDER_PROGRAM_ACTIVE && founderSpotsRemaining > 0
 ### Post-payment (already durable)
 
 - `self_guided` → activation + welcome + product sync  
-- `white_glove` → setup pending / access deferred until Launch Workspace  
+- `white_glove` → setup pending / access deferred until Product HQ **Finish White Glove Setup**  
 
 ### PATH A / PATH B
 

@@ -44,13 +44,30 @@ export default async function SetupHubPage() {
   const uploadedMaterialsCount = venueDocuments.filter((d) => d.tags.includes("setup_import")).length;
   const owner = teamMembers.find((m) => m.isOwner);
   const ownerFirstName = owner?.name?.split(" ")[0] ?? null;
+  const isWhiteGlove = hubState?.onboardingType === "white_glove";
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Setup"
-        description="Set up your venue at your own pace. Every area here can be revisited and edited any time — nothing here is final until you say so."
+        description={
+          isWhiteGlove
+            ? "We've already done a lot of the setup for you. There are just a few things we'd like you to review before you're ready to invite couples."
+            : "Set up your venue at your own pace. Every area here can be revisited and edited any time — nothing here is final until you say so."
+        }
       />
+      {isWhiteGlove ? (
+        <div className="rounded-md border bg-muted/30 p-4">
+          <h2 className="text-lg font-medium">Welcome to Hello to Cheers</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We&apos;ve already done a lot of the setup for you.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            There are just a few things we&apos;d like you to review before you&apos;re ready
+            to invite couples.
+          </p>
+        </div>
+      ) : null}
       <SetupHubOverview
         venueName={venue.name}
         ownerFirstName={ownerFirstName}

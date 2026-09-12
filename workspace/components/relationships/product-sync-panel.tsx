@@ -160,6 +160,21 @@ export function ProductSyncPanel({
         </dl>
       )}
 
+      {productSync?.venueId ? (
+        <p className="mt-4">
+          <a
+            href={`${(process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() || "http://localhost:3000").replace(/\/$/, "")}/admin/onboarding/${encodeURIComponent(productSync.venueId)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm font-medium text-[var(--heritage-sage)] underline"
+          >
+            Configure Workspace
+          </a>
+          <span className="ml-2 text-xs ws-muted">
+            Opens Product HQ for this venue — does not grant customer access.
+          </span>
+        </p>
+      ) : null}
       {productSync?.lastError ? (
         <p className="mt-3 text-sm text-[var(--dusty-rose)]">{productSync.lastError}</p>
       ) : null}

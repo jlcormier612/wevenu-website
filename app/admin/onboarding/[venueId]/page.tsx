@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { OnboardingWorkspaceHeader } from "@/components/hq/onboarding-workspace-header";
-import { OverviewSection } from "@/components/hq/venue-detail/overview-section";
 import { SupportSection } from "@/components/hq/venue-detail/support-section";
 import { OnboardingSendUpdate } from "@/components/hq/onboarding-send-update";
+import { WhiteGloveOperatorPanel } from "@/components/hq/white-glove-operator-panel";
 import { ImportWizard } from "@/components/settings/import-wizard";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import { getVenueHqDetail } from "@/lib/hq/venue-detail-service";
 import { getOnboardingEngagementWithName, ensureOnboardingEngagement } from "@/lib/hq/onboarding-service";
+import { getWhiteGloveOperatorView } from "@/lib/onboarding/white-glove-operator";
 
 export const metadata: Metadata = { title: "Onboarding — Hello to Cheers HQ" };
 
@@ -20,16 +21,14 @@ export default async function OnboardingWorkspacePage({ params }: Props) {
   const actor = await requireAdminUser();
   if (!actor) redirect("/login");
 
-  const [detail, { engagement, assignedName }] = await Promise.all([
+  const [detail, { engagement, assignedName }, operatorView] = await Promise.all([
     getVenueHqDetail(venueId),
     getOnboardingEngagementWithName(venueId),
+    getWhiteGloveOperatorView(venueId),
   ]);
   if (!detail) notFound();
 
-  // Opening the workspace starts the case file — a specialist shouldn't
-  // have to take a separate "begin onboarding" action before this page is
-  // fully usable (§2.2a: "get-or-create").
-  const resolvedEngagement = engagement ?? await ensureOnboardingEngagement(venueId);
+  const resolvedEngagement = engagement ?? (await ensureOnboardingEngagement(venueId));
 
   return (
     <div className="space-y-6">
@@ -42,19 +41,25 @@ export default async function OnboardingWorkspacePage({ params }: Props) {
         currentAdminName={actor.name}
       />
 
-      {/* Guided Setup resumability — §1.2's real resumable-wizard-step
-          system isn't built yet, so this reuses the Activation Engine's
-          own gap data (already the source of truth every other Guided
-          Setup surface reads from, per §1.1) rather than a blank slate. */}
-      <div>
-        <p className="text-xs text-muted-foreground mb-2">Setup progress, from the Activation Engine — not yet the step-by-step resumability §1.2 will add.</p>
-        <OverviewSection activation={detail.activation} />
-      </div>
+      <WhiteGloveOperatorPanel
+        venueId={venueId}
+        venueName={detail.venue.name}
+        whiteGloveStatus={operatorView.whiteGloveStatus}
+        stages={operatorView.stages}
+        materials={operatorView.materials}
+        intakeSummary={operatorView.intakeSummary}
+        validationIssues={operatorView.validationIssues}
+      />
 
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="mb-4">
-          <h2 className="font-heading text-sm font-semibold text-heading">Import data for {detail.venue.name}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">The exact same Migration Center wizard the venue would run themselves — every write lands in their venue, not yours.</p>
+          <h2 className="font-heading text-sm font-semibold text-heading">
+            Import data for {detail.venue.name}
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            The same Migration Center path the venue would use — every write lands in their
+            venue.
+          </p>
         </div>
         <ImportWizard venueId={venueId} />
       </div>

@@ -116,6 +116,7 @@ export async function POST(request: Request) {
         if (existing.status === "activated") {
           return NextResponse.json({ ok: true, id: existing.id, status: existing.status });
         }
+        // pending or provisioned — safe to patch identity / tokens
         const { data: updated, error: updErr } = await admin
           .from("venue_enrollments")
           .update(patch)
@@ -127,8 +128,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // White Glove Launch Workspace may re-upsert by subscription when the
-    // checkout session id is missing on the Relationship but Stripe sub id exists.
+    // May re-upsert by subscription when the checkout session id is missing
+    // on the Relationship but Stripe sub id exists.
     if (!row && body.stripeSubscriptionId?.trim()) {
       const subId = body.stripeSubscriptionId.trim();
       const { data: existingSub, error: findSubErr } = await admin

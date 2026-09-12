@@ -112,8 +112,8 @@ export function parseWelcomeBackRequested(value: unknown): boolean {
   return false;
 }
 
-export function onboardingLabel(type: OnboardingType): "Self-Guided" | "White Glove" {
-  return type === "white_glove" ? "White Glove" : "Self-Guided";
+export function onboardingLabel(type: OnboardingType): "Self-Setup" | "White Glove Setup" {
+  return type === "white_glove" ? "White Glove Setup" : "Self-Setup";
 }
 
 export function yesNo(value: boolean): "Yes" | "No" {

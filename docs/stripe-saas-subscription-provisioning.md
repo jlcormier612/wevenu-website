@@ -51,7 +51,7 @@ Relationship Workspace → Send Subscription Link → same Checkout API (`relati
 | `onboardingType` | Behavior |
 |---|---|
 | `self_guided` (Launch Yourself) | `enterOnboardingAfterPurchase` mints activation token → welcome/founder welcome with Activate Account → `enqueueProductSync` |
-| `white_glove` | Account/relationship activated into `white_glove_implementation`, `accessDisabled=true`, **no** activation token / product sync until HQ **Launch Workspace** → then sync + `welcome_home` |
+| `white_glove` | Account/relationship enters `white_glove_implementation`, `accessDisabled=true`, venue provisioned at purchase; customer activation/email via Product HQ **Finish White Glove Setup** only |
 
 ### Founding eligibility (existing — not invented)
 
@@ -151,7 +151,7 @@ Never commit `.env.local` or live secrets.
 | 3 | Non-founding → no founding coupon | Code ✓ |
 | 4 | PATH A and PATH B share Checkout + webhook state | Already true; unchanged |
 | 5 | Self-guided → activation + welcome + sync | Already true |
-| 6 | White Glove → no premature access; Launch Workspace unlocks | Already true |
+| 6 | White Glove → no premature access; Finish White Glove Setup unlocks | Already true |
 | 7 | Failed/unpaid payment does not activate | Code ✓ |
 | 8 | Webhook signature required | Already true |
 | 9 | Idempotent enrollment (no duplicate emails on retry) | Code ✓ |

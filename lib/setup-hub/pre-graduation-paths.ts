@@ -15,6 +15,7 @@ const ALLOWED_PREFIXES = [
   "/settings",
   "/library",
   "/help",
+  "/onboarding",
 ] as const;
 
 function matchesPrefix(pathname: string, prefix: string): boolean {

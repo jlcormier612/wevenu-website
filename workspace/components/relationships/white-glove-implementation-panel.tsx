@@ -88,16 +88,15 @@ export function WhiteGloveImplementationPanel({
     const data = (await res.json()) as {
       error?: string;
       message?: string;
-      activateUrl?: string;
+      customerAccessGranted?: boolean;
     };
     if (!res.ok) {
-      setMessage(data.error || "Launch failed");
+      setMessage(data.error || "Could not mark implementation complete");
       return;
     }
     setMessage(
-      data.activateUrl
-        ? `${data.message || "Launched."} Activate: ${data.activateUrl}`
-        : data.message || "Workspace launched.",
+      data.message ||
+        "Implementation checklist marked complete. Finish White Glove Setup in Product HQ to send customer access.",
     );
     startTransition(() => router.refresh());
   }
@@ -131,7 +130,7 @@ export function WhiteGloveImplementationPanel({
         <h2 className="font-heading text-xl">Checklist progress</h2>
         <p className="mt-1 text-sm ws-muted">
           {completedCount}/{totalCount} complete
-          {missing.length > 0 ? ` · Remaining: ${missing.join(", ")}` : " · Ready to launch"}
+          {missing.length > 0 ? ` · Remaining: ${missing.join(", ")}` : " · Ready to mark complete"}
         </p>
         <ul className="mt-4 space-y-2">
           {checklist.map((task) => (
@@ -155,7 +154,7 @@ export function WhiteGloveImplementationPanel({
               onClick={() => void launch(false)}
               className="rounded-sm bg-[var(--heritage-sage)] px-4 py-2.5 text-sm font-medium text-[var(--true-white)] disabled:opacity-50"
             >
-              Launch Workspace
+              Mark Implementation Complete
             </button>
             {canOverride && !launchReady ? (
               <button
@@ -164,7 +163,7 @@ export function WhiteGloveImplementationPanel({
                 onClick={() => {
                   if (
                     !window.confirm(
-                      "Launch with incomplete checklist (Owner override)?",
+                      "Mark checklist complete with incomplete items (Owner override)? Customer access still requires Finish White Glove Setup in Product HQ.",
                     )
                   ) {
                     return;
@@ -173,11 +172,15 @@ export function WhiteGloveImplementationPanel({
                 }}
                 className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] px-4 py-2.5 text-sm"
               >
-                Launch (Owner Override)
+                Mark Complete (Owner Override)
               </button>
             ) : null}
           </div>
         ) : null}
+        <p className="mt-3 text-xs ws-muted">
+          This updates the CRM checklist only. Customer access is granted only via{" "}
+          <strong>Finish White Glove Setup</strong> in Product HQ.
+        </p>
       </section>
 
       <section className="ws-panel p-6">

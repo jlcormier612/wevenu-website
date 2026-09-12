@@ -153,14 +153,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  // A venue graduates into the normal product either via the legacy wizard
-  // (setupCompleted) or via Setup Hub's readyToInviteCouples (Continuous
-  // Setup Experience, Phase 6) — see app/(app)/layout.tsx's gate for the
-  // full reasoning. Without this second check, a Setup-Hub-graduated venue
-  // would pass the layout gate but still see a blank "Dashboard unavailable"
-  // here, since setup_completed is never set on that path.
-  const readyToInviteCouples = venue.setupCompleted ? false : await isVenueReadyToInviteCouples(venue.id);
-  if (!venue.setupCompleted && !readyToInviteCouples) return null;
+  // Canonical graduation: ready_to_invite_couples only.
+  const readyToInviteCouples = await isVenueReadyToInviteCouples(venue.id);
+  if (!readyToInviteCouples) return null;
   const supabase = await createClient();
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
@@ -721,7 +716,7 @@ async function buildGuidedSetupChecklist(venue: Venue, activationScore: Activati
     // to a customer who should never see it. setupCompleted true is the
     // legacy wizard path, unaffected by this addition. readyToInviteCouples
     // is threaded through call sites for that reason alone, not used here.
-    show: !allComplete && !venue.onboardingDismissed && venue.setupCompleted,
+    show: false,
     steps,
     completedCount,
     totalSteps: steps.length,
