@@ -416,8 +416,29 @@ export async function renameFloorPlan(
 export async function deleteFloorPlan(
   client: DbClient, venueId: string, planId: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
+  // Pre-check seating history so the UI can explain the block (DB trigger is the backstop).
+  const [{ count: assignmentCount }, { count: submissionCount }, { count: delegationCount }] = await Promise.all([
+    client.from("guest_seat_assignments").select("guest_id", { count: "exact", head: true }).eq("floor_plan_id", planId),
+    client.from("seating_submissions").select("id", { count: "exact", head: true }).eq("floor_plan_id", planId),
+    client.from("seating_delegations").select("id", { count: "exact", head: true }).eq("floor_plan_id", planId),
+  ]);
+  if ((assignmentCount ?? 0) > 0 || (submissionCount ?? 0) > 0 || (delegationCount ?? 0) > 0) {
+    return {
+      ok: false,
+      message: "This floor plan has seating assignments, submissions, or assistance history. Resolve seating before deleting the plan — seating history is never deleted silently.",
+    };
+  }
+
   const { data, error } = await client.from("floor_plans").delete().eq("id", planId).eq("venue_id", venueId).select("id");
-  if (error) throw error;
+  if (error) {
+    if (/seating_data_exists|seating assignments/i.test(error.message)) {
+      return {
+        ok: false,
+        message: "This floor plan has seating data. Resolve seating before deleting the plan.",
+      };
+    }
+    throw error;
+  }
   if (!data || data.length === 0) {
     return { ok: false, message: "Only an Owner or Manager can delete a floor plan." };
   }

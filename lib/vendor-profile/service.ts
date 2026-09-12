@@ -123,7 +123,7 @@ export async function getVendorDashboardData(vendorId: string): Promise<VendorDa
       .from("venue_vendor_relationships")
       .select("id, venue_id, status, added_at, venues(name)")
       .eq("vendor_id", vendorId)
-      .neq("status", "removed")
+      .neq("status", "inactive")
       .order("added_at", { ascending: false }),
     supabase
       .from("vendor_packages")

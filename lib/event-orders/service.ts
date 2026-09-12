@@ -8,8 +8,9 @@ import {
 import * as repo from "@/lib/event-orders/repository";
 import * as templatesRepo from "@/lib/event-order-templates/repository";
 import type {
-  AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddSectionResult,
-  EnsureEventOrderResult, EventOrderActionResult, EventOrderWithDetails,
+  AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddOfferingLineInput,
+  AddSectionResult, EnsureEventOrderResult, EventOrderActionResult, EventOrderWithDetails,
+  UpdateLineInput,
 } from "@/lib/event-orders/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -25,12 +26,6 @@ async function withVenue<T>(
   return fn(supabase, venue.id);
 }
 
-/**
- * The one guard every mutation in this file goes through: a Finalized Event
- * Order is locked (docs/booking-financial-architecture-event-order-model.md
- * §1) — it takes an explicit reopen to edit again, the same posture this
- * codebase already applies to a signed Contract.
- */
 async function assertOpen(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, eventOrderId: string,
 ): Promise<EventOrderActionResult | null> {
@@ -39,7 +34,20 @@ async function assertOpen(
   return mutationBlockedWhenFinalized(order.status);
 }
 
-// ---- read -----------------------------------------------------------------------
+function validateQty(quantity: string): EventOrderActionResult | null {
+  const qty = Number(quantity);
+  if (!(qty > 0)) return { ok: false, errors: { quantity: "Enter a valid quantity." } };
+  return null;
+}
+
+/** Empty price is allowed (unpriced). Non-empty must be a valid >= 0 number. */
+function validateOptionalPrice(unitPrice: string): EventOrderActionResult | null {
+  const cleaned = unitPrice.replace(/[$,]/g, "").trim();
+  if (cleaned === "") return null;
+  const price = Number(cleaned);
+  if (isNaN(price) || price < 0) return { ok: false, errors: { unitPrice: "Enter a valid price, or leave blank." } };
+  return null;
+}
 
 export async function getEventOrder(eventId: string): Promise<EventOrderWithDetails | null> {
   if (!isSupabaseConfigured) return null;
@@ -49,18 +57,9 @@ export async function getEventOrder(eventId: string): Promise<EventOrderWithDeta
   return repo.getEventOrderByEvent(supabase, venue.id, eventId);
 }
 
-// ---- lifecycle --------------------------------------------------------------------
-
 /**
- * Work Package D7A — optional `templateId` applies an Event Order
- * Template's structure (section names + standard lines) at creation time.
- * Only ever consulted here, on first creation — an Event Order that
- * already exists is returned as-is regardless of `templateId`, matching
- * `ensureEventInventory(eventId, templateId)`'s exact same "apply once,
- * never re-apply" contract. Every line is inserted through the same
- * `insertSection`/`insertCustomLine` this file's other mutators already
- * use (provenance: "custom" — a template line has no live Package/
- * Inventory reference to preserve) — no second line-insertion mechanism.
+ * Creates an Event Order. When templateId is set, copies section structure only
+ * (delivery sections) — not checklist/process template lines.
  */
 export async function ensureEventOrder(eventId: string, templateId: string | null = null): Promise<EnsureEventOrderResult> {
   const result = await withVenue(async (supabase, venueId) => {
@@ -70,19 +69,13 @@ export async function ensureEventOrder(eventId: string, templateId: string | nul
 
     const template = templateId ? await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId) : null;
     if (template) {
-      const sectionIdMap = new Map<string, string>();
       let sectionSort = 0;
       for (const s of [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder)) {
-        const created = await repo.insertSection(supabase, venueId, eventOrderId, s.name, sectionSort++);
-        sectionIdMap.set(s.id, created.id);
+        await repo.insertSection(supabase, venueId, eventOrderId, s.name, sectionSort++);
       }
-      let lineSort = 0;
-      for (const l of [...template.lines].sort((a, b) => a.sortOrder - b.sortOrder)) {
-        const sectionId = l.sectionId ? sectionIdMap.get(l.sectionId) ?? null : null;
-        await repo.insertCustomLine(supabase, venueId, eventOrderId, {
-          description: l.description, quantity: String(l.quantity), unitPrice: String(l.unitPrice), sectionId,
-        }, lineSort++);
-      }
+      // Intentionally do not copy template lines — templates are delivery
+      // structure only (locked product model). Legacy checklist lines stay
+      // on the template for archive/history but are not applied to live EOs.
       await repo.insertActivity(supabase, venueId, eventOrderId, "started", `Event Order started from template: ${template.name}`);
     } else {
       await repo.insertActivity(supabase, venueId, eventOrderId, "started", "Event Order started");
@@ -112,13 +105,17 @@ export async function reopenEventOrder(eventOrderId: string): Promise<EventOrder
     const blocked = reopenBlockedWhenNotFinalized(order.status);
     if (blocked) return blocked;
     await repo.reopenEventOrder(supabase, venueId, eventOrderId);
-    await repo.insertActivity(supabase, venueId, eventOrderId, "reopened", `Reopened for changes — was v${order.revision}`);
+    await repo.insertActivity(
+      supabase, venueId, eventOrderId, "reopened",
+      `Reopened for changes — was v${order.revision}`,
+      order.sharedAt
+        ? "Clients still see the last shared version until you share again."
+        : undefined,
+    );
     return { ok: true } as EventOrderActionResult;
   });
   return result as EventOrderActionResult;
 }
-
-// ---- sections -----------------------------------------------------------------------
 
 export async function addSection(eventOrderId: string, name: string): Promise<AddSectionResult> {
   if (!name.trim()) return { ok: false, message: "Give this section a name." };
@@ -133,15 +130,6 @@ export async function addSection(eventOrderId: string, name: string): Promise<Ad
   return result as AddSectionResult;
 }
 
-/**
- * Phase 4 — links (or clears, when floorPlanId is null) this Section's
- * Floor Plan for reconciliation. A structural authoring change like any
- * other Section edit, so it follows the same assertOpen guard as the rest
- * of this file — an Event Order's linked-Floor-Plan structure doesn't
- * silently change once finalized, same as its Sections and Lines don't.
- * Never touches the Floor Plan itself, only which one this Section points
- * at — see docs/booking-financial-architecture-phase4-floor-plan-design.md §6.
- */
 export async function setSectionFloorPlan(
   eventOrderId: string, sectionId: string, floorPlanId: string | null,
 ): Promise<EventOrderActionResult> {
@@ -165,8 +153,7 @@ export async function removeSection(eventOrderId: string, sectionId: string, sec
   return result as EventOrderActionResult;
 }
 
-// ---- lines --------------------------------------------------------------------------
-
+/** Legacy / advanced: bundled package fee line — not the primary Add path. */
 export async function addLineFromPackage(eventOrderId: string, packageId: string, packageName: string, basePrice: number, sectionId: string | null): Promise<AddLineResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const guard = await assertOpen(supabase, venueId, eventOrderId);
@@ -175,7 +162,24 @@ export async function addLineFromPackage(eventOrderId: string, packageId: string
     const line = await repo.insertLineFromPackage(supabase, venueId, eventOrderId, {
       packageId, description: packageName, unitPrice: basePrice, sectionId,
     }, sortOrder);
-    await repo.insertActivity(supabase, venueId, eventOrderId, "line_added", `Added from package: ${packageName}`);
+    await repo.insertActivity(supabase, venueId, eventOrderId, "line_added", `Added package fee: ${packageName}`);
+    return { ok: true, line } as AddLineResult;
+  });
+  return result as AddLineResult;
+}
+
+export async function addLineFromOffering(eventOrderId: string, input: AddOfferingLineInput): Promise<AddLineResult> {
+  if (!input.description.trim()) return { ok: false, message: "Description is required." };
+  const qtyErr = validateQty(input.quantity);
+  if (qtyErr) return qtyErr as AddLineResult;
+  const priceErr = validateOptionalPrice(input.unitPrice);
+  if (priceErr) return priceErr as AddLineResult;
+  const result = await withVenue(async (supabase, venueId) => {
+    const guard = await assertOpen(supabase, venueId, eventOrderId);
+    if (guard) return guard as AddLineResult;
+    const sortOrder = await repo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
+    const line = await repo.insertLineFromOffering(supabase, venueId, eventOrderId, input, sortOrder);
+    await repo.insertActivity(supabase, venueId, eventOrderId, "line_added", `Added offering: ${input.description.trim()}`);
     return { ok: true, line } as AddLineResult;
   });
   return result as AddLineResult;
@@ -183,10 +187,10 @@ export async function addLineFromPackage(eventOrderId: string, packageId: string
 
 export async function addLineFromInventory(eventOrderId: string, input: AddInventoryLineInput): Promise<AddLineResult> {
   if (!input.description.trim()) return { ok: false, message: "Description is required." };
-  const qty = Number(input.quantity);
-  if (!(qty > 0)) return { ok: false, errors: { quantity: "Enter a valid quantity." } };
-  const price = Number(input.unitPrice.replace(/[$,]/g, ""));
-  if (isNaN(price) || price < 0) return { ok: false, errors: { unitPrice: "Enter a valid price." } };
+  const qtyErr = validateQty(input.quantity);
+  if (qtyErr) return qtyErr as AddLineResult;
+  const priceErr = validateOptionalPrice(input.unitPrice);
+  if (priceErr) return priceErr as AddLineResult;
   const result = await withVenue(async (supabase, venueId) => {
     const guard = await assertOpen(supabase, venueId, eventOrderId);
     if (guard) return guard as AddLineResult;
@@ -200,16 +204,64 @@ export async function addLineFromInventory(eventOrderId: string, input: AddInven
 
 export async function addCustomLine(eventOrderId: string, input: AddCustomLineInput): Promise<AddLineResult> {
   if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };
-  const qty = Number(input.quantity);
-  if (!(qty > 0)) return { ok: false, errors: { quantity: "Enter a valid quantity." } };
-  const price = Number(input.unitPrice.replace(/[$,]/g, ""));
-  if (isNaN(price) || price < 0) return { ok: false, errors: { unitPrice: "Enter a valid price." } };
+  const qtyErr = validateQty(input.quantity);
+  if (qtyErr) return qtyErr as AddLineResult;
+  const priceErr = validateOptionalPrice(input.unitPrice);
+  if (priceErr) return priceErr as AddLineResult;
   const result = await withVenue(async (supabase, venueId) => {
     const guard = await assertOpen(supabase, venueId, eventOrderId);
     if (guard) return guard as AddLineResult;
     const sortOrder = await repo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
     const line = await repo.insertCustomLine(supabase, venueId, eventOrderId, input, sortOrder);
     await repo.insertActivity(supabase, venueId, eventOrderId, "line_added", `Custom line added: ${input.description.trim()}`);
+    return { ok: true, line } as AddLineResult;
+  });
+  return result as AddLineResult;
+}
+
+/** Explicit import of text-only package_items as Included custom snapshot lines. */
+export async function importPackageInclusions(
+  eventOrderId: string,
+  items: { description: string; quantity: number; unit: string | null }[],
+  sectionId: string | null,
+): Promise<AddLineResult | EventOrderActionResult & { addedCount?: number }> {
+  if (items.length === 0) return { ok: false, message: "Select at least one inclusion." };
+  const result = await withVenue(async (supabase, venueId) => {
+    const guard = await assertOpen(supabase, venueId, eventOrderId);
+    if (guard) return guard;
+    let added = 0;
+    let lastLine = null as Awaited<ReturnType<typeof repo.insertCustomLine>> | null;
+    for (const item of items) {
+      if (!item.description.trim()) continue;
+      const sortOrder = await repo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
+      lastLine = await repo.insertCustomLine(supabase, venueId, eventOrderId, {
+        description: item.description.trim(),
+        quantity: String(item.quantity || 1),
+        unitPrice: "",
+        sectionId,
+        unit: item.unit ?? undefined,
+        isIncluded: true,
+      }, sortOrder);
+      added++;
+    }
+    if (added === 0) return { ok: false, message: "No inclusions could be imported." } as EventOrderActionResult;
+    await repo.insertActivity(supabase, venueId, eventOrderId, "line_added", `Imported ${added} package inclusion${added === 1 ? "" : "s"}`);
+    return { ok: true, line: lastLine!, addedCount: added } as AddLineResult & { addedCount: number };
+  });
+  return result as AddLineResult & { addedCount?: number };
+}
+
+export async function updateLine(eventOrderId: string, lineId: string, input: UpdateLineInput): Promise<AddLineResult> {
+  if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };
+  const qtyErr = validateQty(input.quantity);
+  if (qtyErr) return qtyErr as AddLineResult;
+  const priceErr = validateOptionalPrice(input.unitPrice);
+  if (priceErr) return priceErr as AddLineResult;
+  const result = await withVenue(async (supabase, venueId) => {
+    const guard = await assertOpen(supabase, venueId, eventOrderId);
+    if (guard) return guard as AddLineResult;
+    const line = await repo.updateLine(supabase, venueId, lineId, input);
+    await repo.insertActivity(supabase, venueId, eventOrderId, "line_updated", `Updated: ${input.description.trim()}`);
     return { ok: true, line } as AddLineResult;
   });
   return result as AddLineResult;

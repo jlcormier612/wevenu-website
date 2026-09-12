@@ -87,6 +87,8 @@ describe("SMS send trust", () => {
       venue_id: "test-venue",
       twilio_account_sid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       messaging_service_sid: "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      default_from_e164: "+15551110001",
+      phone_number_sid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       status: "ready",
     }]);
     process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({
@@ -110,6 +112,8 @@ describe("SMS send trust", () => {
       venue_id: "test-venue",
       twilio_account_sid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       messaging_service_sid: "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      default_from_e164: "+15551110001",
+      phone_number_sid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       status: "ready",
     }]);
     process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({

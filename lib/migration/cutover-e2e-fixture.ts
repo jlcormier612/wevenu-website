@@ -15,7 +15,7 @@ export const CUTOVER_E2E_COUNTS = {
   spaces: 2,
   vendors: 5,
   packages: 3,
-  keyDates: 10,
+  keyDates: 0,
 } as const;
 
 export const CUTOVER_E2E_CHECKLIST = [

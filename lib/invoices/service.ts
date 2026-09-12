@@ -56,8 +56,12 @@ function captureInvoiceBrandingSnapshot(venue: Venue): InvoiceBrandingSnapshot {
  * simply don't exist as stored rows until Phase 3b's freeze-on-send.
  */
 const PROVENANCE_TO_INVOICE_TYPE: Record<string, InvoiceLineItemType> = {
-  package: "package", inventory: "inventory", custom: "item",
+  package: "package", inventory: "inventory", custom: "item", offering: "item",
 };
+
+function eoUnitPriceForInvoice(unitPrice: number | null): number {
+  return unitPrice ?? 0;
+}
 
 function projectEventOrderLines(eventOrderLines: EventOrderLine[]): InvoiceLineItem[] {
   return eventOrderLines.map((l) => {
@@ -65,7 +69,8 @@ function projectEventOrderLines(eventOrderLines: EventOrderLine[]): InvoiceLineI
     return {
       id: l.id, invoiceId: "", venueId: l.venueId, packageId: l.packageId,
       type,
-      description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: l.amount,
+      description: l.description, quantity: l.quantity,
+      unitPrice: eoUnitPriceForInvoice(l.unitPrice), amount: l.amount,
       sortOrder: l.sortOrder, createdAt: l.createdAt, eventOrderLineId: l.id,
       // Live projection, not a stored row — no package-category lookup here
       // (same D5B fix as the stored write paths, minus the extra fetch this
@@ -237,7 +242,8 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
         if (eventOrder) {
           await repo.insertFrozenLinesFromEventOrder(c, venueId, invoiceId, eventOrder.lines.map((l) => ({
             eventOrderLineId: l.id, packageId: l.packageId, type: PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item",
-            description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: l.amount, sortOrder: l.sortOrder,
+            description: l.description, quantity: l.quantity,
+            unitPrice: eoUnitPriceForInvoice(l.unitPrice), amount: l.amount, sortOrder: l.sortOrder,
           })));
           // Booking Financial Architecture Phase 3c — a permanent trace of
           // which Event Order revision produced this invoice, independent
@@ -376,7 +382,7 @@ export async function getEventOrderDrift(invoiceId: string): Promise<EventOrderD
   for (const line of eventOrder.lines) {
     const frozen = frozenByEoId.get(line.id);
     if (!frozen) {
-      added.push({ description: line.description, quantity: line.quantity, unitPrice: line.unitPrice, amount: line.amount });
+      added.push({ description: line.description, quantity: line.quantity, unitPrice: eoUnitPriceForInvoice(line.unitPrice), amount: line.amount });
       continue;
     }
     if (frozen.quantity !== line.quantity || frozen.description !== line.description) {
@@ -386,8 +392,8 @@ export async function getEventOrderDrift(invoiceId: string): Promise<EventOrderD
         fromDescription: frozen.description, toDescription: line.description,
       });
     }
-    if (frozen.unitPrice !== line.unitPrice) {
-      priceChanged.push({ description: line.description, fromUnitPrice: frozen.unitPrice, toUnitPrice: line.unitPrice });
+    if (frozen.unitPrice !== eoUnitPriceForInvoice(line.unitPrice)) {
+      priceChanged.push({ description: line.description, fromUnitPrice: frozen.unitPrice, toUnitPrice: eoUnitPriceForInvoice(line.unitPrice) });
     }
   }
   const removed: EventOrderLineSnapshot[] = frozenLines

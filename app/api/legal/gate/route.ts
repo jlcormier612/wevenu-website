@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { createClient } from "@/integrations/supabase/server";
+import {
+  createClient,
+  createVendorClient,
+} from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   clientRequestMeta,
@@ -15,6 +18,22 @@ export const runtime = "nodejs";
 function parsePortal(value: unknown): AuthenticatedLegalPortal | null {
   if (value === "venue" || value === "vendor") return value;
   return null;
+}
+
+/**
+ * Authenticate against the cookie jar that matches `portal`.
+ * portal=vendor requires the vendor session; portal=venue requires venue.
+ * Cross-scope cookies must not authenticate the other portal.
+ */
+async function userForPortal(portal: AuthenticatedLegalPortal) {
+  const supabase =
+    portal === "vendor"
+      ? await createVendorClient()
+      : await createClient("venue");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
 }
 
 /**
@@ -39,10 +58,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await userForPortal(portal);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -52,6 +68,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       needsAcceptance: status.needsAcceptance,
       documents: status.documents,
+      portal,
     });
   } catch (error) {
     const message =
@@ -107,10 +124,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await userForPortal(portal);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -120,7 +134,7 @@ export async function POST(request: Request) {
   try {
     const current = await getLegalGateStatus(user.id, documentTypes);
     if (!current.needsAcceptance) {
-      return NextResponse.json({ ok: true, alreadyAccepted: true });
+      return NextResponse.json({ ok: true, alreadyAccepted: true, portal });
     }
 
     const { ipAddress, userAgent } = clientRequestMeta(request.headers);
@@ -135,6 +149,7 @@ export async function POST(request: Request) {
       ok: true,
       acceptanceIds: acceptances.map((a) => a.id),
       userId: user.id,
+      portal,
     });
   } catch (error) {
     const message =

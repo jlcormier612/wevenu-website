@@ -15,7 +15,7 @@ export default async function DocumentsPage() {
   return (
     <DocumentWorkspace
       title="Documents"
-      description="Every contract, invoice, questionnaire, floor plan, and file across your venue — one place to find anything."
+      description="Contracts, questionnaires, event orders, invoices, and files — one place to find anything."
       documents={documents}
       initialPinnedKeys={[...pinnedKeys]}
       initialRecentEntries={[...recentMap.entries()]}

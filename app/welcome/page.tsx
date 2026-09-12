@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 
 import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
 import { welcomeDocumentsFromOutstanding } from "@/components/welcome-experience/welcome-experience-helpers";
-import { createClient } from "@/integrations/supabase/server";
+import {
+  createClient,
+  createVendorClient,
+} from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   getCouplePortalLegalGateStatus,
@@ -21,6 +24,11 @@ import {
 } from "@/lib/legal/welcome-integration";
 import { resolveLegalSessionPrincipal } from "@/lib/legal/resolve-session-principal";
 import { publicPathForLegalDocumentType } from "@/lib/legal/public-routes";
+import {
+  resolveWelcomeAuthScope,
+  safeWelcomeReturnToPath,
+  welcomeContextForScope,
+} from "@/lib/legal/welcome-session-scope";
 
 export const metadata: Metadata = {
   title: "Welcome",
@@ -46,6 +54,9 @@ type Props = {
  * Universal Welcome Experience entry (WP4).
  * Used for venue signup, vendor invitation resume, and returning-user updates.
  * Couple portal may also deep-link here with ?token=.
+ *
+ * Venue and vendor use separate cookie jars. Scope is resolved from live
+ * sessions + returnTo — never from context alone.
  */
 export default async function WelcomePage({ searchParams }: Props) {
   if (!isSupabaseConfigured) {
@@ -60,11 +71,24 @@ export default async function WelcomePage({ searchParams }: Props) {
     return renderCoupleWelcome(portalToken, params.returnTo, contextParam);
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const [venueSb, vendorSb] = await Promise.all([
+    createClient("venue"),
+    createVendorClient(),
+  ]);
+  const [venueAuth, vendorAuth] = await Promise.all([
+    venueSb.auth.getUser(),
+    vendorSb.auth.getUser(),
+  ]);
+  const venueUser = venueAuth.data.user;
+  const vendorUser = vendorAuth.data.user;
+
+  const scope = resolveWelcomeAuthScope({
+    hasVenueSession: Boolean(venueUser),
+    hasVendorSession: Boolean(vendorUser),
+    returnTo: params.returnTo,
+  });
+
+  if (!scope) {
     redirect(
       `/login?next=${encodeURIComponent(
         `/welcome?${new URLSearchParams({
@@ -75,17 +99,23 @@ export default async function WelcomePage({ searchParams }: Props) {
     );
   }
 
-  const principal = await resolveLegalSessionPrincipal(user.id);
+  const user = scope === "vendor" ? vendorUser! : venueUser!;
+
+  const principal = await resolveLegalSessionPrincipal(user.id, {
+    prefer: scope,
+  });
   if (!principal) {
-    redirect("/login");
+    redirect(scope === "vendor" ? "/vendor/login" : "/login");
+  }
+
+  if (scope === "vendor" && principal.kind !== "vendor") {
+    redirect("/vendor/login");
   }
 
   const status = await legalAcceptanceService.requiresAcceptance(
     principal.user,
   );
-  const { resolveAuthenticatedHomePath } = await import("@/lib/auth/resolve-home");
-  const fallback = await resolveAuthenticatedHomePath(supabase, user.id);
-  const returnTo = safeReturnToPath(params.returnTo, { fallback });
+  const returnTo = safeWelcomeReturnToPath(params.returnTo, scope);
   const documents = welcomeDocumentsFromOutstanding(status.outstanding);
 
   // Only mount Welcome when there is at least one reviewable (active) doc —
@@ -95,13 +125,16 @@ export default async function WelcomePage({ searchParams }: Props) {
   }
 
   const hasPrior = outstandingImpliesPriorAcceptance(status.outstanding);
-  const context: WelcomeFlowContext = isWelcomeFlowContext(contextParam)
-    ? contextParam
-    : inferWelcomeContext({
-        userType: principal.user.userType,
-        pathname: returnTo,
-        hasPriorAcceptance: hasPrior,
-      });
+  const inferred = inferWelcomeContext({
+    userType: principal.user.userType,
+    pathname: returnTo,
+    hasPriorAcceptance: hasPrior,
+  });
+  const context: WelcomeFlowContext = welcomeContextForScope(
+    scope,
+    contextParam,
+    inferred,
+  );
 
   const copy = copyForWelcomeContext(context);
 
@@ -130,7 +163,6 @@ async function renderCoupleWelcome(
     fallback: `/p/${token}`,
   });
 
-  // Prefer engine when we have a user id; fall back to gate status mapping.
   let documents: {
     title: string;
     version: string;
@@ -166,12 +198,15 @@ async function renderCoupleWelcome(
     redirect(returnTo);
   }
 
-  const context: WelcomeFlowContext = isWelcomeFlowContext(contextParam)
-    ? contextParam
-    : inferWelcomeContext({
-        userType: "couple",
-        hasPriorAcceptance: hasPrior,
-      });
+  const inferred = inferWelcomeContext({
+    userType: "couple",
+    hasPriorAcceptance: hasPrior,
+  });
+  const context: WelcomeFlowContext =
+    isWelcomeFlowContext(contextParam) &&
+    (contextParam === "coupleInvitation" || contextParam === "versionUpdate")
+      ? contextParam
+      : inferred;
   const copy = copyForWelcomeContext(context);
 
   return (

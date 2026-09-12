@@ -29,6 +29,65 @@ const BUCKET = "event-order-representations";
 // bytes requires bypassing RLS.
 const getServiceClient = createAdminClient;
 
+async function uploadEventOrderPdfBytes(
+  storagePath: string,
+  pdfBytes: Uint8Array,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const serviceClient = getServiceClient();
+  const { error: uploadError } = await serviceClient.storage
+    .from(BUCKET)
+    .upload(storagePath, pdfBytes, { contentType: "application/pdf", upsert: false });
+
+  const verify = async () => {
+    const { data, error } = await serviceClient.storage.from(BUCKET).download(storagePath);
+    return !error && !!data && data.size >= 50;
+  };
+
+  if (!uploadError && await verify()) return { ok: true };
+
+  // Fallback: direct Storage REST. Observed on Sandbox that share could
+  // finish (snapshot + activity) while no readable object landed via the
+  // JS client alone; raw POST matches the probe that does persist.
+  console.error("[event-order] PDF upload via supabase-js did not verify; trying direct Storage POST", {
+    storagePath,
+    uploadError: uploadError?.message ?? null,
+  });
+  if (uploadError) {
+    await serviceClient.storage.from(BUCKET).remove([storagePath]).catch(() => undefined);
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!baseUrl || !serviceKey) {
+    return { ok: false, message: "Could not store the Event Order PDF. Please try sharing again." };
+  }
+
+  // Copy into an ArrayBuffer-backed view so BlobPart / BodyInit accept it
+  // under Next's DOM lib (Buffer/Uint8Array generics otherwise fail tsc).
+  const bodyBytes = Uint8Array.from(pdfBytes);
+  const res = await fetch(`${baseUrl}/storage/v1/object/${BUCKET}/${storagePath}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${serviceKey}`,
+      apikey: serviceKey,
+      "Content-Type": "application/pdf",
+      "x-upsert": "true",
+    },
+    body: bodyBytes,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("[event-order] PDF direct upload failed", { status: res.status, detail: detail.slice(0, 400) });
+    return { ok: false, message: "Could not store the Event Order PDF. Please try sharing again." };
+  }
+
+  if (!(await verify())) {
+    console.error("[event-order] PDF direct upload verify failed", { storagePath });
+    return { ok: false, message: "Could not store the Event Order PDF. Please try sharing again." };
+  }
+  return { ok: true };
+}
+
 /** A plain-text snapshot for the Document Domain version's own `content` field — audit/display only. The real structured truth stays on event_order_lines/sections; this is never read back as a source of truth. */
 function renderTextSnapshot(eventOrder: Awaited<ReturnType<typeof getEventOrder>>): string {
   if (!eventOrder) return "";
@@ -74,10 +133,10 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
 
   const storagePath = `${venue.id}/${eventOrderId}/eo-${Date.now()}.pdf`;
   const serviceClient = getServiceClient();
-  const { error: uploadError } = await serviceClient.storage
-    .from(BUCKET)
-    .upload(storagePath, pdfBuffer, { contentType: "application/pdf", upsert: false });
-  if (uploadError) return { ok: false, message: `Could not generate the Event Order PDF: ${uploadError.message}` };
+  // Uint8Array — avoid Node Buffer edge cases in storage-js body handling.
+  const pdfBytes = new Uint8Array(pdfBuffer);
+  const uploaded = await uploadEventOrderPdfBytes(storagePath, pdfBytes);
+  if (!uploaded.ok) return uploaded;
 
   const { data: { user } } = await supabase.auth.getUser();
   const actor = { type: "venue" as const, id: user?.id ?? venue.id };
@@ -85,7 +144,7 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   try {
     await documentIntegration.shareEventOrderDocument(
       supabase, eventOrderId, eventOrder.eventId, `Event Order — ${event.name}`, renderTextSnapshot(full), actor,
-      { storagePath, storageUrl: null, byteSize: pdfBuffer.byteLength },
+      { storagePath, storageUrl: null, byteSize: pdfBytes.byteLength },
     );
   } catch (err) {
     await serviceClient.storage.from(BUCKET).remove([storagePath]);
@@ -93,6 +152,11 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   }
 
   const isResend = !!eventOrder.sharedAt;
+  // Freeze client-visible content now. Reopen may edit live lines; portal
+  // continues reading this snapshot until the next share.
+  await repo.insertShareSnapshot(
+    supabase, venue.id, eventOrderId, full.revision, repo.buildSharePayload(full),
+  );
   await repo.setSharedAt(supabase, venue.id, eventOrderId);
   await repo.insertActivity(supabase, venue.id, eventOrderId, "shared", isResend ? "Updated shared copy" : "Shared with client");
 
@@ -144,20 +208,31 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   return { ok: true };
 }
 
-/** A fresh, short-lived signed URL — never a stored/public path, same discipline as lib/contracts/finalize.ts getContractPdfUrl. */
+/** A fresh, short-lived signed URL for the durable shared PDF — never regenerated from live editable lines. */
 export async function getEventOrderPdfUrl(eventOrderId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
 
   const supabase = await createClient();
+  const eventOrder = await repo.getEventOrderById(supabase, venue.id, eventOrderId);
+  if (!eventOrder) return { ok: false, message: "Event Order not found." };
+  if (!eventOrder.sharedAt) return { ok: false, message: "This Event Order hasn't been shared yet." };
+
   const documentId = await documentIntegration.getEventOrderDocumentId(supabase, eventOrderId);
   if (!documentId) return { ok: false, message: "This Event Order hasn't been shared yet." };
 
   const service = (await import("@/lib/document-domain/integration/service")).createDocumentService(supabase);
   const representation = await service.getCurrentRepresentation(documentId);
-  if (!representation || !representation.storagePath) return { ok: false, message: "This Event Order hasn't been shared yet." };
+  if (!representation?.storagePath) return { ok: false, message: "This Event Order hasn't been shared yet." };
 
   const serviceClient = getServiceClient();
+  // Fail closed: Download must serve the stored share artifact, never rebuild
+  // from the current (possibly reopened/edited) Event Order.
+  const { error: missingError } = await serviceClient.storage.from(BUCKET).download(representation.storagePath);
+  if (missingError) {
+    return { ok: false, message: "The shared Event Order PDF is missing from storage. Re-share to publish a new copy." };
+  }
+
   const { data, error } = await serviceClient.storage.from(BUCKET).createSignedUrl(representation.storagePath, 300);
   if (error || !data) return { ok: false, message: "Could not generate a download link." };
   return { ok: true, url: data.signedUrl };

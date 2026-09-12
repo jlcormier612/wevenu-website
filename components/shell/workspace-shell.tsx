@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 
 import { Building2, Menu, Search } from "lucide-react";
 
@@ -19,11 +20,21 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 /**
  * Responsive workspace shell: a fixed left sidebar on desktop, a top navigation
  * bar, and a slide-out navigation sheet on mobile. Renders the active module
  * page as `children`.
+ *
+ * The shell is `fixed inset-0` so it always covers the browser viewport. That
+ * prevents the short-shell failure mode where `h-svh` alone still left a cream
+ * band of document background below the app.
+ *
+ * `main` is the module scroll surface for every route: the sidebar and global
+ * header stay put while page content scrolls inside it. Inbox only differs in
+ * content width (`max-w-[90rem]`), not in scroll model — its conversation
+ * column must be free to grow past the viewport and keep scrolling.
  */
 export function WorkspaceShell({
   email,
@@ -38,11 +49,13 @@ export function WorkspaceShell({
   staffRole?: string | null;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isInboxWorkspace = pathname === "/messaging";
   const [mobileNavOpen, setMobileNavOpen]   = React.useState(false);
   const [searchOpen,    setSearchOpen]      = React.useState(false);
 
   return (
-    <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
+    <div className="htc-staff fixed inset-0 flex min-h-0 w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar */}
       <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <div className="flex h-20 items-center border-b border-sidebar-border px-5">
@@ -56,9 +69,9 @@ export function WorkspaceShell({
         </div>
       </aside>
 
-      {/* Main column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Main column — min-h-0 so flex-1 children can shrink/fill under h-svh */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           {/* Mobile nav trigger */}
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetTrigger
@@ -140,8 +153,15 @@ export function WorkspaceShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-background">
-          <div className="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-10">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-background">
+          <div
+            className={cn(
+              "mx-auto w-full",
+              isInboxWorkspace
+                ? "max-w-[90rem] px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
+                : "max-w-6xl p-4 sm:p-6 lg:p-10",
+            )}
+          >
             {children}
           </div>
         </main>

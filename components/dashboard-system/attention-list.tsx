@@ -3,7 +3,7 @@
  *
  * Implements docs/dashboard-component-system-architecture.md §2.2.
  * Replaces the shell duplicated across NeedsAttentionWidget,
- * FollowupsWidget, UpcomingToursWidget, KeyDatesWidget, ClientEventsWidget,
+ * FollowupsWidget, UpcomingToursWidget, ClientEventsWidget,
  * RecentBookingsWidget, and TasksWidget — each of those keeps its own
  * per-row content (which genuinely differs row to row: some widgets show
  * a status badge, some a two-line date block, some an urgency label) and
@@ -13,7 +13,7 @@
  *
  * `rowVariant` preserves the one real structural difference the inventory
  * found between these widgets: most use a divide-y list (no per-row
- * border), KeyDatesWidget/TasksWidget use individually bordered rows.
+ * border), TasksWidget use individually bordered rows.
  * Both are legitimate, existing, distinct visual treatments — this
  * component keeps both rather than forcing one at the cost of a real
  * visual regression.

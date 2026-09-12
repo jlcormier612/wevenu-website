@@ -7,7 +7,7 @@
  *   1. AccountSid → venue_twilio_accounts.venue_id
  *   2. Verify signature with that subaccount's Auth Token
  *   3. From → find_relationship_by_phone_for_venue(phone, venue_id)
- *   4. Match → find-or-create Conversation, insert message (idempotent on MessageSid)
+ *   4. Match → find-or-create venue_couple Conversation, insert message (idempotent on MessageSid)
  *   5. Persist NumMedia MediaUrl* with venue credentials + Documents registration
  *   6. No match → log and skip
  *
@@ -15,6 +15,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
 import { shouldAdvanceStatus } from "@/lib/communication/status";
@@ -95,6 +96,15 @@ export async function POST(request: NextRequest) {
       evidence: { optOutType, body, messageSid, accountSid },
       relationshipId: match.relationship_id,
     });
+    // STOP with empty body still exits sequences so automation cannot keep retrying.
+    if (permChange.status === "opted_out") {
+      void exitActiveEnrollmentsForRelationship(
+        supabase,
+        match.venue_id,
+        match.relationship_id,
+        "exited_reply",
+      ).catch((e) => console.error("Series exit-on-STOP failed:", e));
+    }
   }
 
   // STOP/START/HELP may still create a conversation note when there is body text,
@@ -103,20 +113,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, permissionUpdated: !!permChange });
   }
 
-  let conversationId: string;
-  const { data: existing } = await supabase.from("conversations")
-    .select("id").eq("relationship_id", match.relationship_id).maybeSingle<{ id: string }>();
-  if (existing) {
-    conversationId = existing.id;
-  } else {
-    const { data: created, error: createError } = await supabase.from("conversations")
-      .insert({ venue_id: match.venue_id, relationship_id: match.relationship_id })
-      .select("id").single<{ id: string }>();
-    if (createError || !created) {
-      console.error("Failed to create conversation for inbound SMS:", createError?.message);
-      return NextResponse.json({ error: "Failed to create conversation." }, { status: 500 });
-    }
-    conversationId = created.id;
+  const conversationId = await findOrCreateVenueCoupleConversation(
+    supabase,
+    match.venue_id,
+    match.relationship_id,
+  );
+  if (!conversationId) {
+    console.error("Failed to create conversation for inbound SMS");
+    return NextResponse.json({ error: "Failed to create conversation." }, { status: 500 });
   }
 
   const { data: inserted, error: insertError } = await supabase.from("conversation_messages")

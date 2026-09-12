@@ -15,7 +15,8 @@ type TemplateRow = {
   is_archived: boolean; created_at: string; updated_at: string;
 };
 type SectionRow = {
-  id: string; template_id: string; venue_id: string; name: string; sort_order: number;
+  id: string; template_id: string; venue_id: string; name: string;
+  guidance: string | null; sort_order: number;
   created_at: string; updated_at: string;
 };
 type LineRow = {
@@ -31,6 +32,7 @@ const mapTemplate = (r: TemplateRow): EventOrderTemplate => ({
 });
 const mapSection = (r: SectionRow): EventOrderTemplateSection => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, name: r.name,
+  guidance: r.guidance ?? null,
   sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapLine = (r: LineRow): EventOrderTemplateLine => ({
@@ -125,9 +127,11 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
 
   const sectionIdMap = new Map<string, string>();
   for (const s of [...source.sections].sort((a, b) => a.sortOrder - b.sortOrder)) {
-    const created = await insertSection(client, venueId, newId, s.name, s.sortOrder);
+    const created = await insertSection(client, venueId, newId, s.name, s.sortOrder, s.guidance);
     sectionIdMap.set(s.id, created.id);
   }
+  // Legacy checklist lines are preserved on duplicate for history only —
+  // apply-to-event still copies structure only.
   for (const l of [...source.lines].sort((a, b) => a.sortOrder - b.sortOrder)) {
     await insertLine(client, venueId, newId, {
       sectionId: l.sectionId ? sectionIdMap.get(l.sectionId) ?? null : null,
@@ -139,12 +143,28 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
 
 // ---- sections ---------------------------------------------------------------------
 
-export async function insertSection(client: DbClient, venueId: string, templateId: string, name: string, sortOrder: number): Promise<EventOrderTemplateSection> {
+export async function insertSection(
+  client: DbClient, venueId: string, templateId: string, name: string, sortOrder: number,
+  guidance: string | null = null,
+): Promise<EventOrderTemplateSection> {
   const { data, error } = await client.from("event_order_template_sections")
-    .insert({ template_id: templateId, venue_id: venueId, name: name.trim(), sort_order: sortOrder })
+    .insert({
+      template_id: templateId, venue_id: venueId, name: name.trim(), sort_order: sortOrder,
+      guidance: guidance?.trim() || null,
+    })
     .select().single<SectionRow>();
   if (error) throw error;
   return mapSection(data);
+}
+
+export async function updateSectionGuidance(
+  client: DbClient, venueId: string, sectionId: string, guidance: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_order_template_sections") as any)
+    .update({ guidance: guidance?.trim() || null })
+    .eq("id", sectionId).eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 /** Unsets section_id on every line first — removing a Section must never delete its lines, matching event_order_sections' own removeSection. */

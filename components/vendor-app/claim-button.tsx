@@ -25,7 +25,7 @@ export function ClaimButton({ token }: { token: string }) {
       {pending ? (
         <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Claiming…</>
       ) : (
-        "Claim My Profile"
+        "Claim My Vendor Profile"
       )}
     </Button>
   );

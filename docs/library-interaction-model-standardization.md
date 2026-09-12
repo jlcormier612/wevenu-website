@@ -41,10 +41,10 @@ Venue owners were learning a different control language per family (copy icon vs
 
 | Family | Open | Preview | Edit | Save | Use | Copy/Duplicate | Archive | Delete | Starter | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Messages | Edit button | Editor tab only | Edit page | Explicit Save changes | None on list | Kebab Duplicate | Restore/Archive | Yes | Badge + Add again menu | |
-| Questionnaires | Click row → sheet | Missing | Sheet | Save | None | Copy icon | Inline Unarchive | No | Copy icon odd one | |
+| Messages | Card actions | Full-page Preview | Edit page | Explicit Save changes | N/A (send elsewhere) | Duplicate | Restore/Archive | Yes | Preview does not send | |
+| Questionnaires | Card actions | Full-page Preview | Edit page | Save | Use Questionnaire | Duplicate | Archive/Restore | Yes | UX reference | |
 | Contracts | Buttons | Preview sheet | Edit page | Save changes | Use Template | Duplicate | Restore | Yes | Closest to standard | |
-| Payment Plans | Page browse | Inline lines | N/A (code masters) | N/A | Global Create CTA | None | None | None | Intentional | |
+| Payment Plan Builder | Financials flow | Schedule review in builder | N/A | N/A | Save schedule on invoice | N/A | N/A | Builder presets | Not a Library category | |
 | Event Orders | Click → detail | Missing | Detail | Per-action persist | Event workflow | Duplicate | Restore | Yes | | |
 | Inventory catalog | Click → edit | Image only | Edit | Save Changes | None | None | Unarchive | No | No Starter badge in type | |
 | Inventory templates | Click → detail | Missing | Detail | Per-action | Event workflow | None | Inline Unarchive | Detail | | |
@@ -52,7 +52,7 @@ Venue owners were learning a different control language per family (copy icon vs
 | Floor Plans | Click → editor | Preview | Canvas | Silent autosave | Event picker | Duplicate | Unarchive | No template delete | Highest persist ambiguity | |
 | Packages | Kebab only | Overflow Preview | Edit page | Save changes + inclusions immediate | Booking | Duplicate | Restore | Yes | Dual routes | |
 | FAQs | Inline guide | N/A | Inline | Save FAQs (dirty) | Publish switches local until save | None | Remove row | Soft | | |
-| Brochures | Click → detail | PDF in detail | Detail | Save | Share/Send | Duplicate | Restore | Yes | No Add-again UI | |
+| Brochures | Card actions | Full-page Preview (+ PDF download) | Detail | Save | Share/Send | Duplicate | Restore | Yes | Live Packages/FAQs | |
 | Saved Reports | Title → report | N/A | Manage | Mixed | Open report | Copy icon | None | Trash | Bookmark semantics | |
 
 ---
@@ -74,9 +74,11 @@ Shared components:
 
 **Preview** = show me what this is before I change or use it.
 
-Where meaningful: Contracts, Packages, Timelines, Floor Plans, Brochures (PDF).  
-Messages keep Preview inside the editor tabs (list primary = Edit).  
-Planning Forms remain edit-sheet first (field config is the asset).
+**Global rule:** Anywhere HTC provides Preview, it opens a dedicated full-page preview experience (`LibraryPreviewChrome`). Questionnaire is the reference.
+
+Where meaningful: Contracts, Packages, Questionnaires, Planning, Timelines, Floor Plans, Event Orders, Inventory Templates, Messages, Brochures.
+Saved Reports use **Open report** (not Preview).
+Payment schedule construction lives in the **Payment Plan Builder** (Financials), not as Library Preview.
 
 ---
 
@@ -93,9 +95,9 @@ Planning Forms remain edit-sheet first (field config is the asset).
 | Family | Label | Meaning |
 |---|---|---|
 | Contracts | Use Template | Creates working contract |
-| Payment Plans | Use payment plan | Starts invoice-tied schedule flow |
 | Questionnaires | Use Questionnaire → **Create Questionnaire** | Snapshots a **draft** on an event (never sends) |
 | Saved Reports | Open report | Opens saved reporting view |
+| Payment schedules | (not a Library Use) | Built in **Payment Plan Builder** from an invoice |
 | Others | (workflow entry elsewhere) | Use remains on events/bookings where certified |
 
 ### Edit / Use / Send / Withdraw (client-release safety)
@@ -177,7 +179,6 @@ Intentional mixed models remain (Package fields vs inclusions; Timeline item Sav
 | Messages | Shared grid | Edit | Dup/Archive/Delete | Explicit |
 | Questionnaires | Shared row | Edit | Dup/Archive | Explicit Save changes |
 | Contracts | Shared grid | Preview\|Edit\|Use Template | Dup/Archive/Delete | Explicit |
-| Payment Plans | Starter cards | Use payment plan | N/A | N/A |
 | Event Orders | Shared row | Edit | Dup/Archive/Delete | Per-action (named difference) |
 | Inventory catalog | Shared grid | Edit | Archive/Restore | Explicit |
 | Inventory templates | Shared row | Edit | Archive/Restore | Per-action |
@@ -203,7 +204,7 @@ Presentational only — domains supply handlers/capabilities. No universal backe
 - Terminology: Unarchive → Restore; Copy icon → Duplicate; Save → Save changes (FAQ/Brochure/Inventory/Timeline item)
 - Packages: honest delete after successful mutation; Preview\|Edit primary
 - Floor Plan: autosave status chrome
-- Payment Plans: per-card Use payment plan
+- Payment Plan Builder: invoice → builder presets (not Library assets)
 - Questionnaire: Edit primary + overflow (no bare copy icon)
 - **Persistence pass:** explicit Save forms show Unsaved changes + disable Save when clean; Cancel/back confirm; autosave/per-action surfaces show Saving… / Saved just now (EO, Inventory templates, Package inclusions, Timeline reorder)
 
@@ -220,7 +221,6 @@ All 12 family routes returned healthy authenticated shells; no `Unarchive` label
 | Messages | Yes | Editor tab | Yes | Explicit | N/A list | Yes | Yes | Yes | Yes | PASS |
 | Questionnaires | Yes | N/A sheet | Yes | Explicit | Event | Yes | Yes | Archive | Yes | PASS |
 | Contracts | Yes | Yes | Yes | Explicit | Use Template | Yes | Yes | Yes | Yes | PASS |
-| Payment Plans | Browse cards | Structure | N/A | N/A | Use payment plan | N/A | N/A | N/A | Yes | PASS (diff) |
 | Event Orders | Yes | Detail | Yes | Per-action | Event | Yes | Yes | Yes | Yes | PASS WITH DIFF |
 | Inventory | Yes | Image | Yes | Explicit | N/A | Yes | N/A | Archive | No badge in type | PASS WITH DIFF |
 | Inventory Templates | Yes | Detail | Yes | Per-action | Event | Yes | N/A | Archive | Yes | PASS WITH DIFF |

@@ -260,22 +260,33 @@ describe("legal middleware decisions", () => {
     );
   });
 
-  it("redirects page navigations to welcome with returnTo", () => {
+  it("redirects vendor app paths to welcome with vendorInvitation", () => {
     const decision = evaluateLegalMiddleware({
-      pathname: "/events/42",
-      search: "?tab=timeline",
+      pathname: "/vendor/dashboard",
+      search: "",
       requiresAcceptance: true,
-      context: "versionUpdate",
+      context: "vendorInvitation",
     });
     assert.equal(decision.action, "redirect_welcome");
     if (decision.action !== "redirect_welcome") return;
-    assert.equal(decision.returnTo, "/events/42?tab=timeline");
-    assert.match(decision.welcomePath, /^\/welcome\?/);
+    assert.equal(decision.returnTo, "/vendor/dashboard");
+    assert.match(decision.welcomePath, /context=vendorInvitation/);
     assert.match(
       decision.welcomePath,
-      /returnTo=%2Fevents%2F42%3Ftab%3Dtimeline/,
+      /returnTo=%2Fvendor%2Fdashboard/,
     );
-    assert.match(decision.welcomePath, /context=versionUpdate/);
+  });
+
+  it("preserves vendor event deep links as returnTo", () => {
+    const decision = evaluateLegalMiddleware({
+      pathname: "/vendor/events/abc",
+      search: "?tab=messages",
+      requiresAcceptance: true,
+      context: "vendorInvitation",
+    });
+    assert.equal(decision.action, "redirect_welcome");
+    if (decision.action !== "redirect_welcome") return;
+    assert.equal(decision.returnTo, "/vendor/events/abc?tab=messages");
   });
 
   it("uses venueSignup context path for new venue setup resumes", () => {

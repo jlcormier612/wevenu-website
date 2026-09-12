@@ -125,6 +125,8 @@ export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInpu
     pinterestUrl:       "",
     tiktokUrl:          "",
     preferenceLevel:    "preferred",
+    isRequired:         false,
+    isInHouse:          false,
     description:        "",
     logoUrl:            "",
     pricingTier:        val(row, mapping, "pricingTier"),

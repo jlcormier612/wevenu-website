@@ -7,9 +7,10 @@ import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addEventOrderTemplateLineAction, addEventOrderTemplateSectionAction,
+  addEventOrderTemplateSectionAction,
   deleteEventOrderTemplateAction, removeEventOrderTemplateLineAction,
   removeEventOrderTemplateSectionAction, updateEventOrderTemplateAction,
+  updateEventOrderTemplateSectionGuidanceAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { LIBRARY_LABELS } from "@/components/library/labels";
@@ -22,11 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
-
-function formatMoney(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-}
+import type { EventOrderTemplateSection, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 
 function RenameSheet({ template }: { template: EventOrderTemplateWithDetails }) {
   const [open, setOpen] = React.useState(false);
@@ -93,14 +90,15 @@ function AddSectionInline({
 }) {
   const [adding, setAdding] = React.useState(false);
   const [name, setName] = React.useState("");
+  const [guidance, setGuidance] = React.useState("");
   const [pending, startTransition] = React.useTransition();
 
   function handleAdd() {
     if (!name.trim()) return;
     startTransition(async () => {
       onPersist("saving");
-      const result = await addEventOrderTemplateSectionAction(templateId, name);
-      if (result.ok) { setName(""); setAdding(false); onPersist("saved"); }
+      const result = await addEventOrderTemplateSectionAction(templateId, name, guidance || null);
+      if (result.ok) { setName(""); setGuidance(""); setAdding(false); onPersist("saved"); }
       else { onPersist("error", result.message); toast.error(result.message ?? "Could not add section."); }
     });
   }
@@ -108,56 +106,63 @@ function AddSectionInline({
   if (!adding) return <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>+ Add Section</Button>;
 
   return (
-    <div className="flex items-center gap-2">
-      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Section name" autoFocus className="h-8 max-w-xs" />
-      <Button type="button" size="sm" disabled={!name.trim() || pending} onClick={handleAdd}>
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
-      </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => { setAdding(false); setName(""); }}>Cancel</Button>
+    <div className="rounded-sm border border-border p-3 space-y-2 max-w-md">
+      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Section name (e.g. Catering)" autoFocus className="h-8" />
+      <Textarea
+        value={guidance}
+        onChange={(e) => setGuidance(e.target.value)}
+        rows={2}
+        placeholder="Optional guidance (shown to your team when building the Event Order)"
+        className="text-sm"
+      />
+      <div className="flex items-center gap-2">
+        <Button type="button" size="sm" disabled={!name.trim() || pending} onClick={handleAdd}>
+          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => { setAdding(false); setName(""); setGuidance(""); }}>Cancel</Button>
+      </div>
     </div>
   );
 }
 
-function AddLineInline({
-  templateId, sectionId, onPersist,
+function SectionGuidanceEditor({
+  templateId, section, onPersist,
 }: {
   templateId: string;
-  sectionId: string | null;
+  section: EventOrderTemplateSection;
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
 }) {
-  const [adding, setAdding] = React.useState(false);
-  const [description, setDescription] = React.useState("");
-  const [quantity, setQuantity] = React.useState("1");
-  const [unitPrice, setUnitPrice] = React.useState("");
+  const [value, setValue] = React.useState(section.guidance ?? "");
   const [pending, startTransition] = React.useTransition();
+  const dirty = value !== (section.guidance ?? "");
 
-  function reset() { setDescription(""); setQuantity("1"); setUnitPrice(""); setAdding(false); }
+  React.useEffect(() => {
+    setValue(section.guidance ?? "");
+  }, [section.guidance]);
 
-  function handleAdd() {
-    if (!description.trim()) return;
+  function save() {
     startTransition(async () => {
       onPersist("saving");
-      const result = await addEventOrderTemplateLineAction(templateId, { description, quantity, unitPrice: unitPrice || "0", sectionId });
-      if (result.ok) { reset(); onPersist("saved"); }
-      else { onPersist("error", result.message); toast.error(result.message ?? "Could not add line."); }
+      const result = await updateEventOrderTemplateSectionGuidanceAction(templateId, section.id, value || null);
+      if (result.ok) onPersist("saved");
+      else { onPersist("error", result.message); toast.error(result.message ?? "Could not save guidance."); }
     });
   }
 
-  if (!adding) return <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>+ Add Line</Button>;
-
   return (
-    <div className="rounded-sm border border-border p-3 space-y-2">
-      <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Line description" autoFocus />
-      <div className="grid grid-cols-2 gap-2">
-        <Input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantity" />
-        <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} placeholder="Standard price (optional)" />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={reset} disabled={pending}>Cancel</Button>
-        <Button type="button" size="sm" disabled={!description.trim() || pending} onClick={handleAdd}>
-          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+    <div className="space-y-1.5">
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        rows={2}
+        placeholder="Optional guidance for this section"
+        className="text-sm"
+      />
+      {dirty && (
+        <Button type="button" size="sm" variant="outline" disabled={pending} onClick={save}>
+          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save guidance"}
         </Button>
-      </div>
+      )}
     </div>
   );
 }
@@ -167,7 +172,7 @@ export function EventOrderTemplateDetail({ template }: { template: EventOrderTem
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [deleting, startDelete] = React.useTransition();
   const saveUi = useLibrarySaveStatus();
-  const unsectioned = template.lines.filter((l) => !l.sectionId);
+  const legacyLines = template.lines;
 
   function onPersist(phase: "saving" | "saved" | "error", message?: string) {
     if (phase === "saving") saveUi.markSaving();
@@ -185,7 +190,7 @@ export function EventOrderTemplateDetail({ template }: { template: EventOrderTem
   }
 
   async function handleRemoveSection(sectionId: string, name: string) {
-    if (!confirm(`Remove "${name}"? Its lines will stay, unsectioned.`)) return;
+    if (!confirm(`Remove "${name}"?`)) return;
     setRemovingId(sectionId);
     onPersist("saving");
     const result = await removeEventOrderTemplateSectionAction(template.id, sectionId);
@@ -225,67 +230,50 @@ export function EventOrderTemplateDetail({ template }: { template: EventOrderTem
         <CardContent className="space-y-6 py-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              Sections and lines save as you add or remove them. Applying this template to an event copies them in. Editing here never changes an Event Order already created from it.
+              Delivery structure only — sections and optional guidance. Applying this template to an event copies section structure, not checklist lines. Add Offerings on the Event Order itself.
             </p>
             <LibrarySaveStatus status={saveUi.status} model="autosave" />
           </div>
-          {template.sections.map((section) => {
-            const lines = template.lines.filter((l) => l.sectionId === section.id);
-            return (
-              <div key={section.id} className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-heading">{section.name}</p>
-                  <div className="flex items-center gap-2">
-                    <AddLineInline templateId={template.id} sectionId={section.id} onPersist={onPersist} />
-                    <button type="button" onClick={() => handleRemoveSection(section.id, section.name)} disabled={removingId === section.id}
-                      className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" aria-label="Remove section">
-                      {removingId === section.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                {lines.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-2">No lines in this section yet.</p>
-                ) : (
-                  <div>
-                    {lines.map((line) => (
-                      <div key={line.id} className="group flex items-center justify-between gap-3 py-2 border-b border-border last:border-0 text-sm">
-                        <span className="text-foreground flex-1 min-w-0">{line.description}</span>
-                        <span className="text-muted-foreground w-14 text-right">×{line.quantity}</span>
-                        <span className="w-24 text-right font-medium text-foreground">{line.unitPrice > 0 ? formatMoney(line.unitPrice) : "—"}</span>
-                        <button type="button" onClick={() => handleRemoveLine(line.id)} disabled={removingId === line.id}
-                          className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity">
-                          {removingId === line.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
 
-          <div className="space-y-2">
-            {template.sections.length > 0 && <p className="text-sm font-semibold text-heading">General</p>}
-            {unsectioned.length > 0 && (
+          {template.sections.length === 0 && (
+            <p className="text-sm text-muted-foreground">No sections yet. Add Catering, Bar, Rentals, Services, or other delivery groups.</p>
+          )}
+
+          {template.sections.map((section) => (
+            <div key={section.id} className="space-y-2 rounded-md border border-border/60 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-heading">{section.name}</p>
+                <button type="button" onClick={() => handleRemoveSection(section.id, section.name)} disabled={removingId === section.id}
+                  className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" aria-label="Remove section">
+                  {removingId === section.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              <SectionGuidanceEditor templateId={template.id} section={section} onPersist={onPersist} />
+            </div>
+          ))}
+
+          <AddSectionInline templateId={template.id} onPersist={onPersist} />
+
+          {legacyLines.length > 0 && (
+            <div className="space-y-2 border-t border-border pt-4">
+              <p className="text-sm font-semibold text-heading">Legacy checklist lines (not applied)</p>
+              <p className="text-xs text-muted-foreground">
+                These came from older checklist-style templates. They are kept for history and are not copied when you apply this template. Remove them when you no longer need the reference — operational work belongs in Planning.
+              </p>
               <div>
-                {unsectioned.map((line) => (
+                {legacyLines.map((line) => (
                   <div key={line.id} className="group flex items-center justify-between gap-3 py-2 border-b border-border last:border-0 text-sm">
                     <span className="text-foreground flex-1 min-w-0">{line.description}</span>
                     <span className="text-muted-foreground w-14 text-right">×{line.quantity}</span>
-                    <span className="w-24 text-right font-medium text-foreground">{line.unitPrice > 0 ? formatMoney(line.unitPrice) : "—"}</span>
                     <button type="button" onClick={() => handleRemoveLine(line.id)} disabled={removingId === line.id}
-                      className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity">
+                      className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10" aria-label="Remove legacy line">
                       {removingId === line.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </button>
                   </div>
                 ))}
               </div>
-            )}
-            <div className="flex items-center gap-2">
-              <AddLineInline templateId={template.id} sectionId={null} onPersist={onPersist} />
-              <AddSectionInline templateId={template.id} onPersist={onPersist} />
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

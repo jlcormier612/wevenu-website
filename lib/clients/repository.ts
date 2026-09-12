@@ -7,11 +7,9 @@ import type {
   Client,
   ClientActivity,
   ClientInput,
-  ClientKeyDate,
   ClientNote,
   ClientStatus,
   ClientWithDetails,
-  KeyDateInput,
 } from "@/lib/clients/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
@@ -30,7 +28,6 @@ type ClientRow = {
   internal_notes: string | null; relationship_id: string | null; created_at: string; updated_at: string;
 };
 type NoteRow  = { id: string; venue_id: string; client_id: string; body: string; created_at: string; updated_at: string; };
-type KDRow    = { id: string; venue_id: string; client_id: string; label: string; date: string; note: string | null; created_at: string; };
 type ActRow   = { id: string; venue_id: string; client_id: string; type: string; title: string; description: string | null; created_at: string; };
 
 function mapClient(r: ClientRow): Client {
@@ -46,7 +43,6 @@ function mapClient(r: ClientRow): Client {
   };
 }
 const mapNote = (r: NoteRow): ClientNote => ({ id: r.id, venueId: r.venue_id, clientId: r.client_id, body: r.body, createdAt: r.created_at, updatedAt: r.updated_at });
-const mapKD   = (r: KDRow):   ClientKeyDate  => ({ id: r.id, venueId: r.venue_id, clientId: r.client_id, label: r.label, date: r.date, note: r.note, createdAt: r.created_at });
 const mapAct  = (r: ActRow):  ClientActivity => ({ id: r.id, venueId: r.venue_id, clientId: r.client_id, type: r.type, title: r.title, description: r.description, createdAt: r.created_at });
 
 // ---- queries ----------------------------------------------------------------
@@ -91,10 +87,9 @@ export async function getClientAttentionFlags(client: DbClient, venueId: string)
 }
 
 export async function getClient(client: DbClient, venueId: string, clientId: string): Promise<ClientWithDetails | null> {
-  const [cRes, nRes, kdRes, aRes, evRes] = await Promise.all([
+  const [cRes, nRes, aRes, evRes] = await Promise.all([
     client.from("clients").select("*").eq("id", clientId).eq("venue_id", venueId).maybeSingle<ClientRow>(),
     client.from("client_notes").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
-    client.from("client_key_dates").select("*").eq("client_id", clientId).order("date", { ascending: true }),
     client.from("client_activities").select("*").eq("client_id", clientId).eq("venue_id", venueId).order("created_at", { ascending: false }),
     // Booking workspace assumes one linked event. Multi-event clients still
     // open the workspace via the earliest event date; Inbox Documents routing
@@ -110,14 +105,12 @@ export async function getClient(client: DbClient, venueId: string, clientId: str
   ]);
   if (cRes.error) throw cRes.error;
   if (nRes.error) throw nRes.error;
-  if (kdRes.error) throw kdRes.error;
   if (aRes.error) throw aRes.error;
   if (evRes.error) throw evRes.error;
   if (!cRes.data) return null;
   return {
     ...mapClient(cRes.data),
     notes: (nRes.data as NoteRow[]).map(mapNote),
-    keyDates: (kdRes.data as KDRow[]).map(mapKD),
     activities: (aRes.data as ActRow[]).map(mapAct),
     linkedEventId: evRes.data?.id ?? null,
   };
@@ -321,31 +314,6 @@ export async function deleteClientNote(client: DbClient, venueId: string, noteId
   if (error) throw error;
 }
 
-export async function insertKeyDate(client: DbClient, venueId: string, clientId: string, input: KeyDateInput): Promise<ClientKeyDate> {
-  const { data, error } = await client.from("client_key_dates")
-    .insert({ venue_id: venueId, client_id: clientId, label: input.label.trim(), date: input.date, note: input.note.trim() || null })
-    .select().single<KDRow>();
-  if (error) throw error;
-  return mapKD(data);
-}
-
-/**
- * Delete a key date. Returns ok:false when zero rows were affected (RLS
- * delete gate blocked Staff/Coordinator, or id/venue mismatch) so callers
- * cannot treat a silent no-op as success — same shape as contracts /
- * invoices / floor plans / timeline deletes.
- */
-export async function deleteKeyDate(
-  client: DbClient, venueId: string, kdId: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const { data, error } = await client.from("client_key_dates")
-    .delete().eq("id", kdId).eq("venue_id", venueId).select("id");
-  if (error) throw error;
-  if (!data || data.length === 0) {
-    return { ok: false, message: "Only an Owner or Manager can delete a key date." };
-  }
-  return { ok: true };
-}
 
 export async function insertClientActivity(client: DbClient, venueId: string, clientId: string, type: string, title: string, description?: string): Promise<void> {
   const { error } = await client.from("client_activities")

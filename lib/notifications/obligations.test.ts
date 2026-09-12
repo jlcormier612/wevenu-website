@@ -2,7 +2,7 @@
  * Reminder cadence — recurrence interval mapping, before-due batch
  * generation, and stop-condition (cancel) call shape. Real function calls
  * against a mock Supabase client (same chainable-mock pattern as
- * lib/clients/key-dates.test.ts), not just typechecking.
+ * client repository delete guards), not just typechecking.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";

@@ -756,14 +756,25 @@ export default function SeatingSection({ token }: { token: string }) {
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [showAutoPreview, setShowAutoPreview] = useState<Array<{ guestId: string; tableId: string }>>([]);
 
-  // Commitment Lifecycle Architecture §9 — each floor plan (Ceremony,
-  // Reception, ...) is its own independent Commitment Lifecycle. floorPlanId
-  // is undefined until the plan list loads, then defaults to the first plan.
+  // Commitment Lifecycle — each floor plan is independent. Never auto-select
+  // the first of many plans; only auto-select when exactly one plan exists.
   const [floorPlans, setFloorPlans] = useState<SeatingFloorPlanSummary[]>([]);
   const [floorPlanId, setFloorPlanId] = useState<string | null>(null);
+  const [plansLoaded, setPlansLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
   const [delegating, setDelegating] = useState(false);
+  // Narrow/touch: select guest → select table (no precision drag required).
+  const [mobileAssignGuestId, setMobileAssignGuestId] = useState<string | null>(null);
+  const [isNarrow, setIsNarrow] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px), (pointer: coarse)");
+    const apply = () => setIsNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     fetch(`/api/portal/seating/floor-plans?token=${token}`)
@@ -771,20 +782,30 @@ export default function SeatingSection({ token }: { token: string }) {
       .then((d: { floorPlans?: SeatingFloorPlanSummary[] }) => {
         const plans = d.floorPlans ?? [];
         setFloorPlans(plans);
-        setFloorPlanId((prev) => prev ?? plans[0]?.id ?? null);
+        setFloorPlanId((prev) => {
+          if (prev && plans.some((p) => p.id === prev)) return prev;
+          if (plans.length === 1) return plans[0]!.id;
+          return null;
+        });
+        setPlansLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => { setPlansLoaded(true); });
   }, [token]);
 
   useEffect(() => {
-    const url = floorPlanId
-      ? `/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}`
-      : `/api/portal/seating?token=${token}`;
-    setLoading(true);
-    fetch(url)
+    if (!floorPlanId) return;
+    let cancelled = false;
+    void fetch(`/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}`)
       .then((res) => res.json())
-      .then((json) => setData(json as SeatingData))
-      .finally(() => setLoading(false));
+      .then((json) => {
+        if (!cancelled) setData(json as SeatingData);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token, floorPlanId]);
 
   async function submitPlan() {
@@ -801,13 +822,22 @@ export default function SeatingSection({ token }: { token: string }) {
         if (json.celebrated) {
           celebrateLuv(coupleCelebrationMessage("seating_submitted"));
         } else {
-          toast.success("Your seating plan is submitted — your venue has it now.");
+          toast.success(
+            data?.lastSubmission
+              ? "Your seating plan was resubmitted — your venue has the updated plan."
+              : "Your seating plan is submitted — your venue has it now.",
+          );
         }
         setConfirmingSubmit(false);
         fetch(`/api/portal/seating/floor-plans?token=${token}`).then(r => r.json())
           .then((d: { floorPlans?: SeatingFloorPlanSummary[] }) => setFloorPlans(d.floorPlans ?? []));
+        if (floorPlanId) {
+          fetch(`/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}`)
+            .then((r) => r.json())
+            .then((json) => setData(json as SeatingData));
+        }
       } else if (json.error === "delegated_to_venue") {
-        toast.error("Your venue is currently managing this plan — revoke delegation to submit it yourself.");
+        toast.error("Your venue is currently assisting with this plan — end assistance to submit it yourself.");
       } else {
         toast.error("Couldn't submit your seating plan. Please try again.");
       }
@@ -824,8 +854,8 @@ export default function SeatingSection({ token }: { token: string }) {
           body: JSON.stringify({ token, floorPlanId }),
         });
         const json = await res.json() as { ok?: boolean };
-        if (json.ok) toast.success("Your venue can now manage this seating plan for you.");
-        else toast.error("Couldn't delegate seating. Please try again.");
+        if (json.ok) toast.success("Your venue can now assist with this seating plan.");
+        else toast.error("Couldn't ask the venue to assist. Please try again.");
       } else if (data?.delegationId) {
         const res = await fetch("/api/portal/seating/delegate", {
           method: "DELETE", headers: { "content-type": "application/json" },
@@ -833,16 +863,18 @@ export default function SeatingSection({ token }: { token: string }) {
         });
         const json = await res.json() as { ok?: boolean };
         if (json.ok) toast.success("You're managing this seating plan again.");
-        else toast.error("Couldn't revoke delegation. Please try again.");
+        else toast.error("Couldn't end venue assistance. Please try again.");
       }
-      const url = floorPlanId ? `/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}` : `/api/portal/seating?token=${token}`;
-      fetch(url).then(r => r.json()).then((json) => setData(json as SeatingData));
+      if (floorPlanId) {
+        fetch(`/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}`)
+          .then(r => r.json()).then((json) => setData(json as SeatingData));
+      }
     } finally { setDelegating(false); }
   }
 
   const assignGuest = async (guestId: string, tableId: string) => {
     if (!data) return;
-    if (data.isDelegated) { toast.error("Your venue is currently managing this seating plan."); return; }
+    if (data.isDelegated) { toast.error("Your venue is currently assisting with this seating plan."); return; }
     const previous = data; // captured for rollback — a failed write must never leave the UI showing a seat that was never saved
 
     setData((d) => {
@@ -891,7 +923,7 @@ export default function SeatingSection({ token }: { token: string }) {
 
   const removeGuest = async (guestId: string) => {
     if (!data) return;
-    if (data.isDelegated) { toast.error("Your venue is currently managing this seating plan."); return; }
+    if (data.isDelegated) { toast.error("Your venue is currently assisting with this seating plan."); return; }
     const assigned = data.tables.flatMap((t) => t.guests).find((g) => g.guestId === guestId);
     if (!assigned) return;
     const previous = data; // captured for rollback
@@ -968,70 +1000,114 @@ export default function SeatingSection({ token }: { token: string }) {
   const stats = data?.stats;
   const pctAssigned = stats && stats.totalAttending > 0 ? Math.round((stats.totalAssigned / stats.totalAttending) * 100) : 0;
 
-  // Commitment Lifecycle Architecture §9 — plan picker (only shown when the
-  // couple has more than one shared plan), delegation banner, and the
-  // Submit action. Always rendered above whichever view (loading, empty,
-  // dashboard, workspace) follows, so it's never lost switching views.
+  // Plan picker, assistance banner, and Submit / Resubmit.
+  const selectedPlan = floorPlans.find((p) => p.id === floorPlanId) ?? null;
   const commitBar = (
     <div id="portal-focus-seating-submit" className="space-y-2 mb-3">
       {floorPlans.length > 1 && (
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap" role="tablist" aria-label="Floor plan for seating">
           {floorPlans.map((fp) => (
-            <button key={fp.id} onClick={() => setFloorPlanId(fp.id)}
+            <button key={fp.id} type="button" onClick={() => setFloorPlanId(fp.id)}
               className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
               style={fp.id === floorPlanId
                 ? { background: "var(--venue-primary)", color: "white" }
                 : { background: "transparent", color: "#6A6460", border: "1px solid #E0DAD4" }}>
-              {fp.name}{fp.isDelegated ? " ✋" : ""}
+              {fp.name}{fp.isDelegated ? " · assisting" : ""}
             </button>
           ))}
         </div>
       )}
+      {floorPlans.length > 1 && !floorPlanId && (
+        <p className="text-sm text-muted-foreground">
+          Choose a floor plan to seat. Ceremony and Reception seating are independent — nothing is selected automatically.
+        </p>
+      )}
+      {selectedPlan && (
+        <p className="text-xs text-muted-foreground">
+          Seating for <span className="font-medium text-foreground">{selectedPlan.name}</span>
+          {data?.lastSubmission && (
+            <> · Last submitted {new Date(data.lastSubmission.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</>
+          )}
+          {data?.hasUnpublishedChanges && (
+            <> · <span className="text-amber-800 font-medium">Private changes since last submit</span></>
+          )}
+        </p>
+      )}
       {data?.isDelegated ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
           <p className="text-sm text-amber-900">
-            ✋ Seating management has been delegated to your venue.
+            Your venue is assisting with this seating plan.
           </p>
           <p className="text-xs text-amber-800">
-            The venue is currently managing this seating plan on your behalf. You can revoke delegation at any time.
+            You asked the venue to help. You can end assistance at any time and take control back — the venue does not own this seating plan.
           </p>
           <Button type="button" size="sm" variant="outline" disabled={delegating} onClick={() => toggleDelegate(false)}>
-            {delegating ? "Revoking…" : "Revoke Delegation"}
+            {delegating ? "Ending…" : "End Venue Assistance"}
           </Button>
         </div>
       ) : data?.floorPlan && (
         <div className="flex flex-wrap gap-2">
           {!confirmingSubmit ? (
             <Button type="button" size="sm" onClick={() => setConfirmingSubmit(true)}>
-              Submit Seating Plan
+              {data.lastSubmission ? "Resubmit Seating" : "Submit Seating Plan"}
             </Button>
           ) : (
             <div className="rounded-xl bg-muted/40 p-3 space-y-2 w-full">
               <p className="text-sm text-foreground">
-                This becomes your venue&apos;s working plan for the day — continue?
+                {data.lastSubmission
+                  ? "This updates the seating plan your venue uses for the day — continue?"
+                  : "This becomes your venue's working plan for the day — continue?"}
               </p>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setConfirmingSubmit(false)} disabled={submitting}>Back</Button>
                 <Button type="button" size="sm" onClick={submitPlan} disabled={submitting}>
-                  {submitting ? "Submitting…" : "Submit to Venue"}
+                  {submitting ? "Submitting…" : data.lastSubmission ? "Resubmit to Venue" : "Submit to Venue"}
                 </Button>
               </div>
             </div>
           )}
           <Button type="button" size="sm" variant="outline" disabled={delegating} onClick={() => toggleDelegate(true)}>
-            Let Your Venue Manage This
+            Ask Venue to Assist
           </Button>
         </div>
       )}
     </div>
   );
 
-  if (loading) {
+  if (!plansLoaded || (loading && floorPlanId)) {
     return (
       <div className="flex flex-col h-full min-h-0">
         {commitBar}
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           <div className="animate-pulse">Loading seating chart…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (plansLoaded && floorPlans.length === 0) {
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        {commitBar}
+        <div className="text-center py-16 text-muted-foreground">
+          <div className="text-3xl mb-3">🪑</div>
+          <p className="text-sm font-medium">There is no floor plan available for seating.</p>
+          <p className="text-xs mt-1">Check with your venue — seating opens once they share a room layout for seating.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (plansLoaded && floorPlans.length > 1 && !floorPlanId) {
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        {commitBar}
+        <div className="text-center py-16 text-muted-foreground">
+          <div className="text-3xl mb-3">🪑</div>
+          <p className="text-sm font-medium">Choose a floor plan</p>
+          <p className="text-xs mt-1 max-w-sm mx-auto">
+            Select which layout you want to seat. Ceremony and Reception seating stay independent.
+          </p>
         </div>
       </div>
     );
@@ -1056,8 +1132,8 @@ export default function SeatingSection({ token }: { token: string }) {
             </>
           ) : (
             <>
-              <p className="text-sm font-medium">No floor plan shared for seating yet.</p>
-              <p className="text-xs mt-1">Check with your venue — seating opens up once they share the room layout.</p>
+              <p className="text-sm font-medium">There is no floor plan available for seating.</p>
+              <p className="text-xs mt-1">Check with your venue — seating opens once they share the room layout for seating.</p>
             </>
           )}
           {strandedCount > 0 && (
@@ -1152,6 +1228,55 @@ export default function SeatingSection({ token }: { token: string }) {
           onAssign={() => selectedTableId && assignMany([...selectedGuestIds], selectedTableId)}
           onClear={() => setSelectedGuestIds(new Set())}
         />
+      )}
+
+      {isNarrow && !data.isDelegated && data.tables.length > 0 && (
+        <div className="mx-4 mt-2 rounded-xl border border-border bg-card p-3 space-y-2 md:hidden">
+          <p className="text-xs font-medium text-heading">Seat a guest</p>
+          <p className="text-[11px] text-muted-foreground">
+            On phones, choose a guest and a table — no drag required.
+          </p>
+          <select
+            className="w-full text-sm border border-border rounded-lg px-2 py-2 bg-background"
+            value={mobileAssignGuestId ?? ""}
+            onChange={(e) => setMobileAssignGuestId(e.target.value || null)}
+            aria-label="Guest to seat"
+          >
+            <option value="">Choose a guest…</option>
+            {unassignedPool.map((g) => (
+              <option key={g.guestId} value={g.guestId}>
+                {g.name}{g.needsReassignment ? " (needs table)" : ""}
+              </option>
+            ))}
+          </select>
+          <select
+            className="w-full text-sm border border-border rounded-lg px-2 py-2 bg-background"
+            value={selectedTableId ?? ""}
+            onChange={(e) => setSelectedTableId(e.target.value || null)}
+            aria-label="Table"
+          >
+            <option value="">Choose a table…</option>
+            {data.tables.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label ?? "Table"}{t.capacity != null ? ` (${t.guests.length}/${t.capacity})` : ""}
+              </option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            size="sm"
+            className="w-full"
+            disabled={!mobileAssignGuestId || !selectedTableId}
+            onClick={() => {
+              if (mobileAssignGuestId && selectedTableId) {
+                void assignGuest(mobileAssignGuestId, selectedTableId);
+                setMobileAssignGuestId(null);
+              }
+            }}
+          >
+            Confirm seat
+          </Button>
+        </div>
       )}
 
       {stats && (() => {

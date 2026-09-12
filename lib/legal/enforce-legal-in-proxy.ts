@@ -33,6 +33,7 @@ export type ProxyLegalDecision =
 async function resolveUserTypeForProxy(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
+  prefer: "vendor" | "venue" = "vendor",
 ): Promise<{
   userType: Exclude<
     import("@/lib/legal/required-documents").LegalAcceptanceUserType,
@@ -40,43 +41,68 @@ async function resolveUserTypeForProxy(
   >;
   kind: "vendor" | "venue_staff" | "venue_owner_signup";
 }> {
-  const { data: vendorRow } = await admin
-    .from("vendor_users")
-    .select("vendor_id")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .maybeSingle<{ vendor_id: string }>();
+  const [{ data: vendorRows }, { data: staffRow }] = await Promise.all([
+    admin
+      .from("vendor_users")
+      .select("vendor_id")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .limit(1),
+    admin
+      .from("venue_staff")
+      .select("role, is_owner")
+      .eq("user_id", userId)
+      .maybeSingle<{ role: string; is_owner: boolean }>(),
+  ]);
+  const vendorRow = Array.isArray(vendorRows) ? vendorRows[0] : vendorRows;
 
-  if (vendorRow?.vendor_id) {
-    return { userType: "vendor", kind: "vendor" };
-  }
+  const asVendor = () =>
+    vendorRow?.vendor_id
+      ? ({ userType: "vendor" as const, kind: "vendor" as const })
+      : null;
 
-  const { data: staffRow } = await admin
-    .from("venue_staff")
-    .select("role, is_owner")
-    .eq("user_id", userId)
-    .maybeSingle<{ role: string; is_owner: boolean }>();
-
-  if (staffRow) {
+  const asStaff = () => {
+    if (!staffRow) return null;
     const role = staffRow.is_owner ? "owner" : staffRow.role;
     return {
       userType: mapStaffRoleToLegalUserType(role),
-      kind: "venue_staff",
+      kind: "venue_staff" as const,
     };
+  };
+
+  if (prefer === "venue") {
+    return (
+      asStaff() ??
+      asVendor() ?? {
+        userType: "venue_owner",
+        kind: "venue_owner_signup",
+      }
+    );
   }
 
-  return { userType: "venue_owner", kind: "venue_owner_signup" };
+  return (
+    asVendor() ??
+    asStaff() ?? {
+      userType: "venue_owner",
+      kind: "venue_owner_signup",
+    }
+  );
 }
 
 /**
  * Ask the engine whether this authenticated user may proceed.
  * `@supabaseClient` is unused today but kept for future cookie-scoped checks.
+ *
+ * Pass `prefer: "venue"` on venue app paths so dual-role accounts are not
+ * forced through vendor legal while using the venue session. Vendor app paths
+ * keep the default vendor preference.
  */
 export async function decideLegalProxyEnforcement(input: {
   user: User;
   pathname: string;
   search: string;
   supabase?: SupabaseClient;
+  prefer?: "vendor" | "venue";
 }): Promise<ProxyLegalDecision> {
   try {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
@@ -84,7 +110,12 @@ export async function decideLegalProxyEnforcement(input: {
     }
 
     const admin = createAdminClient();
-    const resolved = await resolveUserTypeForProxy(admin, input.user.id);
+    const prefer = input.prefer ?? "vendor";
+    const resolved = await resolveUserTypeForProxy(
+      admin,
+      input.user.id,
+      prefer,
+    );
     const status = await legalAcceptanceService.requiresAcceptance({
       userId: input.user.id,
       userType: resolved.userType,

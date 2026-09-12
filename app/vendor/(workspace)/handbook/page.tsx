@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Venue Information — Vendor Portal"
 
 export default async function VendorHandbookPage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const handbooks = await getVendorHandbooks();
   return <VendorHandbookPicker handbooks={handbooks} />;

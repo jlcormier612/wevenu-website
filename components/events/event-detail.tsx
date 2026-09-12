@@ -19,7 +19,6 @@ import { toast } from "sonner";
 
 import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
-import { KeyDatesSection } from "@/components/clients/key-dates-section";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
@@ -27,7 +26,6 @@ import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
-import type { ClientKeyDate } from "@/lib/clients/types";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
@@ -276,9 +274,9 @@ export function EventDetail({
   floorPlanCanEdit = true,
   floorPlanCanDelete = true,
   teamMembers = [],
-  eventOrderEnabled = false,
   eventOrder = null,
   packages = [],
+  offerings = [],
   inventoryItems = [],
   eventInventory = null,
   inventoryTemplates = [],
@@ -287,8 +285,6 @@ export function EventDetail({
   requests = [],
   readinessSummary,
   originatingLeadId = null,
-  keyDates = [],
-  clientRehearsalDate = null,
   bookingJourney = null,
   packagesWithItems = [],
   selectedPackage = null,
@@ -339,13 +335,11 @@ export function EventDetail({
   floorPlanCanEdit?: boolean;
   floorPlanCanDelete?: boolean;
   teamMembers?: import("@/lib/team/types").StaffMember[];
-  // Booking Financial Architecture Phase 2 — gated by venues.event_order_enabled.
-  eventOrderEnabled?: boolean;
   eventOrder?: EventOrderWithDetails | null;
   packages?: Package[];
+  offerings?: import("@/lib/offerings/types").Offering[];
   inventoryItems?: InventoryItem[];
-  // D5A — Event Inventory. Not feature-flagged (unlike Event Order above):
-  // additive to the venue-wide catalog every venue already has.
+  // Event Inventory — physical allocation workspace (distinct from Event Order).
   eventInventory?: import("@/lib/event-inventory/types").EventInventoryWithDetails | null;
   inventoryTemplates?: import("@/lib/event-inventory/types").InventoryTemplate[];
   // D7A — Event Order Templates. Same additive, non-feature-flagged shape as inventoryTemplates above.
@@ -358,11 +352,6 @@ export function EventDetail({
   // Lead's own activity history (status changes, prior notes) had no
   // reachable path once converted, even though it was never deleted.
   originatingLeadId?: string | null;
-  // Key Dates — already fetched on the Booking Workspace page via getClient();
-  // mounted in Overview beside Event summary (existing KeyDatesSection).
-  keyDates?: ClientKeyDate[];
-  /** The client's structured Rehearsal Date (Client Info) — passed through so KeyDatesSection can synthesize a single canonical Rehearsal entry instead of allowing a second, independently-editable one. */
-  clientRehearsalDate?: string | null;
   bookingJourney?: BookingJourneyModel | null;
   packagesWithItems?: PackageWithItems[];
   selectedPackage?: CommercialSelection | null;
@@ -406,7 +395,7 @@ export function EventDetail({
     // warns, since a real event can legitimately complete without ever
     // using either feature.
     if (status === "complete") {
-      const orderUnfinalized = eventOrderEnabled && eventOrder?.status !== "finalized";
+      const orderUnfinalized = eventOrder != null && eventOrder.status !== "finalized";
       const floorPlanNotReady = event.floorPlans.length > 0 && !event.floorPlans.some((fp) => fp.finalizedAt);
       if (orderUnfinalized || floorPlanNotReady) {
         const parts = [
@@ -545,14 +534,12 @@ export function EventDetail({
               </span>
             )}
           </TabsTrigger>
-          {eventOrderEnabled && (
-            <TabsTrigger value="event-order">
-              Event Order
-              {eventOrder && eventOrder.lines.length > 0 && (
-                <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventOrder.lines.length}</span>
-              )}
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="event-order">
+            Event Order
+            {eventOrder && eventOrder.lines.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventOrder.lines.length}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="inventory">
             Inventory
             {eventInventory && eventInventory.items.length > 0 && (
@@ -638,10 +625,9 @@ export function EventDetail({
             templates={timelineTemplates} hasTimeline={(event.timeline ?? []).length > 0}
             onApplied={() => router.refresh()}
           />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
                 {[
                   { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },
                   { icon: Clock, label: multiDay ? "Overall start" : "Start", value: formatTime(event.startTime) },
@@ -668,15 +654,8 @@ export function EventDetail({
                     </Link>
                   </p>
                 )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-base">Key Dates</CardTitle></CardHeader>
-              <CardContent>
-                <KeyDatesSection clientId={event.clientId!} initialKeyDates={keyDates} clientRehearsalDate={clientRehearsalDate} />
-              </CardContent>
-            </Card>
-          </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Playbook ─────────────────────────────────────────────── */}
@@ -866,22 +845,35 @@ export function EventDetail({
         </TabsContent>
 
         {/* ── Event Order ──────────────────────────────────────────── */}
-        {eventOrderEnabled && (
-          <TabsContent value="event-order">
-            <EventOrderPanel eventId={event.id} clientId={event.clientId} clientName={event.clientName} clientEmail={coupleEmail} venueName={venueName} eventOrder={eventOrder} packages={packages} inventoryItems={inventoryItems} invoices={invoices} floorPlans={event.floorPlans} templates={eventOrderTemplates}
-              overview={{
-                eventName: event.name,
-                eventDate: event.eventDate,
-                eventType: event.eventType,
-                guestCount: event.guestCount,
-                spaceName,
-                ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
-                receptionStartTime: questionnaire?.receptionStartTime ?? null,
-              }} />
-          </TabsContent>
-        )}
+        <TabsContent value="event-order">
+          <EventOrderPanel
+            eventId={event.id}
+            clientId={event.clientId}
+            clientName={event.clientName}
+            clientEmail={coupleEmail}
+            venueName={venueName}
+            eventOrder={eventOrder}
+            packages={packages}
+            packagesWithItems={packagesWithItems}
+            selectedPackageName={selectedPackage?.name ?? null}
+            offerings={offerings}
+            inventoryItems={inventoryItems}
+            invoices={invoices}
+            floorPlans={event.floorPlans}
+            templates={eventOrderTemplates}
+            overview={{
+              eventName: event.name,
+              eventDate: event.eventDate,
+              eventType: event.eventType,
+              guestCount: event.guestCount,
+              spaceName,
+              ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
+              receptionStartTime: questionnaire?.receptionStartTime ?? null,
+            }}
+          />
+        </TabsContent>
 
-        {/* ── Event Inventory (D5A) ──────────────────────────────────── */}
+        {/* ── Event Inventory ──────────────────────────────────────── */}
         <TabsContent value="inventory">
           <EventInventoryPanel eventId={event.id} eventInventory={eventInventory} templates={inventoryTemplates} catalogItems={inventoryItems} />
         </TabsContent>

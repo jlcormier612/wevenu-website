@@ -119,6 +119,35 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
 
   await resolveLeadOwner(opts.supabase, outcome.leadId, opts.venueId!);
 
+  // External intake only: privately flag a possible duplicate for the venue.
+  // Prospect-facing success is unchanged. Manual/import use pre-create warnings.
+  if (
+    opts.venueId &&
+    (opts.trustTier === "direct" || opts.trustTier === "webhook" || opts.trustTier === "email_parsed") &&
+    !opts.historicalImport
+  ) {
+    try {
+      const { maybeCreateDuplicateReviewForNewLead } = await import("@/lib/leads/duplicate-review");
+      await maybeCreateDuplicateReviewForNewLead({
+        venueId: opts.venueId,
+        leadId: outcome.leadId,
+        relationshipId: outcome.relationshipId,
+        identity: {
+          firstName: normalized.firstName,
+          lastName: normalized.lastName,
+          email: normalized.email,
+          phone: normalized.phone,
+          partnerFirstName: normalized.partnerFirstName,
+          partnerLastName: normalized.partnerLastName,
+          partnerEmail: normalized.partnerEmail,
+        },
+        admin: true,
+      });
+    } catch (err) {
+      console.error("Possible-duplicate review failed:", err);
+    }
+  }
+
   return { ...outcome, attemptId };
 }
 

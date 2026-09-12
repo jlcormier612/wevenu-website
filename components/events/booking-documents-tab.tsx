@@ -18,6 +18,7 @@ import type { Contract, ContractTemplate } from "@/lib/contracts/types";
 import type { Document, DocumentEntityType } from "@/lib/documents/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
+import { questionnaireStatusLabel } from "@/lib/events/questionnaire-constants";
 
 function formatSentDate(iso: string | null): string {
   if (!iso) return "—";
@@ -72,7 +73,7 @@ function TemplatesSection({
             <p className="text-sm font-medium text-foreground">Questionnaire</p>
             <p className="text-xs text-muted-foreground">Final details — guest count, timing, music, special requests.</p>
           </div>
-          {questionnaire?.status === "sent" || questionnaire?.status === "submitted" || questionnaire?.status === "reviewed" ? (
+          {questionnaire?.status && questionnaire.status !== "draft" ? (
             <Badge variant="muted" className="text-[10px]">Already sent</Badge>
           ) : (
             <Button size="sm" variant="outline" disabled={sendingQuestionnaire} onClick={handleSendQuestionnaire}>
@@ -142,8 +143,11 @@ function SentRequestedSection({ contracts, questionnaire }: { contracts: Contrac
                 {questionnaire.submittedAt && ` · Completed ${formatSentDate(questionnaire.submittedAt)}`}
               </p>
             </div>
-            <Badge variant={questionnaire.status === "submitted" || questionnaire.status === "reviewed" ? "success" : "default"} className="text-[10px]">
-              {questionnaire.status === "sent" ? "Sent" : "Completed"}
+            <Badge variant={
+              questionnaire.status === "complete" || questionnaire.status === "submitted" || questionnaire.status === "resubmitted"
+                ? "success" : "default"
+            } className="text-[10px]">
+              {questionnaireStatusLabel(questionnaire.status)}
             </Badge>
           </div>
         )}

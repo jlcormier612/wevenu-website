@@ -90,14 +90,26 @@ export async function duplicateTemplate_(id: string, newName: string): Promise<C
 
 // ---- sections ---------------------------------------------------------------------
 
-export async function addSection(templateId: string, name: string): Promise<AddTemplateSectionResult> {
+export async function addSection(
+  templateId: string, name: string, guidance: string | null = null,
+): Promise<AddTemplateSectionResult> {
   if (!name.trim()) return { ok: false, message: "Give this section a name." };
   const result = await withVenue(async (supabase, venueId) => {
     const sortOrder = await repo.nextSortOrder(supabase, "event_order_template_sections", templateId);
-    const section = await repo.insertSection(supabase, venueId, templateId, name, sortOrder);
+    const section = await repo.insertSection(supabase, venueId, templateId, name, sortOrder, guidance);
     return { ok: true, section } as AddTemplateSectionResult;
   });
   return result as AddTemplateSectionResult;
+}
+
+export async function updateSectionGuidance(
+  sectionId: string, guidance: string | null,
+): Promise<EventOrderTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateSectionGuidance(supabase, venueId, sectionId, guidance);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
 }
 
 export async function removeSection(sectionId: string): Promise<EventOrderTemplateActionResult> {
@@ -108,7 +120,7 @@ export async function removeSection(sectionId: string): Promise<EventOrderTempla
   return result as EventOrderTemplateActionResult;
 }
 
-// ---- lines --------------------------------------------------------------------------
+// ---- lines (legacy only — not part of new authoring; remove-only in UI) ----------
 
 export async function addLine(templateId: string, input: AddTemplateLineInput): Promise<AddTemplateLineResult> {
   if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };

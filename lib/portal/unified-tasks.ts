@@ -165,10 +165,9 @@ const ACTION_TYPE_WORKSPACE: Record<
   floor_plan: { section: "floor_plans", focus: null, actionLabel: "Open Floor Plan" },
   event_order: { section: "event-order", focus: null, actionLabel: "Open Event Order" },
   wedding_website: { section: "website", focus: null, actionLabel: "Open Wedding Website" },
-  // No dedicated portal section exists for either — Overview is the honest
-  // destination (Key Dates render there; there's no couple "event details"
-  // page distinct from Overview at all).
-  key_dates: { section: "overview", focus: null, actionLabel: "Open Key Dates" },
+  // Historical playbook action_type only — Key Dates product is retired.
+  // Overview is the honest destination (same as event_details).
+  key_dates: { section: "overview", focus: null, actionLabel: "Open overview" },
   event_details: { section: "overview", focus: null, actionLabel: "Open Event Details" },
 };
 
@@ -501,12 +500,21 @@ export function buildUnifiedTaskList(input: {
     });
   }
 
-  if (input.questionnaire && input.questionnaire.status === "sent") {
+  if (input.questionnaire && (
+    input.questionnaire.status === "sent"
+    || input.questionnaire.status === "in_progress"
+    || input.questionnaire.status === "changes_requested"
+  )) {
+    const changes = input.questionnaire.status === "changes_requested";
     out.push({
-      id: "questionnaire", kind: "questionnaire", title: "Complete your final details form",
-      description: "Guest count, songs, meal preferences, and day-of contacts.",
+      id: "questionnaire", kind: "questionnaire",
+      title: changes ? "Update your questionnaire" : "Complete your final details form",
+      description: changes
+        ? "Your venue asked for changes — edit and resubmit."
+        : "Guest count, songs, meal preferences, and day-of contacts.",
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
-      targetSection: "questionnaire", targetFocus: "form", actionLabel: "Complete form",
+      targetSection: "questionnaire", targetFocus: "form",
+      actionLabel: changes ? "Update form" : "Complete form",
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,

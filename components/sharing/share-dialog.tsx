@@ -35,8 +35,8 @@ export type ShareRecipient = {
 };
 
 export type ShareDialogProps = {
-  /** The element that opens the sheet — e.g. <Button>Share with Client</Button>. */
-  trigger: React.ReactElement;
+  /** The element that opens the sheet — e.g. <Button>Share with Client</Button>. Optional when `open` is controlled. */
+  trigger?: React.ReactElement;
   /** Sheet title — e.g. "Share Contract", "Send Questionnaire". Plain, customer-facing. */
   title: string;
   recipient: ShareRecipient | null;
@@ -50,12 +50,20 @@ export type ShareDialogProps = {
   onSend: (message: string) => Promise<{ ok: boolean; message?: string; cancelled?: boolean }>;
   /** Called once the send genuinely succeeds — e.g. router.refresh(). */
   onSent?: () => void;
+  /** Optional controlled open state (e.g. after a pre-share confirmation). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 type State = "idle" | "sending" | "success" | "error";
 
-export function ShareDialog({ trigger, title, recipient, whatHappensNext, defaultMessage, sendLabel = "Send", onSend, onSent }: ShareDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export function ShareDialog({
+  trigger, title, recipient, whatHappensNext, defaultMessage, sendLabel = "Send", onSend, onSent,
+  open: openControlled, onOpenChange,
+}: ShareDialogProps) {
+  const [openUncontrolled, setOpenUncontrolled] = React.useState(false);
+  const open = openControlled ?? openUncontrolled;
+  const setOpen = onOpenChange ?? setOpenUncontrolled;
   const [message, setMessage] = React.useState(defaultMessage);
   const [state, setState] = React.useState<State>("idle");
   const [error, setError] = React.useState("");
@@ -88,7 +96,7 @@ export function ShareDialog({ trigger, title, recipient, whatHappensNext, defaul
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={trigger} />
+      {trigger && openControlled === undefined ? <SheetTrigger render={trigger} /> : null}
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader className="mb-6">
           <SheetTitle>{title}</SheetTitle>

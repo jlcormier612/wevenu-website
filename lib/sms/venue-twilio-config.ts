@@ -149,10 +149,29 @@ export async function getVenueTwilioAccountByAccountSid(
   return data ? mapRow(data as Row) : null;
 }
 
-/** Ready to send customer SMS/MMS for this venue. */
+/**
+ * Ready to send customer SMS/MMS for this venue.
+ * Fail closed until status is ready AND a real sender is present
+ * (E.164 + phone number SID on the venue Messaging Service).
+ */
 export function isVenueTwilioSendReady(account: VenueTwilioAccount | null): boolean {
   return !!account
     && account.status === "ready"
-    && !!account.twilioAccountSid
-    && !!account.messagingServiceSid;
+    && !!account.twilioAccountSid?.trim()
+    && !!account.messagingServiceSid?.trim()
+    && !!account.defaultFromE164?.trim()
+    && !!account.phoneNumberSid?.trim();
+}
+
+/**
+ * Whether the public inquiry/tour form may offer optional SMS consent.
+ * True once a real sender number exists and compliance is in progress or ready —
+ * so reviewers and end users can see/opt-in before A2P campaign approval.
+ * Does NOT authorize outbound sends (see isVenueTwilioSendReady).
+ */
+export function isVenueTwilioConsentOfferAvailable(account: VenueTwilioAccount | null): boolean {
+  if (!account) return false;
+  if (!account.twilioAccountSid?.trim() || !account.messagingServiceSid?.trim()) return false;
+  if (!account.defaultFromE164?.trim()) return false;
+  return account.status === "ready" || account.status === "pending_compliance";
 }

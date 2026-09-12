@@ -119,7 +119,7 @@ describe("signed-contract immutability + Clone & Resend", () => {
     const end = repo.indexOf("export async function updateContractStatus", start);
     const reopen = repo.slice(start, end);
     assert.match(reopen, /cannot be reopened for editing after the venue has signed/);
-    assert.match(reopen, /Content is immutable — use Clone & Resend/);
+    assert.match(reopen, /Content is immutable — use Create New Version/);
     assert.doesNotMatch(reopen, /status: "draft"/);
     assert.doesNotMatch(reopen, /signed_at: null/);
     assert.equal(
@@ -134,7 +134,7 @@ describe("signed-contract immutability + Clone & Resend", () => {
 
   it("reopen rejects when any client has signed", () => {
     const repo = read("lib/contracts/repository.ts");
-    assert.match(repo, /A client has already signed this contract\. Use Clone & Resend/);
+    assert.match(repo, /A client has already signed this contract\. Use Create New Version/);
     assert.equal(
       canReopenContractForEditing({
         status: "sent",
@@ -167,7 +167,7 @@ describe("signed-contract immutability + Clone & Resend", () => {
     const clone = svc.slice(svc.indexOf("export async function cloneAndResendContract"));
     assert.match(clone, /insertContractSigners/);
     assert.match(clone, /amendsContractId: sourceContractId/);
-    assert.match(clone, /Cloned from/);
+    assert.match(clone, /New version of/);
     assert.match(clone, /content: source\.content/);
     assert.match(clone, /clientId: source\.clientId/);
     assert.match(clone, /eventId: source\.eventId/);
@@ -176,7 +176,7 @@ describe("signed-contract immutability + Clone & Resend", () => {
     assert.doesNotMatch(clone, /signToken:/);
   });
 
-  it("Clone & Resend is available after venue signature even with zero client signatures", () => {
+  it("Create New Version is available after venue signature even with zero client signatures", () => {
     assert.equal(
       canCloneAndResendContract({
         venueSigned: true,
@@ -285,19 +285,21 @@ describe("signed-contract immutability + Clone & Resend", () => {
     assert.ok(clone.signers.every((s) => s.inheritsEvidence === false));
   });
 
-  it("detail UI offers Clone & Resend after venue signature; reopen is never offered", () => {
+  it("detail UI offers Create New Version after venue signature; reopen is never offered", () => {
     const detail = read("components/contracts/contract-detail.tsx");
-    assert.match(detail, /Clone &amp; Resend|Clone & Resend/);
-    assert.match(detail, /canCloneAndResend/);
+    assert.match(detail, /Create New Version/);
+    assert.match(detail, /canCreateNewVersion/);
     assert.match(detail, /const canReopen = false/);
     assert.match(detail, /venueSigned \|\| clientSigned/);
-    assert.match(detail, /cloneAndResendContractAction/);
+    assert.match(detail, /createNewVersionFromContractAction/);
+    assert.doesNotMatch(detail, /Clone &amp; Resend|Clone & Resend/);
+    assert.doesNotMatch(detail, /Create Amendment/);
   });
 
   it("content edit remains gated after venue signature in repository", () => {
     const repo = read("lib/contracts/repository.ts");
     assert.match(repo, /signed by the venue and can no longer be edited/);
-    assert.match(repo, /Use Clone & Resend/);
+    assert.match(repo, /Use Create New Version/);
   });
 });
 

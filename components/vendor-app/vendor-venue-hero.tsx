@@ -34,9 +34,10 @@ import { vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { VendorActiveVenueContext, VendorEventListItem, VendorPartnership } from "@/lib/vendors/types";
 
 const PREFERENCE_LABELS: Record<string, string> = {
-  featured: "⭐ Featured Partner",
-  preferred: "⭐ Preferred Vendor",
+  preferred: "Preferred Vendor",
   recommended: "Recommended Vendor",
+  standard: "Approved Vendor",
+  featured: "Preferred Vendor",
 };
 
 function formatPartnerSince(iso: string): string {

@@ -10,6 +10,8 @@ export function searchDocuments(docs: WorkspaceDocument[], query: string): Works
     (d.eventName?.toLowerCase().includes(q) ?? false) ||
     d.category.toLowerCase().includes(q) ||
     (d.rawStatus?.toLowerCase().includes(q) ?? false) ||
+    (d.nextActionLabel?.toLowerCase().includes(q) ?? false) ||
+    (d.experienceStatus?.toLowerCase().includes(q) ?? false) ||
     d.ownerType.toLowerCase().includes(q));
 }
 

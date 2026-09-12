@@ -229,3 +229,30 @@ export async function requestTourConfirmationAction(appointmentId: string, leadI
   if (result.ok) revalidateLead(leadId);
   return result;
 }
+
+export async function previewDeleteLeadAction(leadId: string) {
+  const { previewDeleteLead } = await import("@/lib/records/delete-record");
+  return previewDeleteLead(leadId);
+}
+
+export async function deleteLeadRecordAction(leadId: string) {
+  const { deleteLeadRecord } = await import("@/lib/records/delete-record");
+  const result = await deleteLeadRecord(leadId);
+  if (result.ok) {
+    revalidatePath("/leads");
+    revalidatePath("/reporting");
+    revalidatePath("/reporting/sales");
+    revalidatePath("/reporting/bookings");
+  }
+  return result;
+}
+
+export async function keepDuplicateSeparateAction(leadId: string) {
+  const { keepDuplicateSeparate } = await import("@/lib/leads/duplicate-review");
+  const result = await keepDuplicateSeparate(leadId);
+  if (result.ok) {
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/leads");
+  }
+  return result;
+}

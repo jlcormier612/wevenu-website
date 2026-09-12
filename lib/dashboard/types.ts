@@ -70,14 +70,6 @@ export type DashboardEvent = {
   clientName: string | null;
 };
 
-/** Key date enriched with the owning client's display name. */
-export type DashboardKeyDate = {
-  id: string;
-  clientId: string;
-  label: string;
-  date: string;
-  clientName: string;
-};
 
 /** A single step in the Getting Started checklist. */
 export type OnboardingStep = {
@@ -154,7 +146,6 @@ export type DashboardData = {
   clientListCounts: Record<ClientListFilterKey, number>;
   /** Recently booked clients (by booking date, from the clients table). */
   recentBookings: DashboardClient[];
-  upcomingKeyDates: DashboardKeyDate[];
   totalClients: number;
   // ---- Luv observations (Phase 1: data pattern matching, no AI) ----
   luvObservations: import("@/lib/luv/types").LuvObservation[];

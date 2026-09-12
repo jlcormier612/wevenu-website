@@ -7,7 +7,7 @@ import {
 } from "@/lib/event-order-templates/provision";
 import {
   addLine, addSection, createTemplate, deleteTemplate_, duplicateTemplate_, getTemplate,
-  removeLine, removeSection, setTemplateArchived_, updateTemplate_,
+  removeLine, removeSection, setTemplateArchived_, updateSectionGuidance, updateTemplate_,
 } from "@/lib/event-order-templates/service";
 import type { EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
 import type {
@@ -52,8 +52,18 @@ export async function duplicateEventOrderTemplateAction(id: string, newName: str
   return result;
 }
 
-export async function addEventOrderTemplateSectionAction(templateId: string, name: string): Promise<AddTemplateSectionResult> {
-  const result = await addSection(templateId, name);
+export async function addEventOrderTemplateSectionAction(
+  templateId: string, name: string, guidance?: string | null,
+): Promise<AddTemplateSectionResult> {
+  const result = await addSection(templateId, name, guidance ?? null);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function updateEventOrderTemplateSectionGuidanceAction(
+  templateId: string, sectionId: string, guidance: string | null,
+): Promise<EventOrderTemplateActionResult> {
+  const result = await updateSectionGuidance(sectionId, guidance);
   if (result.ok) revalidateLibrary(templateId);
   return result;
 }

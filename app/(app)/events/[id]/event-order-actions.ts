@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  addCustomLine, addLineFromInventory, addLineFromPackage, addSection,
-  ensureEventOrder, finalizeEventOrder, removeLine, removeSection, reopenEventOrder,
-  setSectionFloorPlan,
+  addCustomLine, addLineFromInventory, addLineFromOffering, addLineFromPackage, addSection,
+  ensureEventOrder, finalizeEventOrder, importPackageInclusions, removeLine, removeSection,
+  reopenEventOrder, setSectionFloorPlan, updateLine,
 } from "@/lib/event-orders/service";
 import type {
-  AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddSectionResult,
-  EnsureEventOrderResult, EventOrderActionResult,
+  AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddOfferingLineInput,
+  AddSectionResult, EnsureEventOrderResult, EventOrderActionResult, UpdateLineInput,
 } from "@/lib/event-orders/types";
 import { createInvoice, linkInvoiceToEventOrder } from "@/lib/invoices/service";
 import type { CreateInvoiceResult, InvoiceActionResult as InvoiceOpResult } from "@/lib/invoices/types";
@@ -49,7 +49,6 @@ export async function removeSectionAction(eventOrderId: string, eventId: string,
   return result;
 }
 
-/** Phase 4 — links (or clears) which Floor Plan this Section reconciles against. */
 export async function setSectionFloorPlanAction(
   eventOrderId: string, eventId: string, sectionId: string, floorPlanId: string | null,
 ): Promise<EventOrderActionResult> {
@@ -61,12 +60,32 @@ export async function setSectionFloorPlanAction(
   return result;
 }
 
+export async function addLineFromOfferingAction(
+  eventOrderId: string, eventId: string, input: AddOfferingLineInput,
+): Promise<AddLineResult> {
+  const result = await addLineFromOffering(eventOrderId, input);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Advanced / legacy: bundled package fee — not primary Add path. */
 export async function addLineFromPackageAction(
   eventOrderId: string, eventId: string, packageId: string, packageName: string, basePrice: number, sectionId: string | null,
 ): Promise<AddLineResult> {
   const result = await addLineFromPackage(eventOrderId, packageId, packageName, basePrice, sectionId);
   if (result.ok) revalidateEvent(eventId);
   return result;
+}
+
+export async function importPackageInclusionsAction(
+  eventOrderId: string,
+  eventId: string,
+  items: { description: string; quantity: number; unit: string | null }[],
+  sectionId: string | null,
+): Promise<EventOrderActionResult & { addedCount?: number }> {
+  const result = await importPackageInclusions(eventOrderId, items, sectionId);
+  if (result.ok) revalidateEvent(eventId);
+  return result as EventOrderActionResult & { addedCount?: number };
 }
 
 export async function addLineFromInventoryAction(eventOrderId: string, eventId: string, input: AddInventoryLineInput): Promise<AddLineResult> {
@@ -81,17 +100,21 @@ export async function addCustomLineAction(eventOrderId: string, eventId: string,
   return result;
 }
 
+export async function updateLineAction(
+  eventOrderId: string, eventId: string, lineId: string, input: UpdateLineInput,
+): Promise<AddLineResult> {
+  const result = await updateLine(eventOrderId, lineId, input);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
 export async function removeLineAction(eventOrderId: string, eventId: string, lineId: string, lineDescription: string): Promise<EventOrderActionResult> {
   const result = await removeLine(eventOrderId, lineId, lineDescription);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }
 
-/**
- * Booking Financial Architecture Phase 3a. Creates a brand-new Draft
- * invoice, already linked, from the Event Order panel — for an Event that
- * has no invoice at all yet.
- */
+/** Secondary: create draft invoice linked to EO. Not the primary EO action. */
 export async function createInvoiceFromEventOrderAction(
   eventOrderId: string, eventId: string, clientId: string,
 ): Promise<CreateInvoiceResult> {
@@ -100,13 +123,6 @@ export async function createInvoiceFromEventOrderAction(
   return result;
 }
 
-/**
- * Booking Financial Architecture Phase 3a. Links an already-existing Draft
- * invoice (most commonly Phase 1's retainer invoice) to this Event Order,
- * rather than forcing a second invoice into existence — "one Invoice per
- * Event, growing over time" (Decision 5) still holds once Event Order
- * enters the picture.
- */
 export async function linkEventOrderToInvoiceAction(eventOrderId: string, eventId: string, invoiceId: string): Promise<InvoiceOpResult> {
   const result = await linkInvoiceToEventOrder(invoiceId, eventOrderId);
   if (result.ok) revalidateEvent(eventId);

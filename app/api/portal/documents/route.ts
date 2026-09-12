@@ -16,7 +16,14 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_couple_documents", { p_token: token });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? { documents: [] });
+  const { isDocumentsPublicUrl } = await import("@/lib/documents/access");
+  const payload = (data ?? { documents: [] }) as { documents?: { id?: string; fileUrl?: string | null; docType?: string }[] };
+  const documents = (payload.documents ?? []).map((doc) => {
+    if (!doc.id || !doc.fileUrl || !isDocumentsPublicUrl(doc.fileUrl)) return doc;
+    if (doc.docType === "contract" || doc.docType === "invoice") return doc;
+    return { ...doc, fileUrl: `/api/portal/documents/${doc.id}/file?token=${encodeURIComponent(token)}` };
+  });
+  return NextResponse.json({ ...payload, documents });
 }
 
 export async function POST(request: Request) {

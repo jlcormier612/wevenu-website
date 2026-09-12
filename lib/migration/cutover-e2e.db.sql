@@ -143,10 +143,6 @@ begin
     if coalesce(v_result->>'ok', '') is distinct from 'true' then
       raise exception 'future client % failed: %', v_i, v_result;
     end if;
-    if v_i <= 10 then
-      insert into public.client_key_dates (venue_id, client_id, label, date)
-      values (v_venue, (v_result->>'client_id')::uuid, 'Tasting', v_date - 30);
-    end if;
   end loop;
 
   -- 20 past Events as reviewed historical records (status complete) — clients 31–50
@@ -275,7 +271,8 @@ begin
   select count(*) into v_spaces from public.venue_spaces where venue_id = v_venue and is_active;
   select count(*) into v_vendors from public.venue_vendor_relationships where venue_id = v_venue;
   select count(*) into v_packages from public.packages where venue_id = v_venue;
-  select count(*) into v_key_dates from public.client_key_dates where venue_id = v_venue;
+  -- Key Dates product retired / table dropped — fixture always reports 0.
+  v_key_dates := 0;
 
   if v_clients <> 75 then raise exception 'clients want 75 got %', v_clients; end if;
   if v_future_events <> 30 then raise exception 'future events want 30 got %', v_future_events; end if;

@@ -37,6 +37,8 @@ export type Lead = {
   lastName: string;
   email: string | null;
   phone: string | null;
+  /** Preferred channels from inquiry form: email, sms, phone_call — not SMS permission. */
+  preferredCommunicationChannels: Array<"email" | "sms" | "phone_call">;
   partnerFirstName: string | null;
   partnerLastName: string | null;
   partnerEmail: string | null;
@@ -117,6 +119,8 @@ export type LeadInput = {
   lastName: string;
   email: string;
   phone: string;
+  /** Inquiry prefs only — not SMS permission. */
+  preferredCommunicationChannels?: Array<"email" | "sms" | "phone_call">;
   partnerFirstName: string;
   partnerLastName: string;
   partnerEmail: string;

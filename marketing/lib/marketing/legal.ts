@@ -1,6 +1,5 @@
 /**
- * Legal document drafts for Hello to Cheers.
- * Ready for counsel review before launch — not final legal advice.
+ * Hello to Cheers marketing legal documents.
  */
 
 export type LegalSection = {
@@ -22,7 +21,7 @@ export type LegalDocument = {
 export const PRIVACY_POLICY: LegalDocument = {
   title: "Privacy Policy",
   slug: "privacy",
-  effectiveDate: "July 15, 2026",
+  effectiveDate: "September 11, 2026",
   notice:
     "This Privacy Policy explains how Hello to Cheers collects, uses, shares, and protects information when you use our websites, products, and related services. Please review it carefully. We will update this page when our practices change.",
   sections: [
@@ -116,6 +115,20 @@ export const PRIVACY_POLICY: LegalDocument = {
         "Depending on your location, you may have rights to access, correct, delete, export, or restrict certain personal information, or to object to certain processing.",
         "You may also manage cookie preferences where available, and unsubscribe from promotional emails using the link in those messages. Service and billing messages may still be sent as needed to operate your account.",
         "To exercise privacy rights, contact privacy@hellotocheers.com. We may need to verify your request before responding.",
+      ],
+    },
+    {
+      heading: "Text Messages (Hello to Cheers)",
+      paragraphs: [
+        "Venues that use Hello to Cheers may communicate with leads and clients by text message about their inquiry, tour or appointment, event planning, and related booking logistics.",
+        "How we collect mobile numbers: A mobile number may be collected when you submit a venue’s Hello to Cheers inquiry or tour-booking form, or when you otherwise provide it to the venue in connection with your event.",
+        "Phone number is not SMS consent: Entering or providing a mobile number is not, by itself, permission to send SMS.",
+        "Communication preference is not SMS consent: Selecting “Text message” as a preferred way to be contacted is a preference only and is not SMS permission.",
+        "Explicit SMS permission: When the venue enables the text-message permission request on its form, you may separately check an optional box (unchecked by default) authorizing texts. Checking that box is voluntary. You can submit an inquiry or book a tour without agreeing to text messages. SMS consent is not required to use Hello to Cheers or to complete the underlying inquiry or tour transaction. The permission language presented on that form is the consent language we record when you opt in.",
+        "Message frequency: Message frequency varies with your inquiry, tour, and event planning. You may receive occasional texts when the venue team needs to reach you about your visit or celebration; you will not receive a fixed daily message volume.",
+        "Message and data rates may apply.",
+        "Opt out / opt in: Reply STOP to opt out of further texts from that venue messaging program. Reply START to opt back in. Ordinary inbound replies, other than STOP/START and related carrier keywords, are not treated as ongoing SMS permission.",
+        "No sale/share of SMS consent for marketing: We do not sell, rent, or share mobile numbers or SMS consent/opt-in information with third parties or affiliates for their marketing or promotional purposes. Mobile numbers and related messaging records are used to operate venue relationship communications through Hello to Cheers and as otherwise described in this Privacy Policy, including service providers that process messages on our behalf.",
       ],
     },
     {
@@ -337,7 +350,7 @@ export const COOKIE_POLICY: LegalDocument = {
 export const END_USER_TERMS: LegalDocument = {
   title: "End User Terms",
   slug: "end-user-terms",
-  effectiveDate: "July 15, 2026",
+  effectiveDate: "September 11, 2026",
   notice:
     "These End User Terms govern your access to and use of Hello to Cheers as a couple, client, guest, or other invited participant. By accessing a planning portal, wedding website tools, or related features, you agree to these Terms.",
   sections: [
@@ -388,6 +401,7 @@ export const END_USER_TERMS: LegalDocument = {
       paragraphs: [
         "Customer and End User information is protected according to our Privacy Policy, which explains how we collect, use, share, and safeguard information.",
         "Where Hello to Cheers processes information on behalf of a venue, the venue’s instructions and privacy practices may also apply.",
+        "Text messaging for venues using Hello to Cheers is described in the “Text Messages (Hello to Cheers)” section of our Privacy Policy, including opt-out via STOP. Accepting these Terms is not SMS consent.",
       ],
     },
     {

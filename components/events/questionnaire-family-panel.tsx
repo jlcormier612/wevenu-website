@@ -7,12 +7,14 @@
 
 import * as React from "react";
 
-import { CheckCircle, Copy, ExternalLink, Loader2, RotateCcw, Send, ShieldOff } from "lucide-react";
+import { CheckCircle, Copy, ExternalLink, Loader2, MessageSquareWarning, RotateCcw, Send, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   applyQuestionnaireTemplateAction,
+  completeQuestionnaireAction,
   reopenQuestionnaireAction,
+  requestQuestionnaireChangesAction,
   saveQuestionnaireAction,
   sendQuestionnaireAction,
   withdrawQuestionnaireAccessAction,
@@ -29,6 +31,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Questionnaire, QuestionnaireActivity } from "@/lib/events/questionnaire";
+import {
+  isQuestionnaireNeedsVenueReview,
+  QUESTIONNAIRE_STATUS_LABEL,
+  questionnaireStatusLabel,
+} from "@/lib/events/questionnaire-constants";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import {
   getQuestionnaireMasterByKind,
@@ -40,9 +47,7 @@ import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/servic
 
 const KINDS: QuestionnaireKind[] = ["client_planning", "final_details", "post_event_feedback"];
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Draft", sent: "Sent", submitted: "Submitted", reviewed: "Submitted",
-};
+const STATUS_LABEL = QUESTIONNAIRE_STATUS_LABEL as Record<string, string>;
 
 const SHARE_BODY: Record<QuestionnaireKind, string> = {
   client_planning: "Your Client Planning Questionnaire for {{event_name}} is ready. We already have your booking basics — this helps us learn more about your plans.",
@@ -152,6 +157,10 @@ function KindPanel({
   const [reopening, startReopen] = React.useTransition();
   const [withdrawing, startWithdraw] = React.useTransition();
   const [saving, startSave] = React.useTransition();
+  const [requestingChanges, startRequestChanges] = React.useTransition();
+  const [completing, startComplete] = React.useTransition();
+  const [changeNote, setChangeNote] = React.useState("");
+  const [showChangeForm, setShowChangeForm] = React.useState(false);
   const [formUrl, setFormUrl] = React.useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = React.useState(false);
   const [expectedUpdatedAt, setExpectedUpdatedAt] = React.useState(initial?.updatedAt);
@@ -166,13 +175,22 @@ function KindPanel({
     receptionStartTime: initial?.receptionStartTime ?? "",
   });
 
-  const isSubmitted = initial?.status === "submitted" || initial?.status === "reviewed";
-  /** Withdraw is sent → draft only; submitted forms use Reopen. */
-  const canWithdrawAccess = initial?.status === "sent";
-  const canApplyTemplate = !initial || initial.status === "draft";
+  const status = initial?.status ?? "draft";
+  const needsReview = isQuestionnaireNeedsVenueReview(status);
+  const isComplete = status === "complete";
+  const isChangesRequested = status === "changes_requested";
+  const isReviewSurface = needsReview || isComplete || isChangesRequested;
+  /** Withdraw is sent|in_progress → draft only; submitted forms use Request Changes / Reopen. */
+  const canWithdrawAccess = status === "sent" || status === "in_progress";
+  const canApplyTemplate = !initial || status === "draft";
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
   const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
-  const waitingOn: WaitingOn = !initial?.sentAt || initial.status === "draft" ? "venue" : isSubmitted ? "completed" : "client";
+  const waitingOn: WaitingOn =
+    !initial?.sentAt || status === "draft" ? "venue"
+    : isComplete ? "completed"
+    : needsReview ? "venue"
+    : isChangesRequested ? "client"
+    : "client";
   const sentLabel = initial?.sentAt
     ? new Date(initial.sentAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })
     : null;
@@ -180,7 +198,7 @@ function KindPanel({
   const shareRecipient = coupleName ? { name: coupleName, contact: coupleEmail ?? null, relationshipLabel: "Client" } : null;
   const shareMergeData = buildMergeData({ venueName: venueName ?? "Your venue", clientName: coupleName ?? "", coordinatorName: venueName ?? "", eventDate: null, eventName: eventName ?? "" });
   const shareDefaultMessage = mergeContent(SHARE_BODY[kind], shareMergeData);
-  const sendConsequence = initial?.status === "sent" || isSubmitted
+  const sendConsequence = status === "sent" || status === "in_progress" || needsReview || isComplete || isChangesRequested
     ? "Emails a fresh link to the same form. Their previous link still works. This does not delete answers."
     : "Emails the client a secure link to complete this form. Until then only your venue can see this draft.";
 
@@ -188,7 +206,7 @@ function KindPanel({
     if (!coupleEmail) return { ok: false, message: "Add their email to the client record first." };
     const result = await sendQuestionnaireAction(eventId, coupleEmail, coupleName ?? "there", eventName ?? "your event", undefined, message, kind);
     if (result.ok) {
-      toast.success(initial?.status === "sent" || isSubmitted ? "Questionnaire resent." : "Questionnaire sent.");
+      toast.success(initial?.sentAt ? "Questionnaire resent." : "Questionnaire sent.");
       if (result.formUrl) setFormUrl(result.formUrl);
     }
     return result;
@@ -207,32 +225,118 @@ function KindPanel({
     });
   }
 
-  if (isSubmitted && initial) {
+  function handleRequestChanges() {
+    startRequestChanges(async () => {
+      const r = await requestQuestionnaireChangesAction(eventId, changeNote, kind);
+      if (r.ok) {
+        toast.success("Changes requested. The couple can edit and resubmit.");
+        setShowChangeForm(false);
+        setChangeNote("");
+      } else toast.error(r.message ?? "Could not request changes.");
+    });
+  }
+
+  if (isReviewSurface && initial) {
+    const badgeVariant =
+      isComplete ? "success"
+      : isChangesRequested ? "warning"
+      : "default";
     return (
       <div className="space-y-4">
         <BusinessAssetHeader
           compact
           whatIsThis="Planning form"
           title={kindLabel(kind)}
-          status={<Badge variant="success">{STATUS_LABEL[initial.status]}</Badge>}
-          waitingOn="completed"
+          status={<Badge variant={badgeVariant}>{questionnaireStatusLabel(status)}</Badge>}
+          waitingOn={waitingOn}
           lastUpdated={initial.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
           relationship={eventName ? { name: eventName } : null}
           primaryAction={
-            <Button type="button" size="sm" variant="outline" onClick={() => {
-              if (!confirm("Reopen so the couple can make changes? This sets the form back to Sent so they can use the link again.")) return;
-              startReopen(async () => {
-                const r = await reopenQuestionnaireAction(eventId, kind);
-                if (r.ok) toast.success("Reopened.");
-                else toast.error(r.message ?? "Could not reopen.");
-              });
-            }} disabled={reopening}>
-              {reopening ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="mr-1 h-3.5 w-3.5" />}
-              Reopen
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {needsReview && (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setShowChangeForm((v) => !v)}
+                    disabled={requestingChanges}
+                  >
+                    <MessageSquareWarning className="mr-1 h-3.5 w-3.5" />
+                    Request Changes
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={completing}
+                    onClick={() => {
+                      if (!confirm("Mark this questionnaire complete? The couple will no longer be able to edit it.")) return;
+                      startComplete(async () => {
+                        const r = await completeQuestionnaireAction(eventId, kind);
+                        if (r.ok) toast.success("Marked complete.");
+                        else toast.error(r.message ?? "Could not complete.");
+                      });
+                    }}
+                  >
+                    {completing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="mr-1 h-3.5 w-3.5" />}
+                    Mark Complete
+                  </Button>
+                </>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (!confirm(
+                    "Administratively reopen this form?\n\n"
+                    + "This sets it back to Sent without a change-request note.\n"
+                    + "Prefer Request Changes when you want the couple to revise a submitted form.",
+                  )) return;
+                  startReopen(async () => {
+                    const r = await reopenQuestionnaireAction(eventId, kind);
+                    if (r.ok) toast.success("Reopened.");
+                    else toast.error(r.message ?? "Could not reopen.");
+                  });
+                }}
+                disabled={reopening}
+              >
+                {reopening ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="mr-1 h-3.5 w-3.5" />}
+                Reopen
+              </Button>
+            </div>
           }
         />
         {sentLabel && <p className="text-xs text-muted-foreground">Last sent {sentLabel}</p>}
+        {isChangesRequested && (
+          <div className="rounded-sm border border-warning/40 bg-warning/10 p-3 text-sm">
+            <p className="font-medium text-heading">Waiting on client changes</p>
+            {initial.changesRequestedNote && (
+              <p className="mt-1 text-muted-foreground whitespace-pre-wrap">{initial.changesRequestedNote}</p>
+            )}
+          </div>
+        )}
+        {needsReview && showChangeForm && (
+          <div className="rounded-sm border border-border bg-card p-4 space-y-3">
+            <p className="text-sm font-medium text-heading">What should the couple change?</p>
+            <p className="text-xs text-muted-foreground">
+              They will see this note, edit the form, and resubmit. Prior submissions stay in history.
+            </p>
+            <Textarea
+              rows={3}
+              value={changeNote}
+              onChange={(e) => setChangeNote(e.target.value)}
+              placeholder="e.g. Please update the emergency contact phone and confirm the final guest count."
+            />
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowChangeForm(false)}>Cancel</Button>
+              <Button type="button" size="sm" disabled={requestingChanges || !changeNote.trim()} onClick={handleRequestChanges}>
+                {requestingChanges ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+                Send change request
+              </Button>
+            </div>
+          </div>
+        )}
         <AnswerRows q={initial} />
         {activities.length > 0 && (
           <div className="pt-2">
@@ -250,7 +354,7 @@ function KindPanel({
         compact
         whatIsThis="Planning form"
         title={kindLabel(kind)}
-        status={<Badge variant={initial?.status === "sent" ? "default" : "muted"}>{STATUS_LABEL[initial?.status ?? "draft"]}</Badge>}
+        status={<Badge variant={status === "sent" || status === "in_progress" ? "default" : "muted"}>{STATUS_LABEL[status] ?? "Draft"}</Badge>}
         waitingOn={waitingOn}
         lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
         relationship={eventName ? { name: eventName } : null}
@@ -261,14 +365,14 @@ function KindPanel({
                 trigger={(
                   <Button type="button" size="sm">
                     <Send className="mr-1 h-3.5 w-3.5" />
-                    {initial?.status === "sent" ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
+                    {initial?.sentAt ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
                   </Button>
                 )}
-                title={initial?.status === "sent" ? `Resend ${kindLabel(kind)}` : LIBRARY_LABELS.sendQuestionnaire}
+                title={initial?.sentAt ? `Resend ${kindLabel(kind)}` : LIBRARY_LABELS.sendQuestionnaire}
                 recipient={shareRecipient}
                 whatHappensNext={sendConsequence}
                 defaultMessage={shareDefaultMessage}
-                sendLabel={initial?.status === "sent" ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
+                sendLabel={initial?.sentAt ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
                 onSend={handleShareSend}
               />
             )}
@@ -287,11 +391,13 @@ function KindPanel({
       <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
-            {initial?.status === "draft" || !initial
+            {status === "draft" || !initial
               ? "Draft — not visible to the client until you send."
-              : initial.openedAt
-                ? `Sent ${sentLabel ?? ""} — opened, awaiting submission.`
-                : `Sent ${sentLabel ?? ""} — waiting for the client to open it.`}
+              : status === "in_progress"
+                ? `In progress ${sentLabel ? `· sent ${sentLabel}` : ""} — client has opened or started the form.`
+                : initial.openedAt
+                  ? `Sent ${sentLabel ?? ""} — opened, awaiting submission.`
+                  : `Sent ${sentLabel ?? ""} — waiting for the client to open it.`}
           </p>
           <a href={`/events/${eventId}/questionnaire-preview?kind=${kind}`} target="_blank" rel="noopener noreferrer">
             <Button type="button" variant="ghost" size="sm">Preview as client</Button>
@@ -455,7 +561,11 @@ export function QuestionnaireFamilyPanel({
               className={`rounded-full border px-3 py-1.5 text-xs ${selected ? "border-primary bg-primary/10 font-medium" : "border-border"}`}
             >
               {kindLabel(k)}
-              {status === "submitted" || status === "reviewed" ? " · Done" : status === "sent" ? " · Sent" : ""}
+              {status === "complete" ? " · Complete"
+                : status === "submitted" || status === "resubmitted" ? " · Review"
+                : status === "changes_requested" ? " · Changes"
+                : status === "sent" || status === "in_progress" ? " · Sent"
+                : ""}
             </button>
           );
         })}

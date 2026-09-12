@@ -13,6 +13,9 @@
  *      send isn't a separate kind of thing once it's actually gone out
  *   5. Mark sent or failed
  */
+import {
+  findOrCreateVenueCoupleConversation,
+} from "@/lib/conversations/venue-couple-conversation";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
@@ -28,15 +31,7 @@ import type { ProcessScheduledResult, ScheduledMessage } from "@/lib/scheduled-m
 async function findOrCreateConversation(
   supabase: ReturnType<typeof createAdminClient>, venueId: string, relationshipId: string,
 ): Promise<string | null> {
-  const { data: existing } = await supabase.from("conversations")
-    .select("id").eq("relationship_id", relationshipId).maybeSingle<{ id: string }>();
-  if (existing) return existing.id;
-
-  const { data: created, error } = await supabase.from("conversations")
-    .insert({ venue_id: venueId, relationship_id: relationshipId })
-    .select("id").single<{ id: string }>();
-  if (error) return null;
-  return created.id;
+  return findOrCreateVenueCoupleConversation(supabase, venueId, relationshipId);
 }
 
 async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: ScheduledMessage): Promise<{ ok: boolean; error?: string }> {

@@ -17,15 +17,6 @@ export const CLIENT_STATUSES: StatusMeta[] = [
   { value: "cancelled",  label: "Cancelled",  description: "Booking was cancelled" },
 ];
 
-/** Suggested key date labels for quick entry. */
-export const KEY_DATE_SUGGESTIONS = [
-  "Rehearsal Dinner",
-  "Final Guest Count Due",
-  "Day-of Timeline Sent",
-  "Menu Selection Deadline",
-  "Venue Walkthrough",
-  "Floor Plan Finalized",
-];
 
 export function clientStatusLabel(status: string): string {
   return CLIENT_STATUSES.find((s) => s.value === status)?.label ?? status;

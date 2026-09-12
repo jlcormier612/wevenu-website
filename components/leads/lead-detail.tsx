@@ -24,19 +24,24 @@ import { BookingJourneyPanel } from "@/components/booking-journey/booking-journe
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import type { PackageWithItems } from "@/lib/packages/types";
 import {
+  deleteLeadRecordAction,
   moveLeadBackToSalesPipelineAction,
+  previewDeleteLeadAction,
   returnLeadToBookedAction,
   updateLeadStatusAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
+import { DeleteRecordButton } from "@/components/records/delete-record-button";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm-dialog";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-banner";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
 import { Badge } from "@/components/ui/badge";
 import { NotesSection } from "@/components/leads/notes-section";
 import { RelationshipCard } from "@/components/leads/relationship-card";
+import { RelationshipCommunicationSummary, type SmsPermissionEvidenceView } from "@/components/leads/relationship-communication-summary";
 import { TasksSection } from "@/components/leads/tasks-section";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,6 +76,7 @@ import {
   sourceLabel,
 } from "@/lib/leads/constants";
 import { isManuallyAssignableSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
+import type { DuplicateReview } from "@/lib/leads/duplicate-review";
 import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
 import type { Document } from "@/lib/documents/types";
@@ -103,7 +109,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -445,6 +451,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
           </Button>
+          <DeleteRecordButton
+            kind="lead"
+            recordId={lead.id}
+            fallbackName={displayName}
+            previewAction={previewDeleteLeadAction}
+            deleteAction={deleteLeadRecordAction}
+          />
           {isBookingStarted && (
             <Button
               variant="outline"
@@ -495,6 +508,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <RelationshipCard lead={lead} />
 
       {/* Tabs */}
+      {duplicateReview ? (
+        <PossibleDuplicateBanner
+          review={duplicateReview}
+          newLead={{
+            displayName,
+            email: lead.email,
+            phone: lead.phone,
+          }}
+        />
+      ) : null}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -555,6 +578,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               <CardContent className="space-y-3">
                 <InfoRow icon={Mail} label="Email" value={lead.email} />
                 <InfoRow icon={Phone} label="Phone" value={lead.phone} />
+                <RelationshipCommunicationSummary
+                  preferredChannels={lead.preferredCommunicationChannels ?? []}
+                  sms={smsPermission}
+                />
                 {(lead.partnerFirstName || lead.partnerLastName) && (
                   <>
                     <Separator />

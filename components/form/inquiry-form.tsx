@@ -41,6 +41,10 @@ import {
   validateConfigurableFields,
   validateCustomAnswers,
 } from "@/lib/inquiry-form/validation";
+import {
+  INQUIRY_SMS_CONSENT_OPTIONAL_HINT,
+  buildInquirySmsConsentText,
+} from "@/lib/communication/sms-consent";
 import type { TourSlot } from "@/lib/tours/types";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -256,9 +260,10 @@ export function InquiryForm({
   config: PublicInquiryFormConfig;
   initialMode?: InquiryMode | null;
 }) {
-  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes } = config;
+  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm } = config;
   const primary = venue.primaryColor || "#5D6F5D";
   const eventTypeOptions = EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
+  const smsConsentText = buildInquirySmsConsentText(venue.name);
 
   const [mode, setMode] = React.useState<InquiryMode | null>(() => {
     if (initialMode) return initialMode;
@@ -284,6 +289,10 @@ export function InquiryForm({
   const [budget, setBudget] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [customAnswers, setCustomAnswers] = React.useState<Record<string, string | string[]>>({});
+  const [prefEmail, setPrefEmail] = React.useState(false);
+  const [prefSms, setPrefSms] = React.useState(false);
+  const [prefPhoneCall, setPrefPhoneCall] = React.useState(false);
+  const [smsPermissionGranted, setSmsPermissionGranted] = React.useState(false);
 
   const today = new Date();
   const [eventMonth, setEventMonth] = React.useState(today.getMonth());
@@ -428,6 +437,12 @@ export function InquiryForm({
     setState("submitting");
     setError("");
 
+    const preferredCommunicationChannels = [
+      ...(prefEmail ? ["email"] as const : []),
+      ...(prefSms ? ["sms"] as const : []),
+      ...(prefPhoneCall ? ["phone_call"] as const : []),
+    ];
+
     try {
       if (mode === "request_information") {
         const sourceData = buildSourceData("request_information");
@@ -443,6 +458,8 @@ export function InquiryForm({
             estimatedBudget: budget ? parseFloat(budget.replace(/[$,]/g, "")) : null,
             message,
             sourceData,
+            preferredCommunicationChannels,
+            smsPermissionGranted: smsPermissionGranted && !!phone.trim(),
             turnstileToken,
           }),
         });
@@ -471,6 +488,8 @@ export function InquiryForm({
             turnstileToken,
             qrCampaignId,
             sourceData,
+            preferredCommunicationChannels,
+            smsPermissionGranted: smsPermissionGranted && !!phone.trim(),
           }),
         });
         const data = await res.json();
@@ -678,6 +697,78 @@ export function InquiryForm({
                 error={fieldErrors[q.id]}
               />
             ))}
+
+            {comm.showPreferences && (
+              <fieldset className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+                <legend className="px-1 text-sm font-semibold text-gray-900">
+                  How would you like us to communicate with you?
+                </legend>
+                <p className="text-xs text-gray-500">Choose any that apply. This is separate from your phone number.</p>
+                <div className="space-y-2">
+                  {comm.offeredChannels.includes("email") && (
+                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                      <input type="checkbox" checked={prefEmail} onChange={(e) => setPrefEmail(e.target.checked)} className="mt-0.5 h-4 w-4" />
+                      Email
+                    </label>
+                  )}
+                  {comm.offeredChannels.includes("sms") && (
+                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                      <input type="checkbox" checked={prefSms} onChange={(e) => setPrefSms(e.target.checked)} className="mt-0.5 h-4 w-4" />
+                      Text message
+                    </label>
+                  )}
+                  {comm.offeredChannels.includes("phone_call") && (
+                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                      <input type="checkbox" checked={prefPhoneCall} onChange={(e) => setPrefPhoneCall(e.target.checked)} className="mt-0.5 h-4 w-4" />
+                      Phone call
+                    </label>
+                  )}
+                </div>
+              </fieldset>
+            )}
+
+            {comm.showSmsPermission && (
+              <fieldset className="space-y-2 rounded-xl border border-gray-200 p-4">
+                <legend className="px-1 text-sm font-semibold text-gray-900">
+                  Text message permission <span className="font-normal text-gray-500">(optional)</span>
+                </legend>
+                <p className="text-xs text-gray-500">{INQUIRY_SMS_CONSENT_OPTIONAL_HINT}</p>
+                <label className="flex items-start gap-2 text-sm text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={smsPermissionGranted}
+                    onChange={(e) => setSmsPermissionGranted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    aria-required="false"
+                  />
+                  <span>{smsConsentText}</span>
+                </label>
+                {!phone.trim() && smsPermissionGranted && (
+                  <p className="text-xs text-amber-700">Add a phone number above so we can text you.</p>
+                )}
+                <p className="text-[11px] text-gray-500">
+                  See our{" "}
+                  <a
+                    href="https://hellotocheers.com/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    Privacy Policy
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="https://hellotocheers.com/end-user-terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    End User Terms
+                  </a>
+                  . Accepting those terms is not SMS consent.
+                </p>
+              </fieldset>
+            )}
 
             {(state === "error" || error) && <p className="text-sm text-red-600 text-center">{error}</p>}
 

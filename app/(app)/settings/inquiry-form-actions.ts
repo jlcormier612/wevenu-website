@@ -7,6 +7,7 @@ import {
   updateInquiryFormSettings,
 } from "@/lib/inquiry-form/service";
 import type { InquiryFormFieldsConfig, InquiryFormQuestion, InquiryEventDateMode } from "@/lib/inquiry-form/types";
+import type { InquiryCommunicationSettings } from "@/lib/communication/sms-consent";
 
 function revalidateInquiryFormSurfaces() {
   revalidatePath("/settings/leads");
@@ -18,6 +19,7 @@ export async function updateInquiryFormSettingsAction(patch: {
   inquiryEventDateMode?: InquiryEventDateMode;
   inquiryFormFields?: InquiryFormFieldsConfig;
   acceptedEventTypes?: string[];
+  inquiryCommunicationSettings?: InquiryCommunicationSettings;
 }): Promise<{ ok: boolean; error?: string }> {
   const result = await updateInquiryFormSettings(patch);
   if (result.ok) revalidateInquiryFormSurfaces();

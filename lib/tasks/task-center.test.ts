@@ -57,9 +57,15 @@ describe("WATCH surfacing", () => {
     assert.equal(laneForTask(base({ dueDate: "2026-08-01" }), TODAY, WEEK), "watch");
   });
 
-  it("surfaces blocked client tasks", () => {
+  it("treats historical dependency-blocked status as a normal open task", () => {
+    // Far-future formerly-blocked tasks are not a special WATCH reason.
     assert.equal(
       qualifiesForWatch(base({ status: "blocked", dueDate: "2027-01-01" }), TODAY, WEEK),
+      false,
+    );
+    // Overdue formerly-blocked tasks still surface as overdue.
+    assert.equal(
+      qualifiesForWatch(base({ status: "blocked", dueDate: "2026-08-01" }), TODAY, WEEK),
       true,
     );
   });
@@ -118,7 +124,8 @@ describe("WATCH surfacing", () => {
 describe("urgency buckets", () => {
   it("classifies overdue, today, soon, upcoming", () => {
     assert.equal(computeTaskCenterUrgency("pending", "2026-08-01", TODAY, WEEK), "overdue");
-    assert.equal(computeTaskCenterUrgency("blocked", "2026-08-01", TODAY, WEEK), "blocked");
+    assert.equal(computeTaskCenterUrgency("blocked", "2026-08-01", TODAY, WEEK), "overdue");
+    assert.equal(computeTaskCenterUrgency("blocked", "2027-01-01", TODAY, WEEK), "upcoming");
     assert.equal(computeTaskCenterUrgency("pending", TODAY, TODAY, WEEK), "due_today");
     assert.equal(computeTaskCenterUrgency("pending", "2026-09-10", TODAY, WEEK), "due_soon");
     assert.equal(computeTaskCenterUrgency("pending", "2027-01-01", TODAY, WEEK), "upcoming");

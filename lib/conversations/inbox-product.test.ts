@@ -68,10 +68,10 @@ describe("Inbox Product two-column workspace", () => {
 
   it("thread header is minimal — workspace link + assignment, no duplicate identity", () => {
     assert.match(thread, /conversationHeaderOrientation/);
-    const headerBlock = thread.slice(
-      thread.indexOf("Inbox list card holds identity"),
-      thread.indexOf("min-h-0 flex-1 overflow-y-auto"),
-    );
+    const headerStart = thread.indexOf("Inbox list card holds identity");
+    const headerEnd = thread.indexOf("No messages yet — say hello");
+    assert.ok(headerStart >= 0 && headerEnd > headerStart);
+    const headerBlock = thread.slice(headerStart, headerEnd);
     assert.match(headerBlock, /headerOrientation\.workspaceHref/);
     assert.match(headerBlock, /headerOrientation\.workspaceLabel/);
     assert.match(headerBlock, /Assigned coordinator/);
@@ -85,6 +85,48 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(header, /Open booking workspace →/);
     assert.match(header, /Open lead workspace →/);
     assert.match(header, /year: "numeric"/);
+  });
+
+  it("conversation column is an unbounded reading surface — no fixed-height correspondence box", () => {
+    assert.doesNotMatch(inbox, /h-\[calc\(100svh-9rem\)\]/);
+    // Workspace pane grows with the conversation instead of clipping it.
+    // A floor so a short conversation still fills the workspace — never a cap.
+    assert.match(inbox, /flex min-h-\[calc\(100svh-13rem\)\] items-start rounded-sm border border-border bg-card/);
+    assert.doesNotMatch(inbox, /max-h-\[calc\(100svh[^\]]*\)\] (?:min-w|flex-1)/);
+    assert.doesNotMatch(inbox, /flex min-h-0 flex-1 overflow-hidden rounded-sm border/);
+    assert.match(inbox, /flex w-full flex-col gap-3/);
+    // Inbox renders the thread in page flow; embedded surfaces keep the bounded one.
+    assert.match(inbox, /flow="page"/);
+    assert.match(thread, /flow = "contained"/);
+    assert.match(thread, /flex h-full min-h-0 flex-1 flex-col overflow-y-auto/);
+    assert.match(thread, /"flex w-full flex-col"/);
+  });
+
+  it("conversation list stays anchored while the conversation scrolls", () => {
+    assert.match(inbox, /md:sticky md:top-0 md:max-h-\[calc\(100svh-4rem\)\]/);
+    assert.match(inbox, /shrink-0 self-start overflow-y-auto/);
+  });
+
+  it("WorkspaceShell scrolls modules in main, with Inbox differing only in width", () => {
+    const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
+    assert.match(shell, /fixed inset-0 flex min-h-0 w-full overflow-hidden/);
+    assert.match(shell, /flex min-h-0 min-w-0 flex-1 flex-col/);
+    assert.match(shell, /min-h-0 flex-1 overflow-y-auto bg-background/);
+    assert.match(shell, /pathname === "\/messaging"/);
+    assert.match(shell, /max-w-\[90rem\] px-3 py-3/);
+    assert.doesNotMatch(shell, /absolute inset-0 mx-auto/);
+    assert.doesNotMatch(shell, /pathname\.startsWith\("\/messaging"\)/);
+    const page = readFileSync(resolve("app/(app)/messaging/page.tsx"), "utf8");
+    assert.match(page, /flex w-full flex-col/);
+    const css = readFileSync(resolve("app/globals.css"), "utf8");
+    assert.match(css, /html:has\(\.htc-staff\) body/);
+    assert.match(css, /overflow:\s*hidden/);
+  });
+
+  it("email preview is tall enough to read comfortably", () => {
+    const compose = readFileSync(resolve("components/conversations/conversation-compose.tsx"), "utf8");
+    assert.match(compose, /min-h-\[20rem\] h-\[min\(45vh,36rem\)\]/);
+    assert.doesNotMatch(compose, /className="h-36 w-full bg-background"/);
   });
 
   it("message bubbles are not locked to the old narrow middle-column width", () => {

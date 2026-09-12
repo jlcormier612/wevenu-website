@@ -33,7 +33,7 @@ async function insertStarterSequence(
       trigger_type: input.triggerType,
       trigger_stage: input.triggerType === "lead_stage_changed" ? input.triggerStage : null,
       source_master_key: master.key,
-      status: "active",
+      status: master.initialStatus,
     })
     .select("id").single<{ id: string }>();
   if (error) throw error;

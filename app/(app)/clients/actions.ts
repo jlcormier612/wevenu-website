@@ -13,6 +13,20 @@ export async function createClientAction(input: ClientInput): Promise<CreateClie
   return result;
 }
 
+/** Venue-side strong-signal possible match preview — never blocks create. */
+export async function previewPossibleDuplicateClientAction(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  partnerFirstName: string;
+  partnerLastName: string;
+  partnerEmail: string;
+}) {
+  const { previewPossibleDuplicates } = await import("@/lib/leads/duplicate-review");
+  return previewPossibleDuplicates(input);
+}
+
 /**
  * @deprecated Prefer startBookingFileAction — canonical Lead → Booking Started path.
  * Delegates to startBookingFileAction so behavior cannot diverge.

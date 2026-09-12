@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // Produces a minimal, self-contained .next/standalone server instead of
   // requiring the full node_modules tree in the container image.
   output: "standalone",
+  // Local Playwright/acceptance often hits 127.0.0.1 while Next serves as localhost.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   images: {
     remotePatterns: [
       {

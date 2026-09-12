@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { LibraryPreviewChrome } from "@/components/library/library-preview-chrome";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { getItems, getTemplate } from "@/lib/timeline-templates/service";
 import { getTimelineStarterMaster } from "@/lib/timeline-templates/starters";
 import {
@@ -29,19 +28,13 @@ export default async function TimelineTemplatePreviewPage({ params }: Props) {
   const multiDay = groups.length > 1;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 max-w-xl mx-auto">
-        <p className="text-sm text-muted-foreground">Preview as your clients will see it</p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" render={<Link href={`/library/timeline-templates/${template.id}`} />}>
-            Back to edit
-          </Button>
-          <Button size="sm" variant="outline" render={<Link href="/library/timeline-templates" />}>
-            Library
-          </Button>
-        </div>
-      </div>
-      <div className="max-w-xl mx-auto px-4 pb-10 space-y-4">
+    <LibraryPreviewChrome
+      caption="Timeline template preview — activities and sequence. Clients see a working timeline after you apply this to an event."
+      editHref={`/library/timeline-templates/${template.id}`}
+      libraryHref="/library/timeline-templates"
+      contentMaxWidthClassName="max-w-xl"
+    >
+      <div className="space-y-4 pb-10">
         <div className="space-y-1">
           <h1 className="font-heading text-xl font-medium text-heading">{template.name}</h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -75,6 +68,6 @@ export default async function TimelineTemplatePreviewPage({ params }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </LibraryPreviewChrome>
   );
 }

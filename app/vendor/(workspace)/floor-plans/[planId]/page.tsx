@@ -33,7 +33,7 @@ export default async function VendorFloorPlanPage({ params, searchParams }: Prop
   const { planId } = await params;
   const { from: fromAssignmentId } = await searchParams;
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const plan = await getVendorFloorPlan(planId);
   if (!plan) notFound();

@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { createLeadAction } from "@/app/(app)/leads/actions";
+import { createLeadAction, previewPossibleDuplicateLeadAction } from "@/app/(app)/leads/actions";
 import { markScheduleItemConvertedAction } from "@/app/(app)/availability/actions";
+import { PossibleMatchCreateDialog } from "@/components/leads/possible-match-create-dialog";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
   LEAD_SOURCES,
   createInitialLeadInput,
 } from "@/lib/leads/constants";
+import type { DuplicateCandidate } from "@/lib/leads/duplicate-detection";
 import type { LeadErrors, LeadInput } from "@/lib/leads/types";
 
 function TextField({
@@ -83,32 +85,64 @@ export function NewInquiryForm({
   const [input, setInput] = React.useState<LeadInput>(() => ({ ...createInitialLeadInput(), ...initial }));
   const [errors, setErrors] = React.useState<LeadErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const [matchOpen, setMatchOpen] = React.useState(false);
+  const [matches, setMatches] = React.useState<DuplicateCandidate[]>([]);
 
   const set = <K extends keyof LeadInput>(key: K, value: LeadInput[K]) => {
     setInput((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
   };
 
+  async function saveLead() {
+    const result = await createLeadAction(input);
+    if (result.ok) {
+      if (fromBlockId) {
+        // Best-effort — the Lead is the source of truth either way; if
+        // this fails, the placeholder just stays un-marked, not broken.
+        await markScheduleItemConvertedAction(fromBlockId, result.leadId).catch(() => {});
+      }
+      toast.success("Inquiry saved.");
+      router.push(`/leads/${result.leadId}`);
+      return;
+    }
+    if (result.errors) setErrors(result.errors);
+    toast.error(result.message ?? "Please fix the highlighted fields.");
+  }
+
   function handleSubmit() {
     startTransition(async () => {
-      const result = await createLeadAction(input);
-      if (result.ok) {
-        if (fromBlockId) {
-          // Best-effort — the Lead is the source of truth either way; if
-          // this fails, the placeholder just stays un-marked, not broken.
-          await markScheduleItemConvertedAction(fromBlockId, result.leadId).catch(() => {});
-        }
-        toast.success("Inquiry saved.");
-        router.push(`/leads/${result.leadId}`);
+      const preview = await previewPossibleDuplicateLeadAction({
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        phone: input.phone,
+        partnerFirstName: input.partnerFirstName,
+        partnerLastName: input.partnerLastName,
+        partnerEmail: input.partnerEmail,
+      });
+      if (preview.ok && preview.matches.length > 0) {
+        setMatches(preview.matches);
+        setMatchOpen(true);
         return;
       }
-      if (result.errors) setErrors(result.errors);
-      toast.error(result.message ?? "Please fix the highlighted fields.");
+      await saveLead();
     });
   }
 
   return (
     <div className="space-y-6">
+      <PossibleMatchCreateDialog
+        open={matchOpen}
+        matches={matches}
+        pending={pending}
+        onCancel={() => setMatchOpen(false)}
+        onContinue={() => {
+          setMatchOpen(false);
+          startTransition(async () => {
+            await saveLead();
+          });
+        }}
+      />
       {/* Contact information */}
       <div className="space-y-4">
         <p className="text-sm font-medium text-heading">Contact information</p>

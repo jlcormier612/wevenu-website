@@ -1,7 +1,7 @@
 /**
- * Hello to Cheers — Payment Plan starter presentation helpers.
+ * Hello to Cheers — Payment Plan Builder preset helpers.
  * Presets themselves live in SCHEDULE_PRESETS (lib/payments/constants.ts).
- * Masters are code fixtures — not a second payment-plan template database.
+ * Masters are code fixtures used by the Payment Plan Builder — not Library assets.
  */
 import type { PaymentObligationKind } from "@/lib/payments/types";
 import {
@@ -11,7 +11,7 @@ import {
   type SchedulePresetItem,
 } from "@/lib/payments/constants";
 
-/** Customer-facing starter keys shown first in Library / create flow. */
+/** Customer-facing builder preset keys shown first in Payment Plan Builder. */
 export const PAYMENT_PLAN_STARTER_IDS = [
   "thirds",
   "wedding_four",
@@ -24,7 +24,7 @@ export function isPaymentPlanStarterId(id: string): id is PaymentPlanStarterId {
   return (PAYMENT_PLAN_STARTER_IDS as readonly string[]).includes(id);
 }
 
-/** Primary starters for Library / create picker (approved customer names). */
+/** Primary presets for Payment Plan Builder quick-start (approved customer names). */
 export function getPaymentPlanStarters(): SchedulePreset[] {
   return PAYMENT_PLAN_STARTER_IDS
     .map((id) => SCHEDULE_PRESETS.find((p) => p.id === id))

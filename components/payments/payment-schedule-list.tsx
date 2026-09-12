@@ -40,13 +40,10 @@ export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleS
           <p className="font-heading text-lg font-medium text-heading">No payment schedules yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground max-w-md">
             A payment schedule is the installment plan for one couple&apos;s invoice.
-            Start from their invoice, or pick a starter plan and choose the invoice next.
+            Open the Payment Plan Builder from an invoice to choose how that total is collected.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button render={<Link href="/payments/new" />}>+ New schedule from invoice</Button>
-            <Button variant="outline" render={<Link href="/library/payment-schedules" />}>
-              Browse starters
-            </Button>
           </div>
         </div>
       )}

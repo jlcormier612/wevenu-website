@@ -1,14 +1,15 @@
 /**
  * Canonical Document Workspace — data shapes.
  *
- * WorkspaceDocument normalizes five existing, untouched producers
- * (documents / contracts / invoices / floor_plans / event_questionnaires,
- * via get_venue_documents()) into one shape every canonical component
- * renders. Producer tables are never altered — this is a read-model only.
+ * WorkspaceDocument normalizes existing, untouched producers
+ * (documents / contracts / invoices / floor_plans / event_questionnaires /
+ * event_orders, via get_venue_documents()) into one shape every canonical
+ * component renders. Producer tables remain authoritative — this is a
+ * read-model / experience layer only.
  */
 
-/** The five real producer tables get_venue_documents() unions. Matches the CHECK constraint on document_workspace_pins/interactions.doc_type. */
-export type WorkspaceDocType = "document" | "contract" | "invoice" | "floor_plan" | "questionnaire";
+/** Producer legs get_venue_documents() unions. Matches document_workspace_pins/interactions.doc_type. */
+export type WorkspaceDocType = "document" | "contract" | "invoice" | "floor_plan" | "questionnaire" | "event_order";
 
 /** The brief's fixed, 12-value category list (Step 2, Section 3). No additional categories. */
 export type WorkspaceCategory =
@@ -33,6 +34,19 @@ export const WORKSPACE_CATEGORIES: WorkspaceCategory[] = [
 
 /** Normalized 3-tier status for the card/badge — each producer's own status maps down to this. Not a redesign of any producer's real status (still carried as rawStatus for the Preview panel). */
 export type WorkspaceStatus = "action_needed" | "in_progress" | "complete" | "none";
+
+/** Human-facing experience concepts — not a universal database enum. */
+export type ExperienceStatus =
+  | "draft"
+  | "in_progress"
+  | "with_someone"
+  | "review"
+  | "changes_requested"
+  | "complete"
+  | "final"
+  | "none";
+
+export type NextActor = "venue" | "couple" | "vendor" | null;
 
 export type WorkspaceOwnerType = "lead" | "client" | "event" | "vendor" | "venue";
 
@@ -65,6 +79,26 @@ export type WorkspaceDocument = {
   signedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Contract BO lineage (amends_contract_id) — presentation only. */
+  amendsContractId?: string | null;
+  /** Real version family for contracts; empty/undefined for other producers. */
+  versionFamily?: WorkspaceVersion[];
+  /**
+   * Generic uploaded file categorized as "contract" — not the Contracts BO
+   * or finalized PDF. Surfaced so UI does not treat it as a second signed truth.
+   */
+  isCompanionUpload?: boolean;
+  /** Human-facing experience status (not a producer DB enum). */
+  experienceStatus?: ExperienceStatus;
+  nextActor?: NextActor;
+  nextActionLabel?: string | null;
+  /** Deep link into the producer workspace. */
+  producerHref?: string | null;
+  /** Signed/final PDF (or shared Event Order PDF) exists for this producer row. */
+  hasFinalArtifact?: boolean;
+  artifactAuthority?: "producer_final" | "uploaded_file" | "working_record";
+  /** Generic-upload prior files (replace history). Empty for other producers. */
+  fileVersions?: WorkspaceVersion[];
 };
 
 export type WorkspaceScope = {
@@ -83,7 +117,7 @@ export type WorkspaceFilters = {
 
 export type WorkspaceSort = "recent" | "name" | "relationship" | "category" | "created" | "modified" | "status";
 
-/** Version History — Step 5. Producers today carry no real multi-version chain (confirmed in Step 1); every document normalizes to at least one entry, honestly labeled, not fabricated. */
+/** Version History — real producer lineage when available; otherwise a single honest current entry. */
 export type WorkspaceVersion = {
   versionNumber: number;
   createdBy: string;
@@ -92,6 +126,7 @@ export type WorkspaceVersion = {
   current: boolean;
   locked: boolean;
   representation: string;
+  href?: string | null;
 };
 
 /** Document Activity — Step 2, Section 5. */

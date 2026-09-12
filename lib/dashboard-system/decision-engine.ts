@@ -24,7 +24,6 @@
  * — it invents no new rule, no new threshold, no new data source.
  */
 import { isOverdue, formatDate as formatLeadDate, leadDisplayName } from "@/lib/leads/constants";
-import { formatDate as formatClientDate } from "@/lib/clients/constants";
 import { formatDate as formatEventDate } from "@/lib/events/constants";
 import { formatDate as formatPaymentDate, formatMoney } from "@/lib/payments/constants";
 import type { DashboardData } from "@/lib/dashboard/types";
@@ -283,20 +282,6 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
     });
   }
 
-  for (const kd of data.upcomingKeyDates) {
-    items.push({
-      id: `up-keydate-${kd.id}`,
-      priority: "upcoming",
-      domain: "Clients",
-      label: kd.label,
-      detail: kd.clientName,
-      href: `/clients/${kd.clientId}`,
-      rightLabel: formatClientDate(kd.date),
-      sortDate: kd.date,
-      // No other section currently has a comparable key-date item.
-      crossSectionSubject: null,
-    });
-  }
 
   return items.sort((a, b) => (a.sortDate ?? "9999").localeCompare(b.sortDate ?? "9999"));
 }
@@ -306,7 +291,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
  *
  * Anything landing today is today's business and belongs to Today's Focus, so
  * Upcoming no longer restates it. Previously only today's *tours* were held
- * back, which left today's events, payments and key dates appearing in both
+ * back, which left today's events and payments appearing in both
  * sections at once.
  */
 export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {

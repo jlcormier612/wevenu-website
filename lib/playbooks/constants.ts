@@ -6,7 +6,7 @@ import { clampDaysOffset } from "@/lib/playbooks/due-dates";
 // tab already on the event page — the URL hash makes that tab addressable
 // (see event-detail.tsx) rather than just landing on the event.
 //
-// guest_list, questionnaire, key_dates, event_details and wedding_website
+// guest_list, questionnaire, event_details and wedding_website
 // have no dedicated venue-side view/tab — Overview is the closest honest
 // destination until a real venue-side view exists (see
 // docs/product-backlog.md). Never point at a tab that doesn't exist.
@@ -26,7 +26,6 @@ export const TASK_ACTION_TYPES: { value: TaskActionType; defaultLabel: string; t
   { value: "timeline",         defaultLabel: "Open Timeline",           tabHash: "timeline" },
   { value: "floor_plan",       defaultLabel: "Open Floor Plan",         tabHash: "floorplan" },
   { value: "event_order",      defaultLabel: "Open Event Order",        tabHash: "event-order" },
-  { value: "key_dates",        defaultLabel: "Open Key Dates",          tabHash: "overview" },
   { value: "event_details",    defaultLabel: "Open Event Details",      tabHash: "overview" },
   { value: "wedding_website",  defaultLabel: "Open Wedding Website",    tabHash: "overview", audiences: ["client"] },
 ];
@@ -96,13 +95,13 @@ export const AUTO_COMPLETE_TRIGGERS: { value: string; label: string }[] = [
   { value: "vendor_selected",       label: "Client chooses a recommended vendor" },
 ];
 
-// "waiting" replaces the old lock icon (2026-07-09) — a task waiting on
-// another task is still just a task, not something restricted. The default
-// visual should read "this is a task," never "this is locked."
+// "blocked" remains in the union for schema/history compatibility only.
+// Planning tasks are independent — product code must not treat blocked as
+// "waiting on another task." Read paths normalize blocked → pending/overdue.
 export const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; icon: "check" | "clock" | "waiting" | "alert" | "minus" }> = {
   complete: { label: "Complete",  color: "var(--success)",              icon: "check" },
   pending:  { label: "Pending",   color: "var(--muted-foreground)",     icon: "clock" },
-  blocked:  { label: "Waiting",   color: "#C7A66A",                    icon: "waiting" },
+  blocked:  { label: "Pending",   color: "var(--muted-foreground)",     icon: "clock" },
   overdue:  { label: "Overdue",   color: "var(--destructive)",          icon: "alert" },
   waived:   { label: "Waived",    color: "var(--muted-foreground)",     icon: "minus" },
 };

@@ -45,15 +45,6 @@ export type ClientNote = {
   updatedAt: string;
 };
 
-export type ClientKeyDate = {
-  id: string;
-  venueId: string;
-  clientId: string;
-  label: string;
-  date: string; // ISO "YYYY-MM-DD"
-  note: string | null;
-  createdAt: string;
-};
 
 export type ClientActivity = {
   id: string;
@@ -67,7 +58,6 @@ export type ClientActivity = {
 
 export type ClientWithDetails = Client & {
   notes: ClientNote[];
-  keyDates: ClientKeyDate[];
   activities: ClientActivity[];
   /** ID of an event linked to this client, if one exists. */
   linkedEventId: string | null;
@@ -97,11 +87,6 @@ export type ClientInput = {
   spaceId: string;
 };
 
-export type KeyDateInput = {
-  label: string;
-  date: string;
-  note: string;
-};
 
 export type ClientErrors = Record<string, string>;
 

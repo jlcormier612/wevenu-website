@@ -1,5 +1,6 @@
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import type { WorkspaceCategory, WorkspaceStatus } from "@/lib/document-workspace/types";
+import { EXPERIENCE_STATUS_LABEL } from "@/lib/document-workspace/experience";
+import type { ExperienceStatus, WorkspaceCategory, WorkspaceStatus } from "@/lib/document-workspace/types";
 
 const CATEGORY_VARIANT: Record<WorkspaceCategory, BadgeVariant> = {
   "Contracts":        "default",
@@ -22,12 +23,34 @@ export function WorkspaceCategoryBadge({ category }: { category: WorkspaceCatego
 
 const STATUS_META: Record<WorkspaceStatus, { label: string; variant: BadgeVariant } | null> = {
   action_needed: { label: "Needs attention", variant: "warning" },
-  in_progress:   { label: "In progress",      variant: "secondary" },
+  in_progress:   { label: "In Progress",      variant: "secondary" },
   complete:      { label: "Complete",         variant: "success" },
   none:          null,
 };
 
-export function WorkspaceStatusBadge({ status }: { status: WorkspaceStatus }) {
+const EXPERIENCE_VARIANT: Record<ExperienceStatus, BadgeVariant | null> = {
+  draft: "secondary",
+  in_progress: "secondary",
+  with_someone: "accent",
+  review: "warning",
+  changes_requested: "warning",
+  complete: "success",
+  final: "success",
+  none: null,
+};
+
+export function WorkspaceStatusBadge({
+  status,
+  experienceStatus,
+}: {
+  status: WorkspaceStatus;
+  experienceStatus?: ExperienceStatus;
+}) {
+  if (experienceStatus && experienceStatus !== "none") {
+    const variant = EXPERIENCE_VARIANT[experienceStatus];
+    if (!variant) return null;
+    return <Badge variant={variant}>{EXPERIENCE_STATUS_LABEL[experienceStatus]}</Badge>;
+  }
   const meta = STATUS_META[status];
   if (!meta) return null;
   return <Badge variant={meta.variant}>{meta.label}</Badge>;

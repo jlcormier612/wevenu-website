@@ -33,23 +33,26 @@ describe("partitionArchived", () => {
  * that the UI and RPC rely on so regressions are obvious in code review.
  */
 describe("questionnaire release status contract", () => {
-  const publicStatuses = new Set(["sent", "submitted", "reviewed"]);
+  const publicStatuses = new Set([
+    "sent", "in_progress", "submitted", "changes_requested", "resubmitted", "complete",
+  ]);
   const draftOnlyStatuses = new Set(["draft"]);
 
   it("public couple access allow-list excludes draft", () => {
     assert.equal(publicStatuses.has("draft"), false);
-    for (const s of ["sent", "submitted", "reviewed"]) assert.equal(publicStatuses.has(s), true);
+    for (const s of ["sent", "in_progress", "submitted", "changes_requested", "resubmitted", "complete"]) {
+      assert.equal(publicStatuses.has(s), true);
+    }
   });
 
-  it("withdraw maps client-open statuses back to draft", () => {
-    const withdrawFrom = ["sent", "submitted", "reviewed"];
+  it("withdraw maps client-open pre-submit statuses back to draft", () => {
+    const withdrawFrom = ["sent", "in_progress"];
     for (const s of withdrawFrom) {
       assert.equal(publicStatuses.has(s), true);
-      // after withdraw
       assert.equal(draftOnlyStatuses.has("draft"), true);
-      assert.equal(publicStatuses.has("draft"), false);
       void s;
     }
+    assert.equal(publicStatuses.has("draft"), false);
   });
 
   it("apply-template remains draft-gated (sent cannot be overwritten)", () => {
@@ -58,5 +61,13 @@ describe("questionnaire release status contract", () => {
     assert.equal(canApply("draft"), true);
     assert.equal(canApply("sent"), false);
     assert.equal(canApply("submitted"), false);
+  });
+
+  it("request changes is distinct from reopen and complete", () => {
+    const fromReview = new Set(["submitted", "resubmitted"]);
+    assert.equal(fromReview.has("submitted"), true);
+    assert.equal(fromReview.has("complete"), false);
+    const reopenFrom = new Set(["submitted", "resubmitted", "complete", "changes_requested"]);
+    assert.equal(reopenFrom.has("changes_requested"), true);
   });
 });

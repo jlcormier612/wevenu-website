@@ -12,7 +12,6 @@ import { getOverviewObservation } from "@/lib/luv/portal-observations";
 import type { PortalSection } from "@/lib/portal/types";
 
 export type LuvSuggestionKind =
-  | "key_date"
   | "progress"
   | "activity"
   | "questionnaire"
@@ -41,8 +40,6 @@ export type LuvHomeSuggestionInput = {
   totalThisWeek: number;
   /** Incomplete questionnaire status when present; null when submitted/absent. */
   questionnaireOpen: boolean;
-  /** Next venue key-date within 7 days, if any. */
-  soonKeyDate: { label: string; date: string } | null;
   /**
    * Incomplete unified attention count from Your Next Steps.
    * When > 0, Luv skips venue-owned signals (questionnaire, venue readiness).
@@ -201,7 +198,6 @@ export function resolveLuvHomeSuggestion(input: LuvHomeSuggestionInput): LuvHome
     bracket,
     totalThisWeek,
     questionnaireOpen,
-    soonKeyDate,
     venueAttentionCount,
     dayOfMonth,
     disabledDestinations = [],
@@ -210,21 +206,7 @@ export function resolveLuvHomeSuggestion(input: LuvHomeSuggestionInput): LuvHome
   const destinationAllowed = (dest: PortalSection | null): boolean =>
     dest == null || !disabledDestinations.includes(dest);
 
-  // 1. Near key-date — observational gentle reminder
-  if (soonKeyDate) {
-    const weekday = new Date(soonKeyDate.date + "T12:00:00").toLocaleDateString("en-US", {
-      weekday: "long",
-    });
-    const label = soonKeyDate.label.trim() || "upcoming date";
-    return finish(
-      "key_date",
-      `Your ${label.toLowerCase()} is coming up on ${weekday} — a nice moment to keep in mind.`,
-      null,
-      null,
-    );
-  }
-
-  // 2. Overview observation — soft reframes; skip venue-owned when P1 active
+  // 1. Overview observation — soft reframes; skip venue-owned when P1 active
   const observation = getOverviewObservation(
     { total: guestTotal, attending: guestAttending },
     readiness,

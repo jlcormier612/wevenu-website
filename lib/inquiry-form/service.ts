@@ -14,6 +14,12 @@ import type {
   InquiryFormSettings,
   PublicInquiryFormConfig,
 } from "@/lib/inquiry-form/types";
+import {
+  effectivePublicCommunicationSettings,
+  parseInquiryCommunicationSettings,
+  type InquiryCommunicationSettings,
+} from "@/lib/communication/sms-consent";
+import { isSmsConfigured, isSmsConsentOfferAvailable } from "@/lib/sms/send";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 function canManageInquiryFormSettings(role: string | null): boolean {
@@ -53,14 +59,31 @@ function parseFieldsConfig(raw: unknown): InquiryFormFieldsConfig {
 
 export async function getPublicInquiryFormConfig(embedKey: string): Promise<PublicInquiryFormConfig | null> {
   if (!isSupabaseConfigured) return null;
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("get_public_inquiry_form", { p_embed_key: embedKey });
+  // Public embed — no venue session. Cookie-bound createClient() can return an
+  // empty RPC payload when a stale staff JWT is present; the form must still load.
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc("get_public_inquiry_form", { p_embed_key: embedKey });
   const payload = data as Record<string, unknown> | null;
-  if (!payload?.ok) return null;
+  if (!payload?.ok) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[getPublicInquiryFormConfig] missing/invalid payload", {
+        embedKey,
+        error: error?.message ?? null,
+      });
+    }
+    return null;
+  }
   const venue = payload.venue as Record<string, unknown>;
+  const venueId = String(venue.id);
+  // Consent UI may appear while A2P is pending; outbound still requires send-ready + opt-in.
+  const smsConsentOfferAvailable = await isSmsConsentOfferAvailable(venueId);
+  const communicationSettings = effectivePublicCommunicationSettings(
+    parseInquiryCommunicationSettings(payload.inquiryCommunicationSettings),
+    smsConsentOfferAvailable,
+  );
   return {
     venue: {
-      id: String(venue.id),
+      id: venueId,
       name: String(venue.name),
       logoUrl: (venue.logoUrl as string | null) ?? null,
       primaryColor: String(venue.primaryColor ?? "#5D6F5D"),
@@ -81,6 +104,7 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
       typeof payload.ga4MeasurementId === "string" && payload.ga4MeasurementId.trim()
         ? payload.ga4MeasurementId.trim()
         : null,
+    inquiryCommunicationSettings: communicationSettings,
   };
 }
 
@@ -90,25 +114,38 @@ export async function getInquiryFormSettings(): Promise<InquiryFormSettings | nu
   const supabase = await createClient();
   const { data: row } = await supabase
     .from("venues")
-    .select("inquiry_event_date_mode, inquiry_form_fields, accepted_inquiry_event_types")
+    .select("inquiry_event_date_mode, inquiry_form_fields, accepted_inquiry_event_types, inquiry_communication_settings")
     .eq("id", venue.id)
-    .maybeSingle<{ inquiry_event_date_mode: string; inquiry_form_fields: unknown; accepted_inquiry_event_types: unknown }>();
+    .maybeSingle<{
+      inquiry_event_date_mode: string;
+      inquiry_form_fields: unknown;
+      accepted_inquiry_event_types: unknown;
+      inquiry_communication_settings: unknown;
+    }>();
   const { data: questions } = await supabase
     .from("inquiry_form_questions")
     .select("id, question_text, question_type, required, options, sort_order")
     .eq("venue_id", venue.id)
     .order("sort_order")
     .order("created_at");
+  const smsConfigured = await isSmsConfigured(venue.id);
+  const smsConsentOfferAvailable = await isSmsConsentOfferAvailable(venue.id);
   return {
     inquiryEventDateMode: row?.inquiry_event_date_mode === "choose_available" ? "choose_available" : "request_preferred",
     inquiryFormFields: parseFieldsConfig(row?.inquiry_form_fields),
     acceptedEventTypes: parseAcceptedEventTypes(row?.accepted_inquiry_event_types),
     customQuestions: ((questions ?? []) as DbQuestionRow[]).map(mapQuestion),
+    inquiryCommunicationSettings: parseInquiryCommunicationSettings(row?.inquiry_communication_settings),
+    smsConfigured,
+    smsConsentOfferAvailable,
   };
 }
 
 export async function updateInquiryFormSettings(
-  patch: Partial<Pick<InquiryFormSettings, "inquiryEventDateMode" | "inquiryFormFields" | "acceptedEventTypes">>,
+  patch: Partial<Pick<
+    InquiryFormSettings,
+    "inquiryEventDateMode" | "inquiryFormFields" | "acceptedEventTypes" | "inquiryCommunicationSettings"
+  >>,
 ): Promise<{ ok: boolean; error?: string }> {
   const venue = await getCurrentVenue();
   if (!venue || !isSupabaseConfigured) return { ok: false, error: "not_configured" };
@@ -125,10 +162,19 @@ export async function updateInquiryFormSettings(
     if (valid.length === 0) return { ok: false, error: "accepted_types_empty" };
     update.accepted_inquiry_event_types = valid;
   }
+  if (patch.inquiryCommunicationSettings) {
+    // Persist venue intent. Public forms still hide SMS when the venue
+    // has no sender (effectivePublicCommunicationSettings).
+    update.inquiry_communication_settings = {
+      askPreferences: patch.inquiryCommunicationSettings.askPreferences === true,
+      offerEmail: patch.inquiryCommunicationSettings.offerEmail !== false,
+      offerSms: patch.inquiryCommunicationSettings.offerSms !== false,
+      offerPhoneCall: patch.inquiryCommunicationSettings.offerPhoneCall !== false,
+      requestSmsPermission: patch.inquiryCommunicationSettings.requestSmsPermission !== false,
+    };
+  }
   if (Object.keys(update).length === 0) return { ok: true };
 
-  // Owner-only venues_update RLS would silently no-op for Managers. Write
-  // only these operational inquiry columns via admin after Owner|Manager check.
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("venues")

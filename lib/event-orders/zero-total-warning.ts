@@ -11,4 +11,4 @@ export function eventOrderRequiresZeroTotalWarning(total: number, lineCount?: nu
 }
 
 export const EVENT_ORDER_ZERO_TOTAL_WARNING =
-  "This Event Order currently totals $0.00. If pricing is still incomplete, Cancel and add Package or Inventory lines first. Complimentary or unpriced items are allowed — continue only if $0.00 is intentional. Clients will see this total if you share it.";
+  "No priced delivery items are on this Event Order yet. That is fine for menus and included items — continue if $0 is intentional. Clients will see prices only where you set them; amount due always lives on Payments.";

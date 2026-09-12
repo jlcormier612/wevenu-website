@@ -31,7 +31,6 @@ function dashboard(overrides: Partial<DashboardData> = {}): DashboardData {
     upcomingTours: [],
     upcomingEvents: [],
     upcomingPayments: [],
-    upcomingKeyDates: [],
     briefing: { needsAttentionNow: [] },
     ...overrides,
   } as unknown as DashboardData;
@@ -49,9 +48,6 @@ function payment(id: string, dueDate: string) {
   return { id, scheduleId: `sched-${id}`, label: "Deposit", amount: 500, dueDate, isOverdue: false, clientName: "Client" };
 }
 
-function keyDate(id: string, date: string) {
-  return { id, clientId: `client-${id}`, label: "Final headcount", date, clientName: "Client" };
-}
 
 // The whole point of the deduplication pass: one fact, one section. Today's
 // Focus owns what needs attention now; Upcoming owns what comes later.
@@ -73,18 +69,14 @@ describe("Today's Focus and Upcoming partition the same data", () => {
     assert.equal(classifyBriefingItems(data).length, 0, "Today's Focus is not forward-looking");
   });
 
-  it("does not let today's payments or key dates appear twice", () => {
+  it("does not let today's payments appear twice", () => {
     const data = dashboard({
-      upcomingPayments: [payment("p1", TODAY), payment("p2", TOMORROW)] as never,
-      upcomingKeyDates: [keyDate("k1", TODAY), keyDate("k2", LATER)] as never,
+      upcomingPayments: [payment("p1", TODAY), payment("p2", LATER)] as never,
     });
-
-    const focus = classifyBriefingItems(data).map((i) => i.id);
+    const focus = classifyTodayDatedItems(data).map((i) => i.id);
     const upcoming = classifyUpcomingItems(data).map((i) => i.id);
-
-    assert.deepEqual(focus.sort(), ["up-keydate-k1", "up-payment-p1"]);
-    assert.deepEqual(upcoming.sort(), ["up-keydate-k2", "up-payment-p2"]);
-    assert.equal(focus.filter((id) => upcoming.includes(id)).length, 0);
+    assert.deepEqual(focus.sort(), ["up-payment-p1"]);
+    assert.deepEqual(upcoming.sort(), ["up-payment-p2"]);
   });
 
   it("surfaces a tour happening today exactly once", () => {
@@ -111,7 +103,6 @@ describe("Today's Focus and Upcoming partition the same data", () => {
       upcomingTours: [tour("l1", TODAY), tour("l2", LATER)] as never,
       upcomingEvents: [event("e1", TODAY), event("e2", TOMORROW)] as never,
       upcomingPayments: [payment("p1", TODAY), payment("p2", LATER)] as never,
-      upcomingKeyDates: [keyDate("k1", TODAY), keyDate("k2", TOMORROW)] as never,
     });
 
     const focus = classifyBriefingItems(data);

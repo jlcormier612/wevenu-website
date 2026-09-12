@@ -18,7 +18,6 @@ function base(over: Partial<LuvHomeSuggestionInput> = {}): LuvHomeSuggestionInpu
     bracket: "1-3",
     totalThisWeek: 0,
     questionnaireOpen: false,
-    soonKeyDate: null,
     venueAttentionCount: 0,
     dayOfMonth: 1, // odd → social proof when bracket path
     ...over,
@@ -29,13 +28,16 @@ describe("resolveLuvHomeSuggestion", () => {
   it("1. returns a meaningful suggestion when signals exist", () => {
     const s = resolveLuvHomeSuggestion(
       base({
-        soonKeyDate: { label: "Tasting", date: "2026-08-12" },
+        totalThisWeek: 3,
       }),
     );
-    assert.equal(s.kind, "key_date");
-    assert.match(s.message, /tasting/i);
-    assert.equal(s.destination, null);
-    assert.equal(usesForbiddenLuvLanguage(s.message), false);
+    assert.equal(s.kind, "activity");
+    assert.match(s.message, /planning/i);
+  });
+
+  it("does not produce Key Date suggestions (product retired)", () => {
+    const s = resolveLuvHomeSuggestion(base({ daysUntil: 3, guestTotal: 0 }));
+    assert.notEqual(s.kind, "key_date");
   });
 
   it("2. uses quiet state when no stronger signal applies", () => {
@@ -45,8 +47,7 @@ describe("resolveLuvHomeSuggestion", () => {
         readiness: 90,
         totalThisWeek: 0,
         questionnaireOpen: false,
-        soonKeyDate: null,
-        dayOfMonth: 1,
+            dayOfMonth: 1,
         guestTotal: 10,
         guestAttending: 4,
       }),
@@ -64,8 +65,7 @@ describe("resolveLuvHomeSuggestion", () => {
         guestTotal: 0,
         guestAttending: 0,
         readiness: 40,
-        soonKeyDate: null,
-        totalThisWeek: 0,
+            totalThisWeek: 0,
         questionnaireOpen: false,
       }),
     );
@@ -83,8 +83,7 @@ describe("resolveLuvHomeSuggestion", () => {
         guestTotal: 5,
         bracket: "3-6",
         dayOfMonth: 2,
-        soonKeyDate: null,
-        totalThisWeek: 0,
+            totalThisWeek: 0,
         questionnaireOpen: false,
         venueAttentionCount: 0,
       }),
@@ -104,8 +103,7 @@ describe("resolveLuvHomeSuggestion", () => {
         questionnaireOpen: true,
         venueAttentionCount: 3,
         totalThisWeek: 0,
-        soonKeyDate: null,
-        // Avoid overview observation winning
+            // Avoid overview observation winning
         guestTotal: 5,
         guestAttending: 2,
         readiness: 90,
@@ -121,8 +119,7 @@ describe("resolveLuvHomeSuggestion", () => {
         questionnaireOpen: true,
         venueAttentionCount: 0,
         totalThisWeek: 0,
-        soonKeyDate: null,
-        guestTotal: 5,
+            guestTotal: 5,
         guestAttending: 2,
         readiness: 90,
       }),
@@ -141,8 +138,7 @@ describe("resolveLuvHomeSuggestion", () => {
         guestAttending: 5,
         totalThisWeek: 0,
         questionnaireOpen: false,
-        soonKeyDate: null,
-      }),
+          }),
     );
     assert.notEqual(s.kind, "progress");
     assert.doesNotMatch(s.message, /venue tasks/i);
@@ -153,8 +149,7 @@ describe("resolveLuvHomeSuggestion", () => {
     const s = resolveLuvHomeSuggestion(
       base({
         totalThisWeek: 2,
-        soonKeyDate: null,
-        daysUntil: 40,
+            daysUntil: 40,
       }),
     );
     assert.equal(s.kind, "activity");
@@ -187,7 +182,7 @@ describe("resolveLuvHomeSuggestion", () => {
       null,
     ]);
     const samples: LuvHomeSuggestionInput[] = [
-      base({ soonKeyDate: { label: "Fitting", date: "2026-08-10" } }),
+      base({}),
       base({ dayOfMonth: 2, daysUntil: 200, guestTotal: 0 }),
       base({ dayOfMonth: 2, daysUntil: 100, bracket: "3-6" }),
       base({ dayOfMonth: 1, daysUntil: 100 }),

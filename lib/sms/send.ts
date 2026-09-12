@@ -47,6 +47,13 @@ export async function isSmsConfigured(venueId: string): Promise<boolean> {
   return resolved.ok;
 }
 
+/** Optional SMS consent UI — true before send-ready when a sender number exists. */
+export async function isSmsConsentOfferAvailable(venueId: string): Promise<boolean> {
+  if (!venueId?.trim()) return false;
+  const { isVenueSmsConsentOfferAvailable } = await import("@/lib/sms/venue-twilio-resolve");
+  return isVenueSmsConsentOfferAvailable(venueId);
+}
+
 export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
   const mode = getCommunicationMode();
   if (mode === "disabled") {

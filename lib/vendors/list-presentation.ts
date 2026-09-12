@@ -2,9 +2,9 @@
  * Pure Vendor list presentation helpers.
  * Preference (ranking) and claim state stay distinct; invitation is never inferred.
  */
-import type { VendorPreferenceLevel } from "@/lib/vendors/types";
+import type { VendorPreferenceLevel, VendorRelationshipStatus } from "@/lib/vendors/types";
 
-/** Claim-state labels for the list — never "Invited". */
+/** Claim-state labels for venue ops — not primary client-facing copy. */
 export type VendorClaimStateLabel = "Claimed" | "Not claimed";
 
 export function vendorClaimStateLabel(isClaimed: boolean): VendorClaimStateLabel {
@@ -12,24 +12,54 @@ export function vendorClaimStateLabel(isClaimed: boolean): VendorClaimStateLabel
 }
 
 /**
+ * Client-facing approved directory / new pick eligibility.
+ * invited + active are available; inactive must not appear or be newly selected.
+ * Mirrors get_venue_vendor_directory / toggle_directory_vendor_pick predicates.
+ */
+export function venueRelationshipAvailableToClients(
+  status: VendorRelationshipStatus | string,
+): boolean {
+  return status === "invited" || status === "active";
+}
+
+/**
+ * Vendor home immersion / "active venue" — any non-inactive relationship.
+ * Inactive must not become the active partnership hero.
+ */
+export function venueRelationshipEligibleForActiveVenue(
+  status: VendorRelationshipStatus | string,
+): boolean {
+  return status !== "inactive";
+}
+
+/**
  * Preference badge shown in the Preference column.
- * recommended stays blank (unchanged semantics).
+ * Approved (standard) stays blank — baseline on the list.
  */
 export function vendorPreferenceBadgeKind(
-  preferenceLevel: VendorPreferenceLevel,
-): "featured" | "preferred" | null {
-  if (preferenceLevel === "featured") return "featured";
-  if (preferenceLevel === "preferred") return "preferred";
+  preferenceLevel: VendorPreferenceLevel | string,
+): "recommended" | "preferred" | null {
+  if (preferenceLevel === "preferred" || preferenceLevel === "featured") return "preferred";
+  if (preferenceLevel === "recommended") return "recommended";
   return null;
 }
 
 /** Same ranking used by the list "Preferred First" sort. */
 export function vendorPreferenceSortRank(
-  preferenceLevel: VendorPreferenceLevel,
+  preferenceLevel: VendorPreferenceLevel | string,
 ): number {
-  if (preferenceLevel === "featured") return 2;
-  if (preferenceLevel === "preferred") return 1;
+  if (preferenceLevel === "preferred" || preferenceLevel === "featured") return 2;
+  if (preferenceLevel === "recommended") return 1;
   return 0;
+}
+
+/** Client-facing preference chip copy. */
+export function vendorPreferenceClientLabel(
+  preferenceLevel: VendorPreferenceLevel | string,
+): string | null {
+  if (preferenceLevel === "preferred" || preferenceLevel === "featured") return "Preferred";
+  if (preferenceLevel === "recommended") return "Recommended";
+  return null;
 }
 
 /**

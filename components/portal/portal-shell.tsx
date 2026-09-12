@@ -33,8 +33,8 @@ import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
-  GuestStats, JournalEntry, PortalContext, PortalKeyDate, PortalSection, PortalTask,
-  PortalVendorTask, RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
+  GuestStats, JournalEntry, PortalContext, PortalSection, PortalTask,
+  PortalVendorTask, RecentActivity, SeatingData, SeatingFloorPlanSummary, TodoCategory, PortalParticipant, PortalActivity,
   PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
@@ -1991,7 +1991,6 @@ function WorkingWithYourVenue({
           <TimelineCard token={token} onNavigate={onNavigate} />
         </div>
       </div>
-      <KeyDatesCard token={token} maxUpcoming={2} />
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-0.5">
         <button type="button" onClick={() => onNavigate("guide")}
           className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
@@ -4377,6 +4376,7 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "timeline",    icon: "🕒", label: "Timeline",          available: true, group: "venue" },
   { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
   { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
+  { id: "event-order", icon: "📋", label: "Event Order",       shortLabel: "Order",    available: true, group: "venue" },
   { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
   { id: "messages",    icon: "💬", label: "Messages",          available: true, group: "venue" },
   { id: "guide",       icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",    available: true, group: "venue" },
@@ -4408,6 +4408,7 @@ export function PortalShell({
   const [paymentsOverdueCount, setPaymentsOverdueCount] = React.useState(0);
   /** Messages nav badge — unread venue messages. */
   const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
+  const [hasSharedEventOrder, setHasSharedEventOrder] = React.useState(false);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
@@ -4427,9 +4428,24 @@ export function PortalShell({
     .map((item) => ({
       ...item,
       available:
-        item.available && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities),
+        item.available
+        && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities)
+        && (item.id !== "event-order" || hasSharedEventOrder),
     }))
     .filter((item) => item.available);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/portal/event-order?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d: { eventOrder?: unknown }) => {
+        if (!cancelled) setHasSharedEventOrder(!!d?.eventOrder);
+      })
+      .catch(() => {
+        if (!cancelled) setHasSharedEventOrder(false);
+      });
+    return () => { cancelled = true; };
+  }, [token]);
 
   React.useEffect(() => {
     if (!isPortalSectionEnabledByCapabilities(activeSection, planningCapabilities)) {
@@ -4888,49 +4904,6 @@ export function PortalShell({
 }
 
 // ── Desktop Quick Actions Sidebar ─────────────────────────────────────────────
-
-// ── Key Dates card — venue-authored (Program 4, Initiative C, Phase 3):
-// "the couple should feel that the venue has already prepared everything
-// for them." Self-fetching like RequestsSummaryCard; renders nothing until
-// the venue has actually set at least one date.
-function KeyDatesCard({ token, maxUpcoming = 2 }: { token: string; maxUpcoming?: number }) {
-  const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
-
-  React.useEffect(() => {
-    fetch(`/api/portal/key-dates?token=${token}`)
-      .then((r) => r.json())
-      .then((d: { keyDates?: PortalKeyDate[] }) => setKeyDates(d.keyDates ?? []));
-  }, [token]);
-
-  if (!keyDates || keyDates.length === 0) return null;
-
-  const today = new Date().toISOString().slice(0, 10);
-  const next = keyDates.find((k) => k.date >= today) ?? keyDates[0];
-  const upcoming = keyDates.filter((k) => k.id !== next.id).slice(0, maxUpcoming);
-
-  return (
-    <div className="w-full rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Next key date</p>
-      <p className="text-sm font-semibold text-heading leading-snug">{next.label}</p>
-      <p className="text-[11px] text-muted-foreground mt-1">
-        {new Date(next.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-      </p>
-      {next.note && <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{next.note}</p>}
-      {upcoming.length > 0 && (
-        <div className="mt-3 pt-3 border-t space-y-1.5" style={{ borderColor: "#E8E3DC" }}>
-          {upcoming.map((k) => (
-            <div key={k.id} className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">{k.label}</span>
-              <span className="text-[11px] font-medium text-heading">
-                {new Date(k.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Program 4, Initiative D, Phase 4 (2026-07-23) — the four cards that sit
 // "immediately below the hero" and "represent the operational relationship
@@ -5641,20 +5614,32 @@ function BudgetLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s
 }
 
 function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [plans, setPlans] = React.useState<SeatingFloorPlanSummary[] | null>(null);
   const [data, setData] = React.useState<SeatingData | null>(null);
 
   React.useEffect(() => {
-    fetch(`/api/portal/seating?token=${token}`).then(r => r.json())
-      .then((d: SeatingData) => setData(d?.floorPlan !== undefined ? d : null)).catch(() => setData(null));
+    fetch(`/api/portal/seating/floor-plans?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { floorPlans?: SeatingFloorPlanSummary[] }) => {
+        const list = d.floorPlans ?? [];
+        setPlans(list);
+        if (list.length === 1) {
+          return fetch(`/api/portal/seating?token=${token}&floorPlanId=${list[0]!.id}`)
+            .then((r) => r.json())
+            .then((seating: SeatingData) => setData(seating?.floorPlan !== undefined ? seating : null));
+        }
+        setData(null);
+      })
+      .catch(() => { setPlans([]); setData(null); });
   }, [token]);
 
   const unassigned = data ? data.unassignedGuests.length + data.needsReassignment.length : 0;
   const model = resolveSeatingLaunch(
-    data
+    plans
       ? {
-          hasFloorPlan: Boolean(data.floorPlan),
-          hadPriorWork: Boolean(data.hadPriorWork),
-          unassignedCount: unassigned,
+          hasFloorPlan: plans.length > 0,
+          hadPriorWork: plans.some((p) => p.hasAssignments || p.lastSubmission != null) || Boolean(data?.hadPriorWork),
+          unassignedCount: plans.length === 1 ? unassigned : 0,
         }
       : null,
   );
@@ -5694,17 +5679,14 @@ function LuvDailyCard({
   planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
-  const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
 
   React.useEffect(() => {
-    fetch(`/api/portal/key-dates?token=${token}`).then((r) => r.json())
-      .then((d: { keyDates?: PortalKeyDate[] }) => setKeyDates(d.keyDates ?? [])).catch(() => setKeyDates([]));
     fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json())
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
   }, [token]);
 
-  if (keyDates === null || questionnaire === undefined) {
+  if (questionnaire === undefined) {
     return (
       <section
         className="rounded-2xl px-4 py-3.5"
@@ -5725,14 +5707,6 @@ function LuvDailyCard({
   }
 
   const today = new Date();
-  const inSevenDays = new Date(today.getTime() + 7 * 86400000);
-  const soonKeyDate = keyDates
-    .filter((k) => {
-      const d = new Date(k.date + "T12:00:00");
-      return d >= today && d <= inSevenDays;
-    })
-    .sort((a, b) => (a.date < b.date ? -1 : 1))[0] ?? null;
-
   const questionnaireOpen = Boolean(
     questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed",
   );
@@ -5745,7 +5719,6 @@ function LuvDailyCard({
     bracket,
     totalThisWeek: recentActivity?.totalThisWeek ?? 0,
     questionnaireOpen,
-    soonKeyDate: soonKeyDate ? { label: soonKeyDate.label, date: soonKeyDate.date } : null,
     venueAttentionCount,
     dayOfMonth: today.getDate(),
     disabledDestinations: planningCapabilities.vendors ? [] : ["vendors"],

@@ -16,6 +16,7 @@ import {
 import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
 import { decideLegalProxyEnforcement } from "@/lib/legal/enforce-legal-in-proxy";
 import { shouldSkipLegalEnforcement } from "@/lib/legal/welcome-middleware";
+import { isWelcomeAppPath } from "@/lib/legal/welcome-session-scope";
 
 /**
  * Routes that do not require an authenticated session.
@@ -243,17 +244,32 @@ export async function updateSession(
     );
   }
 
+  // Shared Welcome is not public, but must accept:
+  // - venue session (venue Welcome)
+  // - vendor session (vendor Welcome after legal redirect)
+  // - couple portal token (?token=) without either cookie
+  // Do not add /welcome to PUBLIC_PATHS.
+  const welcomePath = isWelcomeAppPath(pathname);
+  const welcomeCoupleToken =
+    welcomePath && Boolean(request.nextUrl.searchParams.get("token")?.trim());
+
   if (!venueUser && !vendorPath && !isPublicPath(pathname)) {
-    const loginPath = loginRedirectWithNext(
-      pathname,
-      request.nextUrl.search,
-    );
-    return withSessionCookies(
-      supabaseResponse,
-      NextResponse.redirect(new URL(loginPath, request.nextUrl.origin)),
-    );
+    if (welcomePath && (vendorUser || welcomeCoupleToken)) {
+      // Allow through — page/API resolve the correct jar.
+    } else {
+      const loginPath = loginRedirectWithNext(
+        pathname,
+        request.nextUrl.search,
+      );
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(new URL(loginPath, request.nextUrl.origin)),
+      );
+    }
   }
 
+  // Path-scoped principal for legal enforcement. /welcome itself is skipped
+  // by shouldSkipLegalEnforcement; vendor app paths always use the vendor jar.
   const user = vendorPath ? vendorUser : venueUser;
   const supabase = vendorPath ? vendorSupabase : venueSupabase;
 
@@ -335,6 +351,7 @@ export async function updateSession(
       pathname,
       search: request.nextUrl.search,
       supabase,
+      prefer: vendorPath ? "vendor" : "venue",
     });
     if (legalDecision.action === "redirect_welcome") {
       return withSessionCookies(

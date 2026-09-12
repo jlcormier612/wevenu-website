@@ -12,7 +12,7 @@ import Link from "next/link";
 import {
   Ban, CalendarClock, CalendarDays, Clock, ClipboardList, DollarSign,
   FileClock, FileSignature, Footprints, GanttChart, Handshake, ListTodo, MapPin,
-  MoreHorizontal, Pencil, Phone, Star, Trash2, User, Users, Utensils,
+  MoreHorizontal, Pencil, Phone, Trash2, User, Users, Utensils,
 } from "lucide-react";
 
 import {
@@ -45,7 +45,6 @@ export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
   tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-muted-foreground" },
   follow_up:      { label: "Follow-up",   icon: Phone,         dotColor: "var(--cal-follow-up)",   textClass: "text-muted-foreground" },
   payment_due:    { label: "Payment Due", icon: DollarSign,    dotColor: "var(--cal-payment-due)", textClass: "text-destructive" },
-  key_date:       { label: "Key Date",    icon: Star,          dotColor: "var(--cal-key-date)",    textClass: "text-heading" },
   // One human-facing Hold concept — backend may still use date_holds table.
   date_hold:      { label: "Hold",        icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
   // "Blocked Time" — no longer the primary manual concept, just one of

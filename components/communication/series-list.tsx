@@ -80,7 +80,9 @@ export function SeriesList({ initialSeries }: { initialSeries: MessageSequenceLi
           key={s.id}
           layout="row"
           title={s.name}
-          meta={`${triggerSummary(s.triggerType, s.triggerStage)} · ${participantLabel(s.activeParticipantCount)}`}
+          meta={`${triggerSummary(s.triggerType, s.triggerStage)} · ${participantLabel(s.activeParticipantCount)}${
+            s.status === "paused" ? " · Turn on when you’re ready" : ""
+          }`}
           badges={
             <Badge variant={s.status === "active" ? "success" : "muted"} className="text-[10px]">
               {s.status === "active" ? "Active" : "Paused"}

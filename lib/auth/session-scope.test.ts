@@ -39,6 +39,10 @@ describe("session-scope", () => {
     assert.equal(isVendorAppPath("/dashboard"), false);
   });
 
+  it("does not treat shared Welcome as a vendor app path", () => {
+    assert.equal(isVendorAppPath("/welcome"), false);
+  });
+
   it("classifies client auth surfaces", () => {
     assert.equal(isClientAuthPath("/client/login"), true);
     assert.equal(isClientAuthPath("/client/accept"), true);

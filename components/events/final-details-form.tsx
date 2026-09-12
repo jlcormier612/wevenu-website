@@ -43,7 +43,14 @@ const FIELD_KEY_TO_QFIELD: Record<ConfigurableField, keyof QFields> = {
 // sets it (BA2 finding) — treated identically to "submitted" here, same as
 // every other real consumer in this codebase already does.
 const QUESTIONNAIRE_STATUS_LABEL: Record<string, string> = {
-  draft: "Draft", sent: "Sent", submitted: "Submitted", reviewed: "Submitted",
+  draft: "Draft",
+  sent: "Sent",
+  in_progress: "In Progress",
+  submitted: "Submitted",
+  changes_requested: "Changes Requested",
+  resubmitted: "Resubmitted",
+  complete: "Complete",
+  reviewed: "Complete",
 };
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -109,7 +116,7 @@ export function FinalDetailsForm({
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
   const [formUrl, setFormUrl] = React.useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = React.useState(false);
-  const isSubmitted = initial?.status === "submitted" || initial?.status === "reviewed";
+  const isSubmitted = initial?.status === "submitted" || initial?.status === "resubmitted" || initial?.status === "complete";
   const requiredFields = initial?.requiredFields ?? [];
   const includedFields = initial?.includedFields ?? [...CONFIGURABLE_FIELDS];
   const canApplyTemplate = !initial || initial.status === "draft";
@@ -254,7 +261,7 @@ export function FinalDetailsForm({
         waitingOn={waitingOn}
         lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
         relationship={eventName ? { name: eventName } : null}
-        primaryAction={coupleEmail && initial?.status !== "submitted" && initial?.status !== "reviewed" && (
+        primaryAction={coupleEmail && initial?.status !== "submitted" && initial?.status !== "resubmitted" && initial?.status !== "complete" && (
           <ShareDialog
             trigger={<Button type="button" size="sm"><Send className="mr-1 h-3.5 w-3.5" />{initial?.sentAt ? "Resend" : "Send to client"}</Button>}
             title={initial?.sentAt ? "Resend Questionnaire" : "Send Questionnaire"}

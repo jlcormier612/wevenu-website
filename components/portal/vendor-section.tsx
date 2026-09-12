@@ -28,6 +28,7 @@ import { PortalCoupleVendorThread } from "@/components/portal/couple-vendor-thre
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
+import { vendorPreferenceClientLabel } from "@/lib/vendors/list-presentation";
 
 type VendorPackage = { id: string; name: string; description: string | null; price: number | null; priceType: string };
 type VendorFaq = { id: string; question: string; answer: string };
@@ -54,7 +55,11 @@ type PortalVendorRecommendation = {
   isAssigned?: boolean;
   assignmentId?: string | null;
   coupleVendorConversationId?: string | null;
+  inquiryConversationId?: string | null;
   isClaimed: boolean;
+  isRequired?: boolean;
+  isInHouse?: boolean;
+  preferenceLevel?: string;
   heroImageUrl: string | null;
   coverImageUrl: string | null;
   pricingTier: string | null;
@@ -113,7 +118,10 @@ type CardVendor = {
   selectedAt: string | null;
   isAssigned?: boolean;
   coupleVendorConversationId?: string | null;
+  inquiryConversationId?: string | null;
   isClaimed: boolean;
+  isRequired?: boolean;
+  isInHouse?: boolean;
   heroImageUrl: string | null;
   coverImageUrl: string | null;
   pricingTier: string | null;
@@ -210,6 +218,30 @@ function PickButton({
   );
 }
 
+function ProcessChips({ rec }: { rec: CardVendor }) {
+  const preferenceLabel = vendorPreferenceClientLabel(rec.preferenceLevel ?? "standard");
+  if (!preferenceLabel && !rec.isRequired && !rec.isInHouse) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {preferenceLabel && (
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+          {preferenceLabel}
+        </span>
+      )}
+      {rec.isRequired && (
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-foreground text-background">
+          Required
+        </span>
+      )}
+      {rec.isInHouse && (
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+          In-house
+        </span>
+      )}
+    </div>
+  );
+}
+
 function VendorListRow({
   rec, onToggle, toggling, onView,
 }: {
@@ -243,6 +275,7 @@ function VendorListRow({
           {vendorCategoryLabel(rec.category)}
           {pricing && <span className="ml-1.5 text-muted-foreground/70">{pricing}</span>}
         </p>
+        <ProcessChips rec={rec} />
         {rec.note && (
           <p className="text-[11px] text-primary mt-0.5 truncate">{rec.note}</p>
         )}
@@ -263,13 +296,15 @@ function VendorListRow({
 }
 
 function VendorDetail({
-  rec, onBack, onToggle, toggling, onMessage,
+  rec, onBack, onToggle, toggling, onMessage, onContactVendor, contacting,
 }: {
   rec: CardVendor;
   onBack: () => void;
   onToggle?: (picked: boolean) => void;
   toggling?: boolean;
   onMessage?: () => void;
+  onContactVendor?: (message: string) => Promise<string | null>;
+  contacting?: boolean;
 }) {
   const coverImage = rec.isClaimed
     ? (rec.coverImageUrl ?? rec.heroImageUrl ?? rec.photoUrl)
@@ -281,6 +316,24 @@ function VendorDetail({
   const isSubmitted = !!rec.selectedAt;
   const hasContact = !!(rec.contactName || rec.websiteUrl || rec.phone || rec.email
     || rec.instagramUrl || rec.facebookUrl || rec.pinterestUrl || rec.tiktokUrl);
+  const [showComposer, setShowComposer] = React.useState(false);
+  const [draft, setDraft] = React.useState("");
+  const [sendError, setSendError] = React.useState<string | null>(null);
+
+  const threadId = rec.coupleVendorConversationId ?? rec.inquiryConversationId ?? null;
+  const canMessageInApp = !!rec.isClaimed;
+
+  async function handleSend() {
+    if (!onContactVendor || !draft.trim()) return;
+    setSendError(null);
+    const conversationId = await onContactVendor(draft.trim());
+    if (conversationId) {
+      setDraft("");
+      setShowComposer(false);
+    } else {
+      setSendError("Couldn't send your message. Please try again.");
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -289,7 +342,7 @@ function VendorDetail({
         onClick={onBack}
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to Preferred Vendors
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to vendors
       </button>
 
       <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
@@ -298,11 +351,6 @@ function VendorDetail({
           style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
         >
           {!coverImage && emoji}
-          {rec.isClaimed && (
-            <span className="absolute top-3 left-3 text-[10px] font-semibold text-white bg-black/40 backdrop-blur-sm rounded-full px-2 py-0.5">
-              ✓ Claimed profile
-            </span>
-          )}
         </div>
 
         <div className="p-4 space-y-4">
@@ -313,6 +361,7 @@ function VendorDetail({
                 {vendorCategoryLabel(rec.category)}
                 {pricing && <span className="ml-1.5 text-muted-foreground/70">{pricing}</span>}
               </p>
+              <ProcessChips rec={rec} />
             </div>
             <StatusChip rec={rec} />
           </div>
@@ -327,8 +376,14 @@ function VendorDetail({
             <p className="text-xs text-primary bg-primary/5 rounded-md px-2.5 py-1.5">{rec.note}</p>
           )}
 
-          {rec.description && (
+          {rec.description ? (
             <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{rec.description}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {rec.isClaimed
+                ? "This vendor hasn't added more profile details yet."
+                : "Your venue shared the basics for this vendor. Contact them below for more information."}
+            </p>
           )}
 
           {rec.promotionDetails && (
@@ -373,84 +428,142 @@ function VendorDetail({
             </div>
           )}
 
-          {hasContact && (
-            <div className="space-y-2 pt-1">
-              <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">Contact</p>
-              {rec.contactName && (
+          <div className="space-y-2 pt-1 border-t border-border/60">
+            <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">Contact</p>
+            {canMessageInApp ? (
+              <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Contact:</span> {rec.contactName}
+                  Have a question for this vendor? Send them a message. This does not select or hire them.
                 </p>
-              )}
-              {rec.websiteUrl && (
-                <p className="text-xs">
-                  <a href={socialLink(rec.websiteUrl)!} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[var(--venue-primary)] hover:underline break-all">
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                    {rec.websiteUrl.replace(/^https?:\/\//, "")}
-                  </a>
+                {threadId && onMessage && !showComposer && (
+                  <button
+                    type="button"
+                    onClick={onMessage}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_8%,transparent)] py-2.5 px-3 text-xs font-medium text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_14%,transparent)]"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {isAssigned ? `Message ${rec.name}` : "Continue conversation"}
+                  </button>
+                )}
+                {!showComposer ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowComposer(true)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-foreground text-background py-2.5 px-3 text-xs font-semibold hover:opacity-90"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Contact {rec.name}
+                  </button>
+                ) : (
+                  <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                    <textarea
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      rows={4}
+                      placeholder={`Hi ${rec.name}, we'd love to learn more about…`}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--venue-primary)]/30"
+                    />
+                    {sendError && <p className="text-xs text-destructive">{sendError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={contacting || !draft.trim()}
+                        onClick={() => void handleSend()}
+                        className="flex-1 rounded-lg bg-foreground text-background py-2 text-xs font-semibold disabled:opacity-50"
+                      >
+                        {contacting ? "Sending…" : "Send message"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowComposer(false); setSendError(null); }}
+                        className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Reach out using the contact details below. This vendor hasn&apos;t joined Hello to Cheers messaging yet.
                 </p>
-              )}
-              {rec.phone && (
-                <p className="text-xs">
-                  <a href={`tel:${rec.phone}`}
-                    className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                    {rec.phone}
-                  </a>
-                </p>
-              )}
-              {rec.email && (
-                <p className="text-xs">
-                  <a href={`mailto:${rec.email}`}
-                    className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground break-all">
-                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                    {rec.email}
-                  </a>
-                </p>
-              )}
-              {(rec.instagramUrl || rec.facebookUrl || rec.pinterestUrl || rec.tiktokUrl) && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {rec.instagramUrl && (
-                    <a href={socialLink(rec.instagramUrl)!} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Instagram">
-                      IG
-                    </a>
-                  )}
-                  {rec.facebookUrl && (
-                    <a href={socialLink(rec.facebookUrl)!} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Facebook">
-                      FB
-                    </a>
-                  )}
-                  {rec.pinterestUrl && (
-                    <a href={socialLink(rec.pinterestUrl)!} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Pinterest">
-                      P
-                    </a>
-                  )}
-                  {rec.tiktokUrl && (
-                    <a href={socialLink(rec.tiktokUrl)!} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="TikTok">
-                      TT
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2 pt-1">
-            {onMessage && isAssigned && rec.coupleVendorConversationId && (
-              <button
-                type="button"
-                onClick={onMessage}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_8%,transparent)] py-2.5 px-3 text-xs font-medium text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_14%,transparent)]"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Message {rec.name}
-              </button>
+                {!hasContact && (
+                  <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border px-3 py-2">
+                    No phone, email, or website is listed yet. Ask your venue for the best way to reach them.
+                  </p>
+                )}
+              </div>
             )}
 
+            {hasContact && (
+              <div className="space-y-2 pt-1">
+                {rec.contactName && (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Contact:</span> {rec.contactName}
+                  </p>
+                )}
+                {rec.websiteUrl && (
+                  <p className="text-xs">
+                    <a href={socialLink(rec.websiteUrl)!} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[var(--venue-primary)] hover:underline break-all">
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                      {rec.websiteUrl.replace(/^https?:\/\//, "")}
+                    </a>
+                  </p>
+                )}
+                {rec.phone && (
+                  <p className="text-xs">
+                    <a href={`tel:${rec.phone}`}
+                      className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      {rec.phone}
+                    </a>
+                  </p>
+                )}
+                {rec.email && !canMessageInApp && (
+                  <p className="text-xs">
+                    <a href={`mailto:${rec.email}`}
+                      className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground break-all">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      {rec.email}
+                    </a>
+                  </p>
+                )}
+                {(rec.instagramUrl || rec.facebookUrl || rec.pinterestUrl || rec.tiktokUrl) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {rec.instagramUrl && (
+                      <a href={socialLink(rec.instagramUrl)!} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Instagram">
+                        IG
+                      </a>
+                    )}
+                    {rec.facebookUrl && (
+                      <a href={socialLink(rec.facebookUrl)!} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Facebook">
+                        FB
+                      </a>
+                    )}
+                    {rec.pinterestUrl && (
+                      <a href={socialLink(rec.pinterestUrl)!} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Pinterest">
+                        P
+                      </a>
+                    )}
+                    {rec.tiktokUrl && (
+                      <a href={socialLink(rec.tiktokUrl)!} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="TikTok">
+                        TT
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 pt-1">
             {isAssigned && !isPicked && !isSubmitted ? (
               <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
                 Assigned — ask your venue to change
@@ -476,6 +589,7 @@ function VendorDetail({
     </div>
   );
 }
+
 
 function SubmitBar({
   pendingCount, confirmingSubmit, submitting, onConfirm, onBack, onSubmit,
@@ -536,6 +650,8 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
     conversationId: string;
     vendorName: string;
   } | null>(null);
+  const [contacting, setContacting] = React.useState(false);
+  const [requiredCategories, setRequiredCategories] = React.useState<string[]>([]);
 
   const loadRecommendations = React.useCallback(() => {
     return fetch(`/api/portal/vendors?token=${token}&clientId=${clientId}`)
@@ -547,7 +663,13 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
   const loadDirectory = React.useCallback(() => {
     return fetch(`/api/portal/vendors/directory?token=${token}&clientId=${clientId}`)
       .then((r) => r.json())
-      .then((d: { vendors?: PortalVendorDirectoryEntry[] }) => setDirectory(d.vendors ?? []))
+      .then((d: {
+        vendors?: PortalVendorDirectoryEntry[];
+        requiredCategories?: Array<{ category: string }>;
+      }) => {
+        setDirectory(d.vendors ?? []);
+        setRequiredCategories((d.requiredCategories ?? []).map((c) => c.category));
+      })
       .catch(() => {});
   }, [token, clientId]);
 
@@ -664,6 +786,49 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
     } finally { setSubmitting(false); }
   }
 
+  async function handleContactVendor(vendorId: string, message: string): Promise<string | null> {
+    setContacting(true);
+    try {
+      const res = await fetch("/api/portal/vendors/inquiry", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, clientId, vendorId, message }),
+      });
+      const data = await res.json() as {
+        ok?: boolean;
+        conversationId?: string;
+        error?: string;
+      };
+      if (!data.ok || !data.conversationId) {
+        toast.error(
+          data.error === "vendor_unclaimed"
+            ? "This vendor isn't available for messaging yet."
+            : "Couldn't send your message. Please try again.",
+        );
+        return null;
+      }
+      const conversationId = data.conversationId;
+      setDirectory((prev) => prev.map((v) =>
+        v.vendorId === vendorId ? { ...v, inquiryConversationId: conversationId } : v,
+      ));
+      setRecommendations((prev) => prev.map((r) =>
+        r.vendorId === vendorId ? { ...r, inquiryConversationId: conversationId } : r,
+      ));
+      toast.success("Message sent.");
+      const vendorName =
+        directory.find((v) => v.vendorId === vendorId)?.name
+        ?? recommendations.find((r) => r.vendorId === vendorId)?.name
+        ?? "Vendor";
+      setOpenThread({ conversationId, vendorName });
+      return conversationId;
+    } catch {
+      toast.error("Couldn't send your message. Please try again.");
+      return null;
+    } finally {
+      setContacting(false);
+    }
+  }
+
   function openVendor(next: ViewingVendor) {
     listScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
     setViewing(next);
@@ -678,6 +843,7 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
   }
 
   // Resolve live vendor data for the open detail (picks update in place).
+  // Process fields come from the same VVR payload on both Recommended and Directory RPCs.
   const viewingRec: CardVendor | null = (() => {
     if (!viewing) return null;
     if (viewing.source === "recommended") {
@@ -764,10 +930,13 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
             : (picked) => handleToggleDirectory(viewing.vendorId, picked)
         }
         toggling={togglingKey === toggleKey}
+        contacting={contacting}
+        onContactVendor={(message) => handleContactVendor(viewing.vendorId, message)}
         onMessage={
-          viewingRec.coupleVendorConversationId
+          (viewingRec.coupleVendorConversationId || viewingRec.inquiryConversationId)
             ? () => setOpenThread({
-                conversationId: viewingRec.coupleVendorConversationId!,
+                conversationId: (viewingRec.coupleVendorConversationId
+                  ?? viewingRec.inquiryConversationId)!,
                 vendorName: viewingRec.name,
               })
             : undefined
@@ -779,12 +948,18 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
   return (
     <div id="portal-focus-vendors-pick" className="space-y-6">
       <div>
-        <p className="font-semibold text-heading">These are the vendors {venueName} trusts and loves working with.</p>
+        <p className="font-semibold text-heading">Vendors {venueName} makes available to you</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Pick from their recommendations or full vendor list. Your picks stay private until you submit —
-          then the venue and those vendors are notified. Once a vendor is on your team, you can message them directly here.
-          If you change your mind after they&apos;re assigned, unpick and resubmit — your venue will be asked to update the assignment.
+          Browse their approved list, contact vendors with questions, then pick who you&apos;d like
+          to work with. Picks stay private until you submit — then {venueName} and those vendors are notified.
+          Contacting a vendor does not hire them.
         </p>
+        {requiredCategories.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Required categories:{" "}
+            {requiredCategories.map((c) => vendorCategoryLabel(c) || c).join(", ")}
+          </p>
+        )}
       </div>
 
       {teamList.length > 0 && (
@@ -841,7 +1016,7 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
         </button>
         <button type="button" onClick={() => setTab("directory")}
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "directory" ? "border-[var(--venue-primary)] text-[var(--venue-primary)]" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-          Preferred Vendors{directory.length > 0 && ` (${directory.length})`}
+          Approved vendors{directory.length > 0 && ` (${directory.length})`}
         </button>
       </div>
 
@@ -852,10 +1027,10 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
             <div className="py-16 text-center space-y-3 max-w-sm mx-auto px-4">
               <p className="text-3xl">🤝</p>
               <p className="font-semibold text-heading">No vendors recommended yet</p>
-              <p className="text-sm text-muted-foreground">Your venue will add recommendations here — or browse their Preferred Vendors.</p>
+              <p className="text-sm text-muted-foreground">Your venue will add recommendations here — or browse their approved vendors.</p>
               {directory.length > 0 && (
                 <button type="button" onClick={() => setTab("directory")} className="text-sm font-medium text-[var(--venue-primary)] hover:underline">
-                  Browse all {directory.length} Preferred Vendors →
+                  Browse all {directory.length} approved vendors →
                 </button>
               )}
             </div>
@@ -895,7 +1070,7 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
           <div className="py-16 text-center space-y-2 max-w-sm mx-auto px-4">
             <p className="text-3xl">🤝</p>
             <p className="font-semibold text-heading">No vendors listed yet</p>
-            <p className="text-sm text-muted-foreground">Your venue hasn&apos;t added any Preferred Vendors here yet.</p>
+            <p className="text-sm text-muted-foreground">Your venue hasn&apos;t added any approved vendors here yet.</p>
           </div>
         ) : (
           <div className="space-y-5">

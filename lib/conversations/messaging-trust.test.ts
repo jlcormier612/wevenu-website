@@ -122,10 +122,10 @@ describe("delivery recovery actions", () => {
   });
 });
 
-describe("SMS permissions (locked release rule)", () => {
-  it("allows not_opted_in and opted_in; blocks opted_out", () => {
-    assert.equal(SMS_ALLOWS_NOT_OPTED_IN, true);
-    assert.equal(isSmsOutboundAllowed("not_opted_in"), true);
+describe("SMS permissions (explicit opt-in send gate)", () => {
+  it("allows opted_in only; blocks not_opted_in and opted_out", () => {
+    assert.equal(SMS_ALLOWS_NOT_OPTED_IN, false);
+    assert.equal(isSmsOutboundAllowed("not_opted_in"), false);
     assert.equal(isSmsOutboundAllowed("opted_in"), true);
     assert.equal(isSmsOutboundAllowed("opted_out"), false);
     assert.equal(isHardBlocked("opted_out"), true);
@@ -153,7 +153,7 @@ describe("texting lifecycle honesty", () => {
         ok: true,
         accepted: false,
         deferred: true,
-        reason: "Provider provisioning is not enabled yet.",
+        reason: "Your information is saved. Hello to Cheers is setting up texting for your venue.",
       }),
       "information_saved",
     );

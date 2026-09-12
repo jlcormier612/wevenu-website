@@ -30,6 +30,10 @@ function InboxRow({ c }: { c: VendorConversationSummary }) {
     c.venueName,
     c.coupleName,
   );
+  const title =
+    c.conversationKind === "couple_vendor_inquiry"
+      ? (c.coupleName?.trim() || "Couple inquiry")
+      : (c.eventName?.trim() || "Event");
   return (
     <Link
       href={`/vendor/messages/${c.conversationId}`}
@@ -38,8 +42,11 @@ function InboxRow({ c }: { c: VendorConversationSummary }) {
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex items-center justify-between gap-2">
           <p className={`text-sm truncate ${c.contactUnread > 0 ? "font-semibold text-heading" : "font-medium text-foreground"}`}>
-            {c.eventName}
+            {title}
             <span className="ml-1.5 font-normal text-muted-foreground">· {counterpart}</span>
+            {c.conversationKind === "couple_vendor_inquiry" && (
+              <span className="ml-1.5 text-[10px] font-medium text-muted-foreground">Inquiry</span>
+            )}
           </p>
           <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(c.lastMessageAt)}</span>
         </div>
@@ -64,15 +71,15 @@ export function VendorMessagesInbox({ conversations }: { conversations: VendorCo
       <div>
         <h1 className="font-heading text-2xl font-medium text-heading">Messages</h1>
         <p className="text-sm text-muted-foreground">
-          Separate threads with the venue and the client for each of your booked events.
+          Couple inquiries and conversations for your booked events — plus venue threads when you&apos;re assigned.
         </p>
       </div>
 
       {conversations.length === 0 ? (
         <div className="rounded-sm border border-dashed border-border py-14 text-center">
-          <p className="text-sm font-medium text-foreground">No conversations yet</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            When a venue assigns you to an event, Venue and Couple conversations appear here.
+          <p className="text-sm font-medium text-foreground">No messages yet</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+            When a couple contacts you about an event — or a venue assigns you — conversations appear here.
           </p>
         </div>
       ) : conversations.every((c) => c.contactUnread === 0) ? (

@@ -202,6 +202,10 @@ export const REGION_OPTIONS: { value: string; label: string }[] = [
   { value: "AFRICA", label: "Africa" },
 ];
 
-/** Customer-safe copy when HTC has details but provider registration has not started. */
+/** Customer-safe copy when HTC has details and ops/setup is not yet send-ready. */
 export const INFORMATION_SAVED_STATUS_COPY =
-  "Your information is saved. Hello to Cheers will complete the texting setup once registration is available.";
+  "Your information is saved. Hello to Cheers is setting up texting for your venue. We’ll let you know when it’s ready.";
+
+/** Customer-safe copy when ops has a venue Twilio account still pending compliance / setup. */
+export const TEXTING_SETUP_IN_PROGRESS_COPY =
+  "Texting setup is in progress for your venue. We’ll assign your texting number when it’s ready.";

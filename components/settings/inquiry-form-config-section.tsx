@@ -23,6 +23,9 @@ import type {
   InquiryQuestionType,
   StandardFieldKey,
 } from "@/lib/inquiry-form/types";
+import type { InquiryCommunicationSettings } from "@/lib/communication/sms-consent";
+import { DEFAULT_INQUIRY_COMMUNICATION_SETTINGS } from "@/lib/communication/sms-consent";
+import Link from "next/link";
 
 const VISIBILITY_OPTIONS: { value: FieldVisibility; label: string }[] = [
   { value: "required", label: "Required" },
@@ -60,6 +63,7 @@ function serializeState(
   fields: InquiryFormFieldsConfig,
   accepted: string[],
   questions: DraftQuestion[],
+  communication: InquiryCommunicationSettings,
 ): string {
   return JSON.stringify({
     mode,
@@ -72,6 +76,7 @@ function serializeState(
       required: q.required,
       options: q.options,
     })),
+    communication,
   });
 }
 
@@ -80,17 +85,28 @@ export function InquiryFormConfigSection({
   initialFields,
   initialAcceptedEventTypes,
   initialQuestions,
+  initialCommunicationSettings = DEFAULT_INQUIRY_COMMUNICATION_SETTINGS,
+  smsConsentOfferAvailable = false,
   canEdit = true,
 }: {
   initialEventDateMode: InquiryEventDateMode;
   initialFields: InquiryFormFieldsConfig;
   initialAcceptedEventTypes: string[];
   initialQuestions: InquiryFormQuestion[];
+  initialCommunicationSettings?: InquiryCommunicationSettings;
+  /** True when a sender number exists (pending compliance or ready) — gates SMS consent UI. */
+  smsConsentOfferAvailable?: boolean;
   /** Owner/Manager; when false, controls are read-only. */
   canEdit?: boolean;
 }) {
   const [baseline, setBaseline] = React.useState(() =>
-    serializeState(initialEventDateMode, initialFields, initialAcceptedEventTypes, initialQuestions.map(toDraft)),
+    serializeState(
+      initialEventDateMode,
+      initialFields,
+      initialAcceptedEventTypes,
+      initialQuestions.map(toDraft),
+      initialCommunicationSettings,
+    ),
   );
   const [eventDateMode, setEventDateMode] = React.useState(initialEventDateMode);
   const [fields, setFields] = React.useState(initialFields);
@@ -98,11 +114,12 @@ export function InquiryFormConfigSection({
     initialAcceptedEventTypes.length ? initialAcceptedEventTypes : [...DEFAULT_ACCEPTED_EVENT_TYPES],
   );
   const [questions, setQuestions] = React.useState<DraftQuestion[]>(initialQuestions.map(toDraft));
+  const [communication, setCommunication] = React.useState<InquiryCommunicationSettings>(initialCommunicationSettings);
   const [pending, startSave] = React.useTransition();
   const [justSaved, setJustSaved] = React.useState(false);
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const dirty = serializeState(eventDateMode, fields, acceptedEventTypes, questions) !== baseline;
+  const dirty = serializeState(eventDateMode, fields, acceptedEventTypes, questions, communication) !== baseline;
   useLibraryUnsavedGuard(dirty && canEdit);
 
   React.useEffect(() => () => {
@@ -149,6 +166,11 @@ export function InquiryFormConfigSection({
         inquiryEventDateMode: eventDateMode,
         inquiryFormFields: fields,
         acceptedEventTypes,
+        inquiryCommunicationSettings: {
+          ...communication,
+          offerSms: smsConsentOfferAvailable ? communication.offerSms : false,
+          requestSmsPermission: smsConsentOfferAvailable ? communication.requestSmsPermission : false,
+        },
       });
       if (!settingsResult.ok) {
         toast.error(
@@ -181,7 +203,11 @@ export function InquiryFormConfigSection({
         return;
       }
 
-      setBaseline(serializeState(eventDateMode, fields, acceptedEventTypes, questions));
+      setBaseline(serializeState(eventDateMode, fields, acceptedEventTypes, questions, {
+        ...communication,
+        offerSms: smsConsentOfferAvailable ? communication.offerSms : false,
+        requestSmsPermission: smsConsentOfferAvailable ? communication.requestSmsPermission : false,
+      }));
       setJustSaved(true);
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => setJustSaved(false), 2500);
@@ -304,6 +330,90 @@ export function InquiryFormConfigSection({
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-heading">Communication preferences</p>
+        <p className="text-xs text-muted-foreground">
+          Ask how prospects prefer to hear from you. Preferences are separate from texting permission.
+        </p>
+        <label className={`flex items-start gap-3 rounded-lg border border-border p-3 ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
+          <input
+            type="checkbox"
+            checked={communication.askPreferences}
+            disabled={!canEdit}
+            onChange={(e) => canEdit && setCommunication((c) => ({ ...c, askPreferences: e.target.checked }))}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-sm font-medium text-heading">Ask leads how they&apos;d like to communicate?</span>
+            <span className="text-xs text-muted-foreground">Shows Email, Text message, and/or Phone call options on your public form.</span>
+          </span>
+        </label>
+        {communication.askPreferences && (
+          <div className="space-y-2 pl-1">
+            <label className={`flex items-center gap-2 text-sm ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
+              <input
+                type="checkbox"
+                checked={communication.offerEmail}
+                disabled={!canEdit}
+                onChange={(e) => canEdit && setCommunication((c) => ({ ...c, offerEmail: e.target.checked }))}
+              />
+              Email
+            </label>
+            <label className={`flex items-center gap-2 text-sm ${canEdit && smsConsentOfferAvailable ? "cursor-pointer" : "opacity-80"}`}>
+              <input
+                type="checkbox"
+                checked={smsConsentOfferAvailable && communication.offerSms}
+                disabled={!canEdit || !smsConsentOfferAvailable}
+                onChange={(e) => canEdit && smsConsentOfferAvailable && setCommunication((c) => ({ ...c, offerSms: e.target.checked }))}
+              />
+              Text message
+              {!smsConsentOfferAvailable && (
+                <span className="text-xs text-muted-foreground">
+                  — enable texting in{" "}
+                  <Link href="/settings/communications" className="underline hover:text-foreground">
+                    Settings → Communications
+                  </Link>
+                </span>
+              )}
+            </label>
+            <label className={`flex items-center gap-2 text-sm ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
+              <input
+                type="checkbox"
+                checked={communication.offerPhoneCall}
+                disabled={!canEdit}
+                onChange={(e) => canEdit && setCommunication((c) => ({ ...c, offerPhoneCall: e.target.checked }))}
+              />
+              Phone call
+            </label>
+          </div>
+        )}
+        <label className={`flex items-start gap-3 rounded-lg border border-border p-3 ${canEdit && smsConsentOfferAvailable ? "cursor-pointer" : "opacity-80"}`}>
+          <input
+            type="checkbox"
+            checked={smsConsentOfferAvailable && communication.requestSmsPermission}
+            disabled={!canEdit || !smsConsentOfferAvailable}
+            onChange={(e) => canEdit && smsConsentOfferAvailable && setCommunication((c) => ({ ...c, requestSmsPermission: e.target.checked }))}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-sm font-medium text-heading">Ask for text message permission on the form</span>
+            <span className="text-xs text-muted-foreground">
+              Shows a separate permission checkbox with your venue name. Entering a phone number or choosing Text as a preference is never treated as permission. Hello to Cheers can send texts only after this permission is given.
+              {!smsConsentOfferAvailable && (
+                <>
+                  {" "}
+                  Available after texting is set up in{" "}
+                  <Link href="/settings/communications" className="underline hover:text-foreground">
+                    Settings → Communications
+                  </Link>
+                  .
+                </>
+              )}
+            </span>
+          </span>
+        </label>
       </div>
 
       <div className="space-y-3">

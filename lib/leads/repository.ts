@@ -165,6 +165,7 @@ type LeadRow = {
   last_name: string;
   email: string | null;
   phone: string | null;
+  preferred_communication_channels: string[] | null;
   partner_first_name: string | null;
   partner_last_name: string | null;
   partner_email: string | null;
@@ -215,9 +216,14 @@ function resolveSalesStage(r: LeadRow): SalesStage {
 
 function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
   const salesStage = resolveSalesStage(r);
+  const prefs = Array.isArray(r.preferred_communication_channels)
+    ? r.preferred_communication_channels.filter((c): c is "email" | "sms" | "phone_call" =>
+      c === "email" || c === "sms" || c === "phone_call")
+    : [];
   return {
     id: r.id, venueId: r.venue_id, salesStage, status: salesStage, source: r.source,
     firstName: r.first_name, lastName: r.last_name, email: r.email, phone: r.phone,
+    preferredCommunicationChannels: prefs,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
     endDate: r.end_date, guestCount: r.guest_count, estimatedBudget: r.estimated_budget,

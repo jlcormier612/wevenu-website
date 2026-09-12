@@ -32,6 +32,7 @@ import {
   registrationNumberLast4,
 } from "@/lib/texting-registration/sensitive-field";
 import { buildTextingStatusPanel } from "@/lib/texting-registration/status-panel";
+import { resolveTextingDisplayPhase } from "@/lib/texting-registration/account-sync";
 import type {
   TextingPhase,
   TextingRegistrationInput,
@@ -222,10 +223,11 @@ export async function getTextingSetupBundle(): Promise<TextingSetupBundle | null
   const { venue, client, role } = ctx;
   try {
     const registration = await getTextingRegistration(client, venue.id);
-    const phase: TextingPhase = registration?.phase ?? "not_started";
+    const storedPhase: TextingPhase = registration?.phase ?? "not_started";
     const account = await getVenueTwilioAccountByVenueId(client, venue.id);
     const smsReady = await isSmsConfigured(venue.id);
     const textingNumberE164 = account?.defaultFromE164 ?? null;
+    const phase = resolveTextingDisplayPhase(storedPhase, account, smsReady);
     const statusPanel = buildTextingStatusPanel({
       registration,
       phase,
@@ -240,7 +242,7 @@ export async function getTextingSetupBundle(): Promise<TextingSetupBundle | null
       statusPanel,
       smsReady,
       textingNumberE164,
-      canEdit: canConfigure && canEditTextingRegistration(phase),
+      canEdit: canConfigure && canEditTextingRegistration(storedPhase),
       canConfigure,
     };
   } catch (e) {
@@ -406,9 +408,10 @@ export async function submitTextingRegistration(
 
   const account = await getVenueTwilioAccountByVenueId(client, venue.id);
   const smsReady = await isSmsConfigured(venue.id);
+  const displayPhase = resolveTextingDisplayPhase(saved.phase, account, smsReady);
   const statusPanel = buildTextingStatusPanel({
     registration: saved,
-    phase: saved.phase,
+    phase: displayPhase,
     smsReady,
     textingNumberE164: account?.defaultFromE164 ?? null,
   });

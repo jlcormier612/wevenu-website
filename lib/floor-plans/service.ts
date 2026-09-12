@@ -77,7 +77,13 @@ export async function getFloorPlan(id: string): Promise<FloorPlanWithObjects | n
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  return repo.getFloorPlan(await createClient(), venue.id, id);
+  const plan = await repo.getFloorPlan(await createClient(), venue.id, id);
+  if (!plan?.backgroundImageUrl) return plan;
+  const { signDocumentsUrlIfNeeded } = await import("@/lib/documents/signed-url");
+  const signed = await signDocumentsUrlIfNeeded(plan.backgroundImageUrl);
+  return signed && signed !== plan.backgroundImageUrl
+    ? { ...plan, backgroundImageUrl: signed }
+    : plan;
 }
 
 export async function getAllFloorPlans(): Promise<FloorPlan[]> {

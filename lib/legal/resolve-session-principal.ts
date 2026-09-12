@@ -17,38 +17,51 @@ export type ResolvedLegalSessionPrincipal = {
 };
 
 /**
- * Vendor sessions win over venue staff when both exist (mirrors login redirect).
+ * Resolve Legal Acceptance identity for a session user id.
+ *
+ * Default (`prefer` omitted): vendor_users wins over venue_staff when both
+ * exist (mirrors vendor-path / login redirect).
+ *
+ * Pass `prefer: "venue"` when the Welcome/gate caller already selected the
+ * venue cookie jar so dual-role accounts are not forced onto vendor docs.
+ * Pass `prefer: "vendor"` when the vendor jar was selected.
  */
 export async function resolveLegalSessionPrincipal(
   userId: string,
+  options?: { prefer?: "vendor" | "venue" },
 ): Promise<ResolvedLegalSessionPrincipal | null> {
   if (!isSupabaseConfigured || !userId.trim()) return null;
 
   try {
     const admin = createAdminClient();
+    const prefer = options?.prefer;
 
-    const { data: vendorRow } = await admin
-      .from("vendor_users")
-      .select("vendor_id")
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .maybeSingle<{ vendor_id: string }>();
+    const [{ data: vendorRows }, { data: staffRow }] = await Promise.all([
+      admin
+        .from("vendor_users")
+        .select("vendor_id")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .limit(1),
+      admin
+        .from("venue_staff")
+        .select("role, is_owner")
+        .eq("user_id", userId)
+        .maybeSingle<{ role: string; is_owner: boolean }>(),
+    ]);
+    const vendorRow = Array.isArray(vendorRows) ? vendorRows[0] : vendorRows;
 
-    if (vendorRow?.vendor_id) {
+    const asVendor = (): ResolvedLegalSessionPrincipal | null => {
+      if (!vendorRow?.vendor_id) return null;
       return {
         kind: "vendor",
         staffRole: null,
         user: { userId, userType: "vendor" },
       };
-    }
+    };
 
-    const { data: staffRow } = await admin
-      .from("venue_staff")
-      .select("role, is_owner")
-      .eq("user_id", userId)
-      .maybeSingle<{ role: string; is_owner: boolean }>();
-
-    if (staffRow) {
+    const asStaff = (): ResolvedLegalSessionPrincipal | null => {
+      if (!staffRow) return null;
       const role = staffRow.is_owner ? "owner" : staffRow.role;
       const userType = mapStaffRoleToLegalUserType(role);
       return {
@@ -56,14 +69,48 @@ export async function resolveLegalSessionPrincipal(
         staffRole: role,
         user: { userId, userType },
       };
+    };
+
+    if (prefer === "vendor") {
+      return (
+        asVendor() ??
+        asStaff() ?? {
+          kind: "venue_owner_signup",
+          staffRole: null,
+          user: {
+            userId,
+            userType: "venue_owner" satisfies LegalAcceptanceUserType,
+          },
+        }
+      );
     }
 
-    // Authenticated but no venue_staff yet — Venue Setup / signup.
-    return {
-      kind: "venue_owner_signup",
-      staffRole: null,
-      user: { userId, userType: "venue_owner" satisfies LegalAcceptanceUserType },
-    };
+    if (prefer === "venue") {
+      return (
+        asStaff() ??
+        asVendor() ?? {
+          kind: "venue_owner_signup",
+          staffRole: null,
+          user: {
+            userId,
+            userType: "venue_owner" satisfies LegalAcceptanceUserType,
+          },
+        }
+      );
+    }
+
+    // Default: vendor wins when both exist.
+    return (
+      asVendor() ??
+      asStaff() ?? {
+        kind: "venue_owner_signup",
+        staffRole: null,
+        user: {
+          userId,
+          userType: "venue_owner" satisfies LegalAcceptanceUserType,
+        },
+      }
+    );
   } catch (error) {
     console.error("[legal] resolveLegalSessionPrincipal failed", error);
     return null;

@@ -20,13 +20,13 @@ describe("communication permissions", () => {
     assert.equal(normalizeEmailAddressKey("Ada@Example.COM"), "ada@example.com");
   });
 
-  it("locks SMS release rule: not_opted_in allowed; only hard blocks refuse", () => {
-    assert.equal(SMS_ALLOWS_NOT_OPTED_IN, true);
+  it("requires explicit opt-in before application-originated outbound SMS", () => {
+    assert.equal(SMS_ALLOWS_NOT_OPTED_IN, false);
     assert.equal(isHardBlocked("opted_out"), true);
     assert.equal(isHardBlocked("provider_blocked"), true);
     assert.equal(isHardBlocked("opted_in"), false);
     assert.equal(isHardBlocked("not_opted_in"), false);
-    assert.equal(isSmsOutboundAllowed("not_opted_in"), true);
+    assert.equal(isSmsOutboundAllowed("not_opted_in"), false);
     assert.equal(isSmsOutboundAllowed("opted_in"), true);
     assert.equal(isSmsOutboundAllowed("opted_out"), false);
     assert.equal(isSmsOutboundAllowed("provider_blocked"), false);
@@ -43,6 +43,8 @@ describe("communication permissions", () => {
     });
     assert.equal(permissionFromTwilioOptOut(null, "Thanks for the tour!"), null);
     assert.equal(permissionFromTwilioOptOut(null, "yes"), null);
+    assert.equal(permissionFromTwilioOptOut("HELP", "HELP"), null);
+    assert.equal(permissionFromTwilioOptOut(null, "help"), null);
     assert.deepEqual(permissionFromTwilioOptOut(null, "stop"), {
       status: "opted_out",
       source: "sms_keyword_stop",

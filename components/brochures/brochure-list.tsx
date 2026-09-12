@@ -113,19 +113,19 @@ function BrochureCard({ brochure, archivedView }: { brochure: Brochure; archived
             {
               id: "preview",
               label: LIBRARY_LABELS.preview,
-              onClick: () => window.open(`/api/brochures/${brochure.id}/pdf`, "_blank", "noopener,noreferrer"),
+              href: `/library/brochures/${brochure.id}/preview`,
               emphasis: "preview",
             },
             { id: "restore", label: LIBRARY_LABELS.restore, onClick: handleArchiveToggle, emphasis: "edit" },
           ]
         : [
-            { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/brochures/${brochure.id}`, emphasis: "edit" },
             {
               id: "preview",
               label: LIBRARY_LABELS.preview,
-              onClick: () => window.open(`/api/brochures/${brochure.id}/pdf`, "_blank", "noopener,noreferrer"),
+              href: `/library/brochures/${brochure.id}/preview`,
               emphasis: "preview",
             },
+            { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/brochures/${brochure.id}`, emphasis: "edit" },
           ]}
       overflowPending={pending}
       overflowItems={archivedView ? [] : [

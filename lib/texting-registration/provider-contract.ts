@@ -1,13 +1,13 @@
 /**
  * Provider orchestration contract for texting enablement.
  *
- * Track A implements the HTC side only. Live Twilio provisioning, Trust Hub,
- * A2P, number purchase, Secrets Manager writes, and webhook wiring belong to
- * a future Track B orchestrator that plugs in behind this interface.
+ * Track B dogfood is ops-first: Trust Hub / A2P / sender provisioning happens
+ * outside the app. This interface records HTC acceptance of venue details and
+ * syncs display from venue_twilio_accounts — it does not call Twilio APIs.
  *
- * Eventual flow (not implemented here):
- *   venue → provider account → credentials → registration →
- *   messaging service → number → webhooks → provider binding → ready
+ * Flow:
+ *   venue saves details → ops provisions subaccount / compliance / sender →
+ *   venue_twilio_accounts updated → app reflects ready only when sendable
  */
 
 export type TextingProviderSubmitResult =
@@ -38,7 +38,7 @@ export type TextingProviderSyncResult =
 export interface TextingProviderOrchestrator {
   /**
    * After HTC accepts a complete registration submit.
-   * Must not throw provider jargon to the venue; return deferred until Track B.
+   * Ops-first Track B: never claims the app completed Twilio compliance.
    */
   submitRegistration(venueId: string): Promise<TextingProviderSubmitResult>;
 
@@ -47,10 +47,10 @@ export interface TextingProviderOrchestrator {
 }
 
 /**
- * Default Track A orchestrator — records that HTC accepted the submission
- * and waits for future provider automation. Does not call Twilio APIs.
+ * Ops-first orchestrator — records that HTC accepted the venue's details.
+ * Does not call Twilio APIs. Venue-facing reason must stay jargon-free.
  */
-export class DeferredTextingProviderOrchestrator
+export class OpsFirstTextingProviderOrchestrator
   implements TextingProviderOrchestrator
 {
   async submitRegistration(
@@ -60,7 +60,8 @@ export class DeferredTextingProviderOrchestrator
       ok: true,
       accepted: false,
       deferred: true,
-      reason: "Provider provisioning is not enabled yet.",
+      reason:
+        "Your information is saved. Hello to Cheers is setting up texting for your venue.",
     };
   }
 
@@ -69,13 +70,15 @@ export class DeferredTextingProviderOrchestrator
   ): Promise<TextingProviderSyncResult> {
     return {
       ok: true,
-      suggestedPhase: "under_review",
     };
   }
 }
 
+/** @deprecated Alias — same ops-first behavior (no live Twilio API). */
+export const DeferredTextingProviderOrchestrator = OpsFirstTextingProviderOrchestrator;
+
 let orchestrator: TextingProviderOrchestrator =
-  new DeferredTextingProviderOrchestrator();
+  new OpsFirstTextingProviderOrchestrator();
 
 export function getTextingProviderOrchestrator(): TextingProviderOrchestrator {
   return orchestrator;

@@ -87,6 +87,7 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
               { id: "restore", label: LIBRARY_LABELS.restore, onClick: () => handleToggleArchived(t), emphasis: "edit" },
             ]
           : [
+              { id: "preview", label: LIBRARY_LABELS.preview, href: `/communication/templates/${t.id}/preview`, emphasis: "preview" },
               { id: "edit", label: LIBRARY_LABELS.edit, href: `/communication/templates/${t.id}/edit`, emphasis: "edit" },
             ]}
         overflowPending={pendingId === t.id}

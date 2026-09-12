@@ -470,7 +470,7 @@ export async function updateContractContent(
     return {
       ok: false,
       message:
-        "This contract has been signed by the venue and can no longer be edited. Use Clone & Resend for a revised draft, or withdraw the venue signature while this contract is still an unreleased draft.",
+        "This contract has been signed by the venue and can no longer be edited. Use Create New Version for a revised draft, or withdraw the venue signature while this contract is still an unreleased draft.",
       reason: "not_editable",
     };
   }
@@ -495,7 +495,7 @@ export async function updateContractContent(
 
 /**
  * Reopen-for-editing is retired after venue signature.
- * Content is immutable once the venue has signed; use Clone & Resend for revisions.
+ * Content is immutable once the venue has signed; use Create New Version for revisions.
  * This path never mutates status, signers, or content — fail closed.
  */
 export async function reopenForEditing(
@@ -512,7 +512,7 @@ export async function reopenForEditing(
     return {
       ok: false,
       message:
-        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Clone & Resend to create a new draft.",
+        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
     };
   }
 
@@ -527,7 +527,7 @@ export async function reopenForEditing(
     return {
       ok: false,
       message:
-        "A client has already signed this contract. Use Clone & Resend to create a new draft — the signed record cannot be reopened or edited.",
+        "A client has already signed this contract. Use Create New Version to start a new draft — the signed record cannot be reopened or edited.",
     };
   }
 
@@ -536,8 +536,75 @@ export async function reopenForEditing(
   return {
     ok: false,
     message:
-      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Clone & Resend to create a new draft.",
+      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
   };
+}
+
+/** Lightweight rows for deriving amends_contract_id version families. */
+export async function listContractLineageNodes(
+  client: DbClient,
+  venueId: string,
+  seedIds: string[],
+): Promise<{ id: string; title: string; status: Contract["status"]; amendsContractId: string | null; createdAt: string; signedAt: string | null }[]> {
+  if (seedIds.length === 0) return [];
+  // Fetch a venue-scoped slice; walk parents/children in memory so we don't
+  // need recursive SQL. Cap iterations to avoid runaway chains.
+  const { data, error } = await client
+    .from("contracts")
+    .select("id, title, status, amends_contract_id, created_at, signed_at")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  type Row = {
+    id: string;
+    title: string;
+    status: Contract["status"];
+    amends_contract_id: string | null;
+    created_at: string;
+    signed_at: string | null;
+  };
+  const all = (data as Row[] | null) ?? [];
+  const byId = new Map(all.map((r) => [r.id, r]));
+  const children = new Map<string, string[]>();
+  for (const r of all) {
+    if (!r.amends_contract_id) continue;
+    const list = children.get(r.amends_contract_id) ?? [];
+    list.push(r.id);
+    children.set(r.amends_contract_id, list);
+  }
+
+  const collected = new Set<string>();
+  for (const seed of seedIds) {
+    if (!byId.has(seed)) continue;
+    let root = seed;
+    const seenUp = new Set<string>();
+    while (true) {
+      if (seenUp.has(root)) break;
+      seenUp.add(root);
+      const parent = byId.get(root)?.amends_contract_id ?? null;
+      if (!parent || !byId.has(parent)) break;
+      root = parent;
+    }
+    const queue = [root];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (collected.has(id)) continue;
+      collected.add(id);
+      for (const child of children.get(id) ?? []) queue.push(child);
+    }
+  }
+
+  return [...collected].map((id) => {
+    const r = byId.get(id)!;
+    return {
+      id: r.id,
+      title: r.title,
+      status: r.status,
+      amendsContractId: r.amends_contract_id,
+      createdAt: r.created_at,
+      signedAt: r.signed_at,
+    };
+  });
 }
 
 export async function updateContractStatus(

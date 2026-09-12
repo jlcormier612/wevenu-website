@@ -70,12 +70,12 @@ export default async function NewPaymentPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="New payment schedule"
-        description="Review the starter, see the calculated dates for this booking, then create the schedule."
+        title="Payment Plan Builder"
+        description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then review and save the schedule."
       />
       <Card>
         <CardHeader>
-          <CardTitle>Review &amp; create</CardTitle>
+          <CardTitle>Build payment schedule</CardTitle>
           <CardDescription>
             Invoice {invoice.invoiceNumber} · {formatCurrency(invoice.total)}
             {invoice.eventDate
@@ -83,7 +83,7 @@ export default async function NewPaymentPage({ searchParams }: Props) {
               : " · Add an Event date on the booking so event-relative due dates can become calendar dates"}
             {invoice.bookedAt
               ? ` · Booked ${invoice.bookedAt}`
-              : " · Starters with At booking need a booking date on the Event first"}
+              : " · At-booking timing needs a booking date on the Event first"}
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -141,14 +141,27 @@ export function AutomationsHelp({ className }: { className?: string }) {
                 completed tour and answer common next questions
               </li>
               <li>
-                <span className="font-medium text-heading">Sales follow-up</span> — continue the
-                conversation after a proposal goes out
-              </li>
-              <li>
-                <span className="font-medium text-heading">Booking-related</span> — a warm handoff
-                when someone books (if you choose that starting point)
+                <span className="font-medium text-heading">Proposal follow-up</span> — check in after
+                a proposal goes out if they haven&apos;t replied
               </li>
             </ul>
+          </HelpSection>
+
+          <HelpSection title="What stays outside Automations">
+            <p>
+              Core product moments — questionnaires completing, payments updating, contracts
+              becoming booked — already run themselves. You do not configure those here.
+            </p>
+            <p>
+              After an event ends, asking for a review and referral lives under{" "}
+              <span className="font-medium text-heading">Settings → Communications</span>. Turn it
+              on when you&apos;re ready; it is not a separate Automation on this list.
+            </p>
+            <p>
+              A personal thank-you or anniversary note is usually a Task (or something you write
+              yourself) — Automations are for repeatable relationship follow-up, not one-off
+              personal outreach.
+            </p>
           </HelpSection>
         </div>
       )}

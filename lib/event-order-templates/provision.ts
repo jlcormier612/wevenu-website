@@ -1,12 +1,13 @@
 /**
- * Provision Standard Wedding Event Order starters into a venue Library.
- * Masters are code fixtures — never editable DB rows.
+ * Provision delivery Event Order starters into a venue Library.
+ * Archives legacy checklist masters (EO-01 / EO-02) without deleting them.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   EVENT_ORDER_STARTER_MASTERS,
+  LEGACY_EVENT_ORDER_STARTER_KEYS,
   getEventOrderStarterMaster,
   type EventOrderStarterMaster,
   type EventOrderStarterMasterKey,
@@ -14,6 +15,17 @@ import {
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
+
+async function archiveLegacyChecklistTemplates(client: DbClient, venueId: string): Promise<void> {
+  for (const key of LEGACY_EVENT_ORDER_STARTER_KEYS) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("event_order_templates") as any)
+      .update({ is_archived: true })
+      .eq("venue_id", venueId)
+      .eq("source_master_key", key)
+      .eq("is_archived", false);
+  }
+}
 
 async function insertStarterFromMaster(
   client: DbClient,
@@ -30,33 +42,17 @@ async function insertStarterFromMaster(
   if (error) throw error;
   const templateId = data.id;
 
-  const sectionIdByName = new Map<string, string>();
   let sectionOrder = 0;
   for (const section of master.sections) {
-    const { data: sec, error: sErr } = await client.from("event_order_template_sections").insert({
+    const { error: sErr } = await client.from("event_order_template_sections").insert({
       template_id: templateId,
       venue_id: venueId,
       name: section.name,
+      guidance: section.guidance ?? null,
       sort_order: sectionOrder,
-    }).select("id").single<{ id: string }>();
+    });
     if (sErr) throw sErr;
-    sectionIdByName.set(section.name, sec.id);
     sectionOrder += 1;
-
-    let lineOrder = 0;
-    for (const line of section.lines) {
-      const { error: lErr } = await client.from("event_order_template_lines").insert({
-        template_id: templateId,
-        venue_id: venueId,
-        section_id: sec.id,
-        description: line.description,
-        quantity: line.quantity ?? 1,
-        unit_price: line.unitPrice ?? 0,
-        sort_order: lineOrder,
-      });
-      if (lErr) throw lErr;
-      lineOrder += 1;
-    }
   }
 
   return templateId;
@@ -66,6 +62,8 @@ export async function provisionEventOrderStarters(
   client: DbClient,
   venueId: string,
 ): Promise<{ created: string[]; skipped: string[] }> {
+  await archiveLegacyChecklistTemplates(client, venueId);
+
   const created: string[] = [];
   const skipped: string[] = [];
 
@@ -78,9 +76,8 @@ export async function provisionEventOrderStarters(
     }
 
     const { data: sameName } = await client.from("event_order_templates")
-      .select("id").eq("venue_id", venueId).eq("name", master.name).limit(1).maybeSingle();
+      .select("id").eq("venue_id", venueId).eq("name", master.name).eq("is_archived", false).limit(1).maybeSingle();
     if (sameName) {
-      // Preserve customized / pre-existing same-named templates (e.g. D7 leftovers).
       skipped.push(master.key);
       continue;
     }

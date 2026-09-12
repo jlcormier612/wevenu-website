@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Download, ExternalLink, History, Loader2, Share2 } from "lucide-react";
+import { Download, ExternalLink, History, Loader2, Share2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { WorkspaceCategoryBadge, WorkspaceStatusBadge } from "@/components/document-workspace/badges";
@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { downloadFile } from "@/lib/download-file";
 import { formatBytes } from "@/lib/documents/constants";
-import { getDocumentActivityAction, recordDocumentInteractionAction } from "@/lib/document-workspace/actions";
+import {
+  downloadContractFinalPdfAction,
+  downloadEventOrderPdfAction,
+  getDocumentActivityAction,
+  recordDocumentInteractionAction,
+} from "@/lib/document-workspace/actions";
+import { questionnaireStatusLabel } from "@/lib/events/questionnaire-constants";
 import { computeVenuePermissions } from "@/lib/document-workspace/permissions";
 import type { WorkspaceActivityEntry, WorkspaceDocument } from "@/lib/document-workspace/types";
 
@@ -52,6 +58,8 @@ export function DocumentPreviewSheet({
   const [activity, setActivity] = React.useState<WorkspaceActivityEntry[]>([]);
   const [loadingActivity, setLoadingActivity] = React.useState(false);
   const [downloading, setDownloading] = React.useState(false);
+  const [replacing, setReplacing] = React.useState(false);
+  const replaceRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!open || !doc) return;
@@ -75,6 +83,64 @@ export function DocumentPreviewSheet({
     }
   }
 
+  async function handleFinalPdf() {
+    if (!doc) return;
+    setDownloading(true);
+    try {
+      const result = await downloadContractFinalPdfAction(doc.id);
+      if (!result.ok) {
+        toast.error(result.message ?? "Final PDF is not available yet.");
+        return;
+      }
+      await downloadFile(result.url, `${doc.name}.pdf`);
+      void recordDocumentInteractionAction(doc.docType, doc.id, "downloaded");
+    } catch {
+      toast.error("Could not download the Final PDF.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function handleEventOrderPdf() {
+    if (!doc) return;
+    setDownloading(true);
+    try {
+      const result = await downloadEventOrderPdfAction(doc.id);
+      if (!result.ok) {
+        toast.error(result.message ?? "Shared PDF is not available yet.");
+        return;
+      }
+      await downloadFile(result.url, `${doc.name}.pdf`);
+      void recordDocumentInteractionAction(doc.docType, doc.id, "downloaded");
+    } catch {
+      toast.error("Could not download the Event Order PDF.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function handleReplace(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !doc) return;
+    setReplacing(true);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      const res = await fetch(`/api/documents/${doc.id}/replace`, { method: "POST", body: form });
+      const json = await res.json().catch(() => ({ ok: false }));
+      if (!json.ok) {
+        toast.error(json.message ?? "Could not replace this file.");
+        return;
+      }
+      toast.success("File replaced. Previous file kept in version history.");
+    } catch {
+      toast.error("Could not replace this file.");
+    } finally {
+      setReplacing(false);
+    }
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
@@ -84,7 +150,7 @@ export function DocumentPreviewSheet({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <WorkspaceCategoryBadge category={doc.category} />
-            <WorkspaceStatusBadge status={doc.status} />
+            <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} />
           </div>
         </SheetHeader>
 
@@ -114,6 +180,7 @@ export function DocumentPreviewSheet({
             <Row label="Relationship" value={doc.relationshipName} />
             <Row label="Event" value={doc.eventName} />
             <Row label="Owner" value={doc.uploadedByType === "vendor" ? "Vendor" : "Venue"} />
+            {doc.nextActionLabel && <Row label="Next" value={doc.nextActionLabel} />}
           </section>
 
           {/* Work Package D6 — this section header used to read
@@ -124,24 +191,82 @@ export function DocumentPreviewSheet({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</h3>
             {doc.docType === "contract" && (
               <>
-                <Row label="Status" value={doc.rawStatus} />
+                <Row label="Contract status" value={doc.rawStatus} />
+                <Row label="Version" value={`Version ${doc.currentVersion}`} />
+                {doc.amendsContractId && (
+                  <Row label="Based on" value={`Prior version (${doc.amendsContractId.slice(0, 8)}…)`} />
+                )}
                 {doc.signedAt && <Row label="Signed" value={fmtDate(doc.signedAt)} />}
+                {doc.hasFinalArtifact ? (
+                  <p className="text-xs text-muted-foreground">
+                    Final PDF is the authoritative signed contract. This Documents row is a link to that artifact — not a second signed copy.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Working contract record. The Final PDF becomes the authoritative artifact after finalize.
+                  </p>
+                )}
                 {doc.signToken && (
                   <a href={`/sign/${doc.signToken}`} target="_blank" rel="noopener noreferrer" className="block">
                     <Button size="sm" variant="outline" className="mt-1">Open signing link</Button>
                   </a>
                 )}
+                <a href={`/contracts/${doc.id}`} className="block">
+                  <Button size="sm" variant="ghost" className="mt-1">Open contract</Button>
+                </a>
               </>
             )}
             {doc.docType === "invoice" && (
               <>
                 <Row label="Total" value={doc.amount != null ? fmtCurrency(doc.amount) : null} />
                 <Row label="Balance due" value={doc.balanceDue != null ? fmtCurrency(doc.balanceDue) : null} />
+                <a href={`/invoices/${doc.id}`} className="block">
+                  <Button size="sm" variant="ghost" className="mt-1">Open invoice</Button>
+                </a>
               </>
             )}
-            {doc.docType === "floor_plan" && <Row label="Background reference" value={doc.fileUrl ? "Attached" : "None"} />}
-            {doc.docType === "questionnaire" && <Row label="Status" value={doc.rawStatus} />}
-            {doc.docType === "document" && <Row label="Sharing" value={doc.isCoupleVisible ? "Shared with couple" : doc.isVendorVisible ? "Shared with vendors" : "Private"} />}
+            {doc.docType === "floor_plan" && (
+              <>
+                <p className="text-xs text-muted-foreground">Floor Plans remain the editor for this artifact. Documents is a link only.</p>
+                {doc.producerHref && (
+                  <a href={doc.producerHref} className="block">
+                    <Button size="sm" variant="ghost" className="mt-1">Open floor plan</Button>
+                  </a>
+                )}
+              </>
+            )}
+            {doc.docType === "questionnaire" && (
+              <>
+                <Row label="Questionnaire" value={questionnaireStatusLabel(doc.rawStatus ?? "")} />
+                {doc.producerHref && (
+                  <a href={doc.producerHref} className="block">
+                    <Button size="sm" variant="ghost" className="mt-1">Open questionnaire</Button>
+                  </a>
+                )}
+              </>
+            )}
+            {doc.docType === "event_order" && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Event Order lives on the event. Documents shows the working record and, when shared, the Final PDF link.
+                </p>
+                {doc.producerHref && (
+                  <a href={doc.producerHref} className="block">
+                    <Button size="sm" variant="ghost" className="mt-1">Open Event Order</Button>
+                  </a>
+                )}
+              </>
+            )}
+            {doc.docType === "document" && (
+              <>
+                <Row label="Sharing" value={doc.isCoupleVisible ? "Shared with couple" : doc.isVendorVisible ? "Shared with vendors" : "Private"} />
+                {doc.isCompanionUpload && (
+                  <p className="text-xs text-muted-foreground">
+                    Uploaded file — not the authoritative signed contract or Final PDF. Deleting this file does not change the contract.
+                  </p>
+                )}
+              </>
+            )}
           </section>
 
           {/* Activity */}
@@ -165,15 +290,38 @@ export function DocumentPreviewSheet({
 
           {/* Actions */}
           <section className="flex flex-wrap gap-2">
-            {doc.fileUrl && (
+            {doc.producerHref && (
+              <a href={doc.producerHref}>
+                <Button size="sm" variant="outline"><ExternalLink className="mr-1 h-3.5 w-3.5" />Open</Button>
+              </a>
+            )}
+            {!doc.producerHref && doc.fileUrl && (
               <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
                 <Button size="sm" variant="outline"><ExternalLink className="mr-1 h-3.5 w-3.5" />Open</Button>
               </a>
             )}
-            {perms.download && (
+            {doc.docType === "document" && doc.fileUrl && (
               <Button size="sm" variant="outline" disabled={downloading} onClick={handleDownload}>
                 {downloading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}Download
               </Button>
+            )}
+            {doc.docType === "contract" && doc.hasFinalArtifact && (
+              <Button size="sm" variant="outline" disabled={downloading} onClick={handleFinalPdf}>
+                {downloading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}Final PDF
+              </Button>
+            )}
+            {doc.docType === "event_order" && doc.hasFinalArtifact && (
+              <Button size="sm" variant="outline" disabled={downloading} onClick={handleEventOrderPdf}>
+                {downloading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}Shared PDF
+              </Button>
+            )}
+            {doc.docType === "document" && (
+              <>
+                <input ref={replaceRef} type="file" className="sr-only" onChange={handleReplace} />
+                <Button size="sm" variant="ghost" disabled={replacing} onClick={() => replaceRef.current?.click()}>
+                  {replacing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1 h-3.5 w-3.5" />}Replace file
+                </Button>
+              </>
             )}
             {perms.share && (
               <Button size="sm" variant="ghost" disabled>

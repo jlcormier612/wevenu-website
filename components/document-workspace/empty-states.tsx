@@ -4,7 +4,7 @@ import { FolderOpen, Loader2, SearchX, ShieldOff } from "lucide-react";
 export type WorkspaceEmptyStateKind = "no_documents" | "no_results" | "no_permission" | "loading";
 
 const META: Record<WorkspaceEmptyStateKind, { icon: React.ElementType; title: string; body: string }> = {
-  no_documents: { icon: FolderOpen, title: "No documents yet", body: "Contracts, invoices, and files will appear here as they're created or shared." },
+  no_documents: { icon: FolderOpen, title: "No documents yet", body: "Contracts, questionnaires, event orders, invoices, and files will appear here as they're created or shared." },
   no_results:   { icon: SearchX,    title: "No results",       body: "Try a different search term or clear your filters." },
   no_permission:{ icon: ShieldOff,  title: "No permission",    body: "You don't have access to view documents here." },
   loading:      { icon: Loader2,    title: "Loading…",         body: "" },

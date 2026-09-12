@@ -4,7 +4,7 @@ import * as React from "react";
 
 import {
   ClipboardList, Download, Eye, ExternalLink, FileSignature, FileText,
-  Loader2, MapPin, MoreHorizontal, Receipt, Share2, Star, History,
+  Loader2, MapPin, MoreHorizontal, Receipt, Share2, Star, History, ListOrdered,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ function DocIcon({ doc }: { doc: WorkspaceDocument }) {
     case "invoice": return <Receipt className={cls} />;
     case "questionnaire": return <ClipboardList className={cls} />;
     case "floor_plan": return <MapPin className={cls} />;
+    case "event_order": return <ListOrdered className={cls} />;
     default: return <FileText className={cls} />;
   }
 }
@@ -83,7 +84,8 @@ export function WorkspaceDocumentCard({
 
   function handleOpen() {
     void recordDocumentInteractionAction(doc.docType, doc.id, "viewed");
-    if (doc.fileUrl) window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
+    if (doc.producerHref) window.location.assign(doc.producerHref);
+    else if (doc.fileUrl) window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
     else onOpenPreview(doc);
   }
 
@@ -114,11 +116,14 @@ export function WorkspaceDocumentCard({
             {doc.name}
           </button>
           <WorkspaceCategoryBadge category={doc.category} />
-          <WorkspaceStatusBadge status={doc.status} />
+          <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} />
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          {relationship && <span>{relationship}</span>}
-          <span>v{doc.currentVersion}</span>
+          {relationship && <span className="truncate max-w-[14rem]">{relationship}</span>}
+          {doc.eventName && doc.eventName !== relationship && (
+            <span className="truncate max-w-[14rem]">{doc.eventName}</span>
+          )}
+          {doc.nextActionLabel && <span className="text-heading">{doc.nextActionLabel}</span>}
           <span>Updated {fmtDate(doc.updatedAt)}</span>
           <span>{ownerLabel(doc)}</span>
           {doc.fileSize != null && <span>{formatBytes(doc.fileSize)}</span>}
@@ -133,13 +138,13 @@ export function WorkspaceDocumentCard({
             disabled={pinBusy}
             aria-label={isPinned ? "Unpin" : "Pin"}
             title={isPinned ? "Pinned — click to unpin" : "Pin to keep this always visible"}
-            className={`rounded p-1.5 hover:bg-muted ${isPinned ? "text-warning-foreground" : "text-muted-foreground opacity-0 group-hover:opacity-100"}`}
+            className={`rounded p-1.5 hover:bg-muted ${isPinned ? "text-warning-foreground" : "text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100"}`}
           >
             {pinBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />}
           </button>
         )}
 
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button type="button" onClick={handleOpen} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open">
             <ExternalLink className="h-3.5 w-3.5" />
           </button>

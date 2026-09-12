@@ -33,7 +33,7 @@ export function EventOrderZeroTotalConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="presentation">
       <button type="button" aria-label="Cancel" className="absolute inset-0 bg-black/40" onClick={onCancel} />
       <div
         role="alertdialog"

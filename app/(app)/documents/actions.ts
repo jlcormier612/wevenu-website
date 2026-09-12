@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { deleteDocument, saveDocument, saveVenueDocument, updateDocument } from "@/lib/documents/service";
+import { deleteDocument, replaceDocumentFile, saveDocument, saveVenueDocument, updateDocument } from "@/lib/documents/service";
 import type {
   CreateDocumentResult,
   Document,
@@ -45,6 +45,24 @@ export async function updateDocumentAction(
 ): Promise<DocumentActionResult> {
   const result = await updateDocument(documentId, patch);
   if (result.ok) revalidatePath(entityPath(entityType, entityId));
+  return result;
+}
+
+export async function replaceDocumentFileAction(payload: {
+  documentId: string;
+  entityType?: DocumentEntityType;
+  entityId?: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  storagePath: string;
+  storageUrl: string;
+}): Promise<CreateDocumentResult & { version?: number }> {
+  const result = await replaceDocumentFile(payload);
+  if (result.ok && payload.entityType && payload.entityId) {
+    revalidatePath(entityPath(payload.entityType, payload.entityId));
+  }
+  if (result.ok) revalidatePath("/documents");
   return result;
 }
 

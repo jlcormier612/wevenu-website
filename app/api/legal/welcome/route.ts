@@ -1,30 +1,88 @@
 import { NextResponse } from "next/server";
 
+import { welcomeDocumentsFromOutstanding } from "@/components/welcome-experience/welcome-experience-helpers";
+import {
+  createClient,
+  createVendorClient,
+} from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   clientRequestMeta,
   legalAcceptanceService,
 } from "@/lib/legal/service";
 import { resolveLegalSessionPrincipal } from "@/lib/legal/resolve-session-principal";
-import { createClient } from "@/integrations/supabase/server";
 import {
   acceptanceMethodForContext,
   copyForWelcomeContext,
   inferWelcomeContext,
-  isWelcomeFlowContext,
   outstandingImpliesPriorAcceptance,
   recordOutstandingAcceptances,
-  safeReturnToPath,
   welcomeRequiresReview,
   type WelcomeFlowContext,
 } from "@/lib/legal/welcome-integration";
-import { welcomeDocumentsFromOutstanding } from "@/components/welcome-experience/welcome-experience-helpers";
+import {
+  resolveWelcomeAuthScope,
+  safeWelcomeReturnToPath,
+  welcomeContextForScope,
+  type WelcomeAuthScope,
+} from "@/lib/legal/welcome-session-scope";
 
 export const runtime = "nodejs";
 
+type WelcomeApiOk = {
+  scope: WelcomeAuthScope;
+  user: { id: string };
+  principal: NonNullable<
+    Awaited<ReturnType<typeof resolveLegalSessionPrincipal>>
+  >;
+};
+
+async function resolveWelcomeApiSession(
+  returnTo: string | null,
+): Promise<WelcomeApiOk | { error: NextResponse }> {
+  const [venueSb, vendorSb] = await Promise.all([
+    createClient("venue"),
+    createVendorClient(),
+  ]);
+  const [venueAuth, vendorAuth] = await Promise.all([
+    venueSb.auth.getUser(),
+    vendorSb.auth.getUser(),
+  ]);
+  const venueUser = venueAuth.data.user;
+  const vendorUser = vendorAuth.data.user;
+
+  const scope = resolveWelcomeAuthScope({
+    hasVenueSession: Boolean(venueUser),
+    hasVendorSession: Boolean(vendorUser),
+    returnTo,
+  });
+
+  if (!scope) {
+    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+
+  const user = scope === "vendor" ? vendorUser! : venueUser!;
+  const principal = await resolveLegalSessionPrincipal(user.id, {
+    prefer: scope,
+  });
+  if (!principal) {
+    return {
+      error: NextResponse.json(
+        { error: "Unable to resolve account type." },
+        { status: 500 },
+      ),
+    };
+  }
+  if (scope === "vendor" && principal.kind !== "vendor") {
+    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+
+  return { scope, user, principal };
+}
+
 /**
  * GET /api/legal/welcome?context=&returnTo=
- * Outstanding docs + copy for the signed-in session principal.
+ * Outstanding docs + copy for the signed-in session principal (venue or vendor jar).
  */
 export async function GET(request: Request) {
   if (!isSupabaseConfigured) {
@@ -34,46 +92,36 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const url = new URL(request.url);
   const contextParam = url.searchParams.get("context");
+  const returnToRaw = url.searchParams.get("returnTo");
   const pathnameHint = url.searchParams.get("pathname");
 
   try {
-    const principal = await resolveLegalSessionPrincipal(user.id);
-    if (!principal) {
-      return NextResponse.json(
-        { error: "Unable to resolve account type." },
-        { status: 500 },
-      );
-    }
+    const resolved = await resolveWelcomeApiSession(returnToRaw);
+    if ("error" in resolved) return resolved.error;
+    const { scope, principal } = resolved;
 
     const status = await legalAcceptanceService.requiresAcceptance(
       principal.user,
     );
     const hasPrior = outstandingImpliesPriorAcceptance(status.outstanding);
-    const context: WelcomeFlowContext = isWelcomeFlowContext(contextParam)
-      ? contextParam
-      : inferWelcomeContext({
-          userType: principal.user.userType,
-          pathname: pathnameHint,
-          hasPriorAcceptance: hasPrior,
-        });
+    const returnTo = safeWelcomeReturnToPath(returnToRaw, scope, {
+      origin: url.origin,
+    });
+    const inferred = inferWelcomeContext({
+      userType: principal.user.userType,
+      pathname: pathnameHint || returnTo,
+      hasPriorAcceptance: hasPrior,
+    });
+    const context: WelcomeFlowContext = welcomeContextForScope(
+      scope,
+      contextParam,
+      inferred,
+    );
 
     const copy = copyForWelcomeContext(context);
     const documents = welcomeDocumentsFromOutstanding(status.outstanding);
-    const { resolveAuthenticatedHomePath } = await import("@/lib/auth/resolve-home");
-    const returnTo = safeReturnToPath(url.searchParams.get("returnTo"), {
-      fallback: await resolveAuthenticatedHomePath(supabase, user.id),
-      origin: url.origin,
-    });
 
     return NextResponse.json({
       ok: true,
@@ -85,6 +133,7 @@ export async function GET(request: Request) {
       returnTo,
       userType: principal.user.userType,
       acceptanceMethod: acceptanceMethodForContext(context),
+      scope,
     });
   } catch (error) {
     const message =
@@ -96,7 +145,7 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/legal/welcome
- * Body: { legalAccepted: true, context?: WelcomeFlowContext }
+ * Body: { legalAccepted: true, context?: WelcomeFlowContext, returnTo?: string }
  * Records outstanding acceptances via the engine (idempotent).
  */
 export async function POST(request: Request) {
@@ -132,22 +181,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const returnToRaw =
+    typeof body.returnTo === "string" ? body.returnTo : null;
 
   try {
-    const principal = await resolveLegalSessionPrincipal(user.id);
-    if (!principal) {
-      return NextResponse.json(
-        { error: "Unable to resolve account type." },
-        { status: 500 },
-      );
-    }
+    const resolved = await resolveWelcomeApiSession(returnToRaw);
+    if ("error" in resolved) return resolved.error;
+    const { scope, principal } = resolved;
 
     const status = await legalAcceptanceService.requiresAcceptance(
       principal.user,
@@ -159,18 +199,23 @@ export async function POST(request: Request) {
         alreadyAccepted: true,
         recorded: 0,
         alreadyAcceptedCount: 0,
+        returnTo: safeWelcomeReturnToPath(returnToRaw, scope),
+        scope,
       });
     }
 
     const hasPrior = outstandingImpliesPriorAcceptance(status.outstanding);
     const contextParam =
       typeof body.context === "string" ? body.context : null;
-    const context: WelcomeFlowContext = isWelcomeFlowContext(contextParam)
-      ? contextParam
-      : inferWelcomeContext({
-          userType: principal.user.userType,
-          hasPriorAcceptance: hasPrior,
-        });
+    const inferred = inferWelcomeContext({
+      userType: principal.user.userType,
+      hasPriorAcceptance: hasPrior,
+    });
+    const context: WelcomeFlowContext = welcomeContextForScope(
+      scope,
+      contextParam,
+      inferred,
+    );
 
     const { ipAddress, userAgent } = clientRequestMeta(request.headers);
     const result = await recordOutstandingAcceptances({
@@ -185,13 +230,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.message }, { status: 400 });
     }
 
-    const { resolveAuthenticatedHomePath } = await import("@/lib/auth/resolve-home");
-    const returnTo = safeReturnToPath(
-      typeof body.returnTo === "string" ? body.returnTo : null,
-      {
-        fallback: await resolveAuthenticatedHomePath(supabase, user.id),
-      },
-    );
+    const returnTo = safeWelcomeReturnToPath(returnToRaw, scope);
 
     return NextResponse.json({
       ok: true,
@@ -199,6 +238,7 @@ export async function POST(request: Request) {
       alreadyAcceptedCount: result.alreadyAccepted,
       returnTo,
       context,
+      scope,
     });
   } catch (error) {
     const message =

@@ -22,7 +22,9 @@ export function QuestionnairePortalSection({ token }: { token: string }) {
           kind: (q.kind || "final_details") as QuestionnaireKind,
         }));
         setRows(list);
-        const open = list.find((q) => q.status === "sent") ?? list[0];
+        const open = list.find((q) =>
+          q.status === "sent" || q.status === "in_progress" || q.status === "changes_requested"
+        ) ?? list[0];
         setActiveKey(open?.access_key ?? open?.questionnaire_id ?? null);
       })
       .catch(() => setRows(null));
@@ -59,7 +61,11 @@ export function QuestionnairePortalSection({ token }: { token: string }) {
                 onClick={() => setActiveKey(key)}
                 className={`rounded-full border px-3 py-1.5 text-xs ${selected ? "border-primary bg-primary/10 font-medium" : "border-border"}`}
               >
-                {kindLabel(r.kind)}{r.status === "submitted" || r.status === "reviewed" ? " · Done" : ""}
+                {kindLabel(r.kind)}
+                {r.status === "complete" ? " · Complete"
+                  : r.status === "changes_requested" ? " · Changes requested"
+                  : r.status === "submitted" || r.status === "resubmitted" ? " · Submitted"
+                  : ""}
               </button>
             );
           })}

@@ -6,6 +6,7 @@ import { sendSms, isSmsConfigured } from "@/lib/sms/send";
 import { verifyTwilioSignature } from "@/lib/sms/verify";
 import { clearVenueTwilioSecretCache } from "@/lib/sms/venue-twilio-secrets";
 import {
+  isVenueTwilioConsentOfferAvailable,
   isVenueTwilioSendReady,
   type VenueTwilioAccount,
 } from "@/lib/sms/venue-twilio-config";
@@ -54,12 +55,16 @@ function installTwoVenueAccounts() {
       venue_id: VENUE_A,
       twilio_account_sid: AC_A,
       messaging_service_sid: MG_A,
+      default_from_e164: "+15551110001",
+      phone_number_sid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       status: "ready",
     },
     {
       venue_id: VENUE_B,
       twilio_account_sid: AC_B,
       messaging_service_sid: MG_B,
+      default_from_e164: "+15551110002",
+      phone_number_sid: "PNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       status: "ready",
     },
   ]);
@@ -83,13 +88,13 @@ captureEnv();
 afterEach(restoreEnv);
 
 describe("venue Twilio ISV config readiness", () => {
-  it("isVenueTwilioSendReady requires ready + account + messaging service", () => {
+  it("isVenueTwilioSendReady requires ready + account + messaging service + real sender", () => {
     const base: VenueTwilioAccount = {
       venueId: VENUE_A,
       twilioAccountSid: AC_A,
       messagingServiceSid: MG_A,
-      defaultFromE164: null,
-      phoneNumberSid: null,
+      defaultFromE164: "+15551110001",
+      phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       secondaryProfileSid: null,
       a2pBrandSid: null,
       a2pCampaignSid: null,
@@ -98,7 +103,33 @@ describe("venue Twilio ISV config readiness", () => {
     };
     assert.equal(isVenueTwilioSendReady(base), true);
     assert.equal(isVenueTwilioSendReady({ ...base, status: "pending_compliance" }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, twilioAccountSid: "" }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, messagingServiceSid: "" }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, defaultFromE164: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, phoneNumberSid: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, defaultFromE164: "  ", phoneNumberSid: "PN" }), false);
     assert.equal(isVenueTwilioSendReady(null), false);
+  });
+
+  it("isVenueTwilioConsentOfferAvailable allows pending_compliance with a real sender", () => {
+    const base: VenueTwilioAccount = {
+      venueId: VENUE_A,
+      twilioAccountSid: AC_A,
+      messagingServiceSid: MG_A,
+      defaultFromE164: "+15551110001",
+      phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      secondaryProfileSid: null,
+      a2pBrandSid: null,
+      a2pCampaignSid: null,
+      status: "pending_compliance",
+      statusDetail: "Awaiting A2P",
+    };
+    assert.equal(isVenueTwilioConsentOfferAvailable(base), true);
+    assert.equal(isVenueTwilioConsentOfferAvailable({ ...base, status: "ready" }), true);
+    assert.equal(isVenueTwilioConsentOfferAvailable({ ...base, status: "provisioning" }), false);
+    assert.equal(isVenueTwilioConsentOfferAvailable({ ...base, status: "error" }), false);
+    assert.equal(isVenueTwilioConsentOfferAvailable({ ...base, defaultFromE164: null }), false);
+    assert.equal(isVenueTwilioConsentOfferAvailable(null), false);
   });
 });
 

@@ -93,7 +93,7 @@ export function recordRequiredClientSignature(
 
 /**
  * Reopen-for-editing is retired once the venue has signed.
- * Content is immutable after venue signature; use Clone & Resend for revisions.
+ * Content is immutable after venue signature; use Create New Version for revisions.
  * (Kept as an explicit guard so any leftover callers fail closed.)
  */
 export function canReopenContractForEditing(opts: {
@@ -105,7 +105,7 @@ export function canReopenContractForEditing(opts: {
     return {
       ok: false,
       message:
-        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Clone & Resend to create a new draft.",
+        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
     };
   }
   if (opts.status !== "sent") {
@@ -114,12 +114,16 @@ export function canReopenContractForEditing(opts: {
   return {
     ok: false,
     message:
-      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Clone & Resend to create a new draft.",
+      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
   };
 }
 
-/** Clone & Resend once venue signature locks content (including released / partial / fully signed). */
-export function canCloneAndResendContract(opts: {
+/**
+ * Create New Version once venue signature locks content
+ * (released / partial / fully signed / finalized).
+ * Product name for the existing clone engine — not a second mechanism.
+ */
+export function canCreateNewVersionFromContract(opts: {
   venueSigned: boolean;
   status: string;
   anyClientSigned: boolean;
@@ -129,7 +133,7 @@ export function canCloneAndResendContract(opts: {
     return {
       ok: false,
       message:
-        "Externally executed agreements cannot be cloned for HTC e-signature. Attach a revised signed file as a document instead.",
+        "Externally executed agreements cannot start a new Hello to Cheers signing version. Attach a revised signed file as a document instead.",
     };
   }
   if (opts.venueSigned || opts.anyClientSigned || opts.status === "signed") {
@@ -137,13 +141,24 @@ export function canCloneAndResendContract(opts: {
   }
   return {
     ok: false,
-    message: "Clone & Resend is available after the venue has signed (content is then immutable).",
+    message: "Create New Version is available after the venue has signed (content is then immutable).",
   };
 }
 
+/** @deprecated Use canCreateNewVersionFromContract — same rules; kept for existing call sites/tests. */
+export function canCloneAndResendContract(opts: {
+  venueSigned: boolean;
+  status: string;
+  anyClientSigned: boolean;
+  executionOrigin?: string | null;
+}): { ok: true } | { ok: false; message: string } {
+  return canCreateNewVersionFromContract(opts);
+}
+
 /**
- * Pure projection of Clone & Resend outcomes for audit/regression tests.
- * Mirrors cloneAndResendContract: original untouched; clone is a fresh draft.
+ * Pure projection of Create New Version outcomes for audit/regression tests.
+ * Mirrors createNewVersionFromContract / cloneAndResendContract:
+ * original untouched; clone is a fresh draft.
  */
 export type CloneSourceSnapshot = {
   id: string;

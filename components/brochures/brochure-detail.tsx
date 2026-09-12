@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -108,9 +109,14 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
         lastUpdated={new Date(brochure.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         primaryAction={
           <div className="flex items-center gap-2">
-            <a href={`/api/brochures/${brochure.id}/pdf`} target="_blank" rel="noopener noreferrer">
-              <Button type="button" variant="outline" size="sm"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview</Button>
-            </a>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              render={<Link href={`/library/brochures/${brochure.id}/preview`} />}
+            >
+              <Eye className="mr-1.5 h-3.5 w-3.5" />Preview
+            </Button>
             <a href={`/api/brochures/${brochure.id}/pdf`} download>
               <Button type="button" variant="ghost" size="sm"><Download className="mr-1.5 h-3.5 w-3.5" /></Button>
             </a>

@@ -34,6 +34,7 @@ import {
   BUSINESS_TYPE_OPTIONS,
   INDUSTRY_OPTIONS,
   INFORMATION_SAVED_STATUS_COPY,
+  TEXTING_SETUP_IN_PROGRESS_COPY,
   JOB_POSITION_OPTIONS,
   REGION_OPTIONS,
   REGISTRATION_ID_TYPE_OPTIONS,
@@ -71,8 +72,8 @@ function StatusPanelView({ panel }: { panel: TextingStatusPanel }) {
       ? "You’re ready to text from Inbox."
       : panel.phase === "information_saved"
         ? INFORMATION_SAVED_STATUS_COPY
-        : panel.phase === "under_review"
-          ? "Your texting setup is being reviewed. We’ll assign your texting number when it’s ready."
+        : panel.phase === "under_review" || panel.phase === "setting_up_number"
+          ? TEXTING_SETUP_IN_PROGRESS_COPY
           : panel.attention?.message
             ?? "Complete the steps below to enable text messaging for your venue.";
 
@@ -266,8 +267,9 @@ export function TextMessagingSetupSection({
           ? {
               ...prev,
               registration: result.registration,
-              phase: result.registration.phase,
+              phase: result.statusPanel.phase,
               statusPanel: result.statusPanel,
+              smsReady: result.statusPanel.smsReady,
               canEdit: false,
               prefill: { ...form, registrationNumber: "" },
             }
@@ -276,8 +278,12 @@ export function TextMessagingSetupSection({
       setForm((f) => ({ ...f, registrationNumber: "" }));
       setStep("status");
       toast.success(
-        result.registration.phase === "under_review"
-          ? "Texting setup submitted for review."
+        result.statusPanel.smsReady
+          ? "Texting is ready for your venue."
+          : result.statusPanel.phase === "under_review"
+            || result.statusPanel.phase === "setting_up_number"
+            || result.statusPanel.phase === "ready"
+          ? "Texting setup is in progress."
           : "Your texting information is saved.",
       );
     });
@@ -550,7 +556,7 @@ export function TextMessagingSetupSection({
                 <Textarea id="sampleMessage2" rows={2} value={form.sampleMessage2} onChange={(e) => setField("sampleMessage2", e.target.value)} />
               </Field>
               <Field id="optInDescription" label="How people opt in" error={errors.optInDescription}
-                hint="e.g. They share their mobile number on our inquiry form and agree to receive texts.">
+                hint="e.g. They check a separate text-permission box on our inquiry form. A phone number or Text preference alone is not permission.">
                 <Textarea id="optInDescription" rows={2} value={form.optInDescription} onChange={(e) => setField("optInDescription", e.target.value)} />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">

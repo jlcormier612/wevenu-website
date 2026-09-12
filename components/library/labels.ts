@@ -17,6 +17,12 @@ export const LIBRARY_LABELS = {
   reviewAndSend: "Review & Send",
   useTimeline: "Use Timeline",
   useFloorPlan: "Use Floor Plan",
+  useEventOrder: "Use Event Order",
+  useInventoryTemplate: "Use Inventory Template",
+  useOffering: "Use Offering",
+  useMessage: "Use Message",
+  useQrCampaign: "Use QR Campaign",
+  openReport: "Open report",
   duplicate: "Duplicate",
   archive: "Archive",
   restore: "Restore",
@@ -32,6 +38,8 @@ export const LIBRARY_LABELS = {
   archived: "Archived",
   archivedSection: "Archived",
   yourTemplate: "Your template",
+  paymentPlanBuilder: "Payment Plan Builder",
+  paymentSchedule: "Payment Schedule",
 } as const;
 
 export function archiveToggleLabel(isArchived: boolean): string {

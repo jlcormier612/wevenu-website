@@ -1,9 +1,7 @@
 /**
- * Event Order Templates — Work Package D7A.
- * A reusable starting point for what an Event Order will contain: section
- * names + standard lines (description/quantity/price). Purely structural —
- * never a live Package/Inventory reference, never a price/total calculated
- * here. See supabase/migrations/20261261000000_event_order_templates.sql.
+ * Event Order Templates — reusable delivery structure only:
+ * section names + optional section guidance.
+ * Applying a template to an Event Order copies sections — not checklist lines.
  */
 
 export type EventOrderTemplate = {
@@ -11,7 +9,7 @@ export type EventOrderTemplate = {
   venueId: string;
   name: string;
   description: string | null;
-  /** Hello to Cheers master key (EO-01 / EO-02) when provisioned from a starter. */
+  /** Hello to Cheers master key (EO-D-01 / EO-D-02, or legacy EO-01 / EO-02). */
   sourceMasterKey: string | null;
   isArchived: boolean;
   createdAt: string;
@@ -23,6 +21,7 @@ export type EventOrderTemplateSection = {
   templateId: string;
   venueId: string;
   name: string;
+  guidance: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

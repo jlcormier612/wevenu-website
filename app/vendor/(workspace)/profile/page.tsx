@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Profile — Vendor Portal" };
 
 export default async function VendorProfilePage() {
   const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
+  if (!vendorUser) redirect("/vendor/login");
 
   const now = new Date();
   const [profile, packages, faqs, availability, legalHistory] = await Promise.all([
@@ -23,7 +23,7 @@ export default async function VendorProfilePage() {
     getVendorAvailability(vendorUser.vendorId, now.getFullYear(), now.getMonth() + 1),
     listLegalAcceptancesForCurrentUser("vendor"),
   ]);
-  if (!profile) redirect("/login");
+  if (!profile) redirect("/vendor/login");
 
   return (
     <VendorProfileWorkspace

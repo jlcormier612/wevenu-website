@@ -198,7 +198,7 @@ export function SeriesForm({
         <div className="flex items-center justify-between gap-3">
           <SectionHeading
             title="What happens"
-            hint="Messages send in order, using your Templates."
+            hint="Messages send in order from your Templates. Timing uses whole days on your venue’s calendar — delayed messages go out around 10:00 local time."
           />
           <Button type="button" size="sm" variant="outline" onClick={addStep}>+ Add message</Button>
         </div>
@@ -206,7 +206,7 @@ export function SeriesForm({
 
         {input.steps.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-            No messages yet. Add one to build this automation.
+            No messages yet. Add one to say what gets sent.
           </p>
         ) : (
           <div className="space-y-3">

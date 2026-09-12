@@ -10,6 +10,8 @@
  *
  * Does NOT insert internal-only venue staff notifications.
  */
+import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
+
 type AdminLike = {
   from: (table: string) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
@@ -71,20 +73,7 @@ async function findOrCreateConversation(
   venueId: string,
   relationshipId: string,
 ): Promise<string | null> {
-  const { data: existing } = await supabase
-    .from("conversations")
-    .select("id")
-    .eq("relationship_id", relationshipId)
-    .maybeSingle();
-  if (existing?.id) return existing.id as string;
-
-  const { data: created, error } = await supabase
-    .from("conversations")
-    .insert({ venue_id: venueId, relationship_id: relationshipId })
-    .select("id")
-    .single();
-  if (error || !created?.id) return null;
-  return created.id as string;
+  return findOrCreateVenueCoupleConversation(supabase, venueId, relationshipId);
 }
 
 /**
