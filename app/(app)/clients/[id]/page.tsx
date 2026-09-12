@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
 import { EventDetail } from "@/components/events/event-detail";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -84,7 +85,10 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     const displayName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
     return (
       <div className="space-y-6">
-        <PageHeader title={displayName} description="This booking doesn't have an event workspace yet." />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <PageHeader title={displayName} description="This booking doesn't have an event workspace yet." />
+          <DeleteClientRecordButton clientId={client.id} fallbackName={displayName} />
+        </div>
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No event yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">Add an event date to open the full workspace.</p>
@@ -219,7 +223,12 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       : undefined,
   });
 
+  const workspaceName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
   return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <DeleteClientRecordButton clientId={client.id} fallbackName={workspaceName} />
+      </div>
     <EventDetail
       event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents}
       vendorDocuments={vendorDocuments}
@@ -261,5 +270,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       selectedPackage={selectedPackage}
       openSetupPayments={sp.setupPayments === "1"}
     />
+    </div>
   );
 }

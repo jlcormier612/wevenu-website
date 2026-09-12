@@ -14,6 +14,7 @@ import { getPackagesWithItems } from "@/lib/packages/service";
 import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
+import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string }> };
 
@@ -48,11 +49,12 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
     getPackagesWithItems(true),
   ]);
   if (!lead) notFound();
-  const [conversationId, smsPermission] = await Promise.all([
+  const [conversationId, smsPermission, duplicateReview] = await Promise.all([
     lead.relationshipId
       ? getConversationIdForRelationship(lead.relationshipId)
       : Promise.resolve(null),
     getSmsPermissionEvidenceForContact({ venueId: lead.venueId, phone: lead.phone }),
+    getDuplicateReviewForLead(id),
   ]);
   const bookingJourney = await loadBookingJourneyForLead({
     leadId: lead.id,
@@ -81,6 +83,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       bookingJourney={bookingJourney}
       packages={packages}
       smsPermission={smsPermission}
+      duplicateReview={duplicateReview}
     />
   );
 }

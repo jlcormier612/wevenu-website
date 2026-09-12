@@ -47,3 +47,21 @@ export async function deleteClientNoteAction(noteId: string): Promise<ClientActi
   return deleteClientNote_(noteId);
 }
 
+export async function previewDeleteClientAction(clientId: string) {
+  const { previewDeleteClient } = await import("@/lib/records/delete-record");
+  return previewDeleteClient(clientId);
+}
+
+export async function deleteClientRecordAction(clientId: string) {
+  const { deleteClientRecord } = await import("@/lib/records/delete-record");
+  const result = await deleteClientRecord(clientId);
+  if (result.ok) {
+    revalidatePath("/clients");
+    revalidatePath("/leads");
+    revalidatePath("/reporting");
+    revalidatePath("/reporting/sales");
+    revalidatePath("/reporting/bookings");
+  }
+  return result;
+}
+

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const {
     embedKey, firstName, lastName, email, phone,
-    partnerFirst, partnerLast,
+    partnerFirst, partnerLast, partnerEmail,
     eventType, eventDate, guestCount, estimatedBudget,
     message: inquiryMessage,
     sourceData,
@@ -74,6 +74,8 @@ export async function POST(request: NextRequest) {
       email: String(email),
       phone: phone ? String(phone) : null,
       partnerFirstName: partnerFirst ? String(partnerFirst) : null,
+      partnerLastName: partnerLast ? String(partnerLast) : null,
+      partnerEmail: partnerEmail ? String(partnerEmail) : null,
       eventType: String(eventType),
       eventDate: eventDate ? String(eventDate) : null,
       guestCount: guestCount ? Number(guestCount) : null,

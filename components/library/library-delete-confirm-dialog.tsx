@@ -89,7 +89,7 @@ export function LibraryDeleteConfirmDialog({
         <h2 id="library-delete-confirm-title" className="text-base font-semibold text-heading">
           {title ?? <>{actionVerb} &ldquo;{itemName}&rdquo;?</>}
         </h2>
-        <p id="library-delete-confirm-desc" className="mt-2 text-sm text-muted-foreground leading-relaxed">
+        <div id="library-delete-confirm-desc" className="mt-2 text-sm text-muted-foreground leading-relaxed">
           {description ?? (
             <>
               {permanent
@@ -98,7 +98,7 @@ export function LibraryDeleteConfirmDialog({
               {consequenceNote ? ` ${consequenceNote}` : ""}
             </>
           )}
-        </p>
+        </div>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" autoFocus disabled={pending} onClick={onCancel}>
             Cancel

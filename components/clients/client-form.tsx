@@ -7,9 +7,10 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { createClientAction } from "@/app/(app)/clients/actions";
+import { createClientAction, previewPossibleDuplicateClientAction } from "@/app/(app)/clients/actions";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
+import { PossibleMatchCreateDialog } from "@/components/leads/possible-match-create-dialog";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
   formatDate,
 } from "@/lib/clients/constants";
 import type { ClientErrors, ClientInput } from "@/lib/clients/types";
+import type { DuplicateCandidate } from "@/lib/leads/duplicate-detection";
 import type { VenueSpace } from "@/lib/availability/types";
 
 /**
@@ -58,25 +60,61 @@ export function ClientForm({
   const [input, setInput] = React.useState<ClientInput>(() => createInitialClientInput());
   const [errors, setErrors] = React.useState<ClientErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const [matchOpen, setMatchOpen] = React.useState(false);
+  const [matches, setMatches] = React.useState<DuplicateCandidate[]>([]);
 
   const set = <K extends keyof ClientInput>(key: K, value: ClientInput[K]) => {
     setInput((p) => ({ ...p, [key]: value }));
     setErrors((p) => { const n = { ...p }; delete n[key]; return n; });
   };
 
+  async function saveClient() {
+    const result = await createClientAction(input);
+    if (result.ok) {
+      router.push(`/clients/${result.clientId}`);
+      return;
+    }
+    if (result.errors) setErrors(result.errors);
+    toast.error(result.message ?? "Please fix the highlighted fields.");
+  }
+
   function handleSubmit() {
     startTransition(async () => {
-      const result = await createClientAction(input);
-      if (result.ok) {
-        router.push(`/clients/${result.clientId}`);
+      const preview = await previewPossibleDuplicateClientAction({
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        phone: input.phone,
+        partnerFirstName: input.partnerFirstName,
+        partnerLastName: input.partnerLastName,
+        partnerEmail: input.partnerEmail,
+      });
+      if (preview.ok && preview.matches.length > 0) {
+        setMatches(preview.matches);
+        setMatchOpen(true);
         return;
       }
-      if (result.errors) setErrors(result.errors);
-      toast.error(result.message ?? "Please fix the highlighted fields.");
+      await saveClient();
     });
   }
 
-  return <ClientFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} />;
+  return (
+    <>
+      <PossibleMatchCreateDialog
+        open={matchOpen}
+        matches={matches}
+        pending={pending}
+        onCancel={() => setMatchOpen(false)}
+        onContinue={() => {
+          setMatchOpen(false);
+          startTransition(async () => {
+            await saveClient();
+          });
+        }}
+      />
+      <ClientFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} />
+    </>
+  );
 }
 
 export function ClientFormFields({
