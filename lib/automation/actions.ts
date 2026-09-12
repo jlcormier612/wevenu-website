@@ -124,7 +124,11 @@ async function scheduleRelationshipMessage(params: Record<string, unknown>, even
   const body = typeof params.body === "string" ? params.body : "";
   if (!body.trim()) return { ok: false, error: "Missing required action param: body." };
   const offsetDays = typeof params.offsetDays === "number" ? params.offsetDays : 3;
-  const scheduledFor = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000).toISOString();
+  const { getVenueTimezone } = await import("@/lib/venue/timezone");
+  const { computeDelayedSendIso } = await import("@/lib/message-sequences/schedule-times");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const timezone = await getVenueTimezone(client as any, event.venueId);
+  const scheduledFor = computeDelayedSendIso(new Date(), offsetDays, timezone);
 
   try {
     await scheduledMessagesRepo.insertScheduledMessage(

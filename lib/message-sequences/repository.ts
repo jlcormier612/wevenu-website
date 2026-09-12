@@ -253,12 +253,17 @@ export async function materializeEnrollmentSteps(
     .eq("sequence_id", sequenceId).order("sort_order");
   if (error) throw error;
 
-  let cursor = Date.now();
-  for (const raw of (steps ?? []) as StepRow[]) {
-    const step = mapStep(raw);
-    cursor += step.offsetDays * 86_400_000;
+  const { getVenueTimezone } = await import("@/lib/venue/timezone");
+  const { computeEnrollmentStepScheduleIsos } = await import("@/lib/message-sequences/schedule-times");
+  const timezone = await getVenueTimezone(client, venueId);
+  const mapped = ((steps ?? []) as StepRow[]).map(mapStep);
+  const scheduleIsos = computeEnrollmentStepScheduleIsos(mapped, new Date(), timezone);
+
+  for (let i = 0; i < mapped.length; i++) {
+    const step = mapped[i]!;
+    const scheduledFor = scheduleIsos[i]!;
     const { data: scheduledId, error: schedError } = await insertScheduledMessageWithSequenceLink(
-      client, venueId, relationshipId, step, enrollmentId, new Date(cursor).toISOString(),
+      client, venueId, relationshipId, step, enrollmentId, scheduledFor,
     );
     if (schedError) throw schedError;
     void scheduledId;
