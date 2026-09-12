@@ -41,3 +41,20 @@ describe("provisioning service_role grants migration", () => {
     assert.match(sql, /grant select, insert, update, delete on public\.sequence_steps to service_role/i);
   });
 });
+
+describe("automation_rules service_role insert migration", () => {
+  const sql = readFileSync(
+    join(
+      process.cwd(),
+      "supabase/migrations/20261380000000_automation_rules_service_role_insert.sql",
+    ),
+    "utf8",
+  );
+
+  it("grants INSERT so venues AFTER INSERT seed trigger can run as service_role", () => {
+    assert.match(
+      sql,
+      /grant select, insert, update on public\.automation_rules to service_role/i,
+    );
+  });
+});
