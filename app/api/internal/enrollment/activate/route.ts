@@ -160,7 +160,12 @@ export async function POST(request: Request) {
       alreadyActivated: row.already_activated,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error && "message" in error
+          ? String((error as { message: unknown }).message)
+          : JSON.stringify(error);
     console.error("[enrollment/activate]", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
