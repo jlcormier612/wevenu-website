@@ -45,6 +45,7 @@ export default async function OnboardingWorkspacePage({ params }: Props) {
         venueId={venueId}
         venueName={detail.venue.name}
         whiteGloveStatus={operatorView.whiteGloveStatus}
+        accessEmailSentAt={operatorView.accessEmailSentAt}
         stages={operatorView.stages}
         materials={operatorView.materials}
         intakeSummary={operatorView.intakeSummary}

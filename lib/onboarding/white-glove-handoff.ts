@@ -1,6 +1,11 @@
 /**
  * White Glove handoff — Finish White Glove Setup.
  * Validates, mints activation token, sends access email once.
+ *
+ * Access state may be written before email delivery so retries are safe:
+ * - reuse the same activation_token (never mint a second)
+ * - send welcome_home only while access_email_sent_at is null
+ * - write CRM handoff milestone only after email succeeds
  */
 import { randomBytes } from "crypto";
 
@@ -20,6 +25,26 @@ export type FinishWhiteGloveResult =
 
 function newActivationToken(): string {
   return `act_${randomBytes(24).toString("hex")}`;
+}
+
+/** Idempotent email gate used by Finish White Glove Setup. */
+export function shouldSendWhiteGloveAccessEmail(enrollment: {
+  access_email_sent_at: string | null;
+}): boolean {
+  return !enrollment.access_email_sent_at;
+}
+
+/**
+ * Reuse an existing activation token on retry after email failure.
+ * Never mint a second token once one exists.
+ */
+export function resolveActivationTokenForHandoff(
+  existingToken: string | null | undefined,
+  mint: () => string = newActivationToken,
+): { token: string; mintedNew: boolean } {
+  const existing = existingToken?.trim();
+  if (existing) return { token: existing, mintedNew: false };
+  return { token: mint(), mintedNew: true };
 }
 
 export async function validateWhiteGloveHandoff(
@@ -107,6 +132,28 @@ export async function validateWhiteGloveHandoff(
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
 
+async function resolveCrmRelationshipIdForVenue(
+  venueId: string,
+  ownerEmail: string,
+): Promise<string> {
+  try {
+    const { loadLiveStore } = await import("@shared/relationships");
+    const store = await loadLiveStore();
+    const byVenue = store.relationships.find(
+      (r) => r.productSync?.venueId?.trim() === venueId,
+    );
+    if (byVenue?.id) return byVenue.id;
+    const email = ownerEmail.trim().toLowerCase();
+    const byEmail = store.relationships.find(
+      (r) => r.owner.email?.trim().toLowerCase() === email,
+    );
+    if (byEmail?.id) return byEmail.id;
+  } catch (err) {
+    console.error("[white-glove/handoff] CRM relationship lookup failed", err);
+  }
+  return `venue:${venueId}`;
+}
+
 /**
  * Staff action: Finish White Glove Setup → Customer Access Pending → email.
  */
@@ -155,14 +202,11 @@ export async function finishWhiteGloveSetup(
     };
   }
 
-  const alreadyHandedOff =
-    enrollment.white_glove_status === "setup_complete_access_pending" ||
-    Boolean(enrollment.access_email_sent_at);
+  // Fully handed off only after access email was recorded — token alone means
+  // "pending email delivery / safe to retry", not customer-access complete.
+  const alreadyHandedOff = Boolean(enrollment.access_email_sent_at);
 
-  let token = enrollment.activation_token;
-  if (!token) {
-    token = newActivationToken();
-  }
+  const { token } = resolveActivationTokenForHandoff(enrollment.activation_token);
 
   const { error: updErr } = await admin
     .from("venue_enrollments")
@@ -191,8 +235,10 @@ export async function finishWhiteGloveSetup(
   const activateUrl = activationUrlFromToken(token);
 
   // Idempotent email: skip if already sent for this handoff.
-  if (!enrollment.access_email_sent_at) {
-    const relationshipId = opts?.relationshipId?.trim() || `venue:${venueId}`;
+  if (shouldSendWhiteGloveAccessEmail(enrollment)) {
+    const relationshipId =
+      opts?.relationshipId?.trim() ||
+      (await resolveCrmRelationshipIdForVenue(venueId, enrollment.owner_email));
     const emailResult = await sendWelcomeHomeEmail({
       relationshipId,
       customerEmail: enrollment.owner_email,
@@ -220,7 +266,7 @@ export async function finishWhiteGloveSetup(
           {
             code: "access_email_failed",
             message:
-              "Handoff state saved, but the access email failed to send. Retry Finish White Glove Setup.",
+              "Access is pending email delivery. The activation link was prepared, but welcome_home did not send. Retry Finish White Glove Setup — the same activation token will be reused and welcome_home will not duplicate after a successful send.",
           },
         ],
       };
@@ -232,7 +278,7 @@ export async function finishWhiteGloveSetup(
       .eq("id", enrollment.id);
   }
 
-  // Thin product → CRM sync: handoff complete (idempotent).
+  // Thin product → CRM sync: handoff complete only after access email success.
   try {
     const { recordCrmWhiteGloveHandoffComplete } = await import("@shared/relationships");
     await recordCrmWhiteGloveHandoffComplete({

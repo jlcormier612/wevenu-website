@@ -28,7 +28,7 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     admin.from("venue_setup_hub_state").select("*").eq("venue_id", venueId).maybeSingle(),
     admin
       .from("venue_enrollments")
-      .select("white_glove_status, venue_name, owner_email")
+      .select("white_glove_status, venue_name, owner_email, access_email_sent_at")
       .eq("venue_id", venueId)
       .eq("onboarding_type", "white_glove")
       .order("created_at", { ascending: false })
@@ -126,6 +126,7 @@ export async function getWhiteGloveOperatorView(venueId: string) {
 
   return {
     whiteGloveStatus: enrollmentRes.data?.white_glove_status ?? null,
+    accessEmailSentAt: enrollmentRes.data?.access_email_sent_at ?? null,
     stages,
     materials: (materialsRes.data ?? []).map(
       (m: { id: string; file_name: string; public_url: string | null }) => ({

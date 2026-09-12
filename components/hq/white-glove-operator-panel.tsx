@@ -35,6 +35,7 @@ export function WhiteGloveOperatorPanel({
   venueId,
   venueName,
   whiteGloveStatus,
+  accessEmailSentAt,
   stages,
   materials,
   intakeSummary,
@@ -43,6 +44,7 @@ export function WhiteGloveOperatorPanel({
   venueId: string;
   venueName: string;
   whiteGloveStatus: string | null;
+  accessEmailSentAt: string | null;
   stages: OperatorStageRow[];
   materials: Array<{ id: string; fileName: string; url: string | null }>;
   intakeSummary: string | null;
@@ -53,9 +55,12 @@ export function WhiteGloveOperatorPanel({
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Access email recorded = customer handoff complete. Token + pending status
+  // without access_email_sent_at means email failed and Finish must be retried.
   const handedOff =
-    whiteGloveStatus === "setup_complete_access_pending" ||
-    whiteGloveStatus === "complete";
+    Boolean(accessEmailSentAt) || whiteGloveStatus === "complete";
+  const pendingAccessEmail =
+    whiteGloveStatus === "setup_complete_access_pending" && !accessEmailSentAt;
 
   async function finish() {
     setBusy(true);
@@ -84,6 +89,12 @@ export function WhiteGloveOperatorPanel({
           Status: {whiteGloveStatus ?? "unknown"} · Work on the real venue Setup Hub and
           migration tools below. Do not graduate the venue for the customer.
         </p>
+        {pendingAccessEmail ? (
+          <p className="mt-2 text-xs text-amber-800">
+            Access email has not been delivered yet. Retry Finish White Glove Setup — the
+            same activation token will be reused.
+          </p>
+        ) : null}
       </div>
 
       {intakeSummary ? (

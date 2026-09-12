@@ -258,36 +258,44 @@ describe("product → CRM milestones", () => {
 
 describe("welcome_home trigger metadata", () => {
   it("tags Product HQ Finish White Glove Setup, not CRM launch_workspace", async () => {
-    const { sendWelcomeHomeEmail } = await import("../email/enrollment.ts");
-    const { withLiveStore, loadLiveStore } = await import("./index.ts");
+    const prevResend = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
 
-    await withLiveStore((store) => {
-      store.relationships = [baseRelationship({ id: "rel_email" })];
-      store.timelineEvents = [];
-      store.communications = [];
-      return null;
-    });
+    try {
+      const { sendWelcomeHomeEmail } = await import("../email/enrollment.ts");
+      const { withLiveStore, loadLiveStore } = await import("./index.ts");
 
-    const result = await sendWelcomeHomeEmail({
-      relationshipId: "rel_email",
-      customerEmail: "ada@example.com",
-      venueName: "Test Venue",
-      firstName: "Ada",
-      activateUrl: "https://product.test/activate/tok_test",
-    });
+      await withLiveStore((store) => {
+        store.relationships = [baseRelationship({ id: "rel_email" })];
+        store.timelineEvents = [];
+        store.communications = [];
+        return null;
+      });
 
-    assert.ok(result);
-    assert.equal(result.ok, true);
-    assert.equal(result.templateId, "welcome_home");
+      const result = await sendWelcomeHomeEmail({
+        relationshipId: "rel_email",
+        customerEmail: "ada@example.com",
+        venueName: "Test Venue",
+        firstName: "Ada",
+        activateUrl: "https://product.test/activate/tok_test",
+      });
 
-    const store = await loadLiveStore();
-    const emailEvent = store.timelineEvents.find(
-      (e) =>
-        e.relationshipId === "rel_email" &&
-        e.meta?.template_id === "welcome_home",
-    );
-    assert.ok(emailEvent);
-    assert.equal(emailEvent.meta?.trigger, "product.finish_white_glove_setup");
-    assert.notEqual(emailEvent.meta?.trigger, "white_glove.launch_workspace");
+      assert.ok(result);
+      assert.equal(result.ok, true);
+      assert.equal(result.templateId, "welcome_home");
+
+      const store = await loadLiveStore();
+      const emailEvent = store.timelineEvents.find(
+        (e) =>
+          e.relationshipId === "rel_email" &&
+          e.meta?.template_id === "welcome_home",
+      );
+      assert.ok(emailEvent);
+      assert.equal(emailEvent.meta?.trigger, "product.finish_white_glove_setup");
+      assert.notEqual(emailEvent.meta?.trigger, "white_glove.launch_workspace");
+    } finally {
+      if (prevResend !== undefined) process.env.RESEND_API_KEY = prevResend;
+      else delete process.env.RESEND_API_KEY;
+    }
   });
 });

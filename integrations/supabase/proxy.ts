@@ -20,8 +20,9 @@ import { isWelcomeAppPath } from "@/lib/legal/welcome-session-scope";
 
 /**
  * Routes that do not require an authenticated session.
+ * Exported for unit tests — keep in sync with proxy enforcement below.
  */
-const PUBLIC_PATHS = [
+export const PUBLIC_PATHS = [
   "/login",
   "/client/login",   // couple/client portal login
   "/client/accept",  // primary couple invite accept (pre-auth)
@@ -81,6 +82,10 @@ const PUBLIC_PATHS = [
   "/api/internal/product-access",    // CRM -> product access lock - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
   "/api/internal/enrollment",        // CRM/Workspace -> venue enrollment + activation bridge - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
   "/api/health",                     // deployment health check - no session, no secret; read-only, returns booleans only, never data
+  // White Glove pre-login intake — token validated in page/API handlers (not session).
+  // Do NOT widen to bare "/onboarding" (Self-Setup intake and other onboarding stay authed).
+  "/onboarding/white-glove",
+  "/api/onboarding/white-glove",
 ];
 
 /** Authenticated routes still reachable when the venue SaaS account is suspended. */
@@ -92,7 +97,7 @@ function isSuspendedAllowPath(pathname: string): boolean {
   );
 }
 
-function isPublicPath(pathname: string): boolean {
+export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
