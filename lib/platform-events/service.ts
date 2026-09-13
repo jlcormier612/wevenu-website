@@ -17,10 +17,8 @@ import { createClient } from "@/integrations/supabase/server";
 import type { PlatformEventInput } from "./types";
 
 type EmitClient = {
-  rpc: (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ error: { message: string } | null }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rpc: (fn: string, args: Record<string, unknown>) => any;
 };
 
 /**
