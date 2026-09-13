@@ -9,6 +9,8 @@ import {
   getIntegrationSetupGuide,
   getSetupGuide,
 } from "@/lib/help-guides/setup-guides";
+import { FINAL_HELP_ARTICLES } from "@/lib/help-guides/final-articles";
+import { LEGACY_SETUP_GUIDE_REDIRECTS } from "@/lib/setup-hub/help-crosswalk";
 
 const EXPECTED_SLUGS = [
   "setup-your-venue",
@@ -23,7 +25,9 @@ const EXPECTED_SLUGS = [
   "setup-financials",
 ];
 
-describe("setup guide library", () => {
+const published = new Set(FINAL_HELP_ARTICLES.map((a) => a.slug));
+
+describe("setup guide library (module retained; Help IA uses final articles)", () => {
   it("ships a guide for every setup area, with no duplicate slugs", () => {
     assert.deepEqual(SETUP_GUIDES.map((g) => g.slug), EXPECTED_SLUGS);
     assert.equal(new Set(SETUP_GUIDES.map((g) => g.slug)).size, EXPECTED_SLUGS.length);
@@ -36,8 +40,6 @@ describe("setup guide library", () => {
     assert.equal(getSetupGuide("not-a-guide"), null);
   });
 
-  // These guides are written for owners who have never used a CRM, so a guide
-  // missing its checkpoints or completion state is a real defect, not a nit.
   it("gives every guide the full prescriptive shape", () => {
     for (const guide of SETUP_GUIDES) {
       const where = guide.slug;
@@ -66,12 +68,6 @@ describe("setup guide library", () => {
     }
   });
 
-  // The 3 standalone integration guides (Connect Stripe, Connect QuickBooks,
-  // Connect Facebook & Instagram) were merged into setup-financials and
-  // setup-lead-capture so each topic has exactly one authoritative home. That
-  // makes INTEGRATION_SETUP_GUIDES (slugs starting with "connect-") empty by
-  // design now — lib/success-library/service.ts's fallback still runs, it just
-  // has nothing left to add, which is intentional, not a regression.
   it("has no standalone connect-* guides left — their content lives in setup-financials and setup-lead-capture", () => {
     assert.deepEqual(INTEGRATION_SETUP_GUIDES, []);
     assert.equal(getIntegrationSetupGuide("connect-stripe"), null);
@@ -86,7 +82,6 @@ describe("setup guide library", () => {
     assert.ok(financials.steps.some((s) => s.anchor === "stripe"), "setup-financials must anchor a Stripe step");
     assert.ok(financials.steps.some((s) => s.anchor === "quickbooks"), "setup-financials must anchor a QuickBooks step");
     assert.ok(leadCapture.steps.some((s) => s.anchor === "facebook"), "setup-lead-capture must anchor a Facebook step");
-    // Every anchor must actually be unique within its guide, or the deep link is ambiguous.
     for (const guide of [financials, leadCapture]) {
       const anchors = guide.steps.map((s) => s.anchor).filter(Boolean);
       assert.equal(new Set(anchors).size, anchors.length, `${guide.slug} has a duplicate step anchor`);
@@ -94,47 +89,52 @@ describe("setup guide library", () => {
   });
 });
 
-describe("guide links used elsewhere in the app resolve", () => {
-  it("every setup guide link on the integrations settings page exists, including its anchor", () => {
-    const source = readFileSync(resolve("app/(app)/settings/integrations/page.tsx"), "utf8");
-    const hrefs = [...source.matchAll(/href="\/help\/([a-z0-9-]+)(?:#([a-z0-9-]+))?"/g)].map((m) => ({ slug: m[1], anchor: m[2] }));
-    assert.ok(hrefs.length >= 3, "integrations page should link Stripe, QuickBooks and Facebook guide content");
-    for (const { slug, anchor } of hrefs) {
-      const guide = getSetupGuide(slug);
-      assert.ok(guide, `integrations page links /help/${slug}, which does not exist`);
-      if (anchor) {
-        assert.ok(
-          guide!.steps.some((s) => s.anchor === anchor),
-          `integrations page links /help/${slug}#${anchor}, but no step in that guide has anchor "${anchor}"`,
-        );
-      }
+describe("Help routes retire Setup Guides in favor of final articles", () => {
+  it("redirects every setup-* guide slug to a published final article", () => {
+    for (const slug of EXPECTED_SLUGS) {
+      if (!slug.startsWith("setup-")) continue;
+      const target = LEGACY_SETUP_GUIDE_REDIRECTS[slug];
+      assert.ok(target, `${slug} must have a redirect`);
+      assert.ok(published.has(target), `${slug} → ${target} must be published`);
     }
   });
 
-  // A guide that sends the owner to #facebook and lands them at the top of the
-  // page is the same class of problem as a dead link — same check, reversed:
-  // the integrations page now links OUT to anchored guide sections (setup-financials
-  // #stripe/#quickbooks, setup-lead-capture #facebook), not the other way around.
-  it("every #stripe / #quickbooks / #facebook anchor on the integrations page still exists on that page", () => {
-    const source = readFileSync(resolve("app/(app)/settings/integrations/page.tsx"), "utf8");
-    for (const id of ["stripe", "quickbooks", "facebook"]) {
-      assert.ok(source.includes(`id="${id}"`), `integrations page is missing id="${id}"`);
-    }
+  it("Help article page redirects legacy setup guides and serves published articles only", () => {
+    const articlePage = readFileSync(resolve("app/(app)/help/[slug]/page.tsx"), "utf8");
+    assert.match(articlePage, /LEGACY_SETUP_GUIDE_REDIRECTS/);
+    assert.match(articlePage, /getPublishedArticleBySlug/);
+    assert.doesNotMatch(articlePage, /getSetupGuide/);
+    assert.doesNotMatch(articlePage, /IntegrationSetupGuideView/);
   });
 
-  it("the guide route resolves the whole library, not just integrations", () => {
-    const source = readFileSync(resolve("app/(app)/help/[slug]/page.tsx"), "utf8");
-    assert.match(source, /getSetupGuide/);
-    assert.doesNotMatch(source, /getIntegrationSetupGuide/);
-  });
-
-  it("Help & Guides home uses the editorial landing (setup guides stay on /help/[slug] + Settings links)", () => {
+  it("Help & Guides home stays editorial (no Setup Guides index)", () => {
     const source = readFileSync(resolve("app/(app)/help/page.tsx"), "utf8");
     assert.match(source, /HELP_GUIDES_TAGLINE/);
     assert.doesNotMatch(source, /SETUP_GUIDES/);
     assert.doesNotMatch(source, /coming soon/i);
-    const articlePage = readFileSync(resolve("app/(app)/help/[slug]/page.tsx"), "utf8");
-    assert.match(articlePage, /getSetupGuide/);
+  });
+
+  it("Settings links point at final Help articles, not /help/setup-*", () => {
+    for (const file of [
+      "app/(app)/settings/integrations/page.tsx",
+      "app/(app)/settings/availability/page.tsx",
+      "app/(app)/settings/import/page.tsx",
+      "app/(app)/settings/migration/page.tsx",
+    ]) {
+      const source = readFileSync(resolve(file), "utf8");
+      assert.doesNotMatch(source, /href="\/help\/setup-/);
+      const hrefs = [...source.matchAll(/href="\/help\/([a-z0-9-]+)/g)].map((m) => m[1]);
+      for (const slug of hrefs) {
+        assert.ok(published.has(slug), `${file} links unpublished Help slug /help/${slug}`);
+      }
+    }
+  });
+
+  it("every #stripe / #quickbooks / #facebook anchor on the integrations page still exists", () => {
+    const source = readFileSync(resolve("app/(app)/settings/integrations/page.tsx"), "utf8");
+    for (const id of ["stripe", "quickbooks", "facebook"]) {
+      assert.ok(source.includes(`id="${id}"`), `integrations page is missing id="${id}"`);
+    }
   });
 });
 
@@ -165,12 +165,6 @@ describe("Communication setup guide", () => {
   });
 });
 
-// The Facebook section carries the one dependency that silently drops leads when a
-// venue misses it, so this content is load-bearing rather than editorial. It now
-// lives inside setup-lead-capture (merged from the retired connect-facebook-instagram-
-// lead-ads guide) — checked against the full guide text rather than specific
-// top-level fields, since setup-lead-capture covers multiple channels and this
-// guidance lives in its Facebook-specific steps, not in the guide's overall intro.
 describe("Facebook & Instagram guidance keeps its critical warnings", () => {
   const guide = getSetupGuide("setup-lead-capture");
 

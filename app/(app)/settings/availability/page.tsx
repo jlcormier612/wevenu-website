@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { ScheduledAppointmentTypesSection } from "@/components/settings/scheduled-appointment-types-section";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
+import { ToursOfferedControl } from "@/components/settings/tours-offered-control";
 import {
   Card,
   CardContent,
@@ -17,18 +18,19 @@ import {
 import { getScheduleItemTypesForSettings } from "@/lib/calendar/schedule-item-catalog-service";
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
-import { getTourAvailability } from "@/lib/tours/service";
+import { getTourAvailability, getTourSettings } from "@/lib/tours/service";
 import { getCurrentUserRole } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Availability & Capacity — Settings" };
 
 export default async function AvailabilityCapacitySettingsPage() {
-  const [spaces, capacityRules, tourAvailability, catalogTypes, role] = await Promise.all([
+  const [spaces, capacityRules, tourAvailability, catalogTypes, role, tourSettings] = await Promise.all([
     getSpaces(),
     getCapacityRules(),
     getTourAvailability(),
     getScheduleItemTypesForSettings(),
     getCurrentUserRole(),
+    getTourSettings(),
   ]);
   const { windows, exceptions, loadError } = editorHydrationFromAvailability(tourAvailability);
   const canEditCatalog = role === "owner" || role === "manager";
@@ -50,12 +52,13 @@ export default async function AvailabilityCapacitySettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <ToursOfferedControl initialEnabled={tourSettings?.tourSchedulingEnabled ?? false} />
           <TourAvailabilityEditor
             initialWindows={windows}
             initialExceptions={exceptions}
             loadError={loadError}
           />
-          <SetupGuideLink href="/help/setup-calendar-availability#tour-availability" label="Deciding whether to offer online tours" />
+          <SetupGuideLink href="/help/how-do-i-set-my-tour-availability" label="How Do I Set My Tour Availability?" />
         </CardContent>
       </Card>
 
@@ -83,7 +86,7 @@ export default async function AvailabilityCapacitySettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <CapacityRulesSection initialRules={capacityRules} />
-          <SetupGuideLink href="/help/setup-calendar-availability#capacity" label="How capacity affects booking" />
+          <SetupGuideLink href="/help/how-do-i-set-my-tour-availability" label="How Do I Set My Tour Availability?" />
         </CardContent>
       </Card>
 
@@ -98,7 +101,7 @@ export default async function AvailabilityCapacitySettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <VenueSpacesSection initialSpaces={spaces} />
-          <SetupGuideLink href="/help/setup-calendar-availability#spaces" label="Why spaces matter" />
+          <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
         </CardContent>
       </Card>
     </div>

@@ -54,3 +54,15 @@ describe("Setup Hub stage order — Calendar before Bring Your Business", () => 
     assert.ok(cal < byb, "Calendar & Availability must precede Bring Your Business");
   });
 });
+
+describe("Bring Your Business choices — three equal paths", () => {
+  it("persists individual and skipped, and routes Import / individual / skip without forcing Migration", () => {
+    const src = readFileSync(join(process.cwd(), "components/setup-hub/bring-your-business-choices.tsx"), "utf8");
+    assert.match(src, /Import my business/);
+    assert.match(src, /Add things individually/);
+    assert.match(src, /starting fresh|Skip for now/i);
+    assert.match(src, /setBringYourBusinessPathAction\("individual"\)/);
+    assert.match(src, /setBringYourBusinessPathAction\("skipped"\)/);
+    assert.match(src, /spreadsheetImport|\/settings\/import/);
+  });
+});

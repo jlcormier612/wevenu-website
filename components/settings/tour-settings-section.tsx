@@ -104,10 +104,17 @@ export function TourSettingsSection({ initialSettings }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Enable toggle */}
-      <div className="flex items-center gap-3">
-        <Switch checked={s.tourSchedulingEnabled} onCheckedChange={(v) => set("tourSchedulingEnabled", v)} />
-        <Label className="cursor-pointer">Enable public tour scheduling</Label>
+      {/* Enable toggle — Off means Not offered, a complete business choice */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <Switch checked={s.tourSchedulingEnabled} onCheckedChange={(v) => set("tourSchedulingEnabled", v)} />
+          <Label className="cursor-pointer">Offer online tour booking</Label>
+        </div>
+        <p className="text-xs text-muted-foreground pl-0 sm:pl-[52px]">
+          {s.tourSchedulingEnabled
+            ? "Couples can book tours online."
+            : "Not offered — a complete answer. You can turn this on later if you start offering tours."}
+        </p>
       </div>
 
       {s.tourSchedulingEnabled && (

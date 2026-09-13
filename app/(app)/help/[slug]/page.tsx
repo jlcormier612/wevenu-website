@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { IntegrationSetupGuideView } from "@/components/help/integration-setup-guide";
-import { getSetupGuide } from "@/lib/help-guides/setup-guides";
 import { HELP_GUIDES_HOME_HREF, HELP_GUIDES_TITLE } from "@/lib/help-guides/areas";
+import { LEGACY_SETUP_GUIDE_REDIRECTS } from "@/lib/setup-hub/help-crosswalk";
 import { getPublishedArticleBySlug } from "@/lib/success-library/service";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const guide = getSetupGuide(slug);
-  if (guide) return { title: `${guide.title} — ${HELP_GUIDES_TITLE}` };
+  const legacy = LEGACY_SETUP_GUIDE_REDIRECTS[slug];
+  if (legacy) {
+    const article = await getPublishedArticleBySlug(legacy);
+    return { title: article ? `${article.title} — ${HELP_GUIDES_TITLE}` : HELP_GUIDES_TITLE };
+  }
   const article = await getPublishedArticleBySlug(slug);
   return { title: article ? `${article.title} — ${HELP_GUIDES_TITLE}` : HELP_GUIDES_TITLE };
 }
@@ -72,8 +74,12 @@ function Section({ title, body }: { title: string; body: string }) {
 
 export default async function HelpGuideArticlePage({ params }: Props) {
   const { slug } = await params;
-  const guide = getSetupGuide(slug);
-  if (guide) return <IntegrationSetupGuideView guide={guide} />;
+
+  // Retired Setup Guides → published Help & Guides articles (Help IA is closed).
+  const legacyTarget = LEGACY_SETUP_GUIDE_REDIRECTS[slug];
+  if (legacyTarget) {
+    redirect(`/help/${legacyTarget}`);
+  }
 
   const article = await getPublishedArticleBySlug(slug);
   if (!article) notFound();

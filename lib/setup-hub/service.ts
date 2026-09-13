@@ -9,7 +9,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/setup-hub/repository";
 import { CHANNEL_HAS_VERIFICATION } from "@/lib/setup-hub/types";
-import type { LeadCaptureChannelKey, LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
+import type { BringYourBusinessPath, LeadCaptureChannelKey, LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 async function withVenue<T>(fn: (client: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>): Promise<T | null> {
@@ -99,8 +99,12 @@ export async function markStageReviewed(
 }
 
 export async function setBringYourBusinessManual(): Promise<{ ok: boolean }> {
+  return setBringYourBusinessPath("skipped");
+}
+
+export async function setBringYourBusinessPath(path: BringYourBusinessPath): Promise<{ ok: boolean }> {
   const result = await withVenue(async (client, venueId) => {
-    await repo.setBringYourBusinessManual(client, venueId);
+    await repo.setBringYourBusinessPath(client, venueId, path);
     return true;
   });
   return { ok: result === true };
