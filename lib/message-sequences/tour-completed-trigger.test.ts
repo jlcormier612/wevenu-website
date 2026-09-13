@@ -47,7 +47,7 @@ describe("Tour Completed does not alter existing triggers/exits", () => {
     assert.ok(values.includes("lead_created"));
     assert.ok(values.includes("lead_stage_changed"));
     assert.ok(values.includes("tour_completed"));
-    assert.equal(values.length, 3);
+    assert.equal(values.length, 8);
   });
 
   it("tour_completed needs no stage config (unlike lead_stage_changed)", () => {

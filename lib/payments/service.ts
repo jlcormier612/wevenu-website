@@ -490,19 +490,22 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       await completeFinalPaymentTasksBoundToLine(supabase, venueId, itemId);
     }
 
-    void recordEngagementEvent({
-      venueId,
-      eventType: "invoice.paid",
-      actorType: "venue_user",
-      entityType: "payment_line_item",
-      entityId:  itemId,
-    });
-
-    // Commercial Booked → stamp events.booked_at when agreement + deposit are both done.
+    // Payment.Received → Client Automations + commercial booked stamp.
     {
       const { data: scheduleClient } = await supabase.from("payment_schedules")
         .select("client_id, event_id").eq("id", scheduleId)
         .maybeSingle<{ client_id: string | null; event_id: string | null }>();
+      const { emitPlatformEventWithClient } = await import("@/lib/platform-events/service");
+      await emitPlatformEventWithClient(supabase, {
+        eventType: "Payment.Received",
+        sourceFeature: "payments",
+        entityType: "payment_line_item",
+        entityId: itemId,
+        venueId,
+        clientId: scheduleClient?.client_id ?? null,
+        actor: { type: "staff", id: null, name: null },
+        payload: { scheduleId, eventId: scheduleClient?.event_id ?? sch?.event_id ?? null },
+      });
       if (scheduleClient?.client_id) {
         const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
         await maybeStampCommercialBookedAt(supabase, venueId, {
@@ -511,6 +514,14 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
         });
       }
     }
+
+    void recordEngagementEvent({
+      venueId,
+      eventType: "invoice.paid",
+      actorType: "venue_user",
+      entityType: "payment_line_item",
+      entityId:  itemId,
+    });
 
     // Final Payment obligation Luv (Impl 7) — typed final line paid once.
     // Distinct from paid-in-full final_payment_received below.

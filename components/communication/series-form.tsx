@@ -140,15 +140,27 @@ export function SeriesForm({
           <Select
             value={input.triggerType ?? NO_TRIGGER}
             onValueChange={(v) => {
-              set("triggerType", v === NO_TRIGGER ? null : (v as MessageSequenceInput["triggerType"]));
+              const next = v === NO_TRIGGER ? null : (v as MessageSequenceInput["triggerType"]);
+              set("triggerType", next);
               if (v !== "lead_stage_changed") set("triggerStage", null);
+              if (next && !["lead_created", "lead_stage_changed", "tour_completed"].includes(next)) {
+                set("updatePipelineOnEnroll", false);
+              }
             }}
-            items={[{ value: NO_TRIGGER, label: "Manual only — I'll add people myself" }, ...SEQUENCE_TRIGGER_TYPES]}
+            items={[
+              { value: NO_TRIGGER, label: "Manual only — I'll add people myself" },
+              ...SEQUENCE_TRIGGER_TYPES.map((t) => ({ value: t.value, label: t.label })),
+            ]}
           >
             <SelectTrigger id="strig" className="h-9 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NO_TRIGGER}>Manual only — I&apos;ll add people myself</SelectItem>
-              {SEQUENCE_TRIGGER_TYPES.map((t) => (
+              <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Sales</p>
+              {SEQUENCE_TRIGGER_TYPES.filter((t) => t.audience === "sales").map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+              <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Client</p>
+              {SEQUENCE_TRIGGER_TYPES.filter((t) => t.audience === "client").map((t) => (
                 <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
               ))}
             </SelectContent>
@@ -175,6 +187,7 @@ export function SeriesForm({
           </div>
         )}
 
+        {(!input.triggerType || ["lead_created", "lead_stage_changed", "tour_completed"].includes(input.triggerType)) && (
         <label className="flex max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card/40 px-3 py-2.5">
           <input
             type="checkbox"
@@ -192,6 +205,7 @@ export function SeriesForm({
             </span>
           </span>
         </label>
+        )}
       </section>
 
       <section className="space-y-3">

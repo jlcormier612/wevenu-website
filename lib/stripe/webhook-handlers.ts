@@ -103,6 +103,20 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
     await completeFinalPaymentTasksBoundToLine(admin as any, venueId, itemId);
   }
 
+  {
+    const { emitPlatformEventWithClient } = await import("@/lib/platform-events/service");
+    await emitPlatformEventWithClient(admin, {
+      eventType: "Payment.Received",
+      sourceFeature: "payments",
+      entityType: "payment_line_item",
+      entityId: itemId,
+      venueId,
+      clientId: clientId ?? null,
+      actor: { type: "client", id: clientId ?? null, name: null },
+      payload: { scheduleId, eventId: eventId ?? null, source: "stripe" },
+    });
+  }
+
   // Final Payment obligation Luv (Impl 7) — distinct from paid-in-full below.
   if (eventId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

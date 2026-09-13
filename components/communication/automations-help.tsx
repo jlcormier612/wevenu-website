@@ -59,7 +59,7 @@ export function AutomationsHelp({ className }: { className?: string }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-heading">How automations work</p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Automations help you stay in touch with leads and clients without having to remember every follow-up.
+            Automations are automatic relationship messages — when something happens, Hello to Cheers can react for you.
             {!open && " Open for a short guide."}
           </p>
         </div>
@@ -77,15 +77,26 @@ export function AutomationsHelp({ className }: { className?: string }) {
               An automation is a simple follow-up plan: when something happens (or when you add someone),
               Hello to Cheers sends messages for you on a schedule you choose.
             </p>
+            <p>
+              Automations do not create tasks, unlock planning work, or replace your Calendar, Requests, or Inbox.
+            </p>
           </HelpSection>
 
-          <HelpSection title="How it starts">
-            <p>An automation can start when:</p>
+          <HelpSection title="Sales — keep leads moving">
             <ul className="list-disc space-y-1 pl-5">
               <li>A new inquiry comes in</li>
               <li>A lead reaches a sales stage you choose</li>
               <li>A tour is marked completed</li>
-              <li>Or only when you add someone yourself</li>
+            </ul>
+          </HelpSection>
+
+          <HelpSection title="Client — keep the relationship moving">
+            <ul className="list-disc space-y-1 pl-5">
+              <li>A contract is fully signed</li>
+              <li>A payment is received</li>
+              <li>A questionnaire is submitted</li>
+              <li>Final guest count is submitted</li>
+              <li>An event is completed (thank-you / review ask)</li>
             </ul>
           </HelpSection>
 
@@ -100,19 +111,12 @@ export function AutomationsHelp({ className }: { className?: string }) {
           <HelpSection title="What causes it to stop">
             <p>For an individual person, messages stop when they:</p>
             <ul className="list-disc space-y-1 pl-5">
-              <li>Book</li>
+              <li>Book (for sales automations)</li>
               <li>Are marked Lost</li>
               <li>Reply to a message</li>
               <li>Finish every step</li>
               <li>Or you stop them</li>
             </ul>
-          </HelpSection>
-
-          <HelpSection title="One person at a time">
-            <p>
-              People progress independently. You can pause or stop one person without pausing the
-              whole automation for everyone else.
-            </p>
           </HelpSection>
 
           <HelpSection title="Pause vs stop">
@@ -130,37 +134,15 @@ export function AutomationsHelp({ className }: { className?: string }) {
             </p>
           </HelpSection>
 
-          <HelpSection title="Useful examples">
-            <ul className="list-disc space-y-1 pl-5">
-              <li>
-                <span className="font-medium text-heading">New inquiry follow-up</span> — welcome
-                right away, then a gentle check-in a few days later
-              </li>
-              <li>
-                <span className="font-medium text-heading">Tour follow-up</span> — thank them after a
-                completed tour and answer common next questions
-              </li>
-              <li>
-                <span className="font-medium text-heading">Proposal follow-up</span> — check in after
-                a proposal goes out if they haven&apos;t replied
-              </li>
-            </ul>
-          </HelpSection>
-
           <HelpSection title="What stays outside Automations">
             <p>
-              Core product moments — questionnaires completing, payments updating, contracts
-              becoming booked — already run themselves. You do not configure those here.
+              Task reminders, task completion, and venue notifications for verified submissions
+              (questionnaires, guest count, contracts, payments, and similar) are built-in system
+              behavior. You do not need an Automation to get those alerts — use Settings → Notifications.
             </p>
             <p>
-              After an event ends, asking for a review and referral lives under{" "}
-              <span className="font-medium text-heading">Settings → Communications</span>. Turn it
-              on when you&apos;re ready; it is not a separate Automation on this list.
-            </p>
-            <p>
-              A personal thank-you or anniversary note is usually a Task (or something you write
-              yourself) — Automations are for repeatable relationship follow-up, not one-off
-              personal outreach.
+              Anniversary follow-up is not offered as an Automation trigger yet — Hello to Cheers
+              does not currently emit a trustworthy anniversary domain event for venues.
             </p>
           </HelpSection>
         </div>

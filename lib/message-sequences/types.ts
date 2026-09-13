@@ -6,7 +6,15 @@
 import type { ScheduledMessageChannel } from "@/lib/scheduled-messages/types";
 
 export type SequenceStatus = "active" | "paused";
-export type SequenceTriggerType = "lead_created" | "lead_stage_changed" | "tour_completed";
+export type SequenceTriggerType =
+  | "lead_created"
+  | "lead_stage_changed"
+  | "tour_completed"
+  | "contract_signed"
+  | "payment_received"
+  | "questionnaire_submitted"
+  | "guest_count_submitted"
+  | "event_completed";
 export type SequenceEnrollmentStatus =
   | "active"
   | "completed"

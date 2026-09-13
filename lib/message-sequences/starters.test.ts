@@ -9,16 +9,17 @@ import { describe, it } from "node:test";
 import { STARTER_SEQUENCE_MASTERS } from "@/lib/message-sequences/starters";
 
 describe("starter Automations (launch set)", () => {
-  it("includes New Inquiry, Tour Follow-Up, and Proposal Follow-Up", () => {
+  it("includes New Inquiry, Tour Follow-Up, Proposal Follow-Up, and Post-Event Thank You", () => {
     const keys = STARTER_SEQUENCE_MASTERS.map((m) => m.key);
-    assert.deepEqual(keys, ["SEQ-01", "SEQ-02", "SEQ-03"]);
+    assert.deepEqual(keys, ["SEQ-01", "SEQ-02", "SEQ-03", "SEQ-04"]);
   });
 
-  it("SEQ-01 is active by default; SEQ-02 and SEQ-03 start paused (safe opt-in)", () => {
+  it("SEQ-01 is active by default; SEQ-02/03/04 start paused (safe opt-in)", () => {
     const byKey = Object.fromEntries(STARTER_SEQUENCE_MASTERS.map((m) => [m.key, m]));
     assert.equal(byKey["SEQ-01"]!.initialStatus, "active");
     assert.equal(byKey["SEQ-02"]!.initialStatus, "paused");
     assert.equal(byKey["SEQ-03"]!.initialStatus, "paused");
+    assert.equal(byKey["SEQ-04"]!.initialStatus, "paused");
   });
 
   it("Tour Follow-Up uses tour_completed + MSG-04", () => {
@@ -48,9 +49,10 @@ describe("Automations product boundaries (architecture)", () => {
     assert.match(src, /isEnrollmentSequencePaused/);
   });
 
-  it("payment received auto-completes tasks without message-sequence enrollment", () => {
+  it("payment received auto-completes tasks without message-sequence enrollment at the payment call site", () => {
     const src = readFileSync(path.join(process.cwd(), "lib/payments/service.ts"), "utf8");
     assert.match(src, /triggerAutoComplete/);
+    assert.match(src, /Payment\.Received/);
     assert.doesNotMatch(src, /triggerSequencesForRelationship/);
   });
 
@@ -60,13 +62,15 @@ describe("Automations product boundaries (architecture)", () => {
     assert.doesNotMatch(src, /triggerSequencesForRelationship/);
   });
 
-  it("post-event review nudge stays in Settings automation rules, not message_sequences starters", () => {
-    const keys = STARTER_SEQUENCE_MASTERS.map((m) => m.key);
-    assert.ok(!keys.includes("SEQ-EVENT-COMPLETE" as never));
+  it("post-event thank you is SEQ-04 under Automations; Settings only toggles it", () => {
+    const seq04 = STARTER_SEQUENCE_MASTERS.find((m) => m.key === "SEQ-04");
+    assert.ok(seq04);
+    assert.equal(seq04.triggerType, "event_completed");
     const settings = readFileSync(
       path.join(process.cwd(), "components/settings/review-referral-nudge-section.tsx"),
       "utf8",
     );
-    assert.match(settings, /Review & referral nudge/);
+    assert.match(settings, /Post-event thank you|Automations/);
+    assert.match(settings, /\/communication\/series/);
   });
 });

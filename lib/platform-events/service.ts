@@ -16,10 +16,23 @@
 import { createClient } from "@/integrations/supabase/server";
 import type { PlatformEventInput } from "./types";
 
-export async function emitPlatformEvent(input: PlatformEventInput): Promise<void> {
+type EmitClient = {
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ error: { message: string } | null }>;
+};
+
+/**
+ * Emit via an already-resolved client (session or service-role).
+ * Never throws — Platform Events must not break the caller's transaction.
+ */
+export async function emitPlatformEventWithClient(
+  client: EmitClient,
+  input: PlatformEventInput,
+): Promise<void> {
   try {
-    const supabase = await createClient();
-    await supabase.rpc("emit_platform_event", {
+    await client.rpc("emit_platform_event", {
       p_event_type: input.eventType,
       p_source_feature: input.sourceFeature,
       p_entity_type: input.entityType,
@@ -31,6 +44,15 @@ export async function emitPlatformEvent(input: PlatformEventInput): Promise<void
       p_actor_name: input.actor?.name ?? null,
       p_payload: input.payload ?? {},
     });
+  } catch {
+    // Platform Events are infrastructure — never break the caller.
+  }
+}
+
+export async function emitPlatformEvent(input: PlatformEventInput): Promise<void> {
+  try {
+    const supabase = await createClient();
+    await emitPlatformEventWithClient(supabase, input);
   } catch {
     // Platform Events are infrastructure — never break the caller.
   }

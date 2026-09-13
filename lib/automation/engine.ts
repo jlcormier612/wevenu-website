@@ -28,6 +28,10 @@ import { ACTION_REGISTRY } from "./actions";
 import { applyDefaultPlaybooksForConfirmedBookings, type SystemGuaranteeResult } from "./system-guarantees";
 import type { AutomationCondition, AutomationExecutionStatus } from "./types";
 import type { PlatformEvent } from "@/lib/platform-events/types";
+import {
+  processSequenceEnrollmentsFromPlatformEvents,
+  type PlatformEnrollmentResult,
+} from "@/lib/message-sequences/process-platform-enrollments";
 
 const BATCH_SIZE = 50;
 
@@ -50,6 +54,8 @@ export type ProcessResult = {
   // because a venue configured it or because the platform guarantees it —
   // exactly the distinction this pass exists to keep legible.
   systemGuarantees: SystemGuaranteeResult;
+  /** Client Automations enrolled from Platform Events (message_sequences). */
+  sequenceEnrollments: PlatformEnrollmentResult;
 };
 
 type RuleRow = {
@@ -81,62 +87,66 @@ export async function processAutomationEvents(): Promise<ProcessResult> {
     // playbooks. This slot stays on the sweep result so cron logs and
     // ProcessResult stay stable; the function is a no-op.
     systemGuarantees: await applyDefaultPlaybooksForConfirmedBookings(),
+    sequenceEnrollments: { scanned: 0, enrolled: 0, skipped: 0, failed: 0 },
   };
 
   const { data: rules } = await client.from("automation_rules").select("*").eq("enabled", true);
-  if (!rules || rules.length === 0) return result;
+  if (rules && rules.length > 0) {
+    for (const rule of rules as RuleRow[]) {
+      const { data: events } = await client
+        .from("platform_events")
+        .select("*")
+        .eq("event_type", rule.trigger_event_type)
+        .eq("venue_id", rule.venue_id)
+        .order("occurred_at", { ascending: true })
+        .limit(BATCH_SIZE);
+      if (!events || events.length === 0) continue;
 
-  for (const rule of rules as RuleRow[]) {
-    const { data: events } = await client
-      .from("platform_events")
-      .select("*")
-      .eq("event_type", rule.trigger_event_type)
-      .eq("venue_id", rule.venue_id)
-      .order("occurred_at", { ascending: true })
-      .limit(BATCH_SIZE);
-    if (!events || events.length === 0) continue;
+      for (const row of events as PlatformEventRow[]) {
+        const { data: existing } = await client
+          .from("automation_executions")
+          .select("id")
+          .eq("rule_id", rule.id)
+          .eq("platform_event_id", row.id)
+          .maybeSingle();
+        if (existing) continue; // already evaluated for this rule — idempotency guard
 
-    for (const row of events as PlatformEventRow[]) {
-      const { data: existing } = await client
-        .from("automation_executions")
-        .select("id")
-        .eq("rule_id", rule.id)
-        .eq("platform_event_id", row.id)
-        .maybeSingle();
-      if (existing) continue; // already evaluated for this rule — idempotency guard
+        result.evaluated++;
+        const event = toPlatformEvent(row);
+        const conditionsMet = evaluateConditions(event, rule.conditions ?? []);
 
-      result.evaluated++;
-      const event = toPlatformEvent(row);
-      const conditionsMet = evaluateConditions(event, rule.conditions ?? []);
+        if (!conditionsMet) {
+          await recordExecution(client, rule.id, row.id, "conditions_not_met", null);
+          result.skipped++;
+          continue;
+        }
 
-      if (!conditionsMet) {
-        await recordExecution(client, rule.id, row.id, "conditions_not_met", null);
-        result.skipped++;
-        continue;
-      }
+        const handler = ACTION_REGISTRY[rule.action_type];
+        if (!handler) {
+          await recordExecution(client, rule.id, row.id, "failed", `Unknown action type: ${rule.action_type}`);
+          result.failed++;
+          continue;
+        }
 
-      const handler = ACTION_REGISTRY[rule.action_type];
-      if (!handler) {
-        await recordExecution(client, rule.id, row.id, "failed", `Unknown action type: ${rule.action_type}`);
-        result.failed++;
-        continue;
-      }
-
-      try {
-        const actionResult = await handler(rule.action_params ?? {}, event);
-        if (actionResult.ok) {
-          await recordExecution(client, rule.id, row.id, "success", null);
-          result.executed++;
-        } else {
-          await recordExecution(client, rule.id, row.id, "failed", actionResult.error);
+        try {
+          const actionResult = await handler(rule.action_params ?? {}, event);
+          if (actionResult.ok) {
+            await recordExecution(client, rule.id, row.id, "success", null);
+            result.executed++;
+          } else {
+            await recordExecution(client, rule.id, row.id, "failed", actionResult.error);
+            result.failed++;
+          }
+        } catch (e) {
+          await recordExecution(client, rule.id, row.id, "failed", e instanceof Error ? e.message : "Unknown error");
           result.failed++;
         }
-      } catch (e) {
-        await recordExecution(client, rule.id, row.id, "failed", e instanceof Error ? e.message : "Unknown error");
-        result.failed++;
       }
     }
   }
+
+  // Client Automations (message_sequences) consume Platform Events directly.
+  result.sequenceEnrollments = await processSequenceEnrollmentsFromPlatformEvents();
 
   return result;
 }
