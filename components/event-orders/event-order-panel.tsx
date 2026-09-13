@@ -289,6 +289,7 @@ export function EventOrderPanel({
             )}
             <p className="max-w-md text-sm text-muted-foreground">
               Optional — use when you need a detailed delivery list. Package-only events can skip this.
+              Templates copy section structure only — not prices or commitments. Add Offerings on the live Event Order.
             </p>
             <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
@@ -304,12 +305,19 @@ export function EventOrderPanel({
                   <Select
                     value={templateId}
                     onValueChange={setTemplateId}
-                    items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
+                    items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({
+                      value: t.id,
+                      label: t.sourceMasterKey ? `${t.name} (structure)` : t.name,
+                    }))]}
                   >
                     <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="blank">Choose a template…</SelectItem>
-                      {templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                      {templates.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.sourceMasterKey ? `${t.name} (structure)` : t.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}

@@ -1,15 +1,12 @@
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { setEventOrderEnabledAction } from "@/app/admin/actions";
 
 /**
- * HQ-only per-venue Event Orders rollout control.
- * Does not create Event Orders or mutate existing ones — only flips
- * venues.event_order_enabled for this venue.
+ * Event Order is always available (optional by use).
+ * venues.event_order_enabled is retained but no longer a product gate.
+ * This section is informational only — do not reintroduce UI gating here.
  */
 export function EventOrderEnableSection({
-  venueId,
-  enabled,
+  enabled: _enabled,
 }: {
   venueId: string;
   enabled: boolean;
@@ -19,32 +16,14 @@ export function EventOrderEnableSection({
       <CardHeader className="pb-3">
         <h2 className="font-heading text-sm font-semibold text-heading">Event Orders</h2>
         <p className="text-xs text-muted-foreground">
-          Internal rollout control. Enabling shows the Event Order tab on this venue&apos;s event workspace.
-          Disabling hides the tab; existing Event Order data is not deleted.
+          Always available on the event workspace. Optional by use — not a feature flag.
+          Package, Invoice, and Client Planning remain the commercial and planning sources of truth.
         </p>
       </CardHeader>
-      <CardContent className="pt-0 flex flex-wrap items-center gap-3">
+      <CardContent className="pt-0">
         <p className="text-sm text-foreground">
-          Status:{" "}
-          <span className="font-medium">
-            {enabled ? "Enabled" : "Disabled"}
-          </span>
+          Status: <span className="font-medium">Available</span>
         </p>
-        {enabled ? (
-          <form action={setEventOrderEnabledAction.bind(null, venueId)}>
-            <input type="hidden" name="enabled" value="false" />
-            <Button type="submit" variant="outline" size="sm">
-              Disable Event Orders
-            </Button>
-          </form>
-        ) : (
-          <form action={setEventOrderEnabledAction.bind(null, venueId)}>
-            <input type="hidden" name="enabled" value="true" />
-            <Button type="submit" size="sm">
-              Enable Event Orders
-            </Button>
-          </form>
-        )}
       </CardContent>
     </Card>
   );

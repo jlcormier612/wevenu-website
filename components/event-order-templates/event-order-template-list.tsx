@@ -327,6 +327,7 @@ export function EventOrderTemplateList({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">
           Editing a template never changes an Event Order already on a booking, and never shares with the client.
+          Starters are delivery structure only — sections to fill with Offerings, not priced commitments.
         </p>
         <div className="flex items-center gap-2">
           <StarterMenu missingKeys={missingStarterKeys} />
