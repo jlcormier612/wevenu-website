@@ -106,7 +106,9 @@ export async function createVendor(input: VendorInput): Promise<CreateVendorResu
   const errors = validateVendorInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    const vendorId = await repo.insertVendor(supabase, venueId, input);
+    // Dedup before minting a global vendors row: reactivate/reuse venue
+    // relationship, or attach to an existing global identity, else create.
+    const { vendorId } = await repo.resolveOrCreateVendor(supabase, venueId, input);
     return { ok: true, vendorId } as CreateVendorResult;
   });
   return result as CreateVendorResult;
@@ -119,7 +121,7 @@ export async function createVendorForVenue(venueId: string, input: VendorInput):
   const errors = validateVendorInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const admin = createAdminClient();
-  const vendorId = await repo.insertVendor(admin, venueId, input);
+  const { vendorId } = await repo.resolveOrCreateVendor(admin, venueId, input);
   return { ok: true, vendorId };
 }
 

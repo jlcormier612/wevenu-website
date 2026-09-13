@@ -258,6 +258,134 @@ export async function findActiveDuplicateVendor(
   return data ? { id: data.vendor_id } : null;
 }
 
+/**
+ * Venue relationship match including inactive — used by manual create so we
+ * can reactivate a paused relationship instead of minting a second global
+ * vendor identity.
+ */
+export async function findVenueVendorRelationshipMatch(
+  client: DbClient, venueId: string, businessName: string, email: string,
+): Promise<{ vendorId: string; status: string } | null> {
+  const trimmedEmail = email.trim();
+  const trimmedName = businessName.trim();
+  if (trimmedEmail) {
+    const { data } = await client.from("venue_vendor_relationships")
+      .select("vendor_id, status, vendors!inner(email)")
+      .eq("venue_id", venueId)
+      .ilike("vendors.email", trimmedEmail)
+      .limit(1)
+      .maybeSingle<{ vendor_id: string; status: string }>();
+    if (data) return { vendorId: data.vendor_id, status: data.status };
+  }
+  if (trimmedName) {
+    const { data } = await client.from("venue_vendor_relationships")
+      .select("vendor_id, status, vendors!inner(business_name)")
+      .eq("venue_id", venueId)
+      .ilike("vendors.business_name", trimmedName)
+      .limit(1)
+      .maybeSingle<{ vendor_id: string; status: string }>();
+    if (data) return { vendorId: data.vendor_id, status: data.status };
+  }
+  return null;
+}
+
+/** Global vendor identity match (email preferred, then exact business name). */
+export async function findGlobalVendorIdentity(
+  client: DbClient, businessName: string, email: string,
+): Promise<{ id: string; isClaimed: boolean } | null> {
+  const trimmedEmail = email.trim();
+  if (trimmedEmail) {
+    const { data } = await client.from("vendors")
+      .select("id, is_claimed")
+      .ilike("email", trimmedEmail)
+      .limit(1)
+      .maybeSingle<{ id: string; is_claimed: boolean }>();
+    if (data) return { id: data.id, isClaimed: data.is_claimed };
+  }
+  const trimmedName = businessName.trim();
+  if (!trimmedName) return null;
+  const { data } = await client.from("vendors")
+    .select("id, is_claimed")
+    .ilike("business_name", trimmedName)
+    .limit(1)
+    .maybeSingle<{ id: string; is_claimed: boolean }>();
+  return data ? { id: data.id, isClaimed: data.is_claimed } : null;
+}
+
+async function upsertVenueRelationship(
+  client: DbClient, venueId: string, vendorId: string, input: VendorInput, status: "active" | "invited" = "active",
+): Promise<void> {
+  const { error } = await client.from("venue_vendor_relationships").upsert({
+    venue_id: venueId,
+    vendor_id: vendorId,
+    status,
+    preference_level: input.preferenceLevel || "standard",
+    is_required: input.isRequired === true,
+    is_in_house: input.isInHouse === true,
+    notes: input.notes.trim() || null,
+    special_pricing_note: input.specialPricingNote.trim() || null,
+  }, { onConflict: "venue_id,vendor_id" });
+  if (error) throw error;
+}
+
+/**
+ * Manual create + import-aligned dedup:
+ * - reuse an existing venue relationship (reactivate if inactive)
+ * - else attach a venue relationship to an existing global vendor identity
+ * - else create a new global vendor + relationship via create_vendor_atomic
+ * Never duplicates a global vendor row when identity already exists.
+ */
+export type ResolveVendorDecision =
+  | { action: "reuse_venue"; vendorId: string; reactivate: boolean }
+  | { action: "attach_global"; vendorId: string }
+  | { action: "create_new" };
+
+/** Pure decision tree for resolveOrCreateVendor — unit-tested without DB. */
+export function decideVendorResolve(
+  venueMatch: { vendorId: string; status: string } | null,
+  global: { id: string } | null,
+): ResolveVendorDecision {
+  if (venueMatch) {
+    return {
+      action: "reuse_venue",
+      vendorId: venueMatch.vendorId,
+      reactivate: venueMatch.status === "inactive",
+    };
+  }
+  if (global) {
+    return { action: "attach_global", vendorId: global.id };
+  }
+  return { action: "create_new" };
+}
+
+export async function resolveOrCreateVendor(
+  client: DbClient, venueId: string, input: VendorInput,
+): Promise<{ vendorId: string; reused: boolean }> {
+  const venueMatch = await findVenueVendorRelationshipMatch(
+    client, venueId, input.businessName, input.email,
+  );
+  const global = venueMatch
+    ? null
+    : await findGlobalVendorIdentity(client, input.businessName, input.email);
+  const decision = decideVendorResolve(venueMatch, global);
+
+  if (decision.action === "reuse_venue") {
+    if (decision.reactivate) {
+      await reactivateVendor(client, venueId, decision.vendorId);
+    }
+    await upsertVenueRelationship(client, venueId, decision.vendorId, input, "active");
+    return { vendorId: decision.vendorId, reused: true };
+  }
+
+  if (decision.action === "attach_global") {
+    await upsertVenueRelationship(client, venueId, decision.vendorId, input, "active");
+    return { vendorId: decision.vendorId, reused: true };
+  }
+
+  const vendorId = await insertVendor(client, venueId, input);
+  return { vendorId, reused: false };
+}
+
 export async function insertVendor(client: DbClient, venueId: string, input: VendorInput): Promise<string> {
   // The global vendor profile and the venue relationship used to be two
   // separate inserts — if the second failed, the first had already
