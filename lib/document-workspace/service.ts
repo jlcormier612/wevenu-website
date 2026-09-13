@@ -46,7 +46,6 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
       })),
     );
     return applyContractVersionLineage(docs, withFinal);
-    return applyContractVersionLineage(docs, withFinal);
   } catch (err) {
     console.error("[getVenueWorkspaceDocuments] lineage enrich failed", err);
     return docs;

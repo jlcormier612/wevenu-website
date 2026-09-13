@@ -39,9 +39,8 @@ const FIELD_KEY_TO_QFIELD: Record<ConfigurableField, keyof QFields> = {
   first_dance_song: "firstDanceSong", parent_dances: "parentDances", special_requests: "specialRequests",
 };
 
-// "reviewed" is a real value in the status column but no code path ever
-// sets it (BA2 finding) — treated identically to "submitted" here, same as
-// every other real consumer in this codebase already does.
+// Lifecycle uses complete / changes_requested / resubmitted. "reviewed" remains
+// only as a read-compat alias for any pre-migration rows (migrated → complete).
 const QUESTIONNAIRE_STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
   sent: "Sent",
