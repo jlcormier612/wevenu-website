@@ -195,7 +195,7 @@ export type CommitActiveCommitmentOptions = {
    * Never set in production Migration Center commits.
    */
   failAfter?: "event_order" | "invoice" | "schedule" | "payments" | "contract" | "document";
-  /** Optional actor for lifecycle booking history when Mark as already booked. */
+  /** Optional actor for lifecycle booking history on imported booked clients. */
   actorUserId?: string | null;
 };
 
@@ -233,16 +233,16 @@ export async function commitActiveCommitment(
     await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
   }
 
-  async function recordImportLifecycleIfMarked(): Promise<void> {
-    if (!n.markAsAlreadyBooked) return;
+  async function recordImportLifecycle(): Promise<void> {
     const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
+    const knownDate = n.lifecycleBookedAt?.trim() || null;
     const recorded = await recordLifecycleBooking(client, {
       venueId,
       clientId: resolvedClientId,
       origin: "import",
-      occurredAt: n.lifecycleBookedAt?.trim() || null,
+      occurredAt: knownDate,
       actorUserId: opts?.actorUserId ?? null,
-      metadata: { source: "active_commitment_mark_as_already_booked" },
+      metadata: { source: "active_commitment_import", dateKnown: !!knownDate },
     });
     if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
   }
@@ -265,7 +265,7 @@ export async function commitActiveCommitment(
         .eq("execution_origin", "external").eq("status", "signed").limit(1)
         .maybeSingle<{ id: string }>();
       // Lifecycle mark is independent of financial idempotency — safe to retry.
-      await recordImportLifecycleIfMarked();
+      await recordImportLifecycle();
       return {
         ok: true,
         eventId: resolved.eventId,
@@ -494,7 +494,7 @@ export async function commitActiveCommitment(
       if (!shared.ok) throw new Error(shared.message);
     }
 
-    await recordImportLifecycleIfMarked();
+    await recordImportLifecycle();
 
     return {
       ok: true,

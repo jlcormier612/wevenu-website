@@ -7,7 +7,6 @@ import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-syste
 import { TrendChart, type TrendPoint } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
-import { getCanonicalBookings } from "@/lib/metrics/booking";
 import {
   getLifecycleBookingSourceCoverage,
   getLifecycleBookingsByAcquisitionSource,
@@ -15,8 +14,8 @@ import {
 } from "@/lib/metrics/attribution";
 import {
   getCurrentlyBookedPipelineCount,
-  getLifecycleBookingsByOrigin,
   getLifecycleBookingsWithNames,
+  getUndatedLifecycleBookingCount,
 } from "@/lib/metrics/lifecycle-booking";
 import { getAverageBookingValue, getGrossBookedRevenue } from "@/lib/metrics/revenue";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
@@ -63,16 +62,13 @@ export default async function BookingsReportPage({ searchParams }: Props) {
   const prevWindow = { from: range.previousFrom, to: range.previousTo };
 
   const [
-    bookings, prevBookings, byOrigin,
-    financiallyCommitted, prevFinanciallyCommitted,
+    bookings, prevBookings,
     avgValue, prevAvgValue, grossRevenue, prevGrossRevenue,
     health, currentlyBooked, bookingCoverage, bookingsBySource, timeToBook,
+    undatedBookings,
   ] = await Promise.all([
     getLifecycleBookingsWithNames(window),
     getLifecycleBookingsWithNames(prevWindow),
-    getLifecycleBookingsByOrigin(window),
-    getCanonicalBookings(window),
-    getCanonicalBookings(prevWindow),
     getAverageBookingValue(window),
     getAverageBookingValue(prevWindow),
     getGrossBookedRevenue(window),
@@ -82,6 +78,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getLifecycleBookingSourceCoverage(window),
     getLifecycleBookingsByAcquisitionSource(window),
     getMedianTimeToBookDays(window),
+    getUndatedLifecycleBookingCount(),
   ]);
   const trend = lifecycleToTrend(bookings, window);
   const needsAttention = (health?.clients ?? []).filter((c) => c.health === "at_risk" || c.health === "needs_attention").slice(0, 8);
@@ -90,7 +87,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     <div className="space-y-6">
       <ReportHeader
         title="Bookings"
-        description="Businesses you marked booked — by lifecycle date. Financial commitment is separate."
+        description="Relationships you marked booked, dated when you marked them booked. Money lives on Revenue."
       />
       <DateRangeControl current={range.preset} label={range.label} />
 
@@ -101,45 +98,39 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           previousValue={prevBookings.length}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
-          sub="First lifecycle bookings in this period."
+          sub="First time you marked them booked in this period. Later Lost does not remove them."
         />
         <ComparisonCard
-          label="Financially Committed"
-          value={financiallyCommitted.length}
-          previousValue={prevFinanciallyCommitted.length}
-          comparisonLabel={range.comparisonLabel}
-          polarity="up-good"
-          sub="Signed contract and first scheduled payment collected."
-          href="/reporting/revenue"
-        />
-        <ComparisonCard
-          label="Gross Booked Revenue"
+          label="Contracted"
           value={grossRevenue ?? 0}
           previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
           format={formatMoney}
-          sub="Contracted value among Financially Committed clients."
+          sub="Signed contract value with a first payment collected — money, not this Booking count."
           href="/reporting/revenue"
         />
         <ComparisonCard
-          label="Avg. Committed Value"
+          label="Avg. contracted value"
           value={avgValue ?? 0}
           previousValue={prevAvgValue}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
           format={formatMoney}
-          sub="Among Financially Committed — not lifecycle count."
+          sub="Among clients with signed value and a first payment — not Booking count."
         />
       </ComparisonCardGrid>
 
       <p className="text-xs text-muted-foreground">
-        Currently Booked on the pipeline right now: {currentlyBooked}. Period Bookings above stay in history even if a lead later moves to Lost.
+        Currently Booked on the pipeline right now: {currentlyBooked}. A Booking stays in this period even if you later mark that relationship Lost.
+        {undatedBookings > 0
+          ? ` ${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count.`
+          : ""}
         {" "}
-        {bookingCoverage.percent}% of lifecycle bookings in this period have a known acquisition source
+        {bookingCoverage.percent}% of Bookings in this period have a known acquisition source
         ({bookingCoverage.known} of {bookingCoverage.total}).
         {timeToBook.sampleSize > 0 && timeToBook.medianDays != null
-          ? ` Median time to book (lead created → first lifecycle booking): ${timeToBook.medianDays} days.`
+          ? ` Median time to book (lead created → first time you marked them booked): ${timeToBook.medianDays} days.`
           : ""}
       </p>
 
@@ -168,25 +159,8 @@ export default async function BookingsReportPage({ searchParams }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Bookings by origin</CardTitle>
-          <CardDescription>Pipeline, Direct Add, and explicitly imported bookings stay distinct.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="divide-y divide-border">
-            {byOrigin.map((o) => (
-              <div key={o.origin} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-foreground">{o.label}</span>
-                <span className="tabular-nums font-medium text-heading">{o.count}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="text-base">Bookings over time</CardTitle>
-          <CardDescription>Based on the first lifecycle booking date — not contract or payment dates.</CardDescription>
+          <CardDescription>Based on when you first marked them booked — not contract or payment dates.</CardDescription>
         </CardHeader>
         <CardContent>
           {bookings.length === 0 ? (
@@ -220,17 +194,6 @@ export default async function BookingsReportPage({ searchParams }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Bookings by coordinator</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Coming later — there isn&apos;t yet a way to record which staff member is responsible for a booking.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="text-base">Bookings</CardTitle>
           <CardDescription>Click through when a client workspace exists.</CardDescription>
         </CardHeader>
@@ -243,7 +206,6 @@ export default async function BookingsReportPage({ searchParams }: Props) {
                 const href = b.clientId ? `/clients/${b.clientId}` : b.leadId ? `/leads/${b.leadId}` : null;
                 const meta = (
                   <span className="flex items-center gap-3 text-muted-foreground">
-                    <span className="text-xs">{b.originLabel}</span>
                     <span className="text-xs">{reportingSourceDisplayLabel(b.source)}</span>
                     <span className="tabular-nums">{new Date(b.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                   </span>

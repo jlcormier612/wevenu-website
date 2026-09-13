@@ -7,7 +7,6 @@ import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EvidenceCountRow } from "@/lib/attribution/evidence";
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
-import { getCanonicalBookings } from "@/lib/metrics/booking";
 import { getConversionFunnel } from "@/lib/metrics/conversion";
 import {
   getGrossBookedRevenueByAcquisitionSource,
@@ -26,8 +25,8 @@ import {
 import {
   getCurrentlyBookedPipelineCount,
   getLeadCohortLifecycleBookingStats,
-  getLifecycleBookingsByOrigin,
   getLifecycleBookingsWithNames,
+  getUndatedLifecycleBookingCount,
 } from "@/lib/metrics/lifecycle-booking";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import { getFunnelLeadsRaw, getLeadsTrend, type FunnelStageKey } from "@/lib/reporting/service";
@@ -42,8 +41,8 @@ const FINANCIAL_FUNNEL: { key: FunnelStageKey; label: string; hint: string }[] =
   { key: "proposalSent", label: "Proposals sent", hint: "Reached proposal stage" },
   { key: "contractSent", label: "Contracts sent", hint: "Contract sent for signature" },
   { key: "contractSigned", label: "Contracts signed", hint: "Contract signed" },
-  { key: "depositReceived", label: "First payment collected", hint: "Lowest-sort-order schedule line paid" },
-  { key: "booked", label: "Financially Committed", hint: "Signed contract and first scheduled payment collected" },
+  { key: "depositReceived", label: "First payment collected", hint: "First scheduled payment collected" },
+  { key: "booked", label: "Signed + first payment", hint: "Has a signed contract and a first collected payment — money progress, not a Booking count" },
 ];
 
 function hrefWith(params: Record<string, string | string[] | undefined>, overrides: Record<string, string | null>): string {
@@ -82,19 +81,18 @@ export default async function SalesReportPage({ searchParams }: Props) {
   const [detailKind, detailValue] = detail ? detail.split(":") : [null, null];
 
   const [
-    funnel, leads, cohort, periodBookings, byOrigin,
-    financiallyCommitted, grossRevenue, paymentsCollected,
+    funnel, leads, cohort, periodBookings,
+    grossRevenue, paymentsCollected,
     currentlyBooked, funnelLeads,
     leadCoverage, bookingCoverage, toursBySource, bookingsBySource,
     timeToBook, revenueBySource,
     sourceCohort, timeToBookBySource, eventTypeCohort, topOfFunnelEvidence,
+    undatedBookings,
   ] = await Promise.all([
     getConversionFunnel(window),
     getLeadsTrend(window),
     getLeadCohortLifecycleBookingStats(window),
     getLifecycleBookingsWithNames(window),
-    getLifecycleBookingsByOrigin(window),
-    getCanonicalBookings(window),
     getGrossBookedRevenue(window),
     getPaymentsCollected(window),
     getCurrentlyBookedPipelineCount(),
@@ -109,6 +107,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     getMedianTimeToBookByAcquisitionSource(window),
     getEventTypeCohortBreakdown(window),
     getLeadTopOfFunnelEvidence(window),
+    getUndatedLifecycleBookingCount(),
   ]);
 
   const counts = funnel?.counts;
@@ -119,25 +118,24 @@ export default async function SalesReportPage({ searchParams }: Props) {
     <div className="space-y-6">
       <ReportHeader
         title="Sales"
-        description="Sales-process detail: cohort performance and period activity. For the end-to-end inquiry→cash story, see the Business Funnel on Overview."
+        description="Two different questions: what happened during these dates, and what happened to the leads that came in during these dates."
       />
       <DateRangeControl current={range.preset} label={range.label} />
       <p className="text-xs text-muted-foreground -mt-2">
         <Link href="/reporting" className="underline underline-offset-2 hover:text-foreground">
           Business Funnel (Overview)
         </Link>
-        {" — "}period Leads → Tours → Bookings → Financially Committed → cash, plus cohort Lead → Tour / Booking rates.
-        Bookings here mean lifecycle first booked; Financially Committed is the separate signed-contract + first-payment concept.
+        {" — "}the period vs. cohort story for the same dates.
       </p>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Cohort performance</CardTitle>
           <CardDescription>
-            Leads that entered during {range.label} (excluding cancelled and lost) — how they eventually performed.
-            Booking here means a lifecycle first booking (any later date) — not Financially Committed.
-            Same Lead → Booking cohort population as the Business Funnel on Overview.
-            Cohort rates below are period-entry outcomes; they are not period Tours ÷ period Bookings.
+            Leads that came in during {range.label} — including ones you later marked Lost.
+            Booking here means you marked them booked, even if that happened after this period.
+            Clients you added already booked are not in these rates.
+            These rates are not the same as Bookings that happened during this period.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -224,7 +222,8 @@ export default async function SalesReportPage({ searchParams }: Props) {
           <div>
             <p className="mb-2 text-sm font-medium text-heading">Financial progress of this cohort</p>
             <p className="mb-3 text-xs text-muted-foreground">
-              Same lead-created window. The last stage is Financially Committed (signed contract + first scheduled payment collected) — not Lifecycle Booking.
+              Same leads as above. These stages are money and paperwork progress — they are not Booking counts.
+              Proposal is the lead&apos;s current stage. Contract and payment counts are documents that actually exist.
             </p>
             {!counts || counts.inquiry === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">No leads have been recorded in this date range.</p>
@@ -321,12 +320,12 @@ export default async function SalesReportPage({ searchParams }: Props) {
           <CardTitle className="text-base">Period activity</CardTitle>
           <CardDescription>
             What happened during {range.label} — each metric on its own clock.
-            Bookings dated by lifecycle first booking; Financially Committed by commitment date; money by financial dates.
-            Period counts are not conversion rates between stages.
+            Bookings are dated when you marked them booked. Money uses financial dates.
+            Period counts are not conversion rates.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads entered</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{leads.total}</p>
@@ -336,10 +335,6 @@ export default async function SalesReportPage({ searchParams }: Props) {
               <p className="text-lg font-semibold tabular-nums text-heading">{periodBookings.length}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Financially Committed</p>
-              <p className="text-lg font-semibold tabular-nums text-heading">{financiallyCommitted.length}</p>
-            </div>
-            <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Currently Booked (pipeline)</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{currentlyBooked}</p>
             </div>
@@ -347,7 +342,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Contracted (Financially Committed)</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Contracted</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{formatMoney(grossRevenue ?? 0)}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
@@ -357,18 +352,21 @@ export default async function SalesReportPage({ searchParams }: Props) {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {bookingCoverage.percent}% of lifecycle bookings in this period have a known acquisition source
+            {undatedBookings > 0
+              ? `${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count. ${undatedBookings === 1 ? "It still counts" : "They still count"} in Lead → Booking. `
+              : ""}
+            {bookingCoverage.percent}% of Bookings in this period have a known acquisition source
             ({bookingCoverage.known} of {bookingCoverage.total}).
             {timeToBook.sampleSize > 0 && timeToBook.medianDays != null
-              ? ` Median time to book (lead created → first lifecycle booking): ${timeToBook.medianDays} days (${timeToBook.sampleSize} lead-linked).`
+              ? ` Median time to book (lead created → first time you marked them booked): ${timeToBook.medianDays} days (${timeToBook.sampleSize} with a lead).`
               : ""}
           </p>
 
           <div>
             <p className="mb-2 text-sm font-medium text-heading">Time to book by acquisition source</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Median days from lead created → first lifecycle booking, for bookings marked in this period that still have a lead.
-              Direct / import bookings without a lead are excluded. This is not financial commitment or payment timing.
+              Median days from when the lead arrived to when you first marked them booked, for Bookings in this period that still have a lead.
+              Bookings without a lead (you added the client already booked) are excluded. This is not a payment date.
             </p>
             {timeToBookBySource.length === 0 ? (
               <p className="text-sm text-muted-foreground">No lead-linked bookings with a calculable time-to-book in this period.</p>
@@ -407,7 +405,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
             </div>
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Bookings by source</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">Lifecycle first bookings; Website includes tour scheduling.</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">When you first marked them booked; Website includes tour scheduling.</p>
               {bookingsBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No bookings in this period.</p>
               ) : (
@@ -423,7 +421,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
             </div>
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Contracted revenue by source</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">Financially Committed only; leadless or unresolvable source stays Unknown.</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">Contracted value only. Missing source stays Unknown / Unattributed.</p>
               {revenueBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No contracted revenue in this period.</p>
               ) : (
@@ -439,18 +437,6 @@ export default async function SalesReportPage({ searchParams }: Props) {
             </div>
           </div>
 
-          <div>
-            <p className="mb-2 text-sm font-medium text-heading">Bookings by origin</p>
-            <div className="divide-y divide-border">
-              {byOrigin.map((o) => (
-                <div key={o.origin} className="flex items-center justify-between py-2 text-sm">
-                  <span>{o.label}</span>
-                  <span className="tabular-nums font-medium">{o.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {periodBookings.length > 0 && (
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Bookings this period</p>
@@ -459,7 +445,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
                   <div key={b.id} className="flex items-center justify-between gap-4 py-2 text-sm">
                     <span className="font-medium text-foreground">{b.displayName}</span>
                     <span className="text-muted-foreground text-xs">
-                      {b.originLabel} · {reportingSourceDisplayLabel(b.source)} ·{" "}
+                      {reportingSourceDisplayLabel(b.source)} ·{" "}
                       {new Date(b.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
                   </div>

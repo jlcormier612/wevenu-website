@@ -64,14 +64,14 @@ export type NormalizedActiveCommitment = {
    */
   bookedAt?: string | null;
   /**
-   * Explicit Migration Center decision: record a lifecycle Booking
-   * (origin=import). Never inferred from contract/payment/event data.
+   * @deprecated Kept for CSV compatibility. Imported active commitments are
+   * Bookings; do not use this to invent a second-class booking type.
    */
   markAsAlreadyBooked?: boolean;
   /**
-   * Optional historical lifecycle booking date when markAsAlreadyBooked.
-   * If omitted while marked, occurred_at is the commit time. Never invented
-   * from signed_at / paid_at / events.booked_at.
+   * Trustworthy historical Booking date when known.
+   * If omitted, the Booking exists but is not attributed to a reporting period.
+   * Never invented from signed_at / paid_at / events.booked_at.
    */
   lifecycleBookedAt?: string | null;
   documents?: ActiveCommitmentDocument[];

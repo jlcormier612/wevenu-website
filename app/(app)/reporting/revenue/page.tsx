@@ -69,14 +69,14 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <ReportHeader title="Revenue" description="Financial reality — contracted value, collected cash, and outstanding balances among Financially Committed clients." />
+      <ReportHeader title="Revenue" description="Money: contracted value, collected cash, and outstanding balances. Booking counts live on Bookings." />
       <DateRangeControl current={range.preset} label={range.label} />
 
       <ComparisonCardGrid>
         <ComparisonCard
           label="Gross Booked Revenue" value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
-          sub="Contracted value among Financially Committed clients."
+          sub="Signed contract value with a first payment collected."
         />
         <ComparisonCard
           label="Payments Collected" value={paymentsCollected ?? 0} previousValue={prevPaymentsCollected}
@@ -87,13 +87,13 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <ComparisonCard
           label="Outstanding Balance" value={outstanding ?? 0} previousValue={prevOutstanding}
           comparisonLabel={range.comparisonLabel} polarity="up-bad" format={formatMoney}
-          sub="Derived: contracted value among clients who became Financially Committed in this period, minus payments collected (by payment date) in this period — not the same clock as either figure alone."
+          sub="Contracted value (commitment date) minus payments collected (payment date) — not the same clock."
           href={hrefWith(params, { detail: "outstanding" })}
         />
         <ComparisonCard
-          label="Avg. Committed Value" value={avgValue ?? 0} previousValue={prevAvgValue}
+          label="Avg. contracted value" value={avgValue ?? 0} previousValue={prevAvgValue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
-          sub="Among Financially Committed — not lifecycle Bookings."
+          sub="Average signed value among clients with a first collected payment — not Booking count."
         />
       </ComparisonCardGrid>
 
@@ -142,11 +142,11 @@ export default async function RevenueReportPage({ searchParams }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Revenue Trend</CardTitle>
-          <CardDescription>Gross Booked Revenue by month, based on when each client became Financially Committed (signed contract + first scheduled payment collected) — not the lifecycle booking date.</CardDescription>
+          <CardDescription>Contracted value by month, dated when the signed contract and first payment were both in place — not when you marked them booked.</CardDescription>
         </CardHeader>
         <CardContent>
           {!hasAnyRevenue ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No booked revenue in this date range.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">No contracted revenue in this date range.</p>
           ) : (
             <TrendChart data={trend} formatValue={formatMoney} />
           )}
@@ -157,16 +157,15 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Revenue by acquisition source</CardTitle>
           <CardDescription>
-            Financially Committed contracted value (commitment date) and payments collected (payment date).
-            Attribution via invoice/schedule → event (when present) → client → originating lead → frozen acquisition source.
-            Leadless or unresolvable paths stay Unknown / Unattributed. Multi-event clients with one originating lead remain attributed.
-            Not lifecycle Booking revenue. Outstanding is not broken out by source (mixed date clocks — see label above).
+            Contracted value (commitment date) and payments collected (payment date).
+            Missing source stays Unknown / Unattributed. This is money, not Booking count.
+            Outstanding is not broken out by source (mixed date clocks).
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
-              <p className="mb-2 text-sm font-medium text-heading">Contracted (Financially Committed)</p>
+              <p className="mb-2 text-sm font-medium text-heading">Contracted</p>
               {revenueBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No contracted revenue in this range.</p>
               ) : (
@@ -232,7 +231,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
                 title={`${detailValue} (${categoryDetailRows?.length ?? 0} client${(categoryDetailRows?.length ?? 0) === 1 ? "" : "s"})`}
                 closeHref={closeHref}
                 isEmpty={(categoryDetailRows?.length ?? 0) === 0}
-                emptyText="No bookings contributed to this category in this date range."
+                emptyText="No clients contributed to this category in this date range."
               >
                 {(categoryDetailRows ?? []).slice(0, 25).map((r) => (
                   <DetailRow key={r.clientId}>

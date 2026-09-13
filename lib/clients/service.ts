@@ -302,21 +302,24 @@ async function createClientCore(
   }
 
   // Lifecycle Booking (distinct from events.booked_at payment timing):
-  // - Normal Direct Add with a dated Event → origin=direct
-  // - Explicit migration mark → origin=import (optional historical date)
+  // - Live Direct Add with a dated Event → origin=direct, date = now
+  // - Historical / brought-in booked client → origin=import; date only if known
   // - Never infer from contract/payment alone
   const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
-  if (lifecycleOpts?.markAsAlreadyBooked) {
-    const recorded = await recordLifecycleBooking(supabase, {
-      venueId,
-      clientId,
-      origin: "import",
-      occurredAt: lifecycleOpts.lifecycleBookedAt ?? null,
-      actorUserId: lifecycleOpts.actorUserId ?? null,
-      metadata: { source: "migration_mark_as_already_booked" },
-    });
-    if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
-  } else if (!historicalImport && !asHistorical && eventId) {
+  const knownImportDate = lifecycleOpts?.lifecycleBookedAt?.trim() || null;
+  if (historicalImport || asHistorical || lifecycleOpts?.markAsAlreadyBooked) {
+    if (eventId || lifecycleOpts?.markAsAlreadyBooked || knownImportDate) {
+      const recorded = await recordLifecycleBooking(supabase, {
+        venueId,
+        clientId,
+        origin: "import",
+        occurredAt: knownImportDate,
+        actorUserId: lifecycleOpts?.actorUserId ?? null,
+        metadata: { source: "historical_client_import", dateKnown: !!knownImportDate },
+      });
+      if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
+    }
+  } else if (eventId) {
     const { data: { user } } = await supabase.auth.getUser();
     const recorded = await recordLifecycleBooking(supabase, {
       venueId,

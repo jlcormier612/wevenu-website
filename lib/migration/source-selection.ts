@@ -12,6 +12,7 @@
  */
 import type { SourceKey, SourceProfile } from "@/lib/migration/types";
 
+/** @deprecated not_sure kept for internal callers — maps to generic CSV. */
 export type SourceSelectionLane = "honeybook" | "tripleseat" | "another_system" | "not_sure";
 
 /** Keys whose adapters actually do source-specific recognition/normalization. */
@@ -25,23 +26,20 @@ export const SOURCE_SELECTION_LANES: {
   {
     id: "honeybook",
     label: "HoneyBook",
-    description: "We recognize HoneyBook exports and can organize your data automatically.",
+    description:
+      "We'll recognize the HoneyBook export and guide you through bringing your information into Hello to Cheers.",
   },
   {
     id: "tripleseat",
     label: "Tripleseat",
-    description: "We recognize Tripleseat exports and can organize your data automatically.",
+    description:
+      "We'll recognize the Tripleseat export and guide you through bringing your information into Hello to Cheers.",
   },
   {
     id: "another_system",
     label: "Another system",
     description:
-      "Using a different CRM or venue platform? No problem. Export your data as a CSV and we'll help you match it to Hello to Cheers.",
-  },
-  {
-    id: "not_sure",
-    label: "I'm not sure",
-    description: "We'll guide you through the easiest way to bring your information over.",
+      "No problem. We'll guide you through exporting, mapping, and reviewing your information.",
   },
 ];
 

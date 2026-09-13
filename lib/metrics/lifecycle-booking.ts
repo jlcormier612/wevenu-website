@@ -10,12 +10,17 @@ import {
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
+  countUndatedFirstBooked,
+  listFirstBookedLeadIds,
   listLifecycleBookingsInPeriod,
   originLabel,
   type LifecycleBookingOrigin,
   type LifecycleBookingRow,
 } from "@/lib/lifecycle-bookings/service";
-import { isBusinessFunnelCohortLead } from "@/lib/metrics/cohort-population";
+import {
+  isBusinessFunnelCohortLead,
+  leadHasLifecycleBooking,
+} from "@/lib/metrics/cohort-population";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DateWindow = { from?: string; to?: string };
@@ -98,6 +103,15 @@ export async function getLifecycleBookingsByOrigin(
   }));
 }
 
+/** Bookings with no known date — excluded from period tiles, still Bookings. */
+export async function getUndatedLifecycleBookingCount(): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+  const venue = await getCurrentVenue();
+  if (!venue) return 0;
+  const supabase = await createClient();
+  return countUndatedFirstBooked(supabase, venue.id);
+}
+
 /** Pipeline snapshot: leads currently in sales_stage = booked. */
 export async function getCurrentlyBookedPipelineCount(): Promise<number> {
   if (!isSupabaseConfigured) return 0;
@@ -113,13 +127,9 @@ export async function getCurrentlyBookedPipelineCount(): Promise<number> {
 }
 
 /**
- * Cohort: of leads created in the window (Business Funnel population —
- * excludes status=cancelled and sales_stage=lost), how many eventually have
- * a first lifecycle booking (any time). Uses leads.first_booked_at — write-once.
- * By-source uses frozen acquisition_source (not editable operational source).
- *
- * Same population as Phase 2B Business Funnel Lead → Booking so Reporting
- * never presents two different Lead → Booking rates.
+ * Cohort: of leads created in the window, how many eventually have a first
+ * lifecycle booking (any time — including after they later became Lost).
+ * Direct Adds are not leads and never enter this population.
  */
 export async function getLeadCohortLifecycleBookingStats(
   window: { from: string; to: string },
@@ -151,8 +161,14 @@ export async function getLeadCohortLifecycleBookingStats(
     status: string | null;
   };
   const rows = ((leads ?? []) as Row[]).filter(isBusinessFunnelCohortLead);
+  const bookedIds = await listFirstBookedLeadIds(supabase, venue.id, rows.map((l) => l.id));
   const leadsEntered = rows.length;
-  const eventuallyBooked = rows.filter((l) => !!l.first_booked_at).length;
+  const eventuallyBooked = rows.filter((l) =>
+    leadHasLifecycleBooking({
+      first_booked_at: l.first_booked_at,
+      hasFirstBookedEvent: bookedIds.has(l.id),
+    }),
+  ).length;
   const conversionRate = leadsEntered > 0 ? Math.round((100 * eventuallyBooked) / leadsEntered) : 0;
 
   const totals = new Map<string, { total: number; booked: number }>();
@@ -160,7 +176,10 @@ export async function getLeadCohortLifecycleBookingStats(
     const key = reportingSourceGroupKey(l.acquisition_source);
     const cur = totals.get(key) ?? { total: 0, booked: 0 };
     cur.total += 1;
-    if (l.first_booked_at) cur.booked += 1;
+    if (leadHasLifecycleBooking({
+      first_booked_at: l.first_booked_at,
+      hasFirstBookedEvent: bookedIds.has(l.id),
+    })) cur.booked += 1;
     totals.set(key, cur);
   }
   const bySource = [...totals.entries()]

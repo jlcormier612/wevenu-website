@@ -20,7 +20,13 @@ export type RecordLifecycleBookingInput = {
   leadId?: string | null;
   clientId?: string | null;
   origin: LifecycleBookingOrigin;
-  /** ISO timestamptz or date; defaults to now. Never invent from finance. */
+  /**
+   * ISO timestamptz or date.
+   * - omitted / undefined → now (a booking happening in this action)
+   * - null → date unknown (do not fabricate a period date)
+   * - string → that date
+   * Never invent from finance.
+   */
   occurredAt?: string | null;
   actorUserId?: string | null;
   previousSalesStage?: string | null;
@@ -34,7 +40,7 @@ export type LifecycleBookingEvent = {
   clientId: string | null;
   origin: LifecycleBookingOrigin;
   eventKind: LifecycleBookingEventKind;
-  occurredAt: string;
+  occurredAt: string | null;
   actorUserId: string | null;
   previousSalesStage: string | null;
 };
@@ -43,7 +49,7 @@ export type RecordLifecycleBookingResult =
   | { ok: true; event: LifecycleBookingEvent; wasFirst: boolean }
   | { ok: false; message: string };
 
-function normalizeOccurredAt(raw: string | null | undefined): string {
+function normalizeOccurredAt(raw: string | undefined): string {
   if (!raw?.trim()) return new Date().toISOString();
   const trimmed = raw.trim();
   // Date-only → noon UTC to avoid off-by-one in venue-local display.
@@ -55,12 +61,18 @@ function normalizeOccurredAt(raw: string | null | undefined): string {
   return d.toISOString();
 }
 
+/** undefined = now; null = unknown date; string = that date. */
+function resolveOccurredAt(raw: string | null | undefined): string | null {
+  if (raw === null) return null;
+  return normalizeOccurredAt(raw);
+}
+
 async function findExistingFirst(
   client: DbClient,
   venueId: string,
   leadId: string | null | undefined,
   clientId: string | null | undefined,
-): Promise<{ id: string; occurred_at: string } | null> {
+): Promise<{ id: string; occurred_at: string | null } | null> {
   if (leadId) {
     const { data } = await client
       .from("lifecycle_booking_events")
@@ -68,7 +80,7 @@ async function findExistingFirst(
       .eq("venue_id", venueId)
       .eq("lead_id", leadId)
       .eq("event_kind", "first_booked")
-      .maybeSingle<{ id: string; occurred_at: string }>();
+      .maybeSingle<{ id: string; occurred_at: string | null }>();
     return data ?? null;
   }
   if (clientId) {
@@ -79,7 +91,7 @@ async function findExistingFirst(
       .eq("client_id", clientId)
       .is("lead_id", null)
       .eq("event_kind", "first_booked")
-      .maybeSingle<{ id: string; occurred_at: string }>();
+      .maybeSingle<{ id: string; occurred_at: string | null }>();
     return data ?? null;
   }
   return null;
@@ -99,7 +111,7 @@ export async function recordLifecycleBooking(
     return { ok: false, message: "Lifecycle booking requires a lead or client." };
   }
 
-  const occurredAt = normalizeOccurredAt(input.occurredAt);
+  const occurredAt = resolveOccurredAt(input.occurredAt);
   const existing = await findExistingFirst(client, input.venueId, leadId, clientId);
 
   // Direct / import retries: idempotent — never invent rebooked for those origins.
@@ -115,7 +127,7 @@ export async function recordLifecycleBooking(
         clientId,
         origin: input.origin,
         eventKind: "first_booked",
-        occurredAt: existing.occurred_at,
+        occurredAt: existing.occurred_at ?? "",
         actorUserId: input.actorUserId ?? null,
         previousSalesStage: input.previousSalesStage ?? null,
       },
@@ -168,7 +180,7 @@ export async function recordLifecycleBooking(
             clientId,
             origin: input.origin,
             eventKind: "first_booked",
-            occurredAt: again.occurred_at,
+            occurredAt: again.occurred_at ?? null,
             actorUserId: input.actorUserId ?? null,
             previousSalesStage: input.previousSalesStage ?? null,
           },
@@ -184,7 +196,7 @@ export async function recordLifecycleBooking(
     occurred_at: string; actor_user_id: string | null; previous_sales_stage: string | null;
   };
 
-  if (eventKind === "first_booked") {
+  if (eventKind === "first_booked" && occurredAt) {
     if (leadId) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (client.from("leads") as any)
@@ -204,6 +216,14 @@ export async function recordLifecycleBooking(
         .eq("venue_id", input.venueId)
         .is("lifecycle_booked_at", null);
     }
+  } else if (eventKind === "first_booked" && clientId) {
+    // Date unknown — still stamp origin so the client is a Booking, not a period row.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("clients") as any)
+      .update({ lifecycle_booking_origin: input.origin })
+      .eq("id", clientId)
+      .eq("venue_id", input.venueId)
+      .is("lifecycle_booking_origin", null);
   }
 
   return {
@@ -234,7 +254,47 @@ export type LifecycleBookingRow = {
   acquisitionSource: string | null;
 };
 
-/** First lifecycle bookings in a date window (Reporting Bookings count). */
+/** Lead IDs that have a first_booked event (dated or unknown). */
+export async function listFirstBookedLeadIds(
+  client: DbClient,
+  venueId: string,
+  leadIds: string[],
+): Promise<Set<string>> {
+  if (leadIds.length === 0) return new Set();
+  const { data } = await client
+    .from("lifecycle_booking_events")
+    .select("lead_id")
+    .eq("venue_id", venueId)
+    .eq("event_kind", "first_booked")
+    .in("lead_id", leadIds);
+  return new Set(
+    ((data ?? []) as { lead_id: string | null }[])
+      .map((r) => r.lead_id)
+      .filter((id): id is string => !!id),
+  );
+}
+
+/** Bookings that exist but have no trustworthy date — not period activity. */
+export async function countUndatedFirstBooked(
+  client: DbClient,
+  venueId: string,
+): Promise<number> {
+  const { count } = await client
+    .from("lifecycle_booking_events")
+    .select("id", { count: "exact", head: true })
+    .eq("venue_id", venueId)
+    .eq("event_kind", "first_booked")
+    .is("occurred_at", null);
+  return count ?? 0;
+}
+
+/**
+ * First lifecycle bookings in a date window (Reporting Bookings count).
+ * rebooked is excluded on purpose: period Bookings is the first marked-booked
+ * date only. A later Lost → Booked return is not a second Booking in that
+ * later period; it remains one Booking on the original first_booked date and
+ * is visible as Currently Booked while sales_stage is booked.
+ */
 export async function listLifecycleBookingsInPeriod(
   client: DbClient,
   venueId: string,
@@ -245,6 +305,7 @@ export async function listLifecycleBookingsInPeriod(
     .select("id, lead_id, client_id, origin, occurred_at, actor_user_id, acquisition_source")
     .eq("venue_id", venueId)
     .eq("event_kind", "first_booked")
+    .not("occurred_at", "is", null)
     .order("occurred_at", { ascending: false });
   if (window.from) q = q.gte("occurred_at", `${window.from}T00:00:00.000Z`);
   if (window.to) q = q.lte("occurred_at", `${window.to}T23:59:59.999Z`);
@@ -264,10 +325,11 @@ export async function listLifecycleBookingsInPeriod(
   }));
 }
 
+/** Internal only — never show origin as a customer-facing Booking type. */
 export function originLabel(origin: LifecycleBookingOrigin): string {
   switch (origin) {
-    case "pipeline": return "Pipeline";
-    case "direct": return "Direct";
-    case "import": return "Imported";
+    case "pipeline": return "Lead";
+    case "direct": return "Direct add";
+    case "import": return "Brought in";
   }
 }

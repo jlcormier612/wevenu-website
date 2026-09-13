@@ -1,5 +1,5 @@
 /**
- * Phase 2B — Business Funnel pure math + seam contracts.
+ * Business Funnel product rules.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,41 +13,49 @@ import {
   computeBusinessFunnelCohortStats,
   isBusinessFunnelCohortLead,
 } from "@/lib/metrics/business-funnel";
-import { isBusinessFunnelCohortLead as sharedCohortFilter } from "@/lib/metrics/cohort-population";
+import {
+  isBusinessFunnelCohortLead as sharedCohortFilter,
+  leadHasLifecycleBooking,
+} from "@/lib/metrics/cohort-population";
 
 const funnelSrc = readFileSync(resolve("lib/metrics/business-funnel.ts"), "utf8");
 const overview = readFileSync(resolve("app/(app)/reporting/page.tsx"), "utf8");
 const salesPage = readFileSync(resolve("app/(app)/reporting/sales/page.tsx"), "utf8");
+const bookingsPage = readFileSync(resolve("app/(app)/reporting/bookings/page.tsx"), "utf8");
 const component = readFileSync(resolve("components/reporting/business-funnel.tsx"), "utf8");
 const registry = readFileSync(resolve("lib/metrics/registry.ts"), "utf8");
 const attribution = readFileSync(resolve("lib/metrics/attribution.ts"), "utf8");
 const revenue = readFileSync(resolve("lib/metrics/revenue.ts"), "utf8");
+const revenuePage = readFileSync(resolve("app/(app)/reporting/revenue/page.tsx"), "utf8");
 
 describe("Business Funnel cohort population", () => {
-  it("excludes cancelled and sales_stage lost from the NEW cohort population", () => {
+  it("keeps Lost leads in the cohort (Lost is not Delete)", () => {
     assert.equal(isBusinessFunnelCohortLead({ status: "new", sales_stage: "responded" }), true);
-    assert.equal(isBusinessFunnelCohortLead({ status: "cancelled", sales_stage: "responded" }), false);
-    assert.equal(isBusinessFunnelCohortLead({ status: "new", sales_stage: "lost" }), false);
-    assert.equal(isBusinessFunnelCohortLead({ status: "cancelled", sales_stage: "lost" }), false);
+    assert.equal(isBusinessFunnelCohortLead({ status: "new", sales_stage: "lost" }), true);
+    assert.equal(isBusinessFunnelCohortLead({ status: "cancelled", sales_stage: "lost" }), true);
     assert.equal(sharedCohortFilter, isBusinessFunnelCohortLead);
   });
 
-  it("computes Lead → Tour, Lead → Booking, Tour → Booking as cohort rates only", () => {
+  it("counts Lead → Booking including later Lost, and undated first_booked events", () => {
     const stats = computeBusinessFunnelCohortStats([
       { id: "1", status: "new", sales_stage: "responded", first_booked_at: "2026-02-01", eventuallyToured: true },
       { id: "2", status: "new", sales_stage: "tour_scheduled", first_booked_at: null, eventuallyToured: true },
       { id: "3", status: "new", sales_stage: "responded", first_booked_at: "2026-02-10", eventuallyToured: false },
-      { id: "4", status: "cancelled", sales_stage: "responded", first_booked_at: "2026-02-01", eventuallyToured: true },
-      { id: "5", status: "new", sales_stage: "lost", first_booked_at: null, eventuallyToured: true },
+      { id: "4", status: "new", sales_stage: "lost", first_booked_at: null, eventuallyToured: true },
+      { id: "5", status: "new", sales_stage: "lost", first_booked_at: "2026-01-20", eventuallyToured: true },
+      { id: "6", status: "new", sales_stage: "booked", first_booked_at: null, hasFirstBookedEvent: true, eventuallyToured: false },
     ]);
-    // Population = 3 (ids 1–3); cancelled/lost dropped
-    assert.equal(stats.leadsEntered, 3);
-    assert.equal(stats.eventuallyToured, 2);
-    assert.equal(stats.eventuallyBooked, 2);
-    assert.equal(stats.touredAndBooked, 1);
-    assert.equal(stats.leadToTourRate, cohortRatePercent(2, 3));
-    assert.equal(stats.leadToBookingRate, cohortRatePercent(2, 3));
-    assert.equal(stats.tourToBookingRate, cohortRatePercent(1, 2));
+    assert.equal(stats.leadsEntered, 6);
+    assert.equal(stats.eventuallyToured, 4);
+    assert.equal(stats.eventuallyBooked, 4);
+    assert.equal(stats.touredAndBooked, 2);
+    assert.equal(stats.leadToBookingRate, cohortRatePercent(4, 6));
+  });
+
+  it("treats first_booked_at or first_booked event as a Booking", () => {
+    assert.equal(leadHasLifecycleBooking({ first_booked_at: "2026-01-01" }), true);
+    assert.equal(leadHasLifecycleBooking({ first_booked_at: null, hasFirstBookedEvent: true }), true);
+    assert.equal(leadHasLifecycleBooking({ first_booked_at: null, hasFirstBookedEvent: false }), false);
   });
 
   it("returns 0% when denominator is empty", () => {
@@ -64,24 +72,23 @@ describe("Business Funnel composition seams", () => {
     assert.match(funnelSrc, /scheduled_at/);
   });
 
-  it("period Bookings reuse lifecycle first_booked via getLifecycleBookings", () => {
+  it("period Bookings reuse dated lifecycle first_booked via getLifecycleBookings", () => {
     assert.match(funnelSrc, /getLifecycleBookings/);
-    assert.match(funnelSrc, /getCanonicalBookings/);
     assert.match(funnelSrc, /getGrossBookedRevenue/);
     assert.match(funnelSrc, /getPaymentsCollected/);
     assert.match(funnelSrc, /getOutstandingBalance/);
+    assert.doesNotMatch(funnelSrc, /getCanonicalBookings/);
   });
 
   it("does not invent period tour÷booking conversion", () => {
     assert.doesNotMatch(funnelSrc, /periodTours\s*\/\s*periodBookings/);
     assert.doesNotMatch(funnelSrc, /bookings\.length\s*\/\s*.*tours/);
     assert.match(component, /not conversion rates/);
-    assert.match(component, /do not divide one by the other/);
   });
 
-  it("documents mixed-clock Outstanding and leadless note", () => {
+  it("documents mixed-clock Outstanding and leadless Direct Add note", () => {
     assert.match(BUSINESS_FUNNEL_OUTSTANDING_LIMITATION, /different clocks/);
-    assert.match(BUSINESS_FUNNEL_LEADLESS_NOTE, /Leadless \/ Direct \/ Import/);
+    assert.match(BUSINESS_FUNNEL_LEADLESS_NOTE, /never a lead/i);
     assert.match(component, /outstandingLimitation/);
     assert.match(component, /leadlessNote/);
   });
@@ -100,29 +107,38 @@ describe("Business Funnel composition seams", () => {
 });
 
 describe("Business Funnel Reporting surfaces", () => {
-  it("Overview mounts Business Funnel prominently", () => {
+  it("Overview mounts Business Funnel and lifecycle Bookings", () => {
     assert.match(overview, /BusinessFunnel|getBusinessFunnel/);
-    assert.match(overview, /from \"@\/components\/reporting\/business-funnel\"/);
+    assert.match(overview, /getLifecycleBookings/);
+    assert.match(overview, /getLeadCohortLifecycleBookingStats/);
+    assert.doesNotMatch(overview, /Financially Committed/);
+    assert.doesNotMatch(overview, /getCanonicalBookings/);
   });
 
-  it("Sales aligns terminology without duplicating the full funnel", () => {
-    assert.match(salesPage, /Business Funnel/);
-    assert.match(salesPage, /\/reporting/);
-    assert.doesNotMatch(salesPage, /getBusinessFunnel/);
+  it("Sales separates period activity from cohort conversion", () => {
+    assert.match(salesPage, /Cohort performance/);
+    assert.match(salesPage, /Period activity/);
+    assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
+    assert.match(salesPage, /later marked Lost/);
+    assert.doesNotMatch(salesPage, /Financially Committed/);
+    assert.doesNotMatch(salesPage, /Bookings by origin/);
   });
 
-  it("Registry documents Business Funnel clocks", () => {
-    assert.match(registry, /Business Funnel/);
-    assert.match(registry, /scheduled_at/);
+  it("Bookings page is lifecycle-dated without a second booking type", () => {
+    assert.match(bookingsPage, /getLifecycleBookingsWithNames/);
+    assert.match(bookingsPage, /Bookings by source/);
+    assert.doesNotMatch(bookingsPage, /Bookings by origin/);
+    assert.doesNotMatch(bookingsPage, /Financially Committed/);
+    assert.doesNotMatch(bookingsPage, /originLabel/);
+  });
+
+  it("Revenue stays financial and does not name a Financially Committed tile", () => {
+    assert.match(revenuePage, /Contracted/);
+    assert.doesNotMatch(revenuePage, /Financially Committed/);
+  });
+
+  it("Registry still documents lifecycle vs financial internals", () => {
+    assert.match(registry, /Lifecycle Booking/);
     assert.match(registry, /occurred_at|first_booked/);
-    assert.match(registry, /mixed.?clock/i);
-  });
-
-  it("leaves room for Phase 2C Website layer without inventing visitors", () => {
-    assert.match(component, /Phase 2C/);
-    assert.match(funnelSrc, /Phase 2C/);
-    assert.doesNotMatch(component, /\b12,?480\b|website visitors/i);
-    assert.doesNotMatch(funnelSrc, /session_id|ga4/i);
-    assert.doesNotMatch(funnelSrc, /getWebsiteVisitors|visitorCount/);
   });
 });

@@ -59,15 +59,16 @@ describe("Migration Center source selection", () => {
     assert.doesNotMatch(labels, /Weven|The Knot|WeddingWire|Planning Pod|Event Temple|Aisle Planner|Perfect Venue|Eventbrite/i);
   });
 
-  it("exposes HoneyBook, Tripleseat, Another system, and I'm not sure as first-class radios", () => {
+  it("exposes HoneyBook, Tripleseat, and Another system as first-class radios", () => {
     assert.deepEqual(
       SOURCE_SELECTION_LANES.map((l) => l.id),
-      ["honeybook", "tripleseat", "another_system", "not_sure"],
+      ["honeybook", "tripleseat", "another_system"],
     );
     assert.equal(SOURCE_SELECTION_LANES.some((l) => l.label === "A system we recognize"), false);
+    assert.equal(SOURCE_SELECTION_LANES.some((l) => /not sure/i.test(l.label)), false);
   });
 
-  it("treats another system and I'm not sure as first-class generic_csv paths", () => {
+  it("treats another system (and legacy not_sure) as first-class generic_csv paths", () => {
     assert.equal(sourceKeyForLane("another_system"), "generic_csv");
     assert.equal(sourceKeyForLane("not_sure"), "generic_csv");
   });
@@ -113,8 +114,8 @@ describe("Migration Center source selection", () => {
       "tripleseat",
       PROFILES.find((p) => p.key === "tripleseat")!,
     );
-    assert.match(honey.body, /recognize and organize/i);
-    assert.match(triple.body, /recognize and organize/i);
+    assert.match(honey.body, /recognize/i);
+    assert.match(triple.body, /recognize/i);
     assert.match(honey.body, /never connects to or logs into/i);
     assert.doesNotMatch(honey.body.toLowerCase(), /oauth|api key|live connection/);
   });

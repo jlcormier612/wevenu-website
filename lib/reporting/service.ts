@@ -157,7 +157,7 @@ export async function getLeadsTrend(window: DateWindow): Promise<{ total: number
   const supabase = await createClient();
 
   const { data } = await supabase.from("leads").select("created_at")
-    .eq("venue_id", venue.id).neq("status", "cancelled")
+    .eq("venue_id", venue.id)
     .gte("created_at", window.from).lte("created_at", window.to + "T23:59:59");
   const rows = (data ?? []) as { created_at: string }[];
   const buckets = monthBuckets(window.from, window.to);

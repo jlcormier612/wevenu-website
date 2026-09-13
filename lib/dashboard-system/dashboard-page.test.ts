@@ -45,7 +45,7 @@ describe("Dashboard page information architecture", () => {
     assert.doesNotMatch(page, /function QuickAction/);
     assert.doesNotMatch(page, /label="New Booking"/);
     assert.doesNotMatch(nav, /title: "Bookings"/);
-    assert.match(nav, /title: "Messages"/);
+    assert.match(nav, /title: "Inbox"/);
     assert.match(page, /\+ New Lead/);
   });
 
