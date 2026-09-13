@@ -189,12 +189,16 @@ export function LuvDraftPanel({
 
   function handleGenerate() {
     startGenerate(async () => {
-      const result = await generateFollowUpDraftAction(lead);
-      if (result.ok) {
-        setAllDrafts((p) => [result.draft, ...p]);
-        toast.success("Luv drafted a follow-up for you to review.");
-      } else {
-        toast.error(result.message ?? "Luv couldn't generate a draft right now.");
+      try {
+        const result = await generateFollowUpDraftAction(lead);
+        if (result.ok) {
+          setAllDrafts((p) => [result.draft, ...p]);
+          toast.success("Luv drafted a follow-up for you to review.");
+        } else {
+          toast.error(result.message ?? "Luv couldn't generate a draft right now.");
+        }
+      } catch {
+        toast.error("Luv couldn't generate a draft right now. Please try again.");
       }
     });
   }

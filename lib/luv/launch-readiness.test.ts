@@ -13,7 +13,7 @@ describe("/api/luv/draft launch-readiness", () => {
     assert.match(draftRoute, /getLuvSettings\(/);
     assert.match(draftRoute, /isLuvDraftingEnabled\(settings\)/);
     const gateIdx = draftRoute.indexOf("isLuvDraftingEnabled(settings)");
-    const anthropicIdx = draftRoute.indexOf("client.messages.stream");
+    const anthropicIdx = draftRoute.indexOf('fetch("https://api.anthropic.com/v1/messages"');
     assert.ok(gateIdx > 0 && anthropicIdx > gateIdx);
   });
 
@@ -31,8 +31,14 @@ describe("/api/luv/draft launch-readiness", () => {
     assert.match(draftRoute, /AI drafting is temporarily unavailable/);
   });
 
+  it("uses non-streaming Anthropic fetch so auth failures return JSON", () => {
+    assert.match(draftRoute, /fetch\("https:\/\/api\.anthropic\.com\/v1\/messages"/);
+    assert.doesNotMatch(draftRoute, /messages\.stream/);
+    assert.doesNotMatch(draftRoute, /toReadableStream/);
+  });
+
   it("keeps the existing 25s Anthropic timeout", () => {
-    assert.match(draftRoute, /timeout:\s*25_000/);
+    assert.match(draftRoute, /AbortSignal\.timeout\(25_000\)/);
   });
 });
 
@@ -60,6 +66,14 @@ describe("lib/luv/drafts.ts launch-readiness", () => {
     assert.doesNotMatch(drafts, /sendEmail\(/);
     assert.doesNotMatch(drafts, /sendSms\(/);
     assert.doesNotMatch(drafts, /status: "sent"/);
+  });
+
+  it("returns a friendly failure instead of raw Anthropic errors", () => {
+    assert.match(drafts, /Luv couldn't generate a draft right now\. Please try again\./);
+    assert.doesNotMatch(
+      drafts.slice(drafts.indexOf("export async function generateFollowUpDraft")),
+      /return \{ ok: false, message \}/,
+    );
   });
 });
 

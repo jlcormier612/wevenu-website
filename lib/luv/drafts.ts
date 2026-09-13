@@ -192,8 +192,8 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
     if (error) throw error;
     return { ok: true, draft: mapDraft(data) };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Draft generation failed.";
-    return { ok: false, message };
+    console.error("[luv/drafts] generateFollowUpDraft failed:", err);
+    return { ok: false, message: "Luv couldn't generate a draft right now. Please try again." };
   }
 }
 
