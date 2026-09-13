@@ -81,16 +81,16 @@ export async function POST(request: Request) {
   const settings = await getLuvSettings();
   if (!isLuvDraftingEnabled(settings)) {
     return NextResponse.json(
-      { error: "AI drafting is not configured. Please contact support." },
-      { status: 500 }
+      { error: "Luv drafting is turned off in Settings. Turn it on under Communications → Luv to generate drafts." },
+      { status: 403 }
     );
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("[luv/draft] ANTHROPIC_API_KEY is not configured");
     return NextResponse.json(
-      { error: "AI drafting is not configured. Please contact support." },
-      { status: 500 }
+      { error: "AI drafting is temporarily unavailable. Please try again later." },
+      { status: 503 }
     );
   }
 

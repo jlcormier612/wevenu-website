@@ -18,6 +18,15 @@ import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string }> };
 
+/** Canonical draft types Luv can auto-open from ?luv=… recommendation links. */
+const LUV_DRAFT_PARAMS = new Set(["follow_up_email", "follow_up_text", "next_steps", "timeline"]);
+
+function normalizeAutoLuvDraft(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  if (raw === "followup") return "follow_up_email";
+  return LUV_DRAFT_PARAMS.has(raw) ? raw : undefined;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const lead = await getLead(id);
@@ -34,7 +43,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { luv: autoLuvDraft } = await searchParams;
+  const { luv: luvParam } = await searchParams;
+  const autoLuvDraft = normalizeAutoLuvDraft(luvParam);
   const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages] = await Promise.all([
     getLead(id),
     getHolds({ leadId: id }),

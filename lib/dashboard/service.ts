@@ -531,7 +531,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
   const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendations, actionObservations, pendingActionObservations, performanceObservations, activationScore, nextPendingMilestone, notificationPrefs, briefing] = await Promise.all([
+  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, notificationPrefs, briefing] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
@@ -549,18 +549,24 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   ]);
   // Communication and setup-gap observations respect the same
   // observationsEnabled setting as every other Luv observation — Luv is
-  // one voice, not two.
+  // one voice, not two. When off, return nothing so the Dashboard Luv
+  // card stays hidden (it also gates on luvObservationsEnabled below).
   const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
-  const luvObservations = luvSettings?.observationsEnabled === false
-    ? luvObservationsRaw
-    : [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations];
+  const observationsOn = luvSettings?.observationsEnabled !== false;
+  const luvObservations = observationsOn
+    ? [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations]
+    : [];
   const showDigestCallout = !!notificationPrefs && notificationPrefs.dailyDigestEnabled && !notificationPrefs.digestIntroDismissed;
-  const trendObservations  = rawTrends   ? computeTrendObservations(rawTrends) : [];
-  const storyObservation   = rawTrends   ? computeStoryMode(rawTrends) : null;
-  const memoryObservations = rawMemories
+  const trendObservations  = observationsOn && rawTrends   ? computeTrendObservations(rawTrends) : [];
+  const storyObservation   = observationsOn && rawTrends   ? computeStoryMode(rawTrends) : null;
+  const memoryObservations = observationsOn && rawMemories
     ? computeMemoryObservations(rawMemories, new Date().getMonth() + 1)
     : [];
-  const insightObservations = rawInsights ? computeInsightObservations(rawInsights) : [];
+  const insightObservations = observationsOn && rawInsights ? computeInsightObservations(rawInsights) : [];
+  const recommendations = observationsOn ? recommendationsRaw : [];
+  const actionObservations = observationsOn ? actionObservationsRaw : [];
+  const pendingActionObservations = observationsOn ? pendingActionObservationsRaw : [];
+  const performanceObservations = observationsOn ? performanceObservationsRaw : [];
 
   // Compute momentum segments from lead scores (post-refresh)
   const { data: scoredLeads } = await supabase.from("leads")
@@ -622,6 +628,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     activationScore,
     nextPendingMilestone,
     showDigestCallout,
+    // When false, Dashboard must not render the restrained Luv card at all —
+    // including aggregates and recommendations that would otherwise still speak.
+    luvObservationsEnabled: observationsOn,
     // Luv Experience Completion, Work Stream 5 — the one-time intro card.
     // Guided Setup §1.1 (2026-07-22): the permanent luvIntroSeenAt flag is
     // still the gate (never show it twice), but it's no longer sufficient

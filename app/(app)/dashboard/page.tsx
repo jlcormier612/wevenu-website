@@ -6,12 +6,12 @@ import { CalendarClock, ChevronRight } from "lucide-react";
 import { Greeting } from "@/components/dashboard/greeting";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
+import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
 import { YourNextStepsCard } from "@/components/dashboard/getting-started";
 import { DigestCallout } from "@/components/dashboard/digest-callout";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/dashboard/service";
 import { excludeTodayFocusFromNextSteps, VENUE_NEXT_STEPS_CAP } from "@/lib/dashboard/venue-next-steps";
 import { clientListFilterHref } from "@/lib/clients/list-filters";
@@ -88,11 +88,13 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const outstandingBalance = await getOutstandingBalance().catch(() => null);
 
-  const luvEntry = selectLuvDashboardEntry({
-    focusItems,
-    observations: [...data.luvObservations, ...data.insightObservations],
-    recommendations: data.recommendations,
-  });
+  const luvEntry = data.luvObservationsEnabled
+    ? selectLuvDashboardEntry({
+        focusItems,
+        observations: [...data.luvObservations, ...data.insightObservations],
+        recommendations: data.recommendations,
+      })
+    : null;
 
   return (
     <div className="space-y-8">
@@ -130,30 +132,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       </section>
 
       {/* Luv interprets Today's Focus — not a second task list */}
-      {luvEntry && (
-        <section>
-          <Card className="border-rose-200/40" style={{ background: "color-mix(in oklch, var(--destructive) 2%, var(--card))" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <span aria-hidden>💗</span> Luv
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              <p className="text-sm text-foreground">{luvEntry.message}</p>
-              {luvEntry.suggestion && (
-                <p className="text-sm text-muted-foreground">{luvEntry.suggestion}</p>
-              )}
-              <Link
-                href={luvEntry.actionHref}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                {luvEntry.actionLabel}
-                <ChevronRight className="h-3 w-3" />
-              </Link>
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      {luvEntry && <DashboardLuvEntryCard entry={luvEntry} />}
 
       {/* 2. NEXT — actionable follow-ups that are not today's urgent work */}
       {nextSteps.length > 0 && (

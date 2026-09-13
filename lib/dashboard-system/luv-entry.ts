@@ -23,6 +23,8 @@ export type LuvDashboardEntry = {
   suggestion: string | null;
   actionLabel: string;
   actionHref: string;
+  /** When set, the Dashboard card can permanently dismiss this recommendation. */
+  dismissRecommendationId?: string;
 };
 
 type Aggregate = { summary: (count: number) => string; suggestion: string; actionLabel: string; href: string };
@@ -131,7 +133,13 @@ export function selectLuvDashboardEntry({
     const cta = firstCta(rec);
     if (cta && focusSubjects.has(subject(cta.href))) continue;
     if (!cta) continue;
-    return { message: rec.title, suggestion: rec.body || null, actionLabel: cta.label, actionHref: cta.href };
+    return {
+      message: rec.title,
+      suggestion: rec.body || null,
+      actionLabel: cta.label,
+      actionHref: cta.href,
+      dismissRecommendationId: rec.id,
+    };
   }
 
   // 2. An observation, but only about something Today's Focus is not covering.

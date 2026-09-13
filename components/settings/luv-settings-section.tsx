@@ -48,14 +48,14 @@ export function LuvSettingsSection({ initialSettings }: { initialSettings: LuvSe
         <div className="flex items-center justify-between gap-4">
           <div>
             <Label className="text-sm font-medium text-heading">Dashboard observations</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Show "What Luv noticed today" on the dashboard.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Show Luv&apos;s quiet dashboard note when she has something useful to say.</p>
           </div>
           <Switch checked={settings.observationsEnabled} onCheckedChange={(v) => set("observationsEnabled", v)} />
         </div>
         <div className="flex items-center justify-between gap-4">
           <div>
             <Label className="text-sm font-medium text-heading">Drafting assistance</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Allow Luv to generate AI-assisted content for this venue. Luv never sends messages on its own.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Allow Luv to draft messages and answer couple Ask Luv questions. Luv never sends messages on its own.</p>
           </div>
           <Switch checked={settings.draftingEnabled} onCheckedChange={(v) => set("draftingEnabled", v)} />
         </div>

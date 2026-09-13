@@ -26,6 +26,11 @@ describe("/api/luv/draft launch-readiness", () => {
     assert.doesNotMatch(draftRoute, /error: message/);
   });
 
+  it("uses honest errors when drafting is off vs unavailable", () => {
+    assert.match(draftRoute, /Luv drafting is turned off in Settings/);
+    assert.match(draftRoute, /AI drafting is temporarily unavailable/);
+  });
+
   it("keeps the existing 25s Anthropic timeout", () => {
     assert.match(draftRoute, /timeout:\s*25_000/);
   });
@@ -95,5 +100,6 @@ describe("Luv settings UI honesty", () => {
     assert.doesNotMatch(settingsUi, /value="draft_for_review"/);
     assert.doesNotMatch(settingsUi, /Autonomy level/);
     assert.match(settingsUi, /Luv never sends messages on its own/);
+    assert.match(settingsUi, /quiet dashboard note/);
   });
 });

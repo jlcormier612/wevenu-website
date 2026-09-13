@@ -203,7 +203,7 @@ export async function POST(request: Request) {
   const settings = await getLuvSettingsForVenueId(venueId);
   if (!isLuvDraftingEnabled(settings)) {
     return NextResponse.json({
-      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      answer: "Luv isn't available right now — ask your venue coordinator directly.",
       guideSection: null,
     });
   }
@@ -211,7 +211,7 @@ export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({
-      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      answer: "Luv isn't available right now — ask your venue coordinator directly.",
       guideSection: null,
     });
   }

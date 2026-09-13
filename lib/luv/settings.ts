@@ -98,11 +98,14 @@ export async function saveLuvSettings(settings: LuvSettings): Promise<void> {
   const venue = await getCurrentVenue();
   if (!venue) return;
   const supabase = await createClient();
+  // Launch invariant: Luv never sends without human approval. autonomyLevel is
+  // not customer-selectable; always persist draft_for_review so the column
+  // cannot imply a false autonomous mode.
   await supabase.from("luv_settings").upsert({
     venue_id: venue.id,
     observations_enabled: settings.observationsEnabled,
     drafting_enabled: settings.draftingEnabled,
-    autonomy_level: settings.autonomyLevel,
-    preferred_tone: settings.preferredTone,
+    autonomy_level: "draft_for_review",
+    preferred_tone: normalizePreferredTone(settings.preferredTone),
   }, { onConflict: "venue_id" });
 }

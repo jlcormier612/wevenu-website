@@ -112,7 +112,7 @@ export async function getCommunicationObservations(
       link: thread?.lead_id ? `/leads/${thread.lead_id}` : "/messaging/health",
       actionLabel: "View →",
       recommendation: thread?.lead_id
-        ? { label: "Send a follow-up", link: `/leads/${thread.lead_id}?luv=followup`, type: "draft" }
+        ? { label: "Send a follow-up", link: `/leads/${thread.lead_id}?luv=follow_up_email`, type: "draft" }
         : undefined,
     });
   }

@@ -308,7 +308,9 @@ export async function getLuvObservations(
       : doc.event_id  ? `/events/${doc.event_id}`
       : doc.vendor_id ? `/vendors/${doc.vendor_id}`
       : doc.lead_id   ? `/leads/${doc.lead_id}`
-      : "/";
+      : "/documents";
+    // Skip orphan docs with no trustworthy destination beyond a generic list
+    // only when we have at least Documents — never dump to "/".
     observations.push({
       id: `doc-${doc.id}`,
       kind: "waiting",
