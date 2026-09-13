@@ -539,13 +539,19 @@ export function CoupleFamilyQuestionnaireForm({
                       </label>
                     ))}
                   </div>
+                  {f.id === "share_review" && value === "yes" && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Thanks — your venue will only share your words publicly after they review them.
+                      {data.public_review_url ? " You can also leave a public review here if you like:" : ""}
+                    </p>
+                  )}
                   {f.id === "share_review" && value === "yes" && data.public_review_url && (
                     <a href={data.public_review_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm underline mt-2" style={{ color: primary }}>
                       Open review page <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   )}
                   {f.id === "share_review" && value === "yes" && !data.public_review_url && (
-                    <p className="text-xs text-muted-foreground mt-2">Your venue will share a review link when they have one configured.</p>
+                    <p className="text-xs text-muted-foreground mt-1">They’ll share a review link when they have one configured.</p>
                   )}
                 </FieldShell>
               );
