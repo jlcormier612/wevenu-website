@@ -128,10 +128,13 @@ describe("guide links used elsewhere in the app resolve", () => {
     assert.doesNotMatch(source, /getIntegrationSetupGuide/);
   });
 
-  it("Help & Guides home lists the setup guides", () => {
+  it("Help & Guides home uses the editorial landing (setup guides stay on /help/[slug] + Settings links)", () => {
     const source = readFileSync(resolve("app/(app)/help/page.tsx"), "utf8");
-    assert.match(source, /SETUP_GUIDES/);
-    assert.match(source, /\/help\/\$\{guide\.slug\}/);
+    assert.match(source, /HELP_GUIDES_TAGLINE/);
+    assert.doesNotMatch(source, /SETUP_GUIDES/);
+    assert.doesNotMatch(source, /coming soon/i);
+    const articlePage = readFileSync(resolve("app/(app)/help/[slug]/page.tsx"), "utf8");
+    assert.match(articlePage, /getSetupGuide/);
   });
 });
 
