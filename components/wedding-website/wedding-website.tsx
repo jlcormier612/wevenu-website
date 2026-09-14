@@ -1616,7 +1616,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     const rows = chunkFilmContactRows(photos, cols);
     let photoIndex = 0;
     const sheet = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 0, width: "100%", minWidth: 0 }}>
         {rows.map((row, rowIndex) => {
           const widthPct = filmContactRowWidthPercent(row.length, cols);
           return (
@@ -1624,10 +1624,15 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
               key={rowIndex}
               style={{
                 display: "grid",
-                gridTemplateColumns: `repeat(${row.length}, 1fr)`,
+                // minmax(0,1fr) — without min 0, intrinsic img min-width expands
+                // the sheet past Studio phone / content columns and the parent
+                // overflow-x-hidden hard-clips the rightmost column.
+                gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))`,
                 gap: 0,
                 width: `${widthPct}%`,
+                maxWidth: "100%",
                 marginInline: "auto",
+                minWidth: 0,
               }}
             >
               {row.map((url) => {
@@ -1635,10 +1640,14 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
                 return (
                   <div
                     key={i}
-                    className="overflow-hidden"
-                    style={{ borderRadius: tc.photoRadius, ...frame(i) }}
+                    className="overflow-hidden min-w-0"
+                    style={{ borderRadius: tc.photoRadius, ...frame(i), minWidth: 0 }}
                   >
-                    <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
+                    <img
+                      src={url}
+                      alt=""
+                      style={{ ...imgStyle, aspectRatio: aspectFor(i), maxWidth: "100%" }}
+                    />
                   </div>
                 );
               })}
@@ -1648,7 +1657,10 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
       </div>
     );
     const sprocket = (
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}>
+      <div
+        className="shrink-0"
+        style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}
+      >
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} style={{ width: 7, height: 5, borderRadius: 1, background: "#f3ebe0", opacity: 0.9 }} />
         ))}
@@ -1664,11 +1676,13 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           gap: 0,
           width: "100%",
           maxWidth: "100%",
+          minWidth: 0,
           boxSizing: "border-box",
+          overflow: "hidden",
         }}
       >
         {sprocket}
-        <div style={{ flex: 1, minWidth: 0 }}>{sheet}</div>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: "100%" }}>{sheet}</div>
         {sprocket}
       </div>
     );

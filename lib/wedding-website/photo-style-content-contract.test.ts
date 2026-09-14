@@ -266,8 +266,8 @@ describe("Film contact-sheet Option D even-pack", () => {
     assert.equal(countImgs(html), 7);
     assert.match(html, /#f3ebe0|#e8dcc8/i);
     // Full rows use 3 cols; orphan row uses 1 col at ~33% width centered.
-    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*1fr\)/);
-    assert.match(html, /grid-template-columns:\s*repeat\(1,\s*1fr\)/);
+    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+    assert.match(html, /grid-template-columns:\s*repeat\(1,\s*minmax\(0,\s*1fr\)\)/);
     assert.match(html, /width:\s*33\.33%/);
     assert.match(html, /margin-inline:\s*auto/);
     // Legacy fixed 3-col single grid would leave empty tracks beside rem=1.
@@ -279,7 +279,7 @@ describe("Film contact-sheet Option D even-pack", () => {
       React.createElement(GalleryGrid, { photos: urls(6), tc: themeFor("film") }),
     );
     assert.equal(countImgs(html), 6);
-    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*1fr\)/);
+    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
     assert.doesNotMatch(html, /grid-template-columns:\s*repeat\(1,/);
     assert.doesNotMatch(html, /width:\s*33\.33%/);
   });
@@ -303,7 +303,7 @@ describe("Film contact-sheet Option D even-pack", () => {
     assert.equal(countImgs(html), 6);
     // Contact sheet cream + sprocket — not a horizontal vw strip.
     assert.match(html, /#f3ebe0|#e8dcc8/i);
-    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*1fr\)/);
+    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
     assert.doesNotMatch(html, /\d+vw/);
     assert.doesNotMatch(html, /FilmStripScroller|overflow-x-auto/);
   });
@@ -313,7 +313,7 @@ describe("Film contact-sheet Option D even-pack", () => {
       React.createElement(GalleryGrid, { photos: urls(9), tc: themeFor("film") }),
     );
     assert.equal(countImgs(html), 9);
-    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*1fr\)/);
+    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
     assert.doesNotMatch(html, /grid-template-columns:\s*repeat\(1,/);
     assert.doesNotMatch(html, /width:\s*33\.33%/);
   });
