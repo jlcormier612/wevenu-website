@@ -1533,8 +1533,14 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
       if (tc.scalePattern === "alternating") return i % 2 === 1 ? { vw: `${Math.max(baseW - 12, 30)}vw`, max: baseMax - 100 } : { vw: `${baseW}vw`, max: baseMax };
       return { vw: `${baseW}vw`, max: baseMax };
     };
+    // Constrain the scrollport width so overflow-x-auto can scroll. Without
+    // max-width/min-width:0, the flex row expands to all photo widths and a
+    // parent overflow-x-hidden (Studio phone frame) hard-clips after ~3 photos.
     return (
-      <div className="flex overflow-x-auto pb-4 -mx-6 px-6" style={{ gap, scrollSnapType: "x proximity" }}>
+      <div
+        className="flex overflow-x-auto pb-4 -mx-6 px-6 w-full max-w-full min-w-0"
+        style={{ gap, scrollSnapType: "x proximity" }}
+      >
         {photos.map((url, i) => {
           const w = widthFor(i);
           return (
@@ -2538,7 +2544,10 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
             // inside GalleryGrid. Neither reads the other's fields.
             case "gallery": {
               const g = content.gallery;
-              if (!g?.photos?.length) return null;
+              const galleryPhotos = g?.photos?.length
+                ? g.photos
+                : [];
+              if (!galleryPhotos.length) return null;
               return (
                 <SectionCanvas key="gallery" role={tc.sectionRoles?.gallery} colors={canvasColors}>
                 <SectionWrapper sectionKey="gallery">
@@ -2547,8 +2556,8 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
                     style={tc.sectionBand === "tinted" ? { background: tc.surface, paddingBlock: "3rem" } : undefined}
                   >
                     <div style={{ maxWidth: tc.edgeTreatment === "full-bleed" ? "none" : (tc.contentWidth === "narrow" ? "30rem" : tc.contentWidth === "wide" ? "56rem" : "42rem"), marginInline: tc.edgeTreatment === "full-bleed" ? undefined : "auto" }}>
-                      <SectionHeader title={g.title ?? "Our Photos"} tc={tc} accentColor={color} />
-                      <GalleryGrid photos={g.photos} tc={tc} />
+                      <SectionHeader title={g?.title ?? "Our Photos"} tc={tc} accentColor={color} />
+                      <GalleryGrid photos={galleryPhotos} tc={tc} />
                     </div>
                   </section>
                 </SectionWrapper>

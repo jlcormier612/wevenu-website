@@ -8,7 +8,7 @@
  * to the couple's currently-chosen Collection's own small set.
  *
  * This module curates a fixed, collection-independent set of 12 for the
- * "Need a little inspiration?" section — 12 new `color_stories` rows (all
+ * "Need a little inspiration?" section — 12 `color_stories` rows (all
  * scoped under Coastal's collection_id purely for the required FK; resolved
  * here by `key`, never by that FK, so the Collection they're stored under
  * is irrelevant to which Collection a couple actually has). Design System
@@ -23,17 +23,7 @@
  */
 import type { CatalogColorStory, CatalogCollection } from "@/lib/wedding-website/types";
 
-/** Canonical order — matches the exact spec order these were provided in.
- * Visual Acceptance Corrections (2026-08-08) — "meadow" removed (too close
- * to "sage-garden", both mid-tone muted greens); "berry" stays but its
- * stored tokens were revised deeper/richer (raspberry/wine/merlot) so it no
- * longer sits in the same territory as "dusty-rose".
- * Final Assortment Pass (2026-08-10) — "sage-garden" lightened into a pale,
- * dusty, romantic territory (alongside the lightened "dusty-rose"/"peach-
- * bellini"), which reopened room for a genuinely distinct fresh/grassy/sunny
- * "meadow" — restored here as a new, deliberately different palette, not a
- * resurrection of the old deleted row. Appended last so it fills the
- * six-row grid's final slot beside "golden-hour". Twelve, not eleven. */
+/** Canonical order — matches the exact approved curated Color Story set. */
 export const CURATED_COLOR_STORY_KEYS: string[] = [
   "coastal-blue", "sage-garden", "dusty-rose", "peach-bellini", "lavender-haze",
   "champagne-curated", "terracotta-curated", "french-blue", "black-tie",
@@ -44,6 +34,66 @@ export type SixRoleColors = {
   colorPrimary: string; colorSecondary: string; colorAccent: string;
   colorNeutral: string; colorBackground: string; colorText: string;
 };
+
+/**
+ * Exact approved six-role palettes (Hosted Experience design audit /
+ * visual QA matrix). Do not invent or rebalance — restore verbatim.
+ * Seeded under Coastal via migration `20261393000000_restore_curated_color_stories.sql`.
+ */
+export const APPROVED_CURATED_COLOR_STORIES: ReadonlyArray<{
+  key: string;
+  name: string;
+  roles: SixRoleColors;
+}> = [
+  { key: "coastal-blue", name: "Coastal Blue", roles: {
+    colorPrimary: "#5F8299", colorSecondary: "#A8BEC8", colorAccent: "#315B70",
+    colorNeutral: "#E8E1D7", colorBackground: "#F7F5F0", colorText: "#263A43",
+  }},
+  { key: "sage-garden", name: "Sage Garden", roles: {
+    colorPrimary: "#BFCBB7", colorSecondary: "#DCE2D5", colorAccent: "#91A287",
+    colorNeutral: "#EEEAE1", colorBackground: "#FAF8F3", colorText: "#465044",
+  }},
+  { key: "dusty-rose", name: "Dusty Rose", roles: {
+    colorPrimary: "#E8CBCD", colorSecondary: "#F1DDDE", colorAccent: "#D8B3B7",
+    colorNeutral: "#F5E9E7", colorBackground: "#FFFDFC", colorText: "#6A4D50",
+  }},
+  { key: "peach-bellini", name: "Peach Bellini", roles: {
+    colorPrimary: "#F4C7B3", colorSecondary: "#F9DCCB", colorAccent: "#EFAE92",
+    colorNeutral: "#FBE9DE", colorBackground: "#FFFCF8", colorText: "#704F43",
+  }},
+  { key: "lavender-haze", name: "Lavender Haze", roles: {
+    colorPrimary: "#8B74A5", colorSecondary: "#B9A7CB", colorAccent: "#654D7C",
+    colorNeutral: "#E7DEEC", colorBackground: "#FBF8FC", colorText: "#3D3447",
+  }},
+  { key: "champagne-curated", name: "Champagne", roles: {
+    colorPrimary: "#B8AD9F", colorSecondary: "#D4CCC1", colorAccent: "#948779",
+    colorNeutral: "#E8E2DA", colorBackground: "#FCFAF7", colorText: "#4D4944",
+  }},
+  { key: "terracotta-curated", name: "Terracotta", roles: {
+    colorPrimary: "#B9684E", colorSecondary: "#D79A7E", colorAccent: "#8D4938",
+    colorNeutral: "#E9D5C4", colorBackground: "#FBF6EF", colorText: "#4B352E",
+  }},
+  { key: "french-blue", name: "French Blue", roles: {
+    colorPrimary: "#667FA5", colorSecondary: "#A9B8D0", colorAccent: "#405B83",
+    colorNeutral: "#E2E5E8", colorBackground: "#FAFAF8", colorText: "#2D3748",
+  }},
+  { key: "black-tie", name: "Black Tie", roles: {
+    colorPrimary: "#242321", colorSecondary: "#B7AA91", colorAccent: "#8A7352",
+    colorNeutral: "#E5DED2", colorBackground: "#FAF8F3", colorText: "#1E1D1B",
+  }},
+  { key: "berry", name: "Berry", roles: {
+    colorPrimary: "#7A2A42", colorSecondary: "#B85073", colorAccent: "#4E1A2C",
+    colorNeutral: "#E3C7CC", colorBackground: "#FBF4F3", colorText: "#341019",
+  }},
+  { key: "golden-hour", name: "Golden Hour", roles: {
+    colorPrimary: "#C49345", colorSecondary: "#DFC58D", colorAccent: "#8E672C",
+    colorNeutral: "#EEE1C7", colorBackground: "#FCF8EE", colorText: "#493D2D",
+  }},
+  { key: "meadow", name: "Meadow", roles: {
+    colorPrimary: "#6F8F55", colorSecondary: "#A8B96F", colorAccent: "#D3AD4F",
+    colorNeutral: "#EEE1B8", colorBackground: "#FBF8EC", colorText: "#30462F",
+  }},
+];
 
 /** Hosted Experience RC1, Part 2 (2026-08-15) — every `color_stories` row
  * (curated and native alike) now has authored `colorPrimary/Secondary/
