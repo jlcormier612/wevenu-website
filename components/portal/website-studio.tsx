@@ -40,6 +40,7 @@ import {
   type ColorStoryRoleKey,
 } from "@/lib/wedding-website/wizard-color-edit";
 import { afterWizardPhotoDeleted } from "@/lib/wedding-website/wizard-photo-delete";
+import { mergeWebsiteGalleryPhotos } from "@/lib/wedding-website/resolve-gallery-photos";
 import { PORTRAIT_FACE_FOCAL } from "@/components/wedding-website/composition-primitives";
 import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, CatalogColorStory } from "@/lib/wedding-website/types";
 import type { PortalContext } from "@/lib/portal/types";
@@ -358,12 +359,29 @@ function SetupWizard({
   async function advance(next: WizardStep | "done") {
     setSaving(true);
     try {
-      if (step === "photo" && selectedPhoto) {
-        await onSaveSection("home", {
-          ...(site.content?.home ?? {}),
-          title: site.content?.home?.title ?? suggestions?.coupleNames ?? coupleName,
-          coverImageUrl: selectedPhoto,
+      if (step === "photo") {
+        const galleryPhotos = mergeWebsiteGalleryPhotos({
+          galleryPhotos: site.content?.gallery?.photos,
+          coverPhoto: selectedPhoto || site.content?.home?.coverImageUrl,
+          engagementPhotos: eng.map((p) => p.url),
         });
+        if (selectedPhoto) {
+          await onSaveSection("home", {
+            ...(site.content?.home ?? {}),
+            title: site.content?.home?.title ?? suggestions?.coupleNames ?? coupleName,
+            coverImageUrl: selectedPhoto,
+          });
+        }
+        // Beautiful-by-Default: engagement uploads must appear in the Photo
+        // Gallery — selecting a hero is not enough. Persist the full set so
+        // Preview and published pages render every uploaded photo (no fixed
+        // 3-up of the cover alone).
+        if (galleryPhotos.length > 0) {
+          await onSaveSection("gallery", {
+            title: site.content?.gallery?.title ?? "Our Photos",
+            photos: galleryPhotos,
+          });
+        }
       }
       if (step === "collection") {
         // Design System Correction (2026-08-08) — `currentCollection` falls
@@ -1263,6 +1281,35 @@ export function WebsiteStudio({
         if (!wizardDismissed && completedSections < 2 && !initialSite.isPublished) {
           setWizardStep("welcome");
         }
+        // Beautiful-by-Default repair: if the couple has engagement uploads
+        // that never made it into gallery.photos (hero-only wizard path),
+        // merge them into the authored gallery and persist so Live Preview
+        // and published pages show the full set — never a fixed 3-up.
+        const engagementUrls = (d?.engagementPhotos ?? []).map(p => p.url);
+        if (engagementUrls.length === 0) return;
+        setPreviewContent(c => {
+          const merged = mergeWebsiteGalleryPhotos({
+            galleryPhotos: c.gallery?.photos,
+            coverPhoto: c.home?.coverImageUrl,
+            engagementPhotos: engagementUrls,
+          });
+          const existing = c.gallery?.photos ?? [];
+          if (merged.length <= existing.length) return c;
+          const nextGallery = {
+            title: c.gallery?.title ?? "Our Photos",
+            photos: merged,
+          };
+          void fetch("/api/portal/website", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              token,
+              contentKey: "gallery",
+              contentValue: nextGallery,
+            }),
+          });
+          return { ...c, gallery: nextGallery };
+        });
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps

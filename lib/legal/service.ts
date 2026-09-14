@@ -132,6 +132,22 @@ export type VendorPortalLegalType =
   (typeof VENDOR_PORTAL_LEGAL_TYPES)[number];
 
 /**
+ * Filter Legal History rows to the document types applicable to a portal
+ * scope. Vendor → Vendor Terms + Privacy only. Other scopes pass through.
+ * Pure — does not mutate acceptance records.
+ */
+export function filterLegalHistoryItemsForScope(
+  items: LegalAcceptanceHistoryItem[],
+  scope: AuthSessionScope,
+): LegalAcceptanceHistoryItem[] {
+  if (scope !== "vendor") return items;
+  const allowed = new Set<string>(VENDOR_PORTAL_LEGAL_TYPES);
+  return items.filter(
+    (item) => item.documentType != null && allowed.has(item.documentType),
+  );
+}
+
+/**
  * Document types shown on a Relationship Workspace compliance summary.
  * Venue uses WP2 venue_owner required set (VSA + Privacy + Cookie + AUP),
  * not the narrower activate/session gate set (VENUE_SUBSCRIPTION_LEGAL_TYPES).
@@ -286,7 +302,7 @@ export async function listLegalAcceptancesForCurrentUser(
   );
   const byId = new Map(docs.map((d) => [d.id, d]));
 
-  return acceptances.map((a) => {
+  const items: LegalAcceptanceHistoryItem[] = acceptances.map((a) => {
     const { documentType, documentTitle } = documentTitleForHistory(
       byId.get(a.legalDocumentId),
     );
@@ -299,6 +315,7 @@ export async function listLegalAcceptancesForCurrentUser(
       acceptanceMethod: a.acceptanceMethod || DEFAULT_LEGAL_ACCEPTANCE_METHOD,
     };
   });
+  return filterLegalHistoryItemsForScope(items, scope);
 }
 
 export async function getActiveLegalDocument(
