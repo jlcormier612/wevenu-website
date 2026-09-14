@@ -91,5 +91,9 @@ describe("customer-facing brand — Hello to Cheers", () => {
 
     assert.match(reportsLayout, /title: "Reports"/);
     assert.match(reportsLayout, /title="Reports"/);
+
+    const clientList = readFileSync(join(ROOT, "components/clients/client-list.tsx"), "utf8");
+    assert.match(clientList, /Search by client or event type/);
+    assert.doesNotMatch(clientList, /Search by couple or event type/);
   });
 });

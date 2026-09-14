@@ -148,7 +148,7 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by couple or event type…" className="pl-9" />
+            placeholder="Search by client or event type…" className="pl-9" />
         </div>
         <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
           <SelectTrigger className="h-9 w-full sm:w-52 text-sm text-muted-foreground">
