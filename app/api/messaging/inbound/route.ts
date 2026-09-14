@@ -96,9 +96,12 @@ function createInboundEmailStore(supabase: ReturnType<typeof createAdminClient>)
       return data;
     },
     async findConversationForRelationship(relationshipId) {
+      // Venue↔couple only — never couple_vendor_inquiry (or other kinds)
+      // that share relationship_id after Vendor Network.
       const { data } = await supabase.from("conversations")
         .select("id, venue_id, relationship_id")
         .eq("relationship_id", relationshipId)
+        .eq("conversation_kind", "venue_couple")
         .maybeSingle<{ id: string; venue_id: string; relationship_id: string | null }>();
       return data;
     },

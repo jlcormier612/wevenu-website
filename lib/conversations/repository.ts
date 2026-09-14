@@ -803,13 +803,19 @@ export async function getPortalConversation(
   if (error) throw error;
   if (!data || data.error) return { error: data?.error ?? "unknown_error" };
   type Row = {
-    id: string; sender_type: PortalConversationMessage["senderType"]; body: string; sent_at: string;
+    id: string; sender_type: PortalConversationMessage["senderType"]; channel?: string;
+    body: string; sent_at: string;
     contact_read_at: string | null; venue_read_at: string | null;
     attachments: { id: string; fileUrl: string; fileName: string; fileSize: number | null; mimeType: string | null }[];
   };
   const messages = ((data.messages ?? []) as Row[]).map((m): PortalConversationMessage => ({
-    id: m.id, senderType: m.sender_type, body: m.body, sentAt: m.sent_at,
-    contactReadAt: m.contact_read_at, venueReadAt: m.venue_read_at,
+    id: m.id,
+    senderType: m.sender_type,
+    channel: (m.channel as PortalConversationMessage["channel"]) || "portal",
+    body: m.body,
+    sentAt: m.sent_at,
+    contactReadAt: m.contact_read_at,
+    venueReadAt: m.venue_read_at,
     attachments: m.attachments ?? [],
   }));
   return { conversationId: data.conversation_id, messages };
@@ -1055,7 +1061,8 @@ export async function getPortalCoupleVendorConversation(
   if (error) throw error;
   if (!data || "error" in data) return { error: data?.error ?? "not_found" };
   type Row = {
-    id: string; sender_type: PortalConversationMessage["senderType"]; body: string; sent_at: string;
+    id: string; sender_type: PortalConversationMessage["senderType"]; channel?: string;
+    body: string; sent_at: string;
     contact_read_at: string | null; venue_read_at: string | null;
     attachments: { id: string; fileUrl: string; fileName: string; fileSize: number | null; mimeType: string | null }[];
   };
@@ -1063,8 +1070,13 @@ export async function getPortalCoupleVendorConversation(
     conversationId: data.conversation_id,
     vendorName: data.vendor_name ?? "Vendor",
     messages: ((data.messages ?? []) as Row[]).map((m): PortalConversationMessage => ({
-      id: m.id, senderType: m.sender_type, body: m.body, sentAt: m.sent_at,
-      contactReadAt: m.contact_read_at, venueReadAt: m.venue_read_at,
+      id: m.id,
+      senderType: m.sender_type,
+      channel: (m.channel as PortalConversationMessage["channel"]) || "portal",
+      body: m.body,
+      sentAt: m.sent_at,
+      contactReadAt: m.contact_read_at,
+      venueReadAt: m.venue_read_at,
       attachments: m.attachments ?? [],
     })),
   };

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { FileText, Image as ImageIcon, Paperclip, RotateCcw, Send, X } from "lucide-react";
 import type { CoupleMessage, MessageAttachment, PortalThread } from "@/lib/messages/types";
+import { clientHistoryChannelLabel } from "@/lib/conversations/channels";
 
 // Venue Brand Experience Phase 1: SAGE (the couple's own outgoing chat
 // bubble color) is the venue's primary brand color.
@@ -88,6 +89,7 @@ function Bubble({
 }) {
   const isCouple = msg.sender_type === "couple";
   const hasBody  = msg.body.trim().length > 0;
+  const channelLabel = clientHistoryChannelLabel(msg.channel ?? "portal");
   return (
     <div className={`flex flex-col ${isCouple ? "items-end" : "items-start"}`}>
       <div className="flex items-end gap-2">
@@ -116,6 +118,7 @@ function Bubble({
             style={isCouple ? { color: "rgba(255,255,255,0.55)" } : undefined}
           >
             {formatTime(msg.created_at)}
+            {channelLabel ? ` · ${channelLabel}` : null}
           </span>
         </div>
       </div>
@@ -278,6 +281,7 @@ export function PortalMessageSection({
     const optimistic: CoupleMessage = {
       id: `opt-${Date.now()}`,
       sender_type: "couple",
+      channel: "portal",
       body: text,
       created_at: new Date().toISOString(),
       venue_read_at: null, couple_read_at: null, attachments: [],

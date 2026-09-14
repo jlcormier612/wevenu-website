@@ -4,8 +4,10 @@ import { describe, it } from "node:test";
 import {
   OUTBOUND_CHANNELS,
   OUTBOUND_CHANNEL_LABEL,
+  CLIENT_HISTORY_CHANNEL_LABEL,
   SENDABLE_CHANNELS,
   STAFF_ONLY_CHANNELS,
+  clientHistoryChannelLabel,
   isClientVisibleChannel,
   isOutboundChannel,
   isSendableChannel,
@@ -26,6 +28,13 @@ describe("sendable conversation channels", () => {
     assert.equal(isSendableChannel("push"), false);
     assert.equal(isSendableChannel("phone_log"), false);
     assert.equal(isOutboundChannel("voicemail"), false);
+  });
+
+  it("exposes short client-history labels for portal / email / sms", () => {
+    assert.equal(CLIENT_HISTORY_CHANNEL_LABEL.portal, "Portal");
+    assert.equal(clientHistoryChannelLabel("email"), "Email");
+    assert.equal(clientHistoryChannelLabel("sms"), "Text");
+    assert.equal(clientHistoryChannelLabel("internal_note"), null);
   });
 });
 

@@ -107,16 +107,18 @@ describe("portal visibility product matrix", () => {
 
   it("portal conversation RPC excludes only staff-only channels", () => {
     const sql = readFileSync(
-      resolve("supabase/migrations/20261315000000_staff_only_conversation_channels.sql"),
+      resolve("supabase/migrations/20261391000000_portal_venue_couple_channel.sql"),
       "utf8",
     );
     assert.match(sql, /get_portal_conversation/);
     assert.match(sql, /channel not in \('internal_note', 'phone_log', 'voicemail', 'push'\)/);
+    assert.match(sql, /conversation_kind = 'venue_couple'/);
   });
 
   it("portal messages API reads conversation_messages via getPortalConversation", () => {
     const route = readFileSync(resolve("app/api/portal/messages/route.ts"), "utf8");
     assert.match(route, /getPortalConversation/);
+    assert.match(route, /channel: m\.channel/);
   });
 
   for (const row of MATRIX) {

@@ -17,6 +17,7 @@ function toLegacyMessage(m: PortalConversationMessage): CoupleMessage {
   return {
     id: m.id,
     sender_type: m.senderType === "venue_staff" || m.senderType === "system" ? "venue" : "couple",
+    channel: m.channel,
     body: m.body,
     created_at: m.sentAt,
     venue_read_at: m.venueReadAt,

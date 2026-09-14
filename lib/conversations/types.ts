@@ -95,6 +95,8 @@ export type ConversationDetail = {
 export type PortalConversationMessage = {
   id: string;
   senderType: ConversationSenderType;
+  /** Client-visible channel (portal / email / sms). Staff-only channels are filtered upstream. */
+  channel: ConversationChannel;
   body: string;
   sentAt: string;
   contactReadAt: string | null;

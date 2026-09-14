@@ -108,6 +108,13 @@ describe("communication architecture locks", () => {
     const sendEmail = readFileSync(resolve("lib/email/send.ts"), "utf8");
     assert.match(sendEmail, /attachments/);
   });
+
+  it("inbound email relationship fallback scopes to venue_couple", () => {
+    assert.match(inboundEmailRoute, /findConversationForRelationship/);
+    assert.match(inboundEmailRoute, /conversation_kind/);
+    assert.match(inboundEmailRoute, /venue_couple/);
+    assert.match(inboundEmail, /extractConversationIdFromTo|thread\+/);
+  });
 });
 
 describe("inbox primary navigation", () => {
