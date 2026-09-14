@@ -967,13 +967,93 @@ export function SectionHeader({ title, tc, accentColor }: { title: string; tc: T
 // Collection owns the gallery SECTION's relationship to the page (width,
 // edge treatment, band, header/divider) — applied by the "gallery" case in
 // WeddingWebsite, not here. This component owns only what's inside that
-// section: galleryLayout (Collection's base grid/masonry/film-strip, used
-// by every "uniform"-arrangement Photo Style) and everything Photo Style
-// controls (arrangement/scalePattern/rotation/shadow/spacing/frame/scale/
-// filter/radius). `arrangement: "collage"/"scrapbook"` replace the per-
-// image loop entirely for that gallery instance — the one place Photo
-// Style's own composition supersedes Collection's galleryLayout, per the
-// locked product model.
+// section: galleryLayout (Collection's base grid/masonry/film-strip) and
+// everything Photo Style controls (arrangement/scalePattern/rotation/
+// shadow/spacing/frame/scale/filter/radius). Photo Style compositions that
+// replace the Collection shell for that gallery instance:
+//   - arrangement collage / scrapbook / gallery-wall / sparse / …
+//   - Film contact-sheet (frame+tight+uniform) — including over Coastal's
+//     film-strip layout, so all uploaded photos pack into a visible sheet
+//     instead of a clipped horizontal scroller with no affordance.
+function FilmStripScroller({
+  gap,
+  children,
+}: {
+  gap: string;
+  children: React.ReactNode;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = React.useState(false);
+  const [canNext, setCanNext] = React.useState(false);
+
+  const updateAffordance = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 4);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    updateAffordance();
+    el.addEventListener("scroll", updateAffordance, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateAffordance) : null;
+    ro?.observe(el);
+    // Re-measure after images load (widths can change scrollWidth).
+    const imgs = el.querySelectorAll("img");
+    const onLoad = () => updateAffordance();
+    imgs.forEach((img) => img.addEventListener("load", onLoad));
+    return () => {
+      el.removeEventListener("scroll", updateAffordance);
+      ro?.disconnect();
+      imgs.forEach((img) => img.removeEventListener("load", onLoad));
+    };
+  }, [updateAffordance, children]);
+
+  const scrollByPage = (dir: -1 | 1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.8, 160), behavior: "smooth" });
+  };
+
+  return (
+    <div className="relative w-full max-w-full min-w-0">
+      {canPrev ? (
+        <button
+          type="button"
+          aria-label="Show previous photos"
+          onClick={() => scrollByPage(-1)}
+          className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
+        >
+          ‹
+        </button>
+      ) : null}
+      <div
+        ref={ref}
+        className="flex w-full max-w-full min-w-0 overflow-x-auto pb-3"
+        style={{
+          gap,
+          scrollSnapType: "x proximity",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "thin",
+        }}
+      >
+        {children}
+      </div>
+      {canNext ? (
+        <button
+          type="button"
+          aria-label="Show more photos"
+          onClick={() => scrollByPage(1)}
+          className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
+        >
+          ›
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 const SPACING_GAP: Record<ThemeConfig["photoSpacing"], string> = {
   tight: "0.5rem", normal: "0.75rem", generous: "1.5rem",
@@ -1525,98 +1605,118 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     return "1 / 1";
   };
 
-  if (tc.galleryLayout === "film-strip") {
-    const baseW = tc.imageScale === "large" ? 78 : 46;
-    const baseMax = tc.imageScale === "large" ? 560 : 340;
-    const widthFor = (i: number): { vw: string; max: number } => {
-      if (tc.scalePattern === "hero-emphasis" && i === 0) return { vw: `${Math.min(baseW + 22, 92)}vw`, max: baseMax + 180 };
-      if (tc.scalePattern === "alternating") return i % 2 === 1 ? { vw: `${Math.max(baseW - 12, 30)}vw`, max: baseMax - 100 } : { vw: `${baseW}vw`, max: baseMax };
-      return { vw: `${baseW}vw`, max: baseMax };
-    };
-    // Constrain the scrollport width so overflow-x-auto can scroll. Without
-    // max-width/min-width:0, the flex row expands to all photo widths and a
-    // parent overflow-x-hidden (Studio phone frame) hard-clips after ~3 photos.
-    return (
-      <div
-        className="flex overflow-x-auto pb-4 -mx-6 px-6 w-full max-w-full min-w-0"
-        style={{ gap, scrollSnapType: "x proximity" }}
-      >
-        {photos.map((url, i) => {
-          const w = widthFor(i);
+  // Film Photo Style contact-sheet — composition supersedes Collection
+  // galleryLayout (including Coastal's film-strip). Same model as
+  // collage/scrapbook: Photo Style owns the inside of the gallery section.
+  // Without this, Coastal+Film rendered a vw-sized horizontal strip that
+  // parent overflow-x-hidden hard-clipped after ~2.5 photos with no
+  // discoverable way to reach the rest.
+  if (contactSheet) {
+    const cols = pickFilmContactColumns(photos.length);
+    const rows = chunkFilmContactRows(photos, cols);
+    let photoIndex = 0;
+    const sheet = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {rows.map((row, rowIndex) => {
+          const widthPct = filmContactRowWidthPercent(row.length, cols);
           return (
-            <div key={i} className="shrink-0 overflow-hidden"
-              style={{ width: w.vw, maxWidth: w.max, borderRadius: tc.photoRadius, scrollSnapAlign: "center", ...frame(i) }}>
-              <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+            <div
+              key={rowIndex}
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${row.length}, 1fr)`,
+                gap: 0,
+                width: `${widthPct}%`,
+                marginInline: "auto",
+              }}
+            >
+              {row.map((url) => {
+                const i = photoIndex++;
+                return (
+                  <div
+                    key={i}
+                    className="overflow-hidden"
+                    style={{ borderRadius: tc.photoRadius, ...frame(i) }}
+                  >
+                    <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
     );
+    const sprocket = (
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} style={{ width: 7, height: 5, borderRadius: 1, background: "#f3ebe0", opacity: 0.9 }} />
+        ))}
+      </div>
+    );
+    return (
+      <div
+        style={{
+          background: "linear-gradient(180deg, #f3ebe0 0%, #e8dcc8 100%)",
+          padding: "0.45rem",
+          boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.1)",
+          display: "flex",
+          gap: 0,
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+        }}
+      >
+        {sprocket}
+        <div style={{ flex: 1, minWidth: 0 }}>{sheet}</div>
+        {sprocket}
+      </div>
+    );
+  }
+
+  if (tc.galleryLayout === "film-strip") {
+    // Container-relative widths (cqw), not viewport vw — vw oversized frames
+    // inside Studio phone / content columns and caused hard clip without a
+    // usable scrollport. FilmStripScroller adds visible prev/next controls
+    // so remaining photos are reachable without relying on hidden scrollbars.
+    const baseCqw = tc.imageScale === "large" ? 58 : 42;
+    const baseMax = tc.imageScale === "large" ? 360 : 280;
+    const widthFor = (i: number): { cqw: number; max: number } => {
+      if (tc.scalePattern === "hero-emphasis" && i === 0) {
+        return { cqw: Math.min(baseCqw + 12, 72), max: baseMax + 80 };
+      }
+      if (tc.scalePattern === "alternating") {
+        return i % 2 === 1
+          ? { cqw: Math.max(baseCqw - 8, 28), max: baseMax - 60 }
+          : { cqw: baseCqw, max: baseMax };
+      }
+      return { cqw: baseCqw, max: baseMax };
+    };
+    return (
+      <FilmStripScroller gap={gap}>
+        {photos.map((url, i) => {
+          const w = widthFor(i);
+          return (
+            <div
+              key={i}
+              className="shrink-0 overflow-hidden"
+              style={{
+                width: `min(${w.cqw}cqw, ${w.max}px)`,
+                maxWidth: "85%",
+                borderRadius: tc.photoRadius,
+                scrollSnapAlign: "center",
+                ...frame(i),
+              }}
+            >
+              <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+            </div>
+          );
+        })}
+      </FilmStripScroller>
+    );
   }
 
   if (tc.galleryLayout === "grid") {
-    // Film contact-sheet Option D: pack into 2–3 col rows; short final rows
-    // shrink + center so cream strip never paints empty tracks (same bug
-    // class as Midnight's orphan support cell, cream instead of near-black).
-    if (contactSheet) {
-      const cols = pickFilmContactColumns(photos.length);
-      const rows = chunkFilmContactRows(photos, cols);
-      let photoIndex = 0;
-      const sheet = (
-        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {rows.map((row, rowIndex) => {
-            const widthPct = filmContactRowWidthPercent(row.length, cols);
-            return (
-              <div
-                key={rowIndex}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${row.length}, 1fr)`,
-                  gap: 0,
-                  width: `${widthPct}%`,
-                  marginInline: "auto",
-                }}
-              >
-                {row.map((url) => {
-                  const i = photoIndex++;
-                  return (
-                    <div
-                      key={i}
-                      className="overflow-hidden"
-                      style={{ borderRadius: tc.photoRadius, ...frame(i) }}
-                    >
-                      <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      );
-      const sprocket = (
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} style={{ width: 7, height: 5, borderRadius: 1, background: "#f3ebe0", opacity: 0.9 }} />
-          ))}
-        </div>
-      );
-      return (
-        <div
-          style={{
-            background: "linear-gradient(180deg, #f3ebe0 0%, #e8dcc8 100%)",
-            padding: "0.45rem",
-            boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.1)",
-            display: "flex",
-            gap: 0,
-          }}
-        >
-          {sprocket}
-          <div style={{ flex: 1, minWidth: 0 }}>{sheet}</div>
-          {sprocket}
-        </div>
-      );
-    }
     const grid = (
       <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 @min-[768px]/wedding:grid-cols-3"}`} style={{ gap }}>
         {photos.map((url, i) => (

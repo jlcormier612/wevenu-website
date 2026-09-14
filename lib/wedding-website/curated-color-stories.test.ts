@@ -130,13 +130,26 @@ describe("Elegant typography — Playfair italic + Lato only", () => {
   });
 });
 
-describe("Gallery film-strip scrollport containment", () => {
-  it("film-strip scroll row constrains width so six photos are not hard-clipped", () => {
+describe("Gallery film-strip and Film contact-sheet", () => {
+  it("film-strip uses container-relative sizing and FilmStripScroller (not viewport vw)", () => {
     const src = readFileSync(
       join(process.cwd(), "components/wedding-website/wedding-website.tsx"),
       "utf8",
     );
     assert.match(src, /galleryLayout === "film-strip"/);
-    assert.match(src, /w-full max-w-full min-w-0/);
+    assert.match(src, /FilmStripScroller/);
+    assert.match(src, /min\(\$\{w\.cqw\}cqw/);
+    assert.doesNotMatch(src, /width: w\.vw/);
+    assert.match(src, /Show more photos/);
+  });
+
+  it("Film contact-sheet runs before Collection film-strip so Coastal\\+Film is not clipped", () => {
+    const src = readFileSync(
+      join(process.cwd(), "components/wedding-website/wedding-website.tsx"),
+      "utf8",
+    );
+    const contactIdx = src.indexOf("if (contactSheet)");
+    const filmStripIdx = src.indexOf('if (tc.galleryLayout === "film-strip")');
+    assert.ok(contactIdx > 0 && filmStripIdx > contactIdx);
   });
 });
