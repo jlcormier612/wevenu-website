@@ -18,7 +18,7 @@ Verified — either live-database-tested this engagement, or confirmed via direc
 
 | Area | Status | Verified how |
 |---|---|---|
-| Lead Acquisition & Intake | ✅ Complete | Live: `ingest_lead` canonical pipeline, audit trail, reactivation policy, Email Intake Engine — real inbound email → Claude extraction → Lead tested end-to-end |
+| Lead Acquisition & Intake | ✅ Complete | Live: `ingest_lead` canonical pipeline, audit trail, reactivation policy, Email Intake Engine — real inbound email → OpenAI extraction → Lead tested end-to-end |
 | CRM / Pipeline | ✅ Complete | Live: Pipeline Templates (venue-editable stages) confirmed real this sprint, correcting a stale "fixed at 7 stages" claim. Lead-to-team assignment remains an explicit no-op hook (see below) |
 | Conversations (Messaging) | ✅ Complete | Live: one Conversation object, all channels (email/SMS/portal/internal note/phone log), coordinator + couple + vendor sides, Activity Timeline, Search, Request cross-linking, vendor attachments |
 | Couple Portal | ✅ Complete | Live: branding (RC1), Conversations backend swap, Seating (mobile-hardened Sprint 1), Guest List (mobile-hardened Sprint 2). Photo/document upload (`app/api/portal/upload/route.ts`) was completely broken — targeted a storage bucket that has never existed — found and fixed during the RC-Launch Validation Runbook pass, live-verified |
@@ -93,7 +93,7 @@ In priority order:
 ## Nice-to-have / not launch-blocking
 
 - SMS/push notification open/click tracking — confirmed absent, not implied to exist.
-- Luv's Daily Briefing / full six-kind Observation Model convergence across all four Claude integrations.
+- Luv's Daily Briefing / full six-kind Observation Model convergence across its OpenAI-backed narration paths (`lib/ai/openai.ts`).
 - Venue-wide cross-booking Inventory ledger (currently per-booking only).
 - Client Identity / Portal Access / Support Access Grants — three related but distinct vocabularies that don't cleanly cross-reference each other in documentation. Enforcement is real and tested; this is a clarity nuance, not a defect.
 - Refund button not yet hidden client-side for non-Owner roles (server-side Owner-only check is the real enforcement).

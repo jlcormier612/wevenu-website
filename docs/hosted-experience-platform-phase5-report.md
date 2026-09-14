@@ -1,5 +1,7 @@
 # Hosted Experience Platform — Phase 5 Implementation Report
 
+> **Historical note (provider):** Written when guest Concierge / Ask Luv checked `ANTHROPIC_API_KEY`. The live Venue runtime now uses `OPENAI_API_KEY` via `lib/ai/openai.ts`. Anthropic references below are historical.
+
 Closes Phase 5 (Luv Integration) of `docs/hosted-experience-platform-architecture-spec.md`. Phase 6 remains specification only.
 
 ## What Shipped

@@ -39,7 +39,7 @@ This report merges the original White Glove automation research with the Venue B
 | Document metadata | 5 separate tables: `documents` (generic, multi-entity), `canonical_documents`+satellites (Document Domain, Contracts-only so far), `couple_documents` (client-initiated), `vendor_library_documents`, `document_workspace_pins/interactions` (read-model only) | Fragmented, unified only at the UI read layer |
 | Document viewing | Metadata + Download button only — no in-app preview/render of any kind | Gap |
 | Document categorization | Manual dropdown only — no content-based auto-detection | Manual |
-| Document extraction | Real: `pdf-parse` + `mammoth` text extraction → Claude-based structuring, scoped to the Import Wizard's 5 entity types (couples/leads/vendors/inventory/**packages**) | Real, narrow |
+| Document extraction | Real: `pdf-parse` + `mammoth` text extraction → OpenAI structuring via `lib/ai/openai.ts`, scoped to the Import Wizard's 5 entity types (couples/leads/vendors/inventory/**packages**) | Real, narrow |
 | Contracts | Real templates/records/signing; content-hash + venue-first signing implemented; template ingestion from an existing document is text-only by deliberate design, no AI structuring | Real, deliberately non-extracted |
 | Packages/Pricing | Real catalog + real bulk import (CSV/Excel deterministic; PDF/DOCX/paste via Claude), 4 flat fields only, no line-item extraction | Real |
 | Message Templates | Real starter library (11 masters) + paste-based Claude import; no file-upload import | Real, one gap |
@@ -48,7 +48,7 @@ This report merges the original White Glove automation research with the Venue B
 | Venue branding/assets | Two separate, non-shared upload mechanisms (venue-session direct-upload vs. portal-token upload); no typography field at all | Fragmented |
 | Brochure | Narrow: text sections + boolean toggles for packages/FAQs (live-pulled, not copied); reuses venue logo+hero (its only images); no gallery, no layout curation, no publish state | Real but minimal |
 | Tasks/Task Center | Very mature: dependencies, milestones, event-day designation, real cron-driven reminders/escalation/digest, in-app notifications — but every task is `event_id NOT NULL`, no internal/setup task concept | Real, one hard architectural limit |
-| Luv/AI | Real hybrid: large rules/template layer (no AI) + genuine, gated Anthropic Claude integration for draft generation and document extraction, with a consistently enforced draft-review-commit discipline | Real, well-governed |
+| Luv/AI | Real hybrid: large rules/template layer (no AI) + genuine, gated OpenAI integration via `lib/ai/openai.ts` for draft generation and document extraction, with a consistently enforced draft-review-commit discipline | Real, well-governed |
 | Provisioning | Real narrow bridge (`venue_enrollments`/`activate_venue_enrollment`) works for Self-Setup; structurally broken for White Glove | Real for one journey, broken for the other |
 
 ---
@@ -96,7 +96,7 @@ Explicitly not Phase 1: a unified dashboard computing percent-complete, cross-do
 
 ## 6. AI / Document Intelligence Opportunities
 
-Reusable today, as-is: the Import Wizard's Claude-based extraction pipeline (`lib/luv/import-assist.ts`, `lib/import/file-parsing.ts`) for Packages and Planning Templates; the message-template paste-import pipeline; the entire draft→`pending_review`→accept/discard pattern (`luv_drafts` table).
+Reusable today, as-is: the Import Wizard's OpenAI extraction pipeline (`lib/luv/import-assist.ts`, `lib/import/file-parsing.ts`, `lib/ai/openai.ts`) for Packages and Planning Templates; the message-template paste-import pipeline; the entire draft→`pending_review`→accept/discard pattern (`luv_drafts` table).
 
 Not available: any vision/OCR/image-understanding capability; any cross-document comparison; any questionnaire extraction.
 
@@ -125,7 +125,7 @@ Cross-document conflict detection; a real materials-aware operator dashboard; qu
 
 ## 10. Implementation Dependencies
 
-Blocking, independent of everything else: the White Glove activation-token bridge gap (`launchWhiteGloveWorkspace` never writes its token to the real `venue_enrollments` table). The intake page depends on the `venue_enrollments` row existing (created at checkout). Extraction reuse depends on `ANTHROPIC_API_KEY`; every existing extraction path already fails soft without it. Reminders depend on the existing Resend-backed notification engine's cron infrastructure.
+Blocking, independent of everything else: the White Glove activation-token bridge gap (`launchWhiteGloveWorkspace` never writes its token to the real `venue_enrollments` table). The intake page depends on the `venue_enrollments` row existing (created at checkout). Extraction reuse depends on `OPENAI_API_KEY`; every existing extraction path already fails soft without it. Reminders depend on the existing Resend-backed notification engine's cron infrastructure.
 
 ## 11. Jennifer Decisions Required
 

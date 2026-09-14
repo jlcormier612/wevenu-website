@@ -4,6 +4,8 @@
 
 **Date:** 2026-07-22
 
+> **Historical note (provider):** Assessment dated when Venue AI used a direct Anthropic HTTP pattern. Current Venue runtime uses the shared OpenAI helper (`lib/ai/openai.ts`). Treat Anthropic/`@anthropic-ai/sdk` guidance below as historical.
+
 This assessment answers one question honestly, pillar by pillar: **what already exists that this initiative should extend, and what is genuinely greenfield.** The headline finding is that this platform has been quietly building toward a Hospitality Success Platform for months without naming it one — three of the four pillars have real, substantial existing architecture. The fourth (Success Center) is genuine greenfield. Nothing here needs to be built from zero, but several existing systems currently overlap without talking to each other, and this initiative is the reason to finally reconcile them rather than add a fourth parallel one.
 
 ---

@@ -41,7 +41,7 @@ Verified against actual imports and live schema, not assumed from the brief's ow
 | Notifications (email digest) | Yes | `lib/notifications/digest-engine.ts` |
 | Automations (Sequences) | Yes, real, real cron worker | `lib/message-sequences`, `lib/scheduled-messages/processor.ts` |
 | Message Templates | Yes | `lib/message-templates` |
-| AI Drafting | Yes — four separate integrations | `lib/luv/drafts.ts` (lead), `lib/luv/client-drafts.ts` (client), `lib/luv/roll-up-service.ts` (weekly narrative), `luv-ask` (Venue Guide Q&A) |
+| AI Drafting | Yes — separate lead draft, roll-up, and Ask Luv paths | `lib/luv/drafts.ts` (lead), `lib/luv/roll-up-service.ts` (weekly narrative), `luv-ask` (Venue Guide Q&A) — all via `lib/ai/openai.ts` |
 | Reply suggestions / rewrites | **Not found anywhere** — no AI-assisted reply-drafting exists on either the Conversation or legacy messaging surfaces; drafting is Lead/Client-detail-page-scoped, not conversation-scoped | — |
 | Luv conversation summaries | **Not found** — Luv narrates Event Readiness-shaped state (§ below); it does not summarize a conversation's own content anywhere | — |
 | Platform Events | Yes, Phase 1 only (Requests wrapped) | `lib/platform-events` |
@@ -143,18 +143,17 @@ Three, today, by count — but not three peers. One (`conversations`) is the des
 
 ## AI Integration
 
-Four real, independently-built Claude integrations, confirmed live, confirmed genuinely different purposes rather than accidental duplication:
+Venue-app AI runs through the shared OpenAI helper (`lib/ai/openai.ts`). Confirmed live, genuinely different purposes rather than accidental duplication:
 
 | Integration | Purpose | Scope |
 |---|---|---|
 | `lib/luv/drafts.ts` | Draft a reply to a Lead | Lead detail page only |
-| `lib/luv/client-drafts.ts` | Draft a reply to a Client | Client detail page only |
 | `lib/luv/roll-up-service.ts` | Weekly 4-quadrant narrative | Venue-wide, weekly cadence |
 | `luv-ask` | Couple Q&A | Venue Guide content only, correctly scoped (per the reconciliation doc §1) |
 
 **Plus four more, genuinely different in kind, already correctly out-of-scope for consolidation per `docs/luv-platform-intelligence-architecture.md` §8:** `import-assist.ts`, `message-template-import.ts`, `timeline-import.ts`, `playbook-import.ts` — structured-extraction assistants, not observation/narration, and (per that document's own explicit instruction) should stay a separate family.
 
-**Do these already form one coherent AI communication platform, or several unrelated implementations?** Several, by the reconciliation doc's own prior finding (§8: "narration is not hypothetical — it's already built, four separate times... None of them currently narrates Event Readiness or the trust-tiered observation model"). This audit reconfirms that finding is still accurate and adds one Communication-specific observation: **none of the four draft/narration integrations is scoped to the Conversation object itself** — `drafts.ts`/`client-drafts.ts` draft a reply *to* a Lead/Client, but neither reads the actual Conversation thread's own message history as context beyond whatever each was independently built to fetch. A unified draft-generation mechanism, reading the one Conversation model once it's fully cut over, is the natural convergence point — consistent with, not a new idea beyond, the reconciliation doc's own Phase 4 (§10 there).
+**Do these already form one coherent AI communication platform, or several unrelated implementations?** Several, by the reconciliation doc's own prior finding. This audit reconfirms that finding is still accurate and adds one Communication-specific observation: **none of the draft/narration integrations is scoped to the Conversation object itself** — `drafts.ts` drafts a reply *to* a Lead, but does not read the actual Conversation thread's own message history as context beyond whatever it was independently built to fetch. A unified draft-generation mechanism, reading the one Conversation model once it's fully cut over, is the natural convergence point — consistent with, not a new idea beyond, the reconciliation doc's own Phase 4 (§10 there).
 
 **Reply suggestions, rewrites:** confirmed absent, both on legacy and new systems. Named honestly as a Future Enhancement, not built.
 

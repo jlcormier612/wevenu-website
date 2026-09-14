@@ -3,6 +3,7 @@
 **Status:** Implemented and live-validated, 2026-07-17. First capability under the new Capability Completion phase.
 **Governed by:** `docs/luv-experience-completion-assessment.md` (Research + Product Assessment), `docs/luv-experience-completion-implementation-plan.md` (Plan), four scoping decisions from clarifying questions, and the explicit philosophy brief given before implementation began (suggestions before automation, confidence before interruption, hospitality before intelligence; celebrations as 2-second acknowledgements tied only to real Commitment Lifecycle events; statements not questions; a closing Private Until Committed audit).
 
+> **Historical note (provider):** Written before the Venue Anthropic→OpenAI cutover. Live Venue AI now uses `lib/ai/openai.ts`. Mentions of "Claude integrations" below are historical naming for those same feature paths.
 ---
 
 ## What Shipped, by Work Stream

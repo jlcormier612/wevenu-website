@@ -1,5 +1,7 @@
 # Lead Acquisition & Intake — Final Report
 
+> **Historical note (provider):** This report was written when Venue-app extraction used Anthropic. The live Venue runtime now uses the shared OpenAI helper (`lib/ai/openai.ts` / `OPENAI_API_KEY`). Keep the narrative below as a shipping record; do not treat Anthropic references here as current architecture.
+
 **Status: Complete.** Verified via clean `tsc --noEmit`, clean `npm run build`, and a full local migration replay from empty (`supabase db reset --local`) — including the three refactored RPCs and the new dev seed fixture. All confirmed with real queries, not just successful application.
 
 Full research and decisions are in `docs/lead-intake-architecture-assessment.md` and `docs/lead-intake-implementation-plan.md`. This report covers what shipped, what changed from the original plan during implementation, and judgment calls made along the way.

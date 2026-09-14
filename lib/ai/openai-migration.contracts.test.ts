@@ -33,16 +33,13 @@ function mockOpenAiContent(content: string) {
 }
 
 describe("Luv draft Subject:/body parsing (source contract)", () => {
-  it("keeps Subject: parser in drafts and client-drafts", () => {
+  it("keeps Subject: parser and pending_review in lead drafts", () => {
     const drafts = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
-    const client = readFileSync(resolve("lib/luv/client-drafts.ts"), "utf8");
     assert.match(drafts, /function parseEmailDraft/);
     assert.match(drafts, /startsWith\("subject:"\)/);
-    assert.match(client, /function parseEmailDraft/);
     assert.match(drafts, /status: "pending_review"/);
-    assert.match(client, /status: "pending_review"/);
     assert.doesNotMatch(drafts, /sendEmail\(/);
-    assert.doesNotMatch(client, /sendSms\(/);
+    assert.doesNotMatch(drafts, /sendSms\(/);
   });
 });
 

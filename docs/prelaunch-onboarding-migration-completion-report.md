@@ -53,7 +53,7 @@ Clients (booked customers), Leads, Vendors, Inventory, Packages — all five via
 
 ## Supported file types
 
-CSV and Excel (`.xlsx`/`.xls`) parse deterministically. Word (`.docx`) and PDF (`.pdf`) extract to raw text and route through a live Luv/Anthropic proposal step (`proposeStructuredRows`) before anything is shown for review — nothing from an unstructured file is ever saved without the coordinator confirming it in the same map → preview → import flow every structured import goes through. All pre-existing; unchanged by this initiative.
+CSV and Excel (`.xlsx`/`.xls`) parse deterministically. Word (`.docx`) and PDF (`.pdf`) extract to raw text and route through a live Luv/OpenAI proposal step (`proposeStructuredRows` via `lib/ai/openai.ts`) before anything is shown for review — nothing from an unstructured file is ever saved without the coordinator confirming it in the same map → preview → import flow every structured import goes through. All pre-existing; unchanged by this initiative.
 
 ## Duplicate handling
 

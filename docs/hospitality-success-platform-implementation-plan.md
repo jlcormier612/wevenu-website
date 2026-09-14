@@ -4,6 +4,7 @@
 
 **Date:** 2026-07-22
 
+> **Historical note (provider):** Plan dated when Venue AI used Anthropic. Current Venue runtime uses `lib/ai/openai.ts` / `OPENAI_API_KEY`. Anthropic references below are historical.
 ---
 
 ## 0. The organizing principle: a journey, not a wizard
