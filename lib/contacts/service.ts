@@ -1,5 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
 import type { ClientContact, ClientContactInput } from "@/lib/contacts/types";
@@ -171,7 +171,7 @@ export async function sendContactPortalInvite(
   const token = await createContactPortalSession(clientId, contactId, label);
   if (!token) return { ok: false, message: "Could not create portal session." };
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const baseUrl = publicAppOrigin();
   const portalUrl = `${baseUrl}/p/${token}`;
 
   const emailResult = await sendEmail({

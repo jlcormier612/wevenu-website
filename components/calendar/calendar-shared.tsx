@@ -208,7 +208,7 @@ export function ItemRow({
               href={`/leads/new?fromBlockId=${item.rawId}`}
               className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
             >
-              Convert to Booking
+              Convert to Lead
             </Link>
           )}
           {/* Until now a manual item could only be created or deleted, so

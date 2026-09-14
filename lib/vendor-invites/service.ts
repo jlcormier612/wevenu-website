@@ -2,6 +2,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
 import { buildVendorInviteHtml, buildVendorInviteText } from "@/lib/email/vendor-invite";
 import type { VendorActionResult } from "@/lib/vendors/types";
+import { publicAppOrigin } from "@/lib/env";
 
 /**
  * The invite send, factored out of the manual "Send Invite" button
@@ -29,7 +30,7 @@ export async function sendVendorInvite(
   if (!vendor.email) return { ok: false, message: "Vendor has no email address. Add one first." };
   if (!vendor.claim_token) return { ok: false, message: "No claim token available for this vendor." };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const appUrl = publicAppOrigin();
   const acceptUrl = `${appUrl}/vendor/accept?token=${vendor.claim_token}`;
 
   await supabase.from("vendor_invitations").upsert(

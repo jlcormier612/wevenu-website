@@ -1,5 +1,5 @@
 /**
- * Customer sync — push a Wevenu client to QuickBooks as a Customer.
+ * Customer sync — push a Hello to Cheers client to QuickBooks as a Customer.
  *
  * Idempotent against QuickBooks itself, not just our own queue: before
  * creating, queries QBO for an existing Customer with the same

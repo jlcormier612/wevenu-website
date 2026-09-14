@@ -4,6 +4,7 @@ import { sendMessageEmail } from "@/lib/messages/notify";
 import { getPortalConversation, sendPortalConversationMessage } from "@/lib/conversations/service";
 import type { PortalConversationMessage } from "@/lib/conversations/types";
 import type { CoupleMessage, PortalThread } from "@/lib/messages/types";
+import { publicAppOrigin } from "@/lib/env";
 
 /**
  * RC2, Milestone 2 — this route now reads/writes through Conversations
@@ -98,7 +99,7 @@ async function notifyVenue(token: string, preview: string) {
     const coupleName = [client?.first_name, client?.partner_first_name]
       .filter(Boolean).join(" & ") || "Your Couple";
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+    const baseUrl = publicAppOrigin();
     await sendMessageEmail({
       to: venue.email,
       senderName: coupleName,

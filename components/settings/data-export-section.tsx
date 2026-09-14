@@ -28,7 +28,7 @@ export function DataExportSection() {
       const result = await exportVenueDataAction();
       if (result.ok) {
         const date = new Date().toISOString().slice(0, 10);
-        downloadJson(result.json, `wevenu-export-${date}.json`);
+        downloadJson(result.json, `hello-to-cheers-export-${date}.json`);
         toast.success("Your data has been exported.");
       } else {
         toast.error(result.message ?? "Could not export your data.");

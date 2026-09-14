@@ -34,7 +34,7 @@ function SendToLead({ brochureId, leads }: { brochureId: string; leads: Lead[] }
   const selected = leadsWithEmail.find((l) => l.id === leadId) ?? null;
 
   const recipient = selected
-    ? { name: leadDisplayName(selected.firstName, selected.lastName, selected.partnerFirstName, selected.partnerLastName), contact: selected.email, relationshipLabel: "Prospect" }
+    ? { name: leadDisplayName(selected.firstName, selected.lastName, selected.partnerFirstName, selected.partnerLastName), contact: selected.email, relationshipLabel: "Lead" }
     : null;
 
   async function handleSend(message: string) {
@@ -44,7 +44,7 @@ function SendToLead({ brochureId, leads }: { brochureId: string; leads: Lead[] }
   return (
     <div className="flex items-center gap-2">
       <Select value={leadId} onValueChange={setLeadId} items={leadsWithEmail.map((l) => ({ value: l.id, label: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName) }))}>
-        <SelectTrigger className="w-56"><SelectValue placeholder="Choose a prospect" /></SelectTrigger>
+        <SelectTrigger className="w-56"><SelectValue placeholder="Choose a lead" /></SelectTrigger>
         <SelectContent>
           {leadsWithEmail.map((l) => (
             <SelectItem key={l.id} value={l.id}>{leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName)}</SelectItem>
@@ -164,7 +164,7 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
       </Card>
 
       <Card>
-        <CardHeader><p className="text-sm font-medium text-heading">Share with a prospect</p></CardHeader>
+        <CardHeader><p className="text-sm font-medium text-heading">Share with a lead</p></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
             Share sends an email with a view link. The public link for this brochure stays the same after you send —

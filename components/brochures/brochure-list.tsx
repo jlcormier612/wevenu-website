@@ -165,14 +165,14 @@ export function BrochureList({ brochures }: { brochures: Brochure[] }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          Edit and preview here. Share with a prospect from the brochure detail — Share emails a view link.
+          Edit and preview here. Share with a lead from the brochure detail — Share emails a view link.
         </p>
         <NewBrochureSheet />
       </div>
       {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No brochures yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create a brochure, then share it with a prospect when you&apos;re ready.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Create a brochure, then share it with a lead when you&apos;re ready.</p>
         </div>
       ) : (
         <div className="space-y-2">

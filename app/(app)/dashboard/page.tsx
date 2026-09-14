@@ -145,8 +145,8 @@ export default async function DashboardPage({ searchParams }: Props) {
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
-          title="Upcoming"
-          description="What's coming — events, dates, and milestones."
+          title="Coming up"
+          description="Events, dates, and milestones on the horizon."
           items={upcomingItems}
           getKey={(i) => i.id}
           emptyState={

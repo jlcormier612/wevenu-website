@@ -72,22 +72,22 @@ export async function createPortalCheckoutSession(token: string, itemId: string)
         quantity: 1,
       }],
       metadata: {
-        wevenu_payment_line_item_id: ctx.itemId,
-        wevenu_venue_id: ctx.venueId,
-        wevenu_client_id: ctx.clientId,
-        wevenu_schedule_id: ctx.scheduleId,
-        wevenu_invoice_id: ctx.invoiceId ?? "",
+        htc_payment_line_item_id: ctx.itemId,
+        htc_venue_id: ctx.venueId,
+        htc_client_id: ctx.clientId,
+        htc_schedule_id: ctx.scheduleId,
+        htc_invoice_id: ctx.invoiceId ?? "",
       },
       // Copied onto the resulting PaymentIntent too — the webhook handler
       // keys off payment_intent.* events (card and ACH alike), not
       // checkout.session.completed, so it needs this metadata there.
       payment_intent_data: {
         metadata: {
-          wevenu_payment_line_item_id: ctx.itemId,
-          wevenu_venue_id: ctx.venueId,
-          wevenu_client_id: ctx.clientId,
-          wevenu_schedule_id: ctx.scheduleId,
-          wevenu_invoice_id: ctx.invoiceId ?? "",
+          htc_payment_line_item_id: ctx.itemId,
+          htc_venue_id: ctx.venueId,
+          htc_client_id: ctx.clientId,
+          htc_schedule_id: ctx.scheduleId,
+          htc_invoice_id: ctx.invoiceId ?? "",
         },
       },
       // Land on Payments so the confirming/confirmed notice is visible.

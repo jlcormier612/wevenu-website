@@ -10,9 +10,10 @@ import {
   type DigestItem,
 } from "@/lib/email/daily-digest";
 import { getLuvObservations } from "@/lib/luv/observations";
+import { publicAppOrigin } from "@/lib/env";
 import * as crypto from "crypto";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+const APP_URL = publicAppOrigin();
 const MAX_ITEMS = 5;
 
 type DigestResult = { sent: number; skipped: number; failed: number };

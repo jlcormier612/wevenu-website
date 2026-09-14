@@ -2,7 +2,7 @@
  * Brochures application service. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/brochures/repository";
 import type {
   Brochure, BrochureActionResult, BrochureInput, BrochureRenderData, BrochureWithActivity,
@@ -190,7 +190,7 @@ export async function sendBrochureToLead(brochureId: string, leadId: string, cus
     if (!brochure) return { ok: false, message: "Brochure not found." } as BrochureActionResult;
     if (!lead?.email) return { ok: false, message: "This lead doesn't have an email address on file." } as BrochureActionResult;
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+    const baseUrl = publicAppOrigin();
     const url = `${baseUrl}/brochure/${brochure.shareToken}`;
     const venueName = venue?.name ?? "Our venue";
     const recipientName = leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName);

@@ -3,7 +3,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
 import * as documentIntegration from "@/lib/contracts/document-integration";
 import { buildMergeData, mergeContent, extractTokens, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
@@ -629,7 +629,7 @@ async function sendContractInviteEmails(
 ): Promise<void> {
   const venue = await getCurrentVenue();
   if (!venue) return;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const baseUrl = publicAppOrigin();
   const brand = emailBrandFromVenue(venue);
   const supabase = await createClient();
 

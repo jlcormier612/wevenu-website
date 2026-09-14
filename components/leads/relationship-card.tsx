@@ -124,7 +124,7 @@ export function RelationshipCard({
       if (result.ok) {
         prev.current = { ...input };
         setEditing(false);
-        toast.success("Relationship details saved.");
+        toast.success("Follow-up details saved.");
       } else {
         toast.error(result.message ?? "Could not save.");
       }
@@ -141,7 +141,7 @@ export function RelationshipCard({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Relationship</CardTitle>
+          <CardTitle className="text-base">Follow-up</CardTitle>
           {!editing ? (
             <Button
               type="button"
@@ -189,7 +189,7 @@ export function RelationshipCard({
             />
             {isEmpty && (
               <p className="py-1 text-sm text-muted-foreground">
-                No relationship details yet. Click "Add details" to record next steps,
+                No follow-up details yet. Click &ldquo;Add details&rdquo; to record next steps,
                 follow-up dates, and tour scheduling.
               </p>
             )}

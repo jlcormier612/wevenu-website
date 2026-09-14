@@ -1,12 +1,13 @@
 /**
- * Payment sync — push a Wevenu payment (a paid payment_line_items row) to
+ * Payment sync — push a Hello to Cheers payment (a paid payment_line_items row) to
  * QuickBooks as a Payment applied against its already-synced Invoice.
  *
  * Idempotent against QuickBooks itself: QBO's Payment entity has no clean
  * unique free-text field the way Invoice has DocNumber, so our own row ID
- * is embedded in PrivateNote ("wevenu:payment_line_item:<uuid>") and a
+ * is embedded in PrivateNote ("htc:payment_line_item:<uuid>") and a
  * query-before-create checks for an existing Payment with that PrivateNote
- * before ever POSTing a new one. This is the least-clean idempotency
+ * before ever POSTing a new one. Legacy PrivateNote prefixes are still
+ * recognized so re-sync does not duplicate. This is the least-clean idempotency
  * mechanism of the four entity types and needs real sandbox verification
  * the moment credentials exist — if QBO's query API doesn't reliably
  * filter on PrivateNote in practice, the queue's own payload_hash dedup is
@@ -59,14 +60,17 @@ export async function syncPayment(venueId: string, entityId: string): Promise<Qu
   const customerId = (client as { quickbooks_customer_id: string | null } | null)?.quickbooks_customer_id;
   if (!customerId) return { ok: false, error: "Customer not yet synced.", retryable: true };
 
-  const privateNote = `wevenu:payment_line_item:${entityId}`;
-  const query = `select * from Payment where PrivateNote = '${escapeQboString(privateNote)}'`;
-  const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
-  if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
+  const privateNote = `htc:payment_line_item:${entityId}`;
+  const legacyNote = `wevenu:payment_line_item:${entityId}`;
+  for (const note of [privateNote, legacyNote]) {
+    const query = `select * from Payment where PrivateNote = '${escapeQboString(note)}'`;
+    const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
+    if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
 
-  const queryData = await queryResult.response.json() as { QueryResponse?: { Payment?: { Id: string }[] } };
-  const existingId = queryData.QueryResponse?.Payment?.[0]?.Id;
-  if (existingId) return { ok: true, quickbooksId: existingId };
+    const queryData = await queryResult.response.json() as { QueryResponse?: { Payment?: { Id: string }[] } };
+    const existingId = queryData.QueryResponse?.Payment?.[0]?.Id;
+    if (existingId) return { ok: true, quickbooksId: existingId };
+  }
 
   const createResult = await quickBooksFetch(venueId, "/payment", {
     method: "POST",

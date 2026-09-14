@@ -1,6 +1,11 @@
 import path from "path";
 import type { NextConfig } from "next";
 
+const redirects = [
+  // Legacy Wevenu marketing path — no customer-facing Wevenu branding on destination.
+  { source: "/why-wevenu", destination: "/our-story", permanent: true },
+];
+
 const nextConfig: NextConfig = {
   // ECS/Docker deployment — docs/aws-cloudformation-ecs-deployment-plan.md.
   output: "standalone",
@@ -17,6 +22,9 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+  },
+  async redirects() {
+    return redirects;
   },
 };
 

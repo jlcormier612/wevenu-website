@@ -194,7 +194,7 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const meta = session.metadata ?? {};
-  const plan = meta.plan_tier ?? meta.wevenu_plan ?? "unknown";
+  const plan = meta.plan_tier ?? meta.htc_plan ?? meta.wevenu_plan ?? "unknown";
   const welcomeBack = readWelcomeBackFromMeta(meta);
   const onboardingType = parseOnboardingType(meta.onboarding_type);
   const foundingMember = readFoundingFromMeta(meta);
@@ -284,7 +284,7 @@ async function handleSubscriptionLifecycle(
   _created: boolean,
 ): Promise<void> {
   const meta = subscription.metadata ?? {};
-  const plan = meta.plan_tier ?? meta.wevenu_plan ?? null;
+  const plan = meta.plan_tier ?? meta.htc_plan ?? meta.wevenu_plan ?? null;
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer

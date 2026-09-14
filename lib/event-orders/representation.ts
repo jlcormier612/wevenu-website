@@ -21,6 +21,7 @@ import * as documentIntegration from "@/lib/event-orders/document-integration";
 import { generateEventOrderPdf } from "@/lib/event-orders/pdf";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { EventOrderActionResult } from "@/lib/event-orders/types";
+import { publicAppOrigin } from "@/lib/env";
 
 const BUCKET = "event-order-representations";
 
@@ -182,7 +183,7 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
       if (session) {
         const { buildMergeData, mergeContent } = await import("@/lib/message-templates/merge");
         const { sendEmail } = await import("@/lib/email/send");
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+        const appUrl = publicAppOrigin();
         const portalUrl = `${appUrl}/p/${session.accessToken}#event-order`;
         const mergeData = buildMergeData({ venueName: venue.name ?? "Your venue", clientName: clientName ?? "", coordinatorName: venue.name ?? "", eventDate: event.eventDate, eventName: event.name });
         const defaultText = `We've shared your Event Order for ${event.name}. Please review it when you have a chance.`;

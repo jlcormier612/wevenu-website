@@ -30,7 +30,7 @@ type CsvRow = Record<string, string>;
 
 const ENTITY_META: Record<EntityType, { label: string; resultPath: string; description: string }> = {
   couples:   { label: "Clients",   resultPath: "/clients",          description: "Import existing bookings as clients with linked events." },
-  leads:     { label: "Leads",     resultPath: "/leads",            description: "Import prospect inquiries into your leads pipeline." },
+  leads:     { label: "Leads",     resultPath: "/leads",            description: "Import inquiries into your leads pipeline." },
   vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
   inventory: { label: "Inventory Templates", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
   packages:  { label: "Package Templates",   resultPath: "/packages",  description: "Import your existing service packages and pricing." },
@@ -204,7 +204,7 @@ function StepUpload({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `wevenu-${entity}-template.csv`;
+    a.download = `hello-to-cheers-${entity}-template.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();

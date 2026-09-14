@@ -5,7 +5,7 @@
  * shape: raw admin-client table access, idempotency query before create.
  *
  * Direct Charges (Standard Connect): the Customer object must live on the
- * *connected* account, not Wevenu's platform account — created with the
+ * *connected* account, not the Hello to Cheers platform account — created with the
  * `stripeAccount` request option throughout.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -47,7 +47,7 @@ export async function ensureStripeCustomer(venueId: string, clientId: string, st
   }
 
   const customer = await stripe.customers.create(
-    { name: name || undefined, email: data.email ?? undefined, metadata: { wevenu_client_id: clientId, wevenu_venue_id: venueId } },
+    { name: name || undefined, email: data.email ?? undefined, metadata: { htc_client_id: clientId, htc_venue_id: venueId } },
     { stripeAccount: stripeAccountId },
   );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

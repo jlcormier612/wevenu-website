@@ -14,8 +14,9 @@ import { sendEmail } from "@/lib/email/send";
 import { resolveDateRange } from "@/lib/reporting/date-range";
 import { SAVED_REPORT_PATH_LABEL, type SavedReportPath } from "@/lib/saved-reports/types";
 import type { DateRangePreset } from "@/lib/reporting/date-range";
+import { publicAppOrigin } from "@/lib/env";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+const APP_URL = publicAppOrigin();
 
 type DueRow = {
   schedule_id: string; saved_report_id: string; venue_id: string; recipient_email: string;

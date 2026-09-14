@@ -1,6 +1,10 @@
 const RESEND_URL = "https://api.resend.com/emails";
 const FROM = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
-const INTERNAL_EMAIL = process.env.WEVENU_INTERNAL_EMAIL ?? "feedback@wevenu.com";
+// Prefer HTC_INTERNAL_EMAIL; WEVENU_INTERNAL_EMAIL kept as legacy env alias only.
+const INTERNAL_EMAIL =
+  process.env.HTC_INTERNAL_EMAIL ??
+  process.env.WEVENU_INTERNAL_EMAIL ??
+  "feedback@hellotocheers.com";
 
 const TYPE_LABELS: Record<string, string> = {
   support: "Support Request",
