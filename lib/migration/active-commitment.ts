@@ -227,12 +227,6 @@ export async function commitActiveCommitment(
   const resolvedClientId = resolved.clientId;
   const resolvedEventId = resolved.eventId;
 
-  // Explicit historical payment-timing date only — never reinterpret contractSignedAt
-  // as events.booked_at, and never treat this as lifecycle Booking.
-  if (n.bookedAt?.trim()) {
-    await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
-  }
-
   async function recordImportLifecycle(): Promise<void> {
     const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
     const knownDate = n.lifecycleBookedAt?.trim() || null;
@@ -265,6 +259,11 @@ export async function commitActiveCommitment(
         .eq("execution_origin", "external").eq("status", "signed").limit(1)
         .maybeSingle<{ id: string }>();
       // Lifecycle mark is independent of financial idempotency — safe to retry.
+      // Payment-timing booked_at is also safe to stamp on idempotent retry when
+      // the import supplies an explicit historical date.
+      if (n.bookedAt?.trim()) {
+        await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
+      }
       await recordImportLifecycle();
       return {
         ok: true,
@@ -492,6 +491,14 @@ export async function commitActiveCommitment(
         invoiceId,
       });
       if (!shared.ok) throw new Error(shared.message);
+    }
+
+    // Stamp payment-timing booked_at only after the commitment write succeeded.
+    // Doing this before the try left booked_at set when compensation rolled back
+    // EO/invoice/schedule — outside the compensation boundary.
+    // Explicit historical date only — never reinterpret contractSignedAt.
+    if (n.bookedAt?.trim()) {
+      await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
     }
 
     await recordImportLifecycle();

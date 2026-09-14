@@ -577,11 +577,18 @@ export async function insertVendorAssignment(
 
 export async function deleteVendorAssignment(
   client: DbClient, venueId: string, assignmentId: string,
-): Promise<void> {
-  const { error } = await client
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
     .from("event_vendor_assignments")
-    .delete().eq("id", assignmentId).eq("venue_id", venueId);
+    .delete()
+    .eq("id", assignmentId)
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not remove this vendor assignment." };
+  }
+  return { ok: true };
 }
 
 export async function updateVendorAssignment(

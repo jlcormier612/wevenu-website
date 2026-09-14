@@ -248,23 +248,30 @@ export async function removeVendorAssignment(assignmentId: string): Promise<Vend
       .eq("venue_id", venueId)
       .maybeSingle<{ id: string; event_id: string; vendor_id: string }>();
 
-    if (prior) {
-      await approvePendingRequestsForAssignment(supabase, venueId, assignmentId);
+    if (!prior) {
+      return { ok: false, message: "That vendor assignment is no longer available." } as VendorActionResult;
     }
 
-    await repo.deleteVendorAssignment(supabase, venueId, assignmentId);
+    // Delete first — only run side effects when the row was actually removed.
+    // RESTRICTIVE event_vendor_assignments_delete_gate can silently block
+    // Coordinator/Staff; treating that as success previously approved removal
+    // requests, cleared Booked days, and emailed the vendor incorrectly.
+    const deleted = await repo.deleteVendorAssignment(supabase, venueId, assignmentId);
+    if (!deleted.ok) {
+      return { ok: false, message: deleted.message } as VendorActionResult;
+    }
+
+    await approvePendingRequestsForAssignment(supabase, venueId, assignmentId);
     // Free the Booked day if this assignment was the occupant (manual blocks stay).
     await clearAssignmentBooked(assignmentId);
 
-    if (prior) {
-      const venue = await getCurrentVenue();
-      notify = {
-        venueId,
-        venueName: venue?.name ?? "Your venue",
-        eventId: prior.event_id,
-        vendorId: prior.vendor_id,
-      };
-    }
+    const venue = await getCurrentVenue();
+    notify = {
+      venueId,
+      venueName: venue?.name ?? "Your venue",
+      eventId: prior.event_id,
+      vendorId: prior.vendor_id,
+    };
     return { ok: true } as VendorActionResult;
   });
 

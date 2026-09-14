@@ -41,20 +41,6 @@ export type PipelineStage = {
 
 // ---- Client dashboard types ------------------------------------------------
 
-/** Minimal client shape needed by the recent-bookings widget. */
-export type DashboardClient = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  partnerFirstName: string | null;
-  partnerLastName: string | null;
-  eventType: string | null;
-  eventDate: string | null;
-  guestCount: number | null;
-  status: string;
-  createdAt: string;
-};
-
 /**
  * Upcoming event from the events table (canonical source for event dates/times).
  * Replaces the previous client-based approach; events are now the source of truth.
@@ -144,9 +130,6 @@ export type DashboardData = {
   upcomingEventCount: number;
   /** Counts for every Clients operational view the Dashboard metrics link into. */
   clientListCounts: Record<ClientListFilterKey, number>;
-  /** Recently booked clients (by booking date, from the clients table). */
-  recentBookings: DashboardClient[];
-  totalClients: number;
   // ---- Luv observations (Phase 1: data pattern matching, no AI) ----
   luvObservations: import("@/lib/luv/types").LuvObservation[];
   // ---- Luv trend intelligence (Sprint 93: period-over-period deltas) ----

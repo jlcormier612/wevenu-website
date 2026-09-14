@@ -70,12 +70,15 @@ export function buildPromptData(
     .map(s => `${s.source} (${s.total}, ${s.rate}% close rate)`)
     .join(", ");
 
+  const conversionPct = leadFunnel.bookingConversionRate ?? leadFunnel.conversionRate;
+  const collected = payments.totalCollectedCanonical ?? payments.totalCollected;
+
   const sections: (string | null)[] = [
     `Period: ${period}`,
 
     [
       "LEAD FUNNEL",
-      `• Total leads: ${leadFunnel.total} | Conversion rate: ${pct(leadFunnel.conversionRate)}`,
+      `• Total leads: ${leadFunnel.total} | Booking conversion rate: ${pct(conversionPct)}`,
       `• Funnel: ${leadFunnel.contacted} contacted → ${leadFunnel.toured} toured → ${leadFunnel.proposal} proposal → ${leadFunnel.booked} booked | ${leadFunnel.lost} lost`,
       topSources ? `• Top sources: ${topSources}` : null,
     ].filter(Boolean).join("\n"),
@@ -88,7 +91,7 @@ export function buildPromptData(
 
     [
       "PAYMENTS",
-      `• Outstanding: ${dollars(payments.totalOutstanding)} | Collection rate: ${pct(payments.completionRate)}`,
+      `• Outstanding: ${dollars(payments.totalOutstanding)} | Collected: ${dollars(collected)} | Collection rate: ${pct(payments.completionRate)}`,
       payments.overdueCount > 0
         ? `• OVERDUE: ${dollars(payments.totalOverdue)} across ${payments.overdueCount} event${payments.overdueCount !== 1 ? "s" : ""} — needs follow-up`
         : "• No overdue payments 🎉",

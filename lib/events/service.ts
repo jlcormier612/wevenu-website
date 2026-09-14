@@ -235,7 +235,10 @@ export async function addTeamMember(eventId: string, input: TeamMemberInput): Pr
 
 export async function removeTeamMember(memberId: string, memberName: string, eventId: string): Promise<EventActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteTeamMember(supabase, venueId, memberId);
+    const deleted = await repo.deleteTeamMember(supabase, venueId, memberId);
+    if (!deleted.ok) {
+      return { ok: false, message: deleted.message } as EventActionResult;
+    }
     await repo.insertEventActivity(supabase, venueId, eventId, "team_updated", `Team member removed: ${memberName}`);
     return { ok: true } as EventActionResult;
   });

@@ -38,7 +38,6 @@ import { resolveVenueNextSteps, VENUE_NEXT_STEPS_CANDIDATE_CAP } from "@/lib/das
 import type {
   ActivityItem,
   AttentionLead,
-  DashboardClient,
   DashboardData,
   DashboardEvent,
   DashboardPayment,
@@ -124,12 +123,18 @@ type DashClientRow = {
   created_at: string;
 };
 
-function mapDashClient(r: DashClientRow): DashboardClient {
+function mapDashClient(r: DashClientRow): {
+  id: string;
+  firstName: string;
+  lastName: string;
+  partnerFirstName: string | null;
+  partnerLastName: string | null;
+  status: string;
+} {
   return {
     id: r.id, firstName: r.first_name, lastName: r.last_name,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
-    eventType: r.event_type, eventDate: r.event_date, guestCount: r.guest_count,
-    status: r.status, createdAt: r.created_at,
+    status: r.status,
   };
 }
 
@@ -174,7 +179,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const [leadsRes, tasksRes, activityRes, clientsRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
     supabase
       .from("leads")
-      .select("*")
+      .select("id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, commitment_score, responsiveness_score, interest_score")
       .eq("venue_id", venue.id)
       .order("inquiry_date", { ascending: false }),
 
@@ -194,13 +199,15 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("created_at", { ascending: false })
       .limit(15),
 
-    // Booked clients — still needed for recentBookings (booking date) and totalClients
+    // Clients for Your Next Steps portal lifecycle only (id/name/status).
+    // Not used for a "recent bookings" widget — that field was unused dead weight.
     supabase
       .from("clients")
       .select("id, first_name, last_name, partner_first_name, partner_last_name, event_type, event_date, guest_count, status, created_at")
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(200),
 
 
     // Upcoming events (canonical source) — replaces client-based event dates
@@ -249,7 +256,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .select("client_id, last_accessed_at")
       .eq("venue_id", venue.id),
 
-    // Same open-task population as Task Center (pending/overdue/blocked, live events)
+    // Same open-task population as Task Center (pending/overdue/blocked, live events).
+    // Cap for dashboard Next Steps / open-task widgets — Task Center remains the full list.
     supabase
       .from("event_tasks")
       .select(`
@@ -262,13 +270,15 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("venue_id", venue.id)
       .in("status", ["pending", "overdue", "blocked"])
       .not("events.status", "in", "(cancelled,complete)")
-      .order("due_date", { ascending: true }),
+      .order("due_date", { ascending: true })
+      .limit(100),
 
     supabase
       .from("contracts")
       .select("id, title, status, clients(first_name, last_name, partner_first_name, partner_last_name)")
       .eq("venue_id", venue.id)
-      .in("status", ["draft", "sent"]),
+      .in("status", ["draft", "sent"])
+      .limit(50),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -349,11 +359,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     leadName: embeddedName(r.leads),
   }));
 
-  // ---- Client data ----------------------------------------------------------
+  // ---- Client data (portal lifecycle for Your Next Steps) -------------------
   const clients = (clientsRes.data as DashClientRow[]).map(mapDashClient);
-
-  // recentBookings: ordered by when the couple booked (clients.created_at)
-  const recentBookings = clients.slice(0, 5);
 
   // ---- Upcoming events (from events table — canonical source) ---------------
   type DashEventRow = {
@@ -612,8 +619,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     upcomingEvents,
     upcomingEventCount: clientListCounts.upcoming,
     clientListCounts,
-    recentBookings,
-    totalClients: clients.length,
     luvObservations,
     trendObservations,
     storyObservation,
