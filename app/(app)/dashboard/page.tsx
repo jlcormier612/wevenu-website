@@ -173,7 +173,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             className="rounded-xl border bg-card p-3" href="/payments"
           />
           <StatTile
-            layout="label-top" label="Upcoming"
+            layout="label-top" label="Coming up"
             value={data.clientListCounts.upcoming}
             className="rounded-xl border bg-card p-3" href={clientListFilterHref("upcoming")}
           />
@@ -185,7 +185,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           href="/reporting"
           className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
         >
-          <span className="font-medium text-foreground">View full Reporting</span>
+          <span className="font-medium text-foreground">View Reports</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
       </section>

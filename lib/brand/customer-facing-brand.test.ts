@@ -71,4 +71,25 @@ describe("customer-facing brand — Hello to Cheers", () => {
     assert.match(checkout, /htc_payment_line_item_id/);
     assert.doesNotMatch(checkout, /wevenu_payment_line_item_id:\s*ctx/);
   });
+
+  it("venue-facing terminology labels match the product language decisions", () => {
+    const dashboard = readFileSync(join(ROOT, "app/(app)/dashboard/page.tsx"), "utf8");
+    const relationshipCard = readFileSync(join(ROOT, "components/leads/relationship-card.tsx"), "utf8");
+    const calendar = readFileSync(join(ROOT, "components/calendar/calendar-shared.tsx"), "utf8");
+    const reportsLayout = readFileSync(join(ROOT, "app/(app)/reporting/layout.tsx"), "utf8");
+
+    assert.match(dashboard, /title="Coming up"/);
+    assert.match(dashboard, /label="Coming up"/);
+    assert.match(dashboard, />View Reports</);
+    assert.doesNotMatch(dashboard, /View full Reporting/);
+
+    assert.match(relationshipCard, /CardTitle[^>]*>Follow-up</);
+    assert.doesNotMatch(relationshipCard, />Relationship</);
+
+    assert.match(calendar, />\s*Convert to Lead\s*</);
+    assert.doesNotMatch(calendar, />\s*Convert to Booking\s*</);
+
+    assert.match(reportsLayout, /title: "Reports"/);
+    assert.match(reportsLayout, /title="Reports"/);
+  });
 });
