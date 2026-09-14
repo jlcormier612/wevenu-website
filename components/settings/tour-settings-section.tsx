@@ -112,7 +112,7 @@ export function TourSettingsSection({ initialSettings }: Props) {
         </div>
         <p className="text-xs text-muted-foreground pl-0 sm:pl-[52px]">
           {s.tourSchedulingEnabled
-            ? "Couples can book tours online."
+            ? "Clients can book tours online."
             : "Not offered — a complete answer. You can turn this on later if you start offering tours."}
         </p>
       </div>

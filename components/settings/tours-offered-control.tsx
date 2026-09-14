@@ -46,7 +46,7 @@ export function ToursOfferedControl({
         <Label className="text-sm font-medium">Offer online tours</Label>
         <p className="text-xs text-muted-foreground">
           {enabled
-            ? "Couples can book tours online against Tour Availability below."
+            ? "Clients can book tours online against Tour Availability below."
             : "Not offered — a complete answer. Tour Availability hours below only matter if you turn this on later."}
         </p>
       </div>
