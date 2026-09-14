@@ -8,6 +8,10 @@
 import { createClient } from "@/integrations/supabase/server";
 import { versionedVenueAssetUrl } from "@/lib/venue/branding-assets";
 import { DAYS_OF_WEEK } from "@/lib/venue/constants";
+import {
+  normalizeCommercialBookingPrefs,
+  type VenueCommercialBookingPrefs,
+} from "@/lib/booking-journey/venue-prefs";
 import type {
   BusinessHourInput,
   Venue,
@@ -68,6 +72,7 @@ type VenueRow = {
   access_disabled: boolean | null;
   account_status: "active" | "suspended" | null;
   saas_stripe_customer_id: string | null;
+  commercial_booking_prefs?: VenueCommercialBookingPrefs | Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -126,6 +131,7 @@ function mapVenue(r: VenueRow): Venue {
     accessDisabled: r.access_disabled === true,
     accountStatus: r.account_status === "suspended" ? "suspended" : "active",
     saasStripeCustomerId: r.saas_stripe_customer_id ?? null,
+    commercialBookingPrefs: normalizeCommercialBookingPrefs(r.commercial_booking_prefs),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

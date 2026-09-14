@@ -114,10 +114,20 @@ export async function maybeStampCommercialBookedAt(
     }));
   }
 
+  const { data: venueRow } = await supabase
+    .from("venues")
+    .select("commercial_booking_prefs")
+    .eq("id", venueId)
+    .maybeSingle<{ commercial_booking_prefs: unknown }>();
+
+  const { normalizeCommercialBookingPrefs } = await import("@/lib/booking-journey/venue-prefs");
+  const prefs = normalizeCommercialBookingPrefs(venueRow?.commercial_booking_prefs);
+
   const commerciallyBooked = isCommerciallyBooked({
     selection: selection as CommercialSelection | null,
     contract,
     paymentLines,
+    prefs,
   });
   if (!commerciallyBooked) return;
 

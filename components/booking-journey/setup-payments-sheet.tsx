@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -19,6 +26,7 @@ import {
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { formatCurrency } from "@/lib/invoices/constants";
+import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
 
 export function SetupPaymentsSheet({
   open,
@@ -29,6 +37,8 @@ export function SetupPaymentsSheet({
   eventDate,
   leadId,
   spaceId,
+  defaultScheduleStructure = "deposit_remaining",
+  paymentCollection = "either",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,13 +49,15 @@ export function SetupPaymentsSheet({
   eventDate?: string | null;
   leadId?: string;
   spaceId?: string;
+  defaultScheduleStructure?: string;
+  paymentCollection?: "online" | "external" | "either";
 }) {
   // Remount body when opening so step/deposit reset without an effect.
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       {open ? (
         <SetupPaymentsSheetBody
-          key={`${selection.id}:${selection.depositAmount}:${eventDate ?? ""}`}
+          key={`${selection.id}:${selection.depositAmount}:${eventDate ?? ""}:${defaultScheduleStructure}`}
           onOpenChange={onOpenChange}
           selection={selection}
           clientId={clientId}
@@ -53,6 +65,8 @@ export function SetupPaymentsSheet({
           eventDate={eventDate}
           leadId={leadId}
           spaceId={spaceId}
+          defaultScheduleStructure={defaultScheduleStructure}
+          paymentCollection={paymentCollection}
         />
       ) : null}
     </Sheet>
@@ -67,6 +81,8 @@ function SetupPaymentsSheetBody({
   eventDate,
   leadId,
   spaceId,
+  defaultScheduleStructure,
+  paymentCollection,
 }: {
   onOpenChange: (open: boolean) => void;
   selection: CommercialSelection;
@@ -75,15 +91,21 @@ function SetupPaymentsSheetBody({
   eventDate?: string | null;
   leadId?: string;
   spaceId?: string;
+  defaultScheduleStructure: string;
+  paymentCollection: "online" | "external" | "either";
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [deposit, setDeposit] = React.useState(String(selection.depositAmount));
   const [remainingDueDate, setRemainingDueDate] = React.useState(eventDate ?? "");
+  const [scheduleStructure, setScheduleStructure] = React.useState(defaultScheduleStructure);
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState("");
 
-  const depositAmount = parseFloat(deposit.replace(/[$,]/g, "")) || 0;
+  const isFull = scheduleStructure === "full";
+  const depositAmount = isFull
+    ? selection.totalAmount
+    : parseFloat(deposit.replace(/[$,]/g, "")) || 0;
   const remaining = remainingAmount(selection.totalAmount, depositAmount);
   const needsRemainingDue = remaining > 0;
   const hasEventDue = Boolean(eventDate);
@@ -109,6 +131,7 @@ function SetupPaymentsSheetBody({
         spaceId,
         depositAmount,
         requestDeposit,
+        scheduleStructure,
       });
       if (!result.ok) {
         setError(result.message);
@@ -162,18 +185,37 @@ function SetupPaymentsSheetBody({
             Couples usually pay the deposit now. The rest stays on the payment plan.
           </p>
           <div className="space-y-2">
-            <Label htmlFor="setup-deposit">Deposit</Label>
-            <Input
-              id="setup-deposit"
-              value={deposit}
-              onChange={(e) => {
-                setDeposit(e.target.value);
-                setError("");
-              }}
-              inputMode="decimal"
-            />
-            <p className="text-xs text-muted-foreground">Deposit is due today.</p>
+            <Label>Payment structure</Label>
+            <Select value={scheduleStructure} onValueChange={setScheduleStructure}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="deposit_remaining">Deposit + final balance</SelectItem>
+                <SelectItem value="full">Full payment now</SelectItem>
+                {SCHEDULE_PRESETS.filter((p) => p.items.length > 1).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          {!isFull && (
+            <div className="space-y-2">
+              <Label htmlFor="setup-deposit">Deposit</Label>
+              <Input
+                id="setup-deposit"
+                value={deposit}
+                onChange={(e) => {
+                  setDeposit(e.target.value);
+                  setError("");
+                }}
+                inputMode="decimal"
+              />
+              <p className="text-xs text-muted-foreground">Deposit is due today.</p>
+            </div>
+          )}
           {needsRemainingDue && (
             <div className="space-y-2">
               <Label htmlFor="setup-remaining-due">Remaining balance due date</Label>
@@ -194,7 +236,7 @@ function SetupPaymentsSheetBody({
               )}
               <p className="text-xs text-muted-foreground">
                 {hasEventDue
-                  ? "Remaining balance is due on the event date."
+                  ? "Remaining balance is due on the event date (installment dates may land earlier)."
                   : "Required when there is no event date yet."}
               </p>
             </div>
@@ -227,11 +269,18 @@ function SetupPaymentsSheetBody({
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex flex-col gap-2">
-            <Button type="button" onClick={() => create(true)} disabled={pending}>
-              {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Creating…</> : "Create & request deposit"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => create(false)} disabled={pending}>
-              Create only
+            {paymentCollection !== "external" && (
+              <Button type="button" onClick={() => create(true)} disabled={pending}>
+                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Creating…</> : "Create & request deposit"}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant={paymentCollection === "external" ? "default" : "outline"}
+              onClick={() => create(false)}
+              disabled={pending}
+            >
+              {paymentCollection === "external" ? "Create schedule (record payment next)" : "Create only"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setStep(2)} disabled={pending}>
               Back

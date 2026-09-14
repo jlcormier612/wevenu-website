@@ -27,6 +27,7 @@ export function SelectPackageSheet({
   leadId,
   clientId,
   eventId,
+  defaultDepositPercent = 25,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,6 +35,7 @@ export function SelectPackageSheet({
   leadId?: string;
   clientId?: string;
   eventId?: string;
+  defaultDepositPercent?: number;
 }) {
   const router = useRouter();
   const [packageId, setPackageId] = React.useState("");
@@ -50,7 +52,8 @@ export function SelectPackageSheet({
     const pkg = packages.find((p) => p.id === id);
     const price = pkg?.basePrice != null ? Number(pkg.basePrice) : null;
     if (price != null && price > 0) {
-      setDeposit(String(suggestDepositAmount(price)));
+      const venueDefault = Math.round((price * (defaultDepositPercent / 100) + Number.EPSILON) * 100) / 100;
+      setDeposit(String(suggestDepositAmount(price, venueDefault)));
     } else {
       setDeposit("");
     }

@@ -5,6 +5,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { LeadIntakeHealthSection } from "@/components/settings/lead-intake-health-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
+import { CommercialBookingPrefsSection } from "@/components/settings/commercial-booking-prefs-section";
 import {
   Card,
   CardContent,
@@ -12,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
@@ -30,9 +32,25 @@ export default async function LeadsBookingSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Leads & Booking"
-        description="Inquiry forms, lead sources, and tour booking."
+        description="Inquiry forms, lead sources, tour booking, and how you book couples."
       />
       <SettingsTabs />
+
+      {venue && (
+        <Card id="booking">
+          <CardHeader>
+            <CardTitle className="text-base">How you book</CardTitle>
+            <CardDescription>
+              Agreement method, deposit rules, and payment defaults for the commercial booking journey.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CommercialBookingPrefsSection
+              initial={venue.commercialBookingPrefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {venue && (
         <Card>

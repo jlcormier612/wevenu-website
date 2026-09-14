@@ -80,6 +80,7 @@ export function BookingJourneyPanel({
     else if (action === "setup_payments") {
       if (selection) setPaymentsOpen(true);
     } else if (action === "create_contract") handleCreateContract();
+    else if (action === "record_deposit") handleRecordDeposit();
     else if (action === "invite_portal" || action === "start_planning") {
       if (journey.primaryHref) router.push(journey.primaryHref);
     }
@@ -88,6 +89,26 @@ export function BookingJourneyPanel({
   function handleSecondary(action: string) {
     if (action === "mark_accepted") handleMarkAccepted();
     else if (action === "create_contract") handleCreateContract();
+    else if (action === "record_deposit") handleRecordDeposit();
+  }
+
+  function handleRecordDeposit() {
+    if (!clientId) {
+      toast.error("Open the booking file before recording a deposit.");
+      return;
+    }
+    startTransition(async () => {
+      const { recordDepositReceivedAction } = await import(
+        "@/app/(app)/booking-journey/payments-actions"
+      );
+      const result = await recordDepositReceivedAction({ clientId, leadId });
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      toast.success("Deposit recorded.");
+      router.refresh();
+    });
   }
 
   function handleMarkAccepted() {
@@ -212,6 +233,7 @@ export function BookingJourneyPanel({
         leadId={leadId}
         clientId={clientId}
         eventId={eventId}
+        defaultDepositPercent={journey.prefs.defaultDepositPercent}
       />
 
       {selection && (
@@ -224,6 +246,12 @@ export function BookingJourneyPanel({
           eventDate={eventDate}
           leadId={leadId}
           spaceId={spaceId}
+          defaultScheduleStructure={
+            journey.prefs.remainingBalanceMode === "final"
+              ? "deposit_remaining"
+              : journey.prefs.defaultSchedulePresetId ?? "deposit_remaining"
+          }
+          paymentCollection={journey.prefs.paymentCollection}
         />
       )}
 
