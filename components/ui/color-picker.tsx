@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 // ── Color math ────────────────────────────────────────────────────────────────
 
@@ -284,6 +285,9 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
 
 // ── ColorPickerTrigger ────────────────────────────────────────────────────────
 // A swatch button that opens a popover containing the ColorPicker.
+// Popover is portaled to document.body so overflow:hidden / overflow-y-auto
+// ancestors (e.g. Website Studio wizard steps) cannot clip or trap pointer
+// events on the picker panel.
 
 interface ColorPickerTriggerProps {
   value: string;
@@ -291,15 +295,55 @@ interface ColorPickerTriggerProps {
   label?: string;
 }
 
+const POPOVER_WIDTH = 264;
+const POPOVER_EST_HEIGHT = 280;
+
 export function ColorPickerTrigger({ value, onChange }: ColorPickerTriggerProps) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // Close when clicking outside
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updatePosition = useCallback(() => {
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const left = Math.min(
+      Math.max(8, rect.left),
+      window.innerWidth - POPOVER_WIDTH - 8,
+    );
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < POPOVER_EST_HEIGHT && rect.top > spaceBelow;
+    const top = openUp
+      ? Math.max(8, rect.top - POPOVER_EST_HEIGHT - 8)
+      : Math.min(rect.bottom + 8, window.innerHeight - POPOVER_EST_HEIGHT - 8);
+    setCoords({ top, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  // Close when clicking outside button + portaled panel
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -309,32 +353,38 @@ export function ColorPickerTrigger({ value, onChange }: ColorPickerTriggerProps)
   const display = isValid ? value.toUpperCase() : "#------";
 
   return (
-    <div className="relative inline-block" ref={rootRef}>
+    <div className="relative inline-block max-w-full">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 h-9 px-2.5 rounded-md border border-input hover:border-ring transition-colors bg-background"
+        className="flex items-center gap-2 h-9 max-w-full px-2.5 rounded-md border border-input hover:border-ring transition-colors bg-background"
         aria-label={`Color: ${display}`}
+        aria-expanded={open}
       >
         <span
           className="w-5 h-5 rounded border border-gray-300 shrink-0 transition-colors"
           style={{ background: isValid ? value : "#eee" }}
         />
-        <span className="text-xs font-mono text-foreground tracking-wider">
+        <span className="text-xs font-mono text-foreground tracking-wider truncate">
           {display}
         </span>
-        <svg className="w-3 h-3 text-muted-foreground ml-0.5" fill="none" viewBox="0 0 16 16">
+        <svg className="w-3 h-3 text-muted-foreground ml-0.5 shrink-0" fill="none" viewBox="0 0 16 16">
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
 
-      {open && (
+      {mounted && open && coords && createPortal(
         <div
-          className="absolute top-full mt-2 left-0 z-50 rounded-xl border border-gray-200 bg-white shadow-xl p-3"
-          style={{ minWidth: 264 }}
+          ref={panelRef}
+          className="fixed z-[200] rounded-xl border border-gray-200 bg-white shadow-xl p-3"
+          style={{ top: coords.top, left: coords.left, minWidth: POPOVER_WIDTH }}
+          role="dialog"
+          aria-label="Choose color"
         >
           <ColorPicker value={isValid ? value : "#5D6F5D"} onChange={onChange} />
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

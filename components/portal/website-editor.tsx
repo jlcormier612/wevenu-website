@@ -20,6 +20,7 @@ import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
 import { deriveSixRoles, resolveCuratedColorStories, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
+import { applyColorRoleEdit } from "@/lib/wedding-website/wizard-color-edit";
 import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
 import { collectionDescriptor } from "@/lib/wedding-website/collection-descriptors";
 import {
@@ -1532,9 +1533,22 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                     value={(site[r.key] as string | undefined) || seeded?.[r.key] || "#BF9089"}
                     onChange={(v) => {
                       // Editing any single role diverges from the curated
-                      // story, if one was active — clear colorStoryId so
-                      // every surface reads this as a custom palette.
-                      onUpdate({ [r.key]: v, colorStoryId: null });
+                      // story — materialise all six roles then clear
+                      // colorStoryId so every surface reads a custom palette.
+                      const next = applyColorRoleEdit({
+                        current: {
+                          colorPrimary: site.colorPrimary ?? "",
+                          colorSecondary: site.colorSecondary ?? "",
+                          colorAccent: site.colorAccent ?? "",
+                          colorNeutral: site.colorNeutral ?? "",
+                          colorBackground: site.colorBackground ?? "",
+                          colorText: site.colorText ?? "",
+                        },
+                        seeded,
+                        role: r.key,
+                        nextHex: v,
+                      });
+                      onUpdate({ ...next, colorStoryId: null });
                     }}
                   />
                 </div>
