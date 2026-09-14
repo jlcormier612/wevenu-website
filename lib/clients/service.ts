@@ -595,7 +595,8 @@ export async function updateClientNote_(noteId: string, clientId: string, body: 
 
 export async function deleteClientNote_(noteId: string): Promise<ClientActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteClientNote(supabase, venueId, noteId);
+    const deleted = await repo.deleteClientNote(supabase, venueId, noteId);
+    if (!deleted.ok) return { ok: false, message: deleted.message } as ClientActionResult;
     return { ok: true } as ClientActionResult;
   });
   return result as ClientActionResult;

@@ -31,6 +31,22 @@ describe("engineering cleanup — silent-false-success deletes", () => {
     assert.match(repo, /deleteTeamMember[\s\S]*?\.select\("id"\)/);
     assert.match(svc, /removeTeamMember[\s\S]*?if \(!deleted\.ok\)/);
   });
+
+  it("note and lead-task deletes check rows-affected", () => {
+    for (const [file, fn] of [
+      ["lib/clients/repository.ts", "deleteClientNote"],
+      ["lib/events/repository.ts", "deleteEventNote"],
+      ["lib/leads/repository.ts", "deleteNote"],
+      ["lib/leads/repository.ts", "deleteTask"],
+    ] as const) {
+      const src = readFileSync(resolve(root, file), "utf8");
+      const start = src.indexOf(`export async function ${fn}`);
+      assert.ok(start >= 0, `${fn} missing in ${file}`);
+      const body = src.slice(start, start + 500);
+      assert.match(body, /\.select\("id"\)/);
+      assert.match(body, /data\.length === 0/);
+    }
+  });
 });
 
 describe("engineering cleanup — active commitment booked_at boundary", () => {

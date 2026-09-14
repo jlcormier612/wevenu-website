@@ -462,13 +462,18 @@ export async function deleteNote(
   client: DbClient,
   venueId: string,
   noteId: string,
-): Promise<void> {
-  const { error } = await client
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
     .from("lead_notes")
     .delete()
     .eq("id", noteId)
-    .eq("venue_id", venueId);
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not delete this note." };
+  }
+  return { ok: true };
 }
 
 // ---- tasks ------------------------------------------------------------------
@@ -514,13 +519,18 @@ export async function deleteTask(
   client: DbClient,
   venueId: string,
   taskId: string,
-): Promise<void> {
-  const { error } = await client
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
     .from("lead_tasks")
     .delete()
     .eq("id", taskId)
-    .eq("venue_id", venueId);
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not delete this task." };
+  }
+  return { ok: true };
 }
 
 // ---- Sprint 6: edit + relationship + activities ------------------------------

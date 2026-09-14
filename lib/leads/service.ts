@@ -487,7 +487,8 @@ export async function updateNote(
 
 export async function deleteNote(noteId: string): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteNote(supabase, venueId, noteId);
+    const deleted = await repo.deleteNote(supabase, venueId, noteId);
+    if (!deleted.ok) return { ok: false, message: deleted.message } as LeadActionResult;
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
@@ -540,7 +541,8 @@ export async function setTaskCompleted(
 
 export async function deleteTask(taskId: string): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteTask(supabase, venueId, taskId);
+    const deleted = await repo.deleteTask(supabase, venueId, taskId);
+    if (!deleted.ok) return { ok: false, message: deleted.message } as LeadActionResult;
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
