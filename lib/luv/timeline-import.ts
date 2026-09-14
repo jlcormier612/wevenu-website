@@ -1,3 +1,4 @@
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 /**
  * Luv — Bring Your Existing Timeline (Timeline Templates import, 2026-07-10).
  *
@@ -29,34 +30,11 @@ export type LuvTimelineProposal =
   | { ok: true; items: ProposedTimelineItem[]; aiStructured: boolean }
   | { ok: false; message: string };
 
-type AnthropicResponse = { content: { type: string; text: string }[] };
-
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    }),
+async function generateTimelineText(prompt: string): Promise<string> {
+  return openAiChatCompletion({
+    messages: [{ role: "user", content: prompt }],
+    maxCompletionTokens: 4096,
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${err}`);
-  }
-
-  const data = (await res.json()) as AnthropicResponse;
-  const text = data.content.find((c) => c.type === "text")?.text ?? "";
-  return text.trim();
 }
 
 function buildPrompt(rawText: string): string {
@@ -98,7 +76,7 @@ function isValidItem(t: unknown): t is ProposedTimelineItem {
 
 /**
  * Plain, deterministic fallback with no AI involved at all — used whenever
- * ANTHROPIC_API_KEY isn't configured (template-import review, 2026-07-22:
+ * OPENAI_API_KEY isn't configured (template-import review, 2026-07-22:
  * this used to hard-fail with "Luv isn't configured," leaving a coordinator
  * with nothing at all). One line becomes one item; a literal clock time
  * found anywhere in the line is preserved as timeOfDay (a plain regex, no
@@ -135,12 +113,12 @@ export async function proposeTimelineDraft(rawText: string): Promise<LuvTimeline
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste or upload your timeline first." };
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isOpenAiConfigured()) {
     return splitTimelineLines(rawText);
   }
 
   try {
-    const raw = await callClaude(buildPrompt(rawText));
+    const raw = await generateTimelineText(buildPrompt(rawText));
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { ok: false, message: "Luv couldn't find a timeline structure in this text." };
 

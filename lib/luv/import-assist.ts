@@ -4,14 +4,15 @@
  * Turns messy source material (a pasted list, or text extracted from a Word
  * doc / PDF that has no real columns) into structured rows a coordinator can
  * review in the same map → preview → import flow already used for CSV/Excel.
- * Same pattern as every other Luv capability: direct Anthropic call, gated
- * behind ANTHROPIC_API_KEY, and — critically — nothing is ever saved from
+ * Same pattern as every other Luv capability: direct OpenAI call, gated
+ * behind OPENAI_API_KEY, and — critically — nothing is ever saved from
  * this on its own. It only ever produces a *proposal* that lands in the
  * existing Import wizard for a coordinator to review, edit, and confirm.
  */
 
 import type { EntityType, FieldMapping, ImportFieldDef } from "@/lib/import/types";
 import { ENTITY_FIELDS } from "@/lib/import/types";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 
 export type LuvImportProposal =
   // aiStructured distinguishes a real Luv proposal (headers are actual field
@@ -23,34 +24,11 @@ export type LuvImportProposal =
   | { ok: true; headers: string[]; rows: Record<string, string>[]; aiStructured: boolean }
   | { ok: false; message: string };
 
-type AnthropicResponse = { content: { type: string; text: string }[] };
-
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    }),
+async function generateAssistText(prompt: string, maxCompletionTokens: number): Promise<string> {
+  return openAiChatCompletion({
+    messages: [{ role: "user", content: prompt }],
+    maxCompletionTokens,
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${err}`);
-  }
-
-  const data = (await res.json()) as AnthropicResponse;
-  const text = data.content.find((c) => c.type === "text")?.text ?? "";
-  return text.trim();
 }
 
 function buildPrompt(rawText: string, fields: ImportFieldDef[]): string {
@@ -77,7 +55,7 @@ ${truncated}
 
 /**
  * Plain, deterministic fallback with no AI involved at all — used whenever
- * ANTHROPIC_API_KEY isn't configured (bug report, 2026-07-22: a coordinator
+ * OPENAI_API_KEY isn't configured (bug report, 2026-07-22: a coordinator
  * pasting a plain list of inquiries/vendors saw nothing happen at all, since
  * this used to hard-fail with "Luv isn't configured" the moment a paste
  * didn't parse as clean CSV). Splits on whichever delimiter (tab, comma, or
@@ -120,13 +98,13 @@ export async function proposeStructuredRows(rawText: string, entity: EntityType)
   if (!rawText.trim()) {
     return { ok: false, message: "There's no readable text to work with." };
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isOpenAiConfigured()) {
     return splitDelimitedRows(rawText);
   }
 
   const fields = ENTITY_FIELDS[entity];
   try {
-    const raw = await callClaude(buildPrompt(rawText, fields));
+    const raw = await generateAssistText(buildPrompt(rawText, fields), 4096);
     const jsonMatch = raw.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return { ok: false, message: "Luv couldn't find any structured records in this text." };
 
@@ -186,7 +164,7 @@ Return ONLY a JSON object with one entry per field key above, each value either 
  */
 export async function proposeFieldMapping(headers: string[], entity: EntityType): Promise<LuvFieldMappingProposal> {
   if (headers.length === 0) return { ok: false, message: "There are no columns to map." };
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isOpenAiConfigured()) {
     return { ok: false, message: "Luv's mapping assist isn't configured in this environment." };
   }
 
@@ -195,7 +173,7 @@ export async function proposeFieldMapping(headers: string[], entity: EntityType)
   const fieldKeys = new Set(fields.map((f) => f.key));
 
   try {
-    const raw = await callClaude(buildFieldMappingPrompt(headers, fields));
+    const raw = await generateAssistText(buildFieldMappingPrompt(headers, fields), 4096);
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { ok: false, message: "Luv couldn't suggest a mapping for these columns." };
 

@@ -10,37 +10,19 @@
  * already handles it; there is no per-platform detection logic anywhere
  * in this file, by design.
  *
- * Same direct-Anthropic-call pattern as Luv's CSV/PDF import assist
- * (lib/luv/import-assist.ts) — gated behind ANTHROPIC_API_KEY, produces a
+ * Same direct-OpenAI-call pattern as Luv's CSV/PDF import assist
+ * (lib/luv/import-assist.ts) — gated behind OPENAI_API_KEY, produces a
  * proposal only. The Lead Intake pipeline (pipeline.ts) still owns
  * creation; this module never writes to the database.
  */
 import type { RawIntakeInput } from "@/lib/lead-intake/types";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 
-type AnthropicResponse = { content: { type: string; text: string }[] };
-
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
+async function generateExtractText(prompt: string): Promise<string> {
+  return openAiChatCompletion({
+    messages: [{ role: "user", content: prompt }],
+    maxCompletionTokens: 1024,
   });
-
-  if (!res.ok) throw new Error(`Anthropic API error ${res.status}: ${await res.text()}`);
-
-  const data = (await res.json()) as AnthropicResponse;
-  return (data.content.find((c) => c.type === "text")?.text ?? "").trim();
 }
 
 function buildPrompt(subject: string, body: string): string {
@@ -76,7 +58,7 @@ export type EmailExtractResult =
   | { ok: false; message: string };
 
 export async function extractInquiryFromEmail(subject: string, body: string): Promise<EmailExtractResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isOpenAiConfigured()) {
     return { ok: false, message: "Email intake isn't configured for this venue yet." };
   }
   if (!body.trim()) {
@@ -84,7 +66,7 @@ export async function extractInquiryFromEmail(subject: string, body: string): Pr
   }
 
   try {
-    const raw = await callClaude(buildPrompt(subject, body));
+    const raw = await generateExtractText(buildPrompt(subject, body));
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { ok: false, message: "Could not find inquiry details in this email." };
 

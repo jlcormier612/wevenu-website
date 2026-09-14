@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "@/integrations/supabase/server";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -115,27 +116,11 @@ Subject: [your subject line]
 Nothing else — no preamble, no closing notes.`;
 }
 
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
+async function generateDraftText(prompt: string): Promise<string> {
+  return openAiChatCompletion({
+    messages: [{ role: "user", content: prompt }],
+    maxCompletionTokens: 1024,
   });
-
-  if (!res.ok) throw new Error(`Anthropic API error ${res.status}`);
-  const data = await res.json() as { content: { type: string; text: string }[] };
-  return data.content.find((c) => c.type === "text")?.text.trim() ?? "";
 }
 
 function parseEmailDraft(raw: string): { subject: string | null; body: string } {
@@ -151,8 +136,9 @@ export async function generateClientDraft(
   draftType: ClientDraftType,
 ): Promise<{ ok: true; draft: ClientDraft } | { ok: false; message: string }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { ok: false, message: "Luv drafts are not enabled. Add ANTHROPIC_API_KEY to enable." };
+  if (!isOpenAiConfigured()) {
+    return { ok: false, message: "Luv drafts are not enabled. Add OPENAI_API_KEY to enable." };
+  }
 
   try {
     const venue = await getCurrentVenue();
@@ -190,7 +176,7 @@ export async function generateClientDraft(
     };
 
     const prompt = buildClientPrompt(client, draftType, venue.name, ownerName, luvSettings?.preferred_tone ?? "warm");
-    const raw = await callClaude(prompt);
+    const raw = await generateDraftText(prompt);
     const { subject, body } = parseEmailDraft(raw);
 
     const { data, error } = await supabase.from("luv_drafts")

@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import {
   projectGuideForAudience,
   type VenueGuideRaw,
@@ -127,7 +128,7 @@ function buildContext(ctx: ConciergeContext): string {
   return parts.join("\n\n");
 }
 
-function parseClaudeJson(raw: string): string {
+function parseConciergeJson(raw: string): string {
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   try {
     const parsed = JSON.parse(cleaned) as { answer?: unknown };
@@ -160,40 +161,28 @@ export async function POST(request: Request) {
   }
 
   // Token validated first so an invalid guest token is always rejected,
-  // regardless of whether Anthropic is configured in this environment.
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  // regardless of whether OpenAI is configured in this environment.
+  if (!isOpenAiConfigured()) {
     return NextResponse.json({ answer: "This isn't set up yet — please reach out to the couple directly." });
   }
 
   const systemPrompt = buildContext(ctx);
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key":         apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type":      "application/json",
-      },
-      body: JSON.stringify({
-        model:      "claude-sonnet-4-6",
-        max_tokens: 400,
-        system:     systemPrompt,
-        messages:   [{ role: "user", content: `Question from a wedding guest: "${question.trim()}"` }],
-      }),
+    const raw = await openAiChatCompletion({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Question from a wedding guest: "${question.trim()}"` },
+      ],
+      maxCompletionTokens: 400,
     });
-
-    if (!res.ok) {
-      console.error("Anthropic API error:", await res.text());
-      return NextResponse.json({ answer: "I had trouble with that one — feel free to reach out to the couple directly." });
-    }
-
-    const result = await res.json() as { content: { type: string; text: string }[] };
-    const raw = result.content.find((c) => c.type === "text")?.text ?? "";
-    return NextResponse.json({ answer: parseClaudeJson(raw) });
+    return NextResponse.json({ answer: parseConciergeJson(raw) });
   } catch (err) {
     console.error("rsvp concierge error:", err);
+    const message = err instanceof Error ? err.message : "";
+    if (message.startsWith("OpenAI API error")) {
+      return NextResponse.json({ answer: "I had trouble with that one — feel free to reach out to the couple directly." });
+    }
     return NextResponse.json({ answer: "Something went wrong — please try again." });
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { isOpenAiConfigured, openAiChatCompletion, OPENAI_MODEL_FAST } from "@/lib/ai/openai";
 import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
 
 const SYSTEM = (venueName: string, toneInstruction: string) =>
@@ -63,8 +64,8 @@ Package recommendations: 2–3 specific package or offering suggestions that ten
 }
 
 /**
- * Non-streaming generation — same Anthropic path as lib/luv/drafts.ts.
- * Streaming previously returned a Response before Anthropic auth failures
+ * Non-streaming generation — same OpenAI path as lib/luv/drafts.ts.
+ * Streaming previously returned a Response before provider auth failures
  * surfaced, which produced ALB 502 "failed to pipe response" instead of a
  * friendly JSON error the draft sheet can show and retry.
  */
@@ -89,9 +90,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error("[luv/draft] ANTHROPIC_API_KEY is not configured");
+  if (!isOpenAiConfigured()) {
+    console.error("[luv/draft] OPENAI_API_KEY is not configured");
     return NextResponse.json(
       { error: "AI drafting is temporarily unavailable. Please try again later." },
       { status: 503 }
@@ -101,37 +101,27 @@ export async function POST(request: Request) {
   const prompt = buildPrompt(action, context, venueName);
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 800,
-        system: SYSTEM(venueName, luvToneInstruction(settings.preferredTone)),
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(25_000),
+    const text = await openAiChatCompletion({
+      model: OPENAI_MODEL_FAST,
+      messages: [
+        { role: "system", content: SYSTEM(venueName, luvToneInstruction(settings.preferredTone)) },
+        { role: "user", content: prompt },
+      ],
+      maxCompletionTokens: 800,
+      timeoutMs: 25_000,
     });
-
-    if (!res.ok) {
-      console.error("[luv/draft] Anthropic error:", res.status, await res.text());
-      return NextResponse.json(
-        { error: "AI drafting is temporarily unavailable. Please try again later." },
-        { status: 502 }
-      );
-    }
-
-    const data = (await res.json()) as { content: { type: string; text: string }[] };
-    const text = data.content.find((c) => c.type === "text")?.text ?? "";
     return new Response(text, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (err) {
     console.error("[luv/draft] Generation failed:", err);
+    const message = err instanceof Error ? err.message : "";
+    if (message.startsWith("OpenAI API error")) {
+      return NextResponse.json(
+        { error: "AI drafting is temporarily unavailable. Please try again later." },
+        { status: 502 }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to generate draft" },
       { status: 502 }

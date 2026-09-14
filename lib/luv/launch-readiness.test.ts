@@ -7,14 +7,15 @@ const draftRoute = readFileSync(resolve("app/api/luv/draft/route.ts"), "utf8");
 const drafts = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
 const luvAsk = readFileSync(resolve("app/api/portal/luv-ask/route.ts"), "utf8");
 const settingsUi = readFileSync(resolve("components/settings/luv-settings-section.tsx"), "utf8");
+const openaiHelper = readFileSync(resolve("lib/ai/openai.ts"), "utf8");
 
 describe("/api/luv/draft launch-readiness", () => {
-  it("gates Anthropic on draftingEnabled via existing settings", () => {
+  it("gates OpenAI on draftingEnabled via existing settings", () => {
     assert.match(draftRoute, /getLuvSettings\(/);
     assert.match(draftRoute, /isLuvDraftingEnabled\(settings\)/);
     const gateIdx = draftRoute.indexOf("isLuvDraftingEnabled(settings)");
-    const anthropicIdx = draftRoute.indexOf('fetch("https://api.anthropic.com/v1/messages"');
-    assert.ok(gateIdx > 0 && anthropicIdx > gateIdx);
+    const openAiIdx = draftRoute.indexOf("await openAiChatCompletion", gateIdx);
+    assert.ok(gateIdx > 0 && openAiIdx > gateIdx);
   });
 
   it("puts preferredTone into the system instruction", () => {
@@ -31,24 +32,26 @@ describe("/api/luv/draft launch-readiness", () => {
     assert.match(draftRoute, /AI drafting is temporarily unavailable/);
   });
 
-  it("uses non-streaming Anthropic fetch so auth failures return JSON", () => {
-    assert.match(draftRoute, /fetch\("https:\/\/api\.anthropic\.com\/v1\/messages"/);
+  it("uses non-streaming OpenAI fetch so auth failures return JSON", () => {
+    assert.match(draftRoute, /openAiChatCompletion/);
+    assert.match(draftRoute, /OPENAI_MODEL_FAST/);
     assert.doesNotMatch(draftRoute, /messages\.stream/);
     assert.doesNotMatch(draftRoute, /toReadableStream/);
+    assert.doesNotMatch(draftRoute, /api\.anthropic\.com/);
   });
 
-  it("keeps the existing 25s Anthropic timeout", () => {
-    assert.match(draftRoute, /AbortSignal\.timeout\(25_000\)/);
+  it("keeps the existing 25s OpenAI timeout", () => {
+    assert.match(draftRoute, /timeoutMs: 25_000/);
   });
 });
 
 describe("lib/luv/drafts.ts launch-readiness", () => {
-  it("gates generation on getLuvSettings draftingEnabled before Anthropic", () => {
+  it("gates generation on getLuvSettings draftingEnabled before OpenAI", () => {
     assert.match(drafts, /getLuvSettings\(/);
     assert.match(drafts, /isLuvDraftingEnabled\(settings\)/);
     const fnStart = drafts.indexOf("export async function generateFollowUpDraft");
     const gateIdx = drafts.indexOf("isLuvDraftingEnabled(settings)", fnStart);
-    const callIdx = drafts.indexOf("await callClaude", fnStart);
+    const callIdx = drafts.indexOf("await generateDraftText", fnStart);
     assert.ok(fnStart > 0 && gateIdx > fnStart && callIdx > gateIdx);
   });
 
@@ -57,8 +60,8 @@ describe("lib/luv/drafts.ts launch-readiness", () => {
     assert.match(drafts, /settings\.preferredTone/);
   });
 
-  it("times out hung Anthropic fetches", () => {
-    assert.match(drafts, /AbortSignal\.timeout\(25_000\)/);
+  it("times out hung OpenAI fetches", () => {
+    assert.match(drafts, /timeoutMs: 25_000/);
   });
 
   it("does not send messages autonomously", () => {
@@ -68,7 +71,7 @@ describe("lib/luv/drafts.ts launch-readiness", () => {
     assert.doesNotMatch(drafts, /status: "sent"/);
   });
 
-  it("returns a friendly failure instead of raw Anthropic errors", () => {
+  it("returns a friendly failure instead of raw OpenAI errors", () => {
     assert.match(drafts, /Luv couldn't generate a draft right now\. Please try again\./);
     assert.doesNotMatch(
       drafts.slice(drafts.indexOf("export async function generateFollowUpDraft")),
@@ -78,21 +81,21 @@ describe("lib/luv/drafts.ts launch-readiness", () => {
 });
 
 describe("/api/portal/luv-ask launch-readiness", () => {
-  it("rejects oversized questions and rate-limits before Anthropic", () => {
+  it("rejects oversized questions and rate-limits before OpenAI", () => {
     assert.match(luvAsk, /isLuvAskQuestionTooLong/);
     assert.match(luvAsk, /checkLuvAskRateLimit/);
     const postIdx = luvAsk.indexOf("export async function POST");
     const lengthIdx = luvAsk.indexOf("isLuvAskQuestionTooLong", postIdx);
     const rateIdx = luvAsk.indexOf("checkLuvAskRateLimit", postIdx);
-    const fetchIdx = luvAsk.indexOf('fetch("https://api.anthropic.com/v1/messages"');
+    const fetchIdx = luvAsk.indexOf("await openAiChatCompletion", rateIdx);
     assert.ok(postIdx > 0 && lengthIdx > postIdx && rateIdx > lengthIdx && fetchIdx > rateIdx);
   });
 
-  it("gates Anthropic on the same draftingEnabled setting", () => {
+  it("gates OpenAI on the same draftingEnabled setting", () => {
     assert.match(luvAsk, /getLuvSettingsForVenueId/);
     assert.match(luvAsk, /isLuvDraftingEnabled\(settings\)/);
     const gateIdx = luvAsk.indexOf("isLuvDraftingEnabled(settings)");
-    const fetchIdx = luvAsk.indexOf('fetch("https://api.anthropic.com/v1/messages"');
+    const fetchIdx = luvAsk.indexOf("await openAiChatCompletion", gateIdx);
     assert.ok(gateIdx > 0 && fetchIdx > gateIdx);
   });
 
@@ -102,9 +105,21 @@ describe("/api/portal/luv-ask launch-readiness", () => {
     assert.match(luvAsk, /Never make up information about the venue/);
   });
 
-  it("times out hung Anthropic fetches and uses a friendly catch", () => {
-    assert.match(luvAsk, /AbortSignal\.timeout\(25_000\)/);
+  it("times out hung OpenAI fetches and uses a friendly catch", () => {
+    assert.match(luvAsk, /timeoutMs: 25_000/);
     assert.match(luvAsk, /Luv couldn't connect right now/);
+  });
+});
+
+describe("shared OpenAI helper launch-readiness", () => {
+  it("uses Chat Completions directly with Bearer auth and no tools/streaming", () => {
+    assert.match(openaiHelper, /api\.openai\.com\/v1\/chat\/completions/);
+    assert.match(openaiHelper, /Authorization: `Bearer \$\{apiKey\}`/);
+    assert.match(openaiHelper, /max_completion_tokens/);
+    assert.match(openaiHelper, /reasoning_effort/);
+    assert.doesNotMatch(openaiHelper, /tools:/);
+    assert.doesNotMatch(openaiHelper, /stream:\s*true/);
+    assert.doesNotMatch(openaiHelper, /ANTHROPIC/);
   });
 });
 

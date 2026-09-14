@@ -10,6 +10,7 @@
 import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine, ActiveCommitmentDocument } from "@/lib/migration/active-commitment-model";
 import { validateActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { extractDocxText, extractPdfText } from "@/lib/import/file-parsing";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 
 export type SmartActiveCommitmentProposal =
   | {
@@ -21,33 +22,11 @@ export type SmartActiveCommitmentProposal =
     }
   | { ok: false; message: string };
 
-type AnthropicResponse = { content: { type: string; text: string }[] };
-
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    }),
+async function generateSmartExtractText(prompt: string): Promise<string> {
+  return openAiChatCompletion({
+    messages: [{ role: "user", content: prompt }],
+    maxCompletionTokens: 4096,
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${err}`);
-  }
-
-  const data = (await res.json()) as AnthropicResponse;
-  return (data.content.find((c) => c.type === "text")?.text ?? "").trim();
 }
 
 function buildPrompt(rawText: string): string {
@@ -179,16 +158,16 @@ export async function proposeActiveCommitmentFromDocument(
     return { ok: false, message: "Paste or upload a signed contract / booking document first." };
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isOpenAiConfigured()) {
     return {
       ok: false,
-      message: "Smart Import needs ANTHROPIC_API_KEY. You can still enter the commitment fields manually in the review form.",
+      message: "Smart Import needs OPENAI_API_KEY. You can still enter the commitment fields manually in the review form.",
     };
   }
 
   let text: string;
   try {
-    text = await callClaude(buildPrompt(rawText));
+    text = await generateSmartExtractText(buildPrompt(rawText));
   } catch (err) {
     return {
       ok: false,

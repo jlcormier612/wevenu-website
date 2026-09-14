@@ -19,7 +19,6 @@
     "process:lifecycle": "node scripts/process-lifecycle.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.110.0",
     "@aws-sdk/client-secrets-manager": "^3.1127.0",
     "@base-ui/react": "^1.6.0",
     "@react-pdf/renderer": "^4.6.0",

@@ -11,6 +11,7 @@
  */
 
 import type { PlaybookKind } from "@/lib/playbooks/types";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 
 export type ProposedPlaybookTask = {
   title: string;
@@ -28,34 +29,11 @@ export type LuvPlaybookProposal =
   | { ok: true; milestones: ProposedPlaybookMilestone[]; aiStructured: boolean }
   | { ok: false; message: string };
 
-type AnthropicResponse = { content: { type: string; text: string }[] };
-
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    }),
+async function generatePlaybookText(prompt: string): Promise<string> {
+  return openAiChatCompletion({
+    messages: [{ role: "user", content: prompt }],
+    maxCompletionTokens: 4096,
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${err}`);
-  }
-
-  const data = (await res.json()) as AnthropicResponse;
-  const text = data.content.find((c) => c.type === "text")?.text ?? "";
-  return text.trim();
 }
 
 function buildPrompt(rawText: string, kind: PlaybookKind): string {
@@ -105,7 +83,7 @@ function isValidTask(t: unknown): t is ProposedPlaybookTask {
 
 /**
  * Plain, deterministic fallback with no AI involved at all — used whenever
- * ANTHROPIC_API_KEY isn't configured (template-import review, 2026-07-22:
+ * OPENAI_API_KEY isn't configured (template-import review, 2026-07-22:
  * this used to hard-fail with "Luv isn't configured," leaving a coordinator
  * with nothing at all). One line becomes one task, in a single "Imported"
  * milestone — no section-grouping or due-date guessing is attempted here
@@ -128,12 +106,12 @@ export async function proposePlaybookDraft(rawText: string, kind: PlaybookKind):
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste your checklist first." };
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isOpenAiConfigured()) {
     return splitChecklistLines(rawText);
   }
 
   try {
-    const raw = await callClaude(buildPrompt(rawText, kind));
+    const raw = await generatePlaybookText(buildPrompt(rawText, kind));
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { ok: false, message: "Luv couldn't find a checklist structure in this text." };
 
