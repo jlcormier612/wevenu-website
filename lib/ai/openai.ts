@@ -7,10 +7,13 @@
 
 export const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions" as const;
 
-/** Default model — replaces prior Claude Sonnet usage across Luv / intake / imports. */
-export const OPENAI_MODEL_DEFAULT = "gpt-5.6-terra" as const;
+/** Default model for Venue-app AI (drafts, Ask Luv, roll-ups, imports, intake). */
+export const OPENAI_MODEL_DEFAULT = "gpt-5.6-luna" as const;
 
-/** Lower-cost model — replaces prior Claude Haiku usage on /api/luv/draft. */
+/**
+ * Fast / high-volume path (dashboard /api/luv/draft). Same family as default —
+ * this org’s current OpenAI service account has working quota on Luna.
+ */
 export const OPENAI_MODEL_FAST = "gpt-5.6-luna" as const;
 
 export type OpenAiChatMessage = {

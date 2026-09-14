@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe("lib/ai/openai helper", () => {
   it("exports the documented model IDs", () => {
-    assert.equal(OPENAI_MODEL_DEFAULT, "gpt-5.6-terra");
+    assert.equal(OPENAI_MODEL_DEFAULT, "gpt-5.6-luna");
     assert.equal(OPENAI_MODEL_FAST, "gpt-5.6-luna");
     assert.equal(OPENAI_CHAT_COMPLETIONS_URL, "https://api.openai.com/v1/chat/completions");
   });
