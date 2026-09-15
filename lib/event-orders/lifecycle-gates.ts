@@ -66,9 +66,11 @@ export function shareBlockedWhenNotFinalized(
 }
 
 /**
- * Template → instance copy semantics (ensureEventOrder): lines are independent
- * custom rows; later template edits must not imply a live reference.
+ * Template → instance copy semantics: snapshot provenance.
+ * Offering id is stored for origin only — prices live on the event line.
  */
-export function templateAppliedLineProvenance(): "custom" {
-  return "custom";
+export function templateAppliedLineProvenance(
+  offeringId?: string | null,
+): "custom" | "offering" {
+  return offeringId ? "offering" : "custom";
 }

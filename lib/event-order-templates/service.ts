@@ -3,11 +3,16 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  parseTemplateOfferingWrite,
+  validateSectionName,
+} from "@/lib/event-order-templates/offerings";
 import * as repo from "@/lib/event-order-templates/repository";
+import type { TemplateLineWrite } from "@/lib/event-order-templates/repository";
 import type {
   AddTemplateLineInput, AddTemplateLineResult, AddTemplateSectionResult,
   CreateEventOrderTemplateResult, EventOrderTemplate, EventOrderTemplateActionResult,
-  EventOrderTemplateInput, EventOrderTemplateWithDetails,
+  EventOrderTemplateInput, EventOrderTemplateWithDetails, UpdateTemplateLineInput,
 } from "@/lib/event-order-templates/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -27,6 +32,10 @@ function validateInput(input: EventOrderTemplateInput): Record<string, string> {
   const errors: Record<string, string> = {};
   if (!input.name.trim()) errors.name = "Give this template a name.";
   return errors;
+}
+
+function parseLineWrite(input: AddTemplateLineInput): { ok: true; write: TemplateLineWrite } | { ok: false; errors: Record<string, string> } {
+  return parseTemplateOfferingWrite(input);
 }
 
 // ---- reads --------------------------------------------------------------------
@@ -93,7 +102,8 @@ export async function duplicateTemplate_(id: string, newName: string): Promise<C
 export async function addSection(
   templateId: string, name: string, guidance: string | null = null,
 ): Promise<AddTemplateSectionResult> {
-  if (!name.trim()) return { ok: false, message: "Give this section a name." };
+  const nameError = validateSectionName(name);
+  if (nameError) return { ok: false, message: nameError };
   const result = await withVenue(async (supabase, venueId) => {
     const sortOrder = await repo.nextSortOrder(supabase, "event_order_template_sections", templateId);
     const section = await repo.insertSection(supabase, venueId, templateId, name, sortOrder, guidance);
@@ -102,11 +112,31 @@ export async function addSection(
   return result as AddTemplateSectionResult;
 }
 
+export async function updateSection(
+  sectionId: string, input: { name?: string; guidance?: string | null },
+): Promise<EventOrderTemplateActionResult> {
+  if (input.name !== undefined) {
+    const nameError = validateSectionName(input.name);
+    if (nameError) return { ok: false, message: nameError };
+  }
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateSection(supabase, venueId, sectionId, input);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
 export async function updateSectionGuidance(
   sectionId: string, guidance: string | null,
 ): Promise<EventOrderTemplateActionResult> {
+  return updateSection(sectionId, { guidance });
+}
+
+export async function reorderSections(
+  orderedIds: string[],
+): Promise<EventOrderTemplateActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateSectionGuidance(supabase, venueId, sectionId, guidance);
+    await repo.reorderRows(supabase, "event_order_template_sections", venueId, orderedIds);
     return { ok: true } as EventOrderTemplateActionResult;
   });
   return result as EventOrderTemplateActionResult;
@@ -120,22 +150,41 @@ export async function removeSection(sectionId: string): Promise<EventOrderTempla
   return result as EventOrderTemplateActionResult;
 }
 
-// ---- lines (legacy only — not part of new authoring; remove-only in UI) ----------
+// ---- offerings / lines ----------------------------------------------------------
 
 export async function addLine(templateId: string, input: AddTemplateLineInput): Promise<AddTemplateLineResult> {
-  if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };
-  const qty = Number(input.quantity);
-  if (!(qty > 0)) return { ok: false, errors: { quantity: "Enter a valid quantity." } };
-  const price = Number(input.unitPrice.replace(/[$,]/g, ""));
-  if (isNaN(price) || price < 0) return { ok: false, errors: { unitPrice: "Enter a valid price." } };
+  const parsed = parseLineWrite(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
   const result = await withVenue(async (supabase, venueId) => {
-    const sortOrder = await repo.nextSortOrder(supabase, "event_order_template_lines", templateId);
-    const line = await repo.insertLine(supabase, venueId, templateId, {
-      sectionId: input.sectionId, description: input.description, quantity: qty, unitPrice: price,
-    }, sortOrder);
+    const sortOrder = await repo.nextSortOrder(
+      supabase, "event_order_template_lines", templateId, parsed.write.sectionId,
+    );
+    const line = await repo.insertLine(supabase, venueId, templateId, parsed.write, sortOrder);
     return { ok: true, line } as AddTemplateLineResult;
   });
   return result as AddTemplateLineResult;
+}
+
+export async function updateLine(
+  lineId: string, input: UpdateTemplateLineInput,
+): Promise<EventOrderTemplateActionResult> {
+  const parsed = parseLineWrite(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateLine(supabase, venueId, lineId, parsed.write);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
+export async function reorderLines(
+  orderedIds: string[],
+): Promise<EventOrderTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.reorderRows(supabase, "event_order_template_lines", venueId, orderedIds);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
 }
 
 export async function removeLine(lineId: string): Promise<EventOrderTemplateActionResult> {

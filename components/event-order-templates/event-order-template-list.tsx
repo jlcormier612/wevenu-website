@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -10,9 +9,10 @@ import { toast } from "sonner";
 import {
   addEventOrderStarterAgainAction,
   createEventOrderTemplateAction, deleteEventOrderTemplateAction,
-  duplicateEventOrderTemplateAction, setEventOrderTemplateArchivedAction,
+  duplicateEventOrderTemplateAction, getEventOrderTemplateDetailAction,
+  setEventOrderTemplateArchivedAction,
 } from "@/app/(app)/library/event-order-templates/actions";
-import { ensureEventOrderAction } from "@/app/(app)/events/[id]/event-order-actions";
+import { startOrApplyEventOrderTemplateAction } from "@/app/(app)/events/[id]/event-order-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
@@ -27,8 +27,10 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { formatRelative } from "@/lib/leads/constants";
+import { TemplateApplyChooser } from "@/components/event-order-templates/apply-event-order-template-sheet";
+import { defaultApplySelections, type TemplateApplySelection } from "@/lib/event-order-templates/offerings";
 import { EVENT_ORDER_STARTER_MASTERS, type EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
-import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
+import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 
 function NewTemplateSheet() {
   const router = useRouter();
@@ -55,7 +57,7 @@ function NewTemplateSheet() {
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader className="mb-6">
           <SheetTitle>New Event Order Template</SheetTitle>
-          <p className="text-sm text-muted-foreground">A reusable delivery structure — section names and optional guidance. Applying it copies structure only; add Offerings on the Event Order.</p>
+          <p className="text-sm text-muted-foreground">A reusable Event Order template — sections and optional offerings, with or without prices. Applying it copies a snapshot into an event; it is not itself a client commitment.</p>
         </SheetHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -133,24 +135,44 @@ function UseEventOrderSheet({
   const [q, setQ] = React.useState("");
   const [step, setStep] = React.useState<UseStep>("pick");
   const [selected, setSelected] = React.useState<EventOrderEventOption | null>(null);
+  const [loading, startLoading] = React.useTransition();
   const [pending, startTransition] = React.useTransition();
+  const [detail, setDetail] = React.useState<EventOrderTemplateWithDetails | null>(null);
+  const [selections, setSelections] = React.useState<TemplateApplySelection[]>([]);
 
   React.useEffect(() => {
-    if (open) { setStep("pick"); setSelected(null); setQ(""); }
+    if (open) {
+      setStep("pick");
+      setSelected(null);
+      setQ("");
+      setDetail(null);
+      setSelections([]);
+    }
   }, [open]);
 
   const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
 
+  function pickEvent(ev: EventOrderEventOption) {
+    if (!template) return;
+    setSelected(ev);
+    setStep("confirm");
+    startLoading(async () => {
+      const loaded = await getEventOrderTemplateDetailAction(template.id);
+      setDetail(loaded);
+      setSelections(loaded ? defaultApplySelections(loaded.lines) : []);
+    });
+  }
+
   function apply() {
     if (!selected || !template) return;
     startTransition(async () => {
-      const result = await ensureEventOrderAction(selected.id, template.id);
+      const result = await startOrApplyEventOrderTemplateAction(selected.id, template.id, selections);
       if (result.ok) {
-        toast.success("Event Order set up on the event.");
+        toast.success("Template applied to the event.");
         router.push(`/events/${selected.id}#event-order`);
         onOpenChange(false);
       } else {
-        toast.error(result.message ?? "Could not set up the Event Order.");
+        toast.error(result.message ?? "Could not apply this template.");
       }
     });
   }
@@ -166,7 +188,9 @@ function UseEventOrderSheet({
               &ldquo;{template?.name}&rdquo;.
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">Confirm before setting up the Event Order.</p>
+            <p className="text-sm text-muted-foreground">
+              Choose what this event should receive. This copies a snapshot into the Event Order — not an invoice or contract.
+            </p>
           )}
         </SheetHeader>
 
@@ -182,7 +206,7 @@ function UseEventOrderSheet({
                     <button
                       type="button"
                       disabled={pending}
-                      onClick={() => { setSelected(ev); setStep("confirm"); }}
+                      onClick={() => pickEvent(ev)}
                       className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40 disabled:opacity-50"
                     >
                       <p className="text-sm font-medium text-heading">{ev.name}</p>
@@ -199,15 +223,18 @@ function UseEventOrderSheet({
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
               <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
             </div>
-            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
-              <li>Starts this event&apos;s Event Order from this template&apos;s sections and lines.</li>
-              <li>If this event already has an Event Order, this opens it instead — it never overwrites existing work.</li>
-              <li>Does not send email, SMS, or portal notifications.</li>
-            </ul>
-            <div className="flex justify-end gap-2 pt-2">
+            {detail ? (
+              <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} />
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading offerings…</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              If this event already has a finalized Event Order, applying is blocked. Open orders receive additional structure without replacing existing lines.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
-              <Button type="button" disabled={pending} onClick={apply}>
-                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Setting up…</> : "Use Template"}
+              <Button type="button" disabled={pending || !detail} onClick={apply}>
+                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Applying…</> : "Apply to event"}
               </Button>
             </div>
           </div>
@@ -327,7 +354,7 @@ export function EventOrderTemplateList({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">
           Editing a template never changes an Event Order already on a booking, and never shares with the client.
-          Starters are delivery structure only — sections to fill with Offerings, not priced commitments.
+          Starters are examples you can edit — including prices, which are snapshots, not invoices.
         </p>
         <div className="flex items-center gap-2">
           <StarterMenu missingKeys={missingStarterKeys} />
@@ -337,7 +364,7 @@ export function EventOrderTemplateList({
       {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No Event Order Templates yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create one to reuse the same delivery sections — Catering, Bar, Rentals, Services — for every event that fits it.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Create one to reuse how your venue delivers an event — from simple sections to fully priced offerings.</p>
         </div>
       ) : (
         <div className="space-y-2">

@@ -43,14 +43,16 @@ describe("Event Order enablement + template labeling", () => {
     assert.doesNotMatch(hq, /Enable Event Orders/);
   });
 
-  it("template picker labels structure-only starters", () => {
-    assert.match(panel, /\(structure\)/);
-    assert.match(panel, /Templates copy section structure only/);
+  it("template picker copies selected offerings as an event snapshot, not an invoice", () => {
+    assert.match(panel, /Use a template/);
+    assert.match(panel, /not an invoice, contract, or payment/);
+    assert.match(panel, /Apply a template/);
   });
 
-  it("code starters remain EO-D delivery masters without checklist lines", () => {
+  it("code starters remain EO-D delivery masters with example offerings", () => {
     assert.match(starters, /EO-D-01/);
     assert.match(starters, /EO-D-02/);
-    assert.match(starters, /No checklist\/process lines/);
+    assert.match(starters, /Plated Dinner/);
+    assert.match(starters, /Chiavari Chair/);
   });
 });

@@ -6,10 +6,12 @@ import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addSectionAction, ensureEventOrderAction, finalizeEventOrderAction, getEventOrderPdfUrlAction,
+  addSectionAction, applyEventOrderTemplateAction, ensureEventOrderAction, finalizeEventOrderAction, getEventOrderPdfUrlAction,
   removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanAction,
   shareEventOrderWithClientAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
+import { getEventOrderTemplateDetailAction } from "@/app/(app)/library/event-order-templates/actions";
+import { ApplyEventOrderTemplateSheet } from "@/components/event-order-templates/apply-event-order-template-sheet";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
 import { EditLineSheet } from "@/components/event-orders/edit-line-sheet";
 import { EventOrderInvoiceLink } from "@/components/event-orders/event-order-invoice-link";
@@ -29,7 +31,7 @@ import {
 import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
-import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
+import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -194,6 +196,7 @@ export function EventOrderPanel({
 }) {
   const router = useRouter();
   const [starting, startStarting] = React.useTransition();
+  const [applying, startApplying] = React.useTransition();
   const [templateId, setTemplateId] = React.useState("blank");
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [downloading, startDownload] = React.useTransition();
@@ -203,6 +206,8 @@ export function EventOrderPanel({
   const [shareOpen, setShareOpen] = React.useState(false);
   const [updateShareOpen, setUpdateShareOpen] = React.useState(false);
   const shareOpenTargetRef = React.useRef<"initial" | "update">("initial");
+  const [applyOpen, setApplyOpen] = React.useState(false);
+  const [applyTemplate, setApplyTemplate] = React.useState<EventOrderTemplateWithDetails | null>(null);
 
   function refresh() { router.refresh(); }
 
@@ -289,9 +294,9 @@ export function EventOrderPanel({
             )}
             <p className="max-w-md text-sm text-muted-foreground">
               Optional — use when you need a detailed delivery list. Package-only events can skip this.
-              Templates copy section structure only — not prices or commitments. Add Offerings on the live Event Order.
+              Templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
             </p>
-            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+            <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
                 onClick={() => startStarting(async () => {
                   const result = await ensureEventOrderAction(eventId, null);
@@ -307,30 +312,54 @@ export function EventOrderPanel({
                     onValueChange={setTemplateId}
                     items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({
                       value: t.id,
-                      label: t.sourceMasterKey ? `${t.name} (structure)` : t.name,
+                      label: t.name,
                     }))]}
                   >
-                    <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-64"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="blank">Choose a template…</SelectItem>
                       {templates.map((t) => (
                         <SelectItem key={t.id} value={t.id}>
-                          {t.sourceMasterKey ? `${t.name} (structure)` : t.name}
+                          {t.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}
                     onClick={() => startStarting(async () => {
-                      const result = await ensureEventOrderAction(eventId, templateId);
-                      if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
-                      else refresh();
+                      const detail = await getEventOrderTemplateDetailAction(templateId);
+                      if (!detail) {
+                        toast.error("Could not load that template.");
+                        return;
+                      }
+                      setApplyTemplate(detail);
+                      setApplyOpen(true);
                     })}>
                     Use a template
                   </Button>
                 </>
               )}
             </div>
+            <ApplyEventOrderTemplateSheet
+              open={applyOpen}
+              onOpenChange={setApplyOpen}
+              template={applyTemplate}
+              pending={applying}
+              onApply={async (selections) => {
+                if (!applyTemplate) return;
+                await new Promise<void>((resolve) => {
+                  startApplying(async () => {
+                    const result = await ensureEventOrderAction(eventId, applyTemplate.id, selections);
+                    if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
+                    else {
+                      setApplyOpen(false);
+                      refresh();
+                    }
+                    resolve();
+                  });
+                });
+              }}
+            />
           </div>
         </CardContent>
       </Card>
@@ -561,6 +590,42 @@ export function EventOrderPanel({
           )}
         </div>
 
+        {!isFinalized && templates.length > 0 && (
+          <div className="flex w-full min-w-0 flex-col gap-2 rounded-md border border-border/70 p-3">
+            <p className="text-sm text-muted-foreground">Apply a template to add sections and selected offerings. Existing lines stay as they are.</p>
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <Select
+                value={templateId}
+                onValueChange={setTemplateId}
+                items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({
+                  value: t.id,
+                  label: t.name,
+                }))]}
+              >
+                <SelectTrigger className="w-full min-w-0 sm:max-w-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="blank">Choose a template…</SelectItem>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}
+                onClick={() => startStarting(async () => {
+                  const detail = await getEventOrderTemplateDetailAction(templateId);
+                  if (!detail) {
+                    toast.error("Could not load that template.");
+                    return;
+                  }
+                  setApplyTemplate(detail);
+                  setApplyOpen(true);
+                })}>
+                Apply a template
+              </Button>
+            </div>
+          </div>
+        )}
+
         {!isFinalized && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
             <AddSectionInline eventOrderId={eventOrder.id} eventId={eventId} disabled={lifecyclePending} />
@@ -588,6 +653,26 @@ export function EventOrderPanel({
         )}
       </CardContent>
     </Card>
+    <ApplyEventOrderTemplateSheet
+      open={applyOpen}
+      onOpenChange={setApplyOpen}
+      template={applyTemplate}
+      pending={applying}
+      onApply={async (selections) => {
+        if (!applyTemplate) return;
+        await new Promise<void>((resolve) => {
+          startApplying(async () => {
+            const result = await applyEventOrderTemplateAction(order.id, eventId, applyTemplate.id, selections);
+            if (!result.ok) toast.error(result.message ?? "Could not apply this template.");
+            else {
+              setApplyOpen(false);
+              refresh();
+            }
+            resolve();
+          });
+        });
+      }}
+    />
     <EventOrderZeroTotalConfirmDialog
       open={zeroTotalConfirm !== null}
       actionLabel={zeroTotalConfirm?.kind === "share-open" ? "Share" : "Finalize"}

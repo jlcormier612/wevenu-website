@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 
 import {
   addCustomLine, addLineFromInventory, addLineFromOffering, addLineFromPackage, addSection,
-  ensureEventOrder, finalizeEventOrder, importPackageInclusions, removeLine, removeSection,
-  reopenEventOrder, setSectionFloorPlan, updateLine,
+  applyTemplateToEventOrder, ensureEventOrder, finalizeEventOrder, importPackageInclusions, removeLine, removeSection,
+  reopenEventOrder, setSectionFloorPlan, startOrApplyEventOrderTemplate, updateLine,
 } from "@/lib/event-orders/service";
 import type {
   AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddOfferingLineInput,
   AddSectionResult, EnsureEventOrderResult, EventOrderActionResult, UpdateLineInput,
 } from "@/lib/event-orders/types";
+import type { TemplateApplySelection } from "@/lib/event-order-templates/offerings";
 import { createInvoice, linkInvoiceToEventOrder } from "@/lib/invoices/service";
 import type { CreateInvoiceResult, InvoiceActionResult as InvoiceOpResult } from "@/lib/invoices/types";
 import { getEventOrderPdfUrl, shareEventOrderWithClient } from "@/lib/event-orders/representation";
@@ -19,8 +20,33 @@ function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
 }
 
-export async function ensureEventOrderAction(eventId: string, templateId?: string | null): Promise<EnsureEventOrderResult> {
-  const result = await ensureEventOrder(eventId, templateId ?? null);
+export async function ensureEventOrderAction(
+  eventId: string,
+  templateId?: string | null,
+  selections?: TemplateApplySelection[],
+): Promise<EnsureEventOrderResult> {
+  const result = await ensureEventOrder(eventId, templateId ?? null, selections);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function applyEventOrderTemplateAction(
+  eventOrderId: string,
+  eventId: string,
+  templateId: string,
+  selections?: TemplateApplySelection[],
+): Promise<EventOrderActionResult> {
+  const result = await applyTemplateToEventOrder(eventOrderId, templateId, selections);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function startOrApplyEventOrderTemplateAction(
+  eventId: string,
+  templateId: string,
+  selections?: TemplateApplySelection[],
+): Promise<EnsureEventOrderResult> {
+  const result = await startOrApplyEventOrderTemplate(eventId, templateId, selections);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

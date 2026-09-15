@@ -7,13 +7,14 @@ import {
 } from "@/lib/event-order-templates/provision";
 import {
   addLine, addSection, createTemplate, deleteTemplate_, duplicateTemplate_, getTemplate,
-  removeLine, removeSection, setTemplateArchived_, updateSectionGuidance, updateTemplate_,
+  removeLine, removeSection, reorderLines, reorderSections, setTemplateArchived_,
+  updateLine, updateSection, updateSectionGuidance, updateTemplate_,
 } from "@/lib/event-order-templates/service";
 import type { EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
 import type {
   AddTemplateLineInput, AddTemplateLineResult, AddTemplateSectionResult,
   CreateEventOrderTemplateResult, EventOrderTemplateActionResult, EventOrderTemplateInput,
-  EventOrderTemplateWithDetails,
+  EventOrderTemplateWithDetails, UpdateTemplateLineInput,
 } from "@/lib/event-order-templates/types";
 
 function revalidateLibrary(templateId?: string) {
@@ -68,6 +69,22 @@ export async function updateEventOrderTemplateSectionGuidanceAction(
   return result;
 }
 
+export async function updateEventOrderTemplateSectionAction(
+  templateId: string, sectionId: string, input: { name?: string; guidance?: string | null },
+): Promise<EventOrderTemplateActionResult> {
+  const result = await updateSection(sectionId, input);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function reorderEventOrderTemplateSectionsAction(
+  templateId: string, orderedIds: string[],
+): Promise<EventOrderTemplateActionResult> {
+  const result = await reorderSections(orderedIds);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
 export async function removeEventOrderTemplateSectionAction(templateId: string, sectionId: string): Promise<EventOrderTemplateActionResult> {
   const result = await removeSection(sectionId);
   if (result.ok) revalidateLibrary(templateId);
@@ -76,6 +93,22 @@ export async function removeEventOrderTemplateSectionAction(templateId: string, 
 
 export async function addEventOrderTemplateLineAction(templateId: string, input: AddTemplateLineInput): Promise<AddTemplateLineResult> {
   const result = await addLine(templateId, input);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function updateEventOrderTemplateLineAction(
+  templateId: string, lineId: string, input: UpdateTemplateLineInput,
+): Promise<EventOrderTemplateActionResult> {
+  const result = await updateLine(lineId, input);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function reorderEventOrderTemplateLinesAction(
+  templateId: string, orderedIds: string[],
+): Promise<EventOrderTemplateActionResult> {
+  const result = await reorderLines(orderedIds);
   if (result.ok) revalidateLibrary(templateId);
   return result;
 }
