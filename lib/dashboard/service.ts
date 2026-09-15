@@ -32,6 +32,7 @@ import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/le
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 import { getClientListFilterCounts } from "@/lib/clients/service";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { resolveVenueNextSteps, VENUE_NEXT_STEPS_CANDIDATE_CAP } from "@/lib/dashboard/venue-next-steps";
@@ -581,12 +582,14 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const performanceObservations = observationsOn ? performanceObservationsRaw : [];
 
   // Compute momentum segments from lead scores (post-refresh)
-  const { data: scoredLeads } = await supabase.from("leads")
-    .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
-    .eq("venue_id", venue.id)
-    .not("sales_stage", "in", "(booked,lost)")
-    .order("commitment_score", { ascending: false })
-    .limit(30);
+  const { data: scoredLeads } = await onlyBusinessReporting(
+    supabase.from("leads")
+      .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
+      .eq("venue_id", venue.id)
+      .not("sales_stage", "in", "(booked,lost)")
+      .order("commitment_score", { ascending: false })
+      .limit(30),
+  );
 
   const heatingUp: { leadId: string; name: string; reason: string }[] = [];
   const coolingOff: { leadId: string; name: string; reason: string }[] = [];

@@ -120,4 +120,10 @@ describe("customer-facing reporting copy", () => {
     assert.match(migration, /generate_venue_recommendations/);
     assert.match(migration, /coalesce\(exclude_from_business_reporting, false\) = false/);
   });
+
+  it("Luv observations exclude verification records at the query", () => {
+    const observations = readFileSync(resolve("lib/luv/observations.ts"), "utf8");
+    assert.match(observations, /onlyBusinessReporting/);
+    assert.match(observations, /eq\("sales_stage", "new_inquiry"\)/);
+  });
 });
