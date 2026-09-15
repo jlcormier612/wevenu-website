@@ -496,10 +496,13 @@ export async function getConversationUnreadCount(): Promise<number> {
   return repo.getConversationUnreadCount(supabase);
 }
 
-export async function getPortalConversation(token: string): Promise<PortalConversationResult> {
+export async function getPortalConversation(
+  token: string,
+  options?: { markRead?: boolean },
+): Promise<PortalConversationResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const supabase = await createClient();
-  const result = await repo.getPortalConversation(supabase, token);
+  const result = await repo.getPortalConversation(supabase, token, options);
   if ("error" in result) return { ok: false, message: result.error };
   return { ok: true, conversation: result };
 }

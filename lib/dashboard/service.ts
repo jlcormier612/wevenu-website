@@ -617,7 +617,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     overduePayments,
     upcomingPayments,
     upcomingEvents,
-    upcomingEventCount: clientListCounts.upcoming,
+    upcomingEventCount: clientListCounts.coming_up,
     clientListCounts,
     luvObservations,
     trendObservations,

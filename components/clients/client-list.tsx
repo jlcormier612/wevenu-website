@@ -30,6 +30,7 @@ import {
   countClientListFilters,
   parseClientListFilter,
   weddingWeekEnd,
+  comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
 import type { Client } from "@/lib/clients/types";
@@ -99,9 +100,10 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
 
   // Venue-local today, passed from the server — same string the Dashboard count uses.
   const weekOut = React.useMemo(() => weddingWeekEnd(today), [today]);
+  const comingUpOut = React.useMemo(() => comingUpHorizonEnd(today), [today]);
   const filterCtx = React.useMemo(
-    () => ({ today, weekOut, attentionClientIds }),
-    [today, weekOut, attentionClientIds],
+    () => ({ today, weekOut, comingUpOut, attentionClientIds }),
+    [today, weekOut, comingUpOut, attentionClientIds],
   );
 
   const filtered = React.useMemo(() => {

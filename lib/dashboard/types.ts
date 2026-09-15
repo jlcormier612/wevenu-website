@@ -126,7 +126,7 @@ export type DashboardData = {
   // ---- booked clients + events ----
   /** Upcoming events from the events table (canonical source). Capped at 8 rows for rendering. */
   upcomingEvents: DashboardEvent[];
-  /** True count of Clients → Upcoming — same population as that filter, not a 60-day events window. */
+  /** True count of Clients → Coming up (next 60 days) — same population as that filter. */
   upcomingEventCount: number;
   /** Counts for every Clients operational view the Dashboard metrics link into. */
   clientListCounts: Record<ClientListFilterKey, number>;

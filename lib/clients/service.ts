@@ -30,6 +30,7 @@ import { clientDisplayName } from "@/lib/clients/constants";
 import {
   countClientListFilters,
   weddingWeekEnd,
+  comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
@@ -182,6 +183,7 @@ export async function getClientAttentionFlags(): Promise<Set<string>> {
 const EMPTY_CLIENT_LIST_COUNTS: Record<ClientListFilterKey, number> = {
   all: 0,
   upcoming: 0,
+  coming_up: 0,
   wedding_week: 0,
   needs_attention: 0,
   past: 0,
@@ -205,6 +207,7 @@ export async function getClientListFilterCounts(): Promise<Record<ClientListFilt
   return countClientListFilters(clients, {
     today,
     weekOut: weddingWeekEnd(today),
+    comingUpOut: comingUpHorizonEnd(today),
     attentionClientIds,
   });
 }

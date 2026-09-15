@@ -193,9 +193,12 @@ function UploadChip({ item, onRemove, onRetry }: { item: UploadItem; onRemove: (
 export function PortalMessageSection({
   token,
   venueName,
+  onConversationViewed,
 }: {
   token:     string;
   venueName: string;
+  /** Fired after messages load with mark-read, so the nav badge can clear. */
+  onConversationViewed?: () => void;
 }) {
   const [threadId, setThreadId]     = React.useState<string | null>(null);
   const [messages, setMessages]     = React.useState<CoupleMessage[]>([]);
@@ -208,14 +211,16 @@ export function PortalMessageSection({
   const bottomRef    = React.useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
+    // Default markRead clears venue/system unread for this conversation view.
     const res = await fetch(`/api/portal/messages?token=${encodeURIComponent(token)}`);
     if (res.ok) {
       const d = await res.json() as PortalThread;
       setThreadId(d.thread_id);
       setMessages(d.messages ?? []);
+      onConversationViewed?.();
     }
     setLoading(false);
-  }, [token]);
+  }, [token, onConversationViewed]);
 
   React.useEffect(() => { void load(); }, [load]);
 

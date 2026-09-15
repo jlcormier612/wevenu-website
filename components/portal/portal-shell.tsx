@@ -4571,7 +4571,7 @@ export function PortalShell({
       fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({
         hasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
       })),
-      fetch(`/api/portal/messages?token=${token}`).then((r) => r.json()).catch(() => ({ messages: [] })),
+      fetch(`/api/portal/messages?token=${token}&markRead=0`).then((r) => r.json()).catch(() => ({ messages: [] })),
     ]).then(([tasksRes, requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes, messagesRes]) => {
       if (cancelled) return;
       const venueTasks = (tasksRes.tasks ?? initialTasks) as PortalTask[];
@@ -4884,7 +4884,13 @@ export function PortalShell({
             {activeSection === "vendors"   && planningCapabilities.vendors && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
-            {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
+            {activeSection === "messages"  && (
+              <PortalMessageSection
+                token={token}
+                venueName={context.venue.name}
+                onConversationViewed={() => setMessagesUnreadCount(0)}
+              />
+            )}
             {activeSection === "account"   && <AccountSection token={token} context={context} venueName={context.venue.name} />}
             {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={navigateTo} />}
           </div>

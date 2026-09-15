@@ -73,18 +73,38 @@ function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
   });
 }
 
-export function LeadList({ leads }: { leads: Lead[] }) {
+export function LeadList({
+  leads,
+  initialAttention,
+}: {
+  leads: Lead[];
+  /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
+  initialAttention?: "stale_contact" | null;
+}) {
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<FilterKey>("all");
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
-  const [sort, setSort] = React.useState<SortKey>("newest");
+  const [sort, setSort] = React.useState<SortKey>(
+    initialAttention === "stale_contact" ? "last_contacted" : "newest",
+  );
+  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact">(
+    initialAttention === "stale_contact" ? "stale_contact" : "all",
+  );
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
+    const staleCutoffMs = Date.now() - 7 * 86_400_000;
     const base = leads.filter((l) => {
       const stage = l.salesStage ?? l.status;
       if (statusFilter !== "all" && stage !== statusFilter) return false;
       if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
+      if (attentionFilter === "stale_contact") {
+        if (stage === "won" || stage === "lost" || stage === "cancelled" || stage === "booked") {
+          return false;
+        }
+        const contacted = l.lastContactedAt ? new Date(l.lastContactedAt).getTime() : null;
+        if (contacted != null && contacted >= staleCutoffMs) return false;
+      }
       if (!q) return true;
       return [
         l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
@@ -92,7 +112,7 @@ export function LeadList({ leads }: { leads: Lead[] }) {
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [leads, query, statusFilter, eventTypeFilter, sort]);
+  }, [leads, query, statusFilter, eventTypeFilter, sort, attentionFilter]);
 
   const statusCounts = React.useMemo(() => {
     const map = new Map<FilterKey, number>([["all", leads.length]]);
@@ -110,11 +130,27 @@ export function LeadList({ leads }: { leads: Lead[] }) {
     return [...seen.entries()].sort((a, b) => b[1] - a[1]);
   }, [leads]);
 
-  const hasActiveFilters = statusFilter !== "all" || eventTypeFilter !== "all" || query;
+  const hasActiveFilters =
+    statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
 
   return (
     <div className="space-y-4">
     <div className="space-y-3">
+      {attentionFilter === "stale_contact" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/50 bg-rose-50/40 px-3 py-2 text-sm">
+          <p className="text-foreground">
+            Showing active leads with no contact in 7+ days
+            <span className="text-muted-foreground"> — the same condition as Luv&apos;s follow-up insight.</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setAttentionFilter("all")}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Show all leads
+          </button>
+        </div>
+      )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -184,7 +220,7 @@ export function LeadList({ leads }: { leads: Lead[] }) {
       )}
 
       {hasActiveFilters && (
-        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}
+        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); setAttentionFilter("all"); }}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
           Clear all filters
         </button>

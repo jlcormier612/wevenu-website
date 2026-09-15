@@ -9,9 +9,13 @@ import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/lead
 
 export const metadata: Metadata = { title: "Leads" };
 
-export default async function LeadsPage() {
+type Props = { searchParams: Promise<{ attention?: string }> };
+
+export default async function LeadsPage({ searchParams }: Props) {
   await ensureStandardSalesPipelineForCurrentVenue();
   const leads = await getLeads();
+  const { attention } = await searchParams;
+  const initialAttention = attention === "stale_contact" ? "stale_contact" as const : null;
   return (
     <div className="space-y-6">
       <PageHeader
@@ -28,7 +32,7 @@ export default async function LeadsPage() {
           </div>
         }
       />
-      <LeadList leads={leads} />
+      <LeadList leads={leads} initialAttention={initialAttention} />
     </div>
   );
 }

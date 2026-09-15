@@ -798,8 +798,12 @@ export async function getConversationUnreadCount(client: DbClient): Promise<numb
 export async function getPortalConversation(
   client: DbClient,
   token: string,
+  options?: { markRead?: boolean },
 ): Promise<PortalConversationDetail | { error: string }> {
-  const { data, error } = await client.rpc("get_portal_conversation", { p_token: token });
+  const { data, error } = await client.rpc("get_portal_conversation", {
+    p_token: token,
+    p_mark_read: options?.markRead !== false,
+  });
   if (error) throw error;
   if (!data || data.error) return { error: data?.error ?? "unknown_error" };
   type Row = {

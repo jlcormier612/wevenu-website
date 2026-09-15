@@ -21,7 +21,7 @@ import {
 } from "@/lib/dashboard-system/decision-engine";
 import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
 import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
-import { getOutstandingBalance } from "@/lib/metrics/revenue";
+import { getPaymentsToWatchSummary } from "@/lib/payments/attention";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -86,7 +86,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   for (const step of nextSteps) claimedSubjects.add(step.subjectKey);
   const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
 
-  const outstandingBalance = await getOutstandingBalance().catch(() => null);
+  const paymentsToWatch = await getPaymentsToWatchSummary().catch(() => null);
 
   const luvEntry = data.luvObservationsEnabled
     ? selectLuvDashboardEntry({
@@ -167,15 +167,15 @@ export default async function DashboardPage({ searchParams }: Props) {
             className="rounded-xl border bg-card p-3" href="/leads"
           />
           <StatTile
-            layout="label-top" label="Payments to Watch" sub="Outstanding balance"
-            value={outstandingBalance != null ? formatCurrencyShort(outstandingBalance) : "—"}
-            severity={outstandingBalance && outstandingBalance > 0 ? "warning" : undefined}
-            className="rounded-xl border bg-card p-3" href="/payments"
+            layout="label-top" label="Payments to Watch" sub="Needs attention"
+            value={paymentsToWatch != null ? formatCurrencyShort(paymentsToWatch.amount) : "—"}
+            severity={paymentsToWatch && paymentsToWatch.amount > 0 ? "warning" : undefined}
+            className="rounded-xl border bg-card p-3" href="/payments?filter=attention"
           />
           <StatTile
             layout="label-top" label="Coming up"
-            value={data.clientListCounts.upcoming}
-            className="rounded-xl border bg-card p-3" href={clientListFilterHref("upcoming")}
+            value={data.clientListCounts.coming_up}
+            className="rounded-xl border bg-card p-3" href={clientListFilterHref("coming_up")}
           />
         </StatTileGrid>
       </section>

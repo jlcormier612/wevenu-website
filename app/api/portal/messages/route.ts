@@ -37,10 +37,16 @@ function toLegacyMessage(m: PortalConversationMessage): CoupleMessage {
 }
 
 export async function GET(request: Request) {
-  const token = new URL(request.url).searchParams.get("token") ?? "";
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token") ?? "";
   if (!token) return NextResponse.json({ error: "Missing token" }, { status: 400 });
 
-  const result = await getPortalConversation(token);
+  // Badge/nav fetches pass markRead=0 so merely rendering the shell does not
+  // clear unread. Opening Messages (default) marks venue/system messages read.
+  const markReadParam = url.searchParams.get("markRead");
+  const markRead = markReadParam !== "0" && markReadParam !== "false";
+
+  const result = await getPortalConversation(token, { markRead });
   if (!result.ok) return NextResponse.json({ thread_id: null, messages: [] });
 
   const thread: PortalThread = {
