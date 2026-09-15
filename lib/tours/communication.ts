@@ -28,6 +28,7 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
+import { publicAppOrigin } from "@/lib/env";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -113,7 +114,7 @@ export type TourConfirmationRequestParams = {
 function buildConfirmationRequestContent(params: TourConfirmationRequestParams): { subject: string; text: string; html: string } {
   const { dateStr, timeStr } = formatTourWhen(params.scheduledAt, params.timezone);
   const name = params.contactName?.split(/[\s&]+/)[0] ?? "there";
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const baseUrl = publicAppOrigin();
   const confirmUrl = `${baseUrl}/confirm/${params.confirmToken}`;
 
   const text = [

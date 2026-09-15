@@ -1,37 +1,50 @@
+import { BrochurePhotoComposition } from "@/components/brochures/brochure-photo-composition";
 import { formatPrice } from "@/lib/packages/constants";
 import type { BrochureRenderData } from "@/lib/brochures/types";
+import type { CSSProperties } from "react";
 
 /**
- * On-screen brochure presentation for full-page Library Preview.
- * Packages and FAQs are live-bound from current venue data (intentional).
+ * Customer-facing brochure presentation. Library preview and the public
+ * /brochure/{token} page share this renderer.
  */
-export function BrochurePreviewView({ data }: { data: BrochureRenderData }) {
+export function BrochurePreviewView({
+  data,
+  showLiveDataCaptions = false,
+}: {
+  data: BrochureRenderData;
+  showLiveDataCaptions?: boolean;
+}) {
   const { brochure, venue, packages, faqs } = data;
   const venueDisplayName = venue.name || venue.businessName || "Your Venue";
   const welcomeText = brochure.welcomeText || venue.story || "";
   const contactLine = [venue.email, venue.phone, venue.website].filter(Boolean).join(" · ");
+  const photoUrls = brochure.photoUrls;
+  const brandStyle = {
+    "--venue-primary": venue.primaryColor || "#5D6F5D",
+    "--venue-secondary": venue.secondaryColor || "#4F5F4F",
+    "--venue-accent": venue.accentColor || "#B8AEA1",
+  } as CSSProperties;
 
   return (
-    <article className="space-y-8 rounded-lg border border-border bg-background p-6 sm:p-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-6">
+    <article
+      className="space-y-8 overflow-x-hidden rounded-lg border border-border bg-background p-6 sm:p-10"
+      style={brandStyle}
+    >
+      <header
+        className="flex flex-wrap items-start justify-between gap-4 border-b pb-6"
+        style={{ borderBottomColor: "var(--venue-primary)" }}
+      >
         <div className="space-y-2">
           {venue.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={venue.logoUrl} alt="" className="h-12 w-12 object-contain" />
+            <img src={venue.logoUrl} alt="" className="h-12 w-auto object-contain" />
           ) : null}
           <p className="font-heading text-lg font-medium text-heading">{venueDisplayName}</p>
         </div>
-        <h1 className="font-heading text-xl font-medium text-heading text-right">{brochure.name}</h1>
+        <h1 className="font-heading text-xl font-medium text-heading sm:text-right">{brochure.name}</h1>
       </header>
 
-      {venue.heroImageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={venue.heroImageUrl}
-          alt=""
-          className="h-48 w-full rounded-md object-cover sm:h-64"
-        />
-      ) : null}
+      <BrochurePhotoComposition urls={photoUrls} layout={brochure.photoLayout} />
 
       {welcomeText ? (
         <section className="space-y-2">
@@ -43,9 +56,11 @@ export function BrochurePreviewView({ data }: { data: BrochureRenderData }) {
       {brochure.includePackages ? (
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Packages</h2>
-          <p className="text-xs text-muted-foreground">
-            Pulled live from your current Packages — updates here when you change Packages.
-          </p>
+          {showLiveDataCaptions ? (
+            <p className="text-xs text-muted-foreground">
+              Pulled live from your current Packages — updates here when you change Packages.
+            </p>
+          ) : null}
           {packages.length === 0 ? (
             <p className="text-sm text-muted-foreground">No active packages yet.</p>
           ) : (
@@ -69,9 +84,11 @@ export function BrochurePreviewView({ data }: { data: BrochureRenderData }) {
       {brochure.includeFaqs ? (
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">FAQs</h2>
-          <p className="text-xs text-muted-foreground">
-            Pulled live from your Venue Guide FAQs — updates here when those change.
-          </p>
+          {showLiveDataCaptions ? (
+            <p className="text-xs text-muted-foreground">
+              Pulled live from your Venue Guide FAQs — updates here when those change.
+            </p>
+          ) : null}
           {faqs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No published client FAQs yet.</p>
           ) : (

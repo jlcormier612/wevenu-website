@@ -1,15 +1,24 @@
 /**
- * Shared Reporting cohort lead population (Phase 2B).
+ * Shared Reporting cohort lead population.
  *
- * Customer-facing Lead → Booking rates (Business Funnel, Overview tile,
- * Sales cohort, saved-report export) must use this filter so Reporting
- * never presents two different rates for the same relationship.
+ * A lead that entered the funnel stays in the cohort even if it later
+ * became Lost. Lost means a real opportunity we did not win — excluding
+ * those records would inflate conversion.
+ *
+ * Direct Adds never appear here (they are not leads).
+ * Deleted records are gone from `leads` and therefore gone from the cohort.
  */
-export function isBusinessFunnelCohortLead(row: {
-  status: string | null | undefined;
-  sales_stage: string | null | undefined;
+export function isBusinessFunnelCohortLead(_row: {
+  status?: string | null | undefined;
+  sales_stage?: string | null | undefined;
 }): boolean {
-  if (row.status === "cancelled") return false;
-  if (row.sales_stage === "lost") return false;
   return true;
+}
+
+/** Lead-derived Booking: durable first_booked date or an undated first_booked event. */
+export function leadHasLifecycleBooking(row: {
+  first_booked_at?: string | null;
+  hasFirstBookedEvent?: boolean;
+}): boolean {
+  return !!row.first_booked_at || !!row.hasFirstBookedEvent;
 }

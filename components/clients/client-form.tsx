@@ -68,13 +68,13 @@ export function ClientForm({
     setErrors((p) => { const n = { ...p }; delete n[key]; return n; });
   };
 
-  async function saveClient() {
-    const result = await createClientAction(input);
+  async function saveClient(decision?: import("@/lib/identity/decision").IdentityDecision) {
+    const result = await createClientAction({ ...input, identityDecision: decision });
     if (result.ok) {
       router.push(`/clients/${result.clientId}`);
       return;
     }
-    if (result.errors) setErrors(result.errors);
+    if ("errors" in result && result.errors) setErrors(result.errors);
     toast.error(result.message ?? "Please fix the highlighted fields.");
   }
 
@@ -105,10 +105,10 @@ export function ClientForm({
         matches={matches}
         pending={pending}
         onCancel={() => setMatchOpen(false)}
-        onContinue={() => {
+        onDecide={(decision) => {
           setMatchOpen(false);
           startTransition(async () => {
-            await saveClient();
+            await saveClient(decision);
           });
         }}
       />

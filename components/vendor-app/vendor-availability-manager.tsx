@@ -5,15 +5,34 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   blockDateAction,
+  blockDatesAction,
   loadAvailabilityMonthAction,
   unblockDateAction,
+  unblockDatesAction,
   updateAvailabilitySettingsAction,
 } from "@/app/vendor/(workspace)/availability/actions";
+import {
+  datesInInclusiveRange,
+  formatCivilDateLabel,
+  localTodayIso,
+  monthDateRange,
+  recurringUnavailableDates,
+} from "@/lib/vendor-availability/dates";
 import type { VendorAvailability } from "@/lib/vendors/types";
 
 const MONTH_NAMES = [
@@ -21,15 +40,24 @@ const MONTH_NAMES = [
   "July","August","September","October","November","December",
 ];
 const DAY_NAMES = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const WEEKDAY_OPTIONS: Array<{ day: number; label: string }> = [
+  { day: 1, label: "Monday" },
+  { day: 2, label: "Tuesday" },
+  { day: 3, label: "Wednesday" },
+  { day: 4, label: "Thursday" },
+  { day: 5, label: "Friday" },
+  { day: 6, label: "Saturday" },
+  { day: 0, label: "Sunday" },
+];
 
 type DayEntry = { id: string; note: string | null };
 
 function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 }
 
 function getFirstDayOfWeek(year: number, month: number): number {
-  return new Date(year, month, 1).getDay();
+  return new Date(Date.UTC(year, month, 1)).getUTCDay();
 }
 
 function toDateString(year: number, month: number, day: number): string {
@@ -48,6 +76,27 @@ function splitAvailability(rows: VendorAvailability[]): {
     else manual.set(a.date, entry);
   }
   return { manual, booked };
+}
+
+function previewDates(dates: string[]): string {
+  if (dates.length === 0) return "No dates in this selection.";
+  const shown = dates.slice(0, 8).map(formatCivilDateLabel);
+  const extra = dates.length > 8 ? ` and ${dates.length - 8} more` : "";
+  return `${dates.length} date${dates.length === 1 ? "" : "s"}: ${shown.join(", ")}${extra}`;
+}
+
+function mergeMonthInto(
+  prev: Map<string, DayEntry>,
+  nextMonth: Map<string, DayEntry>,
+  start: string,
+  end: string,
+): Map<string, DayEntry> {
+  const out = new Map(prev);
+  for (const key of [...out.keys()]) {
+    if (key >= start && key <= end) out.delete(key);
+  }
+  for (const [key, value] of nextMonth) out.set(key, value);
+  return out;
 }
 
 export function VendorAvailabilityManager({
@@ -69,34 +118,43 @@ export function VendorAvailabilityManager({
   const [manual, setManual] = React.useState<Map<string, DayEntry>>(() => initialSplit.manual);
   const [booked, setBooked] = React.useState<Map<string, DayEntry>>(() => initialSplit.booked);
   const [pendingDate, setPendingDate] = React.useState<string | null>(null);
+  const [bulkPending, setBulkPending] = React.useState(false);
 
   const [accepting, setAccepting]   = React.useState(initialAccepting);
   const [notes, setNotes]           = React.useState(initialNotes ?? "");
   const [settingsSaving, startSettings] = React.useTransition();
   const [monthLoading, setMonthLoading] = React.useState(false);
   const skipFirstMonthLoad = React.useRef(true);
+  const loadGen = React.useRef(0);
 
-  React.useEffect(() => {
-    const next = splitAvailability(initial);
-    setManual(next.manual);
-    setBooked(next.booked);
-  }, [initial]);
+  const [selectMode, setSelectMode] = React.useState(false);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [rangeOpen, setRangeOpen] = React.useState(false);
+  const [rangeStart, setRangeStart] = React.useState("");
+  const [rangeEnd, setRangeEnd] = React.useState("");
+  const [rangeMode, setRangeMode] = React.useState<"block" | "unblock">("block");
+  const [recurOpen, setRecurOpen] = React.useState(false);
+  const [recurStart, setRecurStart] = React.useState("");
+  const [recurEnd, setRecurEnd] = React.useState("");
+  const [recurDays, setRecurDays] = React.useState<Set<number>>(new Set([0, 6]));
 
   React.useEffect(() => {
     if (skipFirstMonthLoad.current) {
       skipFirstMonthLoad.current = false;
       return;
     }
+    const gen = ++loadGen.current;
     let cancelled = false;
     setMonthLoading(true);
     void loadAvailabilityMonthAction(year, month).then((rows) => {
-      if (cancelled) return;
+      if (cancelled || gen !== loadGen.current) return;
       const next = splitAvailability(rows);
-      setManual(next.manual);
-      setBooked(next.booked);
+      const { start, end } = monthDateRange(year, month + 1);
+      setManual((prev) => mergeMonthInto(prev, next.manual, start, end));
+      setBooked((prev) => mergeMonthInto(prev, next.booked, start, end));
       setMonthLoading(false);
     }).catch(() => {
-      if (!cancelled) setMonthLoading(false);
+      if (!cancelled && gen === loadGen.current) setMonthLoading(false);
     });
     return () => { cancelled = true; };
   }, [year, month]);
@@ -110,15 +168,80 @@ export function VendorAvailabilityManager({
     else setMonth((m) => m + 1);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localTodayIso();
+  const calendarBusy = monthLoading || bulkPending;
+
+  function applyIds(ids: Record<string, string>) {
+    setManual((m) => {
+      const n = new Map(m);
+      for (const [date, id] of Object.entries(ids)) n.set(date, { id, note: null });
+      return n;
+    });
+  }
+
+  async function persistBlock(dates: string[]) {
+    const toBlock = dates.filter((d) => d >= today && !booked.has(d));
+    if (toBlock.length === 0) {
+      toast.error("No available dates in that selection.");
+      return false;
+    }
+    setBulkPending(true);
+    try {
+      const result = await blockDatesAction(toBlock);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not block dates.");
+        return false;
+      }
+      if (result.ids) applyIds(result.ids);
+      toast.success(`Blocked ${toBlock.length} date${toBlock.length === 1 ? "" : "s"}.`);
+      return true;
+    } finally {
+      setBulkPending(false);
+    }
+  }
+
+  async function persistUnblock(dates: string[]) {
+    const toClear = dates.filter((d) => manual.has(d) && !booked.has(d));
+    if (toClear.length === 0) {
+      toast.error("No blocked dates in that selection.");
+      return false;
+    }
+    setBulkPending(true);
+    try {
+      const result = await unblockDatesAction(toClear);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not unblock dates.");
+        return false;
+      }
+      setManual((m) => {
+        const n = new Map(m);
+        for (const d of toClear) n.delete(d);
+        return n;
+      });
+      toast.success(`Unblocked ${toClear.length} date${toClear.length === 1 ? "" : "s"}.`);
+      return true;
+    } finally {
+      setBulkPending(false);
+    }
+  }
 
   async function handleDayClick(dateStr: string) {
-    if (pendingDate === dateStr) return;
+    if (calendarBusy || pendingDate === dateStr) return;
 
     const bookedEntry = booked.get(dateStr);
     if (bookedEntry) {
       const label = bookedEntry.note?.trim() || "an event";
       toast.message(`Booked — ${label}`);
+      return;
+    }
+
+    if (selectMode) {
+      setSelected((prev) => {
+        const n = new Set(prev);
+        if (n.has(dateStr)) n.delete(dateStr);
+        else n.add(dateStr);
+        return n;
+      });
       return;
     }
 
@@ -149,18 +272,23 @@ export function VendorAvailabilityManager({
     });
   }
 
+  const rangeDates = datesInInclusiveRange(rangeStart, rangeEnd);
+  const recurDates = recurringUnavailableDates({
+    start: recurStart,
+    end: recurEnd || recurStart,
+    weekdays: { kind: "days", days: [...recurDays] },
+  });
+
   const daysInMonth  = getDaysInMonth(year, month);
   const firstDayOfWeek = getFirstDayOfWeek(year, month);
   const cells: (number | null)[] = [
     ...Array(firstDayOfWeek).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
-  // Pad to complete last row
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
     <div className="space-y-6">
-      {/* Settings */}
       <div className="rounded-sm border border-border bg-card p-5 space-y-4">
         <p className="text-sm font-medium text-heading">Availability Settings</p>
 
@@ -192,9 +320,7 @@ export function VendorAvailabilityManager({
         </div>
       </div>
 
-      {/* Calendar */}
       <div className="rounded-sm border border-border bg-card p-5 space-y-4">
-        {/* Month nav */}
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -218,20 +344,96 @@ export function VendorAvailabilityManager({
           </button>
         </div>
 
-        {/* Legend */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={calendarBusy}
+            onClick={() => {
+              setRangeMode("block");
+              setRangeOpen(true);
+            }}
+          >
+            Block dates
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={calendarBusy}
+            onClick={() => setRecurOpen(true)}
+          >
+            Block recurring dates
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={calendarBusy}
+            onClick={() => {
+              setRangeMode("unblock");
+              setRangeOpen(true);
+            }}
+          >
+            Unblock
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={selectMode ? "default" : "outline"}
+            disabled={calendarBusy}
+            onClick={() => {
+              setSelectMode((v) => !v);
+              setSelected(new Set());
+            }}
+          >
+            {selectMode ? "Done selecting" : "Select dates"}
+          </Button>
+        </div>
+
+        {selectMode ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+            <p className="text-xs text-muted-foreground flex-1">
+              {selected.size === 0
+                ? "Click dates to add them, then block or unblock the selection."
+                : `${selected.size} date${selected.size === 1 ? "" : "s"} selected.`}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              disabled={selected.size === 0 || calendarBusy}
+              onClick={() => void persistBlock([...selected]).then((ok) => { if (ok) setSelected(new Set()); })}
+            >
+              Block selected
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={selected.size === 0 || calendarBusy}
+              onClick={() => void persistUnblock([...selected]).then((ok) => { if (ok) setSelected(new Set()); })}
+            >
+              Unblock selected
+            </Button>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-green-100 border border-green-300 inline-block" />Available
+            <span className="h-3 w-3 rounded-full bg-green-100 border border-green-300 inline-block" aria-hidden />
+            Available
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-red-100 border border-red-300 inline-block" />Blocked
+            <span className="h-3 w-3 rounded-full bg-red-100 border border-red-300 inline-block" aria-hidden />
+            Blocked
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-amber-100 border border-amber-300 inline-block" />Booked
+            <span className="h-3 w-3 rounded-full bg-amber-100 border border-amber-300 inline-block" aria-hidden />
+            Booked
           </span>
         </div>
 
-        {/* Day headers */}
         <div className="grid grid-cols-7 gap-1">
           {DAY_NAMES.map((d) => (
             <div key={d} className="text-center text-[11px] font-medium text-muted-foreground py-1">
@@ -246,19 +448,21 @@ export function VendorAvailabilityManager({
             const isBlocked = !isBooked && manual.has(dateStr);
             const isPast    = dateStr < today;
             const isPending = pendingDate === dateStr;
+            const isChosen  = selected.has(dateStr);
             const eventLabel = bookedEntry?.note?.trim() || null;
             const stateLabel = isBooked
               ? ` (booked${eventLabel ? `: ${eventLabel}` : ""})`
-              : isBlocked ? " (blocked)" : "";
+              : isBlocked ? " (blocked)" : isChosen ? " (selected)" : " (available)";
 
             return (
               <button
                 key={dateStr}
                 type="button"
                 onClick={() => !isPast && handleDayClick(dateStr)}
-                disabled={isPast || isPending}
+                disabled={isPast || isPending || calendarBusy}
                 aria-label={`${dateStr}${stateLabel}`}
-                title={isBooked ? `Booked — ${eventLabel || "event"}` : undefined}
+                aria-pressed={isBlocked || isChosen}
+                title={isBooked ? `Booked — ${eventLabel || "event"}` : isBlocked ? "Blocked" : "Available"}
                 className={[
                   "relative flex flex-col items-center justify-center rounded-lg text-xs font-medium aspect-square transition-all px-0.5",
                   isPast
@@ -269,7 +473,8 @@ export function VendorAvailabilityManager({
                     ? "bg-red-100 text-red-700 border border-red-300 hover:bg-red-200"
                     : "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100",
                   dateStr === today ? "ring-2 ring-primary ring-offset-1" : "",
-                  isPending ? "opacity-50" : "",
+                  isPending || calendarBusy ? "opacity-50" : "",
+                  isChosen ? "ring-2 ring-foreground" : "",
                 ].join(" ")}
               >
                 {isPending ? (
@@ -277,11 +482,15 @@ export function VendorAvailabilityManager({
                 ) : (
                   <>
                     <span>{day}</span>
-                    {eventLabel ? (
+                    {isBooked ? (
                       <span className="mt-0.5 max-w-full truncate text-[8px] leading-tight font-normal text-amber-800/90">
-                        {eventLabel}
+                        {eventLabel || "Booked"}
                       </span>
-                    ) : null}
+                    ) : isBlocked ? (
+                      <span className="mt-0.5 text-[8px] leading-tight font-normal">Blocked</span>
+                    ) : (
+                      <span className="mt-0.5 text-[8px] leading-tight font-normal text-green-800/80">Open</span>
+                    )}
                   </>
                 )}
               </button>
@@ -290,9 +499,102 @@ export function VendorAvailabilityManager({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Click Available ↔ Blocked to toggle. Booked days come from secured events and can’t be cleared here.
+          Click an available date to block it, or a blocked date to unblock it. Booked days come from Hello to Cheers events and can&apos;t be cleared here.
         </p>
       </div>
+
+      <Dialog open={rangeOpen} onOpenChange={setRangeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{rangeMode === "block" ? "Block dates" : "Unblock dates"}</DialogTitle>
+            <DialogDescription>
+              {rangeMode === "block"
+                ? "Choose an inclusive start and end date. Every date in that range will be marked unavailable."
+                : "Choose an inclusive start and end date. Manual blocks in that range will be cleared. Booked event dates stay booked."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="range-start">Start date</Label>
+              <Input id="range-start" type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="range-end">End date</Label>
+              <Input id="range-end" type="date" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{previewDates(rangeDates)}</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRangeOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              disabled={rangeDates.length === 0 || calendarBusy}
+              onClick={() => {
+                void (rangeMode === "block" ? persistBlock(rangeDates) : persistUnblock(rangeDates)).then((ok) => {
+                  if (ok) setRangeOpen(false);
+                });
+              }}
+            >
+              {rangeMode === "block" ? "Block dates" : "Unblock dates"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={recurOpen} onOpenChange={setRecurOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Block recurring dates</DialogTitle>
+            <DialogDescription>
+              Recurring unavailability is saved as individual blocked dates on your calendar — the same records as clicking a day.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="recur-start">Start date</Label>
+              <Input id="recur-start" type="date" value={recurStart} onChange={(e) => setRecurStart(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="recur-end">End date</Label>
+              <Input id="recur-end" type="date" value={recurEnd} onChange={(e) => setRecurEnd(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => setRecurDays(new Set([0, 6]))}>Weekends</Button>
+            {WEEKDAY_OPTIONS.map((opt) => (
+              <label key={opt.day} className="inline-flex items-center gap-1.5 text-xs">
+                <Checkbox
+                  checked={recurDays.has(opt.day)}
+                  onCheckedChange={(v) => {
+                    setRecurDays((prev) => {
+                      const n = new Set(prev);
+                      if (v === true) n.add(opt.day);
+                      else n.delete(opt.day);
+                      return n;
+                    });
+                  }}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">{previewDates(recurDates)}</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRecurOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              disabled={recurDates.length === 0 || calendarBusy}
+              onClick={() => {
+                void persistBlock(recurDates).then((ok) => {
+                  if (ok) setRecurOpen(false);
+                });
+              }}
+            >
+              Block dates
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

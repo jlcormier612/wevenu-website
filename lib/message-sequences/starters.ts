@@ -12,7 +12,7 @@ import type { SequenceTriggerType } from "@/lib/message-sequences/types";
 import type { ScheduledMessageChannel } from "@/lib/scheduled-messages/types";
 import type { StarterMessageMasterKey } from "@/lib/message-templates/starters";
 
-export type StarterSequenceMasterKey = "SEQ-01" | "SEQ-02" | "SEQ-03";
+export type StarterSequenceMasterKey = "SEQ-01" | "SEQ-02" | "SEQ-03" | "SEQ-04";
 
 export type StarterSequenceStepMaster = {
   /** Resolves to the venue's provisioned message template copy. */
@@ -38,6 +38,15 @@ export type StarterSequenceMaster = {
  * SEQ-02 Tour Follow-Up — after a completed tour (MSG-04), next morning.
  *
  * SEQ-03 Proposal Follow-Up — when a lead reaches Proposal Sent (MSG-05).
+ *
+ * SEQ-04 Post-Event Thank You — when an event is marked complete (MSG-11).
+ * Paused by default so venues review the message before enabling.
+ *
+ * No starters for contract signed / payment received / questionnaire /
+ * guest count — those triggers are supported, but no matching starter
+ * message template exists yet (do not invent incomplete copy).
+ *
+ * Anniversary / relationship follow-up has no trustworthy domain event yet.
  */
 export const STARTER_SEQUENCE_MASTERS: readonly StarterSequenceMaster[] = [
   {
@@ -69,6 +78,16 @@ export const STARTER_SEQUENCE_MASTERS: readonly StarterSequenceMaster[] = [
     initialStatus: "paused",
     steps: [
       { templateMasterKey: "MSG-05", channel: "email", offsetDays: 3 },
+    ],
+  },
+  {
+    key: "SEQ-04",
+    name: "Post-Event Thank You",
+    triggerType: "event_completed",
+    triggerStage: null,
+    initialStatus: "paused",
+    steps: [
+      { templateMasterKey: "MSG-11", channel: "email", offsetDays: 3 },
     ],
   },
 ];

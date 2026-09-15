@@ -1,7 +1,7 @@
 /**
- * Invoice sync — push a Wevenu invoice to QuickBooks as an Invoice.
+ * Invoice sync — push a Hello to Cheers invoice to QuickBooks as an Invoice.
  *
- * Idempotent against QuickBooks itself: DocNumber is set to Wevenu's own
+ * Idempotent against QuickBooks itself: DocNumber is set to Hello to Cheers'
  * invoices.invoice_number at creation, and a query-before-create checks
  * for an existing Invoice with that DocNumber before ever POSTing a new
  * one.

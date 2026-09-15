@@ -11,6 +11,7 @@ import type {
   ClientStatus,
   ClientWithDetails,
 } from "@/lib/clients/types";
+import { identityRpcFields } from "@/lib/identity/decision";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -25,7 +26,9 @@ type ClientRow = {
   event_date: string | null; end_date: string | null;
   guest_count: number | null; ceremony_time: string | null;
   reception_time: string | null; rehearsal_date: string | null;
-  internal_notes: string | null; relationship_id: string | null; created_at: string; updated_at: string;
+  internal_notes: string | null; relationship_id: string | null;
+  exclude_from_business_reporting?: boolean;
+  created_at: string; updated_at: string;
 };
 type NoteRow  = { id: string; venue_id: string; client_id: string; body: string; created_at: string; updated_at: string; };
 type ActRow   = { id: string; venue_id: string; client_id: string; type: string; title: string; description: string | null; created_at: string; };
@@ -38,7 +41,8 @@ function mapClient(r: ClientRow): Client {
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
     endDate: r.end_date, guestCount: r.guest_count, ceremonyTime: r.ceremony_time,
     receptionTime: r.reception_time, rehearsalDate: r.rehearsal_date,
-    internalNotes: r.internal_notes, relationshipId: r.relationship_id ?? null,
+    internalNotes: r.internal_notes,     relationshipId: r.relationship_id ?? null,
+    excludeFromBusinessReporting: r.exclude_from_business_reporting ?? false,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -180,6 +184,7 @@ function clientAtomicPayload(input: ClientInput, leadId?: string | null, histori
     rehearsalDate: input.rehearsalDate,
     internalNotes: input.internalNotes.trim(),
     isHistoricalImport: historicalImport,
+    ...identityRpcFields(input.identityDecision),
   };
 }
 
@@ -309,9 +314,22 @@ export async function updateClientNote(client: DbClient, venueId: string, noteId
   if (error) throw error;
 }
 
-export async function deleteClientNote(client: DbClient, venueId: string, noteId: string): Promise<void> {
-  const { error } = await client.from("client_notes").delete().eq("id", noteId).eq("venue_id", venueId);
+export async function deleteClientNote(
+  client: DbClient,
+  venueId: string,
+  noteId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
+    .from("client_notes")
+    .delete()
+    .eq("id", noteId)
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not delete this note." };
+  }
+  return { ok: true };
 }
 
 

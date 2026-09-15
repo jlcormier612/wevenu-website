@@ -12,6 +12,7 @@
 
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { loadReportingExclusions } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DateWindow = { from?: string; to?: string };
@@ -89,7 +90,12 @@ export async function getGrossBookedRevenueByCategory(window?: DateWindow): Prom
   if (window?.from) bookingsQuery = bookingsQuery.gte("booked_at", window.from);
   if (window?.to) bookingsQuery = bookingsQuery.lte("booked_at", window.to);
   const { data: bookings } = await bookingsQuery;
-  const bookedClientIds = new Set((bookings ?? []).map((b: { client_id: string }) => b.client_id));
+  const exclusions = await loadReportingExclusions(supabase, venue.id);
+  const bookedClientIds = new Set(
+    (bookings ?? [])
+      .map((b: { client_id: string }) => b.client_id)
+      .filter((id: string) => !exclusions.clientIds.has(id)),
+  );
 
   type Row = { amount: number; revenue_category: RevenueCategory | null; invoices: { client_id: string | null } | null };
   const totals = new Map<string, number>();

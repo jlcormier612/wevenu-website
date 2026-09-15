@@ -88,7 +88,7 @@ describe("Event Order $0 total warning", () => {
     assert.doesNotMatch(EVENT_ORDER_ZERO_TOTAL_WARNING, /invalid|must have a price|cannot finalize/i);
   });
 
-  it("starter masters are delivery sections with guidance, not priced checklist lines", () => {
+  it("starter masters are delivery sections with guidance, not invoices", () => {
     for (const master of EVENT_ORDER_STARTER_MASTERS) {
       for (const section of master.sections) {
         assert.ok(section.name.trim().length > 0);
@@ -179,7 +179,7 @@ describe("Event Order finalized immutability (application-layer mutation rules)"
 });
 
 describe("template copy independence (starter → instance semantics)", () => {
-  it("starter sections are delivery structure only (no checklist lines)", () => {
+  it("starter sections remain named delivery categories with guidance", () => {
     for (const master of EVENT_ORDER_STARTER_MASTERS) {
       for (const section of master.sections) {
         assert.ok(section.name.trim().length > 0);
@@ -188,8 +188,10 @@ describe("template copy independence (starter → instance semantics)", () => {
     }
   });
 
-  it("applied template lines are not copied — structure only (custom provenance helper retained for legacy)", () => {
+  it("applied template lines snapshot offering provenance when a library offering is referenced", () => {
     assert.equal(templateAppliedLineProvenance(), "custom");
+    assert.equal(templateAppliedLineProvenance(null), "custom");
+    assert.equal(templateAppliedLineProvenance("off-1"), "offering");
   });
 
   it("starter master names are production-facing (no Test/D7A/CERT/dev labels)", () => {

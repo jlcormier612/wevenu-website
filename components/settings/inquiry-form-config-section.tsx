@@ -253,7 +253,7 @@ export function InquiryFormConfigSection({
       <div className="space-y-3">
         <p className="text-sm font-medium text-heading">Preferred event date</p>
         <p className="text-xs text-muted-foreground">
-          Controls what prospects see on your public inquiry and Schedule Tour forms. Changes apply after you save.
+          Controls what people see on your public inquiry and Schedule Tour forms. Changes apply after you save.
         </p>
         <div className="space-y-2">
           <label className={`flex items-start gap-3 rounded-lg border border-border p-3 ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
@@ -266,8 +266,8 @@ export function InquiryFormConfigSection({
               className="mt-1"
             />
             <span>
-              <span className="text-sm font-medium text-heading block">Let prospects choose from available dates</span>
-              <span className="text-xs text-muted-foreground">Show open dates from your venue capacity calendar. Prospects cannot pick unavailable dates.</span>
+              <span className="text-sm font-medium text-heading block">Let visitors choose from available dates</span>
+              <span className="text-xs text-muted-foreground">Show open dates from your venue capacity calendar. Visitors cannot pick unavailable dates.</span>
             </span>
           </label>
           <label className={`flex items-start gap-3 rounded-lg border border-border p-3 ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
@@ -280,8 +280,8 @@ export function InquiryFormConfigSection({
               className="mt-1"
             />
             <span>
-              <span className="text-sm font-medium text-heading block">Let prospects request a preferred date</span>
-              <span className="text-xs text-muted-foreground">Prospects can request the date they prefer. Availability is not shown on the form.</span>
+              <span className="text-sm font-medium text-heading block">Let visitors request a preferred date</span>
+              <span className="text-xs text-muted-foreground">Visitors can request the date they prefer. Availability is not shown on the form.</span>
             </span>
           </label>
         </div>
@@ -335,7 +335,7 @@ export function InquiryFormConfigSection({
       <div className="space-y-3">
         <p className="text-sm font-medium text-heading">Communication preferences</p>
         <p className="text-xs text-muted-foreground">
-          Ask how prospects prefer to hear from you. Preferences are separate from texting permission.
+          Ask how visitors prefer to hear from you. Preferences are separate from texting permission.
         </p>
         <label className={`flex items-start gap-3 rounded-lg border border-border p-3 ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
           <input

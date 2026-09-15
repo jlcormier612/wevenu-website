@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
 import { resolvePortalContext } from "@/lib/portal/service";
+import { publicAppOrigin } from "@/lib/env";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
   if (data?.ok && data?.inviteToken) {
     const { data: preview } = await supabase.rpc("get_couple_participant_invitation_by_token", { p_token: data.inviteToken });
     if (preview) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+      const baseUrl = publicAppOrigin();
       const acceptUrl = `${baseUrl}/client/accept-participant?token=${data.inviteToken}`;
       const ctx = await resolvePortalContext(token);
       const venueColor = ctx?.venue.primaryColor ?? "#5D6F5D";

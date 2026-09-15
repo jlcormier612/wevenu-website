@@ -11,7 +11,7 @@
  */
 import { createClient, createClientPortalAuthClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
 import { resolveInvitationAccountEmail } from "@/lib/client-auth/resolve-invitation-email";
@@ -40,7 +40,7 @@ function rowToGrant(r: Record<string, unknown>): SupportAccessGrant {
 }
 
 function portalAcceptUrl(kind: "client" | "participant", token: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const base = publicAppOrigin();
   return kind === "client" ? `${base}/client/accept?token=${token}` : `${base}/client/accept-participant?token=${token}`;
 }
 

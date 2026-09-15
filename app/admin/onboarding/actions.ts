@@ -94,3 +94,39 @@ export async function sendOnboardingUpdateAction(
   revalidate(venueId);
   return { ok: true };
 }
+
+export async function finishWhiteGloveSetupAction(
+  venueId: string,
+): Promise<
+  | { ok: true; alreadyHandedOff: boolean }
+  | { ok: false; issues?: Array<{ code: string; message: string }>; error?: string }
+> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, error: "unauthorized" };
+
+  const { finishWhiteGloveSetup } = await import("@/lib/onboarding/white-glove-handoff");
+  const result = await finishWhiteGloveSetup(venueId);
+  if (result.ok) revalidate(venueId);
+  return result.ok
+    ? { ok: true, alreadyHandedOff: result.alreadyHandedOff }
+    : { ok: false, issues: result.issues, error: result.error };
+}
+
+export async function startOperatorConfigureAction(venueId: string): Promise<void> {
+  const { startOperatorVenueSession } = await import("@/lib/onboarding/operator-session");
+  const result = await startOperatorVenueSession(venueId);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  const { redirect } = await import("next/navigation");
+  redirect("/setup-hub");
+}
+
+export async function endOperatorConfigureAction(venueId: string): Promise<void> {
+  const { endOperatorVenueSession } = await import("@/lib/onboarding/operator-session");
+  const result = await endOperatorVenueSession(venueId);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  revalidate(venueId);
+}

@@ -10,7 +10,10 @@ import {
   addLineItem as addInvoiceLine,
   updateInvoiceStatus,
 } from "@/lib/invoices/service";
+import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
+import { allocatePresetAmounts } from "@/lib/payments/starters";
 import { createPaymentSchedule, addLineItem, deletePaymentSchedule } from "@/lib/payments/service";
+import type { PaymentObligationKind } from "@/lib/payments/types";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -29,6 +32,13 @@ export type SetupPaymentsInput = {
   remainingDueDate?: string | null;
   /** YYYY-MM-DD event date when known (preferred remaining due date). */
   eventDate?: string | null;
+  /**
+   * Schedule structure:
+   * - omit / "deposit_remaining" — deposit + final remaining
+   * - "full" — one full-payment (deposit) line for the commitment
+   * - a SCHEDULE_PRESETS id — deposit override + remaining installments from preset
+   */
+  scheduleStructure?: string | null;
 };
 
 /** Pure: resolve deposit (today) + remaining due dates for guided setup. */
@@ -54,6 +64,123 @@ export function resolveGuidedSetupDueDates(input: {
     };
   }
   return { ok: true, depositDueDate, remainingDueDate };
+}
+
+export type ScheduleLineDraft = {
+  label: string;
+  amount: number;
+  dueDate: string;
+  obligationKind: PaymentObligationKind;
+};
+
+/**
+ * Build schedule lines that reconcile exactly to the commitment total.
+ * Catalog presets are starting points; the deposit amount is the booking commitment.
+ */
+export function buildGuidedScheduleLines(input: {
+  total: number;
+  deposit: number;
+  today: string;
+  remainingDueDate: string | null;
+  eventDate?: string | null;
+  scheduleStructure?: string | null;
+}): { ok: true; lines: ScheduleLineDraft[] } | { ok: false; message: string } {
+  const total = roundMoney(input.total);
+  const deposit = roundMoney(input.deposit);
+  const remaining = remainingAmount(total, deposit);
+  const structure = input.scheduleStructure?.trim() || "deposit_remaining";
+
+  if (structure === "full" || remaining <= 0) {
+    return {
+      ok: true,
+      lines: [
+        {
+          label: remaining <= 0 && structure === "full" ? "Full payment" : remaining <= 0 ? "Full payment" : "Deposit",
+          amount: total,
+          dueDate: input.today,
+          obligationKind: "deposit",
+        },
+      ],
+    };
+  }
+
+  const preset = structure !== "deposit_remaining"
+    ? SCHEDULE_PRESETS.find((p) => p.id === structure && p.items.length > 0)
+    : null;
+
+  if (!preset) {
+    if (!input.remainingDueDate) {
+      return { ok: false, message: "Set a due date for the remaining balance." };
+    }
+    return {
+      ok: true,
+      lines: [
+        {
+          label: "Deposit",
+          amount: deposit,
+          dueDate: input.today,
+          obligationKind: "deposit",
+        },
+        {
+          label: "Remaining balance",
+          amount: remaining,
+          dueDate: input.remainingDueDate,
+          obligationKind: "final",
+        },
+      ],
+    };
+  }
+
+  const baseAmounts = allocatePresetAmounts(total, preset.items);
+  const restOriginal = roundMoney(baseAmounts.slice(1).reduce((s, a) => s + a, 0));
+  const restLines = preset.items.slice(1).map((item, i) => {
+    const raw = baseAmounts[i + 1] ?? 0;
+    const share = restOriginal > 0 ? raw / restOriginal : 1 / Math.max(1, preset.items.length - 1);
+    return {
+      item,
+      amount: roundMoney(remaining * share),
+    };
+  });
+  const restSum = roundMoney(restLines.reduce((s, l) => s + l.amount, 0));
+  if (restLines.length > 0 && restSum !== remaining) {
+    restLines[restLines.length - 1]!.amount = roundMoney(
+      restLines[restLines.length - 1]!.amount + (remaining - restSum),
+    );
+  }
+
+  const eventDate = input.eventDate ?? input.remainingDueDate;
+  const lines: ScheduleLineDraft[] = [
+    {
+      label: preset.items[0]?.label ?? "Deposit",
+      amount: deposit,
+      dueDate: input.today,
+      obligationKind: "deposit",
+    },
+  ];
+  for (const { item, amount } of restLines) {
+    let dueDate = input.remainingDueDate ?? input.today;
+    if (item.timing.type === "before_event" && eventDate) {
+      const d = new Date(`${eventDate}T12:00:00`);
+      d.setDate(d.getDate() - (item.timing.days ?? 30));
+      dueDate = d.toISOString().slice(0, 10);
+    } else if (item.timing.type === "after_booking") {
+      const d = new Date(`${input.today}T12:00:00`);
+      d.setDate(d.getDate() + (item.timing.days ?? 30));
+      dueDate = d.toISOString().slice(0, 10);
+    }
+    lines.push({
+      label: item.label,
+      amount,
+      dueDate,
+      obligationKind: item.obligationKind,
+    });
+  }
+
+  const sum = roundMoney(lines.reduce((s, l) => s + l.amount, 0));
+  if (sum !== total) {
+    return { ok: false, message: "Payment schedule must reconcile to the commitment total." };
+  }
+  return { ok: true, lines };
 }
 
 export type RecoverableCommitment = { invoiceId: string; scheduleId: string };
@@ -114,9 +241,12 @@ export async function runSetupPaymentsFromSelection(
   }
 
   const total = roundMoney(selection.totalAmount);
-  const deposit = roundMoney(
+  let deposit = roundMoney(
     input.depositAmount != null ? input.depositAmount : selection.depositAmount,
   );
+  if (input.scheduleStructure === "full") {
+    deposit = total;
+  }
   if (!(total > 0)) return { ok: false, message: "Package total must be greater than zero." };
   if (!(deposit >= 0) || deposit > total) {
     return { ok: false, message: "Enter a valid deposit amount." };
@@ -130,6 +260,16 @@ export async function runSetupPaymentsFromSelection(
     remainingDueDate: input.remainingDueDate,
   });
   if (!dueDates.ok) return dueDates;
+
+  const scheduleLines = buildGuidedScheduleLines({
+    total,
+    deposit,
+    today: deps.today,
+    remainingDueDate: dueDates.remainingDueDate,
+    eventDate: input.eventDate,
+    scheduleStructure: input.scheduleStructure,
+  });
+  if (!scheduleLines.ok) return scheduleLines;
 
   let invoiceId: string | null = null;
   let scheduleId: string | null = null;
@@ -172,27 +312,17 @@ export async function runSetupPaymentsFromSelection(
     }
     scheduleId = scheduleResult.scheduleId;
 
-    const depositLine = await deps.addLineItem(scheduleId, {
-      label: "Deposit",
-      amount: String(deposit),
-      dueDate: dueDates.depositDueDate,
-      obligationKind: "deposit",
-    });
-    if (!depositLine.ok) {
-      await deps.compensate(invoiceId, scheduleId);
-      return { ok: false, message: depositLine.message ?? "Could not add the deposit." };
-    }
-
-    if (remaining > 0 && dueDates.remainingDueDate) {
-      const remainingLine = await deps.addLineItem(scheduleId, {
-        label: "Remaining balance",
-        amount: String(remaining),
-        dueDate: dueDates.remainingDueDate,
-        obligationKind: "final",
+    for (const line of scheduleLines.lines) {
+      if (!(line.amount > 0)) continue;
+      const added = await deps.addLineItem(scheduleId, {
+        label: line.label,
+        amount: String(line.amount),
+        dueDate: line.dueDate,
+        obligationKind: line.obligationKind,
       });
-      if (!remainingLine.ok) {
+      if (!added.ok) {
         await deps.compensate(invoiceId, scheduleId);
-        return { ok: false, message: remainingLine.message ?? "Could not add the remaining balance." };
+        return { ok: false, message: added.message ?? "Could not add a payment line." };
       }
     }
 
@@ -306,7 +436,7 @@ async function resolveEventDate(eventId?: string | null): Promise<string | null>
 
 /**
  * Guided Booking Journey payment setup:
- * one commitment invoice from Selected Package + deposit/remaining schedule.
+ * one commitment invoice from Selected Package + linked payment schedule.
  */
 export async function setupPaymentsFromSelection(
   input: SetupPaymentsInput,

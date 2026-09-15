@@ -501,7 +501,7 @@ export async function enrichEnrollmentsWithOtherAutomations(
 // ---- Rule-based enrollment (auto-enroll on a trigger) -------------------------
 
 export async function getActiveSequencesForTrigger(
-  client: DbClient, venueId: string, triggerType: SequenceTriggerType, triggerStage?: string,
+  client: AnyDbClient, venueId: string, triggerType: SequenceTriggerType, triggerStage?: string,
 ): Promise<MessageSequence[]> {
   let query = client.from("message_sequences").select("*")
     .eq("venue_id", venueId).eq("status", "active").eq("trigger_type", triggerType);

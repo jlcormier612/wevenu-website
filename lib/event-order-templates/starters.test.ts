@@ -1,5 +1,5 @@
 /**
- * Starter Event Order masters — delivery structure only.
+ * Starter Event Order masters — structured offerings, editable by venue.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -20,13 +20,14 @@ describe("Delivery Event Order starter masters", () => {
     assert.equal(both!.name, "Ceremony + Reception");
   });
 
-  it("EO-D-01 sections are delivery categories without checklist lines", () => {
+  it("EO-D-01 sections are editable delivery categories with example offerings", () => {
     const reception = getEventOrderStarterMaster("EO-D-01")!;
     assert.deepEqual(reception.sections.map((s) => s.name), [
-      "Catering", "Bar", "Rentals", "Services", "Other",
+      "Catering", "Bar", "Rentals", "Services",
     ]);
     for (const section of reception.sections) {
       assert.ok(section.guidance);
+      assert.ok((section.offerings ?? []).length > 0);
     }
   });
 
@@ -39,11 +40,12 @@ describe("Delivery Event Order starter masters", () => {
     assert.equal(names.includes("Event Schedule"), false);
   });
 
-  it("does not include process checklist lines", () => {
-    for (const master of EVENT_ORDER_STARTER_MASTERS) {
-      for (const section of master.sections) {
-        assert.equal("lines" in section && Array.isArray((section as { lines?: unknown }).lines), false);
-      }
-    }
+  it("offerings may be priced or unpriced; starters use example prices", () => {
+    const priced = EVENT_ORDER_STARTER_MASTERS.flatMap((m) =>
+      m.sections.flatMap((s) => s.offerings ?? []),
+    );
+    assert.ok(priced.some((o) => o.pricingModel === "per_person"));
+    assert.ok(priced.some((o) => o.pricingModel === "per_unit"));
+    assert.ok(priced.some((o) => o.pricingModel === "flat"));
   });
 });

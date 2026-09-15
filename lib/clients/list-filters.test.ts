@@ -8,6 +8,7 @@ import {
   countClientListFilters,
   parseClientListFilter,
   weddingWeekEnd,
+  comingUpHorizonEnd,
   type ClientListFilterRecord,
 } from "@/lib/clients/list-filters";
 
@@ -23,10 +24,17 @@ function client(
 
 const TODAY = "2026-09-01";
 const WEEK_OUT = weddingWeekEnd(TODAY);
+const COMING_UP_OUT = comingUpHorizonEnd(TODAY);
 
 describe("weddingWeekEnd", () => {
   it("is today plus 7 calendar days", () => {
     assert.equal(WEEK_OUT, "2026-09-08");
+  });
+});
+
+describe("comingUpHorizonEnd", () => {
+  it("is today plus 60 calendar days", () => {
+    assert.equal(COMING_UP_OUT, "2026-10-31");
   });
 });
 
@@ -43,7 +51,7 @@ describe("parseClientListFilter / href", () => {
 });
 
 describe("Clients Upcoming — the Dashboard must use this same population", () => {
-  const ctx = { today: TODAY, weekOut: WEEK_OUT, attentionClientIds: new Set<string>() };
+  const ctx = { today: TODAY, weekOut: WEEK_OUT, comingUpOut: COMING_UP_OUT, attentionClientIds: new Set<string>() };
 
   it("counts a future Planning booking (Sara Parker, Aug 12 2028)", () => {
     const parker = client({ id: "parker", status: "planning", eventDate: "2028-08-12" });
@@ -78,9 +86,23 @@ describe("Clients Upcoming — the Dashboard must use this same population", () 
   });
 });
 
+describe("Dashboard Coming up — 60-day horizon", () => {
+  const ctx = { today: TODAY, weekOut: WEEK_OUT, comingUpOut: COMING_UP_OUT, attentionClientIds: new Set<string>() };
+
+  it("includes events within 60 days and excludes farther future bookings", () => {
+    const near = client({ id: "near", status: "planning", eventDate: "2026-10-15" });
+    const far = client({ id: "far", status: "planning", eventDate: "2028-08-12" });
+    assert.equal(clientMatchesListFilter(near, "coming_up", ctx), true);
+    assert.equal(clientMatchesListFilter(far, "coming_up", ctx), false);
+    const fixture = client({ id: "e2e", status: "planning", eventDate: "2026-10-15", excludeFromBusinessReporting: true });
+    assert.equal(clientMatchesListFilter(fixture, "coming_up", ctx), false);
+    assert.equal(clientMatchesListFilter(fixture, "upcoming", ctx), true);
+  });
+});
+
 describe("the other Client list filters stay internally consistent", () => {
   const attention = new Set(["flagged"]);
-  const ctx = { today: TODAY, weekOut: WEEK_OUT, attentionClientIds: attention };
+  const ctx = { today: TODAY, weekOut: WEEK_OUT, comingUpOut: COMING_UP_OUT, attentionClientIds: attention };
   const rows: ClientListFilterRecord[] = [
     client({ id: "parker", status: "planning", eventDate: "2028-08-12" }),
     client({ id: "week", status: "confirmed", eventDate: "2026-09-05" }),

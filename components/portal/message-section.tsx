@@ -3,6 +3,7 @@
 import * as React from "react";
 import { FileText, Image as ImageIcon, Paperclip, RotateCcw, Send, X } from "lucide-react";
 import type { CoupleMessage, MessageAttachment, PortalThread } from "@/lib/messages/types";
+import { clientHistoryChannelLabel } from "@/lib/conversations/channels";
 
 // Venue Brand Experience Phase 1: SAGE (the couple's own outgoing chat
 // bubble color) is the venue's primary brand color.
@@ -88,6 +89,7 @@ function Bubble({
 }) {
   const isCouple = msg.sender_type === "couple";
   const hasBody  = msg.body.trim().length > 0;
+  const channelLabel = clientHistoryChannelLabel(msg.channel ?? "portal");
   return (
     <div className={`flex flex-col ${isCouple ? "items-end" : "items-start"}`}>
       <div className="flex items-end gap-2">
@@ -116,6 +118,7 @@ function Bubble({
             style={isCouple ? { color: "rgba(255,255,255,0.55)" } : undefined}
           >
             {formatTime(msg.created_at)}
+            {channelLabel ? ` · ${channelLabel}` : null}
           </span>
         </div>
       </div>
@@ -190,9 +193,12 @@ function UploadChip({ item, onRemove, onRetry }: { item: UploadItem; onRemove: (
 export function PortalMessageSection({
   token,
   venueName,
+  onConversationViewed,
 }: {
   token:     string;
   venueName: string;
+  /** Fired after messages load with mark-read, so the nav badge can clear. */
+  onConversationViewed?: () => void;
 }) {
   const [threadId, setThreadId]     = React.useState<string | null>(null);
   const [messages, setMessages]     = React.useState<CoupleMessage[]>([]);
@@ -205,14 +211,16 @@ export function PortalMessageSection({
   const bottomRef    = React.useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
+    // Default markRead clears venue/system unread for this conversation view.
     const res = await fetch(`/api/portal/messages?token=${encodeURIComponent(token)}`);
     if (res.ok) {
       const d = await res.json() as PortalThread;
       setThreadId(d.thread_id);
       setMessages(d.messages ?? []);
+      onConversationViewed?.();
     }
     setLoading(false);
-  }, [token]);
+  }, [token, onConversationViewed]);
 
   React.useEffect(() => { void load(); }, [load]);
 
@@ -278,6 +286,7 @@ export function PortalMessageSection({
     const optimistic: CoupleMessage = {
       id: `opt-${Date.now()}`,
       sender_type: "couple",
+      channel: "portal",
       body: text,
       created_at: new Date().toISOString(),
       venue_read_at: null, couple_read_at: null, attachments: [],

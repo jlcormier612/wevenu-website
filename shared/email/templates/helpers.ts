@@ -62,6 +62,12 @@ export function activationUrlFromToken(token: string): string {
   return `${activationBaseUrl()}/activate/${encodeURIComponent(clean)}`;
 }
 
+/** Token-scoped White Glove intake (product app) — no password required. */
+export function whiteGloveIntakeUrlFromToken(token: string): string {
+  const clean = token.trim();
+  return `${productAppBaseUrl()}/onboarding/white-glove/${encodeURIComponent(clean)}`;
+}
+
 /** Venue product-app origin for post-activation sign-in (not the workspace host). */
 export function productAppBaseUrl(): string {
   return (

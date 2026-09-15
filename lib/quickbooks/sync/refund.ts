@@ -1,9 +1,10 @@
 /**
- * Refund sync — push a Wevenu refund (refunded_amount on a payment_line_items
+ * Refund sync — push a Hello to Cheers refund (refunded_amount on a payment_line_items
  * row — refunds aren't a separate domain entity in this schema, per TR-M3)
  * to QuickBooks as a RefundReceipt against the same Customer.
  *
- * Idempotent against QuickBooks itself via a PrivateNote-embedded row ID,
+ * Idempotent against QuickBooks itself via a PrivateNote-embedded row ID
+ * ("htc:payment_refund:<uuid>"; legacy prefixes still recognized),
  * same mechanism and same caveat as syncPayment — needs real sandbox
  * verification the moment credentials exist.
  *
@@ -60,14 +61,17 @@ export async function syncRefund(venueId: string, entityId: string): Promise<Qui
   const itemResult = await ensureDefaultItem(venueId);
   if (!itemResult.ok) return { ok: false, error: itemResult.error, retryable: itemResult.retryable };
 
-  const privateNote = `wevenu:payment_refund:${entityId}`;
-  const query = `select * from RefundReceipt where PrivateNote = '${escapeQboString(privateNote)}'`;
-  const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
-  if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
+  const privateNote = `htc:payment_refund:${entityId}`;
+  const legacyNote = `wevenu:payment_refund:${entityId}`;
+  for (const note of [privateNote, legacyNote]) {
+    const query = `select * from RefundReceipt where PrivateNote = '${escapeQboString(note)}'`;
+    const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
+    if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
 
-  const queryData = await queryResult.response.json() as { QueryResponse?: { RefundReceipt?: { Id: string }[] } };
-  const existingId = queryData.QueryResponse?.RefundReceipt?.[0]?.Id;
-  if (existingId) return { ok: true, quickbooksId: existingId };
+    const queryData = await queryResult.response.json() as { QueryResponse?: { RefundReceipt?: { Id: string }[] } };
+    const existingId = queryData.QueryResponse?.RefundReceipt?.[0]?.Id;
+    if (existingId) return { ok: true, quickbooksId: existingId };
+  }
 
   const createResult = await quickBooksFetch(venueId, "/refundreceipt", {
     method: "POST",

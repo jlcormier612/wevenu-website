@@ -125,8 +125,7 @@ export async function POST(request: Request) {
     const metadata: Record<string, string> = {
       plan_tier: plan,
       plan_name: planName,
-      /** Legacy alias — same as plan_tier */
-      wevenu_plan: plan,
+      htc_plan: plan,
       welcome_back: welcomeBack ? "true" : "false",
       onboarding_type: onboardingType,
       founding_member: foundingMember ? "true" : "false",

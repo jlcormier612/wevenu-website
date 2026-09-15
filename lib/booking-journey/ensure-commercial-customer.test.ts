@@ -13,12 +13,11 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.doesNotMatch(src, /inviteClient/);
   });
 
-  it("commercialOnly convert skips sales Booked stage", () => {
+  it("convert never sets sales Booked; commercialOnly only gates dated Event space", () => {
     const src = readFileSync(resolve("lib/clients/service.ts"), "utf8");
     const fn = src.slice(src.indexOf("export async function convertLeadToClient"));
     assert.match(fn, /commercialOnly/);
-    assert.match(fn, /if \(!commercialOnly\)/);
-    assert.match(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
+    assert.doesNotMatch(fn, /updateLeadSalesStage/);
     assert.match(fn, /createDatedEvent/);
     assert.match(fn, /!commercialOnly \|\| Boolean\(spaceId\)/);
   });
@@ -41,6 +40,25 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.match(panel, /prepareCreateContractAction/);
     assert.match(panel, /setPaymentsOpen\(true\)/);
     assert.match(panel, /do not need to start/);
+  });
+
+  it("Create contract hard-navigates and catches stale Server Action failures", () => {
+    const panel = readFileSync(resolve("components/booking-journey/booking-journey-panel.tsx"), "utf8");
+    assert.match(panel, /window\.location\.assign\(result\.href\)/);
+    assert.doesNotMatch(
+      panel.slice(panel.indexOf("function handleCreateContract"), panel.indexOf("function handlePrimary")),
+      /router\.push\(result\.href\);\s*router\.refresh\(\)/,
+    );
+    assert.match(panel, /Failed to find Server Action/);
+  });
+
+  it("Lead detail fails fast instead of infinite loading skeleton", () => {
+    const page = readFileSync(resolve("app/(app)/leads/[id]/page.tsx"), "utf8");
+    const errorPage = readFileSync(resolve("app/(app)/leads/[id]/error.tsx"), "utf8");
+    assert.match(page, /withTimeout/);
+    assert.match(page, /LEAD_DETAIL_LOAD_TIMEOUT_MS/);
+    assert.match(errorPage, /This lead couldn.?t load/);
+    assert.match(errorPage, /window\.location\.reload/);
   });
 
   it("Start booking file copy keeps planning optional vs commercial", () => {

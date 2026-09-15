@@ -1,6 +1,7 @@
 import type { EmailTemplateDefinition } from "../types";
 import {
   ctaButtonHtml,
+  escapeHtml,
   firstName,
   marketingUrl,
   paragraphsToHtml,
@@ -256,20 +257,24 @@ export const whiteGloveWelcomeTemplate: EmailTemplateDefinition = {
   id: "white_glove_welcome",
   name: "White Glove Welcome",
   description:
-    "Welcome after White Glove purchase — no credentials; sets expectation for implementation window.",
+    "Welcome after White Glove purchase — no credentials; points to short intake.",
   status: "live",
   render(vars) {
     const name = firstName(vars);
     const venue = venueName(vars);
     const plan = planName(vars);
-    const timeline =
-      String(vars.implementationTimeline || "").trim() || "5–7 business days";
-    const subject = `White Glove is underway — ${venue}`;
+    const intakeUrl = String(vars.intakeUrl || "").trim();
+    const subject = `Let's get ${venue} ready — White Glove Setup`;
     const paragraphs = [
       `Hi ${name},`,
-      `Thank you for choosing White Glove for ${venue}. Your ${plan} subscription is confirmed.`,
-      `Our Implementation team is preparing your workspace — branding, packages, contracts, questionnaires, and website — with care. You won't receive login credentials yet; we'll invite you when everything is ready.`,
-      `Typical timeline: about ${timeline}. We'll keep you posted and may reach out if we need a logo, contracts, or a quick decision.`,
+      `Thank you for choosing White Glove Setup for ${venue}. Your ${plan} subscription is confirmed.`,
+      `You've chosen White Glove Setup. We'll build your Hello to Cheers workspace using the information and materials you provide.`,
+      `You don't need to configure everything yourself.`,
+      `Every venue is a little different. We'll get started as soon as we have what we need and keep you updated along the way. The sooner you send your materials and answer any questions, the sooner we'll have your workspace ready to use.`,
+      ...(intakeUrl
+        ? [`Share a few details about your venue here: ${intakeUrl}`]
+        : [`We'll send you a short link to share your venue information shortly.`]),
+      `You won't receive login credentials yet — we'll invite you when your workspace is ready.`,
       `Questions? Just reply — we're right here.`,
     ];
     const text = paragraphs.join("\n\n");
@@ -287,34 +292,36 @@ export const welcomeHomeTemplate: EmailTemplateDefinition = {
   id: "welcome_home",
   name: "Welcome Home",
   description:
-    "Sent when White Glove Implementation launches the workspace — includes Activate Account link.",
+    "Sent when White Glove Setup is finished — includes Set Up Your Login link.",
   status: "live",
   render(vars) {
     const name = firstName(vars);
     const venue = venueName(vars);
     const activateUrl = activateUrlFromVars(vars);
-    const subject = `Welcome home — activate ${venue}`;
+    const subject = `Your Hello to Cheers workspace is ready — ${venue}`;
     const before = [
       `Hi ${name},`,
-      `Your White Glove setup for ${venue} is complete. Welcome home.`,
+      `We've finished setting up your workspace and it's ready for you.`,
     ];
     const after = [
-      `Activate Account: ${activateUrl}`,
-      `Everything we've prepared is waiting for you. If anything feels unclear, reply to this email — Implementation and Customer Success are still close by.`,
+      `When you sign in, we'll walk you through anything that's still yours to decide.`,
     ];
-    const paragraphs = [...before, ...after];
-    const text = paragraphs.join("\n\n");
-    const htmlBody = [
-      paragraphsToHtml(before),
-      ctaButtonHtml("Activate Account", activateUrl),
-      paragraphsToHtml(after.slice(1)),
-    ].join("\n");
+    const text = [...before, activateUrl ? `Set Up Your Login: ${activateUrl}` : "", ...after]
+      .filter(Boolean)
+      .join("\n\n");
     return {
       subject,
       text,
-      html: wrapHelloHtml("Welcome Home", htmlBody),
+      html: wrapHelloHtml(
+        "Your workspace is ready",
+        paragraphsToHtml(before) +
+          (activateUrl
+            ? `<p style="margin:24px 0"><a href="${escapeHtml(activateUrl)}" style="display:inline-block;background:#5D6F5D;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:600">Set Up Your Login</a></p>`
+            : "") +
+          paragraphsToHtml(after),
+      ),
       preview: previewFromText(text),
-      timelineTitle: "Welcome Home Email Sent",
+      timelineTitle: "White Glove Access Email Sent",
     };
   },
 };

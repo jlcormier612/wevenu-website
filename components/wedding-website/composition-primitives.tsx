@@ -420,24 +420,22 @@ export function contrastText(hex: string): string {
  * first — confirmed against the fixture photo, whose heads start only a
  * few percent down from the top edge.
  *
- * This biases the vertical anchor toward the top of the source instead,
- * so any cropping a container forces comes off the bottom (dress,
- * bouquet, background) rather than the couple's heads. One constant,
- * reused everywhere a context wants to show "the couple" recognizably —
- * the real Hero (wedding-website.tsx) and the Collection/Photo Style
- * mini-previews (collection-preview.tsx) — never a per-card tweak.
+ * This biases the vertical anchor toward the upper third of the source
+ * instead of pure center, so forced crops prefer losing lower dress /
+ * background over faces — without the extreme top bias (`50% 8%`) that
+ * amputated mid-framed couples on tall Hosted Experience heroes.
  *
  * There is no per-photo focal-point field in the data model yet; this is
  * the smallest mechanism that gets every preview context to a sensible,
  * shared default without inventing that larger feature.
  */
-export const PORTRAIT_FACE_FOCAL = "50% 8%";
+export const PORTRAIT_FACE_FOCAL = "50% 28%";
 
 /**
  * Milder cover-crop anchor for Magazine / Editorial / Minimal gallery
- * grids (WW-AUDIT-03). Ultra-narrow split columns + `50% 8%` amputated
- * faces; this keeps subjects framed when cells get short or stack.
- * Hero / Collection previews keep {@link PORTRAIT_FACE_FOCAL}.
+ * grids (WW-AUDIT-03). Ultra-narrow split columns + an aggressive top
+ * bias amputated faces; this keeps subjects framed when cells get short
+ * or stack. Hero / Collection previews keep {@link PORTRAIT_FACE_FOCAL}.
  */
 export const GALLERY_SPLIT_FACE_FOCAL = "50% 22%";
 

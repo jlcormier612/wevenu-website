@@ -44,7 +44,7 @@ export default async function ImportPage({
           </Link>{" "}
           instead.
         </p>
-        <SetupGuideLink href="/help/setup-bring-your-business" />
+        <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
       </div>
       <Suspense fallback={null}>
         <ImportHealthWidget />

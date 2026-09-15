@@ -6,7 +6,7 @@
 
 import type { OccupancyCode } from "@/lib/availability/event-occupancy";
 
-export type ClientStatus = "planning" | "confirmed" | "complete" | "cancelled";
+export type ClientStatus = "booking" | "planning" | "confirmed" | "complete" | "cancelled";
 
 export type Client = {
   id: string;
@@ -32,6 +32,8 @@ export type Client = {
   rehearsalDate: string | null;
   internalNotes: string | null;
   relationshipId: string | null; // Program 2 Phase 2 — the enduring customer identity, regardless of origin
+  /** Internal verification/E2E fixture — excluded from customer-facing Reporting. */
+  excludeFromBusinessReporting?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -85,6 +87,10 @@ export type ClientInput = {
   rehearsalDate: string;
   internalNotes: string;
   spaceId: string;
+  /** Venue identity decision when a possible match exists. */
+  identityDecision?: import("@/lib/identity/decision").IdentityDecision;
+  /** Import/migration only — SQL safe-reuse still applies; venue UI is not available. */
+  skipIdentityReview?: boolean;
 };
 
 
@@ -103,4 +109,10 @@ export type CreateClientResult =
       /** Present when Client/Event succeeded but a follow-on link (e.g. package) failed. */
       warning?: string;
     }
-  | { ok: false; errors?: ClientErrors; message?: string; code?: OccupancyCode };
+  | { ok: false; errors?: ClientErrors; message?: string; code?: OccupancyCode }
+  | {
+      ok: false;
+      code: "identity_review_required";
+      matches: import("@/lib/leads/duplicate-detection").DuplicateCandidate[];
+      message: string;
+    };

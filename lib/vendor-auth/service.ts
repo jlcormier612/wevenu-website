@@ -24,11 +24,15 @@ export async function getVendorUser(): Promise<VendorUserContext | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // A user may own multiple vendor profiles. maybeSingle() errors on 2+ rows
+  // (PGRST116) and falsely looks "unlinked" — pick a stable first active row.
   const { data } = await supabase
     .from("vendor_users")
     .select("vendor_id, user_id, role")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (!data) return null;

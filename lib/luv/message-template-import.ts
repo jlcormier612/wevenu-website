@@ -7,6 +7,7 @@
  */
 
 import type { MessageTemplateCategory } from "@/lib/message-templates/types";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 
 export type ImportChannel = "email" | "sms" | "both";
 
@@ -14,34 +15,11 @@ export type LuvMessageTemplateProposal =
   | { ok: true; name: string; emailSubject: string; emailBody: string; smsBody: string }
   | { ok: false; message: string };
 
-type AnthropicResponse = { content: { type: string; text: string }[] };
-
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      messages: [{ role: "user", content: prompt }],
-    }),
+async function generateTemplateText(prompt: string): Promise<string> {
+  return openAiChatCompletion({
+    messages: [{ role: "user", content: prompt }],
+    maxCompletionTokens: 2048,
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${err}`);
-  }
-
-  const data = (await res.json()) as AnthropicResponse;
-  const text = data.content.find((c) => c.type === "text")?.text ?? "";
-  return text.trim();
 }
 
 function buildPrompt(rawText: string, channel: ImportChannel, category: MessageTemplateCategory): string {
@@ -72,7 +50,7 @@ ${truncated}
 
 /**
  * Plain, deterministic fallback with no AI involved at all — used whenever
- * ANTHROPIC_API_KEY isn't configured. Bringing your own wording into a
+ * OPENAI_API_KEY isn't configured. Bringing your own wording into a
  * template is a basic paste-and-save action (name/category/channel are
  * already collected by the caller's own form); it should never hard-fail
  * just because Luv's optional structuring assist isn't available. This
@@ -99,12 +77,12 @@ export async function proposeMessageTemplate(
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste your message first." };
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isOpenAiConfigured()) {
     return plainTemplateSplit(rawText, channel);
   }
 
   try {
-    const raw = await callClaude(buildPrompt(rawText, channel, category));
+    const raw = await generateTemplateText(buildPrompt(rawText, channel, category));
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { ok: false, message: "Luv couldn't structure this text into a template." };
 

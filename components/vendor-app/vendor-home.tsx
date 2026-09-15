@@ -218,6 +218,18 @@ export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeV
           </div>
         </Card>
       )}
+
+      <nav
+        aria-label="More vendor tools"
+        className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border/60 pt-4 text-xs text-muted-foreground"
+      >
+        <Link href="/vendor/partnerships" className="hover:text-primary hover:underline">Your venues</Link>
+        <Link href="/vendor/handbook" className="hover:text-primary hover:underline">Handbook</Link>
+        <Link href="/vendor/task-templates" className="hover:text-primary hover:underline">Task templates</Link>
+        <Link href="/vendor/inquiries" className="hover:text-primary hover:underline">Inquiries</Link>
+        <Link href="/vendor/luv" className="hover:text-primary hover:underline">Luv</Link>
+        <Link href="/vendor/profile" className="hover:text-primary hover:underline">Profile</Link>
+      </nav>
     </div>
   );
 }

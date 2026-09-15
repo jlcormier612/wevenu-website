@@ -1,4 +1,5 @@
 import type { VenueAnalytics, HealthScores, ClientHealthScore } from "@/lib/analytics/types";
+import { openAiChatCompletion } from "@/lib/ai/openai";
 import type { LuvRollUpObservations } from "./roll-up-types";
 
 // ── Signal labels (human-readable for the prompt) ────────────────────────────
@@ -70,12 +71,15 @@ export function buildPromptData(
     .map(s => `${s.source} (${s.total}, ${s.rate}% close rate)`)
     .join(", ");
 
+  const conversionPct = leadFunnel.bookingConversionRate ?? leadFunnel.conversionRate;
+  const collected = payments.totalCollectedCanonical ?? payments.totalCollected;
+
   const sections: (string | null)[] = [
     `Period: ${period}`,
 
     [
       "LEAD FUNNEL",
-      `• Total leads: ${leadFunnel.total} | Conversion rate: ${pct(leadFunnel.conversionRate)}`,
+      `• Total leads: ${leadFunnel.total} | Booking conversion rate: ${pct(conversionPct)}`,
       `• Funnel: ${leadFunnel.contacted} contacted → ${leadFunnel.toured} toured → ${leadFunnel.proposal} proposal → ${leadFunnel.booked} booked | ${leadFunnel.lost} lost`,
       topSources ? `• Top sources: ${topSources}` : null,
     ].filter(Boolean).join("\n"),
@@ -88,7 +92,7 @@ export function buildPromptData(
 
     [
       "PAYMENTS",
-      `• Outstanding: ${dollars(payments.totalOutstanding)} | Collection rate: ${pct(payments.completionRate)}`,
+      `• Outstanding: ${dollars(payments.totalOutstanding)} | Collected: ${dollars(collected)} | Collection rate: ${pct(payments.completionRate)}`,
       payments.overdueCount > 0
         ? `• OVERDUE: ${dollars(payments.totalOverdue)} across ${payments.overdueCount} event${payments.overdueCount !== 1 ? "s" : ""} — needs follow-up`
         : "• No overdue payments 🎉",
@@ -153,34 +157,18 @@ You must respond with a valid JSON object and nothing else. The object must have
 export async function generateRollUp(
   analytics: VenueAnalytics,
   health:    HealthScores,
-  apiKey:    string,
 ): Promise<LuvRollUpObservations | null> {
   const period = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const dataText = buildPromptData(analytics, health, period);
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key":         apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type":      "application/json",
-      },
-      body: JSON.stringify({
-        model:      "claude-sonnet-4-6",
-        max_tokens: 1024,
-        system:     SYSTEM_PROMPT,
-        messages:   [{ role: "user", content: `Here is this week's venue data:\n\n${dataText}` }],
-      }),
+    const raw = await openAiChatCompletion({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: `Here is this week's venue data:\n\n${dataText}` },
+      ],
+      maxCompletionTokens: 1024,
     });
-
-    if (!res.ok) {
-      console.error("Anthropic API error:", await res.text());
-      return null;
-    }
-
-    const data = await res.json() as { content: { type: string; text: string }[] };
-    const raw  = data.content.find(c => c.type === "text")?.text?.trim() ?? "";
 
     // Strip potential markdown code fences
     const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();

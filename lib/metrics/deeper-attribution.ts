@@ -24,10 +24,17 @@ import {
   UNKNOWN_SOURCE_KEY,
 } from "@/lib/attribution/source";
 import { createClient } from "@/integrations/supabase/server";
-import { eventTypeLabel } from "@/lib/event-types/canonical";
+import { eventTypeLabel, normalizeEventType } from "@/lib/event-types/canonical";
 import { isSupabaseConfigured } from "@/lib/env";
-import { isBusinessFunnelCohortLead } from "@/lib/metrics/cohort-population";
-import { listLifecycleBookingsInPeriod } from "@/lib/lifecycle-bookings/service";
+import {
+  isBusinessFunnelCohortLead,
+  leadHasLifecycleBooking,
+} from "@/lib/metrics/cohort-population";
+import {
+  listFirstBookedLeadIds,
+  listLifecycleBookingsInPeriod,
+} from "@/lib/lifecycle-bookings/service";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DateWindow = { from: string; to: string };
@@ -36,7 +43,7 @@ export const PHASE_2D_EVIDENCE_AUTHORITY_NOTE =
   "These are optional marketing clues captured when the lead arrived (UTMs, landing page, referrer, QR, Meta ads). They are not Hello to Cheers’ official acquisition source, and they do not mean a campaign caused a booking.";
 
 export const PHASE_2D_EVIDENCE_CLOCK_NOTE =
-  "Counts every lead created in this date range (including cancelled or lost). Blank clues stay Unknown / Unattributed. Cohort rates above use a stricter population.";
+  "Counts every lead created in this date range, including those later marked Lost. Blank clues stay Unknown / Unattributed.";
 
 export type LeadTopOfFunnelEvidence = {
   leadsInWindow: number;
@@ -204,12 +211,14 @@ export async function getAcquisitionSourceCohortBreakdown(
   if (!venue) return [];
   const supabase = await createClient();
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("id, acquisition_source, first_booked_at, sales_stage, status")
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+  const { data: leads } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id, acquisition_source, first_booked_at, sales_stage, status")
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
 
   type LeadRow = {
     id: string;
@@ -222,11 +231,14 @@ export async function getAcquisitionSourceCohortBreakdown(
   if (cohort.length === 0) return [];
 
   const leadIds = cohort.map((l) => l.id);
-  const { data: tours } = await supabase
-    .from("tour_appointments")
-    .select("lead_id")
-    .eq("venue_id", venue.id)
-    .in("lead_id", leadIds);
+  const [{ data: tours }, bookedIds] = await Promise.all([
+    supabase
+      .from("tour_appointments")
+      .select("lead_id")
+      .eq("venue_id", venue.id)
+      .in("lead_id", leadIds),
+    listFirstBookedLeadIds(supabase, venue.id, leadIds),
+  ]);
   const touredIds = new Set(
     ((tours ?? []) as { lead_id: string | null }[])
       .map((t) => t.lead_id)
@@ -240,7 +252,10 @@ export async function getAcquisitionSourceCohortBreakdown(
         sourceKey: key,
         label: reportingSourceDisplayLabel(key === UNKNOWN_SOURCE_KEY ? null : key),
         eventuallyToured: touredIds.has(l.id),
-        eventuallyBooked: !!l.first_booked_at,
+        eventuallyBooked: leadHasLifecycleBooking({
+          first_booked_at: l.first_booked_at,
+          hasFirstBookedEvent: bookedIds.has(l.id),
+        }),
       };
     }),
   );
@@ -301,8 +316,9 @@ export type EventTypeCohortRow = {
 };
 
 /**
- * Business Funnel cohort Lead→Booking by leads.event_type (deterministic column).
- * Missing/blank event type → Unknown / Unattributed.
+ * Business Funnel cohort Lead→Booking by event type.
+ * Same display name with different stored spellings (wedding vs Wedding) groups as one row.
+ * Missing event type → Not recorded. We do not guess from later bookings.
  */
 export async function getEventTypeCohortBreakdown(
   window: DateWindow,
@@ -312,12 +328,14 @@ export async function getEventTypeCohortBreakdown(
   if (!venue) return [];
   const supabase = await createClient();
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("id, event_type, first_booked_at, sales_stage, status")
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+  const { data: leads } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id, event_type, first_booked_at, sales_stage, status")
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
 
   type LeadRow = {
     id: string;
@@ -327,14 +345,18 @@ export async function getEventTypeCohortBreakdown(
     status: string | null;
   };
   const cohort = ((leads ?? []) as LeadRow[]).filter(isBusinessFunnelCohortLead);
+  const bookedIds = await listFirstBookedLeadIds(supabase, venue.id, cohort.map((l) => l.id));
   const map = new Map<string, { label: string; leads: number; booked: number }>();
   for (const l of cohort) {
-    const raw = l.event_type?.trim() || null;
-    const key = raw || UNKNOWN_SOURCE_KEY;
-    const label = raw ? eventTypeLabel(raw) || raw : reportingSourceDisplayLabel(null);
+    const canonical = normalizeEventType(l.event_type);
+    const key = canonical ?? UNKNOWN_SOURCE_KEY;
+    const label = canonical ? (eventTypeLabel(canonical) || canonical) : reportingSourceDisplayLabel(null);
     const cur = map.get(key) ?? { label, leads: 0, booked: 0 };
     cur.leads += 1;
-    if (l.first_booked_at) cur.booked += 1;
+    if (leadHasLifecycleBooking({
+      first_booked_at: l.first_booked_at,
+      hasFirstBookedEvent: bookedIds.has(l.id),
+    })) cur.booked += 1;
     map.set(key, cur);
   }
   return [...map.entries()]

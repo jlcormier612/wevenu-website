@@ -1,8 +1,11 @@
 /**
- * Event Order Templates — reusable delivery structure only:
- * section names + optional section guidance.
- * Applying a template to an Event Order copies sections — not checklist lines.
+ * Event Order Templates — reusable delivery structure:
+ * sections + optional snapshot offerings (priced or not).
+ * Applying copies snapshots into the event-specific Event Order.
+ * The Event Order remains the source of truth; templates are not commitments.
  */
+
+import type { TemplatePricingModel } from "@/lib/event-order-templates/offerings";
 
 export type EventOrderTemplate = {
   id: string;
@@ -32,9 +35,15 @@ export type EventOrderTemplateLine = {
   templateId: string;
   venueId: string;
   sectionId: string | null;
+  /** Offering name (stored as description). */
   description: string;
+  descriptionDetail: string | null;
   quantity: number;
-  unitPrice: number;
+  unitPrice: number | null;
+  pricingModel: TemplatePricingModel;
+  unit: string | null;
+  includedByDefault: boolean;
+  offeringId: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -49,10 +58,18 @@ export type EventOrderTemplateInput = { name: string; description: string };
 
 export type AddTemplateLineInput = {
   description: string;
-  quantity: string;    // raw form input, parsed server-side — matches AddCustomLineInput's own shape
+  descriptionDetail?: string;
+  quantity: string;
   unitPrice: string;
+  hasPrice?: boolean;
+  pricingModel?: string;
+  unit?: string;
+  includedByDefault?: boolean;
+  offeringId?: string | null;
   sectionId: string | null;
 };
+
+export type UpdateTemplateLineInput = AddTemplateLineInput;
 
 export type EventOrderTemplateErrors = Record<string, string>;
 

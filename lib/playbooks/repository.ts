@@ -514,6 +514,71 @@ export async function applyPlaybookToEvent(
 
 export type ReleasePlaybookResult = { ok: true } | { ok: false; reason: "not_found" | "already_released" };
 
+/**
+ * Re-materialize missing Client Planning event_tasks from the applied template.
+ * Guards the apply→release gap where an application marker can exist without
+ * couple task rows (non-transactional apply, partial failure, or fixture wipe).
+ * Idempotent: skips template_task_ids already present on the event.
+ */
+export async function ensureClientPlaybookTasksMaterialized(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  capabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
+): Promise<{ inserted: number }> {
+  const { data: appRow, error: appError } = await client.from("event_playbook_applications")
+    .select("template_id")
+    .eq("event_id", eventId).eq("venue_id", venueId).eq("kind", "client")
+    .maybeSingle<{ template_id: string }>();
+  if (appError) throw appError;
+  if (!appRow?.template_id) return { inserted: 0 };
+
+  const { DEFAULT_PLANNING_CAPABILITIES, filterTasksForVenueCapabilities } = await import("@/lib/playbooks/capabilities");
+  const [tasksRaw, milestones, existing] = await Promise.all([
+    getTemplateTasks(client, venueId, appRow.template_id),
+    getMilestones(client, venueId, appRow.template_id),
+    getEventTasks(client, venueId, eventId),
+  ]);
+  const tasks = filterTasksForVenueCapabilities(tasksRaw, capabilities ?? DEFAULT_PLANNING_CAPABILITIES);
+  const existingTemplateIds = new Set(
+    existing.map((t) => t.templateTaskId).filter((id): id is string => !!id),
+  );
+  const milestoneById = new Map(milestones.map((m) => [m.id, m]));
+  let inserted = 0;
+
+  for (const t of tasks.sort((a, b) => a.sortOrder - b.sortOrder)) {
+    if (existingTemplateIds.has(t.id)) continue;
+    const dueDate = offsetDate(eventDate, t.daysOffset);
+    const milestone = milestoneById.get(t.milestoneId);
+    const { data: row, error } = await client.from("event_tasks")
+      .insert({
+        venue_id: venueId, event_id: eventId, template_task_id: t.id,
+        title: t.title, description: t.description, owner_type: t.ownerType,
+        visibility: t.visibility, due_date: dueDate, days_offset: t.daysOffset,
+        due_date_rule_kind: t.dueDateRuleKind,
+        category: t.category,
+        milestone_name: milestone?.name ?? "Planning",
+        milestone_kind: milestone?.kind ?? null,
+        auto_complete_trigger: t.autoCompleteTrigger,
+        depends_on_event_task_id: null,
+        is_required: t.isRequired, sort_order: t.sortOrder,
+        status: "pending",
+        reminder_before_days: t.reminderBeforeDays,
+        escalation_after_days: t.escalationAfterDays,
+        notify_on_assign: t.notifyOnAssign,
+        notify_on_complete: t.notifyOnComplete,
+        action_type: t.actionType,
+        action_label: t.actionLabel,
+      })
+      .select("id").single<{ id: string }>();
+    if (error) throw error;
+    await copyAttachmentsToContextLinks(client, venueId, t.id, row.id);
+    inserted += 1;
+  }
+  return { inserted };
+}
+
 /** The deliberate second step for Client Planning: makes an already-applied
  *  checklist visible to the couple and generates its reminders, which were
  *  deliberately withheld at apply-time (Draft → Release workflow, 2026-07-10).
@@ -525,6 +590,21 @@ export async function releasePlaybookApplication(client: DbClient, venueId: stri
   if (fetchError) throw fetchError;
   if (!appRow) return { ok: false, reason: "not_found" };
   if (appRow.released_at) return { ok: false, reason: "already_released" };
+
+  const { data: eventRow } = await client.from("events")
+    .select("event_date")
+    .eq("id", eventId).eq("venue_id", venueId)
+    .maybeSingle<{ event_date: string }>();
+  if (eventRow?.event_date) {
+    const { data: venueRow } = await client.from("venues")
+      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .eq("id", venueId)
+      .maybeSingle();
+    const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
+    await ensureClientPlaybookTasksMaterialized(
+      client, venueId, eventId, eventRow.event_date, capabilitiesFromVenueRow(venueRow),
+    );
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_playbook_applications") as any)

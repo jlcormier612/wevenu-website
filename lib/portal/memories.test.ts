@@ -135,6 +135,22 @@ describe("resolveHomeMemories", () => {
       assert.equal(usesForbiddenMemoriesLanguage(text), false);
     }
   });
+
+  it("does not use auto Luv journal as the memory teaser", () => {
+    const model = resolveHomeMemories({
+      latestJournalEntry: entry({
+        source: "auto",
+        title: "First engagement photo",
+        body: "Your first engagement photo is here. This is the beginning of your visual story.",
+      }),
+      inspirationPhotos: [photo("e1"), photo("e2")],
+    });
+    assert.equal(model.kind, "preview");
+    if (model.kind !== "preview") return;
+    assert.notEqual(model.title, "First engagement photo");
+    assert.doesNotMatch(model.excerpt ?? "", /visual story/);
+    assert.equal(model.collection.length, 2);
+  });
 });
 
 describe("usesForbiddenMemoriesLanguage", () => {

@@ -4,7 +4,8 @@
  * Implements docs/dashboard-component-system-architecture.md §2.2.
  * Replaces the shell duplicated across NeedsAttentionWidget,
  * FollowupsWidget, UpcomingToursWidget, ClientEventsWidget,
- * RecentBookingsWidget, and TasksWidget — each of those keeps its own
+ * AttentionList — shared shell for NeedsAttention, FollowUpsDue,
+ * and TasksWidget — each of those keeps its own
  * per-row content (which genuinely differs row to row: some widgets show
  * a status badge, some a two-line date block, some an urgency label) and
  * now supplies that content to this component instead of duplicating the

@@ -20,7 +20,7 @@
  */
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Eye, Loader2, Monitor, Smartphone, PanelsTopLeft, Palette, CaseSensitive, Image as ImageIcon, Sparkles, Check, Users, MapPin, Heart, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Loader2, Monitor, Smartphone, PanelsTopLeft, Palette, CaseSensitive, Image as ImageIcon, Sparkles, Check, Users, MapPin, Heart, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ColorPickerTrigger } from "@/components/ui/color-picker";
@@ -34,6 +34,13 @@ import {
   colorStoryBundlePatch,
   resolveBundledColorStory,
 } from "@/lib/wedding-website/collection-color-bundle";
+import {
+  applyColorRoleEdit,
+  resolveColorStorySaveRoles,
+  type ColorStoryRoleKey,
+} from "@/lib/wedding-website/wizard-color-edit";
+import { afterWizardPhotoDeleted } from "@/lib/wedding-website/wizard-photo-delete";
+import { seedWebsiteGalleryPhotosIfEmpty } from "@/lib/wedding-website/resolve-gallery-photos";
 import { PORTRAIT_FACE_FOCAL } from "@/components/wedding-website/composition-primitives";
 import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, CatalogColorStory } from "@/lib/wedding-website/types";
 import type { PortalContext } from "@/lib/portal/types";
@@ -227,10 +234,15 @@ function SetupWizard({
   // and go to Profile first. Merged with the suggested engagement photos for
   // display; a freshly uploaded photo is auto-selected.
   const [uploadedPhotos, setUploadedPhotos] = React.useState<{ id: string; url: string }[]>([]);
+  const [removedPhotoIds, setRemovedPhotoIds] = React.useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = React.useState<string | null>(null);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
 
-  const eng = [...uploadedPhotos, ...(suggestions?.engagementPhotos ?? [])];
+  const eng = [
+    ...uploadedPhotos,
+    ...(suggestions?.engagementPhotos ?? []).filter(p => !removedPhotoIds.includes(p.id)),
+  ].filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
 
   // Design System Correction (2026-08-08) — Collection/Photo Style cards
   // now use a real photo instead of abstract placeholders. Prefers whatever
@@ -275,7 +287,6 @@ function SetupWizard({
   const currentColorStory = colorStoryId ? allColorStories.find(cs => cs.id === colorStoryId) : undefined;
   const currentTypography = catalog?.typographyStyles.find(t => t.id === typographyStyleId) ?? catalog?.typographyStyles[0];
   const currentPhotoStyle = catalog?.photoStyles.find(p => p.id === photoStyleId);
-  const hasCustomColors = Object.values(customColors).some(v => !!v);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -287,6 +298,7 @@ function SetupWizard({
       const data = await res.json() as { ok: boolean; mediaId?: string; fileUrl?: string; error?: string };
       if (data.ok && data.mediaId && data.fileUrl) {
         setUploadedPhotos(p => [{ id: data.mediaId!, url: data.fileUrl! }, ...p]);
+        setRemovedPhotoIds(ids => ids.filter(id => id !== data.mediaId));
         setSelectedPhoto(data.fileUrl);
       } else {
         toast.error(data.error ?? "Upload failed — please try again.");
@@ -299,15 +311,78 @@ function SetupWizard({
     }
   }
 
-  async function advance(next: WizardStep | "done") {
-    setSaving(true);
+  async function handlePhotoDelete(photo: { id: string; url: string }) {
+    if (deletingPhotoId) return;
+    const confirmed = window.confirm(
+      "Remove this photo from your library? This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    setDeletingPhotoId(photo.id);
     try {
-      if (step === "photo" && selectedPhoto) {
+      const res = await fetch("/api/portal/media", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, mediaId: photo.id }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (!data.ok) {
+        toast.error(data.error ?? "Could not delete this photo.");
+        return;
+      }
+
+      const result = afterWizardPhotoDeleted({
+        deletedId: photo.id,
+        deletedUrl: photo.url,
+        photos: eng,
+        selectedPhotoUrl: selectedPhoto,
+        coverImageUrl: site.content?.home?.coverImageUrl,
+      });
+      setUploadedPhotos(p => p.filter(x => x.id !== photo.id));
+      setRemovedPhotoIds(ids => ids.includes(photo.id) ? ids : [...ids, photo.id]);
+      setSelectedPhoto(result.selectedPhotoUrl);
+
+      if (result.clearCover) {
         await onSaveSection("home", {
           ...(site.content?.home ?? {}),
           title: site.content?.home?.title ?? suggestions?.coupleNames ?? coupleName,
-          coverImageUrl: selectedPhoto,
+          coverImageUrl: result.selectedPhotoUrl || undefined,
         });
+      }
+    } catch {
+      toast.error("Could not delete this photo.");
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  }
+
+  async function advance(next: WizardStep | "done") {
+    setSaving(true);
+    try {
+      if (step === "photo") {
+        if (selectedPhoto) {
+          await onSaveSection("home", {
+            ...(site.content?.home ?? {}),
+            title: site.content?.home?.title ?? suggestions?.coupleNames ?? coupleName,
+            coverImageUrl: selectedPhoto,
+          });
+        }
+        // Beautiful-by-Default: seed the Photo Gallery once when empty so
+        // Preview is not a lonely cover 3-up. Never re-merge engagement into
+        // an already-authored gallery (that silently inflated Live Preview
+        // with duplicates the couple did not add in Photo Gallery).
+        const galleryPhotos = seedWebsiteGalleryPhotosIfEmpty({
+          galleryPhotos: site.content?.gallery?.photos,
+          coverPhoto: selectedPhoto || site.content?.home?.coverImageUrl,
+          engagementPhotos: eng.map((p) => p.url),
+        });
+        const existing = site.content?.gallery?.photos ?? [];
+        if (galleryPhotos.length > 0 && existing.length === 0) {
+          await onSaveSection("gallery", {
+            title: site.content?.gallery?.title ?? "Our Photos",
+            photos: galleryPhotos,
+          });
+        }
       }
       if (step === "collection") {
         // Design System Correction (2026-08-08) — `currentCollection` falls
@@ -360,19 +435,28 @@ function SetupWizard({
         // colors that happen to match it" after reload. The six raw hex
         // columns are saved either way — the real renderer (resolveTheme)
         // reads those directly, never color_story_id.
-        const patch: DesignPatch = {};
-        if (hasCustomColors) {
-          patch.clearCustomColors = false;
-          patch.colorStoryId = colorStoryId ?? null;
+        const seededRoles = currentColorStory
+          ? deriveSixRoles(currentColorStory.tokens)
+          : null;
+        const roles = resolveColorStorySaveRoles({
+          custom: customColors,
+          seeded: seededRoles,
+        });
+        const hasAnyRole = Object.values(roles).some(Boolean);
+        if (hasAnyRole || colorStoryId) {
+          const patch: DesignPatch = {
+            clearCustomColors: false,
+            colorStoryId: colorStoryId ?? null,
+          };
           if (colorStoryId) patch.themePalette = currentColorStory?.name;
-          if (customColors.colorPrimary) patch.colorPrimary = customColors.colorPrimary;
-          if (customColors.colorSecondary) patch.colorSecondary = customColors.colorSecondary;
-          if (customColors.colorAccent) patch.colorAccent = customColors.colorAccent;
-          if (customColors.colorNeutral) patch.colorNeutral = customColors.colorNeutral;
-          if (customColors.colorBackground) patch.colorBackground = customColors.colorBackground;
-          if (customColors.colorText) patch.colorText = customColors.colorText;
+          if (roles.colorPrimary) patch.colorPrimary = roles.colorPrimary;
+          if (roles.colorSecondary) patch.colorSecondary = roles.colorSecondary;
+          if (roles.colorAccent) patch.colorAccent = roles.colorAccent;
+          if (roles.colorNeutral) patch.colorNeutral = roles.colorNeutral;
+          if (roles.colorBackground) patch.colorBackground = roles.colorBackground;
+          if (roles.colorText) patch.colorText = roles.colorText;
+          await onSaveDesign(patch);
         }
-        if (Object.keys(patch).length > 0) await onSaveDesign(patch);
       }
       if (step === "typography" && currentTypography) {
         await onSaveDesign({ fontPairing: currentTypography.key as CoupleWebsite["fontPairing"], typographyStyleId: currentTypography.id });
@@ -439,93 +523,118 @@ function SetupWizard({
     // Design System Correction (2026-08-08) — was a small block floating
     // above a mostly-empty desktop viewport regardless of photo count. The
     // grid/large-photo layout below now adapts to how many photos actually
-    // exist (1, 2, or many), and the whole block is vertically centered in
-    // the available space instead of pinned to the top, so it reads as
-    // intentional rather than sparse — same task, same data behavior.
+    // exist (1, 2, or many). Content scrolls inside WizardShell when taller
+    // than the viewport (do not use justify-center — it breaks scrollports).
     const photoGrid = () => {
       if (eng.length === 1) {
-        const p = eng[0];
+        const p = eng[0]!;
         return (
-          <button type="button" onClick={() => setSelectedPhoto(p.url)}
-            className={`relative rounded-2xl overflow-hidden mx-auto block transition-all hover:scale-[1.01] ${selectedPhoto === p.url ? "ring-2 ring-primary ring-offset-2" : ""}`}
-            style={{ aspectRatio: "4/5", maxWidth: 280 }}>
-            <img src={p.url} alt="Your photo" className="w-full h-full object-cover" />
-            {selectedPhoto === p.url && (
-              <div className="absolute top-3 right-3 h-7 w-7 rounded-full bg-card flex items-center justify-center shadow">
-                <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
-              </div>
-            )}
-          </button>
+          <div className="relative mx-auto" style={{ maxWidth: 280 }}>
+            <button type="button" onClick={() => setSelectedPhoto(p.url)}
+              className={`relative rounded-2xl overflow-hidden w-full block transition-all hover:scale-[1.01] ${selectedPhoto === p.url ? "ring-2 ring-primary ring-offset-2" : ""}`}
+              style={{ aspectRatio: "4/5" }}>
+              <img src={p.url} alt="Your photo" className="w-full h-full object-cover" />
+              {selectedPhoto === p.url && (
+                <div className="absolute top-3 right-3 h-7 w-7 rounded-full bg-card flex items-center justify-center shadow">
+                  <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
+                </div>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); void handlePhotoDelete(p); }}
+              disabled={deletingPhotoId === p.id}
+              aria-label="Delete photo"
+              className="absolute top-3 left-3 h-7 w-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 disabled:opacity-60 z-10"
+            >
+              {deletingPhotoId === p.id
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Trash2 className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         );
       }
       const cols = eng.length === 2 ? "grid-cols-2" : "grid-cols-3";
       return (
         <div className={`grid ${cols} gap-2`}>
           {eng.slice(0, 9).map((p, i) => (
-            <button key={p.id} type="button" onClick={() => setSelectedPhoto(p.url)}
-              className={`relative rounded-xl overflow-hidden transition-all hover:scale-[1.02] ${selectedPhoto === p.url ? "ring-2 ring-primary ring-offset-2" : ""}`}
-              style={{ aspectRatio: eng.length === 2 ? "4/5" : "1/1" }}>
-              <img src={p.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-              {selectedPhoto === p.url && (
-                <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
-                  <div className="h-7 w-7 rounded-full bg-card flex items-center justify-center">
-                    <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
+            <div key={p.id} className="relative">
+              <button type="button" onClick={() => setSelectedPhoto(p.url)}
+                className={`relative rounded-xl overflow-hidden w-full transition-all hover:scale-[1.02] ${selectedPhoto === p.url ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                style={{ aspectRatio: eng.length === 2 ? "4/5" : "1/1" }}>
+                <img src={p.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                {selectedPhoto === p.url && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                    <div className="h-7 w-7 rounded-full bg-card flex items-center justify-center">
+                      <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
+                    </div>
                   </div>
-                </div>
-              )}
-            </button>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); void handlePhotoDelete(p); }}
+                disabled={deletingPhotoId === p.id}
+                aria-label={`Delete photo ${i + 1}`}
+                className="absolute top-1.5 left-1.5 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 disabled:opacity-60 z-10"
+              >
+                {deletingPhotoId === p.id
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Trash2 className="h-3 w-3" />}
+              </button>
+            </div>
           ))}
         </div>
       );
     };
 
     return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <WizardHeader step={step} onSkip={() => advance("collection")} />
-      <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col justify-center">
-        <div className="max-w-lg mx-auto w-full space-y-6">
-          <WizardStepHeader
-            icon={ImageIcon}
-            eyebrow="YOUR PHOTO"
-            heading="Choose your favorite photo"
-            copy="This will be the first thing guests see."
-          />
-
-          <input ref={photoInputRef} type="file" accept="image/*,.heic,.heif" className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) void handlePhotoUpload(f); }} disabled={uploadingPhoto} />
-
-          {eng.length > 0 ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your engagement photos</p>
-                <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
-                  className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
-                  {uploadingPhoto ? "Uploading…" : "+ Upload a photo"}
-                </button>
-              </div>
-              {photoGrid()}
-            </div>
-          ) : (
-            <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
-              className="w-full rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-colors py-14 flex flex-col items-center gap-3 disabled:opacity-50">
-              {uploadingPhoto
-                ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                : <Upload className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />}
-              <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-heading">{uploadingPhoto ? "Uploading…" : "Upload a photo"}</p>
-                <p className="text-xs text-muted-foreground">Or skip this step and add one later.</p>
-              </div>
-            </button>
-          )}
-        </div>
-      </div>
-      <WizardFooter
-        onBack={() => setStep("welcome")}
-        onNext={() => advance("collection")}
-        nextLabel={selectedPhoto ? "Use this photo →" : "Skip for now →"}
-        saving={saving}
+    <WizardShell
+      step={step}
+      onSkip={() => advance("collection")}
+      footer={
+        <WizardFooter
+          onBack={() => setStep("welcome")}
+          onNext={() => advance("collection")}
+          nextLabel={selectedPhoto ? "Use this photo →" : "Skip for now →"}
+          saving={saving}
+        />
+      }
+    >
+      <WizardStepHeader
+        icon={ImageIcon}
+        eyebrow="YOUR PHOTO"
+        heading="Choose your favorite photo"
+        copy="This will be the first thing guests see."
       />
-    </div>
+
+      <input ref={photoInputRef} type="file" accept="image/*,.heic,.heif" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) void handlePhotoUpload(f); }} disabled={uploadingPhoto} />
+
+      {eng.length > 0 ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your engagement photos</p>
+            <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
+              className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
+              {uploadingPhoto ? "Uploading…" : "+ Upload a photo"}
+            </button>
+          </div>
+          {photoGrid()}
+        </div>
+      ) : (
+        <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
+          className="w-full rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-colors py-14 flex flex-col items-center gap-3 disabled:opacity-50">
+          {uploadingPhoto
+            ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            : <Upload className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />}
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium text-heading">{uploadingPhoto ? "Uploading…" : "Upload a photo"}</p>
+            <p className="text-xs text-muted-foreground">Or skip this step and add one later.</p>
+          </div>
+        </button>
+      )}
+    </WizardShell>
     );
   }
 
@@ -585,27 +694,27 @@ function SetupWizard({
       );
     };
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        <WizardHeader step={step} onSkip={() => advance("color")} />
-        <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
-          <WizardStepHeader
-            icon={PanelsTopLeft}
-            eyebrow="YOUR WEBSITE STYLE"
-            heading="Choose your Collection"
-            copy="Your Collection shapes how your whole wedding website feels — the opening moment, section composition, type hierarchy, spacing, and the way your story unfolds."
-            secondaryLine="Don't worry about colors or fonts yet. You'll make those yours next."
-          />
-          <div className="grid grid-cols-2 gap-3">
-            {mainCollections.map(collectionCard)}
-          </div>
-          {strayCollection && (
-            <div className="flex justify-center">
-              <div className="w-[calc(50%-0.375rem)]">{collectionCard(strayCollection)}</div>
-            </div>
-          )}
+      <WizardShell
+        step={step}
+        onSkip={() => advance("color")}
+        footer={<WizardFooter onBack={() => setStep("photo")} onNext={() => advance("color")} nextLabel="This is us →" saving={saving} />}
+      >
+        <WizardStepHeader
+          icon={PanelsTopLeft}
+          eyebrow="YOUR WEBSITE STYLE"
+          heading="Choose your Collection"
+          copy="Your Collection shapes how your whole wedding website feels — the opening moment, section composition, type hierarchy, spacing, and the way your story unfolds."
+          secondaryLine="Don't worry about colors or fonts yet. You'll make those yours next."
+        />
+        <div className="grid grid-cols-2 gap-3">
+          {mainCollections.map(collectionCard)}
         </div>
-        <WizardFooter onBack={() => setStep("photo")} onNext={() => advance("color")} nextLabel="This is us →" saving={saving} />
-      </div>
+        {strayCollection && (
+          <div className="flex justify-center">
+            <div className="w-[calc(50%-0.375rem)]">{collectionCard(strayCollection)}</div>
+          </div>
+        )}
+      </WizardShell>
     );
   }
 
@@ -628,200 +737,201 @@ function SetupWizard({
       setColorStoryId(id);
     }
 
+    function handleRoleChange(role: ColorStoryRoleKey, nextHex: string) {
+      // Editing any single role means this is no longer the curated story
+      // untouched — materialise all six roles then clear colorStoryId so
+      // every surface correctly reads this as a custom palette.
+      setCustomColors(c => applyColorRoleEdit({
+        current: c,
+        seeded,
+        role,
+        nextHex,
+      }));
+      setColorStoryId(undefined);
+    }
+
     const curated = catalog ? resolveCuratedColorStories(catalog.collections) : [];
 
     return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <WizardHeader step={step} onSkip={() => advance("typography")} />
-      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-7">
-        <WizardStepHeader
-          icon={Palette}
-          eyebrow="YOUR COLORS"
-          heading="Create your Color Story"
-          copy="Bring your wedding colors into your website. Start with a curated palette or create your own from any colors you love."
-          secondaryLine="You can change every color and see it on your website as you go."
-        />
+    <WizardShell
+      step={step}
+      onSkip={() => advance("typography")}
+      footer={<WizardFooter onBack={() => setStep("collection")} onNext={() => advance("typography")} nextLabel="Love it →" saving={saving} />}
+    >
+      <WizardStepHeader
+        icon={Palette}
+        eyebrow="YOUR COLORS"
+        heading="Create your Color Story"
+        copy="Bring your wedding colors into your website. Start with a curated palette or create your own from any colors you love."
+        secondaryLine="You can change every color and see it on your website as you go."
+      />
 
-        {/* YOUR COLOR STORY — always editable, always real */}
-        <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-          <p className="text-xs font-semibold text-heading uppercase tracking-wide">Your Color Story</p>
-          <div className="grid grid-cols-3 gap-3">
-            {COLOR_ROLES.map(role => {
-              const value = roleValue(role.key, "#BF9089");
-              return (
-                <div key={role.key} className="space-y-1.5">
-                  <div className="relative rounded-lg overflow-hidden aspect-square border border-black/10" style={{ background: value }}>
-                    <div className="absolute inset-x-0 bottom-0 px-1.5 py-1" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.4), transparent)" }}>
-                      <p className="text-[9px] font-semibold text-white uppercase tracking-wide">{role.label}</p>
-                    </div>
+      {/* YOUR COLOR STORY — always editable, always real */}
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <p className="text-xs font-semibold text-heading uppercase tracking-wide">Your Color Story</p>
+        <div className="grid grid-cols-3 gap-3">
+          {COLOR_ROLES.map(role => {
+            const value = roleValue(role.key, "#BF9089");
+            return (
+              <div key={role.key} className="space-y-1.5 min-w-0">
+                <div className="relative rounded-lg overflow-hidden aspect-square border border-black/10" style={{ background: value }}>
+                  <div className="absolute inset-x-0 bottom-0 px-1.5 py-1" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.4), transparent)" }}>
+                    <p className="text-[9px] font-semibold text-white uppercase tracking-wide">{role.label}</p>
                   </div>
-                  <ColorPickerTrigger value={value} onChange={(v) => {
-                    // Editing any single role means this is no longer the
-                    // curated story untouched — clear colorStoryId so every
-                    // surface correctly reads this as a custom palette from
-                    // here on (Studio Canonical State Pass, 2026-08-11).
-                    setCustomColors(c => ({ ...c, [role.key]: v }));
-                    setColorStoryId(undefined);
-                  }} />
-                  <p className="text-[9px] text-muted-foreground leading-tight">{role.helper}</p>
                 </div>
-              );
-            })}
+                <ColorPickerTrigger value={value} onChange={(v) => handleRoleChange(role.key, v)} />
+                <p className="text-[9px] text-muted-foreground leading-tight">{role.helper}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Curated inspiration — a starting point, never a lock */}
+      {curated.length > 0 && (
+        <div className="space-y-3">
+          <div className="text-center space-y-1">
+            <p className="text-sm font-semibold text-heading">Need a little inspiration?</p>
+            <p className="text-xs text-muted-foreground">Start with a curated Color Story, then make it completely yours.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {curated.map(cs => (
+              <button key={cs.id} type="button" onClick={() => applyStory(cs.id, cs.tokens)}
+                className={`rounded-xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${colorStoryId === cs.id ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
+                <div className="h-9">
+                  <ColorStoryPreview colorStory={cs} />
+                </div>
+                <div className="px-2.5 py-2">
+                  <p className="text-[11px] font-bold text-heading">{cs.name}</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">{cs.mood}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-
-        {/* Curated inspiration — a starting point, never a lock */}
-        {curated.length > 0 && (
-          <div className="space-y-3">
-            <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-heading">Need a little inspiration?</p>
-              <p className="text-xs text-muted-foreground">Start with a curated Color Story, then make it completely yours.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {curated.map(cs => (
-                <button key={cs.id} type="button" onClick={() => applyStory(cs.id, cs.tokens)}
-                  className={`rounded-xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${colorStoryId === cs.id ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
-                  <div className="h-9">
-                    <ColorStoryPreview colorStory={cs} />
-                  </div>
-                  <div className="px-2.5 py-2">
-                    <p className="text-[11px] font-bold text-heading">{cs.name}</p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">{cs.mood}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      <WizardFooter onBack={() => setStep("collection")} onNext={() => advance("typography")} nextLabel="Love it →" saving={saving} />
-    </div>
+      )}
+    </WizardShell>
     );
   }
 
   // ── Step 3: Typography ──
   if (step === "typography") return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <WizardHeader step={step} onSkip={() => advance("photostyle")} />
-      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
-        <WizardStepHeader
-          icon={CaseSensitive}
-          eyebrow="YOUR TYPOGRAPHY"
-          heading="Choose your typography"
-          copy="Choose the type pairing that sounds most like you — romantic, refined, modern, playful, or beautifully understated."
-        />
-        <div className="grid grid-cols-2 gap-3">
-          {(catalog?.typographyStyles ?? []).map(t => {
-            const isSelected = t.id === currentTypography?.id;
-            return (
-              <button key={t.id} type="button" onClick={() => setTypographyStyleId(t.id)}
-                className={`rounded-2xl border p-4 text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
-                <div className="h-12">
-                  <TypographyPreview typography={t} coupleName={suggestions?.coupleNames ?? coupleName} nameSize={20} taglineSize={11} align="left" />
-                </div>
-                <p className="text-xs font-semibold text-heading mt-2.5">{t.name}</p>
-                <p className="text-[10px] text-muted-foreground">{t.tokens.sampleLabel}</p>
-              </button>
-            );
-          })}
-        </div>
+    <WizardShell
+      step={step}
+      onSkip={() => advance("photostyle")}
+      footer={<WizardFooter onBack={() => setStep("color")} onNext={() => advance("photostyle")} nextLabel="Beautiful →" saving={saving} />}
+    >
+      <WizardStepHeader
+        icon={CaseSensitive}
+        eyebrow="YOUR TYPOGRAPHY"
+        heading="Choose your typography"
+        copy="Choose the type pairing that sounds most like you — romantic, refined, modern, playful, or beautifully understated."
+      />
+      <div className="grid grid-cols-2 gap-3">
+        {(catalog?.typographyStyles ?? []).map(t => {
+          const isSelected = t.id === currentTypography?.id;
+          return (
+            <button key={t.id} type="button" onClick={() => setTypographyStyleId(t.id)}
+              className={`rounded-2xl border p-4 text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
+              <div className="h-12">
+                <TypographyPreview typography={t} coupleName={suggestions?.coupleNames ?? coupleName} nameSize={20} taglineSize={11} align="left" />
+              </div>
+              <p className="text-xs font-semibold text-heading mt-2.5">{t.name}</p>
+              <p className="text-[10px] text-muted-foreground">{t.tokens.sampleLabel}</p>
+            </button>
+          );
+        })}
       </div>
-      <WizardFooter onBack={() => setStep("color")} onNext={() => advance("photostyle")} nextLabel="Beautiful →" saving={saving} />
-    </div>
+    </WizardShell>
   );
 
   // ── Step 4: Photo Style ──
   if (step === "photostyle") return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <WizardHeader step={step} onSkip={() => advance("story")} />
-      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
-        <WizardStepHeader
-          icon={Sparkles}
-          eyebrow="YOUR PHOTOS"
-          heading="Choose your Photo Style"
-          copy="Choose how your photographs are framed, layered, spaced, and filtered inside your website — independent of the Collection you already chose."
-        />
-        <div className="grid grid-cols-2 gap-3">
-          {(catalog?.photoStyles ?? []).map(p => {
-            const isSelected = p.id === currentPhotoStyle?.id;
-            return (
-              <button key={p.id} type="button" onClick={() => setPhotoStyleId(p.id)}
-                className={`rounded-2xl border overflow-hidden text-left transition-all hover:scale-[1.01] flex flex-col ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
-                {/* Specimen region — height must equal PhotoStylePreview height so the
-                    ScaledThumbnail never paints into the reserved label footer. */}
-                <div className="h-[188px] shrink-0 overflow-hidden bg-[#FAF8F4]">
-                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={188} naturalWidth={480} />}
-                </div>
-                <div className="px-3 py-2.5 bg-white border-t border-black/5 shrink-0 min-h-[3.5rem]">
-                  <p className="text-xs font-bold text-heading line-clamp-1">{p.name}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+    <WizardShell
+      step={step}
+      onSkip={() => advance("story")}
+      footer={<WizardFooter onBack={() => setStep("typography")} onNext={() => advance("story")} nextLabel="Perfect →" saving={saving} />}
+    >
+      <WizardStepHeader
+        icon={Sparkles}
+        eyebrow="YOUR PHOTOS"
+        heading="Choose your Photo Style"
+        copy="Choose how your photographs are framed, layered, spaced, and filtered inside your website — independent of the Collection you already chose."
+      />
+      <div className="grid grid-cols-2 gap-3">
+        {(catalog?.photoStyles ?? []).map(p => {
+          const isSelected = p.id === currentPhotoStyle?.id;
+          return (
+            <button key={p.id} type="button" onClick={() => setPhotoStyleId(p.id)}
+              className={`rounded-2xl border overflow-hidden text-left transition-all hover:scale-[1.01] flex flex-col ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
+              {/* Specimen region — height must equal PhotoStylePreview height so the
+                  ScaledThumbnail never paints into the reserved label footer. */}
+              <div className="h-[188px] shrink-0 overflow-hidden bg-[#FAF8F4]">
+                {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={188} naturalWidth={480} />}
+              </div>
+              <div className="px-3 py-2.5 bg-white border-t border-black/5 shrink-0 min-h-[3.5rem]">
+                <p className="text-xs font-bold text-heading line-clamp-1">{p.name}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
+              </div>
+            </button>
+          );
+        })}
       </div>
-      <WizardFooter onBack={() => setStep("typography")} onNext={() => advance("story")} nextLabel="Perfect →" saving={saving} />
-    </div>
+    </WizardShell>
   );
 
   // ── Story ──
   if (step === "story") return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <WizardHeader step={step} onSkip={() => advance("preview")} />
-      {/* Design System Correction (2026-08-08) — was a short block pinned
-          to the top of a tall, mostly-empty viewport. Vertically centering
-          it (same task, same data behavior) reads as intentional instead
-          of sparse; the textarea itself is also taller so it carries real
-          visual weight on desktop. */}
-      <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col justify-center">
-        <div className="max-w-lg mx-auto w-full space-y-6">
-          <WizardStepHeader
-            icon={Heart}
-            eyebrow="YOUR STORY"
-            heading="Tell the world how you found each other"
-            copy="Guests love reading this. Make it yours."
-          />
-
-          {suggestions?.story?.text && !storyText && (
-            <div className="rounded-xl border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_5%,transparent)] p-4 space-y-3">
-              <p className="text-xs font-semibold text-[var(--venue-primary)]">From your profile — tap to use</p>
-              <p className="text-sm text-foreground/70 leading-relaxed">{suggestions.story.text}</p>
-              <button type="button" onClick={() => setStoryText(suggestions.story!.text)}
-                className="text-sm font-semibold px-4 py-2 rounded-xl text-white w-full"
-                style={{ background: "var(--venue-primary)" }}>
-                Use this story
-              </button>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-medium text-muted-foreground">{storyText && suggestions?.story?.text ? "Customized story" : "Your story"}</p>
-            <textarea
-              value={storyText}
-              onChange={e => setStoryText(e.target.value)}
-              rows={10}
-              placeholder="We met at a coffee shop in Nashville on a rainy Tuesday morning…"
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-            />
-            <p className="text-[10px] text-muted-foreground text-right">{storyText.length} / 500</p>
-          </div>
-        </div>
-      </div>
-      <WizardFooter
-        onBack={() => setStep("photostyle")}
-        onNext={() => advance("preview")}
-        nextLabel={storyText.trim() ? "Love it →" : "Skip for now →"}
-        saving={saving}
+    <WizardShell
+      step={step}
+      onSkip={() => advance("preview")}
+      footer={
+        <WizardFooter
+          onBack={() => setStep("photostyle")}
+          onNext={() => advance("preview")}
+          nextLabel={storyText.trim() ? "Love it →" : "Skip for now →"}
+          saving={saving}
+        />
+      }
+    >
+      <WizardStepHeader
+        icon={Heart}
+        eyebrow="YOUR STORY"
+        heading="Tell the world how you found each other"
+        copy="Guests love reading this. Make it yours."
       />
-    </div>
+
+      {suggestions?.story?.text && !storyText && (
+        <div className="rounded-xl border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_5%,transparent)] p-4 space-y-3">
+          <p className="text-xs font-semibold text-[var(--venue-primary)]">From your profile — tap to use</p>
+          <p className="text-sm text-foreground/70 leading-relaxed">{suggestions.story.text}</p>
+          <button type="button" onClick={() => setStoryText(suggestions.story!.text)}
+            className="text-sm font-semibold px-4 py-2 rounded-xl text-white w-full"
+            style={{ background: "var(--venue-primary)" }}>
+            Use this story
+          </button>
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-medium text-muted-foreground">{storyText && suggestions?.story?.text ? "Customized story" : "Your story"}</p>
+        <textarea
+          value={storyText}
+          onChange={e => setStoryText(e.target.value)}
+          rows={10}
+          placeholder="We met at a coffee shop in Nashville on a rainy Tuesday morning…"
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+        />
+        <p className="text-[10px] text-muted-foreground text-right">{storyText.length} / 500</p>
+      </div>
+    </WizardShell>
   );
 
   // ── Preview — Part 18: the real WeddingWebsite renderer, not a mockup ──
   if (step === "preview") {
     const { WeddingWebsite } = require("@/components/wedding-website/wedding-website") as { WeddingWebsite: React.ComponentType<WeddingWebsiteProps> };
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
         {/* Design System Correction (2026-08-08) — this chrome used to be
             two stacked blocks (~136px) sitting ABOVE the real Hero inside
             the scrollable preview, so the couple saw noticeably less of
@@ -901,7 +1011,7 @@ function SetupWizard({
 
 function WizardHeader({ step, onSkip }: { step: WizardStep; onSkip: () => void }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+    <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
       <div className="w-16" />
       <WizardProgress step={step} />
       <button type="button" onClick={onSkip} className="text-xs text-muted-foreground hover:text-foreground w-16 text-right">
@@ -915,7 +1025,7 @@ function WizardFooter({ onBack, onNext, nextLabel, saving }: {
   onBack: () => void; onNext: () => void; nextLabel: string; saving: boolean;
 }) {
   return (
-    <div className="px-6 py-4 border-t border-border flex gap-3">
+    <div className="px-6 py-4 border-t border-border flex gap-3 shrink-0 bg-background">
       <button type="button" onClick={onBack}
         className="flex items-center gap-1 px-4 py-3 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted/40">
         <ChevronLeft className="h-4 w-4" /> Back
@@ -925,6 +1035,34 @@ function WizardFooter({ onBack, onNext, nextLabel, saving }: {
         style={{ background: "var(--venue-primary)" }}>
         {saving ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : nextLabel}
       </button>
+    </div>
+  );
+}
+
+/**
+ * Fixed wizard chrome with a real scrollport.
+ * Without `min-h-0` on the flex-1 body, the middle section grows to content
+ * height and `overflow-y-auto` never activates — content appears taller than
+ * the viewport but cannot scroll (portal shell also uses overflow-hidden).
+ */
+function WizardShell({
+  step, onSkip, children, footer, contentClassName,
+}: {
+  step: WizardStep;
+  onSkip: () => void;
+  children: React.ReactNode;
+  footer: React.ReactNode;
+  contentClassName?: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
+      <WizardHeader step={step} onSkip={onSkip} />
+      <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-8 ${contentClassName ?? ""}`}>
+        <div className="max-w-lg mx-auto w-full space-y-6 pb-6">
+          {children}
+        </div>
+      </div>
+      {footer}
     </div>
   );
 }
@@ -1144,6 +1282,34 @@ export function WebsiteStudio({
         if (!wizardDismissed && completedSections < 2 && !initialSite.isPublished) {
           setWizardStep("welcome");
         }
+        // Beautiful-by-Default: seed gallery only when still empty (hero-only
+        // wizard path). Never append engagement URLs onto an authored gallery
+        // on every Studio visit — that produced duplicate/inflated Live Previews.
+        const engagementUrls = (d?.engagementPhotos ?? []).map(p => p.url);
+        setPreviewContent(c => {
+          const existing = c.gallery?.photos ?? [];
+          if (existing.length > 0) return c;
+          const seeded = seedWebsiteGalleryPhotosIfEmpty({
+            galleryPhotos: existing,
+            coverPhoto: c.home?.coverImageUrl,
+            engagementPhotos: engagementUrls,
+          });
+          if (seeded.length === 0) return c;
+          const nextGallery = {
+            title: c.gallery?.title ?? "Our Photos",
+            photos: seeded,
+          };
+          void fetch("/api/portal/website", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              token,
+              contentKey: "gallery",
+              contentValue: nextGallery,
+            }),
+          });
+          return { ...c, gallery: nextGallery };
+        });
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps

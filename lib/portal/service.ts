@@ -5,6 +5,7 @@ import { resolveExperienceProfileForClientEvent } from "@/lib/event-experience";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { applyLiveVenueBrandingUrls } from "@/lib/venue/branding-assets";
 import { recordEngagementEvent } from "@/lib/activation/service";
+import { isInternalVerificationIdentity } from "@/lib/reporting/internal-verification";
 import type { PortalContext, PortalSession, PortalTask, PortalTaskLink, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
 
 // ---- Token resolution (uses server Supabase client; SECURITY DEFINER functions
@@ -71,7 +72,7 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
   const { data, error } = await supabase.rpc("get_portal_tasks", { p_token: token });
   if (error || !data || (data as Record<string, unknown>).error) return [];
   const rows = ((data as Record<string, unknown>).tasks ?? []) as Record<string, unknown>[];
-  return rows.map((r) => {
+  return rows.filter((r) => !isInternalVerificationIdentity({ extraName: String(r.title ?? "") })).map((r) => {
     const trigger = (r.autoCompleteTrigger as string | null | undefined) ?? null;
     // Defense in depth: never allow couple manual complete when a domain trigger owns it
     // (covers pre-migration RPC responses that still omit the policy).

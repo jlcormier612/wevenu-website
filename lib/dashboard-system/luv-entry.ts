@@ -23,6 +23,8 @@ export type LuvDashboardEntry = {
   suggestion: string | null;
   actionLabel: string;
   actionHref: string;
+  /** When set, the Dashboard card can permanently dismiss this recommendation. */
+  dismissRecommendationId?: string;
 };
 
 type Aggregate = { summary: (count: number) => string; suggestion: string; actionLabel: string; href: string };
@@ -36,8 +38,8 @@ const DOMAIN_AGGREGATE: Record<string, Aggregate> = {
   Leads: {
     summary: (n) => `${countWord(n, "lead")} ${n === 1 ? "has" : "have"} been waiting for follow-up.`,
     suggestion: "Want to work through them?",
-    actionLabel: "Review leads",
-    href: "/leads",
+    actionLabel: "Review inquiries",
+    href: "/leads?attention=stale_contact",
   },
   Tasks: {
     summary: (n) => `${countWord(n, "task")} ${n === 1 ? "is" : "are"} past due.`,
@@ -61,7 +63,7 @@ const DOMAIN_AGGREGATE: Record<string, Aggregate> = {
     summary: (n) => `${countWord(n, "payment")} ${n === 1 ? "needs" : "need"} attention.`,
     suggestion: "Want to review them?",
     actionLabel: "Open payments",
-    href: "/payments",
+    href: "/payments?filter=attention",
   },
 };
 
@@ -76,6 +78,15 @@ function countWord(n: number, noun: string): string {
 /** Strips the fragment/query so /leads/123?x=1 and /leads/123 count as the same subject. */
 function subject(href: string): string {
   return href.split(/[?#]/)[0];
+}
+
+/** List-filter destinations (/leads?attention=…) are not the same as a Focus row. */
+function pointsAtSameFocusRow(ctaHref: string, focusHref: string): boolean {
+  if (subject(ctaHref) !== subject(focusHref)) return false;
+  const ctaHasFilter = /[?&](attention|filter)=/.test(ctaHref);
+  const focusHasFilter = /[?&](attention|filter)=/.test(focusHref);
+  if (ctaHasFilter && !focusHasFilter) return false;
+  return true;
 }
 
 function firstCta(recommendation: VenueRecommendation): { label: string; href: string } | null {
@@ -129,9 +140,15 @@ export function selectLuvDashboardEntry({
   //    unless it points at a row Today's Focus is displaying anyway.
   for (const rec of recommendations) {
     const cta = firstCta(rec);
-    if (cta && focusSubjects.has(subject(cta.href))) continue;
+    if (cta && focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))) continue;
     if (!cta) continue;
-    return { message: rec.title, suggestion: rec.body || null, actionLabel: cta.label, actionHref: cta.href };
+    return {
+      message: rec.title,
+      suggestion: rec.body || null,
+      actionLabel: cta.label,
+      actionHref: cta.href,
+      dismissRecommendationId: rec.id,
+    };
   }
 
   // 2. An observation, but only about something Today's Focus is not covering.

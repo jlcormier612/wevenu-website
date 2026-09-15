@@ -32,13 +32,13 @@ import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/le
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 import { getClientListFilterCounts } from "@/lib/clients/service";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { resolveVenueNextSteps, VENUE_NEXT_STEPS_CANDIDATE_CAP } from "@/lib/dashboard/venue-next-steps";
 import type {
   ActivityItem,
   AttentionLead,
-  DashboardClient,
   DashboardData,
   DashboardEvent,
   DashboardPayment,
@@ -99,6 +99,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
     commitmentScore: 0, responsivenessScore: 0, interestScore: 0, scoresUpdatedAt: null, sourceData: null,
     relationshipId: (r.relationship_id as string | null) ?? null,
+    excludeFromBusinessReporting: Boolean(r.exclude_from_business_reporting),
     intakeConfidence: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
@@ -124,12 +125,18 @@ type DashClientRow = {
   created_at: string;
 };
 
-function mapDashClient(r: DashClientRow): DashboardClient {
+function mapDashClient(r: DashClientRow): {
+  id: string;
+  firstName: string;
+  lastName: string;
+  partnerFirstName: string | null;
+  partnerLastName: string | null;
+  status: string;
+} {
   return {
     id: r.id, firstName: r.first_name, lastName: r.last_name,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
-    eventType: r.event_type, eventDate: r.event_date, guestCount: r.guest_count,
-    status: r.status, createdAt: r.created_at,
+    status: r.status,
   };
 }
 
@@ -153,14 +160,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  // A venue graduates into the normal product either via the legacy wizard
-  // (setupCompleted) or via Setup Hub's readyToInviteCouples (Continuous
-  // Setup Experience, Phase 6) — see app/(app)/layout.tsx's gate for the
-  // full reasoning. Without this second check, a Setup-Hub-graduated venue
-  // would pass the layout gate but still see a blank "Dashboard unavailable"
-  // here, since setup_completed is never set on that path.
-  const readyToInviteCouples = venue.setupCompleted ? false : await isVenueReadyToInviteCouples(venue.id);
-  if (!venue.setupCompleted && !readyToInviteCouples) return null;
+  // Canonical graduation: ready_to_invite_couples only.
+  const readyToInviteCouples = await isVenueReadyToInviteCouples(venue.id);
+  if (!readyToInviteCouples) return null;
   const supabase = await createClient();
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
@@ -179,7 +181,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const [leadsRes, tasksRes, activityRes, clientsRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
     supabase
       .from("leads")
-      .select("*")
+      .select("id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, commitment_score, responsiveness_score, interest_score, exclude_from_business_reporting")
       .eq("venue_id", venue.id)
       .order("inquiry_date", { ascending: false }),
 
@@ -199,19 +201,22 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("created_at", { ascending: false })
       .limit(15),
 
-    // Booked clients — still needed for recentBookings (booking date) and totalClients
+    // Clients for Your Next Steps portal lifecycle only (id/name/status).
+    // Not used for a "recent bookings" widget — that field was unused dead weight.
     supabase
       .from("clients")
       .select("id, first_name, last_name, partner_first_name, partner_last_name, event_type, event_date, guest_count, status, created_at")
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(200),
 
 
-    // Upcoming events (canonical source) — replaces client-based event dates
+    // Coming up source: events table only — real event_date, next 60 days.
+    // Never join payment lines, invoices, or other dated facts into this query.
     supabase
       .from("events")
-      .select("id, name, event_date, start_time, status, guest_count, client_id, clients(first_name, last_name, partner_first_name, partner_last_name)")
+      .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
       .gte("event_date", today)
@@ -219,7 +224,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("event_date", { ascending: true })
       .limit(8),
 
-    // Payment line items with schedule title + client name (for dashboard widgets)
+    // Payment line items for Next Steps / today's dated Focus — not Coming up.
     supabase
       .from("payment_line_items")
       .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")
@@ -254,7 +259,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .select("client_id, last_accessed_at")
       .eq("venue_id", venue.id),
 
-    // Same open-task population as Task Center (pending/overdue/blocked, live events)
+    // Same open-task population as Task Center (pending/overdue/blocked, live events).
+    // Cap for dashboard Next Steps / open-task widgets — Task Center remains the full list.
     supabase
       .from("event_tasks")
       .select(`
@@ -267,13 +273,15 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("venue_id", venue.id)
       .in("status", ["pending", "overdue", "blocked"])
       .not("events.status", "in", "(cancelled,complete)")
-      .order("due_date", { ascending: true }),
+      .order("due_date", { ascending: true })
+      .limit(100),
 
     supabase
       .from("contracts")
       .select("id, title, status, clients(first_name, last_name, partner_first_name, partner_last_name)")
       .eq("venue_id", venue.id)
-      .in("status", ["draft", "sent"]),
+      .in("status", ["draft", "sent"])
+      .limit(50),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -289,7 +297,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // ---- Needs Attention -------------------------------------------------------
   // Leads that are slipping: overdue follow-up OR stale "new" inquiry (>48h, no follow-up set)
-  const needsAttentionLeads = leads.filter((l) => {
+  const businessLeads = leads.filter((l) => !l.excludeFromBusinessReporting);
+  const needsAttentionLeads = businessLeads.filter((l) => {
     const stage = l.salesStage ?? l.status;
     if (CLOSED.has(stage)) return false;
     if (l.followUpDate && l.followUpDate < today) return true; // overdue follow-up
@@ -308,13 +317,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // ---- Follow-ups Due --------------------------------------------------------
   // Leads with follow_up_date = today (not overdue — that goes in Needs Attention)
-  const followupsDueAll = leads.filter(
+  const followupsDueAll = businessLeads.filter(
     (l) => l.followUpDate === today && !CLOSED.has(l.salesStage ?? l.status),
   );
   const followupsDue = followupsDueAll.slice(0, 8);
 
   // ---- Upcoming Tours --------------------------------------------------------
-  const upcomingTours = leads
+  const upcomingTours = businessLeads
     .filter(
       (l) =>
         l.tourDate &&
@@ -329,7 +338,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const pipelineStages: PipelineStage[] = LEAD_STATUSES.map((s) => ({
     status: s.value,
     label: s.label,
-    count: leads.filter((l) => (l.salesStage ?? l.status) === s.value).length,
+    count: businessLeads.filter((l) => (l.salesStage ?? l.status) === s.value).length,
   }));
 
   // ---- Tasks -----------------------------------------------------------------
@@ -354,19 +363,19 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     leadName: embeddedName(r.leads),
   }));
 
-  // ---- Client data ----------------------------------------------------------
+  // ---- Client data (portal lifecycle for Your Next Steps) -------------------
   const clients = (clientsRes.data as DashClientRow[]).map(mapDashClient);
-
-  // recentBookings: ordered by when the couple booked (clients.created_at)
-  const recentBookings = clients.slice(0, 5);
 
   // ---- Upcoming events (from events table — canonical source) ---------------
   type DashEventRow = {
     id: string; name: string; event_date: string; start_time: string | null;
     status: string; guest_count: number | null; client_id: string | null;
+    exclude_from_business_reporting?: boolean;
     clients: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   };
-  const upcomingEvents: DashboardEvent[] = (eventsRes.data as unknown as DashEventRow[]).map((r) => {
+  const upcomingEvents: DashboardEvent[] = (eventsRes.data as unknown as DashEventRow[])
+    .filter((r) => !r.exclude_from_business_reporting)
+    .map((r) => {
     const cn = r.clients
       ? [r.clients.first_name, r.clients.last_name].filter(Boolean).join(" ") +
         (r.clients.partner_first_name
@@ -536,7 +545,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
   const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendations, actionObservations, pendingActionObservations, performanceObservations, activationScore, nextPendingMilestone, notificationPrefs, briefing] = await Promise.all([
+  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, notificationPrefs, briefing] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
@@ -554,26 +563,34 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   ]);
   // Communication and setup-gap observations respect the same
   // observationsEnabled setting as every other Luv observation — Luv is
-  // one voice, not two.
+  // one voice, not two. When off, return nothing so the Dashboard Luv
+  // card stays hidden (it also gates on luvObservationsEnabled below).
   const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
-  const luvObservations = luvSettings?.observationsEnabled === false
-    ? luvObservationsRaw
-    : [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations];
+  const observationsOn = luvSettings?.observationsEnabled !== false;
+  const luvObservations = observationsOn
+    ? [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations]
+    : [];
   const showDigestCallout = !!notificationPrefs && notificationPrefs.dailyDigestEnabled && !notificationPrefs.digestIntroDismissed;
-  const trendObservations  = rawTrends   ? computeTrendObservations(rawTrends) : [];
-  const storyObservation   = rawTrends   ? computeStoryMode(rawTrends) : null;
-  const memoryObservations = rawMemories
+  const trendObservations  = observationsOn && rawTrends   ? computeTrendObservations(rawTrends) : [];
+  const storyObservation   = observationsOn && rawTrends   ? computeStoryMode(rawTrends) : null;
+  const memoryObservations = observationsOn && rawMemories
     ? computeMemoryObservations(rawMemories, new Date().getMonth() + 1)
     : [];
-  const insightObservations = rawInsights ? computeInsightObservations(rawInsights) : [];
+  const insightObservations = observationsOn && rawInsights ? computeInsightObservations(rawInsights) : [];
+  const recommendations = observationsOn ? recommendationsRaw : [];
+  const actionObservations = observationsOn ? actionObservationsRaw : [];
+  const pendingActionObservations = observationsOn ? pendingActionObservationsRaw : [];
+  const performanceObservations = observationsOn ? performanceObservationsRaw : [];
 
   // Compute momentum segments from lead scores (post-refresh)
-  const { data: scoredLeads } = await supabase.from("leads")
-    .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
-    .eq("venue_id", venue.id)
-    .not("sales_stage", "in", "(booked,lost)")
-    .order("commitment_score", { ascending: false })
-    .limit(30);
+  const { data: scoredLeads } = await onlyBusinessReporting(
+    supabase.from("leads")
+      .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
+      .eq("venue_id", venue.id)
+      .not("sales_stage", "in", "(booked,lost)")
+      .order("commitment_score", { ascending: false })
+      .limit(30),
+  );
 
   const heatingUp: { leadId: string; name: string; reason: string }[] = [];
   const coolingOff: { leadId: string; name: string; reason: string }[] = [];
@@ -600,19 +617,17 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     followupsDue,
     upcomingTours,
     pipelineStages,
-    totalLeads: leads.length,
-    activeLeadCount: leads.filter((l) => !CLOSED.has(l.salesStage ?? l.status)).length,
-    newLeadCount: leads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
+    totalLeads: businessLeads.length,
+    activeLeadCount: businessLeads.filter((l) => !CLOSED.has(l.salesStage ?? l.status)).length,
+    newLeadCount: businessLeads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
     recentActivity,
     overduePayments,
     upcomingPayments,
     upcomingEvents,
-    upcomingEventCount: clientListCounts.upcoming,
+    upcomingEventCount: clientListCounts.coming_up,
     clientListCounts,
-    recentBookings,
-    totalClients: clients.length,
     luvObservations,
     trendObservations,
     storyObservation,
@@ -627,6 +642,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     activationScore,
     nextPendingMilestone,
     showDigestCallout,
+    // When false, Dashboard must not render the restrained Luv card at all —
+    // including aggregates and recommendations that would otherwise still speak.
+    luvObservationsEnabled: observationsOn,
     // Luv Experience Completion, Work Stream 5 — the one-time intro card.
     // Guided Setup §1.1 (2026-07-22): the permanent luvIntroSeenAt flag is
     // still the gate (never show it twice), but it's no longer sufficient
@@ -721,7 +739,7 @@ async function buildGuidedSetupChecklist(venue: Venue, activationScore: Activati
     // to a customer who should never see it. setupCompleted true is the
     // legacy wizard path, unaffected by this addition. readyToInviteCouples
     // is threaded through call sites for that reason alone, not used here.
-    show: !allComplete && !venue.onboardingDismissed && venue.setupCompleted,
+    show: false,
     steps,
     completedCount,
     totalSteps: steps.length,

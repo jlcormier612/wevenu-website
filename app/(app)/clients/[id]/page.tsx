@@ -213,6 +213,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     floorPlans: event.floorPlans, inventoryUsage, requests: eventRequests,
     contracts, invoices: eventInvoices, documents,
     conversationMessages,
+    paymentScheduleLines: bookingJourney.paymentLines,
     planningCapabilities: venue
       ? {
           timeline: venue.planningTimelineEnabled,

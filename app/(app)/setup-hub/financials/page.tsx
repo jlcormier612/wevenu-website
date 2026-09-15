@@ -1,35 +1,9 @@
-import type { Metadata } from "next";
-
-import { PostSetupFinancial } from "@/components/setup/post-setup-financial";
-import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
-import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
-import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
-import { getCurrentVenue } from "@/lib/venue/service";
-
-export const metadata: Metadata = { title: "Financials — Setup" };
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
 /**
- * Continuous Setup Experience — wires PostSetupFinancial into Setup Hub
- * as a reachable stage. Next returns to /setup-hub (graduation lives on
- * Ready to Invite Couples, not this screen).
+ * Online payments live at Settings → Financials & Integrations.
+ * Keep this Setup Hub path as a thin redirect so old bookmarks still work.
  */
-export default async function SetupHubFinancialsPage() {
-  const venue = await getCurrentVenue();
-  if (!venue) return null;
-
-  const [quickbooksConnection, quickbooksSyncLog] = await Promise.all([
-    getQuickBooksConnection(),
-    getRecentQuickBooksSyncLog(),
-  ]);
-
-  return (
-    <PostSetupFinancial
-      venue={venue}
-      quickbooksConnection={quickbooksConnection}
-      quickbooksSyncLog={quickbooksSyncLog}
-      stripeConnectUrl={buildStripeConnectUrl(venue.id, "onboarding")}
-      quickbooksConnectUrl={buildQuickBooksConnectUrl(venue.id, "onboarding")}
-    />
-  );
+export default function SetupHubFinancialsRedirect() {
+  redirect("/settings/integrations");
 }

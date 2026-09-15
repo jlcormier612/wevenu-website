@@ -19,10 +19,10 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
   {
     name: "Lifecycle Booking",
     businessDefinition:
-      "A Lifecycle Booking is the venue's explicit booking decision, recorded as a durable first_booked event in lifecycle_booking_events (origins: pipeline via Book This Lead, direct via Direct Add, import via Migration Center Mark as already booked). first_booked_at / occurred_at is write-once; rebooked events do not overwrite it. Distinct from Financially Committed and from events.booked_at (payment timing).",
+      "A Booking is the venue marking a relationship booked. Recorded as a durable first_booked event. Date is write-once; a later return to Booked writes rebooked and does not overwrite it. rebooked is not period Booking activity — that return is the Currently Booked pipeline snapshot plus the record's own history, not a second Booking in the period they rebooked. Unknown historical dates stay undated and are not attributed to a period. Distinct from the internal financial view (canonical_bookings) and from events.booked_at.",
     owner: "Lead or Client",
     formula:
-      "COUNT(lifecycle_booking_events WHERE event_kind='first_booked' AND occurred_at in window). Origins preserved. Currently Booked pipeline snapshot = COUNT(leads WHERE sales_stage='booked') — separate metric.",
+      "COUNT(lifecycle_booking_events WHERE event_kind='first_booked' AND occurred_at IS NOT NULL AND occurred_at in window). Undated first_booked rows are Bookings but excluded from period counts. Currently Booked pipeline snapshot = COUNT(leads WHERE sales_stage='booked') — separate metric.",
     sourceTables: ["lifecycle_booking_events", "leads", "clients"],
     dimensions: ["Venue (implicit)", "Origin", "Lead Source (when lead_id present)"],
     filters: ["date range (occurred_at)"],
@@ -149,7 +149,7 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
   {
     name: "Financially Committed",
     businessDefinition:
-      "A client with at least one signed contract AND a payment schedule whose lowest-sort_order payment line item has status='paid'. Implemented as canonical_bookings. Not a Lifecycle Booking. Customer-facing name: Financially Committed.",
+      "Internal financial view only (canonical_bookings): signed contract AND first scheduled payment collected. Not a customer-facing Dashboard/Reporting Booking metric.",
     owner: "Client",
     formula:
       "EXISTS(contract WHERE client_id=c.id AND status='signed') AND EXISTS(payment_schedule WHERE client_id=c.id AND its lowest-sort_order payment_line_item has status='paid'). committed_at (view booked_at) = GREATEST(contract.signed_at, deposit_line_item.paid_at).",
@@ -339,13 +339,13 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
   {
     name: "Business Funnel — Period Bookings",
     businessDefinition:
-      "Lifecycle first_booked events whose occurred_at falls in the window (includes leadless direct/import). Clock: lifecycle_booking_events.occurred_at. Not Financially Committed.",
+      "Dated lifecycle first_booked events whose occurred_at falls in the window (includes leadless direct/import). Undated Bookings are excluded from period counts. Clock: lifecycle_booking_events.occurred_at. Not the internal financial view.",
     owner: "Venue",
-    formula: "COUNT via getLifecycleBookings(window)",
+    formula: "COUNT via getLifecycleBookings(window) — occurred_at IS NOT NULL",
     sourceTables: ["lifecycle_booking_events"],
     dimensions: ["Venue (implicit)"],
-    filters: ["occurred_at window"],
-    aggregationRules: "Period snapshot — distinct from Financially Committed count.",
+    filters: ["occurred_at window; exclude null occurred_at"],
+    aggregationRules: "Period snapshot — distinct from financial commitment count.",
     unit: "count",
     precision: "integer",
     consumers: ["lib/metrics/business-funnel.ts"],
@@ -355,23 +355,23 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
   {
     name: "Business Funnel — Period Financially Committed",
     businessDefinition:
-      "Financially Committed clients whose commitment date (canonical_bookings.booked_at) falls in the window. Separate from Lifecycle Booking.",
+      "Internal only: clients whose financial commitment date (canonical_bookings.booked_at) falls in the window. Not shown on the customer-facing Business Funnel period strip (Contracted $ uses Gross Booked Revenue instead). Separate from Lifecycle Booking.",
     owner: "Venue",
     formula: "COUNT via getCanonicalBookings(window)",
     sourceTables: ["canonical_bookings"],
     dimensions: ["Venue (implicit)"],
     filters: ["booked_at window"],
-    aggregationRules: "Period snapshot on financial commitment clock.",
+    aggregationRules: "Internal financial clock — not a customer-facing Booking count.",
     unit: "count",
     precision: "integer",
-    consumers: ["lib/metrics/business-funnel.ts"],
+    consumers: ["lib/metrics/booking.ts", "Revenue / attribution internals"],
     dependencies: ["Financially Committed"],
     status: "canonical",
   },
   {
     name: "Business Funnel — Lead → Tour (cohort)",
     businessDefinition:
-      "Of Business Funnel cohort leads (created in window, not cancelled/lost), share that eventually have a tour_appointments row (any time). Not period tours ÷ period leads.",
+      "Of Business Funnel cohort leads (created in window, including later Lost), share that eventually have a tour_appointments row (any time). Not period tours ÷ period leads.",
     owner: "Venue",
     formula: "ROUND(100 * COUNT(cohort leads with any tour_appointments) / COUNT(cohort leads))",
     sourceTables: ["leads", "tour_appointments"],
@@ -387,13 +387,13 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
   {
     name: "Business Funnel — Lead → Booking (cohort)",
     businessDefinition:
-      "Of Business Funnel cohort leads, share that eventually have leads.first_booked_at (Lifecycle Booking). Same population and rate as customer-facing Booking Conversion Rate / Overview Lead → Booked Rate / Sales Lead → Booked rate (via isBusinessFunnelCohortLead). Not Financially Committed.",
+      "Of Business Funnel cohort leads (including later Lost), share that eventually have a first lifecycle Booking (dated first_booked_at or undated first_booked event). Same population as Overview Lead → Booking and Sales cohort. Direct Adds are not leads.",
     owner: "Venue",
-    formula: "ROUND(100 * COUNT(cohort with first_booked_at) / COUNT(cohort leads))",
-    sourceTables: ["leads"],
+    formula: "ROUND(100 * COUNT(cohort with lifecycle Booking) / COUNT(cohort leads))",
+    sourceTables: ["leads", "lifecycle_booking_events"],
     dimensions: ["Venue (implicit)"],
-    filters: ["lead created_at window; exclude cancelled/lost"],
-    aggregationRules: "Cohort only — Lifecycle Booking, not Financially Committed.",
+    filters: ["lead created_at window; include later Lost"],
+    aggregationRules: "Cohort only — Lifecycle Booking, not financial commitment.",
     unit: "%",
     precision: "integer (rounded)",
     consumers: ["lib/metrics/business-funnel.ts", "lib/metrics/lifecycle-booking.ts"],
@@ -405,8 +405,8 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
     businessDefinition:
       "Among Business Funnel cohort leads who eventually toured, share that eventually lifecycle-booked. NEVER period bookings ÷ period tours.",
     owner: "Venue",
-    formula: "ROUND(100 * COUNT(toured AND first_booked_at) / COUNT(eventually toured))",
-    sourceTables: ["leads", "tour_appointments"],
+    formula: "ROUND(100 * COUNT(toured AND lifecycle Booking) / COUNT(eventually toured))",
+    sourceTables: ["leads", "tour_appointments", "lifecycle_booking_events"],
     dimensions: ["Venue (implicit)"],
     filters: ["lead created_at window"],
     aggregationRules: "Cohort only among eventually-toured leads.",
@@ -437,10 +437,10 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
   {
     name: "Booking Conversion Rate",
     businessDefinition:
-      "Of leads created during a cohort window excluding status=cancelled and sales_stage=lost, the share that eventually received a Lifecycle first_booked (leads.first_booked_at). Same population as Business Funnel Lead → Booking. Not Financially Committed. Not period activity.",
-    owner: "Venue", formula: "ROUND(100.0 * COUNT(cohort with first_booked_at) / COUNT(Business Funnel cohort leads))",
-    sourceTables: ["leads"], dimensions: ["Venue (implicit)", "Lead Source"], filters: ["lead created_at window; exclude cancelled/lost"],
-    aggregationRules: "Cohort only — never mix with financial booked_at. Uses isBusinessFunnelCohortLead.",
+      "Of leads created during a cohort window (including those later marked Lost), the share that eventually received a first lifecycle Booking. Direct Adds are excluded because they were never leads. Not period activity.",
+    owner: "Venue", formula: "ROUND(100.0 * COUNT(cohort with lifecycle Booking) / COUNT(Business Funnel cohort leads))",
+    sourceTables: ["leads", "lifecycle_booking_events"], dimensions: ["Venue (implicit)", "Lead Source"], filters: ["lead created_at window; include later Lost"],
+    aggregationRules: "Cohort only — never mix with financial booked_at. Uses isBusinessFunnelCohortLead + leadHasLifecycleBooking.",
     unit: "%", precision: "integer (rounded)",
     consumers: ["lib/metrics/lifecycle-booking.ts:getLeadCohortLifecycleBookingStats", "Overview Lead → Booked Rate", "Sales cohort", "saved-reports export"],
     dependencies: ["Lifecycle Booking"], status: "canonical",

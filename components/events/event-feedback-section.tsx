@@ -34,10 +34,10 @@ function Stars({ rating }: { rating: number }) {
 // ── Permission label ──────────────────────────────────────────────────────────
 
 const PERM_LABELS: Record<string, string> = {
-  none:                "Keep private",
-  review_only:         "Share anonymously",
-  review_and_names:    "Share with names",
-  review_and_photos:   "Share with names + photos",
+  none:                "Private — not for public sharing",
+  review_only:         "May share anonymously (needs your approval)",
+  review_and_names:    "May share with names (needs your approval)",
+  review_and_photos:   "May share with names + photos (needs your approval)",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -50,9 +50,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 function FeedbackPanel({
   feedback,
+  publicReviewUrl,
   onUpdate,
 }: {
   feedback: NonNullable<EventPostWeddingData["feedback"]>;
+  publicReviewUrl: string | null;
   onUpdate: (updates: Partial<NonNullable<EventPostWeddingData["feedback"]>>) => void;
 }) {
   const [response, setResponse]   = React.useState(feedback.venueResponse ?? "");
@@ -60,6 +62,8 @@ function FeedbackPanel({
   const [approving, setApproving] = React.useState(false);
   const isLowRating               = feedback.overallRating <= 2;
   const canApprove                = feedback.publicPermission !== "none" && !feedback.approvedForPublicAt;
+  const isApproved                = Boolean(feedback.approvedForPublicAt);
+  const isEligible                = feedback.publicPermission !== "none" && isApproved;
 
   async function handleResolve() {
     setSaving(true);
@@ -79,7 +83,10 @@ function FeedbackPanel({
     setApproving(false);
     if (res.ok) {
       toast.success("Approved for public use.");
-      onUpdate({ approvedForPublicAt: new Date().toISOString() });
+      onUpdate({
+        approvedForPublicAt: new Date().toISOString(),
+        isPubliclyEligible: true,
+      });
     } else {
       toast.error("Could not approve. Please try again.");
     }
@@ -145,26 +152,71 @@ function FeedbackPanel({
       )}
 
       {/* Permission status */}
-      <div className="flex items-center justify-between rounded-sm border px-4 py-3">
-        <div>
-          <p className="text-xs font-medium text-heading">Sharing permission</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {PERM_LABELS[feedback.publicPermission] ?? feedback.publicPermission}
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between rounded-sm border px-4 py-3">
+          <div>
+            <p className="text-xs font-medium text-heading">Sharing permission</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isApproved && feedback.publicPermission !== "none"
+                ? feedback.publicPermission === "review_only"
+                  ? "May share anonymously — you approved"
+                  : feedback.publicPermission === "review_and_photos"
+                    ? "May share with names + photos — you approved"
+                    : "May share with names — you approved"
+                : (PERM_LABELS[feedback.publicPermission] ?? feedback.publicPermission)}
+            </p>
+          </div>
+          {isApproved ? (
+            <span className="text-[10px] font-semibold text-success bg-success/10 rounded-full px-2.5 py-0.5">
+              Approved for sharing
+            </span>
+          ) : canApprove ? (
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={approving}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {approving ? "Approving…" : "Approve for public sharing"}
+            </button>
+          ) : feedback.publicPermission === "none" ? (
+            <span className="text-[10px] font-semibold text-muted-foreground bg-muted rounded-full px-2.5 py-0.5">
+              Stays private
+            </span>
+          ) : null}
         </div>
-        {feedback.approvedForPublicAt ? (
-          <span className="text-[10px] font-semibold text-success bg-success/10 rounded-full px-2.5 py-0.5">
-            Approved ✓
-          </span>
-        ) : canApprove ? (
-          <button
-            onClick={handleApprove}
-            disabled={approving}
-            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {approving ? "Approving…" : "Approve for public use"}
-          </button>
-        ) : null}
+
+        {feedback.publicPermission !== "none" && !isApproved && (
+          <p className="text-xs text-muted-foreground px-1">
+            The couple said you may share this — it stays private until you approve.
+          </p>
+        )}
+
+        {isEligible && (
+          <div className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-3 space-y-2">
+            <p className="text-xs font-medium text-heading">Ready to share</p>
+            <p className="text-xs text-muted-foreground">
+              You approved this feedback. Use your Public review link when you invite others to leave a review, and only share their words where they gave permission.
+            </p>
+            {publicReviewUrl ? (
+              <a
+                href={publicReviewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex text-xs font-medium text-primary hover:underline"
+              >
+                Open your Public review link →
+              </a>
+            ) : (
+              <a
+                href="/settings/business"
+                className="inline-flex text-xs font-medium text-primary hover:underline"
+              >
+                Add a Public review link in Settings →
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Internal note / resolution */}
@@ -337,9 +389,9 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
       <div className="rounded-sm border border-dashed py-14 text-center px-6">
         <p className="text-2xl mb-3">💗</p>
         <p className="text-sm font-semibold text-heading mb-1">No feedback yet</p>
-        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-          Feedback, referrals, and shared memories from the client will appear here
-          after the wedding — when Luv gently prompts them in their portal.
+        <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          When a couple completes Post-Event Feedback (or shares feedback from their portal), it appears here —
+          with rating, written notes, recommendation, and sharing permission so you can approve anything meant to go public.
         </p>
       </div>
     );
@@ -354,10 +406,17 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
           <div className="flex items-center gap-2 mb-4">
             <span className="text-base">💗</span>
             <p className="text-sm font-semibold text-heading">Client Feedback</p>
-            <span className="ml-auto text-[10px] text-muted-foreground">Private · not public</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              {data.feedback.isPubliclyEligible
+                ? "Approved for sharing"
+                : data.feedback.publicPermission === "none"
+                  ? "Private"
+                  : "Waiting for your approval"}
+            </span>
           </div>
           <FeedbackPanel
             feedback={data.feedback}
+            publicReviewUrl={data.publicReviewUrl}
             onUpdate={updates => setData(prev => prev
               ? { ...prev, feedback: prev.feedback ? { ...prev.feedback, ...updates } : null }
               : null

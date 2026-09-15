@@ -221,7 +221,7 @@ async function main() {
     record(
       "4.white_glove.order_note",
       tokenPresent,
-      "DB shows activation_token set via upsertVenueEnrollment path (same bridge Launch Workspace calls before Welcome Home). Full Launch Workspace UI email send not asserted here.",
+      "DB shows activation_token set via Product HQ Finish White Glove Setup / enrollment path. CRM Mark Implementation Complete does not mint tokens or send welcome_home.",
     );
   }
 

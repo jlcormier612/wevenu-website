@@ -1,7 +1,6 @@
 /**
  * Saved Report CSV — same definitions as Reporting Overview.
  */
-import { getCanonicalBookings } from "@/lib/metrics/booking";
 import {
   getLeadCohortLifecycleBookingStats,
   getLifecycleBookings,
@@ -17,9 +16,8 @@ export async function buildSavedReportCsv(report: SavedReport): Promise<string> 
   const range = resolveDateRange(report.datePreset, report.customFrom ?? undefined, report.customTo ?? undefined);
   const window = { from: range.from, to: range.to };
 
-  const [bookings, financiallyCommitted, grossRevenue, paymentsCollected, outstanding, leads, cohort] = await Promise.all([
+  const [bookings, grossRevenue, paymentsCollected, outstanding, leads, cohort] = await Promise.all([
     getLifecycleBookings(window),
-    getCanonicalBookings(window),
     getGrossBookedRevenue(window),
     getPaymentsCollected(window),
     getOutstandingBalance(window),
@@ -40,11 +38,10 @@ export async function buildSavedReportCsv(report: SavedReport): Promise<string> 
   const body = toCsv(
     ["Metric", "Value"],
     [
-      ["Bookings (lifecycle, period)", bookings.length],
+      ["Bookings (marked booked this period)", bookings.length],
       ["Leads entered", leads.total],
-      ["Lead → Booked rate (cohort %, excl. cancelled/lost)", `${cohort.conversionRate}%`],
-      ["Financially Committed (period)", financiallyCommitted.length],
-      ["Gross Booked Revenue", formatMoney(grossRevenue ?? 0)],
+      ["Lead → Booking rate (cohort %; Lost stays in the rate)", `${cohort.conversionRate}%`],
+      ["Contracted value", formatMoney(grossRevenue ?? 0)],
       ["Payments Collected", formatMoney(paymentsCollected ?? 0)],
       ["Outstanding Balance", formatMoney(outstanding ?? 0)],
     ],

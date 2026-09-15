@@ -13,6 +13,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { createCoupleNotification } from "@/lib/couple-notifications/create";
 import { sendMessageEmail } from "@/lib/messages/notify";
 import { createVendorNotification } from "@/lib/vendor-notifications/create";
+import { publicAppOrigin } from "@/lib/env";
 
 type VendorConvoNotifyContext = {
   conversationId: string;
@@ -33,7 +34,7 @@ type VendorConvoNotifyContext = {
 };
 
 function appBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  return publicAppOrigin();
 }
 
 function tryAdminClient() {

@@ -18,7 +18,7 @@ export default async function VendorsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Approved vendors"
+        title="Vendors"
         description="Vendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile."
         actions={
           <div className="flex items-center gap-2">

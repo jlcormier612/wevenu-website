@@ -12,9 +12,10 @@ import {
   buildVendorAssignmentText,
 } from "@/lib/email/vendor-assignment";
 import { createVendorNotification } from "@/lib/vendor-notifications/create";
+import { publicAppOrigin } from "@/lib/env";
 
 function appBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  return publicAppOrigin();
 }
 
 function tryAdmin() {

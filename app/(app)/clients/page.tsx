@@ -25,7 +25,7 @@ export default async function ClientsPage() {
         description="Booked clients and their events."
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" render={<Link href="/settings/import?type=couples" />}>Import Clients / Bookings</Button>
+            <Button variant="outline" render={<Link href="/settings/import?type=couples" />}>Import Clients</Button>
             <Button render={<Link href="/clients/new" />}>+ New Client</Button>
           </div>
         }

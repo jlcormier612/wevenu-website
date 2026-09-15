@@ -292,9 +292,22 @@ export async function updateEventNote(client: DbClient, venueId: string, noteId:
   if (error) throw error;
 }
 
-export async function deleteEventNote(client: DbClient, venueId: string, noteId: string): Promise<void> {
-  const { error } = await client.from("event_notes").delete().eq("id", noteId).eq("venue_id", venueId);
+export async function deleteEventNote(
+  client: DbClient,
+  venueId: string,
+  noteId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
+    .from("event_notes")
+    .delete()
+    .eq("id", noteId)
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not delete this note." };
+  }
+  return { ok: true };
 }
 
 // ---- team -------------------------------------------------------------------
@@ -306,9 +319,22 @@ export async function insertTeamMember(client: DbClient, venueId: string, eventI
   return mapTeam(data);
 }
 
-export async function deleteTeamMember(client: DbClient, venueId: string, memberId: string): Promise<void> {
-  const { error } = await client.from("event_team").delete().eq("id", memberId).eq("venue_id", venueId);
+export async function deleteTeamMember(
+  client: DbClient,
+  venueId: string,
+  memberId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
+    .from("event_team")
+    .delete()
+    .eq("id", memberId)
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not remove this team member." };
+  }
+  return { ok: true };
 }
 
 // ---- activities -------------------------------------------------------------

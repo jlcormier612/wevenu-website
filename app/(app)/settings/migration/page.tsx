@@ -30,7 +30,7 @@ export default async function MigrationCenterPage() {
         title="Migration Center"
         description="Bring your business with you from wherever it lives today. If we don't list your system, you can still import a CSV or spreadsheet."
       />
-      <SetupGuideLink href="/help/setup-bring-your-business" label="New to this? Walk through it step by step" />
+      <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
       <SettingsTabs />
       <MigrationCenter
         sourceProfiles={sourceProfiles}

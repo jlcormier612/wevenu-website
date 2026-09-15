@@ -33,14 +33,14 @@ export default async function FinancialsIntegrationsSettingsPage() {
       {venue && (
         <div id="stripe" className="scroll-mt-20 space-y-2">
           <StripeConnectSection venue={venue} connectUrl={buildStripeConnectUrl(venue.id)} />
-          <div className="px-1"><SetupGuideLink href="/help/setup-financials#stripe" label="Need help connecting? Follow the step-by-step guide" /></div>
+          <div className="px-1"><SetupGuideLink href="/help/can-couples-pay-online" label="Can Couples Pay Online?" /></div>
         </div>
       )}
 
       {venue && (
         <div id="quickbooks" className="scroll-mt-20 space-y-2">
           <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} connectUrl={buildQuickBooksConnectUrl(venue.id)} />
-          <div className="px-1"><SetupGuideLink href="/help/setup-financials#quickbooks" label="Need help connecting? Follow the step-by-step guide" /></div>
+          <div className="px-1"><SetupGuideLink href="/help/can-couples-pay-online" label="Can Couples Pay Online?" /></div>
         </div>
       )}
 
@@ -53,7 +53,7 @@ export default async function FinancialsIntegrationsSettingsPage() {
             recentLog={facebookLog}
             connectUrl={buildFacebookOAuthUrl(venue.id)}
           />
-          <div className="px-1"><SetupGuideLink href="/help/setup-lead-capture#facebook" label="Need help connecting? Follow the step-by-step guide" /></div>
+          <div className="px-1"><SetupGuideLink href="/help/whats-the-difference-between-a-lead-and-a-client" label="What's the Difference Between a Lead and a Client?" /></div>
         </div>
       )}
     </div>

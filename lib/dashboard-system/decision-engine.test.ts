@@ -76,7 +76,7 @@ describe("Today's Focus and Upcoming partition the same data", () => {
     const focus = classifyTodayDatedItems(data).map((i) => i.id);
     const upcoming = classifyUpcomingItems(data).map((i) => i.id);
     assert.deepEqual(focus.sort(), ["up-payment-p1"]);
-    assert.deepEqual(upcoming.sort(), ["up-payment-p2"]);
+    assert.deepEqual(upcoming, [], "Coming up is events-only — payments stay out");
   });
 
   it("surfaces a tour happening today exactly once", () => {
@@ -91,10 +91,10 @@ describe("Today's Focus and Upcoming partition the same data", () => {
     assert.equal(classifyTodayDatedItems(data).length, 0, "today's tour is not also a dated item");
   });
 
-  it("keeps a future tour in Upcoming only", () => {
+  it("does not put a future tour in Coming up", () => {
     const data = dashboard({ upcomingTours: [tour("l2", TOMORROW)] as never });
 
-    assert.deepEqual(classifyUpcomingItems(data).map((i) => i.id), ["up-tour-l2"]);
+    assert.deepEqual(classifyUpcomingItems(data).map((i) => i.id), []);
     assert.equal(classifyBriefingItems(data).length, 0);
   });
 
@@ -115,63 +115,96 @@ describe("Today's Focus and Upcoming partition the same data", () => {
     }
     for (const item of upcoming) {
       assert.ok(item.sortDate != null && item.sortDate > TODAY, `${item.id} is not upcoming`);
+      assert.equal(item.domain, "Events");
     }
     assert.equal(focus.filter((f) => upcoming.some((u) => u.id === f.id)).length, 0);
+    assert.deepEqual(upcoming.map((i) => i.id), ["up-event-e2"]);
+  });
+});
+
+describe("Coming up is events only", () => {
+  it("includes a legitimate event inside the 60-day window", () => {
+    const data = dashboard({ upcomingEvents: [event("e2", LATER)] as never });
+    const upcoming = classifyUpcomingItems(data);
+    assert.deepEqual(upcoming.map((i) => i.id), ["up-event-e2"]);
+    assert.equal(upcoming[0]!.domain, "Events");
+    assert.equal(upcoming[0]!.href, "/events/e2");
+    assert.equal(upcoming[0]!.sortDate, LATER);
+  });
+
+  it("does not include a remaining-balance payment attached to a real event", () => {
+    const data = dashboard({
+      upcomingEvents: [event("colby", LATER)] as never,
+      upcomingPayments: [{
+        id: "bal-1",
+        scheduleId: "sched-colby",
+        label: "Remaining balance",
+        amount: 2400,
+        dueDate: "2027-12-04",
+        isOverdue: false,
+        clientName: "Colby SpineE2E3",
+      }] as never,
+    });
+    const upcoming = classifyUpcomingItems(data);
+    assert.deepEqual(upcoming.map((i) => i.id), ["up-event-colby"]);
+    assert.equal(upcoming.some((i) => /remaining balance/i.test(i.label) || /remaining balance/i.test(i.detail ?? "") || /remaining balance/i.test(i.rightLabel ?? "")), false);
+    assert.equal(upcoming.some((i) => i.domain === "Payments"), false);
+    assert.equal(upcoming.some((i) => i.sortDate === "2027-12-04"), false);
+  });
+
+  it("does not treat a payment due date outside the 60-day event window as Coming up", () => {
+    const data = dashboard({
+      upcomingEvents: [],
+      upcomingPayments: [payment("far", "2027-12-04")] as never,
+    });
+    assert.deepEqual(classifyUpcomingItems(data), []);
+  });
+
+  it("drops an event beyond the 60-day horizon even if it leaked into upcomingEvents", () => {
+    const data = dashboard({
+      upcomingEvents: [event("far-event", "2027-12-04")] as never,
+    });
+    assert.deepEqual(classifyUpcomingItems(data), []);
   });
 });
 
 describe("Upcoming identity exclusion (not date partitioning alone)", () => {
-  it("tags Upcoming payments with the same payment:{scheduleId} key Next Steps uses", () => {
+  it("does not emit Coming up payment rows to identity-dedupe", () => {
     const data = dashboard({
       upcomingPayments: [payment("line-a", TOMORROW)] as never,
     });
-    const upcoming = classifyUpcomingItems(data);
-    assert.equal(upcoming.length, 1);
-    assert.equal(upcoming[0]!.crossSectionSubject, "payment:sched-line-a");
+    assert.deepEqual(classifyUpcomingItems(data), []);
   });
 
-  it("suppresses an Upcoming payment when Today's Focus already claims that schedule identity", () => {
-    // Same schedule, two line items: one due today (Focus), one future (Upcoming source).
-    // Date partitioning alone would still emit the future line; identity must suppress it.
+  it("keeps a Coming up event when Focus claimed a payment on the same booking", () => {
     const scheduleId = "sched-shared";
     const data = dashboard({
+      upcomingEvents: [event("e2", LATER)] as never,
       upcomingPayments: [
         { id: "due-today", scheduleId, label: "Deposit", amount: 500, dueDate: TODAY, isOverdue: false, clientName: "Client" },
-        { id: "due-later", scheduleId, label: "Balance", amount: 1500, dueDate: TOMORROW, isOverdue: false, clientName: "Client" },
+        { id: "due-later", scheduleId, label: "Remaining balance", amount: 2400, dueDate: "2027-12-04", isOverdue: false, clientName: "Client" },
       ] as never,
     });
 
     const focus = classifyBriefingItems(data);
     assert.ok(
       focus.some((i) => i.crossSectionSubject === `payment:${scheduleId}`),
-      "Focus claims the schedule via today's payment line",
-    );
-
-    const rawUpcoming = classifyUpcomingItems(data);
-    assert.ok(
-      rawUpcoming.some((i) => i.id === "up-payment-due-later"),
-      "date filter alone still surfaces the future line from the Upcoming source",
+      "Focus still claims today's payment line",
     );
 
     const upcoming = excludeByCrossSectionSubject(
-      rawUpcoming,
+      classifyUpcomingItems(data),
       collectCrossSectionSubjects(focus),
     );
-    assert.equal(
-      upcoming.some((i) => i.crossSectionSubject === `payment:${scheduleId}`),
-      false,
-      "identity exclusion removes the future line once Focus claimed the schedule",
-    );
+    assert.deepEqual(upcoming.map((i) => i.id), ["up-event-e2"]);
   });
 
-  it("suppresses an Upcoming payment when Your Next Steps already claims that schedule identity", () => {
+  it("Next Steps payment identity does not invent a Coming up payment row", () => {
     const data = dashboard({
       upcomingPayments: [payment("p9", TOMORROW)] as never,
     });
-    const rawUpcoming = classifyUpcomingItems(data);
-    assert.equal(rawUpcoming[0]!.crossSectionSubject, "payment:sched-p9");
+    assert.deepEqual(classifyUpcomingItems(data), []);
 
-    // Next Steps payment rows use subjectKey payment:{scheduleId} (overdue path).
     const { visible: nextSteps } = resolveVenueNextSteps({
       today: TODAY,
       clients: [],
@@ -187,10 +220,6 @@ describe("Upcoming identity exclusion (not date partitioning alone)", () => {
       }],
     });
     assert.ok(nextSteps.some((s) => s.subjectKey === "payment:sched-p9"));
-
-    const claimed = new Set(nextSteps.map((s) => s.subjectKey));
-    const upcoming = excludeByCrossSectionSubject(rawUpcoming, claimed);
-    assert.equal(upcoming.length, 0);
   });
 });
 
@@ -240,6 +269,31 @@ describe("today's scheduled follow-ups reach Today's Focus", () => {
 
   it("keeps today's follow-ups out of Upcoming", () => {
     const data = dashboard({ followupsDue: [lead("l1")] as never });
+    assert.equal(classifyUpcomingItems(data).length, 0);
+  });
+});
+
+describe("Today's Focus Event Readiness payment attention is intact", () => {
+  it("still publishes briefing payment/invoice rows", () => {
+    const data = dashboard({
+      briefing: {
+        needsAttentionNow: [{
+          id: "briefing-payments-e1",
+          eventId: "e1",
+          eventName: "Colby SpineE2E3",
+          eventDate: LATER,
+          label: "Payments",
+          detail: "1 invoice overdue",
+          link: "/events/e1?tab=payments",
+        }],
+      },
+    } as never);
+
+    const focus = classifyBriefingItems(data);
+    assert.equal(focus.length, 1);
+    assert.equal(focus[0]!.id, "briefing-payments-e1");
+    assert.equal(focus[0]!.domain, "Event Readiness");
+    assert.match(focus[0]!.detail ?? "", /invoice overdue/);
     assert.equal(classifyUpcomingItems(data).length, 0);
   });
 });

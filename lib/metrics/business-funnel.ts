@@ -2,25 +2,29 @@
  * Phase 2B — End-to-end Business Funnel composition.
  *
  * Orchestrates authoritative Phase 1 / 2A metrics into one coherent story:
- *   Leads → Tours → Bookings → Financially Committed → Booked $ → Collected → Outstanding
+ *   Leads → Tours → Bookings → Contracted $ → Collected → Outstanding
  *
  * Not a second lifecycle or financial architecture. Period strip uses each
  * metric's own clock and NEVER computes conversion % between period stages.
- * Cohort rates use one explicit lead population (see isBusinessFunnelCohortLead).
+ * Cohort includes every lead that entered — including those later marked Lost.
  *
  * Phase 2C may prepend Website / Marketing without rewriting this shape —
  * leave room at the front of the period strip; do not invent visitor counts.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getCanonicalBookings } from "@/lib/metrics/booking";
-import { isBusinessFunnelCohortLead } from "@/lib/metrics/cohort-population";
+import {
+  isBusinessFunnelCohortLead,
+  leadHasLifecycleBooking,
+} from "@/lib/metrics/cohort-population";
+import { listFirstBookedLeadIds } from "@/lib/lifecycle-bookings/service";
 import { getLifecycleBookings } from "@/lib/metrics/lifecycle-booking";
 import {
   getGrossBookedRevenue,
   getOutstandingBalance,
   getPaymentsCollected,
 } from "@/lib/metrics/revenue";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DateWindow = { from: string; to: string };
@@ -38,6 +42,7 @@ export type BusinessFunnelCohortLeadRow = {
   status: string | null;
   sales_stage: string | null;
   first_booked_at: string | null;
+  hasFirstBookedEvent?: boolean;
   /** True when the lead has at least one tour_appointments row (any time). */
   eventuallyToured: boolean;
 };
@@ -60,8 +65,8 @@ export function computeBusinessFunnelCohortStats(
   const cohort = rows.filter(isBusinessFunnelCohortLead);
   const leadsEntered = cohort.length;
   const eventuallyToured = cohort.filter((r) => r.eventuallyToured).length;
-  const eventuallyBooked = cohort.filter((r) => !!r.first_booked_at).length;
-  const touredAndBooked = cohort.filter((r) => r.eventuallyToured && !!r.first_booked_at).length;
+  const eventuallyBooked = cohort.filter((r) => leadHasLifecycleBooking(r)).length;
+  const touredAndBooked = cohort.filter((r) => r.eventuallyToured && leadHasLifecycleBooking(r)).length;
   return {
     leadsEntered,
     eventuallyToured,
@@ -74,15 +79,13 @@ export function computeBusinessFunnelCohortStats(
 }
 
 export type BusinessFunnelPeriod = {
-  /** leads.created_at in window; same exclusion as cohort (cancelled / lost). */
+  /** leads.created_at in window — every remaining lead, including later Lost. */
   leads: number;
   /** tour_appointments.scheduled_at in window (appointment count, not distinct leads). */
   tours: number;
-  /** lifecycle first_booked occurred_at in window (includes leadless direct/import). */
+  /** Dated lifecycle first_booked occurred_at in window (includes leadless bookings). */
   bookings: number;
-  /** canonical_bookings.booked_at in window. */
-  financiallyCommitted: number;
-  /** Gross Booked Revenue — commitment booked_at clock. */
+  /** Gross Booked Revenue — financial contracted-value clock. */
   bookedRevenue: number;
   /** Payments Collected — paid_at clock. */
   collectedRevenue: number;
@@ -106,22 +109,24 @@ export type BusinessFunnelModel = {
 };
 
 export const BUSINESS_FUNNEL_LEADLESS_NOTE =
-  "Leadless / Direct / Import bookings and revenue appear in Bookings and financial stages, but are not included in Lead → Tour or Lead → Booking cohort rates — they did not enter through the lead funnel.";
+  "Clients you added already booked (they were never a lead) count in Bookings and in money, but not in Lead → Tour or Lead → Booking rates.";
 
 export const BUSINESS_FUNNEL_OUTSTANDING_LIMITATION =
-  "Outstanding uses the existing formula: Gross Booked Revenue (Financially Committed clients whose commitment date falls in this period) minus Payments Collected (by payment date in this period). Those are different clocks — not a single point-in-time balance snapshot.";
+  "Outstanding is contracted value (signed contract and first collected payment, dated by that commitment) minus payments collected by payment date. Those are different clocks — not a single point-in-time balance.";
 
 async function countPeriodTours(window: DateWindow): Promise<number> {
   if (!isSupabaseConfigured) return 0;
   const venue = await getCurrentVenue();
   if (!venue) return 0;
   const supabase = await createClient();
-  const { count } = await supabase
+  let q = supabase
     .from("tour_appointments")
-    .select("id", { count: "exact", head: true })
+    .select("id, lead_id, leads!inner(exclude_from_business_reporting)", { count: "exact", head: true })
     .eq("venue_id", venue.id)
-    .gte("scheduled_at", `${window.from}T00:00:00.000Z`)
-    .lte("scheduled_at", `${window.to}T23:59:59.999Z`);
+    .eq("leads.exclude_from_business_reporting", false);
+  if (window.from) q = q.gte("scheduled_at", `${window.from}T00:00:00.000Z`);
+  if (window.to) q = q.lte("scheduled_at", `${window.to}T23:59:59.999Z`);
+  const { count } = await q;
   return count ?? 0;
 }
 
@@ -130,14 +135,15 @@ async function countPeriodBusinessFunnelLeads(window: DateWindow): Promise<numbe
   const venue = await getCurrentVenue();
   if (!venue) return 0;
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("leads")
-    .select("id, status, sales_stage")
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
-  type Row = { id: string; status: string | null; sales_stage: string | null };
-  return ((data ?? []) as Row[]).filter(isBusinessFunnelCohortLead).length;
+  const { count } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
+  return count ?? 0;
 }
 
 async function loadBusinessFunnelCohort(window: DateWindow): Promise<BusinessFunnelCohortStats> {
@@ -148,12 +154,14 @@ async function loadBusinessFunnelCohort(window: DateWindow): Promise<BusinessFun
   if (!venue) return computeBusinessFunnelCohortStats([]);
   const supabase = await createClient();
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("id, status, sales_stage, first_booked_at")
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+  const { data: leads } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id, status, sales_stage, first_booked_at")
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
 
   type LeadRow = {
     id: string;
@@ -165,11 +173,14 @@ async function loadBusinessFunnelCohort(window: DateWindow): Promise<BusinessFun
   if (leadRows.length === 0) return computeBusinessFunnelCohortStats([]);
 
   const leadIds = leadRows.map((l) => l.id);
-  const { data: tours } = await supabase
-    .from("tour_appointments")
-    .select("lead_id")
-    .eq("venue_id", venue.id)
-    .in("lead_id", leadIds);
+  const [{ data: tours }, bookedIds] = await Promise.all([
+    supabase
+      .from("tour_appointments")
+      .select("lead_id")
+      .eq("venue_id", venue.id)
+      .in("lead_id", leadIds),
+    listFirstBookedLeadIds(supabase, venue.id, leadIds),
+  ]);
 
   const touredIds = new Set(
     ((tours ?? []) as { lead_id: string | null }[])
@@ -180,6 +191,7 @@ async function loadBusinessFunnelCohort(window: DateWindow): Promise<BusinessFun
   return computeBusinessFunnelCohortStats(
     leadRows.map((l) => ({
       ...l,
+      hasFirstBookedEvent: bookedIds.has(l.id),
       eventuallyToured: touredIds.has(l.id),
     })),
   );
@@ -187,14 +199,13 @@ async function loadBusinessFunnelCohort(window: DateWindow): Promise<BusinessFun
 
 /**
  * Full Business Funnel for the selected reporting window.
- * Reuses Lifecycle Booking, Financially Committed, and revenue RPCs.
+ * Reuses Lifecycle Booking + revenue RPCs (not the internal financial count).
  */
 export async function getBusinessFunnel(window: DateWindow): Promise<BusinessFunnelModel> {
   const [
     periodLeads,
     periodTours,
     periodBookings,
-    financiallyCommitted,
     bookedRevenue,
     collectedRevenue,
     outstanding,
@@ -203,7 +214,6 @@ export async function getBusinessFunnel(window: DateWindow): Promise<BusinessFun
     countPeriodBusinessFunnelLeads(window),
     countPeriodTours(window),
     getLifecycleBookings(window),
-    getCanonicalBookings(window),
     getGrossBookedRevenue(window),
     getPaymentsCollected(window),
     getOutstandingBalance(window),
@@ -216,7 +226,6 @@ export async function getBusinessFunnel(window: DateWindow): Promise<BusinessFun
       leads: periodLeads,
       tours: periodTours,
       bookings: periodBookings.length,
-      financiallyCommitted: financiallyCommitted.length,
       bookedRevenue: bookedRevenue ?? 0,
       collectedRevenue: collectedRevenue ?? 0,
       outstanding: outstanding ?? 0,

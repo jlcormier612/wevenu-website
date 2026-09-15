@@ -1,15 +1,16 @@
 /**
  * Luv Draft Generation — Phase 2.
  *
- * Uses the Anthropic Messages API (claude-sonnet-4-6) to generate
- * coordinator-ready email drafts. No streaming — waits for the full
- * response before returning so the textarea populates at once.
+ * Uses the OpenAI Chat Completions API to generate coordinator-ready
+ * email drafts. No streaming — waits for the full response before
+ * returning so the textarea populates at once.
  *
  * The coordinator reviews, edits, and sends manually.
  * Luv never sends anything.
  */
 
 import { createClient } from "@/integrations/supabase/server";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -88,47 +89,21 @@ Subject: [subject line]
 Nothing else — no preamble, no closing notes, just the subject and body.`;
 }
 
-// ---- Claude API call -------------------------------------------------------
+// ---- OpenAI API call -------------------------------------------------------
 
-type AnthropicResponse = {
-  content: { type: string; text: string }[];
-};
-
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
-
-  let res: Response;
+async function generateDraftText(prompt: string): Promise<string> {
   try {
-    res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(25_000),
+    return await openAiChatCompletion({
+      messages: [{ role: "user", content: prompt }],
+      maxCompletionTokens: 1024,
+      timeoutMs: 25_000,
     });
   } catch (err) {
-    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+    if (err instanceof Error && err.message === "AI request timed out.") {
       throw new Error("Draft generation failed.");
     }
     throw err;
   }
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${err}`);
-  }
-
-  const data = (await res.json()) as AnthropicResponse;
-  const text = data.content.find((c) => c.type === "text")?.text ?? "";
-  return text.trim();
 }
 
 // ---- Parse generated text --------------------------------------------------
@@ -158,8 +133,9 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       return { ok: false, message: "Luv drafting is disabled in Settings." };
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return { ok: false, message: "Luv drafts are not enabled. Add ANTHROPIC_API_KEY to enable." };
+    if (!isOpenAiConfigured()) {
+      return { ok: false, message: "Luv drafts are not enabled. Add OPENAI_API_KEY to enable." };
+    }
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -171,7 +147,7 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
     const prompt = buildFollowUpPrompt(lead, venue.name, ownerName, settings.preferredTone);
-    const raw = await callClaude(prompt);
+    const raw = await generateDraftText(prompt);
     const { subject, body } = parseEmailDraft(raw);
 
     // Persist the draft
@@ -192,8 +168,8 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
     if (error) throw error;
     return { ok: true, draft: mapDraft(data) };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Draft generation failed.";
-    return { ok: false, message };
+    console.error("[luv/drafts] generateFollowUpDraft failed:", err);
+    return { ok: false, message: "Luv couldn't generate a draft right now. Please try again." };
   }
 }
 

@@ -135,7 +135,7 @@ export default async function LibraryPage() {
         <ToolboxCard title="Planning Templates" description="The task checklists you've refined over the years." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
         <ToolboxCard title="Timeline Templates" description="Reusable day-of schedules for any booking." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
         <ToolboxCard title="Floor Plan Templates" description="Reusable room layouts for any booking." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
-        <ToolboxCard title="Event Order Templates" description="Reusable delivery structures for Event Orders (sections only)." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
+        <ToolboxCard title="Event Order Templates" description="Reusable Event Order structure — sections and optional priced offerings." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
         <ToolboxCard title="Available Inventory Items" description="Physical stock your venue owns — chairs, tables, linens, equipment." href="/library/inventory" count={inventoryItems.length} icon={Package} />
         <ToolboxCard title="Inventory Templates" description="What you typically allocate for a wedding — Ceremony + Reception or Reception Only." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
       </Group>

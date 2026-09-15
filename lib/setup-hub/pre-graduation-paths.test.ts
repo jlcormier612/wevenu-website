@@ -24,6 +24,11 @@ describe("isPreGraduationAllowedPath — Setup Hub destinations before graduatio
     assert.equal(isPreGraduationAllowedPath("/library/packages"), true);
   });
 
+  it("allows Self-Setup intake under /onboarding", () => {
+    assert.equal(isPreGraduationAllowedPath("/onboarding/intake"), true);
+    assert.equal(isPreGraduationAllowedPath("/onboarding"), true);
+  });
+
   it("allows Help & Guides articles linked from stage copy", () => {
     assert.equal(
       isPreGraduationAllowedPath("/help/getting-started-what-to-set-up-before-i-start"),

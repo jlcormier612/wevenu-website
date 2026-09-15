@@ -26,6 +26,8 @@ export type EnrollmentEmailContext = {
   schedulingUrl?: string | null;
   /** e.g. "5–7 business days" */
   implementationTimeline?: string | null;
+  /** e.g. intake URL for White Glove post-purchase */
+  intakeUrl?: string | null;
   activateUrl?: string | null;
 };
 
@@ -38,6 +40,7 @@ function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
     schedulingUrl: ctx.schedulingUrl ?? null,
     implementationTimeline: ctx.implementationTimeline ?? null,
     activateUrl: ctx.activateUrl ?? null,
+    intakeUrl: ctx.intakeUrl ?? null,
   };
 }
 
@@ -81,17 +84,8 @@ export async function sendEnrollmentProductEmails(
       );
     }
 
-    // Optional companion scheduling note (no credentials).
-    results.push(
-      await sendRelationshipEmail({
-        relationshipId: ctx.relationshipId,
-        to,
-        templateId: "kickoff",
-        vars,
-        meta: { trigger: "checkout.session.completed", white_glove: true },
-      }),
-    );
-
+    // Optional companion — do not send fixed timeline kickoff as a promise.
+    // Intake link is the primary next step; kickoff remains available later.
     return results;
   }
 
@@ -121,7 +115,7 @@ export async function sendEnrollmentProductEmails(
   return results;
 }
 
-/** Welcome Home after White Glove Launch Workspace. */
+/** Welcome Home / Set Up Your Login — Product HQ Finish White Glove Setup only. */
 export async function sendWelcomeHomeEmail(input: {
   relationshipId: string;
   customerEmail: string;
@@ -140,7 +134,7 @@ export async function sendWelcomeHomeEmail(input: {
       venueName: input.venueName,
       activateUrl: input.activateUrl,
     },
-    meta: { trigger: "white_glove.launch_workspace" },
+    meta: { trigger: "product.finish_white_glove_setup" },
   });
 }
 

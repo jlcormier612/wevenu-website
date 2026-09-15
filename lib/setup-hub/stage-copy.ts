@@ -1,80 +1,74 @@
 /**
- * Setup Hub stage copy — the Hello to Cheers voice, kept separate from the
- * stage logic. Setup-stage guidance now points to the canonical prescriptive
- * guide for each area so venues do not have to hunt through Help & Guides.
+ * Setup Hub stage copy — decision-focused, not tutorials.
+ * Destinations and Help links come from help-crosswalk.ts (final Help only).
  */
+import { crosswalkRow, type SetupStageKey } from "@/lib/setup-hub/help-crosswalk";
+
 export type StageCopy = {
   what: string;
   why: string;
   whatToDo: string;
   required: boolean;
+  destinationHref: string;
+  destinationLabel: string;
   helpHref?: string;
   helpTitle?: string;
 };
 
-export const STAGE_COPY: Record<string, StageCopy> = {
-  "your-venue": {
-    what: "The basics — your venue's name, contact details, address, hours, and colors.",
-    why: "This is what shows up on every email, contract, and page Hello to Cheers sends on your behalf. It's how couples and coordinators find and recognize you.",
-    whatToDo: "Head to Settings and fill in what you can. Nothing here is final — you can come back and change any of it whenever you like.",
-    required: true,
-    helpHref: "/help/setup-your-venue",
-    helpTitle: "Walk me through this setup",
-  },
-  "calendar-availability": {
-    what: "Your event spaces, how many events you can host at once, and whether couples can book a tour online.",
-    why: "This is what keeps you from double-booking and lets couples see real availability instead of guessing.",
-    whatToDo: "Add your spaces in Settings, and decide whether online tour booking is right for you. If it's not, that's a completely fine answer — just let us know so we stop asking.",
-    required: true,
-    helpHref: "/help/setup-calendar-availability",
-    helpTitle: "Walk me through this setup",
-  },
-  "bring-your-business": {
-    what: "Your existing clients, calendar, tours, holds, vendors, and packages — the business you already run.",
-    why: "So Hello to Cheers opens as a functioning venue, not an empty shell you rebuild by hand.",
-    whatToDo: "First set Calendar & Availability (spaces, capacity, tour windows). Then open Bring Your Business — we'll help you move clients and calendar commitments carefully, with review before anything goes live. Or start fresh and add things as you go.",
-    required: true,
-    helpHref: "/help/setup-bring-your-business",
-    helpTitle: "Walk me through this setup",
-  },
-  "your-offerings": {
-    what: "The packages you sell and the items you use — tables, chairs, and everything else that comes with an event.",
-    why: "This is what a couple actually books. Without at least one package, there's nothing yet for someone to say yes to.",
-    whatToDo: "We've started you off with some common examples to look at. Adjust them, replace them, or build your own — whatever fits how you actually work. If the starting examples are close enough for now, just let us know you've looked them over.",
-    required: true,
-    helpHref: "/help/setup-your-offerings",
-    helpTitle: "Walk me through this setup",
-  },
-  "client-experience": {
-    what: "The contracts, questionnaires, message templates, and planning guides you'll use with couples.",
-    why: "This is what a couple experiences while working with you — how you ask for the right details, what you send them, and how their planning stays organized.",
-    whatToDo: "We've started you off with some common examples in your Library. Look them over and make them yours, or build your own from scratch. If the starting examples work for you as-is, just let us know you've looked them over. When you're ready to send real messages, open Inbox → Communication Health — Email and texting are platform-level, not something you configure in venue Settings.",
-    required: true,
-    helpHref: "/help/setup-client-experience",
-    helpTitle: "Walk me through this setup",
-  },
-  "lead-capture": {
-    what: "How new inquiries actually reach Hello to Cheers.",
+function fromCrosswalk(
+  stage: SetupStageKey,
+  copy: Pick<StageCopy, "what" | "why" | "whatToDo">,
+): StageCopy {
+  const row = crosswalkRow(stage);
+  return {
+    ...copy,
+    required: row.required,
+    destinationHref: row.destinationHref,
+    destinationLabel: row.destinationLabel,
+    helpHref: row.helpSlug ? `/help/${row.helpSlug}` : undefined,
+    helpTitle: row.helpTitle ?? undefined,
+  };
+}
+
+export const STAGE_COPY: Record<SetupStageKey, StageCopy> = {
+  "your-venue": fromCrosswalk("your-venue", {
+    what: "Confirm your venue name, contact details, business hours, logo, hero image, and brand colors.",
+    why: "This is how couples recognize you on emails, contracts, and client-facing pages.",
+    whatToDo: "Open Business & Brand and fill in what you can. You can change any of it later.",
+  }),
+  "calendar-availability": fromCrosswalk("calendar-availability", {
+    what: "Set event spaces, how many events you can host at once, and whether you offer tours.",
+    why: "This keeps you from double-booking and lets couples see real availability — without turning Calendar into a task list.",
+    whatToDo: "Open Availability & Capacity. Business Hours and Tour Availability are separate. If you don't offer tours, choose Not offered — that's a complete answer.",
+  }),
+  "bring-your-business": fromCrosswalk("bring-your-business", {
+    what: "Decide whether to bring existing clients and calendar commitments into Hello to Cheers.",
+    why: "So the product opens as your working venue — or a clean start — on purpose.",
+    whatToDo: "Import through Migration Center, add things yourself, or skip for now. None of these is the “correct” answer.",
+  }),
+  "your-offerings": fromCrosswalk("your-offerings", {
+    what: "Decide what you sell — packages and the inventory that goes with them.",
+    why: "A couple needs something real to book. Starter examples don't count as your configuration until you keep or replace them on purpose.",
+    whatToDo: "Open Packages in Library. Adjust starters, replace them, or build your own. If starters are enough for now, say so explicitly.",
+  }),
+  "client-experience": fromCrosswalk("client-experience", {
+    what: "Decide which contracts, questionnaires, messages, and planning materials you'll use with couples.",
+    why: "This is what couples experience while working with you.",
+    whatToDo: "Open Library. Make starters yours, or keep them deliberately. Seeded templates alone never mark this done.",
+  }),
+  "lead-capture": fromCrosswalk("lead-capture", {
+    what: "Choose how new inquiries reach Hello to Cheers.",
     why: "An inquiry that doesn't land anywhere is a couple you never hear from.",
-    whatToDo: "Pick at least one way inquiries reach you — your website form, forwarded emails, or others — or tell us you'll add leads yourself for now. Either way, we'll help you make sure it's actually working.",
-    required: true,
-    helpHref: "/help/setup-lead-capture",
-    helpTitle: "Walk me through this setup",
-  },
-  "your-team": {
-    what: "The coordinators and staff who'll work alongside you in Hello to Cheers.",
-    why: "So the right people can help with tours, follow-ups, and event day — without sharing your own login.",
-    whatToDo: "Invite anyone who should have their own access. Running things solo for now is completely fine too — just let us know that's the plan.",
-    required: true,
-    helpHref: "/help/setup-your-team",
-    helpTitle: "Walk me through this setup",
-  },
-  financials: {
-    what: "Connecting Stripe for payments and QuickBooks for accounting.",
-    why: "These make collecting payments and keeping your books easier once you're up and running — but they're not something you need before you start.",
-    whatToDo: "Connect these whenever it's convenient — today, next month, whenever. This is entirely optional and won't hold anything up.",
-    required: false,
-    helpHref: "/help/setup-financials",
-    helpTitle: "Walk me through this setup",
-  },
+    whatToDo: "Set up at least one intake path you intend to use, or choose to add leads yourself for now. Optional channels (Facebook, QR, tours) stay optional.",
+  }),
+  "your-team": fromCrosswalk("your-team", {
+    what: "Invite coordinators if anyone else should have their own access.",
+    why: "So the right people can help — without sharing your login.",
+    whatToDo: "Invite teammates when you're ready. Running solo is completely fine and does not leave setup incomplete.",
+  }),
+  financials: fromCrosswalk("financials", {
+    what: "Decide whether couples can pay you online.",
+    why: "Online payment collection is useful once you're taking deposits — it is not required to start.",
+    whatToDo: "Open Financials & Integrations when you're ready to connect Stripe, or skip for now.",
+  }),
 };

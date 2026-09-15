@@ -195,7 +195,7 @@ export type CommitActiveCommitmentOptions = {
    * Never set in production Migration Center commits.
    */
   failAfter?: "event_order" | "invoice" | "schedule" | "payments" | "contract" | "document";
-  /** Optional actor for lifecycle booking history when Mark as already booked. */
+  /** Optional actor for lifecycle booking history on imported booked clients. */
   actorUserId?: string | null;
 };
 
@@ -227,22 +227,16 @@ export async function commitActiveCommitment(
   const resolvedClientId = resolved.clientId;
   const resolvedEventId = resolved.eventId;
 
-  // Explicit historical payment-timing date only — never reinterpret contractSignedAt
-  // as events.booked_at, and never treat this as lifecycle Booking.
-  if (n.bookedAt?.trim()) {
-    await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
-  }
-
-  async function recordImportLifecycleIfMarked(): Promise<void> {
-    if (!n.markAsAlreadyBooked) return;
+  async function recordImportLifecycle(): Promise<void> {
     const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
+    const knownDate = n.lifecycleBookedAt?.trim() || null;
     const recorded = await recordLifecycleBooking(client, {
       venueId,
       clientId: resolvedClientId,
       origin: "import",
-      occurredAt: n.lifecycleBookedAt?.trim() || null,
+      occurredAt: knownDate,
       actorUserId: opts?.actorUserId ?? null,
-      metadata: { source: "active_commitment_mark_as_already_booked" },
+      metadata: { source: "active_commitment_import", dateKnown: !!knownDate },
     });
     if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
   }
@@ -265,7 +259,12 @@ export async function commitActiveCommitment(
         .eq("execution_origin", "external").eq("status", "signed").limit(1)
         .maybeSingle<{ id: string }>();
       // Lifecycle mark is independent of financial idempotency — safe to retry.
-      await recordImportLifecycleIfMarked();
+      // Payment-timing booked_at is also safe to stamp on idempotent retry when
+      // the import supplies an explicit historical date.
+      if (n.bookedAt?.trim()) {
+        await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
+      }
+      await recordImportLifecycle();
       return {
         ok: true,
         eventId: resolved.eventId,
@@ -494,7 +493,16 @@ export async function commitActiveCommitment(
       if (!shared.ok) throw new Error(shared.message);
     }
 
-    await recordImportLifecycleIfMarked();
+    // Stamp payment-timing booked_at only after the commitment write succeeded.
+    // Doing this before the try left booked_at set when compensation rolled back
+    // EO/invoice/schedule — outside the compensation boundary.
+    // Explicit historical date only — never reinterpret contractSignedAt.
+    // Payment timing only — never treat this as lifecycle Booking.
+    if (n.bookedAt?.trim()) {
+      await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
+    }
+
+    await recordImportLifecycle();
 
     return {
       ok: true,

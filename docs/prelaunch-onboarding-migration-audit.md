@@ -79,7 +79,7 @@ Three real surfaces already exist, all reusing one shared "Welcome! I'm Luv." in
 - Dashboard intro (gated on `!venue.luvIntroSeenAt`, dismiss is permanent).
 - **`lib/luv/setup-observations.ts`'s `computeSetupGapObservations()`** — converts the Activation Engine's top-3 incomplete checklist items into Luv's normal observation stream, reusing the same `GAP_COPY` table the dashboard card uses. Explicit design rule already in the docs: *"Luv never points at an answer, she does it with you."*
 - The wizard's own `journeyLine()` — one persona-varying greeting line shown above each step (`components/setup/setup-wizard.tsx:52-61`).
-- **Separately, the Migration Center already has its own Luv integration** (`lib/luv/import-assist.ts`) for two distinct jobs: turning unstructured pasted/Word/PDF text into proposed structured rows, and suggesting column→field mappings for already-columnar data. This is real, live (Anthropic `claude-sonnet-4-6`), and everything it proposes is reviewed in the same map→preview→import flow — nothing is ever saved from Luv's proposal alone.
+- **Separately, the Migration Center already has its own Luv integration** (`lib/luv/import-assist.ts`) for two distinct jobs: turning unstructured pasted/Word/PDF text into proposed structured rows, and suggesting column→field mappings for already-columnar data. This is real, live (Venue OpenAI via `lib/ai/openai.ts`), and everything it proposes is reviewed in the same map→preview→import flow — nothing is ever saved from Luv's proposal alone.
 
 **Verdict:** Part 9's Luv requirements are largely already met by existing infrastructure. This initiative's job is to make sure the *new* onboarding stages narrate through the same `GAP_COPY`/journey-line patterns rather than inventing new Luv UI.
 
@@ -110,7 +110,7 @@ Real and substantially complete. `app/(app)/settings/import/page.tsx` + `app/(ap
 
 This satisfies the initiative's explicit instruction ("imports use the SAME business rules as normal product creation... do not build parallel data-writing paths") completely, for these five domains, already, before this initiative began.
 
-**File parsing:** `lib/import/file-parsing.ts` — ExcelJS for `.xlsx`/`.xls`, mammoth for `.docx` (raw text), `pdf-parse` for `.pdf` (raw text, with a "try Copy/Paste instead" fallback message if extraction is empty). CSV/paste parsed client-side with PapaParse. Unstructured text (Word/PDF/non-tabular paste) routes through a live Luv/Anthropic proposal step (`proposeStructuredRows()`), explicitly flagged `assisted: true` for extra scrutiny — never saved without review.
+**File parsing:** `lib/import/file-parsing.ts` — ExcelJS for `.xlsx`/`.xls`, mammoth for `.docx` (raw text), `pdf-parse` for `.pdf` (raw text, with a "try Copy/Paste instead" fallback message if extraction is empty). CSV/paste parsed client-side with PapaParse. Unstructured text (Word/PDF/non-tabular paste) routes through a live Luv/OpenAI proposal step (`proposeStructuredRows()` via `lib/ai/openai.ts`), explicitly flagged `assisted: true` for extra scrutiny — never saved without review.
 
 **A real defensive fix already shipped:** `looksLikeHeaderRow()` (`lib/import/utils.ts`) — added after a real customer's export files silently lost their first record to being consumed as a header row.
 

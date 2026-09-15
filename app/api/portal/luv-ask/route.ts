@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import {
   checkLuvAskRateLimit,
   isLuvAskQuestionTooLong,
@@ -137,8 +138,8 @@ function buildContext(info: VenueInfo, venueName: string, voiceInstruction: stri
   return parts.join("\n\n");
 }
 
-function parseClaudeJson(raw: string): { answer: string; guideSection: string | null } {
-  // Strip markdown fences Claude might add despite instructions
+function parseAskJson(raw: string): { answer: string; guideSection: string | null } {
+  // Strip markdown fences the model might add despite instructions
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   try {
     const parsed = JSON.parse(cleaned) as { answer?: unknown; guideSection?: unknown };
@@ -203,15 +204,15 @@ export async function POST(request: Request) {
   const settings = await getLuvSettingsForVenueId(venueId);
   if (!isLuvDraftingEnabled(settings)) {
     return NextResponse.json({
-      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      answer: "Luv isn't available right now — ask your venue coordinator directly.",
       guideSection: null,
     });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const apiKeyConfigured = isOpenAiConfigured();
+  if (!apiKeyConfigured) {
     return NextResponse.json({
-      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      answer: "Luv isn't available right now — ask your venue coordinator directly.",
       guideSection: null,
     });
   }
@@ -235,37 +236,26 @@ export async function POST(request: Request) {
   const systemPrompt = buildContext(info, venueName, luvAskVoiceInstruction(settings.preferredTone));
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key":           apiKey,
-        "anthropic-version":   "2023-06-01",
-        "content-type":        "application/json",
-      },
-      body: JSON.stringify({
-        model:      "claude-sonnet-4-6",
-        max_tokens: 600,
-        system:     systemPrompt,
-        messages:   [{ role: "user", content: `Question from the couple: "${question.trim()}"` }],
-      }),
-      signal: AbortSignal.timeout(25_000),
+    const raw = await openAiChatCompletion({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Question from the couple: "${question.trim()}"` },
+      ],
+      maxCompletionTokens: 600,
+      timeoutMs: 25_000,
     });
+    const { answer, guideSection } = parseAskJson(raw);
 
-    if (!res.ok) {
-      console.error("Anthropic API error:", await res.text());
+    return NextResponse.json({ answer, guideSection });
+  } catch (err) {
+    console.error("luv-ask error:", err);
+    const message = err instanceof Error ? err.message : "";
+    if (message.startsWith("OpenAI API error")) {
       return NextResponse.json({
         answer: "Luv had trouble answering that right now. Try asking your venue coordinator directly.",
         guideSection: null,
       });
     }
-
-    const data = await res.json() as { content: { type: string; text: string }[] };
-    const raw = data.content.find((c) => c.type === "text")?.text ?? "";
-    const { answer, guideSection } = parseClaudeJson(raw);
-
-    return NextResponse.json({ answer, guideSection });
-  } catch (err) {
-    console.error("luv-ask error:", err);
     return NextResponse.json({
       answer: "Luv couldn't connect right now. Please try again.",
       guideSection: null,

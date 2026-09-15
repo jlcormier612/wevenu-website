@@ -18,7 +18,7 @@ export default async function SeriesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Automations"
-        description="A simple way to make sure your leads get the right follow-up — without remembering every next message yourself."
+        description="When something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients."
         actions={
           <Button render={<Link href="/communication/series/new" />}>+ New Automation</Button>
         }

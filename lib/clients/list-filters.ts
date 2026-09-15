@@ -8,6 +8,7 @@
 export type ClientListFilterKey =
   | "all"
   | "upcoming"
+  | "coming_up"
   | "wedding_week"
   | "needs_attention"
   | "past"
@@ -16,11 +17,16 @@ export type ClientListFilterKey =
 export const CLIENT_LIST_FILTERS: { key: ClientListFilterKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "upcoming", label: "Upcoming" },
+  { key: "coming_up", label: "Coming up" },
   { key: "wedding_week", label: "Wedding Week" },
   { key: "needs_attention", label: "Needs Attention" },
   { key: "past", label: "Past" },
   { key: "cancelled", label: "Cancelled" },
 ];
+
+/** Near-term horizon for Dashboard "Coming up" — same 60-day window the
+ *  dashboard events query uses (lib/dashboard/service.ts). */
+export const COMING_UP_HORIZON_DAYS = 60;
 
 const FILTER_KEYS = new Set<string>(CLIENT_LIST_FILTERS.map((f) => f.key));
 
@@ -29,6 +35,7 @@ export type ClientListFilterRecord = {
   id: string;
   status: string;
   eventDate: string | null;
+  excludeFromBusinessReporting?: boolean;
 };
 
 export type ClientListFilterContext = {
@@ -36,6 +43,8 @@ export type ClientListFilterContext = {
   today: string;
   /** Inclusive end of Wedding Week (today + 7 days), YYYY-MM-DD. */
   weekOut: string;
+  /** Inclusive end of Coming up (today + COMING_UP_HORIZON_DAYS), YYYY-MM-DD. */
+  comingUpOut: string;
   attentionClientIds: ReadonlySet<string>;
 };
 
@@ -45,7 +54,16 @@ export type ClientListFilterContext = {
  * (event dates are date-only strings, not timestamps).
  */
 export function weddingWeekEnd(today: string): string {
-  return new Date(new Date(today + "T00:00:00Z").getTime() + 7 * 24 * 60 * 60 * 1000)
+  return addDaysIso(today, 7);
+}
+
+/** Inclusive end of the Dashboard Coming up window (today + 60 days). */
+export function comingUpHorizonEnd(today: string): string {
+  return addDaysIso(today, COMING_UP_HORIZON_DAYS);
+}
+
+function addDaysIso(today: string, days: number): string {
+  return new Date(new Date(today + "T00:00:00Z").getTime() + days * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
 }
@@ -62,7 +80,8 @@ export function clientListFilterHref(key: ClientListFilterKey): string {
 /**
  * Upcoming = booked client with an event date on or after today, not cancelled.
  * Planning / Confirmed / Complete / any non-cancelled status all count.
- * There is no extra "confirmed only" or "next 60 days" requirement.
+ * Coming up = same population restricted to the next COMING_UP_HORIZON_DAYS
+ * (Dashboard attention card + destination).
  */
 export function clientMatchesListFilter(
   client: ClientListFilterRecord,
@@ -74,6 +93,14 @@ export function clientMatchesListFilter(
       return client.status !== "cancelled";
     case "upcoming":
       return client.status !== "cancelled" && !!client.eventDate && client.eventDate >= ctx.today;
+    case "coming_up":
+      return (
+        !client.excludeFromBusinessReporting &&
+        client.status !== "cancelled" &&
+        !!client.eventDate &&
+        client.eventDate >= ctx.today &&
+        client.eventDate <= ctx.comingUpOut
+      );
     case "wedding_week":
       return (
         client.status !== "cancelled" &&

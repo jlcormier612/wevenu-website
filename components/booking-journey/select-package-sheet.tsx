@@ -27,6 +27,8 @@ export function SelectPackageSheet({
   leadId,
   clientId,
   eventId,
+  defaultDepositPercent = 25,
+  initialPaymentRequired = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,6 +36,8 @@ export function SelectPackageSheet({
   leadId?: string;
   clientId?: string;
   eventId?: string;
+  defaultDepositPercent?: number;
+  initialPaymentRequired?: boolean;
 }) {
   const router = useRouter();
   const [packageId, setPackageId] = React.useState("");
@@ -50,7 +54,12 @@ export function SelectPackageSheet({
     const pkg = packages.find((p) => p.id === id);
     const price = pkg?.basePrice != null ? Number(pkg.basePrice) : null;
     if (price != null && price > 0) {
-      setDeposit(String(suggestDepositAmount(price)));
+      if (!initialPaymentRequired) {
+        setDeposit("0");
+      } else {
+        const venueDefault = Math.round((price * (defaultDepositPercent / 100) + Number.EPSILON) * 100) / 100;
+        setDeposit(String(suggestDepositAmount(price, venueDefault, { initialPaymentRequired })));
+      }
     } else {
       setDeposit("");
     }
@@ -67,28 +76,39 @@ export function SelectPackageSheet({
       setError("Choose a package with a price.");
       return;
     }
-    const depositAmount = parseFloat(deposit.replace(/[$,]/g, ""));
-    if (!(depositAmount >= 0) || Number.isNaN(depositAmount)) {
+    const depositAmount = initialPaymentRequired
+      ? parseFloat(deposit.replace(/[$,]/g, ""))
+      : 0;
+    if (initialPaymentRequired && (!(depositAmount >= 0) || Number.isNaN(depositAmount))) {
       setError("Enter a valid deposit amount.");
       return;
     }
     startTransition(async () => {
-      const result = await createSelectedPackageAction({
-        packageId: selected.id,
-        leadId,
-        clientId,
-        eventId,
-        depositAmount,
-      });
-      if (!result.ok) {
-        setError(result.message ?? result.errors?.depositAmount ?? "Could not save selected package.");
-        toast.error(result.message ?? "Could not save selected package.");
-        return;
+      try {
+        const result = await createSelectedPackageAction({
+          packageId: selected.id,
+          leadId,
+          clientId,
+          eventId,
+          depositAmount,
+        });
+        if (!result.ok) {
+          setError(result.message ?? result.errors?.depositAmount ?? "Could not save selected package.");
+          toast.error(result.message ?? "Could not save selected package.");
+          return;
+        }
+        toast.success("Selected package saved.");
+        onOpenChange(false);
+        reset();
+        router.refresh();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+          toast.error("The app was updated — reload this page and select the package again.");
+        } else {
+          toast.error("Could not save selected package. Reload and try again.");
+        }
       }
-      toast.success("Selected package saved.");
-      onOpenChange(false);
-      reset();
-      router.refresh();
     });
   }
 
@@ -124,7 +144,7 @@ export function SelectPackageSheet({
                 <button
                   key={pkg.id}
                   type="button"
-                  onClick={() => setPackageId(pkg.id)}
+                  onClick={() => choosePackage(pkg.id)}
                   className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
                     active ? "border-heading bg-muted/40" : "border-border hover:bg-muted/20"
                   }`}
@@ -170,6 +190,7 @@ export function SelectPackageSheet({
                 ))}
               </ul>
             )}
+            {initialPaymentRequired ? (
             <div className="space-y-2">
               <Label htmlFor="deposit-amount">Deposit</Label>
               <Input
@@ -188,6 +209,11 @@ export function SelectPackageSheet({
                 )}
               </p>
             </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                No deposit is required to book. Agreement completion books this package.
+              </p>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         )}

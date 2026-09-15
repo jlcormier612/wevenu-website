@@ -23,14 +23,15 @@ function mockClient(opts: {
         };
       }
       if (table === "conversations") {
-        return {
-          select: () => ({
-            eq: () => ({
-              maybeSingle: async () => ({
-                data: opts.conversationId ? { id: opts.conversationId } : null,
-              }),
-            }),
+        // findVenueCoupleConversationId chains .eq(relationship_id).eq(conversation_kind)
+        const chain = {
+          eq: () => chain,
+          maybeSingle: async () => ({
+            data: opts.conversationId ? { id: opts.conversationId } : null,
           }),
+        };
+        return {
+          select: () => chain,
           insert: () => ({
             select: () => ({
               single: async () => ({ data: { id: "conv-new" }, error: null }),

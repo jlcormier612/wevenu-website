@@ -32,7 +32,10 @@ import {
   venueSignContractAction,
   withdrawVenueSignatureAction,
 } from "@/app/(app)/contracts/actions";
+import { SignForm } from "@/app/sign/[token]/sign-form";
+import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
+import { ContractSigningArtifact } from "@/components/contracts/contract-signing-artifact";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
@@ -46,6 +49,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatContractDate } from "@/lib/contracts/constants";
+import { resolveContractBrandPresentation, type ContractBrandingSnapshot } from "@/lib/contracts/branding";
 import {
   anyClientHasSigned,
   CONTRACT_SIGNATURE_CONSENT_TEXT,
@@ -67,15 +71,22 @@ export function ContractDetail({
   contract,
   finalized,
   venueName,
+  venueBrand = null,
   versionFamily = [],
+  initialReview = false,
 }: {
   contract: ContractWithDetails;
   finalized: boolean;
   venueName: string;
+  venueBrand?: ContractBrandingSnapshot | null;
   versionFamily?: ContractVersionEntry[];
+  initialReview?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
+  const [reviewOpen, setReviewOpen] = React.useState(initialReview);
+  const [releaseMessage, setReleaseMessage] = React.useState("");
+  const [sendPending, startSend] = React.useTransition();
   const [editTitle, setEditTitle] = React.useState(contract.title);
   const [editContent, setEditContent] = React.useState(contract.content);
   const [savePending, startSave] = React.useTransition();
@@ -254,6 +265,19 @@ export function ContractDetail({
     });
   }
 
+  function handleSendForSignature() {
+    startSend(async () => {
+      const result = await sendContractAction(contract.id, releaseMessage);
+      if (result.ok) {
+        toast.success("Contract sent for signature.");
+        setReviewOpen(false);
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not send for signature.");
+      }
+    });
+  }
+
   const expiry = contract.expiresAt ? (() => {
     const days = Math.floor((new Date(contract.expiresAt + "T12:00:00").getTime() - Date.now()) / 86_400_000);
     const expired = days < 0;
@@ -300,16 +324,9 @@ export function ContractDetail({
               <Pencil className="mr-1 h-3.5 w-3.5" />Sign as venue
             </Button>
           ) : contract.status === "draft" && venueSigned ? (
-            <ShareDialog
-              trigger={<Button size="sm"><Send className="mr-1 h-3.5 w-3.5" />Release to client</Button>}
-              title="Release Contract"
-              recipient={shareRecipient}
-              whatHappensNext="Each required client signer receives their own signing link. The agreement is already signed by the venue."
-              defaultMessage={shareDefaultMessage}
-              sendLabel="Release to client"
-              onSend={async (message) => sendContractAction(contract.id, message)}
-              onSent={() => router.refresh()}
-            />
+            <Button size="sm" onClick={() => { setReleaseMessage(shareDefaultMessage); setReviewOpen(true); }}>
+              <Send className="mr-1 h-3.5 w-3.5" />Review contract
+            </Button>
           ) : contract.status === "sent" ? (
             <ShareDialog
               trigger={<Button size="sm" variant="outline"><RotateCcw className="mr-1 h-3.5 w-3.5" />Resend</Button>}
@@ -350,6 +367,11 @@ export function ContractDetail({
           {canEditContent && (
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+            </Button>
+          )}
+          {contract.status === "draft" && !venueSigned && (
+            <Button variant="outline" size="sm" onClick={() => setReviewOpen(true)}>
+              Review contract
             </Button>
           )}
           {contract.status === "draft" && venueSigned && (
@@ -624,6 +646,54 @@ export function ContractDetail({
           </CardContent>
         </Card>
       )}
+
+      <ArtifactReviewOverlay
+        open={reviewOpen}
+        eyebrow="Customer-facing agreement"
+        title={contract.title}
+        onBack={() => setReviewOpen(false)}
+        primary={
+          contract.status === "draft" && venueSigned ? (
+            <Button size="sm" onClick={handleSendForSignature} disabled={sendPending}>
+              {sendPending ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                "Send for signature"
+              )}
+            </Button>
+          ) : undefined
+        }
+        footer={
+          contract.status === "draft" && venueSigned ? (
+            <div className="space-y-2">
+              <Label htmlFor="contract-release-message" className="text-xs text-muted-foreground">
+                Message to the couple (optional)
+              </Label>
+              <Textarea
+                id="contract-release-message"
+                value={releaseMessage}
+                onChange={(e) => setReleaseMessage(e.target.value)}
+                rows={2}
+                className="text-sm"
+              />
+            </div>
+          ) : contract.status === "draft" && !venueSigned ? (
+            <p className="text-sm text-muted-foreground">
+              Sign as the venue on the contract page before sending for signature. Reviewing does not send or sign.
+            </p>
+          ) : null
+        }
+      >
+        <ContractSigningArtifact
+          title={contract.title}
+          content={contract.content}
+          brand={resolveContractBrandPresentation(contract.brandingSnapshot, venueBrand)}
+          signatureSlot={<SignForm preview />}
+        />
+      </ArtifactReviewOverlay>
     </div>
   );
 }

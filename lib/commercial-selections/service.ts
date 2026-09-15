@@ -92,6 +92,7 @@ export async function createSelectedPackageFromLibrary(input: {
   eventId?: string;
   depositAmount?: number;
   venueDefaultDeposit?: number | null;
+  initialPaymentRequired?: boolean;
 }): Promise<CreateCommercialSelectionResult> {
   if (!input.leadId && !input.clientId) {
     return { ok: false, message: "A lead or client is required." };
@@ -107,7 +108,9 @@ export async function createSelectedPackageFromLibrary(input: {
   const depositAmount = roundMoney(
     input.depositAmount != null
       ? input.depositAmount
-      : suggestDepositAmount(totalAmount, input.venueDefaultDeposit),
+      : suggestDepositAmount(totalAmount, input.venueDefaultDeposit, {
+          initialPaymentRequired: input.initialPaymentRequired,
+        }),
   );
   const amountErrors = validateAmounts(totalAmount, depositAmount);
   if (amountErrors) return { ok: false, errors: amountErrors };
@@ -188,7 +191,7 @@ export async function sendOfferForSelection(input: {
       return { ok: false, message: "This selected package was replaced. Choose a package again." };
     }
     if (existing.status === "accepted") {
-      return { ok: false, message: "This offer was already accepted." };
+      return { ok: false, message: "This proposal was already accepted." };
     }
     const acceptToken = existing.acceptToken ?? randomBytes(24).toString("hex");
     const updated = await repo.markOffered(
@@ -198,7 +201,7 @@ export async function sendOfferForSelection(input: {
       acceptToken,
       input.message?.trim() || null,
     );
-    if (!updated) return { ok: false, message: "Could not send the offer." };
+    if (!updated) return { ok: false, message: "Could not send the proposal." };
     return { ok: true, acceptToken, selection: updated };
   });
   return result as

@@ -4,6 +4,7 @@
  * Maps snake_case rows to camelCase domain types. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { identityRpcFields } from "@/lib/identity/decision";
 import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
 import { TourCapacityWriteError, tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
@@ -188,6 +189,7 @@ type LeadRow = {
   source_data: Record<string, unknown> | null;
   relationship_id: string | null;
   intake_confidence: number | null;
+  exclude_from_business_reporting?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -239,6 +241,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     sourceData: r.source_data ?? null,
     relationshipId: r.relationship_id ?? null,
     intakeConfidence: r.intake_confidence ?? null,
+    excludeFromBusinessReporting: r.exclude_from_business_reporting ?? false,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -386,6 +389,7 @@ export async function insertLead(
       // which the notify_new_lead trigger checks to suppress the venue's
       // "New inquiry" notification for backfilled data.
       isHistoricalImport: historicalImport,
+      ...identityRpcFields(input.identityDecision),
     },
   });
   if (error) throw error;
@@ -462,13 +466,18 @@ export async function deleteNote(
   client: DbClient,
   venueId: string,
   noteId: string,
-): Promise<void> {
-  const { error } = await client
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
     .from("lead_notes")
     .delete()
     .eq("id", noteId)
-    .eq("venue_id", venueId);
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not delete this note." };
+  }
+  return { ok: true };
 }
 
 // ---- tasks ------------------------------------------------------------------
@@ -514,13 +523,18 @@ export async function deleteTask(
   client: DbClient,
   venueId: string,
   taskId: string,
-): Promise<void> {
-  const { error } = await client
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client
     .from("lead_tasks")
     .delete()
     .eq("id", taskId)
-    .eq("venue_id", venueId);
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Could not delete this task." };
+  }
+  return { ok: true };
 }
 
 // ---- Sprint 6: edit + relationship + activities ------------------------------

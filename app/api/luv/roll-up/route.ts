@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import { generateRollUp, buildPromptData } from "@/lib/luv/roll-up-service";
+import { isOpenAiConfigured, OPENAI_MODEL_DEFAULT } from "@/lib/ai/openai";
 import type { VenueAnalytics, HealthScores } from "@/lib/analytics/types";
 import type { LuvRollUp } from "@/lib/luv/roll-up-types";
 
@@ -15,8 +16,7 @@ export async function GET() {
 
 // POST — generate a new roll-up and persist it
 export async function POST() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (!isOpenAiConfigured()) {
     return NextResponse.json(
       { error: "luv_not_configured", message: "Luv isn't configured yet." },
       { status: 503 },
@@ -38,7 +38,7 @@ export async function POST() {
     return NextResponse.json({ error: "no_data", message: "No analytics data available yet." }, { status: 422 });
   }
 
-  const observations = await generateRollUp(analytics, health, apiKey);
+  const observations = await generateRollUp(analytics, health);
   if (!observations) {
     return NextResponse.json({ error: "generation_failed", message: "Luv had trouble generating a roll-up. Try again." }, { status: 500 });
   }
@@ -54,7 +54,7 @@ export async function POST() {
   const { data: saved, error: saveErr } = await supabase.rpc("save_luv_rollup", {
     p_metrics_snapshot: metricsSnapshot,
     p_observations:     observations,
-    p_model_used:       "claude-sonnet-4-6",
+    p_model_used:       OPENAI_MODEL_DEFAULT,
   });
 
   if (saveErr || (saved as { error?: string })?.error) {
@@ -66,6 +66,6 @@ export async function POST() {
     id:           (saved as { id?: string })?.id,
     generatedAt:  new Date().toISOString(),
     observations,
-    modelUsed:    "claude-sonnet-4-6",
+    modelUsed:    OPENAI_MODEL_DEFAULT,
   });
 }

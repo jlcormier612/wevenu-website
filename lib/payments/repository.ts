@@ -21,7 +21,10 @@ type ScheduleRow = {
   title: string; total_amount: number; currency: string; notes: string | null;
   acknowledged_invoice_total: number | null;
   created_at: string; updated_at: string;
-  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
+  clients?: {
+    first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null;
+    exclude_from_business_reporting?: boolean;
+  } | null;
   events?: { event_date: string | null; booked_at: string | null } | null;
 };
 
@@ -59,6 +62,7 @@ function mapSchedule(r: ScheduleRow): PaymentSchedule {
     createdAt: r.created_at, updatedAt: r.updated_at,
     clientName: cn, eventDate: r.events?.event_date ?? null,
     bookedAt: r.events?.booked_at ?? null,
+    excludeFromBusinessReporting: r.clients?.exclude_from_business_reporting ?? false,
   };
 }
 
@@ -84,7 +88,7 @@ function mapItem(r: ItemRow): PaymentLineItem {
 
 export async function getSchedules(client: DbClient, venueId: string): Promise<PaymentSchedule[]> {
   const { data, error } = await client.from("payment_schedules")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date, booked_at)")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, exclude_from_business_reporting), events(event_date, booked_at)")
     .eq("venue_id", venueId).order("created_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as ScheduleRow[]).map(mapSchedule);
@@ -100,7 +104,7 @@ export async function getAllLineItems(client: DbClient, venueId: string): Promis
 export async function getSchedule(client: DbClient, venueId: string, id: string): Promise<PaymentScheduleWithDetails | null> {
   const [sRes, iRes, aRes] = await Promise.all([
     client.from("payment_schedules")
-      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date, booked_at)")
+      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, exclude_from_business_reporting), events(event_date, booked_at)")
       .eq("id", id).eq("venue_id", venueId).maybeSingle<ScheduleRow>(),
     client.from("payment_line_items").select("*")
       .eq("schedule_id", id).eq("venue_id", venueId)

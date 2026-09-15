@@ -133,7 +133,7 @@ describe("Public offer retrieve + accept (logged-out / no venue session)", () =>
       accept: () => ({ data: { ok: false, error: "invalid_token" }, error: null }),
     });
     const result = await acceptOfferByToken("bogus", client);
-    assert.deepEqual(result, { ok: false, message: "This offer link is not valid." });
+    assert.deepEqual(result, { ok: false, message: "This proposal link is not valid." });
   });
 
   it("non-offered / expired-style status cannot accept", async () => {
@@ -141,7 +141,7 @@ describe("Public offer retrieve + accept (logged-out / no venue session)", () =>
       accept: () => ({ data: { ok: false, error: "not_offered" }, error: null }),
     });
     const result = await acceptOfferByToken("stale-token", client);
-    assert.deepEqual(result, { ok: false, message: "This offer cannot be accepted." });
+    assert.deepEqual(result, { ok: false, message: "This proposal cannot be accepted." });
   });
 
   it("mapOfferRpcData / mapAcceptRpcResult reject empty and error payloads", () => {
@@ -149,7 +149,7 @@ describe("Public offer retrieve + accept (logged-out / no venue session)", () =>
     assert.equal(mapOfferRpcData({ error: "invalid_token" }), null);
     assert.deepEqual(mapAcceptRpcResult(null, null), {
       ok: false,
-      message: "Could not accept this offer.",
+      message: "Could not accept this proposal.",
     });
     assert.deepEqual(mapAcceptRpcResult({ ok: true, alreadyAccepted: true }, null), {
       ok: true,

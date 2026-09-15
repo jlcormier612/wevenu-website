@@ -22,13 +22,20 @@ export const CHANNEL_HAS_VERIFICATION: Record<LeadCaptureChannelKey, boolean> = 
   manual: false, // nothing to verify — choosing it is the whole action
 };
 
+export type OnboardingType = "self_setup" | "white_glove";
+
+/** Explicit BYB choice when the venue has not imported data. */
+export type BringYourBusinessPath = "individual" | "skipped";
+
 export type SetupHubState = {
   venueId: string;
-  onboardingType: "self_setup" | "white_glove";
+  onboardingType: OnboardingType;
 
   yourVenueReviewedAt: string | null;
   calendarAvailabilityReviewedAt: string | null;
   bringYourBusinessManualConfirmedAt: string | null;
+  /** individual = add myself; skipped = not now. Imported is derived separately. */
+  bringYourBusinessPath: BringYourBusinessPath | null;
   yourOfferingsReviewedAt: string | null;
   clientExperienceReviewedAt: string | null;
 

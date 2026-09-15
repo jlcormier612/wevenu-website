@@ -26,8 +26,8 @@ export function OperationalReadinessCard({ readiness }: { readiness: Operational
         </CardTitle>
         <CardDescription>
           {allReady
-            ? "Everything below is in place for a real inquiry, start to finish."
-            : `${readiness.readyCount} of ${readiness.applicableCount} ready. This isn't a requirement to keep using Hello to Cheers — just a look at what's in place for your next real inquiry.`}
+            ? "A diagnostic look at whether the basics are in place for a real inquiry — not a second setup scoreboard, and never required to keep using Hello to Cheers."
+            : "A diagnostic look at what's in place for your next real inquiry. Not a setup checklist and not required to keep going."}
         </CardDescription>
       </CardHeader>
       <CardContent>

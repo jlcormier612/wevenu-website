@@ -35,7 +35,11 @@ export async function markStageReviewedAction(
 }
 
 export async function setBringYourBusinessManualAction() {
-  const result = await setupHub.setBringYourBusinessManual();
+  return setBringYourBusinessPathAction("skipped");
+}
+
+export async function setBringYourBusinessPathAction(path: "individual" | "skipped") {
+  const result = await setupHub.setBringYourBusinessPath(path);
   if (result.ok) revalidatePath("/setup-hub");
   return result;
 }

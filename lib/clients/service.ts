@@ -30,12 +30,12 @@ import { clientDisplayName } from "@/lib/clients/constants";
 import {
   countClientListFilters,
   weddingWeekEnd,
+  comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
 import { venueToday } from "@/lib/venue/timezone";
 import type { Lead } from "@/lib/leads/types";
-import { updateLeadSalesStage } from "@/lib/leads/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { exitEnrollmentsForBooking } from "@/lib/message-sequences/service";
 
@@ -182,6 +182,7 @@ export async function getClientAttentionFlags(): Promise<Set<string>> {
 const EMPTY_CLIENT_LIST_COUNTS: Record<ClientListFilterKey, number> = {
   all: 0,
   upcoming: 0,
+  coming_up: 0,
   wedding_week: 0,
   needs_attention: 0,
   past: 0,
@@ -205,6 +206,7 @@ export async function getClientListFilterCounts(): Promise<Record<ClientListFilt
   return countClientListFilters(clients, {
     today,
     weekOut: weddingWeekEnd(today),
+    comingUpOut: comingUpHorizonEnd(today),
     attentionClientIds,
   });
 }
@@ -254,6 +256,29 @@ async function createClientCore(
     actorUserId?: string | null;
   },
 ): Promise<CreateClientResult> {
+  if (!historicalImport && !importAsHistoricalRecord && !input.skipIdentityReview) {
+    const { findPossibleDuplicateMatches } = await import("@/lib/leads/duplicate-detection");
+    const { requireIdentityDecision } = await import("@/lib/identity/decision");
+    const matches = await findPossibleDuplicateMatches(supabase, venueId, {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phone: input.phone,
+      partnerFirstName: input.partnerFirstName,
+      partnerLastName: input.partnerLastName,
+      partnerEmail: input.partnerEmail,
+    });
+    const decided = requireIdentityDecision(matches, input.identityDecision);
+    if (!decided.ok) {
+      return {
+        ok: false,
+        code: "identity_review_required",
+        matches: decided.matches,
+        message: "We may already have this customer.",
+      };
+    }
+  }
+
   const asHistorical = importAsHistoricalRecord && isPastEventDate(input.eventDate);
   if (importAsHistoricalRecord && input.eventDate && !asHistorical) {
     return { ok: false, message: "Only past Events can be imported as historical records. Future bookings still follow availability." };
@@ -302,21 +327,24 @@ async function createClientCore(
   }
 
   // Lifecycle Booking (distinct from events.booked_at payment timing):
-  // - Normal Direct Add with a dated Event → origin=direct
-  // - Explicit migration mark → origin=import (optional historical date)
+  // - Live Direct Add with a dated Event → origin=direct, date = now
+  // - Historical / brought-in booked client → origin=import; date only if known
   // - Never infer from contract/payment alone
   const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
-  if (lifecycleOpts?.markAsAlreadyBooked) {
-    const recorded = await recordLifecycleBooking(supabase, {
-      venueId,
-      clientId,
-      origin: "import",
-      occurredAt: lifecycleOpts.lifecycleBookedAt ?? null,
-      actorUserId: lifecycleOpts.actorUserId ?? null,
-      metadata: { source: "migration_mark_as_already_booked" },
-    });
-    if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
-  } else if (!historicalImport && !asHistorical && eventId) {
+  const knownImportDate = lifecycleOpts?.lifecycleBookedAt?.trim() || null;
+  if (historicalImport || asHistorical || lifecycleOpts?.markAsAlreadyBooked) {
+    if (eventId || lifecycleOpts?.markAsAlreadyBooked || knownImportDate) {
+      const recorded = await recordLifecycleBooking(supabase, {
+        venueId,
+        clientId,
+        origin: "import",
+        occurredAt: knownImportDate,
+        actorUserId: lifecycleOpts?.actorUserId ?? null,
+        metadata: { source: "historical_client_import", dateKnown: !!knownImportDate },
+      });
+      if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
+    }
+  } else if (eventId) {
     const { data: { user } } = await supabase.auth.getUser();
     const recorded = await recordLifecycleBooking(supabase, {
       venueId,
@@ -390,6 +418,23 @@ async function convertLeadHolds(venueId: string, leadId: string, supabase: Param
   if (error) console.error("Could not convert holds:", error.message);
 }
 
+/** Workspace exists; Planning and pipeline Booked wait for commercial Booked. */
+async function markConvertedClientAsBookingFile(
+  supabase: Parameters<typeof repo.insertClient>[0],
+  venueId: string,
+  clientId: string,
+): Promise<void> {
+  const { error } = await supabase.from("clients")
+    .update({ status: "booking" })
+    .eq("id", clientId)
+    .eq("venue_id", venueId)
+    .eq("status", "planning")
+    .is("lifecycle_booked_at", null);
+  if (error) {
+    console.error("Could not set booking-file client status:", error.message);
+  }
+}
+
 export async function convertLeadToClient(
   lead: Lead,
   opts?: { spaceId?: string; commercialOnly?: boolean },
@@ -457,11 +502,9 @@ export async function convertLeadToClient(
           throw err;
         }
       }
-      // Planning workspace ("Start booking file") sets sales Booking Started.
-      // Quiet commercial ensure (contract/payments) must not move the pipeline stage.
-      if (!commercialOnly) {
-        await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: existingClient.id });
-      }
+      // Start booking file / quiet ensure create the workspace only.
+      // Commercial Booked (maybeStampCommercialBookedAt) is the only pipeline-Booked write.
+      await markConvertedClientAsBookingFile(supabase, venueId, existingClient.id);
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
     let clientId: string;
@@ -487,9 +530,7 @@ export async function convertLeadToClient(
           .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
-          if (!commercialOnly) {
-            await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: raceClient.id });
-          }
+          await markConvertedClientAsBookingFile(supabase, venueId, raceClient.id);
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
         }
       }
@@ -499,16 +540,7 @@ export async function convertLeadToClient(
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
     await convertLeadHolds(venueId, lead.id, supabase);
 
-    // Stop on booking (§3.3) — must never block conversion.
-    // Quiet commercial ensure is not a planning booking yet — leave series running.
-    if (!commercialOnly) {
-      const { data: newClient } = await supabase.from("clients").select("relationship_id")
-        .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
-      if (newClient?.relationship_id) {
-        void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
-          .catch((e) => console.error("Series exit-on-booking failed:", e));
-      }
-    }
+    // Series exit and pipeline Booked happen only at commercial Booked.
 
     // Sales → Booking Journey walkthrough — a document uploaded to the Lead
     // (a signed proposal, inspiration photos, anything) kept lead_id
@@ -524,9 +556,7 @@ export async function convertLeadToClient(
       .update(eventId ? { lead_id: null, event_id: eventId } : { lead_id: null, client_id: clientId })
       .eq("lead_id", lead.id).eq("venue_id", venueId);
 
-    if (!commercialOnly) {
-      await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId });
-    }
+    await markConvertedClientAsBookingFile(supabase, venueId, clientId);
 
     return { ok: true, clientId, eventId } as CreateClientResult;
   });
@@ -592,7 +622,8 @@ export async function updateClientNote_(noteId: string, clientId: string, body: 
 
 export async function deleteClientNote_(noteId: string): Promise<ClientActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteClientNote(supabase, venueId, noteId);
+    const deleted = await repo.deleteClientNote(supabase, venueId, noteId);
+    if (!deleted.ok) return { ok: false, message: deleted.message } as ClientActionResult;
     return { ok: true } as ClientActionResult;
   });
   return result as ClientActionResult;

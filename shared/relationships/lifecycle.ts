@@ -119,7 +119,8 @@ export async function lookupActivationToken(
 /**
  * Consume activation token after the customer creates a password.
  * Works against the Relationship record even when product sync is simulated.
- * Launch Yourself welcome and White Glove welcome_home share this path.
+ * Self-Setup (Launch Yourself) activation and White Glove owner activation
+ * share this CRM account-activated path after product activation succeeds.
  */
 export async function completeAccountActivation(input: {
   token: string;
@@ -279,7 +280,7 @@ export async function enterOnboardingAfterPurchase(input: {
         type: "welcome_workflow_started",
         title: "Welcome Workflow Started",
         body: isWg
-          ? "White Glove welcome path — credentials deferred until Launch Workspace."
+          ? "White Glove welcome path — credentials deferred until Finish White Glove Setup in Product HQ."
           : "Launch Yourself welcome path started.",
       },
       {
@@ -436,7 +437,7 @@ export async function createManualSubscription(input: {
   return result;
 }
 
-/** Required WG tasks for Launch Workspace (all 8, or Owner override). */
+/** Required WG tasks for Mark Implementation Complete (all 8, or Owner override). */
 export function whiteGloveLaunchReady(
   relationshipId: string,
   tasks: { relationshipId: string; title: string; status: string; meta?: Record<string, string | number | boolean | null> }[],
@@ -463,9 +464,11 @@ export function whiteGloveLaunchReady(
 }
 
 /**
- * Launch Workspace after White Glove — create activation, status → active,
- * timeline Implementation Complete / Welcome Sent / Workspace Activated.
- * Caller sends Welcome Home email.
+ * Mark White Glove implementation checklist complete in CRM only.
+ *
+ * Does NOT grant customer access: no activation token, no welcome_home,
+ * no product enrollment activation mutation. Customer handoff is Product HQ
+ * Finish White Glove Setup.
  */
 export async function launchWhiteGloveWorkspace(input: {
   relationshipId: string;
@@ -475,7 +478,6 @@ export async function launchWhiteGloveWorkspace(input: {
   ok: boolean;
   message: string;
   relationship?: Relationship;
-  activationToken?: string;
 }> {
   const store = await loadLiveStore();
   const existing = store.relationships.find((r) => r.id === input.relationshipId);
@@ -492,58 +494,61 @@ export async function launchWhiteGloveWorkspace(input: {
   }
 
   const now = new Date().toISOString();
-  const token = existing.activationToken || newActivationToken();
 
   const { result } = await withLiveStore((s) => {
     const relationship = s.relationships.find((r) => r.id === input.relationshipId);
     if (!relationship) return null;
 
-    relationship.status = "active";
-    relationship.currentStageLabel = "Active";
+    const alreadyHandedOff =
+      relationship.status === "active" ||
+      relationship.customerSuccessStage === "live" ||
+      Boolean(
+        s.timelineEvents.some(
+          (e) =>
+            e.relationshipId === relationship.id &&
+            String(e.meta?.product_event_key ?? "").startsWith("wg_handoff_complete:"),
+        ),
+      );
+
+    if (!alreadyHandedOff) {
+      // Stay in White Glove implementation until Product HQ finishes customer handoff.
+      relationship.status = "white_glove_implementation";
+      relationship.currentStageLabel = stageLabelForStatus("white_glove_implementation");
+      relationship.customerSuccessStage = "implementation";
+      // Keep accessDisabled true — customer credentials are not granted here.
+      relationship.accessDisabled = true;
+      relationship.nextMilestone = "Finish White Glove Setup in Product HQ";
+    }
+
     relationship.salesStage = "closed_won";
-    relationship.customerSuccessStage = "live";
-    relationship.accessDisabled = false;
-    relationship.activationToken = token;
-    relationship.activationTokenCreatedAt =
-      relationship.activationTokenCreatedAt || now;
     relationship.updatedAt = now;
     relationship.lastContactAt = now;
     relationship.lastTeamActivityAt = now;
-    relationship.nextMilestone = "Workspace activated";
     relationship.paymentStatus = relationship.paymentStatus || "paid";
 
-    const events: Array<{ type: "implementation_complete" | "workspace_activated" | "onboarding_completed"; title: string; body?: string }> = [
-      {
-        type: "implementation_complete",
-        title: "Implementation Complete",
-        body: input.ownerOverride && !readiness.ready
-          ? `Owner override — launched with ${readiness.completed}/${readiness.total} checklist items complete.`
-          : "White Glove checklist complete.",
-      },
-      {
-        type: "workspace_activated",
-        title: "Workspace Activated",
-        body: "Customer account / activation token ready.",
-      },
-      {
-        type: "onboarding_completed",
-        title: "Onboarding Completed",
-        body: "White Glove implementation handed off to live workspace.",
-      },
-    ];
+    const alreadyMarked = s.timelineEvents.some(
+      (e) =>
+        e.relationshipId === relationship.id &&
+        e.meta?.crm_implementation_complete === true,
+    );
 
-    for (const ev of events) {
+    if (!alreadyMarked) {
       s.timelineEvents.push({
         id: shortId("evt"),
         relationshipId: relationship.id,
-        type: ev.type,
-        title: ev.title,
-        body: ev.body,
+        type: "implementation_complete",
+        title: "White Glove implementation checklist complete",
+        body: input.ownerOverride && !readiness.ready
+          ? `Owner override — CRM checklist marked complete with ${readiness.completed}/${readiness.total} items. Customer access still requires Finish White Glove Setup in Product HQ.`
+          : alreadyHandedOff
+            ? "CRM implementation checklist complete (customer handoff already recorded from Product HQ)."
+            : "CRM implementation checklist complete. Customer access still requires Finish White Glove Setup in Product HQ.",
         occurredAt: now,
         actorId: input.actorId,
         meta: {
           owner_override: Boolean(input.ownerOverride && !readiness.ready),
-          activation_token_set: true,
+          crm_implementation_complete: true,
+          customer_access_granted: false,
         },
       });
     }
@@ -552,8 +557,10 @@ export async function launchWhiteGloveWorkspace(input: {
       id: shortId("ntf"),
       type: "workspace_launched",
       relationshipId: relationship.id,
-      title: "Workspace launched",
-      body: `${relationship.venue.name} is Active — Welcome Home email should send.`,
+      title: "Implementation checklist complete",
+      body: alreadyHandedOff
+        ? `${relationship.venue.name}: CRM checklist complete (handoff already done in Product HQ).`
+        : `${relationship.venue.name}: finish customer handoff in Product HQ (Finish White Glove Setup).`,
       createdAt: now,
       read: false,
     });
@@ -563,13 +570,13 @@ export async function launchWhiteGloveWorkspace(input: {
     return relationship;
   });
 
-  if (!result) return { ok: false, message: "Failed to launch workspace." };
+  if (!result) return { ok: false, message: "Failed to mark implementation complete." };
 
   return {
     ok: true,
-    message: "Workspace launched.",
+    message:
+      "Implementation checklist marked complete. Finish White Glove Setup in Product HQ to send customer access.",
     relationship: result,
-    activationToken: token,
   };
 }
 

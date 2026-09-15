@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   }
   return NextResponse.json(data, {
     headers: {
-      "Content-Disposition": `attachment; filename="my-wevenu-data-${new Date().toISOString().slice(0, 10)}.json"`,
+      "Content-Disposition": `attachment; filename="my-hello-to-cheers-data-${new Date().toISOString().slice(0, 10)}.json"`,
     },
   });
 }

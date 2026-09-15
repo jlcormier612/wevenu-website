@@ -137,7 +137,7 @@ export async function listFacebookLeadForms(): Promise<{ ok: true; forms: { id: 
   return { ok: true, forms: data.data.map((f) => ({ id: f.id, name: f.name })) };
 }
 
-/** Step 2 confirm — persist which forms should feed Wevenu. */
+/** Step 2 confirm — persist which forms should feed Hello to Cheers. */
 export async function selectFacebookLeadForms(forms: { formId: string; formName: string }[]): Promise<FacebookActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const venue = await getCurrentVenue();

@@ -213,7 +213,8 @@ export async function updateEventNote_(noteId: string, eventId: string, body: st
 
 export async function deleteEventNote_(noteId: string): Promise<EventActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteEventNote(supabase, venueId, noteId);
+    const deleted = await repo.deleteEventNote(supabase, venueId, noteId);
+    if (!deleted.ok) return { ok: false, message: deleted.message } as EventActionResult;
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;
@@ -235,7 +236,10 @@ export async function addTeamMember(eventId: string, input: TeamMemberInput): Pr
 
 export async function removeTeamMember(memberId: string, memberName: string, eventId: string): Promise<EventActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteTeamMember(supabase, venueId, memberId);
+    const deleted = await repo.deleteTeamMember(supabase, venueId, memberId);
+    if (!deleted.ok) {
+      return { ok: false, message: deleted.message } as EventActionResult;
+    }
     await repo.insertEventActivity(supabase, venueId, eventId, "team_updated", `Team member removed: ${memberName}`);
     return { ok: true } as EventActionResult;
   });

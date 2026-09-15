@@ -3,13 +3,15 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import type { Brochure, BrochureActivity, BrochureInput, BrochureWithActivity } from "@/lib/brochures/types";
+import { normalizeBrochurePhotoLayout, normalizeBrochurePhotoUrls } from "@/lib/brochures/photo-layout";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type BrochureRow = {
   id: string; venue_id: string; name: string; is_archived: boolean;
   welcome_text: string | null; include_packages: boolean; include_faqs: boolean;
-  closing_text: string | null; share_token: string; source_master_key: string | null;
+  closing_text: string | null; photo_urls: string[] | null; photo_layout: string | null;
+  share_token: string; source_master_key: string | null;
   created_at: string; updated_at: string;
 };
 type ActivityRow = {
@@ -20,7 +22,10 @@ type ActivityRow = {
 const mapBrochure = (r: BrochureRow): Brochure => ({
   id: r.id, venueId: r.venue_id, name: r.name, isArchived: r.is_archived,
   welcomeText: r.welcome_text, includePackages: r.include_packages, includeFaqs: r.include_faqs,
-  closingText: r.closing_text, shareToken: r.share_token,
+  closingText: r.closing_text,
+  photoUrls: normalizeBrochurePhotoUrls(r.photo_urls),
+  photoLayout: normalizeBrochurePhotoLayout(r.photo_layout),
+  shareToken: r.share_token,
   sourceMasterKey: r.source_master_key ?? null,
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
@@ -97,7 +102,27 @@ export async function duplicateBrochure(client: DbClient, venueId: string, sourc
     includePackages: source.includePackages,
     includeFaqs: source.includeFaqs,
     closingText: source.closingText ?? "",
+  }).then(async (id) => {
+    await updateBrochurePhotography(client, venueId, id, source.photoUrls, source.photoLayout);
+    return id;
   });
+}
+
+export async function updateBrochurePhotography(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  photoUrls: string[],
+  photoLayout: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("brochures") as any)
+    .update({
+      photo_urls: normalizeBrochurePhotoUrls(photoUrls),
+      photo_layout: normalizeBrochurePhotoLayout(photoLayout),
+    })
+    .eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 export async function insertActivity(client: DbClient, venueId: string, brochureId: string, type: string, title: string, description?: string): Promise<void> {

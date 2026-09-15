@@ -208,7 +208,7 @@ function AttachmentList({
           >
             {isImageAttachment(a.mimeType) ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={a.fileUrl} alt={a.fileName} className="max-h-48 rounded-lg object-cover" />
+              <img src={a.fileUrl} alt={a.fileName} className="max-h-48 max-w-full rounded-lg object-contain" />
             ) : (
               <><FileText className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{a.fileName}</span></>
             )}
@@ -277,7 +277,7 @@ function Bubble({
         {msg.senderType === "system" && (
           <div className="mb-1"><AutomatedBadge isVenue={isVenue} /></div>
         )}
-        {msg.body && <p className="whitespace-pre-wrap">{msg.body}</p>}
+        {msg.body && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.body}</p>}
         {!msg.body && msg.attachments.length > 0 && (
           <p className="italic opacity-80">{msg.channel === "sms" ? "Photo or file" : "Attachment"}</p>
         )}
@@ -599,18 +599,16 @@ export function ConversationThread({
 
   return (
     <div
-      ref={scrollRef}
-      onScroll={flow === "contained" ? handleMessagesScroll : undefined}
       className={
         flow === "contained"
-          ? "flex h-full min-h-0 flex-1 flex-col overflow-y-auto"
-          : "flex w-full flex-col"
+          ? "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          : "flex min-w-0 w-full flex-col"
       }
     >
       {showHeader && (
         <div className="sticky top-0 z-10 shrink-0 border-b border-border/60 bg-card">
           {/* Inbox list card holds identity + event context — header is workspace + controls only. */}
-          <div className="flex items-center gap-2 px-4 py-2 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 px-4 py-2 sm:px-6">
             {onBack && (
               <button type="button" onClick={onBack} className="md:hidden -ml-1 shrink-0 p-1 text-muted-foreground">
                 <ArrowLeft className="h-4 w-4" />
@@ -645,7 +643,15 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="px-4 py-3 sm:px-6">
+      <div
+        ref={scrollRef}
+        onScroll={flow === "contained" ? handleMessagesScroll : undefined}
+        className={
+          flow === "contained"
+            ? "min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6"
+            : "min-w-0 px-4 py-3 sm:px-6"
+        }
+      >
         {messages === null ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
         ) : messages.length === 0 ? (

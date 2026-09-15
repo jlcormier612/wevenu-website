@@ -91,15 +91,31 @@ describe("Inbox Product two-column workspace", () => {
     assert.doesNotMatch(inbox, /h-\[calc\(100svh-9rem\)\]/);
     // Workspace pane grows with the conversation instead of clipping it.
     // A floor so a short conversation still fills the workspace — never a cap.
-    assert.match(inbox, /flex min-h-\[calc\(100svh-13rem\)\] items-start rounded-sm border border-border bg-card/);
+    assert.match(inbox, /flex min-h-\[calc\(100svh-13rem\)\] min-w-0 items-start rounded-sm border border-border bg-card/);
     assert.doesNotMatch(inbox, /max-h-\[calc\(100svh[^\]]*\)\] (?:min-w|flex-1)/);
     assert.doesNotMatch(inbox, /flex min-h-0 flex-1 overflow-hidden rounded-sm border/);
-    assert.match(inbox, /flex w-full flex-col gap-3/);
+    assert.match(inbox, /flex min-w-0 w-full flex-col gap-3/);
+    assert.doesNotMatch(inbox, /gap-3 overflow-hidden/);
     // Inbox renders the thread in page flow; embedded surfaces keep the bounded one.
     assert.match(inbox, /flow="page"/);
+    assert.doesNotMatch(inbox, /flow="contained"/);
+    assert.match(thread, /: "min-w-0 px-4 py-3 sm:px-6"/);
+    assert.doesNotMatch(
+      thread.slice(thread.indexOf('flow === "contained"'), thread.indexOf("messages === null")),
+      /flow !== "contained"[\s\S]*overflow-y-auto/,
+    );
     assert.match(thread, /flow = "contained"/);
-    assert.match(thread, /flex h-full min-h-0 flex-1 flex-col overflow-y-auto/);
-    assert.match(thread, /"flex w-full flex-col"/);
+    assert.match(thread, /flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden/);
+    assert.match(thread, /\[overflow-wrap:anywhere\]/);
+    assert.match(thread, /max-w-full rounded-lg object-contain/);
+    assert.match(inbox, /relative min-w-0 flex-1/);
+    assert.doesNotMatch(inbox, /min-w-\[200px\]/);
+  });
+
+  it("keeps the two-pane stack on ~390px without a trapped thread scroller", () => {
+    assert.match(inbox, /activeId \? "hidden md:block" : ""/);
+    assert.match(inbox, /md:w-80 lg:w-96/);
+    assert.match(thread, /: "flex min-w-0 w-full flex-col"/);
   });
 
   it("conversation list stays anchored while the conversation scrolls", () => {
@@ -107,17 +123,19 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(inbox, /shrink-0 self-start overflow-y-auto/);
   });
 
-  it("WorkspaceShell scrolls modules in main, with Inbox differing only in width", () => {
+  it("WorkspaceShell scrolls Inbox vertically in main without page-level x-scroll", () => {
     const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
     assert.match(shell, /fixed inset-0 flex min-h-0 w-full overflow-hidden/);
     assert.match(shell, /flex min-h-0 min-w-0 flex-1 flex-col/);
-    assert.match(shell, /min-h-0 flex-1 overflow-y-auto bg-background/);
+    assert.match(shell, /min-h-0 min-w-0 flex-1 overflow-y-auto bg-background/);
+    assert.match(shell, /isInboxWorkspace && "overflow-x-clip"/);
+    assert.doesNotMatch(shell, /isInboxWorkspace \? "flex min-w-0 flex-col overflow-hidden"/);
     assert.match(shell, /pathname === "\/messaging"/);
     assert.match(shell, /max-w-\[90rem\] px-3 py-3/);
     assert.doesNotMatch(shell, /absolute inset-0 mx-auto/);
     assert.doesNotMatch(shell, /pathname\.startsWith\("\/messaging"\)/);
     const page = readFileSync(resolve("app/(app)/messaging/page.tsx"), "utf8");
-    assert.match(page, /flex w-full flex-col/);
+    assert.match(page, /flex min-w-0 w-full flex-col/);
     const css = readFileSync(resolve("app/globals.css"), "utf8");
     assert.match(css, /html:has\(\.htc-staff\) body/);
     assert.match(css, /overflow:\s*hidden/);

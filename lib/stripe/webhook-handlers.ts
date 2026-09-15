@@ -40,11 +40,25 @@ import type { Invoice } from "@/lib/invoices/types";
 import type { PaymentObligationKind } from "@/lib/payments/types";
 
 type PiMetadata = {
+  htc_payment_line_item_id?: string;
+  htc_venue_id?: string;
+  htc_client_id?: string;
+  htc_schedule_id?: string;
+  // Legacy keys — still accepted for PaymentIntents created before brand cleanup.
   wevenu_payment_line_item_id?: string;
   wevenu_venue_id?: string;
   wevenu_client_id?: string;
   wevenu_schedule_id?: string;
 };
+
+function paymentMeta(meta: PiMetadata) {
+  return {
+    itemId: meta.htc_payment_line_item_id ?? meta.wevenu_payment_line_item_id,
+    venueId: meta.htc_venue_id ?? meta.wevenu_venue_id,
+    clientId: meta.htc_client_id ?? meta.wevenu_client_id,
+    scheduleId: meta.htc_schedule_id ?? meta.wevenu_schedule_id,
+  };
+}
 
 function paymentMethodTypeFrom(pi: Stripe.PaymentIntent): "card" | "us_bank_account" {
   const type = pi.payment_method_types?.[0];
@@ -59,10 +73,7 @@ function paymentMethodTypeFrom(pi: Stripe.PaymentIntent): "card" | "us_bank_acco
  */
 export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Promise<void> {
   const meta = pi.metadata as PiMetadata;
-  const itemId = meta.wevenu_payment_line_item_id;
-  const venueId = meta.wevenu_venue_id;
-  const clientId = meta.wevenu_client_id;
-  const scheduleId = meta.wevenu_schedule_id;
+  const { itemId, venueId, clientId, scheduleId } = paymentMeta(meta);
   if (!itemId || !venueId || !scheduleId) return; // not one of ours (or malformed) — nothing to do
 
   const admin = createAdminClient();
@@ -101,6 +112,20 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
     // Option B: complete only Final Payment tasks bound to THIS line.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await completeFinalPaymentTasksBoundToLine(admin as any, venueId, itemId);
+  }
+
+  {
+    const { emitPlatformEventWithClient } = await import("@/lib/platform-events/service");
+    await emitPlatformEventWithClient(admin, {
+      eventType: "Payment.Received",
+      sourceFeature: "payments",
+      entityType: "payment_line_item",
+      entityId: itemId,
+      venueId,
+      clientId: clientId ?? null,
+      actor: { type: "client", id: clientId ?? null, name: null },
+      payload: { scheduleId, eventId: eventId ?? null, source: "stripe" },
+    });
   }
 
   // Final Payment obligation Luv (Impl 7) — distinct from paid-in-full below.
@@ -154,8 +179,7 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
 /** payment_intent.processing — ACH only. Debit initiated, not yet settled. */
 export async function handlePaymentIntentProcessing(pi: Stripe.PaymentIntent): Promise<void> {
   const meta = pi.metadata as PiMetadata;
-  const itemId = meta.wevenu_payment_line_item_id;
-  const venueId = meta.wevenu_venue_id;
+  const { itemId, venueId } = paymentMeta(meta);
   if (!itemId || !venueId) return;
 
   const admin = createAdminClient();
@@ -168,9 +192,7 @@ export async function handlePaymentIntentProcessing(pi: Stripe.PaymentIntent): P
 /** payment_intent.payment_failed — an immediate card decline, or an ACH debit that failed after initiating (e.g. insufficient funds). Reverts to pending — nothing was actually collected. */
 export async function handlePaymentIntentFailed(pi: Stripe.PaymentIntent): Promise<void> {
   const meta = pi.metadata as PiMetadata;
-  const itemId = meta.wevenu_payment_line_item_id;
-  const venueId = meta.wevenu_venue_id;
-  const clientId = meta.wevenu_client_id;
+  const { itemId, venueId, clientId } = paymentMeta(meta);
   if (!itemId || !venueId) return;
 
   const admin = createAdminClient();
@@ -187,7 +209,7 @@ export async function handlePaymentIntentFailed(pi: Stripe.PaymentIntent): Promi
   }
 }
 
-/** charge.refunded — confirms a refund Wevenu already initiated (lib/payments/service.ts's refundLineItem_ calls Stripe synchronously; this is a defensive, idempotent confirmation, not the primary trigger). */
+/** charge.refunded — confirms a refund Hello to Cheers already initiated (lib/payments/service.ts's refundLineItem_ calls Stripe synchronously; this is a defensive, idempotent confirmation, not the primary trigger). */
 export async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
   if (!paymentIntentId) return;
@@ -204,7 +226,7 @@ export async function handleChargeRefunded(charge: Stripe.Charge): Promise<void>
   // already updates the ledger on a successful stripe.refunds.create()
   // call. If this event arrives and the item is still 'paid' (meaning the
   // synchronous path hasn't run — e.g. a refund issued directly in the
-  // Stripe Dashboard rather than through Wevenu), reconcile it here so the
+  // Stripe Dashboard rather than through Hello to Cheers), reconcile it here so the
   // ledger doesn't silently drift from what Stripe actually did.
   if (item.status !== "paid" && item.status !== "partially_refunded") return;
 

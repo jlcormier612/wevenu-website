@@ -146,7 +146,7 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
         errors.push({ row: i + 1, message: spaced.message, kind: "error" });
         continue;
       }
-      const result = await createClient_(spaced.input);
+      const result = await createClient_({ ...spaced.input, skipIdentityReview: true });
       if (result.ok) {
         createdIds.push(result.clientId);
       } else {

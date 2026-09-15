@@ -28,7 +28,7 @@ I have not live-tested venue creation as part of this research pass (this doc is
 
 ### 1.1 What works
 
-- **Extraction and lead creation.** `lib/lead-intake/email-extract.ts`'s `extractInquiryFromEmail()` calls Claude directly with a marketplace-agnostic prompt and returns a 0–100 confidence score; `ingestLead()` (`lib/lead-intake/pipeline.ts`) runs the result through the same canonical pipeline every other source uses, ending in the `ingest_lead` RPC. This part of the design is sound.
+- **Extraction and lead creation.** `lib/lead-intake/email-extract.ts`'s `extractInquiryFromEmail()` calls the shared Venue OpenAI helper (`lib/ai/openai.ts`) with a marketplace-agnostic prompt and returns a 0–100 confidence score; `ingestLead()` (`lib/lead-intake/pipeline.ts`) runs the result through the same canonical pipeline every other source uses, ending in the `ingest_lead` RPC. This part of the design is sound.
 - **Per-venue addressing.** `venues.lead_email_key` + `get_venue_by_lead_email_key(p_key)` correctly resolve a subaddressed inbound address (`leads+{key}@{domain}`) to a venue, the same mature pattern as `embed_key`/`tour_embed_key`.
 - **Settings UI (partial).** `components/settings/website-forms-section.tsx`'s "Email intake" subsection already shows the forwarding address in a copyable code block with a copy button, when a key is present. This is a real, working start on self-service — not a stub.
 - **Health data already exists.** `lead_intake_attempts` records `source`, `confidence_score`, `status`, `created_at`, `lead_id` for every attempt, including email ones (`source = 'email_parsed_generic'`). "Last email received," "last lead imported," and a confidence signal are all `WHERE source = 'email_parsed_generic'` queries away — no new columns needed to power the status dashboard this sprint asks for.
@@ -99,7 +99,7 @@ Flagging (a) vs (b) as an open decision for approval (§4).
 ### 2.2 Confidence signal
 
 The sprint prompt lists "Confidence" as a discrete UI element, without specifying what it means. Two reasonable interpretations, needing a decision:
-- **Per-attempt confidence** — the extraction confidence score (0–100) Claude already returns for the most recent email, shown as "Last email: 82% confidence" — cheapest, already-existing data, but a single noisy data point.
+- **Per-attempt confidence** — the extraction confidence score (0–100) OpenAI already returns for the most recent email, shown as "Last email: 82% confidence" — cheapest, already-existing data, but a single noisy data point.
 - **Rolling health confidence** — a derived "how well is this working" signal blending recent acceptance rate + average confidence score over (say) the last 20 attempts — more useful for a venue deciding whether their forwarding rule is set up correctly, but is new aggregation logic (still just a query over existing data, not a new table).
 
 Recommend the rolling version, since a single low-confidence email is far less actionable to a venue than "8 of your last 10 forwarded emails parsed cleanly."

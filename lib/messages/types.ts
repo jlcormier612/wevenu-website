@@ -12,6 +12,8 @@ export type MessageAttachment = {
 export type CoupleMessage = {
   id:             string;
   sender_type:    MessageSenderType;
+  /** Origin channel when known (portal / email / sms). Defaults to portal for optimistic UI. */
+  channel?:       "portal" | "email" | "sms" | string;
   body:           string;
   created_at:     string;
   venue_read_at:  string | null;

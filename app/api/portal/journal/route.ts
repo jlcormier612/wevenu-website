@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { customerFacingJournalEntries } from "@/lib/portal/customer-facing-journal";
 import type { JournalEntry } from "@/lib/portal/types";
 
 export async function GET(request: Request) {
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   const raw = data as { entries?: JournalEntry[]; error?: string } | null;
   if (raw?.error) return NextResponse.json({ error: raw.error }, { status: 401 });
 
-  return NextResponse.json({ entries: raw?.entries ?? [] });
+  return NextResponse.json({ entries: customerFacingJournalEntries(raw?.entries ?? []) });
 }
 
 export async function POST(request: Request) {

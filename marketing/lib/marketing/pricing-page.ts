@@ -138,41 +138,29 @@ export const PRICING_PAGE = {
   },
   gettingStarted: {
     headline: "How would you like to get started?",
-    intro: [
-      "Every Hello to Cheers subscription includes free self-guided setup designed to get your venue live at your own pace.",
-      "Choose the onboarding experience that's right for you.",
-    ],
+    intro: [] as string[],
     cards: [
       {
         eyebrow: "Included",
-        title: "Guided Self Setup",
+        title: "I'll set it up myself",
         price: "$0",
-        lead: ["Luv and our interactive onboarding walk you through every step."],
-        checklist: [
-          "Guided setup wizard",
-          "Sample data and templates",
-          "Resource library",
-          "Progress tracking",
-          "Step-by-step launch guide",
+        lead: [
+          "Get access right away and walk through a short, guided setup. You can change anything later.",
         ],
+        checklist: [] as string[],
         body: [] as string[],
-        footer: ["Most venues can complete setup in just a few hours."],
+        footer: [] as string[],
       },
       {
         eyebrow: "Optional",
         title: "White Glove Setup",
         price: "One-time $499",
-        lead: ["We'll do it for you."],
+        lead: [
+          "We'll help build your Hello to Cheers workspace for you. Give us your venue information and materials, and we'll take care of the setup work.",
+        ],
         checklist: [] as string[],
-        body: [
-          "Our team imports your existing information, configures your account, organizes your templates, and prepares your workspace so you're ready to start welcoming couples.",
-          "Simply review everything together with us, make any final adjustments, and begin using Hello to Cheers.",
-        ],
-        footer: [
-          "No ongoing onboarding fees.",
-          "No required implementation.",
-          "Just a faster start if you'd like one.",
-        ],
+        body: [] as string[],
+        footer: [] as string[],
       },
     ],
   },

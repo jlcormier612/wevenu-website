@@ -967,13 +967,109 @@ export function SectionHeader({ title, tc, accentColor }: { title: string; tc: T
 // Collection owns the gallery SECTION's relationship to the page (width,
 // edge treatment, band, header/divider) — applied by the "gallery" case in
 // WeddingWebsite, not here. This component owns only what's inside that
-// section: galleryLayout (Collection's base grid/masonry/film-strip, used
-// by every "uniform"-arrangement Photo Style) and everything Photo Style
-// controls (arrangement/scalePattern/rotation/shadow/spacing/frame/scale/
-// filter/radius). `arrangement: "collage"/"scrapbook"` replace the per-
-// image loop entirely for that gallery instance — the one place Photo
-// Style's own composition supersedes Collection's galleryLayout, per the
-// locked product model.
+// section: galleryLayout (Collection's base grid/masonry/film-strip) and
+// everything Photo Style controls (arrangement/scalePattern/rotation/
+// shadow/spacing/frame/scale/filter/radius). Photo Style compositions that
+// replace the Collection shell for that gallery instance:
+//   - arrangement collage / scrapbook / gallery-wall / sparse / …
+//   - Film contact-sheet (frame+tight+uniform) — including over Coastal's
+//     film-strip layout, so all uploaded photos pack into a visible sheet
+//     instead of a clipped horizontal scroller with no affordance.
+function FilmStripScroller({
+  gap,
+  children,
+}: {
+  gap: string;
+  children: React.ReactNode;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = React.useState(false);
+  const [canNext, setCanNext] = React.useState(false);
+
+  const updateAffordance = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Use a slightly larger epsilon — subpixel rounding + borders otherwise
+    // leave canNext false while a photo is still permanently clipped.
+    setCanPrev(el.scrollLeft > 2);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    updateAffordance();
+    el.addEventListener("scroll", updateAffordance, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateAffordance) : null;
+    ro?.observe(el);
+    // Re-measure after images load (widths can change scrollWidth).
+    const imgs = el.querySelectorAll("img");
+    const onLoad = () => updateAffordance();
+    imgs.forEach((img) => img.addEventListener("load", onLoad));
+    // Layout can settle a frame after mount (fonts, container queries).
+    const raf = requestAnimationFrame(() => updateAffordance());
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", updateAffordance);
+      ro?.disconnect();
+      imgs.forEach((img) => img.removeEventListener("load", onLoad));
+    };
+  }, [updateAffordance, children]);
+
+  const scrollByPage = (dir: -1 | 1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.8, 160), behavior: "smooth" });
+  };
+
+  // Outer overflow:hidden + width containment is required: without it, shrink-0
+  // frames inflate this wrapper past Studio/phone parents that use
+  // overflow-x-hidden, so the strip is hard-clipped and scrollWidth never
+  // exceeds clientWidth (arrows stay hidden; photos 3+ unreachable).
+  return (
+    <div className="relative w-full max-w-full min-w-0 overflow-hidden">
+      {canPrev ? (
+        <button
+          type="button"
+          aria-label="Show previous photos"
+          onClick={() => scrollByPage(-1)}
+          className="absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
+        >
+          ‹
+        </button>
+      ) : null}
+      {canNext ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14"
+          style={{ background: "linear-gradient(to left, rgba(255,255,255,0.92), transparent)" }}
+        />
+      ) : null}
+      <div
+        ref={ref}
+        className="flex w-full max-w-full min-w-0 overflow-x-auto pb-3"
+        style={{
+          gap,
+          scrollSnapType: "x proximity",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "thin",
+        }}
+      >
+        {children}
+      </div>
+      {canNext ? (
+        <button
+          type="button"
+          aria-label="Show more photos"
+          onClick={() => scrollByPage(1)}
+          className="absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
+        >
+          ›
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 const SPACING_GAP: Record<ThemeConfig["photoSpacing"], string> = {
   tight: "0.5rem", normal: "0.75rem", generous: "1.5rem",
@@ -1525,92 +1621,134 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     return "1 / 1";
   };
 
-  if (tc.galleryLayout === "film-strip") {
-    const baseW = tc.imageScale === "large" ? 78 : 46;
-    const baseMax = tc.imageScale === "large" ? 560 : 340;
-    const widthFor = (i: number): { vw: string; max: number } => {
-      if (tc.scalePattern === "hero-emphasis" && i === 0) return { vw: `${Math.min(baseW + 22, 92)}vw`, max: baseMax + 180 };
-      if (tc.scalePattern === "alternating") return i % 2 === 1 ? { vw: `${Math.max(baseW - 12, 30)}vw`, max: baseMax - 100 } : { vw: `${baseW}vw`, max: baseMax };
-      return { vw: `${baseW}vw`, max: baseMax };
-    };
-    return (
-      <div className="flex overflow-x-auto pb-4 -mx-6 px-6" style={{ gap, scrollSnapType: "x proximity" }}>
-        {photos.map((url, i) => {
-          const w = widthFor(i);
+  // Film Photo Style contact-sheet — composition supersedes Collection
+  // galleryLayout (including Coastal's film-strip). Same model as
+  // collage/scrapbook: Photo Style owns the inside of the gallery section.
+  // Without this, Coastal+Film rendered a vw-sized horizontal strip that
+  // parent overflow-x-hidden hard-clipped after ~2.5 photos with no
+  // discoverable way to reach the rest.
+  if (contactSheet) {
+    const cols = pickFilmContactColumns(photos.length);
+    const rows = chunkFilmContactRows(photos, cols);
+    let photoIndex = 0;
+    const sheet = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 0, width: "100%", minWidth: 0 }}>
+        {rows.map((row, rowIndex) => {
+          const widthPct = filmContactRowWidthPercent(row.length, cols);
           return (
-            <div key={i} className="shrink-0 overflow-hidden"
-              style={{ width: w.vw, maxWidth: w.max, borderRadius: tc.photoRadius, scrollSnapAlign: "center", ...frame(i) }}>
-              <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+            <div
+              key={rowIndex}
+              style={{
+                display: "grid",
+                // minmax(0,1fr) — without min 0, intrinsic img min-width expands
+                // the sheet past Studio phone / content columns and the parent
+                // overflow-x-hidden hard-clips the rightmost column.
+                gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))`,
+                gap: 0,
+                width: `${widthPct}%`,
+                maxWidth: "100%",
+                marginInline: "auto",
+                minWidth: 0,
+              }}
+            >
+              {row.map((url) => {
+                const i = photoIndex++;
+                return (
+                  <div
+                    key={i}
+                    className="overflow-hidden min-w-0"
+                    style={{ borderRadius: tc.photoRadius, ...frame(i), minWidth: 0 }}
+                  >
+                    <img
+                      src={url}
+                      alt=""
+                      style={{ ...imgStyle, aspectRatio: aspectFor(i), maxWidth: "100%" }}
+                    />
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
     );
+    const sprocket = (
+      <div
+        className="shrink-0"
+        style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} style={{ width: 7, height: 5, borderRadius: 1, background: "#f3ebe0", opacity: 0.9 }} />
+        ))}
+      </div>
+    );
+    return (
+      <div
+        style={{
+          background: "linear-gradient(180deg, #f3ebe0 0%, #e8dcc8 100%)",
+          padding: "0.45rem",
+          boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.1)",
+          display: "flex",
+          gap: 0,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+          overflow: "hidden",
+        }}
+      >
+        {sprocket}
+        <div style={{ flex: 1, minWidth: 0, maxWidth: "100%" }}>{sheet}</div>
+        {sprocket}
+      </div>
+    );
+  }
+
+  if (tc.galleryLayout === "film-strip") {
+    // Widths are % of the scrollport (the FilmStripScroller flex row), not
+    // viewport vw and not @container cqw. cqw tracked the full wedding
+    // preview root — often much wider than the clipped gallery column — so
+    // 2–3 frames overflowed past Studio/phone overflow-x-hidden with no
+    // working scroll. Percent-of-scrollport keeps each frame inside the
+    // visible strip and leaves a peek of the next photo as a scroll cue.
+    const basePct = tc.imageScale === "large" ? 72 : 62;
+    const baseMax = tc.imageScale === "large" ? 360 : 280;
+    const widthFor = (i: number): { pct: number; max: number } => {
+      if (tc.scalePattern === "hero-emphasis" && i === 0) {
+        return { pct: Math.min(basePct + 8, 82), max: baseMax + 80 };
+      }
+      if (tc.scalePattern === "alternating") {
+        return i % 2 === 1
+          ? { pct: Math.max(basePct - 10, 48), max: baseMax - 60 }
+          : { pct: basePct, max: baseMax };
+      }
+      return { pct: basePct, max: baseMax };
+    };
+    return (
+      <FilmStripScroller gap={gap}>
+        {photos.map((url, i) => {
+          const w = widthFor(i);
+          return (
+            <div
+              key={i}
+              className="shrink-0 overflow-hidden"
+              style={{
+                width: `min(${w.pct}%, ${w.max}px)`,
+                maxWidth: "85%",
+                borderRadius: tc.photoRadius,
+                scrollSnapAlign: "start",
+                ...frame(i),
+              }}
+            >
+              <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+            </div>
+          );
+        })}
+      </FilmStripScroller>
+    );
   }
 
   if (tc.galleryLayout === "grid") {
-    // Film contact-sheet Option D: pack into 2–3 col rows; short final rows
-    // shrink + center so cream strip never paints empty tracks (same bug
-    // class as Midnight's orphan support cell, cream instead of near-black).
-    if (contactSheet) {
-      const cols = pickFilmContactColumns(photos.length);
-      const rows = chunkFilmContactRows(photos, cols);
-      let photoIndex = 0;
-      const sheet = (
-        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {rows.map((row, rowIndex) => {
-            const widthPct = filmContactRowWidthPercent(row.length, cols);
-            return (
-              <div
-                key={rowIndex}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${row.length}, 1fr)`,
-                  gap: 0,
-                  width: `${widthPct}%`,
-                  marginInline: "auto",
-                }}
-              >
-                {row.map((url) => {
-                  const i = photoIndex++;
-                  return (
-                    <div
-                      key={i}
-                      className="overflow-hidden"
-                      style={{ borderRadius: tc.photoRadius, ...frame(i) }}
-                    >
-                      <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      );
-      const sprocket = (
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} style={{ width: 7, height: 5, borderRadius: 1, background: "#f3ebe0", opacity: 0.9 }} />
-          ))}
-        </div>
-      );
-      return (
-        <div
-          style={{
-            background: "linear-gradient(180deg, #f3ebe0 0%, #e8dcc8 100%)",
-            padding: "0.45rem",
-            boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.1)",
-            display: "flex",
-            gap: 0,
-          }}
-        >
-          {sprocket}
-          <div style={{ flex: 1, minWidth: 0 }}>{sheet}</div>
-          {sprocket}
-        </div>
-      );
-    }
     const grid = (
       <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 @min-[768px]/wedding:grid-cols-3"}`} style={{ gap }}>
         {photos.map((url, i) => (
@@ -2538,17 +2676,23 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
             // inside GalleryGrid. Neither reads the other's fields.
             case "gallery": {
               const g = content.gallery;
-              if (!g?.photos?.length) return null;
+              const galleryPhotos = g?.photos?.length
+                ? g.photos
+                : [];
+              if (!galleryPhotos.length) return null;
               return (
                 <SectionCanvas key="gallery" role={tc.sectionRoles?.gallery} colors={canvasColors}>
                 <SectionWrapper sectionKey="gallery">
                   <section
-                    className={edgeWidthClass(tc.edgeTreatment, 0)}
+                    className={`${edgeWidthClass(tc.edgeTreatment, 0)} min-w-0 max-w-full`}
                     style={tc.sectionBand === "tinted" ? { background: tc.surface, paddingBlock: "3rem" } : undefined}
                   >
-                    <div style={{ maxWidth: tc.edgeTreatment === "full-bleed" ? "none" : (tc.contentWidth === "narrow" ? "30rem" : tc.contentWidth === "wide" ? "56rem" : "42rem"), marginInline: tc.edgeTreatment === "full-bleed" ? undefined : "auto" }}>
-                      <SectionHeader title={g.title ?? "Our Photos"} tc={tc} accentColor={color} />
-                      <GalleryGrid photos={g.photos} tc={tc} />
+                    <div
+                      className="min-w-0 max-w-full"
+                      style={{ maxWidth: tc.edgeTreatment === "full-bleed" ? "none" : (tc.contentWidth === "narrow" ? "30rem" : tc.contentWidth === "wide" ? "56rem" : "42rem"), marginInline: tc.edgeTreatment === "full-bleed" ? undefined : "auto" }}
+                    >
+                      <SectionHeader title={g?.title ?? "Our Photos"} tc={tc} accentColor={color} />
+                      <GalleryGrid photos={galleryPhotos} tc={tc} />
                     </div>
                   </section>
                 </SectionWrapper>

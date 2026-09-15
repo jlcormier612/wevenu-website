@@ -23,6 +23,7 @@ const MIGRATION = resolve("supabase/migrations/20261337000000_lifecycle_booking_
 const ATTR_MIGRATIONS = [
   resolve("supabase/migrations/20261338000000_acquisition_attribution_foundation.sql"),
   resolve("supabase/migrations/20261339000000_reporting_frozen_acquisition_source.sql"),
+  resolve("supabase/migrations/20261382000000_lifecycle_booking_unknown_date.sql"),
 ];
 
 const venueId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee01";
@@ -31,6 +32,7 @@ const leadId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee03";
 const clientId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee04";
 const leadlessClientId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee05";
 const importClientId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee06";
+const unknownDateClientId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeee07";
 
 function psql(sql: string): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync("psql", [LOCAL_DB, "-v", "ON_ERROR_STOP=1", "-c", sql], {
@@ -63,8 +65,9 @@ describe("Lifecycle booking DB", () => {
       const supabase = adminClient();
 
       psql(`
-        delete from public.venues where id = '${venueId}';
-        delete from auth.users where id = '${ownerId}';
+        delete from public.lifecycle_booking_events where venue_id = '${venueId}';
+        delete from public.clients where venue_id = '${venueId}';
+        delete from public.leads where venue_id = '${venueId}';
       `);
 
       const setup = psql(`
@@ -78,9 +81,10 @@ describe("Lifecycle booking DB", () => {
           'lifecycle-owner@example.test', crypt('not-a-login', gen_salt('bf')),
           now(), '{"provider":"email","providers":["email"]}', '{}',
           now(), now(), '', '', '', ''
-        );
+        ) on conflict (id) do nothing;
         insert into public.venues (id, owner_user_id, name, timezone)
-        values ('${venueId}', '${ownerId}', 'Lifecycle Venue', 'America/New_York');
+        values ('${venueId}', '${ownerId}', 'Lifecycle Venue', 'America/New_York')
+        on conflict (id) do nothing;
         insert into public.leads (
           id, venue_id, first_name, last_name, email, status
         ) values (
@@ -100,6 +104,11 @@ describe("Lifecycle booking DB", () => {
           id, venue_id, first_name, last_name, email, status
         ) values (
           '${importClientId}', '${venueId}', 'Import', 'Ed', 'import-lifecycle@example.com', 'planning'
+        );
+        insert into public.clients (
+          id, venue_id, first_name, last_name, email, status
+        ) values (
+          '${unknownDateClientId}', '${venueId}', 'Unknown', 'Date', 'unknown-date-lifecycle@example.com', 'planning'
         );
       `);
       assert.equal(setup.status, 0, setup.stderr);
@@ -187,7 +196,7 @@ describe("Lifecycle booking DB", () => {
       });
       assert.equal(imported.ok, true);
       if (!imported.ok) return;
-      assert.equal(imported.event.occurredAt.startsWith("2025-11-20"), true);
+      assert.equal(imported.event.occurredAt?.startsWith("2025-11-20"), true);
 
       const importRetry = await recordLifecycleBooking(db, {
         venueId,
@@ -197,7 +206,7 @@ describe("Lifecycle booking DB", () => {
       });
       assert.equal(importRetry.ok, true);
       if (!importRetry.ok) return;
-      assert.equal(importRetry.event.occurredAt.startsWith("2025-11-20"), true);
+      assert.equal(importRetry.event.occurredAt?.startsWith("2025-11-20"), true);
 
       const { data: importStamp } = await supabase.from("clients")
         .select("lifecycle_booked_at, lifecycle_booking_origin")
@@ -212,9 +221,34 @@ describe("Lifecycle booking DB", () => {
         .eq("event_kind", "first_booked");
       assert.equal(importCount, 1);
 
+      const undated = await recordLifecycleBooking(db, {
+        venueId,
+        clientId: unknownDateClientId,
+        origin: "import",
+        occurredAt: null,
+      });
+      assert.equal(undated.ok, true, undated.ok ? "" : undated.message);
+      if (!undated.ok) return;
+      assert.equal(undated.wasFirst, true);
+
+      const { data: undatedEvent } = await supabase.from("lifecycle_booking_events")
+        .select("occurred_at, event_kind")
+        .eq("client_id", unknownDateClientId)
+        .eq("event_kind", "first_booked")
+        .single();
+      assert.equal(undatedEvent?.occurred_at, null);
+
+      const { data: undatedClient } = await supabase.from("clients")
+        .select("lifecycle_booked_at, lifecycle_booking_origin")
+        .eq("id", unknownDateClientId)
+        .single();
+      assert.equal(undatedClient?.lifecycle_booked_at, null);
+      assert.equal(undatedClient?.lifecycle_booking_origin, "import");
+
       psql(`
-        delete from public.venues where id = '${venueId}';
-        delete from auth.users where id = '${ownerId}';
+        delete from public.lifecycle_booking_events where venue_id = '${venueId}';
+        delete from public.clients where venue_id = '${venueId}';
+        delete from public.leads where venue_id = '${venueId}';
       `);
     });
   });

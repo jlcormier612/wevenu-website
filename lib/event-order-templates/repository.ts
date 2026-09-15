@@ -2,6 +2,10 @@
  * Event Order Templates data access layer. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import {
+  normalizeTemplatePricingModel,
+  type TemplatePricingModel,
+} from "@/lib/event-order-templates/offerings";
 import type {
   EventOrderTemplate, EventOrderTemplateInput, EventOrderTemplateLine,
   EventOrderTemplateSection, EventOrderTemplateWithDetails,
@@ -21,7 +25,11 @@ type SectionRow = {
 };
 type LineRow = {
   id: string; template_id: string; venue_id: string; section_id: string | null;
-  description: string; quantity: number; unit_price: number; sort_order: number;
+  description: string; description_detail: string | null;
+  quantity: number; unit_price: number | null;
+  pricing_model: string | null; unit: string | null;
+  included_by_default: boolean | null; offering_id: string | null;
+  sort_order: number;
   created_at: string; updated_at: string;
 };
 
@@ -37,9 +45,28 @@ const mapSection = (r: SectionRow): EventOrderTemplateSection => ({
 });
 const mapLine = (r: LineRow): EventOrderTemplateLine => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, sectionId: r.section_id,
-  description: r.description, quantity: Number(r.quantity), unitPrice: Number(r.unit_price),
+  description: r.description,
+  descriptionDetail: r.description_detail ?? null,
+  quantity: Number(r.quantity),
+  unitPrice: r.unit_price == null ? null : Number(r.unit_price),
+  pricingModel: normalizeTemplatePricingModel(r.pricing_model),
+  unit: r.unit ?? null,
+  includedByDefault: Boolean(r.included_by_default),
+  offeringId: r.offering_id ?? null,
   sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
+
+export type TemplateLineWrite = {
+  sectionId: string | null;
+  description: string;
+  descriptionDetail: string | null;
+  quantity: number;
+  unitPrice: number | null;
+  pricingModel: TemplatePricingModel;
+  unit: string | null;
+  includedByDefault: boolean;
+  offeringId: string | null;
+};
 
 // ---- reads --------------------------------------------------------------------
 
@@ -51,7 +78,6 @@ export async function getTemplates(client: DbClient, venueId: string, includeArc
   return (data as TemplateRow[]).map(mapTemplate);
 }
 
-/** Repository-level, reusable across domains — Event Orders' own service calls this directly with an already-open client/venueId, same pattern Event Inventory's ensureEventInventory uses for its own template lookup. */
 export async function getTemplateWithDetails(client: DbClient, venueId: string, id: string): Promise<EventOrderTemplateWithDetails | null> {
   const [tRes, sRes, lRes] = await Promise.all([
     client.from("event_order_templates").select("*").eq("id", id).eq("venue_id", venueId).maybeSingle<TemplateRow>(),
@@ -104,12 +130,6 @@ export async function setTemplateArchived(client: DbClient, venueId: string, id:
   if (error) throw error;
 }
 
-/**
- * Work Package D6 lesson applied from day one — the RESTRICTIVE
- * Owner/Manager delete gate blocks a disallowed delete by matching zero
- * rows, not by raising an error; `.select("id")` surfaces that as an
- * honest denial instead of a false "deleted."
- */
 export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
   const { data, error } = await client.from("event_order_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
   if (error) throw error;
@@ -119,7 +139,6 @@ export async function deleteTemplate(client: DbClient, venueId: string, id: stri
   return { ok: true };
 }
 
-/** A fresh, independent, always-unarchived copy — same convention every other template type in this codebase already uses. */
 export async function duplicateTemplate(client: DbClient, venueId: string, sourceId: string, newName: string): Promise<string> {
   const source = await getTemplateWithDetails(client, venueId, sourceId);
   if (!source) throw new Error("Template not found.");
@@ -130,12 +149,17 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
     const created = await insertSection(client, venueId, newId, s.name, s.sortOrder, s.guidance);
     sectionIdMap.set(s.id, created.id);
   }
-  // Legacy checklist lines are preserved on duplicate for history only —
-  // apply-to-event still copies structure only.
   for (const l of [...source.lines].sort((a, b) => a.sortOrder - b.sortOrder)) {
     await insertLine(client, venueId, newId, {
       sectionId: l.sectionId ? sectionIdMap.get(l.sectionId) ?? null : null,
-      description: l.description, quantity: l.quantity, unitPrice: l.unitPrice,
+      description: l.description,
+      descriptionDetail: l.descriptionDetail,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      pricingModel: l.pricingModel,
+      unit: l.unit,
+      includedByDefault: l.includedByDefault,
+      offeringId: l.offeringId,
     }, l.sortOrder);
   }
   return newId;
@@ -157,22 +181,49 @@ export async function insertSection(
   return mapSection(data);
 }
 
-export async function updateSectionGuidance(
-  client: DbClient, venueId: string, sectionId: string, guidance: string | null,
+export async function updateSection(
+  client: DbClient, venueId: string, sectionId: string,
+  input: { name?: string; guidance?: string | null },
 ): Promise<void> {
+  const patch: Record<string, unknown> = {};
+  if (input.name !== undefined) patch.name = input.name.trim();
+  if (input.guidance !== undefined) patch.guidance = input.guidance?.trim() || null;
+  if (Object.keys(patch).length === 0) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_order_template_sections") as any)
-    .update({ guidance: guidance?.trim() || null })
+    .update(patch)
     .eq("id", sectionId).eq("venue_id", venueId);
   if (error) throw error;
 }
 
-/** Unsets section_id on every line first — removing a Section must never delete its lines, matching event_order_sections' own removeSection. */
+export async function updateSectionGuidance(
+  client: DbClient, venueId: string, sectionId: string, guidance: string | null,
+): Promise<void> {
+  await updateSection(client, venueId, sectionId, { guidance });
+}
+
+export async function reorderRows(
+  client: DbClient,
+  table: "event_order_template_sections" | "event_order_template_lines",
+  venueId: string,
+  orderedIds: string[],
+): Promise<void> {
+  for (let i = 0; i < orderedIds.length; i++) {
+    const id = orderedIds[i];
+    if (!id) continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from(table) as any)
+      .update({ sort_order: i })
+      .eq("id", id).eq("venue_id", venueId);
+    if (error) throw error;
+  }
+}
+
+/** Removes the section and its template offerings. Event Orders already created are untouched. */
 export async function removeSection(client: DbClient, venueId: string, sectionId: string): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: unlinkError } = await (client.from("event_order_template_lines") as any)
-    .update({ section_id: null }).eq("section_id", sectionId).eq("venue_id", venueId);
-  if (unlinkError) throw unlinkError;
+  const { error: linesError } = await client.from("event_order_template_lines")
+    .delete().eq("section_id", sectionId).eq("venue_id", venueId);
+  if (linesError) throw linesError;
   const { error } = await client.from("event_order_template_sections").delete().eq("id", sectionId).eq("venue_id", venueId);
   if (error) throw error;
 }
@@ -181,17 +232,44 @@ export async function removeSection(client: DbClient, venueId: string, sectionId
 
 export async function insertLine(
   client: DbClient, venueId: string, templateId: string,
-  input: { sectionId: string | null; description: string; quantity: number; unitPrice: number },
+  input: TemplateLineWrite,
   sortOrder: number,
 ): Promise<EventOrderTemplateLine> {
   const { data, error } = await client.from("event_order_template_lines")
     .insert({
       template_id: templateId, venue_id: venueId, section_id: input.sectionId,
-      description: input.description.trim(), quantity: input.quantity, unit_price: input.unitPrice,
+      description: input.description.trim(),
+      description_detail: input.descriptionDetail?.trim() || null,
+      quantity: input.quantity,
+      unit_price: input.unitPrice,
+      pricing_model: input.pricingModel,
+      unit: input.unit?.trim() || null,
+      included_by_default: input.includedByDefault,
+      offering_id: input.offeringId,
       sort_order: sortOrder,
     }).select().single<LineRow>();
   if (error) throw error;
   return mapLine(data);
+}
+
+export async function updateLine(
+  client: DbClient, venueId: string, lineId: string, input: TemplateLineWrite,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_order_template_lines") as any)
+    .update({
+      section_id: input.sectionId,
+      description: input.description.trim(),
+      description_detail: input.descriptionDetail?.trim() || null,
+      quantity: input.quantity,
+      unit_price: input.unitPrice,
+      pricing_model: input.pricingModel,
+      unit: input.unit?.trim() || null,
+      included_by_default: input.includedByDefault,
+      offering_id: input.offeringId,
+    })
+    .eq("id", lineId).eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 export async function removeLine(client: DbClient, venueId: string, lineId: string): Promise<void> {
@@ -199,7 +277,16 @@ export async function removeLine(client: DbClient, venueId: string, lineId: stri
   if (error) throw error;
 }
 
-export async function nextSortOrder(client: DbClient, table: "event_order_template_sections" | "event_order_template_lines", templateId: string): Promise<number> {
-  const { data } = await client.from(table).select("sort_order").eq("template_id", templateId).order("sort_order", { ascending: false }).limit(1);
+export async function nextSortOrder(
+  client: DbClient,
+  table: "event_order_template_sections" | "event_order_template_lines",
+  templateId: string,
+  sectionId?: string | null,
+): Promise<number> {
+  let q = client.from(table).select("sort_order").eq("template_id", templateId);
+  if (table === "event_order_template_lines" && sectionId) {
+    q = q.eq("section_id", sectionId);
+  }
+  const { data } = await q.order("sort_order", { ascending: false }).limit(1);
   return ((data?.[0] as { sort_order: number } | undefined)?.sort_order ?? -1) + 1;
 }

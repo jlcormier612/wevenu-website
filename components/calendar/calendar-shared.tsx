@@ -146,7 +146,7 @@ export function ItemRow({
   const typeLabel = item.catalogLabel?.trim() || meta.label;
   const isBlock = item.type === "calendar_block";
   // Calendar Booking Placeholder — a not-yet-converted one still gets the
-  // block treatment (delete stays available) plus a "Convert to Booking"
+  // block treatment (delete stays available) plus a "Convert to Lead"
   // link; once converted, it behaves like any other item — a plain link,
   // now pointed at the real Lead it became (item.link already reflects
   // this, set once in lib/calendar/service.ts).
@@ -208,7 +208,7 @@ export function ItemRow({
               href={`/leads/new?fromBlockId=${item.rawId}`}
               className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
             >
-              Convert to Booking
+              Convert to Lead
             </Link>
           )}
           {/* Until now a manual item could only be created or deleted, so

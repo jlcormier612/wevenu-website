@@ -8,16 +8,35 @@ import { getPaymentSchedules } from "@/lib/payments/service";
 
 export const metadata: Metadata = { title: "Payments" };
 
-export default async function PaymentsPage() {
+type Props = { searchParams: Promise<{ filter?: string }> };
+
+export default async function PaymentsPage({ searchParams }: Props) {
+  const { filter } = await searchParams;
   const schedules = await getPaymentSchedules();
+  const attentionOnly = filter === "attention";
+  const visible = attentionOnly
+    ? schedules.filter((s) => s.scheduleStatus === "attention" && !s.excludeFromBusinessReporting)
+    : schedules;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payments"
-        description="Track deposits, installments, and outstanding balances."
+        description={
+          attentionOnly
+            ? "Schedules that need attention — overdue or refunded payments."
+            : "Track deposits, installments, and outstanding balances."
+        }
         actions={<Button render={<Link href="/payments/new" />}>+ New Schedule</Button>}
       />
-      <PaymentScheduleList schedules={schedules} />
+      {attentionOnly && (
+        <p className="text-sm text-muted-foreground">
+          Showing {visible.length} schedule{visible.length === 1 ? "" : "s"} that need attention.
+          {" "}
+          <Link href="/payments" className="text-primary hover:underline">Show all</Link>
+        </p>
+      )}
+      <PaymentScheduleList schedules={visible} />
     </div>
   );
 }

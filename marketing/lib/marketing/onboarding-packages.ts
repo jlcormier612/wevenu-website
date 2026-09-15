@@ -23,10 +23,7 @@ export type OnboardingPackage = {
 
 export const ONBOARDING_SELECTION_COPY = {
   title: "How would you like to get started?",
-  intro: [
-    "Every Hello to Cheers subscription includes self-guided setup.",
-    "If you'd like a little extra help getting started, we're happy to do the heavy lifting for you.",
-  ],
+  intro: [] as const,
   welcomeBack: {
     prompt: "Have we celebrated together before?",
     checkboxLabel: "My venue was part of the Weven family.",
@@ -40,10 +37,10 @@ export const ONBOARDING_SELECTION_COPY = {
 export const ONBOARDING_PACKAGES: readonly OnboardingPackage[] = [
   {
     id: "self_guided",
-    title: "Self-Guided",
+    title: "I'll set it up myself",
     priceLabel: "Included",
     description:
-      "Start immediately using our guided setup experience. You can move at your own pace, and we're always here if you need us.",
+      "Get access right away and walk through a short, guided setup. You can change anything later.",
     ctaLabel: "Continue to Checkout",
     stripePriceEnv: null,
     defaultSelected: true,
@@ -53,7 +50,7 @@ export const ONBOARDING_PACKAGES: readonly OnboardingPackage[] = [
     title: "White Glove Setup",
     priceLabel: "+$499 one-time",
     description:
-      "We'll work alongside you to configure your venue, import your information where possible, customize your workflows, and prepare everything for launch.",
+      "We'll help build your Hello to Cheers workspace for you. Give us your venue information and materials, and we'll take care of the setup work.",
     ctaLabel: "Continue to Checkout",
     stripePriceEnv: "STRIPE_PRICE_WHITE_GLOVE",
     defaultSelected: false,

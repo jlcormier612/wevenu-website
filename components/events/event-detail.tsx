@@ -592,6 +592,7 @@ export function EventDetail({
               spaceName={spaceName} guestCount={event.guestCount} guestCountSubmission={event.guestCountSubmission} clientStatus={clientStatus}
               readinessByKind={readinessByKind}
               invoices={invoices}
+              paymentScheduleLines={bookingJourney?.paymentLines ?? null}
               timeline={event.timeline ?? []}
               vendorAssignments={event.vendorAssignments} vendorRecommendations={vendorRecommendations}
               conversationMessages={conversationMessages}

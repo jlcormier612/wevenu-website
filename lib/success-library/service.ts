@@ -5,8 +5,9 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getIntegrationSetupGuide, INTEGRATION_SETUP_GUIDES } from "@/lib/help-guides/integration-setup-guides";
+import { getIntegrationSetupGuide } from "@/lib/help-guides/integration-setup-guides";
 import { HELP_GUIDE_AREAS } from "@/lib/help-guides/areas";
+import { PUBLISHABLE_HELP_ARTICLES } from "@/lib/help-guides/final-articles";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   RelatedFeatureLink,
@@ -67,9 +68,9 @@ const SELECT_COLUMNS = "id, slug, title, goal_category, why_it_matters, when_to_
 // ---- venue-facing reads (published only, via RLS) --------------------------
 
 /**
- * All Help & Guides areas in IA order, including empty categories.
- * Articles whose goal_category is outside the taxonomy still appear under
- * that label at the end (legacy safety) so nothing becomes undiscoverable.
+ * All Help & Guides areas in locked IA order.
+ * Articles are ordered by the final editorial set (not alphabetically).
+ * Empty categories are omitted by the Help landing page.
  */
 export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]> {
   const byCategory = new Map<string, { slug: string; title: string }[]>();
@@ -78,8 +79,7 @@ export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]
     const supabase = await createClient();
     const { data } = await supabase.from("success_library_articles")
       .select("slug, title, goal_category")
-      .eq("status", "published")
-      .order("title");
+      .eq("status", "published");
     const rows = (data ?? []) as { slug: string; title: string; goal_category: string }[];
     for (const r of rows) {
       const list = byCategory.get(r.goal_category) ?? [];
@@ -88,15 +88,18 @@ export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]
     }
   }
 
-  // Integration setup is foundational enough to be available even before HQ
-  // has authored the rest of the Help & Guides library. If an article with the
-  // same slug is later published in the canonical store, the DB article wins.
-  const venueGuides = byCategory.get("Your Venue") ?? [];
-  const existingSlugs = new Set(venueGuides.map((a) => a.slug));
-  for (const guide of INTEGRATION_SETUP_GUIDES) {
-    if (!existingSlugs.has(guide.slug)) venueGuides.push({ slug: guide.slug, title: guide.title });
+  const editorialOrder = new Map(
+    PUBLISHABLE_HELP_ARTICLES.map((a, index) => [a.slug, index] as const),
+  );
+  for (const [category, articles] of byCategory) {
+    articles.sort((a, b) => {
+      const ai = editorialOrder.get(a.slug) ?? Number.MAX_SAFE_INTEGER;
+      const bi = editorialOrder.get(b.slug) ?? Number.MAX_SAFE_INTEGER;
+      if (ai !== bi) return ai - bi;
+      return a.title.localeCompare(b.title);
+    });
+    byCategory.set(category, articles);
   }
-  byCategory.set("Your Venue", venueGuides.sort((a, b) => a.title.localeCompare(b.title)));
 
   const known = new Set(HELP_GUIDE_AREAS.map((a) => a.category));
   const areas: SuccessLibraryCategory[] = HELP_GUIDE_AREAS.map((a) => ({

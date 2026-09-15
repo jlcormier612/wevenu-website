@@ -93,8 +93,8 @@ export function NewInquiryForm({
     setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
   };
 
-  async function saveLead() {
-    const result = await createLeadAction(input);
+  async function saveLead(decision?: import("@/lib/identity/decision").IdentityDecision) {
+    const result = await createLeadAction({ ...input, identityDecision: decision });
     if (result.ok) {
       if (fromBlockId) {
         // Best-effort — the Lead is the source of truth either way; if
@@ -105,7 +105,7 @@ export function NewInquiryForm({
       router.push(`/leads/${result.leadId}`);
       return;
     }
-    if (result.errors) setErrors(result.errors);
+    if ("errors" in result && result.errors) setErrors(result.errors);
     toast.error(result.message ?? "Please fix the highlighted fields.");
   }
 
@@ -136,10 +136,10 @@ export function NewInquiryForm({
         matches={matches}
         pending={pending}
         onCancel={() => setMatchOpen(false)}
-        onContinue={() => {
+        onDecide={(decision) => {
           setMatchOpen(false);
           startTransition(async () => {
-            await saveLead();
+            await saveLead(decision);
           });
         }}
       />

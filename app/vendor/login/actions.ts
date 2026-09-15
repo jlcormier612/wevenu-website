@@ -37,11 +37,14 @@ export async function signInVendor(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Sign-in failed. Please try again." };
 
+  // Multi-profile owners: maybeSingle() fails when 2+ active rows exist.
   const { data: vu } = await supabase
     .from("vendor_users")
     .select("vendor_id")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (!vu) {

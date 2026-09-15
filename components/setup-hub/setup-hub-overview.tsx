@@ -22,7 +22,7 @@ import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/type
 import type { OperationalReadiness } from "@/lib/operational-readiness/types";
 
 type StageRow = {
-  key: string;
+  key: keyof typeof STAGE_COPY;
   title: string;
   href?: string;
   hrefLabel?: string;
@@ -72,8 +72,8 @@ export function SetupHubOverview({
 }) {
   const yourVenueDone = !!hubState?.yourVenueReviewedAt;
   const calendarDone = !!hubState?.calendarAvailabilityReviewedAt;
-  const bringYourBusinessManual = !!hubState?.bringYourBusinessManualConfirmedAt;
-  const bringYourBusinessDone = hasImportedData || bringYourBusinessManual;
+  const bybPath = hubState?.bringYourBusinessPath ?? null;
+  const bringYourBusinessDone = hasImportedData || bybPath === "individual" || bybPath === "skipped";
   const calendarReadyHint = evaluateCutoverPrerequisites({
     spacesCount,
     hasCapacityRules,
@@ -88,19 +88,19 @@ export function SetupHubOverview({
   const yourTeamSolo = !!hubState?.yourTeamSoloConfirmedAt;
   const yourTeamDone = activeTeamCount > 0 || yourTeamSolo;
   const financialsReviewed = !!hubState?.financialsReviewedAt;
+  const financialsDone = stripeConnected || financialsReviewed;
 
-  // Order: identity → calendar foundations → cutover → offerings → experience.
-  // Dated Event import needs spaces/capacity configured first (availability
-  // enforcement); BYB after Calendar & Availability makes that sequence explicit.
+  const toursLabel = tourSchedulingEnabled ? "offered" : "Not offered";
+
   const stages: StageRow[] = [
     {
       key: "your-venue",
       title: "Your Venue",
-      href: "/settings/business",
-      hrefLabel: "Go to Settings",
+      href: STAGE_COPY["your-venue"].destinationHref,
+      hrefLabel: STAGE_COPY["your-venue"].destinationLabel,
       status: yourVenueDone ? "complete" : null,
       detail: yourVenueDone ? "You've looked this over." : "Take a look whenever you're ready.",
-      required: true,
+      required: STAGE_COPY["your-venue"].required,
       action: !yourVenueDone ? (
         <StageAcknowledgeButton
           action={() => markStageReviewedAction("your-venue")}
@@ -111,11 +111,11 @@ export function SetupHubOverview({
     {
       key: "calendar-availability",
       title: "Calendar & Availability",
-      href: "/settings/availability",
-      hrefLabel: "Go to Settings",
+      href: STAGE_COPY["calendar-availability"].destinationHref,
+      hrefLabel: STAGE_COPY["calendar-availability"].destinationLabel,
       status: calendarDone ? "complete" : null,
-      detail: `${spacesCount} space${spacesCount === 1 ? "" : "s"} added · Scheduling capacity ${hasCapacityRules ? "set" : "using the defaults"} · Online tour booking ${tourSchedulingEnabled ? "on" : "off"}.`,
-      required: true,
+      detail: `${spacesCount} space${spacesCount === 1 ? "" : "s"} · Scheduling capacity ${hasCapacityRules ? "set" : "using defaults"} · Tours ${toursLabel}.`,
+      required: STAGE_COPY["calendar-availability"].required,
       action: !calendarDone ? (
         <StageAcknowledgeButton
           action={() => markStageReviewedAction("calendar-availability")}
@@ -129,15 +129,17 @@ export function SetupHubOverview({
       status: bringYourBusinessDone ? "complete" : "not_started",
       detail: hasImportedData
         ? "Your existing data has been brought in."
-        : bringYourBusinessManual
-          ? "You're starting fresh and adding things yourself — that's the plan."
-          : "Nothing brought in yet.",
-      required: true,
+        : bybPath === "individual"
+          ? "You're adding things yourself — that's the plan."
+          : bybPath === "skipped"
+            ? "Starting fresh for now — that's the plan."
+            : "Nothing brought in yet.",
+      required: STAGE_COPY["bring-your-business"].required,
       customActions: (
         <BringYourBusinessChoices
           done={bringYourBusinessDone}
           hasImportedData={hasImportedData}
-          manualConfirmed={bringYourBusinessManual}
+          path={bybPath}
           calendarReadyHint={calendarReadyHint}
         />
       ),
@@ -145,11 +147,11 @@ export function SetupHubOverview({
     {
       key: "your-offerings",
       title: "Your Offerings",
-      href: "/library/packages",
-      hrefLabel: "Go to Library",
+      href: STAGE_COPY["your-offerings"].destinationHref,
+      hrefLabel: STAGE_COPY["your-offerings"].destinationLabel,
       status: offeringsDone ? "complete" : null,
       detail: `${readyCounts.packages} package${readyCounts.packages === 1 ? "" : "s"} of your own, ${readyCounts.inventory} item${readyCounts.inventory === 1 ? "" : "s"} of your own.`,
-      required: true,
+      required: STAGE_COPY["your-offerings"].required,
       action: !offeringsDone ? (
         <StageAcknowledgeButton
           action={() => markStageReviewedAction("your-offerings")}
@@ -160,14 +162,14 @@ export function SetupHubOverview({
     {
       key: "client-experience",
       title: "Your Client Experience",
-      href: "/library",
-      hrefLabel: "Go to Library",
+      href: STAGE_COPY["client-experience"].destinationHref,
+      hrefLabel: STAGE_COPY["client-experience"].destinationLabel,
       status: clientExperienceDone ? "complete" : null,
       detail: `${clientExperienceCount} item${clientExperienceCount === 1 ? "" : "s"} of your own across contracts, questionnaires, messages, and planning guides.`
         + (uploadedMaterialsCount > 0
           ? ` You also brought over ${uploadedMaterialsCount} file${uploadedMaterialsCount === 1 ? "" : "s"} during setup — head to Library to turn the ones that matter into templates.`
           : ""),
-      required: true,
+      required: STAGE_COPY["client-experience"].required,
       action: !clientExperienceDone ? (
         <StageAcknowledgeButton
           action={() => markStageReviewedAction("client-experience")}
@@ -178,44 +180,44 @@ export function SetupHubOverview({
     {
       key: "lead-capture",
       title: "Get Your Leads Coming In",
-      href: "/setup-hub/lead-capture",
-      hrefLabel: "Set this up",
+      href: STAGE_COPY["lead-capture"].destinationHref,
+      hrefLabel: STAGE_COPY["lead-capture"].destinationLabel,
       status: leadCapture?.complete ? "complete" : "not_started",
       detail: leadCapture?.path === "automated"
         ? `${leadCapture.channels.filter((c) => c.configuredAt).length} way${leadCapture.channels.filter((c) => c.configuredAt).length === 1 ? "" : "s"} set up for inquiries to reach you.`
         : leadCapture?.path === "manual_external"
           ? "You're adding leads yourself for now — that's the plan."
           : "Nothing set up yet.",
-      required: true,
+      required: STAGE_COPY["lead-capture"].required,
     },
     {
       key: "your-team",
       title: "Your People",
-      href: "/settings/team",
-      hrefLabel: "Invite someone",
-      status: yourTeamDone ? "complete" : "not_started",
+      href: STAGE_COPY["your-team"].destinationHref,
+      hrefLabel: STAGE_COPY["your-team"].destinationLabel,
+      status: yourTeamDone ? "complete" : null,
       detail: activeTeamCount > 0
         ? `${activeTeamCount} team member${activeTeamCount === 1 ? "" : "s"} with you here.`
         : yourTeamSolo
           ? "Running things solo for now — that's the plan."
-          : "Just you here so far.",
-      required: true,
+          : "Just you here so far. Solo is fine whenever you're ready to say so.",
+      required: STAGE_COPY["your-team"].required,
       action: !yourTeamDone ? (
         <StageAcknowledgeButton action={setYourTeamSoloAction} label="It's just me for now" />
       ) : undefined,
     },
     {
       key: "financials",
-      title: "Financials",
-      href: "/setup-hub/financials",
-      hrefLabel: "Connect",
-      status: null,
+      title: "Online payments",
+      href: STAGE_COPY.financials.destinationHref,
+      hrefLabel: STAGE_COPY.financials.destinationLabel,
+      status: financialsDone ? "complete" : null,
       detail: `Stripe ${stripeConnected ? "connected" : "not connected yet"} · QuickBooks ${quickbooksConnected ? "connected" : "not connected yet"}.`,
-      required: false,
-      action: !financialsReviewed ? (
+      required: STAGE_COPY.financials.required,
+      action: !financialsDone ? (
         <StageAcknowledgeButton
           action={() => markStageReviewedAction("financials")}
-          label="I'll connect these later"
+          label="I'll do this later"
         />
       ) : undefined,
     },
@@ -225,11 +227,11 @@ export function SetupHubOverview({
     <div className="space-y-6">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          {ownerFirstName ? `${ownerFirstName}, here` : "Here"}&apos;s everything involved in getting {venueName} set up. Work through these in any order, come back as often as you like — nothing is final until you say so.
+          {ownerFirstName ? `${ownerFirstName}, here` : "Here"}&apos;s what helps {venueName} feel ready for real clients. Work in any order that makes sense — leave and come back anytime.
         </p>
         {!bringYourBusinessDone ? (
           <p className="text-sm text-muted-foreground">
-            Already have information in another system? Bringing it over first may save you time before you build everything by hand.
+            Already have clients elsewhere? Importing is one path — adding things yourself or starting fresh are equally fine.
           </p>
         ) : null}
       </div>

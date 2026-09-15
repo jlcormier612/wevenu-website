@@ -4,6 +4,7 @@ import { sendMessageEmail } from "@/lib/messages/notify";
 import { getPortalConversation, sendPortalConversationMessage } from "@/lib/conversations/service";
 import type { PortalConversationMessage } from "@/lib/conversations/types";
 import type { CoupleMessage, PortalThread } from "@/lib/messages/types";
+import { publicAppOrigin } from "@/lib/env";
 
 /**
  * RC2, Milestone 2 — this route now reads/writes through Conversations
@@ -16,6 +17,7 @@ function toLegacyMessage(m: PortalConversationMessage): CoupleMessage {
   return {
     id: m.id,
     sender_type: m.senderType === "venue_staff" || m.senderType === "system" ? "venue" : "couple",
+    channel: m.channel,
     body: m.body,
     created_at: m.sentAt,
     venue_read_at: m.venueReadAt,
@@ -35,10 +37,16 @@ function toLegacyMessage(m: PortalConversationMessage): CoupleMessage {
 }
 
 export async function GET(request: Request) {
-  const token = new URL(request.url).searchParams.get("token") ?? "";
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token") ?? "";
   if (!token) return NextResponse.json({ error: "Missing token" }, { status: 400 });
 
-  const result = await getPortalConversation(token);
+  // Badge/nav fetches pass markRead=0 so merely rendering the shell does not
+  // clear unread. Opening Messages (default) marks venue/system messages read.
+  const markReadParam = url.searchParams.get("markRead");
+  const markRead = markReadParam !== "0" && markReadParam !== "false";
+
+  const result = await getPortalConversation(token, { markRead });
   if (!result.ok) return NextResponse.json({ thread_id: null, messages: [] });
 
   const thread: PortalThread = {
@@ -98,7 +106,7 @@ async function notifyVenue(token: string, preview: string) {
     const coupleName = [client?.first_name, client?.partner_first_name]
       .filter(Boolean).join(" & ") || "Your Couple";
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+    const baseUrl = publicAppOrigin();
     await sendMessageEmail({
       to: venue.email,
       senderName: coupleName,

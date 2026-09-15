@@ -55,4 +55,17 @@ describe("vendor check-in notification migration", () => {
     assert.doesNotMatch(bodies, /status <> 'removed'/);
     assert.doesNotMatch(bodies, /status != 'removed'/);
   });
+
+  it("recovery migration re-asserts business_name check-in title", () => {
+    const sql = readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations/20261385000000_vendor_network_service_role_and_checkin.sql",
+      ),
+      "utf8",
+    );
+    assert.match(sql, /select business_name into v_vendor_name/);
+    assert.match(sql, /has arrived/);
+    assert.match(sql, /grant select on public\.venue_notifications to service_role/);
+  });
 });

@@ -247,7 +247,7 @@
 
 - **Status:** Just completed its own Experience Completion pass — fork consolidation (HQ, Vendor App), Event Readiness wiring extended, a real celebration framework (5 milestones), vendor tone, one-time onboarding intros, empty-state consistency, and a closing Private Until Committed audit that found and fixed two real violations.
 - **Classification:** Release Ready for what was scoped; Future Evolution for the rest.
-- **Remaining work (named, deferred, not gaps):** Daily Briefing (a net-new venue-wide feed), the six-kind Observation Model's full narration convergence across the 4 separate Claude integrations, extending Luv into Floor Plans and aggregate venue-facing Guests/Seating, progressive-disclosure controls for the couple/vendor audience (a "hide Luv" toggle equivalent to the coordinator's own Settings).
+- **Remaining work (named, deferred, not gaps):** Daily Briefing (a net-new venue-wide feed), the six-kind Observation Model's full narration convergence across its OpenAI-backed integrations, extending Luv into Floor Plans and aggregate venue-facing Guests/Seating, progressive-disclosure controls for the couple/vendor audience (a "hide Luv" toggle equivalent to the coordinator's own Settings).
 - **Dependencies:** None blocking.
 - **User impact:** None negative for what's shipped; the deferred items are genuine future differentiation, not missing table stakes.
 - **Effort:** Daily Briefing — L. Narration convergence — M. Further capability extension — M. Progressive disclosure controls — S.

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 
 import { SignForm } from "@/app/sign/[token]/sign-form";
+import { ContractSigningArtifact } from "@/components/contracts/contract-signing-artifact";
 import { resolveContractBrandPresentation } from "@/lib/contracts/branding";
 import { getContractByToken } from "@/lib/contracts/service";
 
@@ -26,13 +26,13 @@ export default async function SignPage({ params }: Props) {
 
   if (contract.status === "signed") {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="max-w-2xl w-full text-center space-y-3">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-2xl space-y-3 text-center">
           <p className="text-2xl">✓</p>
           <h1 className="text-xl font-semibold text-gray-800">This agreement has already been signed.</h1>
-          {contract.signerName && (
+          {contract.signerName ? (
             <p className="text-sm text-gray-500">Signed by {contract.signerName}.</p>
-          )}
+          ) : null}
         </div>
       </div>
     );
@@ -40,8 +40,8 @@ export default async function SignPage({ params }: Props) {
 
   if (contract.status !== "sent") {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="max-w-2xl w-full text-center space-y-3">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-2xl space-y-3 text-center">
           <h1 className="text-xl font-semibold text-gray-800">This agreement is not available for signing.</h1>
           <p className="text-sm text-gray-500">The link may be expired or the contract may have been cancelled.</p>
         </div>
@@ -50,48 +50,14 @@ export default async function SignPage({ params }: Props) {
   }
 
   const venue = contract.venue;
-  // Prefer branding frozen at release; pre-existing contracts without a
-  // snapshot fall back to live venue branding (no silent backfill).
   const brand = resolveContractBrandPresentation(contract.brandingSnapshot, venue);
 
   return (
-    <div
-      className="min-h-screen bg-gray-50 py-10 px-4"
-      style={{
-        // Venue Brand Experience Phase 1 — this page previously didn't even
-        // know the venue's own name, let alone its brand.
-        "--venue-primary": brand?.primaryColor ?? "#5D6F5D",
-        "--venue-secondary": brand?.secondaryColor ?? "#4F5F4F",
-        "--venue-accent": brand?.accentColor ?? "#B8AEA1",
-        "--venue-neutral": brand?.neutralColor ?? "#F7F5F1",
-      } as CSSProperties}
-    >
-      <div className="mx-auto max-w-3xl space-y-8">
-        {/* Header */}
-        <div className="rounded-xl bg-white shadow-sm border-t-4 border border-gray-200 px-8 py-6" style={{ borderTopColor: "var(--venue-primary)" }}>
-          <div className="flex items-center gap-3 mb-3">
-            {brand?.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={brand.logoUrl} alt={brand.name ?? ""} className="h-9 w-9 rounded-full object-cover shrink-0" />
-            )}
-            {brand?.name && <p className="text-sm font-semibold text-gray-700">{brand.name}</p>}
-          </div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-            Agreement for Review &amp; Signature
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold text-gray-900">{contract.title}</h1>
-        </div>
-
-        {/* Contract content */}
-        <div className="rounded-xl bg-white shadow-sm border border-gray-200 px-8 py-8">
-          <pre className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed font-sans">
-            {contract.content}
-          </pre>
-        </div>
-
-        {/* Signature form */}
-        <SignForm token={token} />
-      </div>
-    </div>
+    <ContractSigningArtifact
+      title={contract.title}
+      content={contract.content}
+      brand={brand}
+      signatureSlot={<SignForm token={token} />}
+    />
   );
 }

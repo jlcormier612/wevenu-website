@@ -41,6 +41,18 @@ export const OUTBOUND_CHANNEL_LABEL: Record<OutboundChannel, string> = {
   portal: "Portal message",
 };
 
+/** Short labels for couple-facing mixed-channel history (portal Messages). */
+export const CLIENT_HISTORY_CHANNEL_LABEL: Record<OutboundChannel, string> = {
+  email: "Email",
+  sms: "Text",
+  portal: "Portal",
+};
+
+export function clientHistoryChannelLabel(channel: string): string | null {
+  if (isOutboundChannel(channel)) return CLIENT_HISTORY_CHANNEL_LABEL[channel];
+  return null;
+}
+
 export const SENDABLE_CHANNEL_LABEL: Record<SendableChannel, string> = {
   ...OUTBOUND_CHANNEL_LABEL,
   internal_note: "Internal note",

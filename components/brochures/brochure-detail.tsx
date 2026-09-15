@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteBrochureAction, sendBrochureToLeadAction, updateBrochureAction } from "@/app/(app)/library/brochures/actions";
+import { deleteBrochureAction, sendBrochureToLeadAction, updateBrochureAction, updateBrochurePhotographyAction } from "@/app/(app)/library/brochures/actions";
+import { BrochurePhotosEditor } from "@/components/brochures/brochure-photos-editor";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
@@ -27,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { leadDisplayName } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
 import type { BrochureWithActivity } from "@/lib/brochures/types";
+import type { BrochurePhotoLayout } from "@/lib/brochures/photo-layout";
 
 function SendToLead({ brochureId, leads }: { brochureId: string; leads: Lead[] }) {
   const [leadId, setLeadId] = React.useState("");
@@ -34,7 +36,7 @@ function SendToLead({ brochureId, leads }: { brochureId: string; leads: Lead[] }
   const selected = leadsWithEmail.find((l) => l.id === leadId) ?? null;
 
   const recipient = selected
-    ? { name: leadDisplayName(selected.firstName, selected.lastName, selected.partnerFirstName, selected.partnerLastName), contact: selected.email, relationshipLabel: "Prospect" }
+    ? { name: leadDisplayName(selected.firstName, selected.lastName, selected.partnerFirstName, selected.partnerLastName), contact: selected.email, relationshipLabel: "Lead" }
     : null;
 
   async function handleSend(message: string) {
@@ -44,7 +46,7 @@ function SendToLead({ brochureId, leads }: { brochureId: string; leads: Lead[] }
   return (
     <div className="flex items-center gap-2">
       <Select value={leadId} onValueChange={setLeadId} items={leadsWithEmail.map((l) => ({ value: l.id, label: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName) }))}>
-        <SelectTrigger className="w-56"><SelectValue placeholder="Choose a prospect" /></SelectTrigger>
+        <SelectTrigger className="w-56"><SelectValue placeholder="Choose a lead" /></SelectTrigger>
         <SelectContent>
           {leadsWithEmail.map((l) => (
             <SelectItem key={l.id} value={l.id}>{leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName)}</SelectItem>
@@ -64,21 +66,43 @@ function SendToLead({ brochureId, leads }: { brochureId: string; leads: Lead[] }
   );
 }
 
-export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActivity; leads: Lead[] }) {
+export function BrochureDetail({
+  brochure,
+  leads,
+  venueId,
+  venueHeroUrl,
+}: {
+  brochure: BrochureWithActivity;
+  leads: Lead[];
+  venueId: string;
+  venueHeroUrl: string | null;
+}) {
   const router = useRouter();
   const [name, setName] = React.useState(brochure.name);
   const [welcomeText, setWelcomeText] = React.useState(brochure.welcomeText ?? "");
   const [includePackages, setIncludePackages] = React.useState(brochure.includePackages);
   const [includeFaqs, setIncludeFaqs] = React.useState(brochure.includeFaqs);
   const [closingText, setClosingText] = React.useState(brochure.closingText ?? "");
+  const [photoUrls, setPhotoUrls] = React.useState(brochure.photoUrls);
+  const [photoLayout, setPhotoLayout] = React.useState<BrochurePhotoLayout>(brochure.photoLayout);
   const [dirty, setDirty] = React.useState(false);
   const [saving, startSave] = React.useTransition();
+  const [photosPending, startPhotos] = React.useTransition();
   const [deleting, startDelete] = React.useTransition();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
   const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   function markDirty<T>(setter: (v: T) => void) {
     return (v: T) => { setter(v); setDirty(true); };
+  }
+
+  function handlePhotosChange(next: { photoUrls: string[]; photoLayout: BrochurePhotoLayout }) {
+    setPhotoUrls(next.photoUrls);
+    setPhotoLayout(next.photoLayout);
+    startPhotos(async () => {
+      const result = await updateBrochurePhotographyAction(brochure.id, next.photoUrls, next.photoLayout);
+      if (!result.ok) toast.error(result.message ?? "Could not save photos.");
+    });
   }
 
   function handleSave() {
@@ -164,7 +188,21 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
       </Card>
 
       <Card>
-        <CardHeader><p className="text-sm font-medium text-heading">Share with a prospect</p></CardHeader>
+        <CardHeader><p className="text-sm font-medium text-heading">Photography</p></CardHeader>
+        <CardContent>
+          <BrochurePhotosEditor
+            venueId={venueId}
+            venueHeroUrl={venueHeroUrl}
+            photoUrls={photoUrls}
+            photoLayout={photoLayout}
+            pending={photosPending}
+            onChange={handlePhotosChange}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><p className="text-sm font-medium text-heading">Share with a lead</p></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
             Share sends an email with a view link. The public link for this brochure stays the same after you send —

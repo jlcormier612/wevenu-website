@@ -97,6 +97,15 @@ export {
   type ActivationLookupResult,
 } from "./lifecycle";
 export {
+  bindCrmProductVenueId,
+  recordCrmWhiteGloveIntakeSubmitted,
+  recordCrmWhiteGloveMaterialsReceived,
+  recordCrmWhiteGloveHandoffComplete,
+  recordCrmProductAccountActivated,
+  productConfigureWorkspaceUrl,
+  getCrmProductVenueId,
+} from "./product-milestones";
+export {
   syncRenewalDate,
   initialRenewalDateIso,
   desiredRenewalStageForAnniversary,

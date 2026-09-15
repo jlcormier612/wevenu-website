@@ -3,6 +3,7 @@
 **Status:** Plan, pending approval. Built from `docs/luv-experience-completion-assessment.md` (Research + Product Assessment) and four scoping decisions (below), following the established Research → Assessment → Clarifying Questions → **Plan** → Implementation → Live Validation → Final Report discipline.
 **Architecture check:** Nothing below introduces a new platform-wide architectural concept. Every work stream either (a) executes a phase already named in the approved `docs/luv-platform-intelligence-architecture.md`/`docs/luv-platform-reconciliation.md` roadmap, or (b) hooks a presentation-layer moment (a celebration, an intro card) onto commitment-transition points that already exist from the Commitment Lifecycle/Timeline work — it does not add a new lifecycle state, ownership model, or publication concept.
 
+> **Historical note (provider):** Written before the Venue Anthropic→OpenAI cutover. Live Venue AI now uses `lib/ai/openai.ts`. Mentions of "Claude integrations" below are historical naming for those same feature paths.
 ---
 
 ## Scoping decisions (from clarifying questions)

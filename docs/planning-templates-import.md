@@ -17,7 +17,7 @@ That's who this is for. Success looks like: a coordinator pastes in what they al
 ## Implementation notes (secondary to the story above)
 
 **Grounding facts, confirmed against the current codebase:**
-- **Luv is a real capability, not a stub** — it calls the actual Anthropic API today (`lib/luv/drafts.ts`, `lib/luv/client-drafts.ts`, `lib/luv/import-assist.ts`, gated behind `ANTHROPIC_API_KEY`). Its existing jobs are drafting outbound communications and (as of the Vendor Management import work) turning pasted text into structured rows for CSV-shaped entities. Converting pasted text into a milestones-and-tasks structure is the same kind of job, new only in its output shape.
+- **Luv is a real capability, not a stub** — Venue-app AI calls go through the shared OpenAI helper today (`lib/ai/openai.ts`), including `lib/luv/drafts.ts` and `lib/luv/import-assist.ts`, gated behind `OPENAI_API_KEY`. Its existing jobs are drafting outbound communications and (as of the Vendor Management import work) turning pasted text into structured rows for CSV-shaped entities. Converting pasted text into a milestones-and-tasks structure is the same kind of job, new only in its output shape.
 - **No document text-extraction exists for this feature's Phase 1** — Word/PDF upload for Planning Templates is deliberately deferred (see phasing below); Copy/Paste needs none of that infrastructure.
 - **No Google API/OAuth integration exists anywhere in this codebase.** Deferred to a documented workaround, not built (see §4, unchanged from the original analysis).
 
@@ -52,7 +52,7 @@ The five sources named in the request are five different ways of getting to "pla
 A coordinator pastes or uploads their existing planning document, and picks which kind of checklist it's meant to become — **Client Planning or Venue Planning** (the same fork that already exists everywhere else in this feature; it can't be guessed reliably from text alone, so ask rather than infer).
 
 ### 2.2 Luv proposes a draft
-This is new work for Luv, following its existing pattern (direct Anthropic call, human-reviewed output, nothing auto-committed) rather than a new mechanism:
+This is new work for Luv, following its existing pattern (shared OpenAI helper via `lib/ai/openai.ts`, human-reviewed output, nothing auto-committed) rather than a new mechanism:
 - Input: the raw text + the chosen kind (Client/Venue).
 - Output: a structured proposal — milestones (sections), and within each, tasks with a title, instructions, and a **relative due date guess expressed in plain language** ("about 30 days before the event" — Luv reads relative phrasing already present in the source text where it exists, e.g. "send 2 weeks before," and otherwise makes a reasonable guess it flags as a guess).
 - Luv does not guess Owner/Wait-until/Escalation for Venue Planning tasks, and does not guess attachments — those stay coordinator-set, same as building a template by hand.

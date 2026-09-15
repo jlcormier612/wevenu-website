@@ -4,14 +4,17 @@ import { revalidatePath } from "next/cache";
 
 import {
   createBrochure, deleteBrochure_, duplicateBrochure_, sendBrochureToLead,
-  setBrochureArchived_, updateBrochure_,
+  setBrochureArchived_, updateBrochure_, updateBrochurePhotography_,
 } from "@/lib/brochures/service";
 import type { BrochureActionResult, BrochureInput, CreateBrochureResult } from "@/lib/brochures/types";
 
 function revalidateLibrary(id?: string) {
   revalidatePath("/library/brochures");
   revalidatePath("/library");
-  if (id) revalidatePath(`/library/brochures/${id}`);
+  if (id) {
+    revalidatePath(`/library/brochures/${id}`);
+    revalidatePath(`/library/brochures/${id}/preview`);
+  }
 }
 
 export async function createBrochureAction(input: BrochureInput): Promise<CreateBrochureResult> {
@@ -22,6 +25,16 @@ export async function createBrochureAction(input: BrochureInput): Promise<Create
 
 export async function updateBrochureAction(id: string, input: BrochureInput): Promise<BrochureActionResult> {
   const result = await updateBrochure_(id, input);
+  if (result.ok) revalidateLibrary(id);
+  return result;
+}
+
+export async function updateBrochurePhotographyAction(
+  id: string,
+  photoUrls: string[],
+  photoLayout: string,
+): Promise<BrochureActionResult> {
+  const result = await updateBrochurePhotography_(id, photoUrls, photoLayout);
   if (result.ok) revalidateLibrary(id);
   return result;
 }

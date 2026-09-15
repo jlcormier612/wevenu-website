@@ -20,6 +20,7 @@ import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
 import { deriveSixRoles, resolveCuratedColorStories, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
+import { applyColorRoleEdit } from "@/lib/wedding-website/wizard-color-edit";
 import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
 import { collectionDescriptor } from "@/lib/wedding-website/collection-descriptors";
 import {
@@ -514,16 +515,59 @@ function GalleryEditor({ content, onSave, onCancel, token }: { content: WebsiteC
       </div>
 
       {photos.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {photos.map((url, i) => (
-            <div key={i} className="relative rounded-xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
-              <img src={url} alt="" className="w-full h-full object-cover" />
-              <button type="button" onClick={() => setPhotos(p => p.filter((_, j) => j !== i))}
-                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
+        <div className="space-y-2">
+          <p className="text-[11px] text-muted-foreground">
+            Use the arrows to change how photos appear on your website (1 = first).
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {photos.map((url, i) => (
+              <div key={`${url}-${i}`} className="relative rounded-xl overflow-hidden" style={{ aspectRatio: "1/1" }}>
+                <img src={url} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent px-1 pb-1 pt-4">
+                  <div className="flex gap-0.5">
+                    <button
+                      type="button"
+                      aria-label="Move photo earlier"
+                      disabled={i === 0}
+                      onClick={() => setPhotos((p) => {
+                        if (i === 0) return p;
+                        const next = [...p];
+                        const tmp = next[i - 1]!;
+                        next[i - 1] = next[i]!;
+                        next[i] = tmp;
+                        return next;
+                      })}
+                      className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 disabled:opacity-30"
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Move photo later"
+                      disabled={i === photos.length - 1}
+                      onClick={() => setPhotos((p) => {
+                        if (i >= p.length - 1) return p;
+                        const next = [...p];
+                        const tmp = next[i + 1]!;
+                        next[i + 1] = next[i]!;
+                        next[i] = tmp;
+                        return next;
+                      })}
+                      className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 disabled:opacity-30"
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <span className="text-[10px] font-medium text-white/90 tabular-nums">{i + 1}</span>
+                </div>
+                <button type="button" onClick={() => setPhotos(p => p.filter((_, j) => j !== i))}
+                  className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
+                  aria-label="Remove photo">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {photos.length === 0 && (
@@ -1532,9 +1576,22 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                     value={(site[r.key] as string | undefined) || seeded?.[r.key] || "#BF9089"}
                     onChange={(v) => {
                       // Editing any single role diverges from the curated
-                      // story, if one was active — clear colorStoryId so
-                      // every surface reads this as a custom palette.
-                      onUpdate({ [r.key]: v, colorStoryId: null });
+                      // story — materialise all six roles then clear
+                      // colorStoryId so every surface reads a custom palette.
+                      const next = applyColorRoleEdit({
+                        current: {
+                          colorPrimary: site.colorPrimary ?? "",
+                          colorSecondary: site.colorSecondary ?? "",
+                          colorAccent: site.colorAccent ?? "",
+                          colorNeutral: site.colorNeutral ?? "",
+                          colorBackground: site.colorBackground ?? "",
+                          colorText: site.colorText ?? "",
+                        },
+                        seeded,
+                        role: r.key,
+                        nextHex: v,
+                      });
+                      onUpdate({ ...next, colorStoryId: null });
                     }}
                   />
                 </div>

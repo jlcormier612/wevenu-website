@@ -4,7 +4,9 @@
  * never auto-verified. Persists `onboardingType` on the venue record.
  * Also upserts the shared Relationship (timeline + subscription metadata),
  * then sends product emails (Welcome / Founder / White Glove Welcome),
- * then enqueues Product Sync for Launch Yourself only (White Glove defers until Launch Workspace).
+ * then enqueues Product Sync for Self-Setup (Launch Yourself). White Glove
+ * venue provisioning still runs immediately; customer access waits for
+ * Product HQ Finish White Glove Setup.
  *
  * Idempotent on stripeCheckoutSessionId / stripeSubscriptionId — webhook retries
  * must not duplicate venues, emails, or activations.
@@ -12,13 +14,9 @@
 
 import { randomUUID } from "crypto";
 
-import { activationUrlFromToken, sendEnrollmentProductEmails } from "@shared/email";
+import { activationUrlFromToken, sendEnrollmentProductEmails, whiteGloveIntakeUrlFromToken } from "@shared/email";
 import { enqueueProductSync } from "@shared/product-sync";
-import { upsertVenueEnrollment } from "@shared/product-account";
-import {
-  DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
-  whiteGloveTimelineLabel,
-} from "@shared/relationships";
+import { provisionVenueEnrollment, upsertVenueEnrollment } from "@shared/product-account";
 import { notifySubscriptionEnrollment } from "@/lib/crm/notify";
 import {
   findEnrollmentByCheckoutSessionId,
@@ -34,9 +32,9 @@ import { syncEnrollmentToRelationship } from "@/lib/relationships/bridge";
  * Create a CRM venue enrollment record when a subscription succeeds.
  * Welcome Back Verified starts as `pending` only when Welcome Back was requested —
  * never auto-verified. Persists `onboardingType` on the venue record.
- * Also upserts the shared Relationship (timeline + subscription metadata),
- * then sends product emails (Welcome / Founder / White Glove Welcome),
- * then enqueues Product Sync for Launch Yourself only (White Glove defers until Launch Workspace).
+ * Also upserts the shared Relationship, bridges product enrollment, provisions
+ * the real venue workspace (Self-Setup + White Glove), then sends product emails.
+ * White Glove does NOT receive activation credentials at purchase.
  */
 export async function createVenueEnrollment(
   input: CreateVenueEnrollmentInput,
@@ -134,6 +132,42 @@ export async function createVenueEnrollment(
       );
     }
 
+    // Provision the real venue immediately (both Self-Setup and White Glove).
+    // Idempotent — webhook retries must not duplicate venues or starters.
+    // White Glove customers still do NOT receive product access until handoff.
+    const provisioned = await provisionVenueEnrollment(bridged.id);
+    if (!provisioned.ok) {
+      console.error("[crm] workspace provision failed — webhook should retry", {
+        enrollmentId: record.id,
+        productEnrollmentId: bridged.id,
+        error: provisioned.error,
+      });
+      throw new Error(
+        `Could not provision venue workspace: ${provisioned.error}. Stripe webhook should retry.`,
+      );
+    }
+
+    // Ensure CRM productSync.venueId even if the product provision route's
+    // bind step could not reach the CRM store (idempotent).
+    if (provisioned.venueId) {
+      try {
+        const { bindCrmProductVenueId } = await import("@shared/relationships");
+        await bindCrmProductVenueId({
+          productVenueId: provisioned.venueId,
+          ownerEmail: record.customerEmail,
+          stripeCustomerId: record.stripeCustomerId,
+          stripeSubscriptionId: record.stripeSubscriptionId,
+        });
+      } catch (bindErr) {
+        console.error("[crm] productSync.venueId bind failed", bindErr);
+      }
+    }
+
+    const intakeUrl =
+      !isLaunchYourself && provisioned.intakeToken
+        ? whiteGloveIntakeUrlFromToken(provisioned.intakeToken)
+        : null;
+
     // Webhook retries must re-sync CRM + ensure enrollment, but must not
     // re-send welcome emails or re-notify ops.
     if (!existing) {
@@ -151,16 +185,15 @@ export async function createVenueEnrollment(
           foundingMember: record.foundingMember,
           welcomeBackRequested: record.welcomeBackRequested,
           onboardingType: record.onboardingType,
-          implementationTimeline: whiteGloveTimelineLabel({
-            minBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.min,
-            maxBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.max,
-          }),
           activateUrl,
+          intakeUrl,
         });
         console.info("[crm] enrollment product emails", {
           enrollmentId: record.id,
           relationshipId: synced.relationshipId,
           hasActivateUrl: Boolean(activateUrl),
+          hasIntakeUrl: Boolean(intakeUrl),
+          venueId: provisioned.venueId,
           results: emailResults.map((r) => ({
             templateId: r.templateId,
             delivery: r.delivery,
@@ -173,18 +206,13 @@ export async function createVenueEnrollment(
     }
   }
 
-  // Launch Yourself: provision product access after welcome email is queued.
-  // White Glove: defer until Implementation Launch Workspace.
+  // Product Sync enqueue remains for Launch Yourself (subscription/onboarding
+  // pipeline). Venue + starters are already provisioned above for both paths.
   if (!existing && synced?.relationshipId && record.onboardingType !== "white_glove") {
     await enqueueProductSync(
       synced.relationshipId,
       "checkout.session.completed",
     );
-  } else if (!existing && synced?.relationshipId && record.onboardingType === "white_glove") {
-    console.info("[crm] defer product sync for White Glove", {
-      relationshipId: synced.relationshipId,
-      enrollmentId: record.id,
-    });
   }
 
   return record;

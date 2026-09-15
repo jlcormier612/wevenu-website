@@ -8,6 +8,7 @@
  * Destination SoT remains Story (`story`). Never task, progress, or venue ops.
  */
 
+import { customerFacingLatestJournalEntry } from "@/lib/portal/customer-facing-journal";
 import type { ClientMedia, JournalEntry } from "@/lib/portal/types";
 
 export const MEMORIES_HEADING = "A moment from your journey";
@@ -101,7 +102,7 @@ function photosFromInspiration(
  * Resolve the Home Memories strip from existing profile/journal data only.
  */
 export function resolveHomeMemories(input: HomeMemoriesInput): HomeMemoriesModel {
-  const entry = input.latestJournalEntry ?? null;
+  const entry = customerFacingLatestJournalEntry(input.latestJournalEntry);
   const inspiration = input.inspirationPhotos ?? [];
   const inspPhotos = photosFromInspiration(
     inspiration,

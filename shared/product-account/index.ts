@@ -36,7 +36,17 @@ export type UpsertEnrollmentInput = {
 };
 
 export type UpsertEnrollmentResult =
-  | { ok: true; id: string; status: "pending" | "activated" }
+  | { ok: true; id: string; status: "pending" | "provisioned" | "activated" }
+  | { ok: false; error: string };
+
+export type ProvisionEnrollmentResult =
+  | {
+      ok: true;
+      venueId: string;
+      alreadyProvisioned: boolean;
+      intakeToken: string | null;
+      startersOk: boolean;
+    }
   | { ok: false; error: string };
 
 export type ActivateAccountResult =
@@ -49,9 +59,12 @@ export type EnrollmentLookupResult =
       found: true;
       venueName: string;
       onboardingType: OnboardingType;
-      status: "pending" | "activated";
-      /** Same value the welcome email links to; null for white_glove or once activated. */
+      status: "pending" | "provisioned" | "activated";
+      /** Same value the welcome email links to; null for white_glove until handoff. */
       activationToken: string | null;
+      /** White Glove intake URL token — null for Self-Setup. */
+      intakeToken: string | null;
+      whiteGloveStatus: string | null;
     }
   | { ok: true; found: false }
   | { ok: false; error: string };
@@ -103,6 +116,15 @@ export async function upsertVenueEnrollment(
   input: UpsertEnrollmentInput,
 ): Promise<UpsertEnrollmentResult> {
   return postInternal<UpsertEnrollmentResult>("/api/internal/enrollment/upsert", input);
+}
+
+/** Provision venue + starters from enrollment. Idempotent. */
+export async function provisionVenueEnrollment(
+  enrollmentId: string,
+): Promise<ProvisionEnrollmentResult> {
+  return postInternal<ProvisionEnrollmentResult>("/api/internal/enrollment/provision", {
+    enrollmentId,
+  });
 }
 
 export async function activateVenueAccount(input: {

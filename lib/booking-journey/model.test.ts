@@ -46,7 +46,7 @@ describe("Booking Journey derivation", () => {
     assert.equal(j.isCommerciallyBooked, false);
   });
 
-  it("after package selected offers Send offer / Create contract", () => {
+  it("after package selected offers Send proposal / Create contract", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",
       clientId: "client-1",
@@ -58,6 +58,7 @@ describe("Booking Journey derivation", () => {
     });
     assert.equal(j.currentKey, "agreement");
     assert.equal(j.primaryAction, "send_offer");
+    assert.equal(j.primaryLabel, "Send proposal");
     assert.equal(j.secondaryLabel, "Create contract");
     assert.equal(j.secondaryAction, "create_contract");
     assert.match(j.secondaryHref ?? "", /selectionId=sel-1/);
@@ -139,7 +140,7 @@ describe("Booking Journey derivation", () => {
     });
     assert.equal(j.currentKey, "deposit");
     assert.equal(j.primaryAction, "setup_payments");
-    assert.match(j.direction, /accepted the offer/i);
+    assert.match(j.direction, /accepted the proposal/i);
     assert.match(j.direction, /Collect the \$800\.00 deposit/i);
     assert.match(j.direction, /\$2,400\.00/);
   });

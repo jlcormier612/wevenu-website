@@ -42,6 +42,7 @@ import { ingestLead } from "@/lib/lead-intake/pipeline";
 import type { RawIntakeInput, TrustTier } from "@/lib/lead-intake/types";
 import { previewFirstStepForSequence } from "@/lib/message-sequences/confirm-preview";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import { requireIdentityDecision } from "@/lib/identity/decision";
 
 /** Shared auth + venue guard. Returns a typed error if anything is missing. */
 async function withVenue<T>(
@@ -141,6 +142,28 @@ async function createLeadCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: LeadInput, trustTier: TrustTier,
   historicalImport = false,
 ): Promise<CreateLeadResult> {
+  if (trustTier === "manual" && !historicalImport) {
+    const { findPossibleDuplicateMatches } = await import("@/lib/leads/duplicate-detection");
+    const matches = await findPossibleDuplicateMatches(supabase, venueId, {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phone: input.phone,
+      partnerFirstName: input.partnerFirstName,
+      partnerLastName: input.partnerLastName,
+      partnerEmail: input.partnerEmail,
+    });
+    const decided = requireIdentityDecision(matches, input.identityDecision);
+    if (!decided.ok) {
+      return {
+        ok: false,
+        code: "identity_review_required",
+        matches: decided.matches,
+        message: "We may already have this customer.",
+      };
+    }
+  }
+
   // Routed through the Lead Intake pipeline (Log Attempt → Relationship
   // Resolution → Lead Creation → Automation Trigger → Assignment Hook) —
   // manual entry and CSV import are just another Source Adapter now, not
@@ -487,7 +510,8 @@ export async function updateNote(
 
 export async function deleteNote(noteId: string): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteNote(supabase, venueId, noteId);
+    const deleted = await repo.deleteNote(supabase, venueId, noteId);
+    if (!deleted.ok) return { ok: false, message: deleted.message } as LeadActionResult;
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
@@ -540,7 +564,8 @@ export async function setTaskCompleted(
 
 export async function deleteTask(taskId: string): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteTask(supabase, venueId, taskId);
+    const deleted = await repo.deleteTask(supabase, venueId, taskId);
+    if (!deleted.ok) return { ok: false, message: deleted.message } as LeadActionResult;
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;

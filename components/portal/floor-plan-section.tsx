@@ -76,8 +76,18 @@ function LayoutPreviewSvg({
   backgroundImageOpacity?: number;
   objects: PortalFloorPlanObject[];
 }) {
-  const canvasW = Number(roomWidthFt) * 12 || 800;
-  const canvasH = Number(roomDepthFt) * 12 || 600;
+  const roomW = Number(roomWidthFt) * 12 || 800;
+  const roomH = Number(roomDepthFt) * 12 || 600;
+  let maxX = roomW;
+  let maxY = roomH;
+  for (const obj of objects) {
+    const hw = Number(obj.width) / 2 || 0;
+    const hh = Number(obj.height) / 2 || 0;
+    maxX = Math.max(maxX, Number(obj.x) + hw);
+    maxY = Math.max(maxY, Number(obj.y) + hh);
+  }
+  const canvasW = Math.ceil(maxX);
+  const canvasH = Math.ceil(maxY);
   return (
     <div className="overflow-auto bg-[#F7F5F1] p-3">
       <svg

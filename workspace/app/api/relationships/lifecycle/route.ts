@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { sendRelationshipEmail, sendWelcomeHomeEmail, sendReactivationEmail, activationUrlFromToken } from "@shared/email";
-import { upsertVenueEnrollment } from "@shared/product-account";
+import { sendRelationshipEmail, sendReactivationEmail, activationUrlFromToken } from "@shared/email";
 import {
   createManualSubscription,
   launchWhiteGloveWorkspace,
@@ -259,19 +258,31 @@ export async function POST(request: Request) {
       }
       const settings = await loadLifecycleSettings();
       const isWg = relationship.onboardingType === "white_glove";
-      const stillImpl = relationship.status === "white_glove_implementation";
-      const templateId = stillImpl
-        ? "white_glove_welcome"
-        : relationship.status === "active" || relationship.activationToken
-          ? isWg
-            ? "welcome_home"
-            : relationship.foundingMember
-              ? "founder_welcome"
-              : "welcome"
-          : relationship.foundingMember
-            ? "founder_welcome"
-            : "welcome";
 
+      // White Glove customer access emails are Product HQ only (Finish White Glove Setup).
+      // CRM may only resend the intake/welcome message — never welcome_home.
+      if (isWg) {
+        await sendRelationshipEmail({
+          relationshipId,
+          to: email,
+          templateId: "white_glove_welcome",
+          vars: {
+            firstName: relationship.owner.firstName,
+            venueName: relationship.venue.name,
+            planName: relationship.planName,
+            implementationTimeline: whiteGloveTimelineLabel(settings.whiteGlove),
+          },
+          actorId: actor.id,
+          meta: { trigger: "lifecycle.resend_welcome", white_glove: true },
+        });
+        return NextResponse.json({
+          ok: true,
+          templateId: "white_glove_welcome",
+          note: "White Glove access email is sent only from Product HQ Finish White Glove Setup.",
+        });
+      }
+
+      const templateId = relationship.foundingMember ? "founder_welcome" : "welcome";
       const activateUrl = relationship.activationToken
         ? activationUrlFromToken(relationship.activationToken)
         : `${marketingBaseUrl()}/product`;
@@ -284,7 +295,6 @@ export async function POST(request: Request) {
           firstName: relationship.owner.firstName,
           venueName: relationship.venue.name,
           planName: relationship.planName,
-          implementationTimeline: whiteGloveTimelineLabel(settings.whiteGlove),
           activateUrl,
         },
         actorId: actor.id,
@@ -312,61 +322,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: launched.message }, { status: 400 });
       }
 
-      const rel = launched.relationship;
-      const ownerEmail = rel.owner.email?.trim();
-      if (!ownerEmail || !launched.activationToken) {
-        return NextResponse.json(
-          {
-            error:
-              "Could not persist the real activation record (missing owner email or activation token). Try Launch Workspace again.",
-          },
-          { status: 500 },
-        );
-      }
-
-      // Durable product SoT BEFORE Welcome Home — no email without venue_enrollments token.
-      const bridged = await upsertVenueEnrollment({
-        stripeCheckoutSessionId: rel.stripeCheckoutSessionId ?? null,
-        stripeCustomerId: rel.stripeCustomerId ?? null,
-        stripeSubscriptionId: rel.stripeSubscriptionId ?? null,
-        venueName: rel.venue.name,
-        ownerEmail,
-        plan: rel.planId !== "none" ? rel.planId : rel.planName,
-        onboardingType: "white_glove",
-        activationToken: launched.activationToken,
-      });
-      if (!bridged.ok) {
-        return NextResponse.json(
-          {
-            error:
-              "Could not persist the real activation record. Try Launch Workspace again.",
-            detail: bridged.error,
-          },
-          { status: 500 },
-        );
-      }
-
-      await enqueueProductSync(relationshipId, "white_glove.launch_workspace");
-
-      const activateUrl = activationUrlFromToken(launched.activationToken);
-
-      await sendWelcomeHomeEmail({
-        relationshipId,
-        customerEmail: ownerEmail,
-        venueName: rel.venue.name,
-        firstName: rel.owner.firstName,
-        activateUrl,
-      });
-
+      // Internal CRM milestone only — no welcome_home, no activation token,
+      // no product enrollment access mutation.
       return NextResponse.json({
         ok: true,
         message: launched.message,
-        activationToken: launched.activationToken,
-        activateUrl,
         relationship: launched.relationship,
+        customerAccessGranted: false,
       });
     }
-
     case "suspend": {
       if (!(await actorCan("manage_product_sync"))) {
         return NextResponse.json({ error: "Owner/Admin only" }, { status: 403 });

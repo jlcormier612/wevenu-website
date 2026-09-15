@@ -2,7 +2,7 @@
  * Setup Hub data access layer. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
-import type { LeadCaptureChannelKey, LeadCaptureChannelState, SetupHubState } from "@/lib/setup-hub/types";
+import type { BringYourBusinessPath, LeadCaptureChannelKey, LeadCaptureChannelState, SetupHubState } from "@/lib/setup-hub/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -12,6 +12,7 @@ type StateRow = {
   your_venue_reviewed_at: string | null;
   calendar_availability_reviewed_at: string | null;
   bring_your_business_manual_confirmed_at: string | null;
+  bring_your_business_path: BringYourBusinessPath | null;
   your_offerings_reviewed_at: string | null;
   client_experience_reviewed_at: string | null;
   lead_capture_path: "automated" | "manual_external" | null;
@@ -34,6 +35,9 @@ const mapState = (r: StateRow): SetupHubState => ({
   yourVenueReviewedAt: r.your_venue_reviewed_at,
   calendarAvailabilityReviewedAt: r.calendar_availability_reviewed_at,
   bringYourBusinessManualConfirmedAt: r.bring_your_business_manual_confirmed_at,
+  bringYourBusinessPath: r.bring_your_business_path === "individual" || r.bring_your_business_path === "skipped"
+    ? r.bring_your_business_path
+    : (r.bring_your_business_manual_confirmed_at ? "skipped" : null),
   yourOfferingsReviewedAt: r.your_offerings_reviewed_at,
   clientExperienceReviewedAt: r.client_experience_reviewed_at,
   leadCapturePath: r.lead_capture_path,
@@ -94,9 +98,20 @@ export async function markStageReviewed(client: DbClient, venueId: string, colum
 }
 
 export async function setBringYourBusinessManual(client: DbClient, venueId: string): Promise<void> {
+  await setBringYourBusinessPath(client, venueId, "skipped");
+}
+
+export async function setBringYourBusinessPath(
+  client: DbClient,
+  venueId: string,
+  path: BringYourBusinessPath,
+): Promise<void> {
   const { error } = await client.from("venue_setup_hub_state")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update({ bring_your_business_manual_confirmed_at: new Date().toISOString() } as any)
+    .update({
+      bring_your_business_path: path,
+      bring_your_business_manual_confirmed_at: new Date().toISOString(),
+    } as any)
     .eq("venue_id", venueId);
   if (error) throw error;
 }

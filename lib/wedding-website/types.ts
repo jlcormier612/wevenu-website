@@ -19,7 +19,7 @@ export type FontPairing =
   | "luxury"          // EB Garamond
   | "minimal"         // Inter
   | "calligraphy"     // Great Vibes + Lato
-  | "elegant"         // Cormorant italic
+  | "elegant"         // Playfair Display italic + Lato
   | "playful"         // Fraunces + Karla
   | "indie_flower"    // Indie Flower + Nunito
   | "shadows_into_light"; // Shadows Into Light + Source Sans 3

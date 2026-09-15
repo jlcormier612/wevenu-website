@@ -143,14 +143,14 @@ describe("Booking Truth final scenario matrix", () => {
       assert.equal(imported.ok, true);
       if (!imported.ok) return;
       assert.equal(imported.event.origin, "import");
-      assert.equal(imported.event.occurredAt.startsWith("2024-08-12"), true);
+      assert.equal(imported.event.occurredAt?.startsWith("2024-08-12"), true);
 
       const importRetry = await recordLifecycleBooking(db, {
         venueId, clientId: importId, origin: "import", occurredAt: "2020-01-01",
       });
       assert.equal(importRetry.ok, true);
       if (!importRetry.ok) return;
-      assert.equal(importRetry.event.occurredAt.startsWith("2024-08-12"), true);
+      assert.equal(importRetry.event.occurredAt?.startsWith("2024-08-12"), true);
       assert.equal(psql(`select count(*) from public.lifecycle_booking_events where client_id = '${importId}'`).stdout.trim(), "1");
 
       // --- Financially committed without lifecycle ---

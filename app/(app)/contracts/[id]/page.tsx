@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
 import { ContractDetail } from "@/components/contracts/contract-detail";
 import { getContractDetail, getContractVersionFamily } from "@/lib/contracts/service";
 import { isContractFinalized } from "@/lib/contracts/document-integration";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ review?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -15,8 +16,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: contract?.title ?? "Contract" };
 }
 
-export default async function ContractDetailPage({ params }: Props) {
+export default async function ContractDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { review } = await searchParams;
   const [contract, venue, versionFamily] = await Promise.all([
     getContractDetail(id),
     getCurrentVenue(),
@@ -30,7 +32,9 @@ export default async function ContractDetailPage({ params }: Props) {
       contract={contract}
       finalized={finalized}
       venueName={venue?.name ?? "Your venue"}
+      venueBrand={venue ? captureContractBrandingSnapshot(venue) : null}
       versionFamily={versionFamily}
+      initialReview={review === "1"}
     />
   );
 }

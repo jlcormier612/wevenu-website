@@ -30,6 +30,8 @@ import {
 import { toast } from "sonner";
 
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
+import { sessionDeviceLabel } from "@/lib/client-auth/session-label";
+import { countUnreadVenueMessages } from "@/lib/portal/unread-messages";
 
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
@@ -3000,8 +3002,8 @@ function GuestPortalSection({ token }: { token: string }) {
 // ── Vendor recommendations ────────────────────────────────────────────────────
 
 function VendorPortalSection({ token, context }: { token: string; context: PortalContext }) {
-  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string; clientId: string; venueName: string }> };
-  return <VendorSection token={token} clientId={context.client.id} venueName={context.venue.name} />;
+  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string; clientId: string; venueName: string; eventDate?: string | null }> };
+  return <VendorSection token={token} clientId={context.client.id} venueName={context.venue.name} eventDate={context.event?.eventDate} />;
 }
 
 // ── Budget planner ────────────────────────────────────────────────────────────
@@ -3122,9 +3124,27 @@ function VenueGuidePortalSection({ token, context, onNavigate }: { token: string
   return <VenueGuideSection token={token} context={context} onNavigate={onNavigate} />;
 }
 
-function PortalMessageSection({ token, venueName }: { token: string; venueName: string }) {
-  const { PortalMessageSection: MessageSection } = require("@/components/portal/message-section") as { PortalMessageSection: React.ComponentType<{ token: string; venueName: string }> };
-  return <MessageSection token={token} venueName={venueName} />;
+function PortalMessageSection({
+  token, venueName, onConversationViewed,
+}: {
+  token: string;
+  venueName: string;
+  onConversationViewed?: () => void;
+}) {
+  const { PortalMessageSection: MessageSection } = require("@/components/portal/message-section") as {
+    PortalMessageSection: React.ComponentType<{
+      token: string;
+      venueName: string;
+      onConversationViewed?: () => void;
+    }>;
+  };
+  return (
+    <MessageSection
+      token={token}
+      venueName={venueName}
+      onConversationViewed={onConversationViewed}
+    />
+  );
 }
 
 // ── Payments ──────────────────────────────────────────────────────────────────
@@ -4185,10 +4205,11 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
             {state.sessions.map((s) => (
               <div key={s.id} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 px-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-heading truncate">{s.userAgent ?? "Unknown device"}</p>
+                  <p className="text-xs font-medium text-heading truncate">
+                    {sessionDeviceLabel(s.userAgent, !!s.isCurrent)}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">
                     Signed in {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    {s.isCurrent ? " · This device" : ""}
                   </p>
                 </div>
                 {!s.isCurrent && (
@@ -4569,7 +4590,7 @@ export function PortalShell({
       fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({
         hasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
       })),
-      fetch(`/api/portal/messages?token=${token}`).then((r) => r.json()).catch(() => ({ messages: [] })),
+      fetch(`/api/portal/messages?token=${token}&markRead=0`).then((r) => r.json()).catch(() => ({ messages: [] })),
     ]).then(([tasksRes, requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes, messagesRes]) => {
       if (cancelled) return;
       const venueTasks = (tasksRes.tasks ?? initialTasks) as PortalTask[];
@@ -4586,9 +4607,7 @@ export function PortalShell({
         sender_type?: string;
         couple_read_at?: string | null;
       }[];
-      setMessagesUnreadCount(
-        messages.filter((m) => m.sender_type === "venue" && !m.couple_read_at).length,
-      );
+      setMessagesUnreadCount(countUnreadVenueMessages(messages));
 
       const unified = buildUnifiedTaskList({
         venueTasks,
@@ -4882,7 +4901,13 @@ export function PortalShell({
             {activeSection === "vendors"   && planningCapabilities.vendors && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
-            {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
+            {activeSection === "messages"  && (
+              <PortalMessageSection
+                token={token}
+                venueName={context.venue.name}
+                onConversationViewed={() => setMessagesUnreadCount(0)}
+              />
+            )}
             {activeSection === "account"   && <AccountSection token={token} context={context} venueName={context.venue.name} />}
             {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={navigateTo} />}
           </div>

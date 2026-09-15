@@ -44,14 +44,32 @@ async function insertStarterFromMaster(
 
   let sectionOrder = 0;
   for (const section of master.sections) {
-    const { error: sErr } = await client.from("event_order_template_sections").insert({
+    const { data: sectionRow, error: sErr } = await client.from("event_order_template_sections").insert({
       template_id: templateId,
       venue_id: venueId,
       name: section.name,
       guidance: section.guidance ?? null,
       sort_order: sectionOrder,
-    });
+    }).select("id").single<{ id: string }>();
     if (sErr) throw sErr;
+    let lineOrder = 0;
+    for (const offering of section.offerings ?? []) {
+      const { error: lErr } = await client.from("event_order_template_lines").insert({
+        template_id: templateId,
+        venue_id: venueId,
+        section_id: sectionRow.id,
+        description: offering.name,
+        description_detail: offering.description ?? null,
+        quantity: offering.defaultQuantity ?? 1,
+        unit_price: offering.unitPrice ?? null,
+        pricing_model: offering.pricingModel,
+        unit: offering.unit ?? null,
+        included_by_default: offering.includedByDefault ?? false,
+        sort_order: lineOrder,
+      });
+      if (lErr) throw lErr;
+      lineOrder += 1;
+    }
     sectionOrder += 1;
   }
 

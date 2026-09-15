@@ -18,7 +18,15 @@ export async function GET(request: Request) {
   if (!token || !clientId) return NextResponse.json({ error: "missing_token" }, { status: 400 });
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_event_vendor_recommendations", { p_access_token: token, p_client_id: clientId });
-  return NextResponse.json(data ?? { recommendations: [] });
+  const payload = (data ?? { recommendations: [] }) as { recommendations?: Array<{ vendorId?: string }>; error?: string };
+  if (payload.error) return NextResponse.json(payload);
+  const { overlayCoupleVendorAvailability } = await import("@/lib/vendor-availability/couple-overlay");
+  const overlay = await overlayCoupleVendorAvailability(token, payload.recommendations ?? []);
+  return NextResponse.json({
+    ...payload,
+    eventDate: overlay.eventDate,
+    recommendations: overlay.items,
+  });
 }
 
 export async function POST(request: Request) {

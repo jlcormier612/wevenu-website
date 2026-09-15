@@ -40,6 +40,8 @@ export default async function VendorLoginPage({ searchParams }: Props) {
         .select("vendor_id")
         .eq("user_id", user.id)
         .eq("is_active", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .maybeSingle();
       if (vu) redirect(next.startsWith("/vendor") ? next : "/vendor/dashboard");
       if (next.startsWith("/vendor/accept")) redirect(next);

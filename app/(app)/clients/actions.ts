@@ -13,7 +13,7 @@ export async function createClientAction(input: ClientInput): Promise<CreateClie
   return result;
 }
 
-/** Venue-side strong-signal possible match preview — never blocks create. */
+/** Venue-side possible-match preview. Create still requires an identity decision. */
 export async function previewPossibleDuplicateClientAction(input: {
   firstName: string;
   lastName: string;

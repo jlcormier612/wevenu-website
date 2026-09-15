@@ -134,7 +134,7 @@ export function NewContractForm({
         clientSignerContactIds: selectedSignerIds.length > 0 ? selectedSignerIds : undefined,
         selectionId,
       });
-      if (result.ok) { toast.success("Contract created."); router.push(`/contracts/${result.contractId}`); return; }
+      if (result.ok) { toast.success("Contract created."); router.push(`/contracts/${result.contractId}?review=1`); return; }
       if (result.errors) setErrors(result.errors);
       toast.error(result.message ?? "Please fix the highlighted fields.");
     });
@@ -147,9 +147,15 @@ export function NewContractForm({
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected Package</p>
           <p className="mt-1 font-medium text-heading">{selectionSummary.name}</p>
           <p className="text-heading">${selectionSummary.totalAmount.toFixed(2)}</p>
+          {selectionSummary.depositAmount > 0 ? (
+          <p className="text-xs text-muted-foreground mt-1">
+            Deposit ${selectionSummary.depositAmount.toFixed(2)}. This package will be filled into the contract. You do not need to retype the price.
+          </p>
+          ) : (
           <p className="text-xs text-muted-foreground mt-1">
             This package will be filled into the contract. You do not need to retype the price.
           </p>
+          )}
         </div>
       )}
       <div className="space-y-1.5">

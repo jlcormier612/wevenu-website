@@ -5,6 +5,8 @@
  * No framework or database imports — safe to use on the client or the server.
  */
 
+import type { VenueCommercialBookingPrefs } from "@/lib/booking-journey/venue-prefs";
+
 export type StripeOnboardingStatus = "not_started" | "pending" | "connected";
 
 /** Kept as an allowed-values array, not one flag per method — scales to any future Stripe-supported method without a schema change. */
@@ -151,6 +153,11 @@ export type Venue = {
   accountStatus: "active" | "suspended";
   /** Hello to Cheers SaaS Stripe Customer id for Billing Portal (not Connect). */
   saasStripeCustomerId: string | null;
+  /**
+   * Commercial booking spine defaults (agreement method, deposit rules, etc.).
+   * Per-booking amounts/schedules may still override.
+   */
+  commercialBookingPrefs: VenueCommercialBookingPrefs;
   createdAt: string;
   updatedAt: string;
 };

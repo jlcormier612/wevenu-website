@@ -97,6 +97,19 @@ describe("Luv does not restate Today's Focus", () => {
     assert.equal(entry?.actionLabel, "View report");
   });
 
+  it("keeps a stale-contact list CTA even when Focus has individual lead rows", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [focusItem({ href: "/leads/sara" })],
+      observations: [],
+      recommendations: [recommendation({
+        title: "2 active leads haven't been contacted in 7+ days",
+        ctas: [{ type: "navigate", target: "/leads?attention=stale_contact", label: "Review inquiries →" }] as never,
+      })],
+    });
+    assert.equal(entry?.actionHref, "/leads?attention=stale_contact");
+    assert.match(entry!.message, /haven't been contacted/);
+  });
+
   it("skips a recommendation that only points back at a Focus row", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [focusItem({ href: "/leads/sara" })],
@@ -124,7 +137,7 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
 
     assert.equal(entry?.message, "I noticed four leads have been waiting for follow-up.");
     assert.equal(entry?.suggestion, "Want to work through them?");
-    assert.equal(entry?.actionHref, "/leads");
+    assert.equal(entry?.actionHref, "/leads?attention=stale_contact");
   });
 
   it("gets singular grammar right", () => {

@@ -127,7 +127,7 @@ Your Guiding Principle #1 — *a venue should never enter the same decision twic
 - **A `payment_reminder` template category already exists**, deliberately planted ahead of the wiring — the code comment states it will "surface when composing from a payment-linked task, once that connection point exists in a later phase." No `balance_due`/`amount_due`/`payment_due_date` merge field exists yet to make such a template useful, but the category itself doesn't need to be invented.
 - **No automated send path exists today** — nothing in `lib/payments/*` or `lib/invoices/*` references message templates or a send function.
 - Three separate, non-unified "send later" mechanisms already exist in the codebase (`task_reminders`, `lib/scheduled-messages/*`, `message-sequences`), none currently payment-aware. A financial workflow should extend exactly one — most naturally, Automation's future `send_message` action — rather than inventing a fourth.
-- Luv already has a manually-triggered, coordinator-reviewed `payment_reminder` AI draft (`lib/luv/client-drafts.ts`) — real, but not automated off any due date.
+- Luv already has a manually-triggered, coordinator-reviewed payment-reminder drafting pattern on the lead follow-up path (`lib/luv/drafts.ts`) — real, but not automated off any due date. (A former unused `client-drafts` module was removed; do not assume a live client-detail draft UI.)
 
 ### 2.15 Luv
 `lib/luv/*`

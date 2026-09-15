@@ -73,7 +73,7 @@ Grouped by what breaks if it's missing. `NEXT_PUBLIC_*` variables are exposed to
 |---|---|
 | `NEXT_PUBLIC_WEVENU_ADMIN` | `"true"` reveals internal-only nav/HQ affordances — confirm this is unset (or `false`) in the customer-facing production deployment |
 | `WEVENU_INTERNAL_EMAIL` | Where the in-app feedback form sends (defaults to `feedback@wevenu.com`) |
-| `ANTHROPIC_API_KEY` | Powers Luv (Platform Intelligence) and the Email Intake Engine's Claude-based extraction |
+| `OPENAI_API_KEY` | Powers Venue-app AI via the shared OpenAI helper (`lib/ai/openai.ts`): Luv drafts, Ask Luv, roll-ups, import assists, Email Intake extraction, Smart Import, and RSVP Concierge |
 
 ### The separate `marketing/` sub-app (do not confuse with the main app's vars)
 `marketing/` is a genuinely separate Next.js app — Wevenu's own marketing site plus its own Stripe billing for the SaaS subscription itself ("System A," structurally distinct from "System B," the venue↔couple payments the main app handles). It reads its own set of URL variables:

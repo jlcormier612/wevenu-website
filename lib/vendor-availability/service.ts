@@ -4,6 +4,7 @@
 import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
+import { monthDateRange } from "@/lib/vendor-availability/dates";
 import { reconcileVendorEventAvailability } from "@/lib/vendor-availability/sync";
 import type { VendorActionResult, VendorAvailability } from "@/lib/vendors/types";
 
@@ -38,9 +39,7 @@ export async function getVendorAvailability(
 ): Promise<VendorAvailability[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
-  const start = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endDate = new Date(year, month, 0);
-  const end = `${year}-${String(month).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
+  const { start, end } = monthDateRange(year, month);
 
   // Safety net: repair missing/orphaned event-sourced Booked rows before read.
   await reconcileVendorEventAvailability(vendorId, start, end);
@@ -105,6 +104,79 @@ export async function unblockDate(id: string): Promise<VendorActionResult> {
     if (count === 0) {
       return { ok: false, message: "Booked dates from events cannot be unblocked here." } as VendorActionResult;
     }
+    return { ok: true } as VendorActionResult;
+  });
+  return result as VendorActionResult;
+}
+
+export async function blockDates(dates: string[], note?: string): Promise<VendorActionResult & { ids?: Record<string, string> }> {
+  const unique = [...new Set(dates.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
+  if (unique.length === 0) return { ok: false, message: "No dates to block." };
+  if (unique.length > 400) return { ok: false, message: "Too many dates in one request." };
+
+  const result = await withVendor(async (supabase, vendorId) => {
+    const { data: existing } = await supabase
+      .from("vendor_availability")
+      .select("id, date")
+      .eq("vendor_id", vendorId)
+      .eq("source", "manual")
+      .in("date", unique);
+
+    const byDate = new Map((existing ?? []).map((r) => [r.date as string, r.id as string]));
+    const ids: Record<string, string> = {};
+    const toInsert: string[] = [];
+
+    for (const date of unique) {
+      const id = byDate.get(date);
+      if (id) {
+        const { error } = await supabase
+          .from("vendor_availability")
+          .update({ is_blocked: true, note: note ?? null })
+          .eq("id", id);
+        if (error) return { ok: false, message: error.message } as VendorActionResult;
+        ids[date] = id;
+      } else {
+        toInsert.push(date);
+      }
+    }
+
+    if (toInsert.length > 0) {
+      const { data, error } = await supabase
+        .from("vendor_availability")
+        .insert(
+          toInsert.map((date) => ({
+            vendor_id:  vendorId,
+            date,
+            is_blocked: true,
+            note:       note ?? null,
+            source:     "manual",
+            source_id:  null,
+          })),
+        )
+        .select("id, date");
+      if (error) return { ok: false, message: error.message } as VendorActionResult;
+      for (const row of data ?? []) {
+        ids[row.date as string] = row.id as string;
+      }
+    }
+
+    return { ok: true, ids } as VendorActionResult & { ids: Record<string, string> };
+  });
+  return result as VendorActionResult & { ids?: Record<string, string> };
+}
+
+export async function unblockDates(dates: string[]): Promise<VendorActionResult> {
+  const unique = [...new Set(dates.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
+  if (unique.length === 0) return { ok: false, message: "No dates to unblock." };
+
+  const result = await withVendor(async (supabase, vendorId) => {
+    const { error } = await supabase
+      .from("vendor_availability")
+      .delete()
+      .eq("vendor_id", vendorId)
+      .eq("source", "manual")
+      .in("date", unique);
+    if (error) return { ok: false, message: error.message } as VendorActionResult;
     return { ok: true } as VendorActionResult;
   });
   return result as VendorActionResult;

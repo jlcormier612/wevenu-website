@@ -329,7 +329,7 @@ export function ConversationInbox({
   }
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex min-w-0 w-full flex-col gap-3">
       <div className="flex shrink-0 items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-medium text-heading">Inbox</h1>
@@ -348,7 +348,7 @@ export function ConversationInbox({
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
@@ -690,8 +690,10 @@ export function ConversationInbox({
        * so a long thread keeps scrolling instead of ending at a box edge. The
        * list is the only anchored column — sticky inside the pane, capped to the
        * visible workspace so "who am I talking to" stays on screen.
+       * min-w-0 on the row and thread column prevents min-content expansion
+       * from sliding the workspace horizontally.
        */}
-      <div className="flex min-h-[calc(100svh-13rem)] items-start rounded-sm border border-border bg-card">
+      <div className="flex min-h-[calc(100svh-13rem)] min-w-0 items-start rounded-sm border border-border bg-card">
         <div
           className={`w-full shrink-0 self-start overflow-y-auto border-r border-border/60 md:sticky md:top-0 md:max-h-[calc(100svh-4rem)] md:w-80 lg:w-96 ${activeId ? "hidden md:block" : ""}`}
         >

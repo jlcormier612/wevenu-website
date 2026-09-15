@@ -20,6 +20,7 @@
  */
 
 import { createClient } from "@/integrations/supabase/server";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { getVenueTimezone } from "@/lib/venue/timezone";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
@@ -99,13 +100,15 @@ export async function getLuvObservations(
     venueTimezone,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
-    supabase.from("events")
-      .select("id, name, event_date")
-      .eq("venue_id", venueId)
-      .not("status", "in", "(cancelled,complete)")
-      .gte("event_date", today)
-      .lte("event_date", soon21)
-      .order("event_date"),
+    onlyBusinessReporting(
+      supabase.from("events")
+        .select("id, name, event_date")
+        .eq("venue_id", venueId)
+        .not("status", "in", "(cancelled,complete)")
+        .gte("event_date", today)
+        .lte("event_date", soon21)
+        .order("event_date"),
+    ),
 
     // Helper: timeline entry counts for those events
     supabase.from("timeline_entries")
@@ -120,11 +123,13 @@ export async function getLuvObservations(
     // 3: Qualified/proposal leads — narrowed to "no tour scheduled" below,
     // against tour_appointments (Program 2 Phase 1a's canonical source),
     // since the query builder can't express a NOT EXISTS join inline here.
-    supabase.from("leads")
-      .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
-      .eq("venue_id", venueId)
-      .in("sales_stage", ["tour_scheduled", "proposal_sent"])
-      .order("created_at"),
+    onlyBusinessReporting(
+      supabase.from("leads")
+        .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
+        .eq("venue_id", venueId)
+        .in("sales_stage", ["tour_scheduled", "proposal_sent"])
+        .order("created_at"),
+    ),
 
     // 4: Contracts sent 3+ days ago, still awaiting signature
     supabase.from("contracts")
@@ -145,13 +150,15 @@ export async function getLuvObservations(
       .order("expires_at"),
 
     // 6: "New" leads older than 48 h with no follow-up date
-    supabase.from("leads")
-      .select("id, first_name, last_name, partner_first_name, created_at")
-      .eq("venue_id", venueId)
-      .eq("sales_stage", "new_inquiry")
-      .is("follow_up_date", null)
-      .lt("created_at", twoDaysAgo)
-      .order("created_at"),
+    onlyBusinessReporting(
+      supabase.from("leads")
+        .select("id, first_name, last_name, partner_first_name, created_at")
+        .eq("venue_id", venueId)
+        .eq("sales_stage", "new_inquiry")
+        .is("follow_up_date", null)
+        .lt("created_at", twoDaysAgo)
+        .order("created_at"),
+    ),
 
     // 7. Questionnaire: sent but not submitted for approaching events
     supabase.from("event_questionnaires")
@@ -308,7 +315,9 @@ export async function getLuvObservations(
       : doc.event_id  ? `/events/${doc.event_id}`
       : doc.vendor_id ? `/vendors/${doc.vendor_id}`
       : doc.lead_id   ? `/leads/${doc.lead_id}`
-      : "/";
+      : "/documents";
+    // Skip orphan docs with no trustworthy destination beyond a generic list
+    // only when we have at least Documents — never dump to "/".
     observations.push({
       id: `doc-${doc.id}`,
       kind: "waiting",
@@ -489,13 +498,15 @@ export async function getLuvObservations(
   // reads; this block calls both directly and narrates around whatever they
   // already say, instead of re-deriving overdue/blocked counts or a
   // readiness percentage from a second, independent event_tasks query.
-  const { data: planningCandidateEvents } = await supabase
-    .from("events")
-    .select("id, name, event_date, client_id, clients(first_name, partner_first_name)")
-    .eq("venue_id", venueId)
-    .not("status", "in", "(cancelled,complete)")
-    .gte("event_date", today)
-    .lte("event_date", soon90);
+  const { data: planningCandidateEvents } = await onlyBusinessReporting(
+    supabase
+      .from("events")
+      .select("id, name, event_date, client_id, clients(first_name, partner_first_name)")
+      .eq("venue_id", venueId)
+      .not("status", "in", "(cancelled,complete)")
+      .gte("event_date", today)
+      .lte("event_date", soon90),
+  );
 
   // Timeline + Communication — read Event Readiness, same discipline as
   // Planning above (Luv Experience Completion, Work Stream 2). Both fetched
@@ -668,12 +679,14 @@ export async function getLuvObservations(
   // Avoids duplicating observations already covered by specific patterns above.
 
   // Fetch leads with high or declining commitment for momentum observations
-  const { data: momentumLeads } = await supabase.from("leads")
-    .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
-    .eq("venue_id", venueId)
-    .not("sales_stage", "in", "(booked,lost)")
-    .order("commitment_score", { ascending: false })
-    .limit(20);
+  const { data: momentumLeads } = await onlyBusinessReporting(
+    supabase.from("leads")
+      .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
+      .eq("venue_id", venueId)
+      .not("sales_stage", "in", "(booked,lost)")
+      .order("commitment_score", { ascending: false })
+      .limit(20),
+  );
 
   // For leads with signals, compute interest
   if (momentumLeads?.length) {

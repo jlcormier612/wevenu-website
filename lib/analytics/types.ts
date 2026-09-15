@@ -5,7 +5,10 @@ export type LeadFunnel = {
   proposal: number;
   booked: number;
   lost: number;
+  /** Lifecycle pipeline close rate (sales_stage=booked). Prefer bookingConversionRate for Financially Committed. */
   conversionRate: number;
+  /** Canonical Booking conversion when present on get_venue_analytics(). */
+  bookingConversionRate?: number;
   bySource: { source: string; total: number; booked: number; rate: number }[];
 };
 
@@ -24,6 +27,8 @@ export type PaymentsMetrics = {
   overdueCount: number;
   totalBilled: number;
   totalCollected: number;
+  /** Canonical payments collected when present on get_venue_analytics(). */
+  totalCollectedCanonical?: number;
   completionRate: number;
 };
 

@@ -105,6 +105,21 @@ describe("inbound email thread matching", () => {
     assert.equal(match?.entityType, "lead");
     assert.equal(match?.entityId, "lead-1");
   });
+
+  it("does not pick a conversation when the email matches more than one customer", async () => {
+    const match = await resolveInboundEmailConversation(
+      store({
+        findLeadByEmail: async () => null,
+        findClientByEmail: async () => null,
+      }),
+      {
+        toAddresses: ["inbox@replies.hellotocheers.com"],
+        inReplyTo: null,
+        fromEmail: "shared@example.com",
+      },
+    );
+    assert.equal(match, null);
+  });
 });
 
 describe("inbound email records into conversation_messages", () => {
