@@ -49,15 +49,23 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /\+ New Lead/);
   });
 
-  it("uses the three operational snapshot tiles and not Venue Health", () => {
-    assert.match(page, /label="Active Leads"/);
+  it("uses Payments to Watch in the snapshot and not Venue Health", () => {
+    assert.doesNotMatch(page, /label="Active Leads"/);
     assert.match(page, /label="Payments to Watch"/);
-    assert.match(page, /label="Coming up"/);
-    assert.match(page, /clientListFilterHref\("coming_up"\)/);
+    assert.doesNotMatch(page, /label="Coming up"/);
+    assert.match(page, /title="Coming up"/);
     assert.match(page, /\/payments\?filter=attention/);
-    assert.match(page, /\/leads\?attention=active/);
+    assert.doesNotMatch(page, /\/leads\?attention=active/);
+    assert.doesNotMatch(page, /clientListFilterHref\("coming_up"\)/);
     assert.doesNotMatch(page, /label="Venue Health"/);
     assert.doesNotMatch(page, /getVenueHealth/);
+  });
+
+  it("Payments to Watch uses the same attention population as the Payments filter", () => {
+    const attention = readFileSync(resolve("lib/payments/attention.ts"), "utf8");
+    assert.match(attention, /scheduleStatus === "attention"/);
+    assert.match(attention, /excludeFromBusinessReporting/);
+    assert.match(attention, /getPaymentSchedules/);
   });
 
   it("keeps Reports navigation", () => {

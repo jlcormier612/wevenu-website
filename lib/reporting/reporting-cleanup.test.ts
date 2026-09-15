@@ -106,9 +106,8 @@ describe("customer-facing reporting copy", () => {
   });
 
   it("Dashboard snapshot cards drill into the same populations", () => {
-    assert.match(dashboard, /\/leads\?attention=active/);
     assert.match(dashboard, /\/payments\?filter=attention/);
-    assert.match(dashboard, /clientListFilterHref\("coming_up"\)/);
+    assert.doesNotMatch(dashboard, /label="Active Leads"/);
     assert.match(dashboard, /Events in the next 60 days/);
   });
 

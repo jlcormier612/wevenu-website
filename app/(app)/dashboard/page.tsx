@@ -14,7 +14,6 @@ import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile"
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
 import { excludeTodayFocusFromNextSteps, VENUE_NEXT_STEPS_CAP } from "@/lib/dashboard/venue-next-steps";
-import { clientListFilterHref } from "@/lib/clients/list-filters";
 import {
   classifyBriefingItems, classifyUpcomingItems,
   collectCrossSectionSubjects, excludeByCrossSectionSubject,
@@ -160,22 +159,12 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       <section>
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Business Snapshot</p>
-        <StatTileGrid className="sm:grid-cols-3">
-          <StatTile
-            layout="label-top" label="Active Leads" sub="Still in play"
-            value={data.activeLeadCount}
-            className="rounded-xl border bg-card p-3" href="/leads?attention=active"
-          />
+        <StatTileGrid className="sm:grid-cols-1 max-w-xl">
           <StatTile
             layout="label-top" label="Payments to Watch" sub="Needs attention"
             value={paymentsToWatch != null ? formatCurrencyShort(paymentsToWatch.amount) : "—"}
             severity={paymentsToWatch && paymentsToWatch.amount > 0 ? "warning" : undefined}
             className="rounded-xl border bg-card p-3" href="/payments?filter=attention"
-          />
-          <StatTile
-            layout="label-top" label="Coming up" sub="Events in the next 60 days"
-            value={data.clientListCounts.coming_up}
-            className="rounded-xl border bg-card p-3" href={clientListFilterHref("coming_up")}
           />
         </StatTileGrid>
       </section>

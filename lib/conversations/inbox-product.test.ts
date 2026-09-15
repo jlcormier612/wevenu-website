@@ -87,37 +87,35 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(header, /year: "numeric"/);
   });
 
-  it("conversation column is an unbounded reading surface — no fixed-height correspondence box", () => {
+  it("conversation column is a contained two-pane, not a page-growing document", () => {
     assert.doesNotMatch(inbox, /h-\[calc\(100svh-9rem\)\]/);
-    // Workspace pane grows with the conversation instead of clipping it.
-    // A floor so a short conversation still fills the workspace — never a cap.
-    assert.match(inbox, /flex min-h-\[calc\(100svh-13rem\)\] items-start rounded-sm border border-border bg-card/);
-    assert.doesNotMatch(inbox, /max-h-\[calc\(100svh[^\]]*\)\] (?:min-w|flex-1)/);
-    assert.doesNotMatch(inbox, /flex min-h-0 flex-1 overflow-hidden rounded-sm border/);
-    assert.match(inbox, /flex w-full flex-col gap-3/);
-    // Inbox renders the thread in page flow; embedded surfaces keep the bounded one.
-    assert.match(inbox, /flow="page"/);
+    assert.match(inbox, /flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-sm border border-border bg-card/);
+    assert.doesNotMatch(inbox, /flex min-h-\[calc\(100svh-13rem\)\] items-start rounded-sm border border-border bg-card/);
+    assert.match(inbox, /flex min-h-0 min-w-0 w-full flex-1 flex-col gap-3 overflow-hidden/);
+    assert.match(inbox, /flow="contained"/);
+    assert.doesNotMatch(inbox, /flow="page"/);
     assert.match(thread, /flow = "contained"/);
-    assert.match(thread, /flex h-full min-h-0 flex-1 flex-col overflow-y-auto/);
-    assert.match(thread, /"flex w-full flex-col"/);
+    assert.match(thread, /flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden/);
+    assert.match(thread, /\[overflow-wrap:anywhere\]/);
   });
 
-  it("conversation list stays anchored while the conversation scrolls", () => {
-    assert.match(inbox, /md:sticky md:top-0 md:max-h-\[calc\(100svh-4rem\)\]/);
-    assert.match(inbox, /shrink-0 self-start overflow-y-auto/);
+  it("conversation list scrolls inside its pane, not by sliding the page", () => {
+    assert.match(inbox, /min-h-0 w-full shrink-0 overflow-y-auto/);
+    assert.doesNotMatch(inbox, /md:sticky md:top-0/);
+    assert.doesNotMatch(inbox, /shrink-0 self-start overflow-y-auto/);
   });
 
-  it("WorkspaceShell scrolls modules in main, with Inbox differing only in width", () => {
+  it("WorkspaceShell keeps Inbox inside the viewport with no page-level x-scroll", () => {
     const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
     assert.match(shell, /fixed inset-0 flex min-h-0 w-full overflow-hidden/);
     assert.match(shell, /flex min-h-0 min-w-0 flex-1 flex-col/);
-    assert.match(shell, /min-h-0 flex-1 overflow-y-auto bg-background/);
+    assert.match(shell, /isInboxWorkspace \? "flex min-w-0 flex-col overflow-hidden" : "overflow-y-auto"/);
     assert.match(shell, /pathname === "\/messaging"/);
     assert.match(shell, /max-w-\[90rem\] px-3 py-3/);
     assert.doesNotMatch(shell, /absolute inset-0 mx-auto/);
     assert.doesNotMatch(shell, /pathname\.startsWith\("\/messaging"\)/);
     const page = readFileSync(resolve("app/(app)/messaging/page.tsx"), "utf8");
-    assert.match(page, /flex w-full flex-col/);
+    assert.match(page, /flex min-h-0 min-w-0 w-full flex-1 flex-col/);
     const css = readFileSync(resolve("app/globals.css"), "utf8");
     assert.match(css, /html:has\(\.htc-staff\) body/);
     assert.match(css, /overflow:\s*hidden/);

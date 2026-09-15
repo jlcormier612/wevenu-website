@@ -79,7 +79,7 @@ describe("customer-facing brand — Hello to Cheers", () => {
     const reportsLayout = readFileSync(join(ROOT, "app/(app)/reporting/layout.tsx"), "utf8");
 
     assert.match(dashboard, /title="Coming up"/);
-    assert.match(dashboard, /label="Coming up"/);
+    assert.doesNotMatch(dashboard, /label="Coming up"/);
     assert.match(dashboard, />View Reports</);
     assert.doesNotMatch(dashboard, /View full Reporting/);
 

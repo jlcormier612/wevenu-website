@@ -160,7 +160,7 @@ export function LeadList({
       {attentionFilter === "active" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
           <p className="text-foreground">
-            Showing active leads — the same group as the Dashboard Active Leads number.
+            Showing active leads still in play.
           </p>
           <button
             type="button"
