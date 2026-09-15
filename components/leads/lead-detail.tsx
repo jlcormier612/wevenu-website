@@ -141,8 +141,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [confirmMoveBackOpen, setConfirmMoveBackOpen] = React.useState(false);
   const [confirmReturnBookedOpen, setConfirmReturnBookedOpen] = React.useState(false);
   const [eventDateBlocked, setEventDateBlocked] = React.useState(false);
-  const [pendingBookAfterAutomation, setPendingBookAfterAutomation] = React.useState(false);
-  const [bookAutomationPreview, setBookAutomationPreview] = React.useState<AutomationMessagePreview | null>(null);
   const spacesRequired = maxSimultaneousEvents >= 2 && !!lead.eventDate && !lead.linkedClientId;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
 
@@ -168,7 +166,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       if (result.warning) toast.warning(result.warning);
       else {
         toast.success(
-          "Booking Started. Next: finish the agreement and collect the deposit to mark them Booked.",
+          "Booking file started. They are not Booked until the agreement and any required deposit are complete.",
         );
       }
       router.push(`/clients/${result.clientId}${result.eventId ? `?eventId=${result.eventId}` : ""}`);
@@ -180,24 +178,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   function confirmBookThisLead() {
     if (convertPending) return;
     setConfirmBookOpen(false);
-    startConvert(async () => {
-      const check = await wouldEnrollOnPipelineStageMoveAction(lead.id, "booked");
-      if (!check.ok) {
-        toast.error(check.message ?? "Could not check automations for this move.");
-        return;
-      }
-      if (check.wouldEnroll) {
-        setBookAutomationPreview(check.preview);
-        setPendingBookAfterAutomation(true);
-        return;
-      }
-      await runStartBookingFile();
-    });
-  }
-
-  function confirmBookAfterAutomation() {
-    setPendingBookAfterAutomation(false);
-    setBookAutomationPreview(null);
     startConvert(async () => {
       await runStartBookingFile();
     });
@@ -298,21 +278,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           commitStageChange(stageId);
         }}
       />
-      <PipelineAutomationConfirmDialog
-        open={pendingBookAfterAutomation}
-        preview={bookAutomationPreview}
-        title="Start booking file?"
-        message="Starting the booking file moves this lead to Booking Started. An Automation is configured for that stage and will enroll them — messages may send as you've set them up."
-        onCancel={() => {
-          setPendingBookAfterAutomation(false);
-          setBookAutomationPreview(null);
-        }}
-        onContinue={confirmBookAfterAutomation}
-      />
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
         title="Start booking file?"
-        description="This moves the lead to Booking Started and opens their booking file (Client and Event when a date applies). The Event stays a draft — they are not commercially Booked until the agreement is complete and the required deposit is paid. The event date is protected by existing availability rules when it applies. Sales follow-ups stop as designed; any Booking Started Automation is disclosed before enrollment. This does not invite them to the portal or start Client Planning. Contracts and payments can still run from the Booking Journey without this step."
+        description="This opens their booking file (Client and Event when a date applies). The lead stays on the sales pipeline. The Event stays a draft — they are not commercially Booked until the agreement is complete and any required deposit is paid. The event date is protected by existing availability rules when it applies. This does not invite them to the portal or start Client Planning. Contracts and payments can still run from the Booking Journey without this step."
         confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}

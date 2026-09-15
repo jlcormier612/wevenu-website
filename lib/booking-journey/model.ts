@@ -39,6 +39,7 @@ export type BookingJourneyModel = {
   depositSummary: string | null;
   remainingSummary: string | null;
   prefs: VenueCommercialBookingPrefs;
+  paymentLines: JourneyPaymentLine[];
 };
 
 export type JourneyContract = {
@@ -52,6 +53,7 @@ export type JourneyPaymentLine = {
   obligationKind: PaymentObligationKind | null;
   status: PaymentItemStatus;
   amount: number;
+  dueDate?: string | null;
 };
 
 export type JourneyInputs = {
@@ -139,10 +141,21 @@ function contractNewHref(input: JourneyInputs, selection: CommercialSelection): 
   return `/contracts/new?${params.toString()}`;
 }
 
-function stageLabels(processOrder: VenueCommercialBookingPrefs["processOrder"]): {
+function stageLabels(
+  processOrder: VenueCommercialBookingPrefs["processOrder"],
+  initialPaymentRequired: boolean,
+): {
   key: JourneyStageKey;
   label: string;
 }[] {
+  if (!initialPaymentRequired) {
+    return [
+      { key: "package", label: "Package" },
+      { key: "agreement", label: "Agreement" },
+      { key: "booked", label: "Booked" },
+      { key: "planning", label: "Planning" },
+    ];
+  }
   if (processOrder === "deposit_first") {
     return [
       { key: "package", label: "Package" },
@@ -217,7 +230,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     currentKey = "planning";
   }
 
-  const labels = stageLabels(prefs.processOrder);
+  const labels = stageLabels(prefs.processOrder, prefs.initialPaymentRequired);
   const stages: JourneyStage[] = labels.map(({ key, label }) => {
     let state: JourneyStageState = "upcoming";
     const complete =
@@ -335,7 +348,10 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     const paidNote = prefs.initialPaymentRequired && (selection?.depositAmount ?? 0) > 0
       ? `${formatCurrency(selection!.depositAmount)} paid. `
       : "";
-    direction = `They're Booked. ${paidNote}${formatCurrency(remaining ?? 0)} remains on the payment plan. Invite them to the portal and start planning when you're ready — optional if they won't use planning.`;
+    const remainNote = prefs.initialPaymentRequired && remaining != null
+      ? `${formatCurrency(remaining)} remains on the payment plan. `
+      : "";
+    direction = `They're Booked. ${paidNote}${remainNote}Invite them to the portal and start planning when you're ready — optional if they won't use planning.`;
     primaryLabel = input.portalInvited ? "Start planning" : "Invite to portal";
     primaryHref = input.clientId
       ? input.portalInvited
@@ -367,9 +383,14 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     packageSummary: selection
       ? `${selection.name} · ${formatCurrency(selection.totalAmount)}`
       : null,
-    depositSummary: selection ? formatCurrency(selection.depositAmount) : null,
-    remainingSummary: remaining != null ? formatCurrency(remaining) : null,
+    depositSummary: prefs.initialPaymentRequired && selection
+      ? formatCurrency(selection.depositAmount)
+      : null,
+    remainingSummary: prefs.initialPaymentRequired && remaining != null
+      ? formatCurrency(remaining)
+      : null,
     prefs,
+    paymentLines: input.paymentLines,
   };
 }
 

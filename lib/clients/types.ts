@@ -6,7 +6,7 @@
 
 import type { OccupancyCode } from "@/lib/availability/event-occupancy";
 
-export type ClientStatus = "planning" | "confirmed" | "complete" | "cancelled";
+export type ClientStatus = "booking" | "planning" | "confirmed" | "complete" | "cancelled";
 
 export type Client = {
   id: string;

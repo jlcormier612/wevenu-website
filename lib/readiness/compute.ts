@@ -23,6 +23,7 @@ import type { ConversationMessage } from "@/lib/conversations/types";
 import type { EventReadinessSummary, ReadinessSection, ReadinessStatus } from "@/lib/readiness/types";
 import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
 import { DEFAULT_PLANNING_CAPABILITIES } from "@/lib/playbooks/capabilities";
+import { pickNextOpenPaymentLine } from "@/lib/invoices/amount-due-now";
 
 const STATUS_PRIORITY: Record<ReadinessStatus, number> = {
   needs_attention: 0, waiting: 1, not_started: 2, complete: 3,
@@ -210,9 +211,47 @@ export function computeContractsReadiness(contracts: Contract[]): ReadinessSecti
   return { key: "contracts", label: "Contract", status, detail, nav: { kind: "tab", tab: "documents" } };
 }
 
-export function computePaymentsReadiness(invoices: Invoice[]): ReadinessSection {
+export function computePaymentsReadiness(
+  invoices: Invoice[],
+  scheduleLines?: { status: string; dueDate?: string | null; amount?: number }[] | null,
+): ReadinessSection {
   const today = new Date().toISOString().slice(0, 10);
   const totalBalanceDue = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
+
+  if (scheduleLines != null) {
+    const open = scheduleLines.filter((l) =>
+      l.status === "pending" || l.status === "overdue" || l.status === "processing",
+    );
+    const overdueLines = open.filter((l) =>
+      l.status === "overdue" || (l.dueDate != null && l.dueDate < today),
+    );
+    const next = pickNextOpenPaymentLine(
+      scheduleLines.map((l) => ({
+        status: l.status,
+        dueDate: l.dueDate ?? null,
+        amount: l.amount ?? 0,
+      })),
+    );
+
+    let status: ReadinessStatus;
+    if (invoices.length === 0 && scheduleLines.length === 0) status = "not_started";
+    else if (overdueLines.length > 0) status = "needs_attention";
+    else if (open.length === 0 && totalBalanceDue === 0) status = "complete";
+    else status = "waiting";
+
+    const detail = invoices.length === 0 && scheduleLines.length === 0
+      ? "No invoice yet."
+      : overdueLines.length > 0
+        ? `${overdueLines.length} payment${overdueLines.length === 1 ? "" : "s"} overdue.`
+        : open.length === 0 && totalBalanceDue === 0
+          ? "Paid in full."
+          : next?.dueDate
+            ? `${formatCents(totalBalanceDue)} balance due. Next ${formatCents(next.amount)} on ${next.dueDate}.`
+            : `${formatCents(totalBalanceDue)} balance due.`;
+
+    return { key: "payments", label: "Payments", status, detail, nav: { kind: "tab", tab: "invoice" } };
+  }
+
   const overdue = invoices.filter((inv) => inv.balanceDue > 0 && inv.dueDate != null && inv.dueDate < today).length;
 
   let status: ReadinessStatus;
@@ -301,6 +340,8 @@ export function buildEventReadiness(input: {
   invoices: Invoice[];
   documents: Document[];
   conversationMessages: ConversationMessage[];
+  /** Payment-schedule lines — overdue/next due come from these, not invoice.dueDate. */
+  paymentScheduleLines?: { status: string; dueDate?: string | null; amount?: number }[] | null;
   /** When omitted, all planning surfaces count toward readiness (legacy default). */
   planningCapabilities?: VenuePlanningCapabilities;
 }): EventReadinessSummary {
@@ -313,7 +354,7 @@ export function buildEventReadiness(input: {
     caps.floorPlan ? computeFloorPlansReadiness(input.floorPlans, input.inventoryUsage) : null,
     computeRequestsReadiness(input.requests),
     computeContractsReadiness(input.contracts),
-    computePaymentsReadiness(input.invoices),
+    computePaymentsReadiness(input.invoices, input.paymentScheduleLines),
     computeDocumentsReadiness(input.documents),
     computeCommunicationReadiness({ conversationMessages: input.conversationMessages }),
   ].filter((s): s is ReadinessSection => s != null)

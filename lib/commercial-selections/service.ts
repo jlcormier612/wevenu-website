@@ -92,6 +92,7 @@ export async function createSelectedPackageFromLibrary(input: {
   eventId?: string;
   depositAmount?: number;
   venueDefaultDeposit?: number | null;
+  initialPaymentRequired?: boolean;
 }): Promise<CreateCommercialSelectionResult> {
   if (!input.leadId && !input.clientId) {
     return { ok: false, message: "A lead or client is required." };
@@ -107,7 +108,9 @@ export async function createSelectedPackageFromLibrary(input: {
   const depositAmount = roundMoney(
     input.depositAmount != null
       ? input.depositAmount
-      : suggestDepositAmount(totalAmount, input.venueDefaultDeposit),
+      : suggestDepositAmount(totalAmount, input.venueDefaultDeposit, {
+          initialPaymentRequired: input.initialPaymentRequired,
+        }),
   );
   const amountErrors = validateAmounts(totalAmount, depositAmount);
   if (amountErrors) return { ok: false, errors: amountErrors };

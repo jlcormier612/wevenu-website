@@ -191,10 +191,12 @@ export function BookingJourneyPanel({
               </p>
               <p className="mt-1 text-base font-medium text-heading">{selection.name}</p>
               <p className="text-sm text-heading">{formatCurrency(selection.totalAmount)}</p>
+              {journey.prefs.initialPaymentRequired && (
               <p className="mt-1 text-sm text-muted-foreground">
                 Deposit {formatCurrency(selection.depositAmount)} · Remaining{" "}
                 {formatCurrency(remainingAmount(selection.totalAmount, selection.depositAmount))}
               </p>
+              )}
               <p className="mt-1 text-xs text-muted-foreground">
                 Status: {selectionStatusLabel(selection.status)}
               </p>
@@ -238,10 +240,9 @@ export function BookingJourneyPanel({
           </div>
           {journey.currentKey === "agreement" && selection.status === "draft" && (
             <p className="mt-3 text-sm text-muted-foreground">
-              Sending an offer lets them accept {selection.name}. After they accept, you&apos;ll
-              collect the {formatCurrency(selection.depositAmount)} deposit. Or create a contract
-              from this package — they sign, then you collect the deposit. You do not need to start
-              a booking file first.
+              {journey.prefs.initialPaymentRequired
+                ? `Sending an offer lets them accept ${selection.name}. After they accept, you'll collect the ${formatCurrency(selection.depositAmount)} deposit. Or create a contract from this package — they sign, then you collect the deposit. You do not need to start a booking file first.`
+                : `Sending an offer lets them accept ${selection.name}. After they accept — or after they sign a contract — they are Booked. No deposit is required. You do not need to start a booking file first.`}
             </p>
           )}
           {journey.primaryAction === "setup_payments" && (
@@ -261,6 +262,7 @@ export function BookingJourneyPanel({
         clientId={clientId}
         eventId={eventId}
         defaultDepositPercent={journey.prefs.defaultDepositPercent}
+        initialPaymentRequired={journey.prefs.initialPaymentRequired}
       />
 
       {selection && (
@@ -296,18 +298,22 @@ export function BookingJourneyPanel({
           <SheetHeader className="mb-6">
             <SheetTitle>Send offer</SheetTitle>
             <p className="text-sm text-muted-foreground">
-              Share {selection?.name} — {selection ? formatCurrency(selection.totalAmount) : ""} with
-              deposit {selection ? formatCurrency(selection.depositAmount) : ""}.
+              Share {selection?.name} — {selection ? formatCurrency(selection.totalAmount) : ""}
+              {journey.prefs.initialPaymentRequired && selection
+                ? ` with deposit ${formatCurrency(selection.depositAmount)}.`
+                : ". No deposit is required to book."}
             </p>
           </SheetHeader>
           {selection && (
             <div className="mb-4 rounded-lg border border-border bg-muted/20 p-4 text-sm">
               <p className="font-medium text-heading">{selection.name}</p>
               <p>{formatCurrency(selection.totalAmount)}</p>
+              {journey.prefs.initialPaymentRequired && (
               <p className="mt-1 text-muted-foreground">
                 Deposit {formatCurrency(selection.depositAmount)} · Remaining{" "}
                 {formatCurrency(remainingAmount(selection.totalAmount, selection.depositAmount))}
               </p>
+              )}
               {selection.includedItems.length > 0 && (
                 <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                   {selection.includedItems.map((item, i) => (

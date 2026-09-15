@@ -13,12 +13,11 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.doesNotMatch(src, /inviteClient/);
   });
 
-  it("commercialOnly convert skips sales Booked stage", () => {
+  it("convert never sets sales Booked; commercialOnly only gates dated Event space", () => {
     const src = readFileSync(resolve("lib/clients/service.ts"), "utf8");
     const fn = src.slice(src.indexOf("export async function convertLeadToClient"));
     assert.match(fn, /commercialOnly/);
-    assert.match(fn, /if \(!commercialOnly\)/);
-    assert.match(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
+    assert.doesNotMatch(fn, /updateLeadSalesStage/);
     assert.match(fn, /createDatedEvent/);
     assert.match(fn, /!commercialOnly \|\| Boolean\(spaceId\)/);
   });

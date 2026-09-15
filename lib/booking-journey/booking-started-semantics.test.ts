@@ -154,12 +154,11 @@ describe("Canonical Start booking file path", () => {
     );
   });
 
-  it("Start booking file discloses Booking Started automations before enroll", () => {
+  it("Start booking file does not enroll Booking Started automations", () => {
     const detail = read("components/leads/lead-detail.tsx");
-    assert.match(detail, /wouldEnrollOnPipelineStageMoveAction\(lead\.id, "booked"\)/);
-    assert.match(detail, /pendingBookAfterAutomation/);
-    assert.match(detail, /PipelineAutomationConfirmDialog/);
-    assert.match(detail, /Booking Started/);
+    assert.doesNotMatch(detail, /wouldEnrollOnPipelineStageMoveAction\(lead\.id, "booked"\)/);
+    assert.doesNotMatch(detail, /pendingBookAfterAutomation/);
+    assert.match(detail, /not commercially Booked until/i);
   });
 
   it("Lead detail surfaces ConflictWarning for the event date", () => {

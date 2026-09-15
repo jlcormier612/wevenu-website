@@ -19,6 +19,8 @@ import { convertLeadToClient } from "@/lib/clients/service";
 import type { CreateClientResult } from "@/lib/clients/types";
 import type { Lead } from "@/lib/leads/types";
 import { publicAppOrigin } from "@/lib/env";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 
 export async function createSelectedPackageAction(input: {
   packageId: string;
@@ -27,7 +29,13 @@ export async function createSelectedPackageAction(input: {
   eventId?: string;
   depositAmount?: number;
 }): Promise<CreateCommercialSelectionResult> {
-  const result = await createSelectedPackageFromLibrary(input);
+  const venue = await getCurrentVenue();
+  const prefs = venue?.commercialBookingPrefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
+  const result = await createSelectedPackageFromLibrary({
+    ...input,
+    depositAmount: prefs.initialPaymentRequired ? input.depositAmount : 0,
+    initialPaymentRequired: prefs.initialPaymentRequired,
+  });
   if (result.ok) {
     if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
     if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
@@ -37,10 +45,10 @@ export async function createSelectedPackageAction(input: {
 }
 
 /**
- * Canonical Lead → Booking Started path.
- * Creates Client (+ Event when applicable), moves sales_stage to booked
- * (UI label: Booking Started), attaches selected package when present.
- * Never stamps events.booked_at and never invites the portal.
+ * Canonical Lead → booking-file workspace.
+ * Creates Client (+ Event when applicable) and attaches the selected package.
+ * Does not mark the relationship commercially Booked, set pipeline Booked,
+ * stamp lifecycle booking dates, or invite the portal.
  */
 export async function startBookingFileAction(
   lead: Lead,

@@ -11,6 +11,7 @@ export { eventTypeLabel } from "@/lib/leads/constants";
 export type StatusMeta = { value: ClientStatus; label: string; description: string };
 
 export const CLIENT_STATUSES: StatusMeta[] = [
+  { value: "booking",    label: "Booking file", description: "Technical booking workspace — not commercially Booked or Planning yet" },
   { value: "planning",   label: "Planning",   description: "Actively planning their event" },
   { value: "confirmed",  label: "Confirmed",  description: "All details finalized" },
   { value: "complete",   label: "Complete",   description: "Event happened successfully" },

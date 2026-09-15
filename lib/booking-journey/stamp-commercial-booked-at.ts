@@ -133,4 +133,39 @@ export async function maybeStampCommercialBookedAt(
 
   const tz = await getVenueTimezone(supabase, venueId);
   await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
+
+  await supabase.from("events")
+    .update({ status: "confirmed" })
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .eq("status", "draft");
+
+  if (selRow && selRow.status !== "accepted" && contract?.status === "signed") {
+    const { markAcceptedVenue } = await import("@/lib/commercial-selections/repository");
+    await markAcceptedVenue(supabase, venueId, selRow.id);
+  }
+
+  const { data: clientRow } = await supabase.from("clients")
+    .select("lead_id")
+    .eq("id", clientId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ lead_id: string | null }>();
+
+  if (clientRow?.lead_id) {
+    const { updateLeadSalesStage } = await import("@/lib/leads/service");
+    await updateLeadSalesStage(clientRow.lead_id, "booked", {
+      allowBooked: true,
+      clientId,
+    });
+  } else {
+    const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
+    const { data: { user } } = await supabase.auth.getUser();
+    await recordLifecycleBooking(supabase, {
+      venueId,
+      clientId,
+      origin: "pipeline",
+      actorUserId: user?.id ?? null,
+      metadata: { source: "commercial_booked" },
+    });
+  }
 }

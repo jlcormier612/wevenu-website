@@ -69,6 +69,22 @@ describe("Configurable commercial Booked conditions", () => {
       }),
       true,
     );
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      clientId: "client-1",
+      selection: selection({ status: "accepted", depositAmount: 800 }),
+      contract: { id: "c1", status: "signed" },
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs,
+    });
+    assert.equal(j.isCommerciallyBooked, true);
+    assert.equal(j.currentKey, "booked");
+    assert.ok(!j.stages.some((s) => s.key === "deposit"));
+    assert.equal(j.depositSummary, null);
+    assert.equal(j.remainingSummary, null);
+    assert.doesNotMatch(j.direction, /\$800|deposit/i);
   });
 
   it("D — full payment deposit line satisfies payment condition", () => {

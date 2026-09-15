@@ -11,6 +11,7 @@ import type { ClientStatus } from "@/lib/clients/types";
 import type { EventReadiness } from "@/lib/playbooks/types";
 import type { Invoice } from "@/lib/invoices/types";
 import { formatCurrency } from "@/lib/invoices/constants";
+import { pickNextOpenPaymentLine } from "@/lib/invoices/amount-due-now";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
@@ -55,6 +56,7 @@ export function BookingOverviewSummary({
   clientName, eventType, eventDate, spaceName, guestCount, guestCountSubmission, clientStatus,
   readinessByKind,
   invoices,
+  paymentScheduleLines = null,
   timeline,
   vendorAssignments, vendorRecommendations,
   conversationMessages,
@@ -69,6 +71,7 @@ export function BookingOverviewSummary({
   clientStatus: ClientStatus;
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
   invoices: Invoice[];
+  paymentScheduleLines?: { status: string; dueDate?: string | null; amount?: number }[] | null;
   timeline: TimelineEntry[];
   vendorAssignments: EventVendorAssignment[];
   vendorRecommendations: EventVendorRecommendation[];
@@ -77,7 +80,16 @@ export function BookingOverviewSummary({
 }) {
   // ---- Payments: simple sums/finds over already-fetched invoices, nothing new invented ----
   const balanceDue = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
-  const nextDue = invoices
+  const nextFromSchedule = paymentScheduleLines
+    ? pickNextOpenPaymentLine(
+        paymentScheduleLines.map((l) => ({
+          status: l.status,
+          dueDate: l.dueDate ?? null,
+          amount: l.amount ?? 0,
+        })),
+      )?.dueDate ?? null
+    : null;
+  const nextDue = nextFromSchedule ?? invoices
     .filter((inv) => inv.balanceDue > 0 && inv.dueDate)
     .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))[0]?.dueDate ?? null;
 

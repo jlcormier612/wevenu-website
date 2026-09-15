@@ -3,6 +3,7 @@ import { clientStatusLabel } from "@/lib/clients/constants";
 import type { ClientStatus } from "@/lib/clients/types";
 
 const STATUS_VARIANT: Record<ClientStatus, BadgeVariant> = {
+  booking:   "muted",
   planning:  "muted",
   confirmed: "default",
   complete:  "success",

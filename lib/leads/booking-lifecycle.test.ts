@@ -54,11 +54,12 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.match(fn, /no client linked/i);
   });
 
-  it("convertLeadToClient still sets Booking Started via allowBooked and is idempotent on existing client", () => {
+  it("convertLeadToClient creates the workspace without pipeline Booked", () => {
     const convert = clientsSvc.slice(clientsSvc.indexOf("export async function convertLeadToClient"));
-    assert.match(convert, /allowBooked:\s*true/);
+    assert.doesNotMatch(convert, /updateLeadSalesStage/);
     assert.match(convert, /existingClient/);
     assert.match(convert, /23505/);
+    assert.match(convert, /markConvertedClientAsBookingFile/);
   });
 
   it("UI confirms Start booking file before mutation", () => {

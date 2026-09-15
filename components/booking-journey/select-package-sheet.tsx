@@ -28,6 +28,7 @@ export function SelectPackageSheet({
   clientId,
   eventId,
   defaultDepositPercent = 25,
+  initialPaymentRequired = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +37,7 @@ export function SelectPackageSheet({
   clientId?: string;
   eventId?: string;
   defaultDepositPercent?: number;
+  initialPaymentRequired?: boolean;
 }) {
   const router = useRouter();
   const [packageId, setPackageId] = React.useState("");
@@ -52,8 +54,12 @@ export function SelectPackageSheet({
     const pkg = packages.find((p) => p.id === id);
     const price = pkg?.basePrice != null ? Number(pkg.basePrice) : null;
     if (price != null && price > 0) {
-      const venueDefault = Math.round((price * (defaultDepositPercent / 100) + Number.EPSILON) * 100) / 100;
-      setDeposit(String(suggestDepositAmount(price, venueDefault)));
+      if (!initialPaymentRequired) {
+        setDeposit("0");
+      } else {
+        const venueDefault = Math.round((price * (defaultDepositPercent / 100) + Number.EPSILON) * 100) / 100;
+        setDeposit(String(suggestDepositAmount(price, venueDefault, { initialPaymentRequired })));
+      }
     } else {
       setDeposit("");
     }
@@ -70,8 +76,10 @@ export function SelectPackageSheet({
       setError("Choose a package with a price.");
       return;
     }
-    const depositAmount = parseFloat(deposit.replace(/[$,]/g, ""));
-    if (!(depositAmount >= 0) || Number.isNaN(depositAmount)) {
+    const depositAmount = initialPaymentRequired
+      ? parseFloat(deposit.replace(/[$,]/g, ""))
+      : 0;
+    if (initialPaymentRequired && (!(depositAmount >= 0) || Number.isNaN(depositAmount))) {
       setError("Enter a valid deposit amount.");
       return;
     }
@@ -182,6 +190,7 @@ export function SelectPackageSheet({
                 ))}
               </ul>
             )}
+            {initialPaymentRequired ? (
             <div className="space-y-2">
               <Label htmlFor="deposit-amount">Deposit</Label>
               <Input
@@ -200,6 +209,11 @@ export function SelectPackageSheet({
                 )}
               </p>
             </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                No deposit is required to book. Agreement completion books this package.
+              </p>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         )}

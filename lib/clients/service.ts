@@ -36,7 +36,6 @@ import {
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
 import { venueToday } from "@/lib/venue/timezone";
 import type { Lead } from "@/lib/leads/types";
-import { updateLeadSalesStage } from "@/lib/leads/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { exitEnrollmentsForBooking } from "@/lib/message-sequences/service";
 
@@ -396,6 +395,23 @@ async function convertLeadHolds(venueId: string, leadId: string, supabase: Param
   if (error) console.error("Could not convert holds:", error.message);
 }
 
+/** Workspace exists; Planning and pipeline Booked wait for commercial Booked. */
+async function markConvertedClientAsBookingFile(
+  supabase: Parameters<typeof repo.insertClient>[0],
+  venueId: string,
+  clientId: string,
+): Promise<void> {
+  const { error } = await supabase.from("clients")
+    .update({ status: "booking" })
+    .eq("id", clientId)
+    .eq("venue_id", venueId)
+    .eq("status", "planning")
+    .is("lifecycle_booked_at", null);
+  if (error) {
+    console.error("Could not set booking-file client status:", error.message);
+  }
+}
+
 export async function convertLeadToClient(
   lead: Lead,
   opts?: { spaceId?: string; commercialOnly?: boolean },
@@ -463,11 +479,9 @@ export async function convertLeadToClient(
           throw err;
         }
       }
-      // Planning workspace ("Start booking file") sets sales Booking Started.
-      // Quiet commercial ensure (contract/payments) must not move the pipeline stage.
-      if (!commercialOnly) {
-        await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: existingClient.id });
-      }
+      // Start booking file / quiet ensure create the workspace only.
+      // Commercial Booked (maybeStampCommercialBookedAt) is the only pipeline-Booked write.
+      await markConvertedClientAsBookingFile(supabase, venueId, existingClient.id);
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
     let clientId: string;
@@ -493,9 +507,7 @@ export async function convertLeadToClient(
           .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
-          if (!commercialOnly) {
-            await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: raceClient.id });
-          }
+          await markConvertedClientAsBookingFile(supabase, venueId, raceClient.id);
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
         }
       }
@@ -505,16 +517,7 @@ export async function convertLeadToClient(
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
     await convertLeadHolds(venueId, lead.id, supabase);
 
-    // Stop on booking (§3.3) — must never block conversion.
-    // Quiet commercial ensure is not a planning booking yet — leave series running.
-    if (!commercialOnly) {
-      const { data: newClient } = await supabase.from("clients").select("relationship_id")
-        .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
-      if (newClient?.relationship_id) {
-        void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
-          .catch((e) => console.error("Series exit-on-booking failed:", e));
-      }
-    }
+    // Series exit and pipeline Booked happen only at commercial Booked.
 
     // Sales → Booking Journey walkthrough — a document uploaded to the Lead
     // (a signed proposal, inspiration photos, anything) kept lead_id
@@ -530,9 +533,7 @@ export async function convertLeadToClient(
       .update(eventId ? { lead_id: null, event_id: eventId } : { lead_id: null, client_id: clientId })
       .eq("lead_id", lead.id).eq("venue_id", venueId);
 
-    if (!commercialOnly) {
-      await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId });
-    }
+    await markConvertedClientAsBookingFile(supabase, venueId, clientId);
 
     return { ok: true, clientId, eventId } as CreateClientResult;
   });

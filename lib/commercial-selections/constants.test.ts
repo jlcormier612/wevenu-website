@@ -13,6 +13,7 @@ import {
 describe("Selected Package money helpers", () => {
   it("suggests 25% deposit rounded to cents for $3200 → $800", () => {
     assert.equal(suggestDepositAmount(3200), 800);
+    assert.equal(suggestDepositAmount(3200, 800, { initialPaymentRequired: false }), 0);
     assert.equal(remainingAmount(3200, 800), 2400);
   });
 

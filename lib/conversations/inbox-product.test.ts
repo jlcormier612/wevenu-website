@@ -99,12 +99,23 @@ describe("Inbox Product two-column workspace", () => {
     // Inbox renders the thread in page flow; embedded surfaces keep the bounded one.
     assert.match(inbox, /flow="page"/);
     assert.doesNotMatch(inbox, /flow="contained"/);
+    assert.match(thread, /: "min-w-0 px-4 py-3 sm:px-6"/);
+    assert.doesNotMatch(
+      thread.slice(thread.indexOf('flow === "contained"'), thread.indexOf("messages === null")),
+      /flow !== "contained"[\s\S]*overflow-y-auto/,
+    );
     assert.match(thread, /flow = "contained"/);
     assert.match(thread, /flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden/);
     assert.match(thread, /\[overflow-wrap:anywhere\]/);
     assert.match(thread, /max-w-full rounded-lg object-contain/);
     assert.match(inbox, /relative min-w-0 flex-1/);
     assert.doesNotMatch(inbox, /min-w-\[200px\]/);
+  });
+
+  it("keeps the two-pane stack on ~390px without a trapped thread scroller", () => {
+    assert.match(inbox, /activeId \? "hidden md:block" : ""/);
+    assert.match(inbox, /md:w-80 lg:w-96/);
+    assert.match(thread, /: "flex min-w-0 w-full flex-col"/);
   });
 
   it("conversation list stays anchored while the conversation scrolls", () => {

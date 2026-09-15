@@ -143,7 +143,7 @@ describe("booked page — conversion and copy seams", () => {
     assert.match(fn, /insertClient\(/);
     assert.match(fn, /autoCreateEvent\(/);
     assert.match(fn, /startTime: input\.ceremonyTime/);
-    assert.match(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
+    assert.doesNotMatch(fn, /updateLeadSalesStage/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
     assert.doesNotMatch(fn, /releasePlaybookApplication/);
   });
