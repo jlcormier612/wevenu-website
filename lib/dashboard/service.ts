@@ -212,7 +212,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .limit(200),
 
 
-    // Upcoming events (canonical source) — replaces client-based event dates
+    // Coming up source: events table only — real event_date, next 60 days.
+    // Never join payment lines, invoices, or other dated facts into this query.
     supabase
       .from("events")
       .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
@@ -223,7 +224,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("event_date", { ascending: true })
       .limit(8),
 
-    // Payment line items with schedule title + client name (for dashboard widgets)
+    // Payment line items for Next Steps / today's dated Focus — not Coming up.
     supabase
       .from("payment_line_items")
       .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")

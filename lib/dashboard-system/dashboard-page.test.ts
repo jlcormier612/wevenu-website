@@ -49,23 +49,46 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /\+ New Lead/);
   });
 
-  it("uses Payments to Watch in the snapshot and not Venue Health", () => {
+  it("does not render a Payments to Watch snapshot card", () => {
+    assert.doesNotMatch(page, /label="Payments to Watch"/);
+    assert.doesNotMatch(page, /getPaymentsToWatchSummary/);
+    assert.doesNotMatch(page, /Business Snapshot/);
     assert.doesNotMatch(page, /label="Active Leads"/);
-    assert.match(page, /label="Payments to Watch"/);
     assert.doesNotMatch(page, /label="Coming up"/);
     assert.match(page, /title="Coming up"/);
-    assert.match(page, /\/payments\?filter=attention/);
+    assert.doesNotMatch(page, /\/payments\?filter=attention/);
     assert.doesNotMatch(page, /\/leads\?attention=active/);
     assert.doesNotMatch(page, /clientListFilterHref\("coming_up"\)/);
     assert.doesNotMatch(page, /label="Venue Health"/);
     assert.doesNotMatch(page, /getVenueHealth/);
   });
 
-  it("Payments to Watch uses the same attention population as the Payments filter", () => {
-    const attention = readFileSync(resolve("lib/payments/attention.ts"), "utf8");
-    assert.match(attention, /scheduleStatus === "attention"/);
-    assert.match(attention, /excludeFromBusinessReporting/);
-    assert.match(attention, /getPaymentSchedules/);
+  it("Coming up classifies events only — not the mixed dated stream", () => {
+    assert.match(page, /classifyUpcomingItems/);
+    const engine = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");
+    const fn = engine.slice(engine.indexOf("export function classifyUpcomingItems"));
+    const end = fn.indexOf("export function classifyTodayDatedItems");
+    const body = end >= 0 ? fn.slice(0, end) : fn;
+    assert.match(body, /comingUpHorizonEnd/);
+    assert.match(body, /data\.upcomingEvents/);
+    assert.doesNotMatch(body, /classifyDatedItems/);
+    assert.doesNotMatch(body, /upcomingPayments/);
+    assert.doesNotMatch(body, /upcomingTours/);
+  });
+
+  it("Today's Focus still uses Event Readiness payment/invoice attention", () => {
+    const engine = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");
+    const fn = engine.slice(engine.indexOf("export function classifyDashboardItems"));
+    const end = fn.indexOf("function classifyDatedItems");
+    const body = end >= 0 ? fn.slice(0, end) : fn;
+    assert.match(body, /data\.briefing\.needsAttentionNow/);
+    assert.doesNotMatch(body, /for \(const .* of data\.overduePayments\)/);
+  });
+
+  it("Payments list attention filter is unchanged", () => {
+    const paymentsPage = readFileSync(resolve("app/(app)/payments/page.tsx"), "utf8");
+    assert.match(paymentsPage, /scheduleStatus === "attention"/);
+    assert.match(paymentsPage, /excludeFromBusinessReporting/);
   });
 
   it("keeps Reports navigation", () => {
@@ -77,6 +100,15 @@ describe("Dashboard Coming up is the Clients Coming-up (60-day) population", () 
   it("counts through getClientListFilterCounts.coming_up, not all-future Upcoming", () => {
     assert.match(service, /getClientListFilterCounts/);
     assert.match(service, /upcomingEventCount: clientListCounts\.coming_up/);
+  });
+
+  it("loads Coming up events from the events table, not payment lines", () => {
+    assert.match(service, /from\("events"\)/);
+    assert.match(service, /\.lte\("event_date", sixtyDaysOut\)/);
+    const eventsBlock = service.slice(service.indexOf("Coming up source"), service.indexOf("Payment line items"));
+    assert.match(eventsBlock, /from\("events"\)/);
+    assert.doesNotMatch(eventsBlock, /payment_line_items/);
+    assert.doesNotMatch(eventsBlock, /payment_schedules/);
   });
 });
 

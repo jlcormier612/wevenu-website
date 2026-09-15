@@ -105,8 +105,8 @@ describe("customer-facing reporting copy", () => {
     assert.equal(opens, closes);
   });
 
-  it("Dashboard snapshot cards drill into the same populations", () => {
-    assert.match(dashboard, /\/payments\?filter=attention/);
+  it("Dashboard Coming up stays events-only and does not invent snapshot metrics", () => {
+    assert.doesNotMatch(dashboard, /label="Payments to Watch"/);
     assert.doesNotMatch(dashboard, /label="Active Leads"/);
     assert.match(dashboard, /Events in the next 60 days/);
   });

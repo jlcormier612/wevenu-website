@@ -23,6 +23,7 @@
  * which already computes leads/tasks/payments/events/briefing correctly)
  * — it invents no new rule, no new threshold, no new data source.
  */
+import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
 import { isOverdue, formatDate as formatLeadDate, leadDisplayName } from "@/lib/leads/constants";
 import { formatDate as formatEventDate } from "@/lib/events/constants";
 import { formatDate as formatPaymentDate, formatMoney } from "@/lib/payments/constants";
@@ -287,16 +288,33 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
 }
 
 /**
- * The forward-looking slice: strictly later than today.
+ * Coming up is events only — the events table, real event dates, next 60 days.
  *
- * Anything landing today is today's business and belongs to Today's Focus, so
- * Upcoming no longer restates it. Previously only today's *tours* were held
- * back, which left today's events and payments appearing in both
- * sections at once.
+ * Payments, invoices, tours, tasks, and other dated facts are a different
+ * domain. They must not be merged into this list (even when they belong to
+ * the same client/event). Today's events stay in Today's Focus.
  */
 export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {
   const today = data.todayIso;
-  return classifyDatedItems(data).filter((i) => i.sortDate != null && i.sortDate > today);
+  const horizon = comingUpHorizonEnd(today);
+  const items: ClassifiedItem[] = [];
+  for (const event of data.upcomingEvents) {
+    if (!event.eventDate) continue;
+    if (event.eventDate <= today) continue;
+    if (event.eventDate > horizon) continue;
+    items.push({
+      id: `up-event-${event.id}`,
+      priority: "upcoming",
+      domain: "Events",
+      label: event.clientName ?? event.name,
+      detail: "Event",
+      href: `/events/${event.id}`,
+      rightLabel: formatEventDate(event.eventDate),
+      sortDate: event.eventDate,
+      crossSectionSubject: null,
+    });
+  }
+  return items.sort((a, b) => (a.sortDate ?? "9999").localeCompare(b.sortDate ?? "9999"));
 }
 
 /** The today-dated slice, which Today's Focus folds in alongside actionable work. */

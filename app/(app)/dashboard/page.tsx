@@ -10,7 +10,6 @@ import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entr
 import { YourNextStepsCard } from "@/components/dashboard/getting-started";
 import { DigestCallout } from "@/components/dashboard/digest-callout";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
-import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
 import { excludeTodayFocusFromNextSteps, VENUE_NEXT_STEPS_CAP } from "@/lib/dashboard/venue-next-steps";
@@ -20,7 +19,6 @@ import {
 } from "@/lib/dashboard-system/decision-engine";
 import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
 import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
-import { getPaymentsToWatchSummary } from "@/lib/payments/attention";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -85,8 +83,6 @@ export default async function DashboardPage({ searchParams }: Props) {
   for (const step of nextSteps) claimedSubjects.add(step.subjectKey);
   const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
 
-  const paymentsToWatch = await getPaymentsToWatchSummary().catch(() => null);
-
   const luvEntry = data.luvObservationsEnabled
     ? selectLuvDashboardEntry({
         focusItems,
@@ -140,7 +136,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         </section>
       )}
 
-      {/* 3. COMING — awareness of future events/dates/milestones, not a task queue */}
+      {/* 3. COMING — upcoming events only (not payments, tasks, or other dates) */}
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
@@ -155,18 +151,6 @@ export default async function DashboardPage({ searchParams }: Props) {
           }
           renderRow={(item) => <ClassifiedRow item={item} />}
         />
-      </section>
-
-      <section>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Business Snapshot</p>
-        <StatTileGrid className="sm:grid-cols-1 max-w-xl">
-          <StatTile
-            layout="label-top" label="Payments to Watch" sub="Needs attention"
-            value={paymentsToWatch != null ? formatCurrencyShort(paymentsToWatch.amount) : "—"}
-            severity={paymentsToWatch && paymentsToWatch.amount > 0 ? "warning" : undefined}
-            className="rounded-xl border bg-card p-3" href="/payments?filter=attention"
-          />
-        </StatTileGrid>
       </section>
 
       <section>
@@ -201,9 +185,4 @@ function ClassifiedRow({ item }: { item: ClassifiedItem }): ReactNode {
       )}
     </Link>
   );
-}
-
-function formatCurrencyShort(n: number): string {
-  if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`;
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
