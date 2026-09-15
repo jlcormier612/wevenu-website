@@ -9,7 +9,7 @@ export async function createLeadAction(
   return createLead(input);
 }
 
-/** Venue-side strong-signal possible match preview — never blocks create. */
+/** Venue-side possible-match preview. Create still requires an identity decision. */
 export async function previewPossibleDuplicateLeadAction(input: {
   firstName: string;
   lastName: string;

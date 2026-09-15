@@ -136,6 +136,8 @@ export type LeadInput = {
   inquiryDate: string;
   /** Set by CSV import when the spreadsheet's source text didn't match a registered source — preserves the original label since `source` itself falls back to "other". */
   originalSourceLabel?: string | null;
+  /** Venue identity decision when a possible match exists. */
+  identityDecision?: import("@/lib/identity/decision").IdentityDecision;
 };
 
 /** Form model for the relationship management card (Sprint 6). */
@@ -163,4 +165,10 @@ export type LeadActionResult =
 
 export type CreateLeadResult =
   | { ok: true; leadId: string }
-  | { ok: false; errors?: LeadErrors; message?: string };
+  | { ok: false; errors?: LeadErrors; message?: string }
+  | {
+      ok: false;
+      code: "identity_review_required";
+      matches: import("@/lib/leads/duplicate-detection").DuplicateCandidate[];
+      message: string;
+    };

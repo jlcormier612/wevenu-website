@@ -11,6 +11,7 @@ import type {
   ClientStatus,
   ClientWithDetails,
 } from "@/lib/clients/types";
+import { identityRpcFields } from "@/lib/identity/decision";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -183,6 +184,7 @@ function clientAtomicPayload(input: ClientInput, leadId?: string | null, histori
     rehearsalDate: input.rehearsalDate,
     internalNotes: input.internalNotes.trim(),
     isHistoricalImport: historicalImport,
+    ...identityRpcFields(input.identityDecision),
   };
 }
 

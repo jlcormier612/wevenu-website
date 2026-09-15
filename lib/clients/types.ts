@@ -87,6 +87,10 @@ export type ClientInput = {
   rehearsalDate: string;
   internalNotes: string;
   spaceId: string;
+  /** Venue identity decision when a possible match exists. */
+  identityDecision?: import("@/lib/identity/decision").IdentityDecision;
+  /** Import/migration only — SQL safe-reuse still applies; venue UI is not available. */
+  skipIdentityReview?: boolean;
 };
 
 
@@ -105,4 +109,10 @@ export type CreateClientResult =
       /** Present when Client/Event succeeded but a follow-on link (e.g. package) failed. */
       warning?: string;
     }
-  | { ok: false; errors?: ClientErrors; message?: string; code?: OccupancyCode };
+  | { ok: false; errors?: ClientErrors; message?: string; code?: OccupancyCode }
+  | {
+      ok: false;
+      code: "identity_review_required";
+      matches: import("@/lib/leads/duplicate-detection").DuplicateCandidate[];
+      message: string;
+    };

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,21 +13,22 @@ import {
 } from "@/components/ui/dialog";
 import { signalLabel, type DuplicateCandidate } from "@/lib/leads/duplicate-detection";
 import { statusLabel } from "@/lib/leads/constants";
+import type { IdentityDecision } from "@/lib/identity/decision";
 
 /**
- * Non-blocking venue warning before creating a Lead or Client that may
- * already exist. Caller still creates the record if the venue continues.
+ * Venue identity confirmation before creating a Lead or Client that may
+ * already exist. Create does not proceed until the venue chooses.
  */
 export function PossibleMatchCreateDialog({
   open,
   matches,
-  onContinue,
+  onDecide,
   onCancel,
   pending,
 }: {
   open: boolean;
   matches: DuplicateCandidate[];
-  onContinue: () => void;
+  onDecide: (decision: IdentityDecision) => void;
   onCancel: () => void;
   pending?: boolean;
 }) {
@@ -39,14 +39,15 @@ export function PossibleMatchCreateDialog({
     <Dialog open={open} onOpenChange={(next) => { if (!next) onCancel(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>We may already have this couple</DialogTitle>
+          <DialogTitle>We may already have this customer</DialogTitle>
           <DialogDescription>
-            Strong matching information suggests this person may already be in your records.
-            You can review the existing record, or create a separate one if these are different
-            customers.
+            Matching information suggests this person may already be in your records.
+            Choose whether this is the same customer or a different one. The system
+            will not decide for you.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-md border border-border px-3 py-2 text-sm">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Existing</p>
           <p className="font-medium text-heading">{top.displayName}</p>
           {top.email ? <p className="text-muted-foreground">{top.email}</p> : null}
           {top.phone ? <p className="text-muted-foreground">{top.phone}</p> : null}
@@ -57,32 +58,28 @@ export function PossibleMatchCreateDialog({
             Matched by: {top.signals.map(signalLabel).join(", ")}
           </p>
         </div>
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
             Go back
           </Button>
-          <div className="flex flex-wrap gap-2">
-            {top.leadId ? (
-              <Button
-                type="button"
-                variant="secondary"
-                render={<Link href={`/leads/${top.leadId}`} />}
-              >
-                Review existing
-              </Button>
-            ) : top.clientId ? (
-              <Button
-                type="button"
-                variant="secondary"
-                render={<Link href={`/clients/${top.clientId}`} />}
-              >
-                Review existing
-              </Button>
-            ) : null}
-            <Button type="button" onClick={onContinue} disabled={pending}>
-              Create anyway
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={pending || !top.relationshipId}
+            onClick={() => {
+              if (!top.relationshipId) return;
+              onDecide({ action: "use_existing", relationshipId: top.relationshipId });
+            }}
+          >
+            Use existing customer
+          </Button>
+          <Button
+            type="button"
+            disabled={pending}
+            onClick={() => onDecide({ action: "create_new" })}
+          >
+            Create new customer
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

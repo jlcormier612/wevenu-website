@@ -4,6 +4,7 @@
  * Maps snake_case rows to camelCase domain types. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { identityRpcFields } from "@/lib/identity/decision";
 import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
 import { TourCapacityWriteError, tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
@@ -388,6 +389,7 @@ export async function insertLead(
       // which the notify_new_lead trigger checks to suppress the venue's
       // "New inquiry" notification for backfilled data.
       isHistoricalImport: historicalImport,
+      ...identityRpcFields(input.identityDecision),
     },
   });
   if (error) throw error;

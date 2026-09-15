@@ -82,18 +82,22 @@ function createInboundEmailStore(supabase: ReturnType<typeof createAdminClient>)
     async findLeadByEmail(email) {
       const { data } = await supabase.from("leads")
         .select("id, venue_id, relationship_id")
-        .eq("email", email)
-        .limit(1)
-        .maybeSingle<{ id: string; venue_id: string; relationship_id: string | null }>();
-      return data;
+        .ilike("email", email)
+        .limit(3);
+      const rows = data ?? [];
+      const rels = new Set(rows.map((r) => r.relationship_id).filter(Boolean));
+      if (rows.length !== 1 && rels.size !== 1) return null;
+      return rows[0] ?? null;
     },
     async findClientByEmail(email) {
       const { data } = await supabase.from("clients")
         .select("id, venue_id, relationship_id")
-        .eq("email", email)
-        .limit(1)
-        .maybeSingle<{ id: string; venue_id: string; relationship_id: string | null }>();
-      return data;
+        .ilike("email", email)
+        .limit(3);
+      const rows = data ?? [];
+      const rels = new Set(rows.map((r) => r.relationship_id).filter(Boolean));
+      if (rows.length !== 1 && rels.size !== 1) return null;
+      return rows[0] ?? null;
     },
     async findConversationForRelationship(relationshipId) {
       // Venue↔couple only — never couple_vendor_inquiry (or other kinds)

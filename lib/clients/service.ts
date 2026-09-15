@@ -256,6 +256,29 @@ async function createClientCore(
     actorUserId?: string | null;
   },
 ): Promise<CreateClientResult> {
+  if (!historicalImport && !importAsHistoricalRecord && !input.skipIdentityReview) {
+    const { findPossibleDuplicateMatches } = await import("@/lib/leads/duplicate-detection");
+    const { requireIdentityDecision } = await import("@/lib/identity/decision");
+    const matches = await findPossibleDuplicateMatches(supabase, venueId, {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phone: input.phone,
+      partnerFirstName: input.partnerFirstName,
+      partnerLastName: input.partnerLastName,
+      partnerEmail: input.partnerEmail,
+    });
+    const decided = requireIdentityDecision(matches, input.identityDecision);
+    if (!decided.ok) {
+      return {
+        ok: false,
+        code: "identity_review_required",
+        matches: decided.matches,
+        message: "We may already have this customer.",
+      };
+    }
+  }
+
   const asHistorical = importAsHistoricalRecord && isPastEventDate(input.eventDate);
   if (importAsHistoricalRecord && input.eventDate && !asHistorical) {
     return { ok: false, message: "Only past Events can be imported as historical records. Future bookings still follow availability." };

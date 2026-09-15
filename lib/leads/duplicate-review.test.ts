@@ -46,9 +46,12 @@ describe("Possible duplicate inquiry seams", () => {
     assert.match(banner, /Delete this duplicate lead/);
   });
 
-  it("venue create warning is non-blocking", () => {
-    assert.match(createDlg, /Create anyway/);
-    assert.match(createDlg, /never blocks create|Go back/i);
+  it("venue create requires an identity decision, not Create anyway", () => {
+    assert.match(createDlg, /We may already have this customer/);
+    assert.match(createDlg, /Use existing customer/);
+    assert.match(createDlg, /Create new customer/);
+    assert.doesNotMatch(createDlg, /Create anyway/);
+    assert.match(createDlg, /will not decide for you/);
   });
 
   it("notification CTA uses existing venue inbox", () => {
