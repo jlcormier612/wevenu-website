@@ -31,10 +31,11 @@ import { cn } from "@/lib/utils";
  * prevents the short-shell failure mode where `h-svh` alone still left a cream
  * band of document background below the app.
  *
- * `main` is the module scroll surface for most routes: the sidebar and
- * global header stay put while page content scrolls inside it. Inbox is a
- * two-pane application: `main` does not scroll horizontally or as a
- * document; each pane scrolls vertically inside the remaining viewport.
+ * `main` is the module scroll surface for every route: the sidebar and global
+ * header stay put while page content scrolls inside it. Inbox only differs in
+ * content width (`max-w-[90rem]`) plus `min-w-0` / `overflow-x-clip` so a
+ * long thread can grow the document vertically without sliding the workspace
+ * horizontally (`overflow-y-auto` would otherwise compute overflow-x to auto).
  */
 export function WorkspaceShell({
   email,
@@ -154,14 +155,14 @@ export function WorkspaceShell({
         </header>
 
         <main className={cn(
-          "min-h-0 flex-1 bg-background",
-          isInboxWorkspace ? "flex min-w-0 flex-col overflow-hidden" : "overflow-y-auto",
+          "min-h-0 min-w-0 flex-1 overflow-y-auto bg-background",
+          isInboxWorkspace && "overflow-x-clip",
         )}>
           <div
             className={cn(
               "mx-auto w-full min-w-0",
               isInboxWorkspace
-                ? "flex min-h-0 flex-1 flex-col overflow-hidden max-w-[90rem] px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
+                ? "max-w-[90rem] px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
                 : "max-w-6xl p-4 sm:p-6 lg:p-10",
             )}
           >

@@ -355,9 +355,11 @@ export function ConversationThread({
   onBack?: () => void;
   showHeader?: boolean;
   /**
-   * `contained` — the thread fills its parent and owns vertical scroll for
-   * messages (Inbox two-pane, Booking Workspace tab). `page` — the thread
-   * has natural height and scrolls with the surrounding surface.
+   * `contained` — the thread owns a bounded scroll area and fills its parent
+   * box (Booking Workspace tab, event vendor thread: both give it a fixed-ish
+   * frame). `page` — the thread has natural document height and scrolls with
+   * whatever surface it sits in, so a long conversation is never cut off at
+   * the bottom of a box (Inbox).
    */
   flow?: "contained" | "page";
   /**
