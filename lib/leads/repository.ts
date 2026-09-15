@@ -188,6 +188,7 @@ type LeadRow = {
   source_data: Record<string, unknown> | null;
   relationship_id: string | null;
   intake_confidence: number | null;
+  exclude_from_business_reporting?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -239,6 +240,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     sourceData: r.source_data ?? null,
     relationshipId: r.relationship_id ?? null,
     intakeConfidence: r.intake_confidence ?? null,
+    excludeFromBusinessReporting: r.exclude_from_business_reporting ?? false,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }

@@ -31,6 +31,7 @@ import { toast } from "sonner";
 
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { sessionDeviceLabel } from "@/lib/client-auth/session-label";
+import { countUnreadVenueMessages } from "@/lib/portal/unread-messages";
 
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
@@ -4588,9 +4589,7 @@ export function PortalShell({
         sender_type?: string;
         couple_read_at?: string | null;
       }[];
-      setMessagesUnreadCount(
-        messages.filter((m) => m.sender_type === "venue" && !m.couple_read_at).length,
-      );
+      setMessagesUnreadCount(countUnreadVenueMessages(messages));
 
       const unified = buildUnifiedTaskList({
         venueTasks,

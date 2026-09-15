@@ -69,7 +69,7 @@ describe("Lifecycle booking writers", () => {
     assert.match(listFn, /eq\("event_kind", "first_booked"\)/);
     assert.match(lifecycleSvc, /rebooked is excluded on purpose/);
     assert.match(registry, /not period Booking activity/);
-    assert.match(salesPage, /Currently Booked \(pipeline\)/);
+    assert.match(salesPage, /Currently booked/);
   });
 
   it("pipeline Booked records lifecycle and skips when already Booked", () => {
@@ -120,7 +120,7 @@ describe("Customer-facing Lead → Booking cohort alignment", () => {
   });
 
   it("Overview Lead → Booking and Business Funnel share the approved population", () => {
-    assert.match(overview, /Lost leads stay in this rate|later marked Lost/);
+    assert.match(overview, /Lost inquiries stay in this rate|Lost leads stay in this rate|later marked Lost/);
     assert.match(overview, /getLeadCohortLifecycleBookingStats/);
     assert.match(overview, /getBusinessFunnel/);
     const funnelSrc = readFileSync(resolve("lib/metrics/business-funnel.ts"), "utf8");
@@ -130,7 +130,7 @@ describe("Customer-facing Lead → Booking cohort alignment", () => {
 
   it("Sales cohort Lead → Booking uses the same helper (not a second population)", () => {
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
-    assert.match(salesPage, /later marked Lost/);
+    assert.match(salesPage, /lost inquiries stay in this group/);
   });
 });
 
@@ -148,7 +148,7 @@ describe("Reporting distinctions", () => {
   it("Bookings page is dated by first marked-booked and has no origin taxonomy", () => {
     assert.match(bookingsPage, /getLifecycleBookingsWithNames/);
     assert.match(bookingsPage, /Bookings by source/);
-    assert.match(bookingsPage, /Unknown \/ Unattributed/);
+    assert.match(bookingsPage, /Not recorded/);
     assert.doesNotMatch(bookingsPage, /Bookings by origin/);
     assert.doesNotMatch(bookingsPage, /Financially Committed/);
     assert.doesNotMatch(bookingsPage, /Coming later/);
@@ -156,10 +156,10 @@ describe("Reporting distinctions", () => {
   });
 
   it("Sales separates cohort vs period activity and shows attribution coverage", () => {
-    assert.match(salesPage, /Cohort performance/);
-    assert.match(salesPage, /Period activity/);
+    assert.match(salesPage, /Inquiries from this period/);
+    assert.match(salesPage, /During this period/);
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
-    assert.match(salesPage, /known acquisition source/);
+    assert.match(salesPage, /known source/);
     assert.match(salesPage, /Tours by source/);
     assert.match(salesPage, /Bookings by source/);
     assert.doesNotMatch(salesPage, /Financially Committed/);

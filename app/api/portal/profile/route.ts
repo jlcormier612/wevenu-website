@@ -15,6 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { customerFacingLatestJournalEntry } from "@/lib/portal/customer-facing-journal";
 import type { CoupleProfile } from "@/lib/portal/types";
 
 export async function GET(request: Request) {
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
     engagementPhotos:   raw?.engagementPhotos          ?? [],
     inspirationPhotos:  raw?.inspirationPhotos         ?? [],
     memoryPhotos:       raw?.memoryPhotos              ?? [],
-    latestJournalEntry: raw?.latestJournalEntry        ?? null,
+    latestJournalEntry: customerFacingLatestJournalEntry(raw?.latestJournalEntry ?? null),
   };
 
   return NextResponse.json({ profile });

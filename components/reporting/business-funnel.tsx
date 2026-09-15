@@ -102,24 +102,24 @@ export function BusinessFunnel({ funnel, rangeLabel }: Props) {
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Lead → Tour</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Took a tour</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadToTourRate}%</p>
               <p className="text-[11px] text-muted-foreground">
-                {cohort.eventuallyToured} of {cohort.leadsEntered} eventually toured
+                {cohort.eventuallyToured} of {cohort.leadsEntered} later toured
               </p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Lead → Booking</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads who booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadToBookingRate}%</p>
               <p className="text-[11px] text-muted-foreground">
-                {cohort.eventuallyBooked} of {cohort.leadsEntered} eventually booked
+                {cohort.eventuallyBooked} of {cohort.leadsEntered} later booked — the booking can be after this period
               </p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tour → Booking</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Toured, then booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.tourToBookingRate}%</p>
               <p className="text-[11px] text-muted-foreground">
-                Of those who toured: {cohort.touredAndBooked} of {cohort.eventuallyToured} eventually booked
+                Of those who toured: {cohort.touredAndBooked} of {cohort.eventuallyToured} later booked
               </p>
             </div>
           </div>

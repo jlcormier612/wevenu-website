@@ -146,7 +146,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
           title="Coming up"
-          description="Events, dates, and milestones on the horizon."
+          description="Events in the next 60 days."
           items={upcomingItems}
           getKey={(i) => i.id}
           emptyState={
@@ -164,7 +164,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <StatTile
             layout="label-top" label="Active Leads" sub="Still in play"
             value={data.activeLeadCount}
-            className="rounded-xl border bg-card p-3" href="/leads"
+            className="rounded-xl border bg-card p-3" href="/leads?attention=active"
           />
           <StatTile
             layout="label-top" label="Payments to Watch" sub="Needs attention"
@@ -173,7 +173,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             className="rounded-xl border bg-card p-3" href="/payments?filter=attention"
           />
           <StatTile
-            layout="label-top" label="Coming up"
+            layout="label-top" label="Coming up" sub="Events in the next 60 days"
             value={data.clientListCounts.coming_up}
             className="rounded-xl border bg-card p-3" href={clientListFilterHref("coming_up")}
           />

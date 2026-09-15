@@ -279,13 +279,20 @@ export async function countUndatedFirstBooked(
   client: DbClient,
   venueId: string,
 ): Promise<number> {
-  const { count } = await client
+  const { data } = await client
     .from("lifecycle_booking_events")
-    .select("id", { count: "exact", head: true })
+    .select("lead_id, client_id")
     .eq("venue_id", venueId)
     .eq("event_kind", "first_booked")
     .is("occurred_at", null);
-  return count ?? 0;
+  const rows = (data ?? []) as { lead_id: string | null; client_id: string | null }[];
+  const { isExcludedFromBusinessReporting, loadReportingExclusions } = await import(
+    "@/lib/reporting/business-scope"
+  );
+  const exclusions = await loadReportingExclusions(client, venueId);
+  return rows.filter(
+    (r) => !isExcludedFromBusinessReporting(exclusions, { leadId: r.lead_id, clientId: r.client_id }),
+  ).length;
 }
 
 /**
@@ -310,7 +317,7 @@ export async function listLifecycleBookingsInPeriod(
   if (window.from) q = q.gte("occurred_at", `${window.from}T00:00:00.000Z`);
   if (window.to) q = q.lte("occurred_at", `${window.to}T23:59:59.999Z`);
   const { data } = await q;
-  return ((data ?? []) as {
+  const mapped = ((data ?? []) as {
     id: string; lead_id: string | null; client_id: string | null;
     origin: LifecycleBookingOrigin; occurred_at: string; actor_user_id: string | null;
     acquisition_source: string | null;
@@ -323,6 +330,13 @@ export async function listLifecycleBookingsInPeriod(
     actorUserId: r.actor_user_id,
     acquisitionSource: r.acquisition_source ?? null,
   }));
+  const { isExcludedFromBusinessReporting, loadReportingExclusions } = await import(
+    "@/lib/reporting/business-scope"
+  );
+  const exclusions = await loadReportingExclusions(client, venueId);
+  return mapped.filter(
+    (r) => !isExcludedFromBusinessReporting(exclusions, { leadId: r.leadId, clientId: r.clientId }),
+  );
 }
 
 /** Internal only — never show origin as a customer-facing Booking type. */

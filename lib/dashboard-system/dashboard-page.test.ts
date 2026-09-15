@@ -37,7 +37,7 @@ describe("Dashboard page information architecture", () => {
 
   it("defines Coming up as awareness, not a second task queue", () => {
     assert.match(page, /title="Coming up"/);
-    assert.match(page, /Events, dates, and milestones on the horizon/);
+    assert.match(page, /Events in the next 60 days/);
   });
 
   it("removes the Quick Actions section and does not add Bookings nav", () => {
@@ -55,6 +55,7 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /label="Coming up"/);
     assert.match(page, /clientListFilterHref\("coming_up"\)/);
     assert.match(page, /\/payments\?filter=attention/);
+    assert.match(page, /\/leads\?attention=active/);
     assert.doesNotMatch(page, /label="Venue Health"/);
     assert.doesNotMatch(page, /getVenueHealth/);
   });

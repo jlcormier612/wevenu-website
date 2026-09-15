@@ -32,6 +32,8 @@ export type Client = {
   rehearsalDate: string | null;
   internalNotes: string | null;
   relationshipId: string | null; // Program 2 Phase 2 — the enduring customer identity, regardless of origin
+  /** Internal verification/E2E fixture — excluded from customer-facing Reporting. */
+  excludeFromBusinessReporting?: boolean;
   createdAt: string;
   updatedAt: string;
 };

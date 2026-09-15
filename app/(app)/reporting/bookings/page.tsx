@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
 
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
@@ -20,7 +19,6 @@ import {
 import { getAverageBookingValue, getGrossBookedRevenue } from "@/lib/metrics/revenue";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import { formatMoney } from "@/lib/event-orders/constants";
-import { getClientHealthScores } from "@/lib/analytics/service";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -64,7 +62,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
   const [
     bookings, prevBookings,
     avgValue, prevAvgValue, grossRevenue, prevGrossRevenue,
-    health, currentlyBooked, bookingCoverage, bookingsBySource, timeToBook,
+    currentlyBooked, bookingCoverage, bookingsBySource, timeToBook,
     undatedBookings,
   ] = await Promise.all([
     getLifecycleBookingsWithNames(window),
@@ -73,7 +71,6 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getAverageBookingValue(prevWindow),
     getGrossBookedRevenue(window),
     getGrossBookedRevenue(prevWindow),
-    getClientHealthScores(),
     getCurrentlyBookedPipelineCount(),
     getLifecycleBookingSourceCoverage(window),
     getLifecycleBookingsByAcquisitionSource(window),
@@ -81,7 +78,6 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getUndatedLifecycleBookingCount(),
   ]);
   const trend = lifecycleToTrend(bookings, window);
-  const needsAttention = (health?.clients ?? []).filter((c) => c.health === "at_risk" || c.health === "needs_attention").slice(0, 8);
 
   return (
     <div className="space-y-6">
@@ -138,7 +134,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Bookings by source</CardTitle>
           <CardDescription>
-            Frozen acquisition attribution. Website includes tour scheduling. Missing attribution stays Unknown / Unattributed.
+            Frozen source recorded when they booked. Website includes tour requests. Missing source is Not recorded.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -171,26 +167,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      {needsAttention.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning-foreground" />Clients needing attention</CardTitle>
-            <CardDescription>Clients whose engagement signals suggest they need a check-in.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y divide-border">
-              {needsAttention.map((c) => (
-                <Link key={c.clientId} href={`/clients/${c.clientId}`} className="flex items-center justify-between gap-4 py-2 text-sm hover:bg-muted/30 -mx-2 px-2 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <span className="font-medium text-foreground">{c.clientName}</span>
-                  <span className={c.health === "at_risk" ? "text-destructive text-xs font-semibold uppercase tracking-wide" : "text-warning-foreground text-xs font-semibold uppercase tracking-wide"}>
-                    {c.health === "at_risk" ? "At Risk" : "Needs Attention"}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      </Card>
 
       <Card>
         <CardHeader>

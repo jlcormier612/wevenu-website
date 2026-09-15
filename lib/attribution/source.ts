@@ -13,7 +13,7 @@ import { sourceLabel } from "@/lib/leads/constants";
 
 /** Aggregation key + UI for missing / untrusted attribution. */
 export const UNKNOWN_SOURCE_KEY = "unknown";
-export const UNKNOWN_SOURCE_LABEL = "Unknown / Unattributed";
+export const UNKNOWN_SOURCE_LABEL = "Not recorded";
 
 /**
  * Known for coverage: non-empty vocabulary key that is not the generic

@@ -7,6 +7,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { listLifecycleBookingsInPeriod } from "@/lib/lifecycle-bookings/service";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 import {
   computeSourceCoverage,
@@ -37,12 +38,14 @@ export async function getLeadSourceCoverage(window: { from: string; to: string }
   const venue = await getCurrentVenue();
   if (!venue) return emptyCoverage();
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("leads")
-    .select("acquisition_source")
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+  const { data } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("acquisition_source")
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
   return computeSourceCoverage(
     ((data ?? []) as { acquisition_source: string | null }[]).map((r) => r.acquisition_source),
   );
@@ -73,8 +76,9 @@ export async function getToursByAcquisitionSource(window?: DateWindow): Promise<
 
   let q = supabase
     .from("tour_appointments")
-    .select("id, lead_id, leads(acquisition_source)")
-    .eq("venue_id", venue.id);
+    .select("id, lead_id, leads!inner(acquisition_source, exclude_from_business_reporting)")
+    .eq("venue_id", venue.id)
+    .eq("leads.exclude_from_business_reporting", false);
   if (window?.from) q = q.gte("scheduled_at", `${window.from}T00:00:00.000Z`);
   if (window?.to) q = q.lte("scheduled_at", `${window.to}T23:59:59.999Z`);
   const { data } = await q;

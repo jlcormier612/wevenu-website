@@ -22,7 +22,9 @@ export async function getPaymentsToWatchSummary(): Promise<PaymentsToWatchSummar
   // getPaymentSchedules runs mark_overdue_payments first — same status source
   // as the Payments page / filter=attention destination.
   const schedules = await getPaymentSchedules();
-  const attention = schedules.filter((s) => s.scheduleStatus === "attention");
+  const attention = schedules.filter(
+    (s) => s.scheduleStatus === "attention" && !s.excludeFromBusinessReporting,
+  );
   return {
     amount: attention.reduce((sum, s) => sum + Math.max(0, s.balance), 0),
     scheduleIds: attention.map((s) => s.id),

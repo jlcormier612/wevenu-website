@@ -120,6 +120,28 @@ export function resolveDateRangeFromParams(searchParams: Record<string, string |
   return resolveDateRange(preset, from, to);
 }
 
+/** Preserve the active reporting window when linking between report pages. */
+export function reportingHref(
+  path: string,
+  range: Pick<ResolvedDateRange, "preset" | "from" | "to">,
+  extra?: Record<string, string | null | undefined>,
+): string {
+  const qp = new URLSearchParams();
+  qp.set("range", range.preset);
+  if (range.preset === "custom") {
+    qp.set("from", range.from);
+    qp.set("to", range.to);
+  }
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      if (v == null || v === "") qp.delete(k);
+      else qp.set(k, v);
+    }
+  }
+  const qs = qp.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
 /** Percentage change, direction-agnostic — the caller decides whether "up" is good or bad (Outstanding Balance going up is bad news). */
 export function percentChange(current: number, previous: number): { pct: number | null; direction: "up" | "down" | "flat" } {
   if (previous === 0) {

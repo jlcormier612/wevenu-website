@@ -79,7 +79,7 @@ export function LeadList({
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
-  initialAttention?: "stale_contact" | null;
+  initialAttention?: "stale_contact" | "active" | null;
 }) {
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<FilterKey>("all");
@@ -87,8 +87,8 @@ export function LeadList({
   const [sort, setSort] = React.useState<SortKey>(
     initialAttention === "stale_contact" ? "last_contacted" : "newest",
   );
-  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact">(
-    initialAttention === "stale_contact" ? "stale_contact" : "all",
+  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "active">(
+    initialAttention === "stale_contact" ? "stale_contact" : initialAttention === "active" ? "active" : "all",
   );
 
   const filtered = React.useMemo(() => {
@@ -99,13 +99,17 @@ export function LeadList({
       if (statusFilter !== "all" && stage !== statusFilter) return false;
       if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
       if (attentionFilter === "stale_contact") {
-        // Same closed set as generate_venue_recommendations (won/lost/cancelled)
-        // mapped onto the lead sales-stage vocabulary.
-        if (stage === "lost" || stage === "booked") {
+        // Same closed set + reporting boundary as generate_venue_recommendations.
+        if (["lost", "booked", "won", "cancelled"].includes(stage)) {
           return false;
         }
+        if (l.excludeFromBusinessReporting) return false;
         const contacted = l.lastContactedAt ? new Date(l.lastContactedAt).getTime() : null;
         if (contacted != null && contacted >= staleCutoffMs) return false;
+      }
+      if (attentionFilter === "active") {
+        if (stage === "lost" || stage === "booked") return false;
+        if (l.excludeFromBusinessReporting) return false;
       }
       if (!q) return true;
       return [
@@ -143,6 +147,20 @@ export function LeadList({
           <p className="text-foreground">
             Showing active leads with no contact in 7+ days
             <span className="text-muted-foreground"> — the same condition as Luv&apos;s follow-up insight.</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setAttentionFilter("all")}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Show all leads
+          </button>
+        </div>
+      )}
+      {attentionFilter === "active" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
+          <p className="text-foreground">
+            Showing active leads — the same group as the Dashboard Active Leads number.
           </p>
           <button
             type="button"

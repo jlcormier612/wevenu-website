@@ -24,6 +24,7 @@ import {
   getOutstandingBalance,
   getPaymentsCollected,
 } from "@/lib/metrics/revenue";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DateWindow = { from: string; to: string };
@@ -118,12 +119,14 @@ async function countPeriodTours(window: DateWindow): Promise<number> {
   const venue = await getCurrentVenue();
   if (!venue) return 0;
   const supabase = await createClient();
-  const { count } = await supabase
+  let q = supabase
     .from("tour_appointments")
-    .select("id", { count: "exact", head: true })
+    .select("id, lead_id, leads!inner(exclude_from_business_reporting)", { count: "exact", head: true })
     .eq("venue_id", venue.id)
-    .gte("scheduled_at", `${window.from}T00:00:00.000Z`)
-    .lte("scheduled_at", `${window.to}T23:59:59.999Z`);
+    .eq("leads.exclude_from_business_reporting", false);
+  if (window.from) q = q.gte("scheduled_at", `${window.from}T00:00:00.000Z`);
+  if (window.to) q = q.lte("scheduled_at", `${window.to}T23:59:59.999Z`);
+  const { count } = await q;
   return count ?? 0;
 }
 
@@ -132,12 +135,14 @@ async function countPeriodBusinessFunnelLeads(window: DateWindow): Promise<numbe
   const venue = await getCurrentVenue();
   if (!venue) return 0;
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("leads")
-    .select("id", { count: "exact", head: true })
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+  const { count } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
   return count ?? 0;
 }
 
@@ -149,12 +154,14 @@ async function loadBusinessFunnelCohort(window: DateWindow): Promise<BusinessFun
   if (!venue) return computeBusinessFunnelCohortStats([]);
   const supabase = await createClient();
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("id, status, sales_stage, first_booked_at")
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+  const { data: leads } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id, status, sales_stage, first_booked_at")
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
 
   type LeadRow = {
     id: string;

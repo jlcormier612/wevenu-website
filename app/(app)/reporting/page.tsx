@@ -13,7 +13,7 @@ import {
   getUndatedLifecycleBookingCount,
 } from "@/lib/metrics/lifecycle-booking";
 import { getGrossBookedRevenue, getOutstandingBalance, getPaymentsCollected } from "@/lib/metrics/revenue";
-import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
+import { reportingHref, resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import { getLeadsTrend } from "@/lib/reporting/service";
 import { formatMoney } from "@/lib/event-orders/constants";
 
@@ -62,49 +62,49 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           label="Leads" icon={Users}
           value={leads.total} previousValue={prevLeads.total}
           comparisonLabel={range.comparisonLabel} polarity="up-good"
-          href="/reporting/sales"
+          href={reportingHref("/reporting/sales", range)}
           sub="New inquiries received in this period."
         />
         <ComparisonCard
           label="Tours" icon={MapPin}
           value={businessFunnel.period.tours} previousValue={prevFunnel.period.tours}
           comparisonLabel={range.comparisonLabel} polarity="up-good"
-          href="/reporting/sales"
+          href={reportingHref("/reporting/sales", range)}
           sub="Tours scheduled in this period."
         />
         <ComparisonCard
           label="Bookings" icon={CalendarDays}
           value={bookings.length} previousValue={prevBookings.length}
           comparisonLabel={range.comparisonLabel} polarity="up-good"
-          href="/reporting/bookings"
-          sub="Relationships you marked booked in this period."
+          href={reportingHref("/reporting/bookings", range)}
+          sub="Marked booked during this period."
         />
         <ComparisonCard
-          label="Lead → Booking" icon={TrendingUp}
+          label="Leads who booked" icon={TrendingUp}
           value={cohort.conversionRate} previousValue={prevCohort.conversionRate}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={(n) => `${n}%`}
-          href="/reporting/sales"
-          sub="Of leads that came in this period, how many you later marked booked. Lost leads stay in this rate."
+          href={reportingHref("/reporting/sales", range)}
+          sub={`${cohort.eventuallyBooked} of ${cohort.leadsEntered} inquiries from this period later booked — even if the booking happened after these dates. Lost inquiries stay in this rate.`}
         />
         <ComparisonCard
           label="Contracted" icon={DollarSign}
           value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
-          href="/reporting/revenue"
-          sub="Signed contract value with a first payment collected — money, not Booking count."
+          href={reportingHref("/reporting/revenue", range)}
+          sub="Signed agreement value with a first payment collected."
         />
         <ComparisonCard
           label="Collected" icon={Wallet}
           value={paymentsCollected ?? 0} previousValue={prevPaymentsCollected}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
-          href="/reporting/revenue"
+          href={reportingHref("/reporting/revenue", range, { detail: "payments" })}
           sub="Money actually received during this period."
         />
         <ComparisonCard
           label="Outstanding" icon={Receipt}
           value={outstanding ?? 0} previousValue={prevOutstanding}
           comparisonLabel={range.comparisonLabel} polarity="up-bad" format={formatMoney}
-          href="/reporting/revenue"
+          href={reportingHref("/reporting/revenue", range, { detail: "outstanding" })}
           sub="Contracted value minus collections — those use different dates. See Revenue."
         />
       </ComparisonCardGrid>

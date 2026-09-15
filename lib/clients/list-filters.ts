@@ -35,6 +35,7 @@ export type ClientListFilterRecord = {
   id: string;
   status: string;
   eventDate: string | null;
+  excludeFromBusinessReporting?: boolean;
 };
 
 export type ClientListFilterContext = {
@@ -94,6 +95,7 @@ export function clientMatchesListFilter(
       return client.status !== "cancelled" && !!client.eventDate && client.eventDate >= ctx.today;
     case "coming_up":
       return (
+        !client.excludeFromBusinessReporting &&
         client.status !== "cancelled" &&
         !!client.eventDate &&
         client.eventDate >= ctx.today &&

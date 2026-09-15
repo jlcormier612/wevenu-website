@@ -29,6 +29,7 @@ export type PaymentSchedule = {
   eventDate: string | null;
   /** Event booking commitment date — system-of-record for "At booking" timing. */
   bookedAt: string | null;
+  excludeFromBusinessReporting?: boolean;
   /**
    * Booking Financial Architecture Phase 3c — the Invoice total a
    * coordinator last explicitly reviewed and accepted via "Keep Existing

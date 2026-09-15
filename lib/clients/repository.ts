@@ -25,7 +25,9 @@ type ClientRow = {
   event_date: string | null; end_date: string | null;
   guest_count: number | null; ceremony_time: string | null;
   reception_time: string | null; rehearsal_date: string | null;
-  internal_notes: string | null; relationship_id: string | null; created_at: string; updated_at: string;
+  internal_notes: string | null; relationship_id: string | null;
+  exclude_from_business_reporting?: boolean;
+  created_at: string; updated_at: string;
 };
 type NoteRow  = { id: string; venue_id: string; client_id: string; body: string; created_at: string; updated_at: string; };
 type ActRow   = { id: string; venue_id: string; client_id: string; type: string; title: string; description: string | null; created_at: string; };
@@ -38,7 +40,8 @@ function mapClient(r: ClientRow): Client {
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
     endDate: r.end_date, guestCount: r.guest_count, ceremonyTime: r.ceremony_time,
     receptionTime: r.reception_time, rehearsalDate: r.rehearsal_date,
-    internalNotes: r.internal_notes, relationshipId: r.relationship_id ?? null,
+    internalNotes: r.internal_notes,     relationshipId: r.relationship_id ?? null,
+    excludeFromBusinessReporting: r.exclude_from_business_reporting ?? false,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }

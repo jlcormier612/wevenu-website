@@ -64,6 +64,8 @@ export type Lead = {
   scoresUpdatedAt: string | null;
   sourceData: Record<string, unknown> | null;
   relationshipId: string | null; // Program 2 Phase 2 — the enduring customer identity this Opportunity belongs to
+  /** Internal verification/E2E fixture — excluded from customer-facing Reporting. */
+  excludeFromBusinessReporting?: boolean;
   /** 0-100, set only for assisted/extracted sources (e.g. email-parsed) — Lead Intake architecture. Null for directly-submitted or manually-entered leads. */
   intakeConfidence: number | null;
   createdAt: string;

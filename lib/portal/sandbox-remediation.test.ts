@@ -18,7 +18,16 @@ describe("Portal messages mark-read is view-gated", () => {
     const route = readFileSync(resolve("app/api/portal/messages/route.ts"), "utf8");
     const messages = readFileSync(resolve("components/portal/message-section.tsx"), "utf8");
     assert.match(shell, /markRead=0/);
+    assert.match(shell, /countUnreadVenueMessages/);
     assert.match(route, /markRead/);
     assert.match(messages, /onConversationViewed/);
+  });
+});
+
+describe("Portal customer-facing tasks omit verification fixtures", () => {
+  it("filters event_tasks through isInternalVerificationIdentity", () => {
+    const src = readFileSync(resolve("lib/portal/service.ts"), "utf8");
+    assert.match(src, /isInternalVerificationIdentity/);
+    assert.match(src, /extraName: String\(r\.title/);
   });
 });

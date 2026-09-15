@@ -12,6 +12,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { reportingSourceGroupKey } from "@/lib/attribution/source";
 import { resolveDeterministicClientAcquisitionSource } from "@/lib/attribution/resolve-client";
 import { isSupabaseConfigured } from "@/lib/env";
+import { loadReportingExclusions } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type CanonicalBooking = {
@@ -45,7 +46,10 @@ export async function getCanonicalBookings(opts?: { from?: string; to?: string }
   if (opts?.from) query = query.gte("booked_at", opts.from);
   if (opts?.to) query = query.lte("booked_at", opts.to);
   const { data } = await query;
-  return ((data ?? []) as BookingRow[]).map(mapBooking);
+  const exclusions = await loadReportingExclusions(supabase, venue.id);
+  return ((data ?? []) as BookingRow[])
+    .filter((r) => !exclusions.clientIds.has(r.client_id))
+    .map(mapBooking);
 }
 
 /** Bookings whose booked_at falls in the current calendar month. */

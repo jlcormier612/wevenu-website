@@ -98,6 +98,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
     commitmentScore: 0, responsivenessScore: 0, interestScore: 0, scoresUpdatedAt: null, sourceData: null,
     relationshipId: (r.relationship_id as string | null) ?? null,
+    excludeFromBusinessReporting: Boolean(r.exclude_from_business_reporting),
     intakeConfidence: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
@@ -179,7 +180,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const [leadsRes, tasksRes, activityRes, clientsRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
     supabase
       .from("leads")
-      .select("id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, commitment_score, responsiveness_score, interest_score")
+      .select("id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, commitment_score, responsiveness_score, interest_score, exclude_from_business_reporting")
       .eq("venue_id", venue.id)
       .order("inquiry_date", { ascending: false }),
 
@@ -213,7 +214,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     // Upcoming events (canonical source) — replaces client-based event dates
     supabase
       .from("events")
-      .select("id, name, event_date, start_time, status, guest_count, client_id, clients(first_name, last_name, partner_first_name, partner_last_name)")
+      .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
       .gte("event_date", today)
@@ -294,7 +295,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // ---- Needs Attention -------------------------------------------------------
   // Leads that are slipping: overdue follow-up OR stale "new" inquiry (>48h, no follow-up set)
-  const needsAttentionLeads = leads.filter((l) => {
+  const businessLeads = leads.filter((l) => !l.excludeFromBusinessReporting);
+  const needsAttentionLeads = businessLeads.filter((l) => {
     const stage = l.salesStage ?? l.status;
     if (CLOSED.has(stage)) return false;
     if (l.followUpDate && l.followUpDate < today) return true; // overdue follow-up
@@ -313,13 +315,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // ---- Follow-ups Due --------------------------------------------------------
   // Leads with follow_up_date = today (not overdue — that goes in Needs Attention)
-  const followupsDueAll = leads.filter(
+  const followupsDueAll = businessLeads.filter(
     (l) => l.followUpDate === today && !CLOSED.has(l.salesStage ?? l.status),
   );
   const followupsDue = followupsDueAll.slice(0, 8);
 
   // ---- Upcoming Tours --------------------------------------------------------
-  const upcomingTours = leads
+  const upcomingTours = businessLeads
     .filter(
       (l) =>
         l.tourDate &&
@@ -334,7 +336,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const pipelineStages: PipelineStage[] = LEAD_STATUSES.map((s) => ({
     status: s.value,
     label: s.label,
-    count: leads.filter((l) => (l.salesStage ?? l.status) === s.value).length,
+    count: businessLeads.filter((l) => (l.salesStage ?? l.status) === s.value).length,
   }));
 
   // ---- Tasks -----------------------------------------------------------------
@@ -366,9 +368,12 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   type DashEventRow = {
     id: string; name: string; event_date: string; start_time: string | null;
     status: string; guest_count: number | null; client_id: string | null;
+    exclude_from_business_reporting?: boolean;
     clients: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   };
-  const upcomingEvents: DashboardEvent[] = (eventsRes.data as unknown as DashEventRow[]).map((r) => {
+  const upcomingEvents: DashboardEvent[] = (eventsRes.data as unknown as DashEventRow[])
+    .filter((r) => !r.exclude_from_business_reporting)
+    .map((r) => {
     const cn = r.clients
       ? [r.clients.first_name, r.clients.last_name].filter(Boolean).join(" ") +
         (r.clients.partner_first_name
@@ -608,9 +613,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     followupsDue,
     upcomingTours,
     pipelineStages,
-    totalLeads: leads.length,
-    activeLeadCount: leads.filter((l) => !CLOSED.has(l.salesStage ?? l.status)).length,
-    newLeadCount: leads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
+    totalLeads: businessLeads.length,
+    activeLeadCount: businessLeads.filter((l) => !CLOSED.has(l.salesStage ?? l.status)).length,
+    newLeadCount: businessLeads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
     recentActivity,

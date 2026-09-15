@@ -15,7 +15,10 @@ export default async function LeadsPage({ searchParams }: Props) {
   await ensureStandardSalesPipelineForCurrentVenue();
   const leads = await getLeads();
   const { attention } = await searchParams;
-  const initialAttention = attention === "stale_contact" ? "stale_contact" as const : null;
+  const initialAttention =
+    attention === "stale_contact" ? "stale_contact" as const
+    : attention === "active" ? "active" as const
+    : null;
   return (
     <div className="space-y-6">
       <PageHeader

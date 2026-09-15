@@ -29,7 +29,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <ReportHeader title="Events" description="What your event business looks like over time." />
+      <ReportHeader title="Events" description="Events on the calendar in this date range, grouped by type." />
       <DateRangeControl current={range.preset} label={range.label} />
 
       <ComparisonCardGrid className="sm:grid-cols-2 lg:grid-cols-2 max-w-xl">
@@ -62,7 +62,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
             <div className="divide-y divide-border">
               {types.map((t) => (
                 <div key={t.type} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-foreground">{eventTypeLabel(t.type) || t.type}</span>
+                  <span className="text-foreground">{t.label}</span>
                   <span className="tabular-nums font-medium text-heading">{t.count}</span>
                 </div>
               ))}

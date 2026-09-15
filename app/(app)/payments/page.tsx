@@ -15,7 +15,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
   const schedules = await getPaymentSchedules();
   const attentionOnly = filter === "attention";
   const visible = attentionOnly
-    ? schedules.filter((s) => s.scheduleStatus === "attention")
+    ? schedules.filter((s) => s.scheduleStatus === "attention" && !s.excludeFromBusinessReporting)
     : schedules;
 
   return (

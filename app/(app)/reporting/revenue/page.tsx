@@ -74,9 +74,9 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
       <ComparisonCardGrid>
         <ComparisonCard
-          label="Gross Booked Revenue" value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
+          label="Contracted" value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
-          sub="Signed contract value with a first payment collected."
+          sub="Signed agreement value with a first payment collected."
         />
         <ComparisonCard
           label="Payments Collected" value={paymentsCollected ?? 0} previousValue={prevPaymentsCollected}
@@ -158,7 +158,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           <CardTitle className="text-base">Revenue by acquisition source</CardTitle>
           <CardDescription>
             Contracted value (commitment date) and payments collected (payment date).
-            Missing source stays Unknown / Unattributed. This is money, not Booking count.
+            Missing source is listed as Not recorded. This is money, not a booking count.
             Outstanding is not broken out by source (mixed date clocks).
           </CardDescription>
         </CardHeader>
@@ -198,10 +198,14 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
+      {(() => {
+        const usefulCategories = byCategory.filter((c) => c.amount > 0);
+        if (usefulCategories.length < 2) return null;
+        return (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Revenue by Category</CardTitle>
-          <CardDescription>Where your booked revenue comes from. Click a category for detail.</CardDescription>
+          <CardDescription>Where booked revenue comes from. Click a category for the clients behind it.</CardDescription>
         </CardHeader>
         <CardContent>
           {byCategory.length === 0 ? (
@@ -244,6 +248,8 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           )}
         </CardContent>
       </Card>
+        );
+      })()}
     </div>
   );
 }

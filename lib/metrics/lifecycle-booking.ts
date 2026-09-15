@@ -21,6 +21,7 @@ import {
   isBusinessFunnelCohortLead,
   leadHasLifecycleBooking,
 } from "@/lib/metrics/cohort-population";
+import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DateWindow = { from?: string; to?: string };
@@ -118,11 +119,13 @@ export async function getCurrentlyBookedPipelineCount(): Promise<number> {
   const venue = await getCurrentVenue();
   if (!venue) return 0;
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("leads")
-    .select("id", { count: "exact", head: true })
-    .eq("venue_id", venue.id)
-    .eq("sales_stage", "booked");
+  const { count } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", venue.id)
+      .eq("sales_stage", "booked"),
+  );
   return count ?? 0;
 }
 
@@ -146,12 +149,14 @@ export async function getLeadCohortLifecycleBookingStats(
   if (!venue) return { leadsEntered: 0, eventuallyBooked: 0, conversionRate: 0, bySource: [] };
   const supabase = await createClient();
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("id, acquisition_source, first_booked_at, sales_stage, status")
-    .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+  const { data: leads } = await onlyBusinessReporting(
+    supabase
+      .from("leads")
+      .select("id, acquisition_source, first_booked_at, sales_stage, status")
+      .eq("venue_id", venue.id)
+      .gte("created_at", `${window.from}T00:00:00.000Z`)
+      .lte("created_at", `${window.to}T23:59:59.999Z`),
+  );
 
   type Row = {
     id: string;

@@ -94,7 +94,9 @@ describe("Dashboard Coming up — 60-day horizon", () => {
     const far = client({ id: "far", status: "planning", eventDate: "2028-08-12" });
     assert.equal(clientMatchesListFilter(near, "coming_up", ctx), true);
     assert.equal(clientMatchesListFilter(far, "coming_up", ctx), false);
-    assert.equal(clientMatchesListFilter(far, "upcoming", ctx), true);
+    const fixture = client({ id: "e2e", status: "planning", eventDate: "2026-10-15", excludeFromBusinessReporting: true });
+    assert.equal(clientMatchesListFilter(fixture, "coming_up", ctx), false);
+    assert.equal(clientMatchesListFilter(fixture, "upcoming", ctx), true);
   });
 });
 

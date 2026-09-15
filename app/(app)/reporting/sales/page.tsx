@@ -5,7 +5,6 @@ import { DetailPanel, DetailRow } from "@/components/reporting/detail-panel";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { EvidenceCountRow } from "@/lib/attribution/evidence";
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
 import { getConversionFunnel } from "@/lib/metrics/conversion";
 import {
@@ -19,7 +18,6 @@ import {
 import {
   getAcquisitionSourceCohortBreakdown,
   getEventTypeCohortBreakdown,
-  getLeadTopOfFunnelEvidence,
   getMedianTimeToBookByAcquisitionSource,
 } from "@/lib/metrics/deeper-attribution";
 import {
@@ -36,13 +34,12 @@ import { formatMoney } from "@/lib/event-orders/constants";
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 const FINANCIAL_FUNNEL: { key: FunnelStageKey; label: string; hint: string }[] = [
-  { key: "inquiry", label: "Leads", hint: "Every new opportunity that came in during this period" },
-  { key: "tourScheduled", label: "Tours scheduled", hint: "Had a tour appointment" },
-  { key: "proposalSent", label: "Proposals sent", hint: "Reached proposal stage" },
-  { key: "contractSent", label: "Contracts sent", hint: "Contract sent for signature" },
-  { key: "contractSigned", label: "Contracts signed", hint: "Contract signed" },
+  { key: "inquiry", label: "Leads", hint: "Every inquiry that came in during this period" },
+  { key: "tourScheduled", label: "Tours", hint: "Had a tour" },
+  { key: "proposalSent", label: "Offers sent", hint: "Reached the offer / proposal stage" },
+  { key: "contractSent", label: "Agreements sent", hint: "Agreement sent for signature" },
+  { key: "contractSigned", label: "Agreements completed", hint: "Agreement signed" },
   { key: "depositReceived", label: "First payment collected", hint: "First scheduled payment collected" },
-  { key: "booked", label: "Signed + first payment", hint: "Has a signed contract and a first collected payment — money progress, not a Booking count" },
 ];
 
 function hrefWith(params: Record<string, string | string[] | undefined>, overrides: Record<string, string | null>): string {
@@ -51,26 +48,6 @@ function hrefWith(params: Record<string, string | string[] | undefined>, overrid
   for (const [k, v] of Object.entries(overrides)) { if (v === null) qp.delete(k); else qp.set(k, v); }
   const qs = qp.toString();
   return qs ? `/reporting/sales?${qs}` : "/reporting/sales";
-}
-
-function EvidenceList({ title, rows }: { title: string; rows: EvidenceCountRow[] }) {
-  return (
-    <div>
-      <p className="mb-2 text-sm font-medium text-heading">{title}</p>
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No leads in this period.</p>
-      ) : (
-        <div className="divide-y divide-border">
-          {rows.map((r) => (
-            <div key={r.key} className="flex items-center justify-between gap-3 py-1.5 text-sm">
-              <span className="min-w-0 truncate text-foreground" title={r.label}>{r.label}</span>
-              <span className="shrink-0 tabular-nums font-medium">{r.count}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default async function SalesReportPage({ searchParams }: Props) {
@@ -86,7 +63,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     currentlyBooked, funnelLeads,
     leadCoverage, bookingCoverage, toursBySource, bookingsBySource,
     timeToBook, revenueBySource,
-    sourceCohort, timeToBookBySource, eventTypeCohort, topOfFunnelEvidence,
+    sourceCohort, timeToBookBySource, eventTypeCohort,
     undatedBookings,
   ] = await Promise.all([
     getConversionFunnel(window),
@@ -106,7 +83,6 @@ export default async function SalesReportPage({ searchParams }: Props) {
     getAcquisitionSourceCohortBreakdown(window),
     getMedianTimeToBookByAcquisitionSource(window),
     getEventTypeCohortBreakdown(window),
-    getLeadTopOfFunnelEvidence(window),
     getUndatedLifecycleBookingCount(),
   ]);
 
@@ -118,7 +94,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     <div className="space-y-6">
       <ReportHeader
         title="Sales"
-        description="Two different questions: what happened during these dates, and what happened to the leads that came in during these dates."
+        description="What came in during these dates, and how many of those inquiries later booked."
       />
       <DateRangeControl current={range.preset} label={range.label} />
       <p className="text-xs text-muted-foreground -mt-2">
@@ -130,41 +106,40 @@ export default async function SalesReportPage({ searchParams }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Cohort performance</CardTitle>
+          <CardTitle className="text-base">Inquiries from this period</CardTitle>
           <CardDescription>
-            Leads that came in during {range.label} — including ones you later marked Lost.
-            Booking here means you marked them booked, even if that happened after this period.
-            Clients you added already booked are not in these rates.
-            These rates are not the same as Bookings that happened during this period.
+            {cohort.leadsEntered} {cohort.leadsEntered === 1 ? "inquiry" : "inquiries"} arrived during {range.label}
+            (lost inquiries stay in this group). {cohort.eventuallyBooked} of them later booked
+            — the booking can be after {range.label}. Bookings that happened during these dates
+            are listed separately below.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads entered</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Inquiries</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadsEntered}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Eventually booked</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads who booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.eventuallyBooked}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Lead → Booked rate</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Booking rate</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.conversionRate}%</p>
             </div>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {leadCoverage.percent}% of leads that entered this period have a known acquisition source
-            ({leadCoverage.known} of {leadCoverage.total}). Unknown / Unattributed remains visible below.
+            {leadCoverage.percent}% of these inquiries have a known source
+            ({leadCoverage.known} of {leadCoverage.total}). Missing source is listed as Not recorded.
           </p>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">By acquisition source</p>
+            <p className="mb-2 text-sm font-medium text-heading">Where inquiries came from</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Official Hello to Cheers acquisition source for each lead (set when they entered — not later edits).
-              Website includes tour-scheduling form entries. Rates are of this cohort only: Lead → Tour, Lead → Booking,
-              and among those who toured, Tour → Booking. Unknown / Unattributed stays visible when source is missing.
+              Official source recorded when the inquiry arrived. Website includes tour-request form entries.
+              Rates are of this inquiry group only.
             </p>
             {sourceCohort.length === 0 ? (
               <p className="text-sm text-muted-foreground">No cohort leads in this period.</p>
@@ -172,10 +147,10 @@ export default async function SalesReportPage({ searchParams }: Props) {
               <div className="divide-y divide-border overflow-x-auto">
                 <div className="grid min-w-[40rem] grid-cols-[1.5fr_repeat(6,minmax(0,1fr))] gap-2 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   <span>Source</span>
-                  <span className="text-right">Leads</span>
-                  <span className="text-right">Lead→Tour</span>
-                  <span className="text-right">Lead→Book</span>
-                  <span className="text-right">Tour→Book</span>
+                  <span className="text-right">Inquiries</span>
+                  <span className="text-right">Toured %</span>
+                  <span className="text-right">Booked %</span>
+                  <span className="text-right">Toured then booked</span>
                   <span className="text-right"># Toured</span>
                   <span className="text-right"># Booked</span>
                 </div>
@@ -197,24 +172,28 @@ export default async function SalesReportPage({ searchParams }: Props) {
           <div>
             <p className="mb-2 text-sm font-medium text-heading">By event type</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Same cohort as above, grouped by the event type on the lead when they inquired.
-              Missing event type stays Unknown / Unattributed — we do not guess from later bookings or packages.
+              Same inquiries as above, grouped by the event type on the inquiry. Missing type is Not recorded.
             </p>
             {eventTypeCohort.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No cohort leads in this period.</p>
+              <p className="text-sm text-muted-foreground">No inquiries in this period.</p>
             ) : (
-              <div className="divide-y divide-border">
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <span>Event type</span><span className="text-right">Leads</span><span className="text-right">Booked</span><span className="text-right">Lead→Book</span>
-                </div>
-                {eventTypeCohort.map((s) => (
-                  <div key={s.key} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-2 text-sm">
-                    <span className="text-foreground">{s.label}</span>
-                    <span className="text-right tabular-nums">{s.leads}</span>
-                    <span className="text-right tabular-nums">{s.eventuallyBooked}</span>
-                    <span className="text-right tabular-nums text-muted-foreground">{s.rate}%</span>
+              <div className="overflow-x-auto">
+                <div className="min-w-[28rem] divide-y divide-border">
+                  <div className="grid grid-cols-[minmax(8rem,1.4fr)_repeat(3,minmax(4.5rem,1fr))] gap-3 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <span>Event type</span>
+                    <span className="text-right">Leads</span>
+                    <span className="text-right">Booked</span>
+                    <span className="text-right">Conversion</span>
                   </div>
-                ))}
+                  {eventTypeCohort.map((s) => (
+                    <div key={s.key} className="grid grid-cols-[minmax(8rem,1.4fr)_repeat(3,minmax(4.5rem,1fr))] gap-3 py-2 text-sm">
+                      <span className="text-foreground">{s.label}</span>
+                      <span className="text-right tabular-nums">{s.leads}</span>
+                      <span className="text-right tabular-nums">{s.eventuallyBooked}</span>
+                      <span className="text-right tabular-nums text-muted-foreground">{s.rate}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -259,7 +238,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
                 >
                   {(funnelLeads[detailValue as FunnelStageKey] ?? []).slice(0, 25).map((l) => (
                     <DetailRow key={l.id}>
-                      <span className="text-foreground font-medium">{l.name}</span>
+                      <Link href={`/leads/${l.id}`} className="text-foreground font-medium hover:underline">{l.name}</Link>
                       <span className="text-muted-foreground">{reportingSourceDisplayLabel(l.source)} · {new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                     </DetailRow>
                   ))}
@@ -272,71 +251,26 @@ export default async function SalesReportPage({ searchParams }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Top-of-funnel clues</CardTitle>
+          <CardTitle className="text-base">During this period</CardTitle>
           <CardDescription>
-            {topOfFunnelEvidence.authorityNote}{" "}
-            {topOfFunnelEvidence.clockNote}
+            What happened during {range.label}. Bookings here are dated when you marked them booked —
+            not the same as “Leads who booked” above.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads created</p>
-              <p className="text-lg font-semibold tabular-nums text-heading">{topOfFunnelEvidence.leadsInWindow}</p>
-            </div>
-            <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Any UTM present</p>
-              <p className="text-lg font-semibold tabular-nums text-heading">{topOfFunnelEvidence.withAnyUtm}</p>
-            </div>
-            <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Other clues present</p>
-              <p className="text-sm tabular-nums text-heading">
-                {topOfFunnelEvidence.withLandingPage} landing · {topOfFunnelEvidence.withReferrer} referrer ·{" "}
-                {topOfFunnelEvidence.withQrCampaign} QR · {topOfFunnelEvidence.withMetaLeadgen} Meta ad lead
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <EvidenceList title="UTM source" rows={topOfFunnelEvidence.utmSource} />
-            <EvidenceList title="UTM medium" rows={topOfFunnelEvidence.utmMedium} />
-            <EvidenceList title="UTM campaign" rows={topOfFunnelEvidence.utmCampaign} />
-            <EvidenceList title="UTM content" rows={topOfFunnelEvidence.utmContent} />
-            <EvidenceList title="UTM term" rows={topOfFunnelEvidence.utmTerm} />
-            <EvidenceList title="Landing page" rows={topOfFunnelEvidence.landingPage} />
-            <EvidenceList title="Referrer website" rows={topOfFunnelEvidence.referrerHost} />
-            <EvidenceList title="QR campaign" rows={topOfFunnelEvidence.qrCampaign} />
-            <EvidenceList title="Meta ad campaign" rows={topOfFunnelEvidence.metaCampaign} />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Meta ad lead id present on {topOfFunnelEvidence.withMetaLeadgen} of {topOfFunnelEvidence.leadsInWindow} leads;
-            Meta campaign id on {topOfFunnelEvidence.withMetaCampaign}. These are inventory counts only — not proof a campaign caused a booking.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Period activity</CardTitle>
-          <CardDescription>
-            What happened during {range.label} — each metric on its own clock.
-            Bookings are dated when you marked them booked. Money uses financial dates.
-            Period counts are not conversion rates.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads entered</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">New inquiries</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{leads.total}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Bookings</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Bookings this period</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{periodBookings.length}</p>
             </div>
             <div className="rounded-md border border-border px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Currently Booked (pipeline)</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Currently booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{currentlyBooked}</p>
+              <p className="text-[11px] text-muted-foreground">On your pipeline right now</p>
             </div>
           </div>
 
@@ -421,7 +355,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
             </div>
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Contracted revenue by source</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">Contracted value only. Missing source stays Unknown / Unattributed.</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">Contracted value only. Missing source is Not recorded.</p>
               {revenueBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No contracted revenue in this period.</p>
               ) : (
@@ -441,15 +375,25 @@ export default async function SalesReportPage({ searchParams }: Props) {
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Bookings this period</p>
               <div className="divide-y divide-border">
-                {periodBookings.slice(0, 25).map((b) => (
-                  <div key={b.id} className="flex items-center justify-between gap-4 py-2 text-sm">
-                    <span className="font-medium text-foreground">{b.displayName}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {reportingSourceDisplayLabel(b.source)} ·{" "}
-                      {new Date(b.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                ))}
+                {periodBookings.map((b) => {
+                  const href = b.clientId ? `/clients/${b.clientId}` : b.leadId ? `/leads/${b.leadId}` : null;
+                  const row = (
+                    <>
+                      <span className="font-medium text-foreground">{b.displayName}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {reportingSourceDisplayLabel(b.source)} ·{" "}
+                        {new Date(b.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    </>
+                  );
+                  return href ? (
+                    <Link key={b.id} href={href} className="flex items-center justify-between gap-4 py-2 text-sm hover:bg-muted/30 -mx-2 px-2 rounded-sm">
+                      {row}
+                    </Link>
+                  ) : (
+                    <div key={b.id} className="flex items-center justify-between gap-4 py-2 text-sm">{row}</div>
+                  );
+                })}
               </div>
             </div>
           )}
