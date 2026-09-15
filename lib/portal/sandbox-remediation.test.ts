@@ -20,6 +20,7 @@ describe("Portal messages mark-read is view-gated", () => {
     assert.match(shell, /markRead=0/);
     assert.match(shell, /countUnreadVenueMessages/);
     assert.match(route, /markRead/);
+    assert.match(shell, /onConversationViewed=/);
     assert.match(messages, /onConversationViewed/);
   });
 });

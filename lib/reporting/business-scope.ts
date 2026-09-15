@@ -3,12 +3,14 @@
  * exclude_from_business_reporting = false.
  */
 
-type EqQuery<T> = { eq: (column: string, value: boolean) => T };
-
 export const EXCLUDE_FROM_BUSINESS_REPORTING = "exclude_from_business_reporting";
 
-export function onlyBusinessReporting<T extends EqQuery<T>>(query: T): T {
-  return query.eq(EXCLUDE_FROM_BUSINESS_REPORTING, false);
+/** Apply the customer-facing reporting flag without threading PostgREST builder generics. */
+export function onlyBusinessReporting<T>(query: T): T {
+  return (query as { eq: (column: string, value: boolean) => T }).eq(
+    EXCLUDE_FROM_BUSINESS_REPORTING,
+    false,
+  );
 }
 
 export type ReportingExclusionSets = {

@@ -68,6 +68,7 @@ describe("customer-facing reporting copy", () => {
   const sales = readFileSync(resolve("app/(app)/reporting/sales/page.tsx"), "utf8");
   const overview = readFileSync(resolve("app/(app)/reporting/page.tsx"), "utf8");
   const revenue = readFileSync(resolve("app/(app)/reporting/revenue/page.tsx"), "utf8");
+  const bookings = readFileSync(resolve("app/(app)/reporting/bookings/page.tsx"), "utf8");
   const dashboard = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
   const migration = readFileSync(resolve("supabase/migrations/20261397000000_reporting_business_record_boundary.sql"), "utf8");
 
@@ -88,6 +89,12 @@ describe("customer-facing reporting copy", () => {
 
   it("does not show a single-category revenue breakdown", () => {
     assert.match(revenue, /usefulCategories\.length < 2/);
+  });
+
+  it("Bookings page Card tags are balanced so production build can parse", () => {
+    const opens = bookings.match(/<Card[\s>]/g)?.length ?? 0;
+    const closes = bookings.match(/<\/Card>/g)?.length ?? 0;
+    assert.equal(opens, closes);
   });
 
   it("Dashboard snapshot cards drill into the same populations", () => {

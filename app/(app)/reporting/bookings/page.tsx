@@ -167,8 +167,6 @@ export default async function BookingsReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Bookings</CardTitle>

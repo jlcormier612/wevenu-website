@@ -3124,9 +3124,27 @@ function VenueGuidePortalSection({ token, context, onNavigate }: { token: string
   return <VenueGuideSection token={token} context={context} onNavigate={onNavigate} />;
 }
 
-function PortalMessageSection({ token, venueName }: { token: string; venueName: string }) {
-  const { PortalMessageSection: MessageSection } = require("@/components/portal/message-section") as { PortalMessageSection: React.ComponentType<{ token: string; venueName: string }> };
-  return <MessageSection token={token} venueName={venueName} />;
+function PortalMessageSection({
+  token, venueName, onConversationViewed,
+}: {
+  token: string;
+  venueName: string;
+  onConversationViewed?: () => void;
+}) {
+  const { PortalMessageSection: MessageSection } = require("@/components/portal/message-section") as {
+    PortalMessageSection: React.ComponentType<{
+      token: string;
+      venueName: string;
+      onConversationViewed?: () => void;
+    }>;
+  };
+  return (
+    <MessageSection
+      token={token}
+      venueName={venueName}
+      onConversationViewed={onConversationViewed}
+    />
+  );
 }
 
 // ── Payments ──────────────────────────────────────────────────────────────────
