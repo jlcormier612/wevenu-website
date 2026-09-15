@@ -14,8 +14,8 @@
     "start": "next start --port 3000",
     "lint": "eslint",
     "postinstall": "patch-package && node scripts/copy-pdf-worker.mjs",
-    "test": "NODE_ENV=test tsx --test lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts shared/**/*.test.ts",
-    "test:watch": "NODE_ENV=test tsx --test --watch lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts shared/**/*.test.ts",
+    "test": "NODE_ENV=test tsx --test lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts workspace/lib/program4/**/*.test.ts shared/**/*.test.ts",
+    "test:watch": "NODE_ENV=test tsx --test --watch lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts workspace/lib/program4/**/*.test.ts shared/**/*.test.ts",
     "process:lifecycle": "node scripts/process-lifecycle.mjs"
   },
   "dependencies": {

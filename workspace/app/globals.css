@@ -167,3 +167,14 @@
 .ws-muted {
   @apply text-muted-foreground;
 }
+
+/*
+ * Native constraint validation (required passwords, minLength, required
+ * Terms checkbox, custom mismatch validity) must be able to block Let's go
+ * even before React hydrates. Do not use the `disabled` attribute for that
+ * pre-hydration window — a disabled submit cannot be recovered natively.
+ */
+.activate-account-form:invalid [data-activate-submit]:not(:disabled) {
+  opacity: 0.6;
+  pointer-events: none;
+}
