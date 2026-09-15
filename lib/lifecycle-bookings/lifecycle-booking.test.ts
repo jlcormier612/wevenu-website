@@ -167,7 +167,7 @@ describe("Reporting distinctions", () => {
   });
 
   it("Revenue copy is financial and does not name Booking as commitment", () => {
-    assert.match(revenuePage, /Revenue by acquisition source/);
+    assert.match(revenuePage, /Revenue by source/);
     assert.match(revenuePage, /not the same clock|mixed date clocks/);
     assert.doesNotMatch(revenuePage, /Financially Committed/);
   });

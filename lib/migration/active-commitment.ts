@@ -497,6 +497,7 @@ export async function commitActiveCommitment(
     // Doing this before the try left booked_at set when compensation rolled back
     // EO/invoice/schedule — outside the compensation boundary.
     // Explicit historical date only — never reinterpret contractSignedAt.
+    // Payment timing only — never treat this as lifecycle Booking.
     if (n.bookedAt?.trim()) {
       await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
     }

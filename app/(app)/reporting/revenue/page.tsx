@@ -155,11 +155,11 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Revenue by acquisition source</CardTitle>
+          <CardTitle className="text-base">Revenue by source</CardTitle>
           <CardDescription>
-            Contracted value (commitment date) and payments collected (payment date).
+            Contracted value (when the agreement and first payment were both in place) and payments collected (when money arrived).
             Missing source is listed as Not recorded. This is money, not a booking count.
-            Outstanding is not broken out by source (mixed date clocks).
+            Outstanding is not broken out by source because those two dates are not the same clock.
           </CardDescription>
         </CardHeader>
         <CardContent>

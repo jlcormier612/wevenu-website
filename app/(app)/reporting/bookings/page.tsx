@@ -17,7 +17,7 @@ import {
   getUndatedLifecycleBookingCount,
 } from "@/lib/metrics/lifecycle-booking";
 import { getAverageBookingValue, getGrossBookedRevenue } from "@/lib/metrics/revenue";
-import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
+import { reportingHref, resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import { formatMoney } from "@/lib/event-orders/constants";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -104,7 +104,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           polarity="up-good"
           format={formatMoney}
           sub="Signed contract value with a first payment collected — money, not this Booking count."
-          href="/reporting/revenue"
+          href={reportingHref("/reporting/revenue", range)}
         />
         <ComparisonCard
           label="Avg. contracted value"
@@ -123,7 +123,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           ? ` ${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count.`
           : ""}
         {" "}
-        {bookingCoverage.percent}% of Bookings in this period have a known acquisition source
+        {bookingCoverage.percent}% of Bookings in this period have a known source
         ({bookingCoverage.known} of {bookingCoverage.total}).
         {timeToBook.sampleSize > 0 && timeToBook.medianDays != null
           ? ` Median time to book (lead created → first time you marked them booked): ${timeToBook.medianDays} days.`

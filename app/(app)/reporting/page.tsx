@@ -62,15 +62,15 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           label="Leads" icon={Users}
           value={leads.total} previousValue={prevLeads.total}
           comparisonLabel={range.comparisonLabel} polarity="up-good"
-          href={reportingHref("/reporting/sales", range)}
+          href={reportingHref("/reporting/sales", range, { detail: "stage:inquiry" })}
           sub="New inquiries received in this period."
         />
         <ComparisonCard
           label="Tours" icon={MapPin}
           value={businessFunnel.period.tours} previousValue={prevFunnel.period.tours}
           comparisonLabel={range.comparisonLabel} polarity="up-good"
-          href={reportingHref("/reporting/sales", range)}
-          sub="Tours scheduled in this period."
+          href={reportingHref("/reporting/sales", range, { detail: "period-tours" })}
+          sub="Tours scheduled during this period."
         />
         <ComparisonCard
           label="Bookings" icon={CalendarDays}
@@ -83,7 +83,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           label="Leads who booked" icon={TrendingUp}
           value={cohort.conversionRate} previousValue={prevCohort.conversionRate}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={(n) => `${n}%`}
-          href={reportingHref("/reporting/sales", range)}
+          href={reportingHref("/reporting/sales", range, { detail: "stage:booked" })}
           sub={`${cohort.eventuallyBooked} of ${cohort.leadsEntered} inquiries from this period later booked — even if the booking happened after these dates. Lost inquiries stay in this rate.`}
         />
         <ComparisonCard
@@ -113,15 +113,16 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
         {currentlyBooked} {currentlyBooked === 1 ? "relationship is" : "relationships are"} currently in Booked on your pipeline.
         That snapshot can differ from Bookings above, which count when you first marked them booked.
         {undatedBookings > 0
-          ? ` ${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count. ${undatedBookings === 1 ? "It still counts" : "They still count"} in Lead → Booking.`
+          ? ` ${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count. ${undatedBookings === 1 ? "It still counts" : "They still count"} in Leads who booked.`
           : ""}
       </p>
 
       <div className="flex flex-wrap gap-2 pt-2">
-        <Button variant="outline" size="sm" render={<Link href="/reporting/sales" />}>View Sales</Button>
-        <Button variant="outline" size="sm" render={<Link href="/reporting/bookings" />}>View Bookings</Button>
-        <Button variant="outline" size="sm" render={<Link href="/reporting/revenue" />}>View Revenue</Button>
-        <Button variant="outline" size="sm" render={<Link href="/reporting/events" />}>View Events</Button>
+        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/sales", range)} />}>View Sales</Button>
+        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/bookings", range)} />}>View Bookings</Button>
+        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/revenue", range)} />}>View Revenue</Button>
+        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/events", range)} />}>View Events</Button>
+        <Button variant="outline" size="sm" render={<Link href="/reporting/saved" />}>Saved</Button>
       </div>
     </div>
   );

@@ -96,6 +96,57 @@ export async function getToursByAcquisitionSource(window?: DateWindow): Promise<
   );
 }
 
+export type PeriodTourRow = {
+  id: string;
+  leadId: string | null;
+  displayName: string;
+  source: string | null;
+  scheduledAt: string;
+};
+
+/** Tours that happened during the window — same clock as period Tours count. */
+export async function getPeriodToursWithNames(window?: DateWindow): Promise<PeriodTourRow[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+
+  let q = supabase
+    .from("tour_appointments")
+    .select("id, lead_id, scheduled_at, leads!inner(first_name, last_name, partner_first_name, partner_last_name, acquisition_source, exclude_from_business_reporting)")
+    .eq("venue_id", venue.id)
+    .eq("leads.exclude_from_business_reporting", false)
+    .order("scheduled_at", { ascending: true });
+  if (window?.from) q = q.gte("scheduled_at", `${window.from}T00:00:00.000Z`);
+  if (window?.to) q = q.lte("scheduled_at", `${window.to}T23:59:59.999Z`);
+  const { data } = await q;
+
+  type Row = {
+    id: string;
+    lead_id: string | null;
+    scheduled_at: string;
+    leads: {
+      first_name: string | null;
+      last_name: string | null;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+      acquisition_source: string | null;
+    } | null;
+  };
+  return ((data ?? []) as unknown as Row[]).map((r) => {
+    const primary = [r.leads?.first_name, r.leads?.last_name].filter(Boolean).join(" ").trim();
+    const partner = [r.leads?.partner_first_name, r.leads?.partner_last_name].filter(Boolean).join(" ").trim();
+    const displayName = partner ? `${primary} & ${partner}` : (primary || "Lead");
+    return {
+      id: r.id,
+      leadId: r.lead_id,
+      displayName,
+      source: r.lead_id ? r.leads?.acquisition_source ?? null : null,
+      scheduledAt: r.scheduled_at,
+    };
+  });
+}
+
 /** Lifecycle first bookings in window grouped by frozen acquisition source. */
 export async function getLifecycleBookingsByAcquisitionSource(window?: DateWindow): Promise<SourceCountRow[]> {
   if (!isSupabaseConfigured) return [];

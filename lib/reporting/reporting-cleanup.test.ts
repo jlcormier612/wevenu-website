@@ -79,6 +79,14 @@ describe("customer-facing reporting copy", () => {
     assert.doesNotMatch(sales, /getLeadTopOfFunnelEvidence/);
     assert.match(sales, /Leads who booked/);
     assert.match(sales, />Conversion</);
+    assert.match(sales, /detail: "period-bookings"/);
+    assert.match(sales, /detail: "period-tours"/);
+    assert.match(sales, /detail: "stage:booked"/);
+    assert.doesNotMatch(sales, /acquisition source/);
+    assert.doesNotMatch(overview, /acquisition source/);
+    assert.doesNotMatch(bookings, /acquisition source/);
+    assert.doesNotMatch(revenue, /Revenue by acquisition source/);
+    assert.match(revenue, /Revenue by source/);
   });
 
   it("preserves date range on Overview drill-downs", () => {

@@ -16,6 +16,7 @@ const TABS = [
   { href: "/reporting/bookings", label: "Bookings" },
   { href: "/reporting/revenue", label: "Revenue" },
   { href: "/reporting/events", label: "Events" },
+  { href: "/reporting/saved", label: "Saved" },
 ] as const;
 
 export function ReportTabs() {
@@ -27,10 +28,11 @@ export function ReportTabs() {
     <nav className="flex items-center gap-1 border-b border-border overflow-x-auto">
       {TABS.map((tab) => {
         const active = tab.href === "/reporting" ? pathname === "/reporting" : pathname.startsWith(tab.href);
+        const href = tab.href === "/reporting/saved" ? tab.href : (qs ? `${tab.href}?${qs}` : tab.href);
         return (
           <Link
             key={tab.href}
-            href={qs ? `${tab.href}?${qs}` : tab.href}
+            href={href}
             className={cn(
               "shrink-0 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
               active ? "border-primary text-heading" : "border-transparent text-muted-foreground hover:text-foreground",

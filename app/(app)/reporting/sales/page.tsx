@@ -13,6 +13,7 @@ import {
   getLifecycleBookingSourceCoverage,
   getLifecycleBookingsByAcquisitionSource,
   getMedianTimeToBookDays,
+  getPeriodToursWithNames,
   getToursByAcquisitionSource,
 } from "@/lib/metrics/attribution";
 import {
@@ -64,7 +65,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     leadCoverage, bookingCoverage, toursBySource, bookingsBySource,
     timeToBook, revenueBySource,
     sourceCohort, timeToBookBySource, eventTypeCohort,
-    undatedBookings,
+    undatedBookings, periodTours,
   ] = await Promise.all([
     getConversionFunnel(window),
     getLeadsTrend(window),
@@ -84,6 +85,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     getMedianTimeToBookByAcquisitionSource(window),
     getEventTypeCohortBreakdown(window),
     getUndatedLifecycleBookingCount(),
+    getPeriodToursWithNames(window),
   ]);
 
   const counts = funnel?.counts;
@@ -99,9 +101,9 @@ export default async function SalesReportPage({ searchParams }: Props) {
       <DateRangeControl current={range.preset} label={range.label} />
       <p className="text-xs text-muted-foreground -mt-2">
         <Link href="/reporting" className="underline underline-offset-2 hover:text-foreground">
-          Business Funnel (Overview)
+          Overview
         </Link>
-        {" — "}the period vs. cohort story for the same dates.
+        {" — "}the same dates, with bookings and money next to this sales story.
       </p>
 
       <Card>
@@ -111,22 +113,23 @@ export default async function SalesReportPage({ searchParams }: Props) {
             {cohort.leadsEntered} {cohort.leadsEntered === 1 ? "inquiry" : "inquiries"} arrived during {range.label}
             (lost inquiries stay in this group). {cohort.eventuallyBooked} of them later booked
             — the booking can be after {range.label}. Bookings that happened during these dates
-            are listed separately below.
+            are listed separately below as Bookings this period.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-md border border-border px-3 py-2">
+            <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Inquiries</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadsEntered}</p>
-            </div>
-            <div className="rounded-md border border-border px-3 py-2">
+            </Link>
+            <Link href={hrefWith(params, { detail: "stage:booked" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads who booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.eventuallyBooked}</p>
-            </div>
+            </Link>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Booking rate</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.conversionRate}%</p>
+              <p className="text-[11px] text-muted-foreground">Leads who booked ÷ inquiries</p>
             </div>
           </div>
 
@@ -142,7 +145,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
               Rates are of this inquiry group only.
             </p>
             {sourceCohort.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No cohort leads in this period.</p>
+              <p className="text-sm text-muted-foreground">No inquiries in this period.</p>
             ) : (
               <div className="divide-y divide-border overflow-x-auto">
                 <div className="grid min-w-[40rem] grid-cols-[1.5fr_repeat(6,minmax(0,1fr))] gap-2 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -199,10 +202,9 @@ export default async function SalesReportPage({ searchParams }: Props) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">Financial progress of this cohort</p>
+            <p className="mb-2 text-sm font-medium text-heading">How these inquiries progressed</p>
             <p className="mb-3 text-xs text-muted-foreground">
-              Same leads as above. These stages are money and paperwork progress — they are not Booking counts.
-              Proposal is the lead&apos;s current stage. Contract and payment counts are documents that actually exist.
+              Same inquiries as above. Offers, agreements, and first payments are paperwork and money — not the Bookings this period count.
             </p>
             {!counts || counts.inquiry === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">No leads have been recorded in this date range.</p>
@@ -216,13 +218,16 @@ export default async function SalesReportPage({ searchParams }: Props) {
                       key={stage.key}
                       href={hrefWith(params, { detail: `stage:${stage.key}` })}
                       title={stage.hint}
-                      className="flex items-center gap-3 rounded-sm -mx-1 px-1 py-0.5 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                      className="flex flex-col gap-1 rounded-sm -mx-1 px-1 py-1.5 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors sm:flex-row sm:items-center sm:gap-3 sm:py-0.5"
                     >
-                      <div className="w-44 shrink-0 text-sm text-foreground">{stage.label}</div>
-                      <div className="flex-1 h-7 rounded-sm bg-muted overflow-hidden">
+                      <div className="flex items-baseline justify-between gap-3 sm:w-44 sm:shrink-0 sm:block">
+                        <span className="text-sm text-foreground">{stage.label}</span>
+                        <span className="text-sm font-semibold text-heading tabular-nums sm:hidden">{count}</span>
+                      </div>
+                      <div className="h-7 w-full rounded-sm bg-muted overflow-hidden sm:flex-1">
                         <div className="h-full rounded-sm bg-primary/70 transition-all" style={{ width: `${Math.max(pct, count > 0 ? 4 : 0)}%` }} />
                       </div>
-                      <div className="w-12 shrink-0 text-right text-sm font-semibold text-heading tabular-nums">{count}</div>
+                      <div className="hidden w-12 shrink-0 text-right text-sm font-semibold text-heading tabular-nums sm:block">{count}</div>
                     </Link>
                   );
                 })}
@@ -231,7 +236,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
             {detailKind === "stage" && detailValue && (
               <div className="mt-4">
                 <DetailPanel
-                  title={`${FINANCIAL_FUNNEL.find((s) => s.key === detailValue)?.label ?? detailValue} (${(funnelLeads[detailValue as FunnelStageKey] ?? []).length})`}
+                  title={`${detailValue === "booked" ? "Leads who booked" : (FINANCIAL_FUNNEL.find((s) => s.key === detailValue)?.label ?? detailValue)} (${(funnelLeads[detailValue as FunnelStageKey] ?? []).length})`}
                   closeHref={closeHref}
                   isEmpty={(funnelLeads[detailValue as FunnelStageKey] ?? []).length === 0}
                   emptyText="No one has reached this stage in this date range."
@@ -258,21 +263,72 @@ export default async function SalesReportPage({ searchParams }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-md border border-border px-3 py-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">New inquiries</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{leads.total}</p>
-            </div>
-            <div className="rounded-md border border-border px-3 py-2">
+            </Link>
+            <Link href={hrefWith(params, { detail: "period-tours" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tours this period</p>
+              <p className="text-lg font-semibold tabular-nums text-heading">{periodTours.length}</p>
+            </Link>
+            <Link href={hrefWith(params, { detail: "period-bookings" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Bookings this period</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{periodBookings.length}</p>
-            </div>
+            </Link>
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Currently booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{currentlyBooked}</p>
-              <p className="text-[11px] text-muted-foreground">On your pipeline right now</p>
+              <p className="text-[11px] text-muted-foreground">On your pipeline right now — not this period&apos;s booking count</p>
             </div>
           </div>
+
+          {detailKind === "period-tours" && (
+            <DetailPanel
+              title={`Tours this period (${periodTours.length})`}
+              closeHref={closeHref}
+              isEmpty={periodTours.length === 0}
+              emptyText="No tours were scheduled in this date range."
+            >
+              {periodTours.slice(0, 25).map((t) => (
+                <DetailRow key={t.id}>
+                  {t.leadId ? (
+                    <Link href={`/leads/${t.leadId}`} className="text-foreground font-medium hover:underline">{t.displayName}</Link>
+                  ) : (
+                    <span className="font-medium text-foreground">{t.displayName}</span>
+                  )}
+                  <span className="text-muted-foreground">
+                    {reportingSourceDisplayLabel(t.source)} · {new Date(t.scheduledAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </DetailRow>
+              ))}
+            </DetailPanel>
+          )}
+
+          {detailKind === "period-bookings" && (
+            <DetailPanel
+              title={`Bookings this period (${periodBookings.length})`}
+              closeHref={closeHref}
+              isEmpty={periodBookings.length === 0}
+              emptyText="No bookings were marked in this date range."
+            >
+              {periodBookings.slice(0, 25).map((b) => {
+                const href = b.clientId ? `/clients/${b.clientId}` : b.leadId ? `/leads/${b.leadId}` : null;
+                return (
+                  <DetailRow key={b.id}>
+                    {href ? (
+                      <Link href={href} className="text-foreground font-medium hover:underline">{b.displayName}</Link>
+                    ) : (
+                      <span className="font-medium text-foreground">{b.displayName}</span>
+                    )}
+                    <span className="text-muted-foreground">
+                      {reportingSourceDisplayLabel(b.source)} · {new Date(b.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  </DetailRow>
+                );
+              })}
+            </DetailPanel>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border border-border px-3 py-2">
@@ -287,20 +343,20 @@ export default async function SalesReportPage({ searchParams }: Props) {
 
           <p className="text-xs text-muted-foreground">
             {undatedBookings > 0
-              ? `${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count. ${undatedBookings === 1 ? "It still counts" : "They still count"} in Lead → Booking. `
+              ? `${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count. ${undatedBookings === 1 ? "It still counts" : "They still count"} in Leads who booked. `
               : ""}
-            {bookingCoverage.percent}% of Bookings in this period have a known acquisition source
+            {bookingCoverage.percent}% of Bookings in this period have a known source
             ({bookingCoverage.known} of {bookingCoverage.total}).
             {timeToBook.sampleSize > 0 && timeToBook.medianDays != null
-              ? ` Median time to book (lead created → first time you marked them booked): ${timeToBook.medianDays} days (${timeToBook.sampleSize} with a lead).`
+              ? ` Median time to book (inquiry arrived → you marked them booked): ${timeToBook.medianDays} days (${timeToBook.sampleSize} with a lead).`
               : ""}
           </p>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">Time to book by acquisition source</p>
+            <p className="mb-2 text-sm font-medium text-heading">Time to book by source</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Median days from when the lead arrived to when you first marked them booked, for Bookings in this period that still have a lead.
-              Bookings without a lead (you added the client already booked) are excluded. This is not a payment date.
+              Median days from when the inquiry arrived to when you first marked them booked, for Bookings in this period that still have a lead.
+              Bookings without a lead (you added the client already booked) are excluded.
             </p>
             {timeToBookBySource.length === 0 ? (
               <p className="text-sm text-muted-foreground">No lead-linked bookings with a calculable time-to-book in this period.</p>
@@ -323,7 +379,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
           <div className="grid gap-6 lg:grid-cols-3">
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Tours by source</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">By tour date in this period; source is the lead&apos;s official acquisition source (set when they entered).</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">By tour date in this period; source is what was recorded when the inquiry arrived.</p>
               {toursBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No tours in this period.</p>
               ) : (
