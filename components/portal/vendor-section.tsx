@@ -27,8 +27,15 @@ import { Button } from "@/components/ui/button";
 import { PortalCoupleVendorThread } from "@/components/portal/couple-vendor-thread";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { formatCivilDateLabel } from "@/lib/vendor-availability/dates";
+import type { CoupleAvailabilityStatus } from "@/lib/vendor-availability/query";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 import { vendorPreferenceClientLabel } from "@/lib/vendors/list-presentation";
+
+type DateAvailability = {
+  eventDate: string;
+  status: CoupleAvailabilityStatus;
+};
 
 type VendorPackage = { id: string; name: string; description: string | null; price: number | null; priceType: string };
 type VendorFaq = { id: string; question: string; answer: string };
@@ -69,6 +76,7 @@ type PortalVendorRecommendation = {
   promotionDetails: string | null;
   packages: VendorPackage[];
   faqs: VendorFaq[];
+  dateAvailability?: DateAvailability | null;
 };
 
 type PortalVendorDirectoryEntry = Omit<PortalVendorRecommendation, "note" | "id"> & {
@@ -132,7 +140,31 @@ type CardVendor = {
   packages: VendorPackage[];
   faqs: VendorFaq[];
   preferenceLevel?: string;
+  dateAvailability?: DateAvailability | null;
 };
+
+function EventDateAvailability({
+  availability,
+}: {
+  availability: DateAvailability | null | undefined;
+}) {
+  if (!availability) return null;
+  const status = availability.status;
+  const marker = status === "available" ? "Available" : status === "unavailable" ? "Unavailable" : "Availability not confirmed";
+  const tone =
+    status === "available"
+      ? "text-emerald-800 bg-emerald-50 border-emerald-200"
+      : status === "unavailable"
+        ? "text-red-800 bg-red-50 border-red-200"
+        : "text-amber-900 bg-amber-50 border-amber-200";
+  return (
+    <p className={`mt-1 inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${tone}`}>
+      <span>{formatCivilDateLabel(availability.eventDate)}</span>
+      <span aria-hidden>·</span>
+      <span>{marker}</span>
+    </p>
+  );
+}
 
 function StatusChip({ rec }: { rec: CardVendor }) {
   const isAssigned = !!rec.isAssigned;
@@ -197,6 +229,10 @@ function PickButton({
     );
   }
   if (!onToggle) return null;
+  const dateStatus = rec.dateAvailability?.status;
+  if ((dateStatus === "unavailable" || dateStatus === "not_confirmed") && !isPicked && !isSubmitted) {
+    return null;
+  }
 
   return (
     <button
@@ -279,16 +315,31 @@ function VendorListRow({
         {rec.note && (
           <p className="text-[11px] text-primary mt-0.5 truncate">{rec.note}</p>
         )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onView();
-          }}
-          className="text-[11px] font-medium text-[var(--venue-primary)] hover:underline mt-1"
-        >
-          View profile
-        </button>
+        <EventDateAvailability availability={rec.dateAvailability} />
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView();
+            }}
+            className="text-[11px] font-medium text-[var(--venue-primary)] hover:underline"
+          >
+            View profile
+          </button>
+          {rec.dateAvailability?.status === "not_confirmed" ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onView();
+              }}
+              className="text-[11px] font-medium text-[var(--venue-primary)] hover:underline"
+            >
+              Ask about availability
+            </button>
+          ) : null}
+        </div>
       </div>
       <PickButton rec={rec} toggling={toggling} onToggle={onToggle} />
     </div>
@@ -362,6 +413,7 @@ function VendorDetail({
                 {pricing && <span className="ml-1.5 text-muted-foreground/70">{pricing}</span>}
               </p>
               <ProcessChips rec={rec} />
+              <EventDateAvailability availability={rec.dateAvailability} />
             </div>
             <StatusChip rec={rec} />
           </div>
@@ -568,6 +620,24 @@ function VendorDetail({
               <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
                 Assigned — ask your venue to change
               </p>
+            ) : rec.dateAvailability?.status === "unavailable" && !isPicked && !isSubmitted ? (
+              <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
+                Unavailable for your event date
+              </p>
+            ) : rec.dateAvailability?.status === "not_confirmed" ? (
+              canMessageInApp && onContactVendor && !showComposer ? (
+                <button
+                  type="button"
+                  onClick={() => setShowComposer(true)}
+                  className="w-full text-xs font-semibold py-2.5 px-3 rounded-xl border border-border text-foreground hover:bg-muted"
+                >
+                  Ask about availability
+                </button>
+              ) : !canMessageInApp ? (
+                <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
+                  Ask about availability using the contact details above
+                </p>
+              ) : null
             ) : onToggle ? (
               <button
                 type="button"
@@ -580,7 +650,7 @@ function VendorDetail({
                 }`}
                 style={isPicked ? undefined : { background: "var(--venue-primary)" }}
               >
-                {toggling ? "Saving…" : isPicked ? "Unpick" : "Pick this vendor"}
+                {toggling ? "Saving…" : isPicked ? "Unpick" : "Select vendor"}
               </button>
             ) : null}
           </div>
@@ -634,7 +704,7 @@ type ViewingVendor = {
   recommendationId?: string;
 };
 
-export function VendorSection({ token, clientId, venueName }: { token: string; clientId: string; venueName: string }) {
+export function VendorSection({ token, clientId, venueName, eventDate: eventDateProp }: { token: string; clientId: string; venueName: string; eventDate?: string | null }) {
   const [recommendations, setRecommendations] = React.useState<PortalVendorRecommendation[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [togglingKey, setTogglingKey] = React.useState<string | null>(null);
@@ -652,11 +722,15 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
   } | null>(null);
   const [contacting, setContacting] = React.useState(false);
   const [requiredCategories, setRequiredCategories] = React.useState<string[]>([]);
+  const [eventDate, setEventDate] = React.useState<string | null>(eventDateProp ?? null);
 
   const loadRecommendations = React.useCallback(() => {
     return fetch(`/api/portal/vendors?token=${token}&clientId=${clientId}`)
       .then((r) => r.json())
-      .then((d: { recommendations?: PortalVendorRecommendation[] }) => setRecommendations(d.recommendations ?? []))
+      .then((d: { recommendations?: PortalVendorRecommendation[]; eventDate?: string | null }) => {
+        setRecommendations(d.recommendations ?? []);
+        if (d.eventDate) setEventDate(d.eventDate);
+      })
       .catch(() => {});
   }, [token, clientId]);
 
@@ -666,9 +740,11 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
       .then((d: {
         vendors?: PortalVendorDirectoryEntry[];
         requiredCategories?: Array<{ category: string }>;
+        eventDate?: string | null;
       }) => {
         setDirectory(d.vendors ?? []);
         setRequiredCategories((d.requiredCategories ?? []).map((c) => c.category));
+        if (d.eventDate) setEventDate(d.eventDate);
       })
       .catch(() => {});
   }, [token, clientId]);
@@ -954,6 +1030,11 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
           to work with. Picks stay private until you submit — then {venueName} and those vendors are notified.
           Contacting a vendor does not hire them.
         </p>
+        {eventDate ? (
+          <p className="text-sm text-foreground mt-2">
+            Your event date: <span className="font-medium">{formatCivilDateLabel(eventDate)}</span>
+          </p>
+        ) : null}
         {requiredCategories.length > 0 && (
           <p className="text-xs text-muted-foreground mt-2">
             Required categories:{" "}

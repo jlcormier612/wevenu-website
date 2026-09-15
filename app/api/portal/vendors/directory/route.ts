@@ -15,5 +15,13 @@ export async function GET(request: Request) {
     p_client_id: clientId,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? { vendors: [] });
+  const payload = (data ?? { vendors: [] }) as { vendors?: Array<{ vendorId?: string }>; error?: string };
+  if (payload.error) return NextResponse.json(payload);
+  const { overlayCoupleVendorAvailability } = await import("@/lib/vendor-availability/couple-overlay");
+  const overlay = await overlayCoupleVendorAvailability(token, payload.vendors ?? []);
+  return NextResponse.json({
+    ...payload,
+    eventDate: overlay.eventDate,
+    vendors: overlay.items,
+  });
 }

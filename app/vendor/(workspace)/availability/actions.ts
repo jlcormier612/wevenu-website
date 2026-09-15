@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import {
   blockDate,
+  blockDates,
   getVendorAvailability,
   unblockDate,
+  unblockDates,
   updateAvailabilitySettings,
 } from "@/lib/vendor-availability/service";
 import { getVendorUser } from "@/lib/vendor-auth/service";
@@ -13,20 +15,23 @@ import type { VendorActionResult, VendorAvailability } from "@/lib/vendors/types
 
 function revalidateAvailabilityViews() {
   revalidatePath("/vendor/availability");
-  // Primary nav hosts Availability under Profile — keep that tab fresh too.
   revalidatePath("/vendor/profile");
 }
 
 export async function blockDateAction(date: string, note?: string): Promise<VendorActionResult & { id?: string }> {
-  const result = await blockDate(date, note);
-  if (result.ok) revalidateAvailabilityViews();
-  return result;
+  return blockDate(date, note);
 }
 
 export async function unblockDateAction(id: string): Promise<VendorActionResult> {
-  const result = await unblockDate(id);
-  if (result.ok) revalidateAvailabilityViews();
-  return result;
+  return unblockDate(id);
+}
+
+export async function blockDatesAction(dates: string[], note?: string): Promise<VendorActionResult & { ids?: Record<string, string> }> {
+  return blockDates(dates, note);
+}
+
+export async function unblockDatesAction(dates: string[]): Promise<VendorActionResult> {
+  return unblockDates(dates);
 }
 
 export async function updateAvailabilitySettingsAction(

@@ -3002,8 +3002,8 @@ function GuestPortalSection({ token }: { token: string }) {
 // ── Vendor recommendations ────────────────────────────────────────────────────
 
 function VendorPortalSection({ token, context }: { token: string; context: PortalContext }) {
-  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string; clientId: string; venueName: string }> };
-  return <VendorSection token={token} clientId={context.client.id} venueName={context.venue.name} />;
+  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string; clientId: string; venueName: string; eventDate?: string | null }> };
+  return <VendorSection token={token} clientId={context.client.id} venueName={context.venue.name} eventDate={context.event?.eventDate} />;
 }
 
 // ── Budget planner ────────────────────────────────────────────────────────────
