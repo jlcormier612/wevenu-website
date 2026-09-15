@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Lead detail recovery — if the RSC stream fails (deploy action-id mismatch,
- * aborted refresh, timed-out data load), do not leave the route on the parent
- * loading skeleton forever.
+ * Lead detail recovery — if the RSC payload fails (deploy action-id mismatch,
+ * aborted refresh, timed-out data load), show a recoverable error instead of
+ * a blank main.
  */
 export default function LeadDetailError({
   error,

@@ -1,0 +1,123 @@
+"use client";
+
+import * as React from "react";
+
+import { Building2, Menu, Search } from "lucide-react";
+
+import { Wordmark } from "@/components/brand/wordmark";
+import { CommandPalette } from "@/components/shell/command-palette";
+import { NotificationBell } from "@/components/shell/notification-bell";
+import { SidebarNav } from "@/components/shell/sidebar-nav";
+import { UserMenu } from "@/components/shell/user-menu";
+import { ThemeToggle } from "@/components/providers/theme-toggle";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+
+/**
+ * Interactive header chrome only. Must not wrap the App Router page slot —
+ * that slot stays in the server WorkspaceShell so RSC reveal is not trapped
+ * behind a client boundary waiting on React 19 `$RC` / `requestAnimationFrame`.
+ */
+export function WorkspaceShellHeader({
+  email,
+  venueName,
+  venueLogo,
+  staffRole = null,
+}: {
+  email: string;
+  venueName?: string;
+  venueLogo?: string | null;
+  staffRole?: string | null;
+}) {
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+
+  return (
+    <>
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+          <SheetTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Open navigation"
+              />
+            }
+          >
+            <Menu className="h-5 w-5" />
+          </SheetTrigger>
+          <SheetContent
+            side="left"
+            className="w-[15.5rem] border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
+          >
+            <SheetHeader className="h-20 justify-center border-b border-sidebar-border px-5 text-left">
+              <SheetTitle>
+                <Wordmark sizeClassName="h-[66.8px] w-auto" />
+              </SheetTitle>
+            </SheetHeader>
+            <div className="overflow-y-auto">
+              <SidebarNav staffRole={staffRole} onNavigate={() => setMobileNavOpen(false)} />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <div className="lg:hidden">
+          <Wordmark showText={false} sizeClassName="h-[48.6px] w-auto" />
+        </div>
+
+        {(venueLogo || venueName) && (
+          <div className="hidden min-w-0 items-center gap-2 lg:flex">
+            {venueLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={venueLogo}
+                alt={venueName ?? "Venue"}
+                className="h-12 w-auto max-w-[200px] rounded-md object-contain"
+              />
+            ) : (
+              <>
+                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate text-sm font-medium text-heading">{venueName}</span>
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="hidden sm:flex h-9 items-center gap-2 rounded-sm border border-border/60 bg-muted/40 px-3 text-xs text-muted-foreground transition-colors hover:bg-muted"
+            aria-label="Search"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Search</span>
+            <kbd className="ml-1 hidden md:inline-flex h-4 select-none items-center rounded-sm border bg-background px-1 text-[10px] font-medium">
+              ⌘K
+            </kbd>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Search"
+          >
+            <Search className="h-[1.1rem] w-[1.1rem]" />
+          </button>
+          <NotificationBell />
+          <ThemeToggle />
+          <UserMenu email={email} />
+        </div>
+      </header>
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
+  );
+}

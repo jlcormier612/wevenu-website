@@ -17,7 +17,7 @@ import { getConversationIdForRelationship } from "@/lib/conversations/service";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
 
-/** Fail the route instead of leaving app/(app)/loading.tsx stuck forever. */
+/** Fail the route instead of hanging the Lead detail RSC payload forever. */
 const LEAD_DETAIL_LOAD_TIMEOUT_MS = 45_000;
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string }> };

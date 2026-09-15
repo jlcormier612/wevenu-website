@@ -116,6 +116,7 @@ export default async function WorkspaceLayout({
       venueName={venue.name}
       venueLogo={venue.logoUrl}
       staffRole={staffRole}
+      pathname={pathname}
     >
       {children}
     </WorkspaceShell>
