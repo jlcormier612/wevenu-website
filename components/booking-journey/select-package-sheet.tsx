@@ -76,22 +76,31 @@ export function SelectPackageSheet({
       return;
     }
     startTransition(async () => {
-      const result = await createSelectedPackageAction({
-        packageId: selected.id,
-        leadId,
-        clientId,
-        eventId,
-        depositAmount,
-      });
-      if (!result.ok) {
-        setError(result.message ?? result.errors?.depositAmount ?? "Could not save selected package.");
-        toast.error(result.message ?? "Could not save selected package.");
-        return;
+      try {
+        const result = await createSelectedPackageAction({
+          packageId: selected.id,
+          leadId,
+          clientId,
+          eventId,
+          depositAmount,
+        });
+        if (!result.ok) {
+          setError(result.message ?? result.errors?.depositAmount ?? "Could not save selected package.");
+          toast.error(result.message ?? "Could not save selected package.");
+          return;
+        }
+        toast.success("Selected package saved.");
+        onOpenChange(false);
+        reset();
+        router.refresh();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+          toast.error("The app was updated — reload this page and select the package again.");
+        } else {
+          toast.error("Could not save selected package. Reload and try again.");
+        }
       }
-      toast.success("Selected package saved.");
-      onOpenChange(false);
-      reset();
-      router.refresh();
     });
   }
 

@@ -59,17 +59,27 @@ export function BookingJourneyPanel({
   function handleCreateContract() {
     if (!selection) return;
     startTransition(async () => {
-      const result = await prepareCreateContractAction({
-        selectionId: selection.id,
-        leadId,
-        spaceId,
-      });
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
+      try {
+        const result = await prepareCreateContractAction({
+          selectionId: selection.id,
+          leadId,
+          spaceId,
+        });
+        if (!result.ok) {
+          toast.error(result.message);
+          return;
+        }
+        // Hard navigate — soft push + refresh races with rolling deploys and can
+        // leave the Lead detail route stuck on the parent loading skeleton.
+        window.location.assign(result.href);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+          toast.error("The app was updated — reload this page and try Create contract again.");
+        } else {
+          toast.error("Could not open Create contract. Reload and try again.");
+        }
       }
-      router.push(result.href);
-      router.refresh();
     });
   }
 
@@ -98,52 +108,69 @@ export function BookingJourneyPanel({
       return;
     }
     startTransition(async () => {
-      const { recordDepositReceivedAction } = await import(
-        "@/app/(app)/booking-journey/payments-actions"
-      );
-      const result = await recordDepositReceivedAction({ clientId, leadId });
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
+      try {
+        const { recordDepositReceivedAction } = await import(
+          "@/app/(app)/booking-journey/payments-actions"
+        );
+        const result = await recordDepositReceivedAction({ clientId, leadId });
+        if (!result.ok) {
+          toast.error(result.message);
+          return;
+        }
+        toast.success("Deposit recorded.");
+        router.refresh();
+      } catch {
+        toast.error("Could not record deposit. Reload and try again.");
       }
-      toast.success("Deposit recorded.");
-      router.refresh();
     });
   }
 
   function handleMarkAccepted() {
     if (!selection) return;
     startTransition(async () => {
-      const result = await markOfferAcceptedAction({
-        selectionId: selection.id,
-        leadId,
-        clientId,
-      });
-      if (!result.ok) {
-        toast.error(result.message ?? "Could not mark accepted.");
-        return;
+      try {
+        const result = await markOfferAcceptedAction({
+          selectionId: selection.id,
+          leadId,
+          clientId,
+        });
+        if (!result.ok) {
+          toast.error(result.message ?? "Could not mark accepted.");
+          return;
+        }
+        toast.success("Offer marked accepted.");
+        router.refresh();
+      } catch {
+        toast.error("Could not mark accepted. Reload and try again.");
       }
-      toast.success("Offer marked accepted.");
-      router.refresh();
     });
   }
 
   function handleSendOffer() {
     if (!selection) return;
     startTransition(async () => {
-      const result = await sendOfferAction({
-        selectionId: selection.id,
-        message: offerMessage,
-        leadId,
-        clientId,
-      });
-      if (!result.ok || !("acceptUrl" in result)) {
-        toast.error(("message" in result && result.message) || "Could not send offer.");
-        return;
+      try {
+        const result = await sendOfferAction({
+          selectionId: selection.id,
+          message: offerMessage,
+          leadId,
+          clientId,
+        });
+        if (!result.ok || !("acceptUrl" in result)) {
+          toast.error(("message" in result && result.message) || "Could not send offer.");
+          return;
+        }
+        setAcceptUrl(result.acceptUrl);
+        toast.success("Offer ready — share the link with the couple.");
+        router.refresh();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+          toast.error("The app was updated — reload this page and try Send offer again.");
+        } else {
+          toast.error("Could not send offer. Reload and try again.");
+        }
       }
-      setAcceptUrl(result.acceptUrl);
-      toast.success("Offer ready — share the link with the couple.");
-      router.refresh();
     });
   }
 

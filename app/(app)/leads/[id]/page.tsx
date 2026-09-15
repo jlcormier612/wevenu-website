@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { LeadDetail } from "@/components/leads/lead-detail";
+import { withTimeout } from "@/lib/async/with-timeout";
 import { getHolds, getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
 import { loadBookingJourneyForLead } from "@/lib/booking-journey/load";
@@ -15,6 +16,9 @@ import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
+
+/** Fail the route instead of leaving app/(app)/loading.tsx stuck forever. */
+const LEAD_DETAIL_LOAD_TIMEOUT_MS = 20_000;
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string }> };
 
@@ -45,55 +49,82 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { luv: luvParam } = await searchParams;
   const autoLuvDraft = normalizeAutoLuvDraft(luvParam);
-  const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages] = await Promise.all([
-    getLead(id),
-    getHolds({ leadId: id }),
-    getSpaces(),
-    getCapacityRules(),
-    getDocuments("lead", id),
-    getVenueWorkspaceDocuments({ leadId: id }),
-    getPinnedDocumentKeys(),
-    getRecentInteractionMap(),
-    getDraftsForLead(id),
-    getTourAppointmentsForLead(id),
-    getPackagesWithItems(true),
-  ]);
-  if (!lead) notFound();
-  const [conversationId, smsPermission, duplicateReview] = await Promise.all([
-    lead.relationshipId
-      ? getConversationIdForRelationship(lead.relationshipId)
-      : Promise.resolve(null),
-    getSmsPermissionEvidenceForContact({ venueId: lead.venueId, phone: lead.phone }),
-    getDuplicateReviewForLead(id),
-  ]);
-  const bookingJourney = await loadBookingJourneyForLead({
-    leadId: lead.id,
-    linkedClientId: lead.linkedClientId,
-    linkedEventId: lead.linkedEventId ?? null,
-  });
+
+  const page = await withTimeout(
+    (async () => {
+      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages] = await Promise.all([
+        getLead(id),
+        getHolds({ leadId: id }),
+        getSpaces(),
+        getCapacityRules(),
+        getDocuments("lead", id),
+        getVenueWorkspaceDocuments({ leadId: id }),
+        getPinnedDocumentKeys(),
+        getRecentInteractionMap(),
+        getDraftsForLead(id),
+        getTourAppointmentsForLead(id),
+        getPackagesWithItems(true),
+      ]);
+      if (!lead) return null;
+      const [conversationId, smsPermission, duplicateReview] = await Promise.all([
+        lead.relationshipId
+          ? getConversationIdForRelationship(lead.relationshipId)
+          : Promise.resolve(null),
+        getSmsPermissionEvidenceForContact({ venueId: lead.venueId, phone: lead.phone }),
+        getDuplicateReviewForLead(id),
+      ]);
+      const bookingJourney = await loadBookingJourneyForLead({
+        leadId: lead.id,
+        linkedClientId: lead.linkedClientId,
+        linkedEventId: lead.linkedEventId ?? null,
+      });
+      return {
+        lead,
+        holds,
+        spaces,
+        capacityRules,
+        documents,
+        workspaceDocuments,
+        pinnedKeys,
+        recentMap,
+        luvDrafts,
+        tourAppointments,
+        packages,
+        conversationId,
+        smsPermission,
+        duplicateReview,
+        bookingJourney,
+      };
+    })(),
+    LEAD_DETAIL_LOAD_TIMEOUT_MS,
+    "Lead detail",
+  );
+
+  if (!page) notFound();
+
   // Computed server-side, not inside the client component — React Compiler
   // treats Date.now() as impure during render; see the identical pattern in
   // app/(app)/leads/page.tsx and app/(app)/clients/page.tsx.
   const now = new Date().toISOString();
   return (
     <LeadDetail
-      lead={lead}
+      lead={page.lead}
       now={now}
-      holds={holds}
-      spaces={spaces}
-      maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)}
-      documents={documents}
-      workspaceDocuments={workspaceDocuments}
-      pinnedDocumentKeys={[...pinnedKeys]}
-      recentDocumentEntries={[...recentMap.entries()]}
-      luvDrafts={luvDrafts}
+      holds={page.holds}
+      spaces={page.spaces}
+      maxSimultaneousEvents={effectiveMaxSimultaneousEvents(page.capacityRules)}
+      documents={page.documents}
+      workspaceDocuments={page.workspaceDocuments}
+      pinnedDocumentKeys={[...page.pinnedKeys]}
+      recentDocumentEntries={[...page.recentMap.entries()]}
+      luvDrafts={page.luvDrafts}
       autoLuvDraft={autoLuvDraft}
-      tourAppointments={tourAppointments}
-      conversationId={conversationId}
-      bookingJourney={bookingJourney}
-      packages={packages}
-      smsPermission={smsPermission}
-      duplicateReview={duplicateReview}
+      tourAppointments={page.tourAppointments}
+      conversationId={page.conversationId}
+      bookingJourney={page.bookingJourney}
+      packages={page.packages}
+      smsPermission={page.smsPermission}
+      duplicateReview={page.duplicateReview}
     />
   );
 }
