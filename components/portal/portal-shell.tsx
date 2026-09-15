@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
+import { sessionDeviceLabel } from "@/lib/client-auth/session-label";
 
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
@@ -4185,10 +4186,11 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
             {state.sessions.map((s) => (
               <div key={s.id} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 px-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-heading truncate">{s.userAgent ?? "Unknown device"}</p>
+                  <p className="text-xs font-medium text-heading truncate">
+                    {sessionDeviceLabel(s.userAgent, !!s.isCurrent)}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">
                     Signed in {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    {s.isCurrent ? " · This device" : ""}
                   </p>
                 </div>
                 {!s.isCurrent && (
