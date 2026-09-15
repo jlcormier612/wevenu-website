@@ -308,6 +308,28 @@ describe("Film contact-sheet Option D even-pack", () => {
     assert.doesNotMatch(html, /FilmStripScroller|overflow-x-auto/);
   });
 
+  it("Coastal film-strip without Film Photo Style still renders every photo in a scroll strip", () => {
+    const coastal: CatalogCollection = {
+      ...collection(),
+      key: "coastal",
+      layoutConfig: { galleryLayout: "film-strip" },
+    };
+    const tc = resolveTheme(
+      buildPreviewSite({
+        collection: coastal,
+        photoStyle: photoStyle("modern", PHASE_B_PHOTO_STYLE_TOKENS.modern!),
+      }),
+    );
+    assert.equal(tc.galleryLayout, "film-strip");
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: urls(6), tc }),
+    );
+    assert.equal(countImgs(html), 6);
+    assert.match(html, /overflow-x:\s*auto|overflow-x-auto/);
+    assert.match(html, /min\(\d+%,\s*\d+px\)/);
+    assert.doesNotMatch(html, /\d+cqw|\d+vw/);
+  });
+
   it("9 photos fill a full 3×3 contact sheet (no short row)", () => {
     const html = renderToStaticMarkup(
       React.createElement(GalleryGrid, { photos: urls(9), tc: themeFor("film") }),

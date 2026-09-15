@@ -131,14 +131,16 @@ describe("Elegant typography — Playfair italic + Lato only", () => {
 });
 
 describe("Gallery film-strip and Film contact-sheet", () => {
-  it("film-strip uses container-relative sizing and FilmStripScroller (not viewport vw)", () => {
+  it("film-strip uses scrollport-percent sizing and contained FilmStripScroller (not vw/cqw)", () => {
     const src = readFileSync(
       join(process.cwd(), "components/wedding-website/wedding-website.tsx"),
       "utf8",
     );
     assert.match(src, /galleryLayout === "film-strip"/);
     assert.match(src, /FilmStripScroller/);
-    assert.match(src, /min\(\$\{w\.cqw\}cqw/);
+    assert.match(src, /min\(\$\{w\.pct\}%, \$\{w\.max\}px\)/);
+    assert.match(src, /overflow-hidden/);
+    assert.doesNotMatch(src, /min\(\$\{w\.cqw\}cqw/);
     assert.doesNotMatch(src, /width: w\.vw/);
     assert.match(src, /Show more photos/);
   });

@@ -989,8 +989,10 @@ function FilmStripScroller({
   const updateAffordance = React.useCallback(() => {
     const el = ref.current;
     if (!el) return;
-    setCanPrev(el.scrollLeft > 4);
-    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    // Use a slightly larger epsilon — subpixel rounding + borders otherwise
+    // leave canNext false while a photo is still permanently clipped.
+    setCanPrev(el.scrollLeft > 2);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
   }, []);
 
   React.useEffect(() => {
@@ -1004,7 +1006,10 @@ function FilmStripScroller({
     const imgs = el.querySelectorAll("img");
     const onLoad = () => updateAffordance();
     imgs.forEach((img) => img.addEventListener("load", onLoad));
+    // Layout can settle a frame after mount (fonts, container queries).
+    const raf = requestAnimationFrame(() => updateAffordance());
     return () => {
+      cancelAnimationFrame(raf);
       el.removeEventListener("scroll", updateAffordance);
       ro?.disconnect();
       imgs.forEach((img) => img.removeEventListener("load", onLoad));
@@ -1017,17 +1022,28 @@ function FilmStripScroller({
     el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.8, 160), behavior: "smooth" });
   };
 
+  // Outer overflow:hidden + width containment is required: without it, shrink-0
+  // frames inflate this wrapper past Studio/phone parents that use
+  // overflow-x-hidden, so the strip is hard-clipped and scrollWidth never
+  // exceeds clientWidth (arrows stay hidden; photos 3+ unreachable).
   return (
-    <div className="relative w-full max-w-full min-w-0">
+    <div className="relative w-full max-w-full min-w-0 overflow-hidden">
       {canPrev ? (
         <button
           type="button"
           aria-label="Show previous photos"
           onClick={() => scrollByPage(-1)}
-          className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
+          className="absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
         >
           ‹
         </button>
+      ) : null}
+      {canNext ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14"
+          style={{ background: "linear-gradient(to left, rgba(255,255,255,0.92), transparent)" }}
+        />
       ) : null}
       <div
         ref={ref}
@@ -1046,7 +1062,7 @@ function FilmStripScroller({
           type="button"
           aria-label="Show more photos"
           onClick={() => scrollByPage(1)}
-          className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
+          className="absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border border-black/15 bg-white/95 px-2.5 py-1.5 text-base shadow-md"
         >
           ›
         </button>
@@ -1689,22 +1705,24 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   if (tc.galleryLayout === "film-strip") {
-    // Container-relative widths (cqw), not viewport vw — vw oversized frames
-    // inside Studio phone / content columns and caused hard clip without a
-    // usable scrollport. FilmStripScroller adds visible prev/next controls
-    // so remaining photos are reachable without relying on hidden scrollbars.
-    const baseCqw = tc.imageScale === "large" ? 58 : 42;
+    // Widths are % of the scrollport (the FilmStripScroller flex row), not
+    // viewport vw and not @container cqw. cqw tracked the full wedding
+    // preview root — often much wider than the clipped gallery column — so
+    // 2–3 frames overflowed past Studio/phone overflow-x-hidden with no
+    // working scroll. Percent-of-scrollport keeps each frame inside the
+    // visible strip and leaves a peek of the next photo as a scroll cue.
+    const basePct = tc.imageScale === "large" ? 72 : 62;
     const baseMax = tc.imageScale === "large" ? 360 : 280;
-    const widthFor = (i: number): { cqw: number; max: number } => {
+    const widthFor = (i: number): { pct: number; max: number } => {
       if (tc.scalePattern === "hero-emphasis" && i === 0) {
-        return { cqw: Math.min(baseCqw + 12, 72), max: baseMax + 80 };
+        return { pct: Math.min(basePct + 8, 82), max: baseMax + 80 };
       }
       if (tc.scalePattern === "alternating") {
         return i % 2 === 1
-          ? { cqw: Math.max(baseCqw - 8, 28), max: baseMax - 60 }
-          : { cqw: baseCqw, max: baseMax };
+          ? { pct: Math.max(basePct - 10, 48), max: baseMax - 60 }
+          : { pct: basePct, max: baseMax };
       }
-      return { cqw: baseCqw, max: baseMax };
+      return { pct: basePct, max: baseMax };
     };
     return (
       <FilmStripScroller gap={gap}>
@@ -1715,10 +1733,10 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
               key={i}
               className="shrink-0 overflow-hidden"
               style={{
-                width: `min(${w.cqw}cqw, ${w.max}px)`,
+                width: `min(${w.pct}%, ${w.max}px)`,
                 maxWidth: "85%",
                 borderRadius: tc.photoRadius,
-                scrollSnapAlign: "center",
+                scrollSnapAlign: "start",
                 ...frame(i),
               }}
             >
@@ -2666,10 +2684,13 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
                 <SectionCanvas key="gallery" role={tc.sectionRoles?.gallery} colors={canvasColors}>
                 <SectionWrapper sectionKey="gallery">
                   <section
-                    className={edgeWidthClass(tc.edgeTreatment, 0)}
+                    className={`${edgeWidthClass(tc.edgeTreatment, 0)} min-w-0 max-w-full`}
                     style={tc.sectionBand === "tinted" ? { background: tc.surface, paddingBlock: "3rem" } : undefined}
                   >
-                    <div style={{ maxWidth: tc.edgeTreatment === "full-bleed" ? "none" : (tc.contentWidth === "narrow" ? "30rem" : tc.contentWidth === "wide" ? "56rem" : "42rem"), marginInline: tc.edgeTreatment === "full-bleed" ? undefined : "auto" }}>
+                    <div
+                      className="min-w-0 max-w-full"
+                      style={{ maxWidth: tc.edgeTreatment === "full-bleed" ? "none" : (tc.contentWidth === "narrow" ? "30rem" : tc.contentWidth === "wide" ? "56rem" : "42rem"), marginInline: tc.edgeTreatment === "full-bleed" ? undefined : "auto" }}
+                    >
                       <SectionHeader title={g?.title ?? "Our Photos"} tc={tc} accentColor={color} />
                       <GalleryGrid photos={galleryPhotos} tc={tc} />
                     </div>
