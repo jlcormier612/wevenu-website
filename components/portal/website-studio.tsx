@@ -40,7 +40,7 @@ import {
   type ColorStoryRoleKey,
 } from "@/lib/wedding-website/wizard-color-edit";
 import { afterWizardPhotoDeleted } from "@/lib/wedding-website/wizard-photo-delete";
-import { mergeWebsiteGalleryPhotos } from "@/lib/wedding-website/resolve-gallery-photos";
+import { seedWebsiteGalleryPhotosIfEmpty } from "@/lib/wedding-website/resolve-gallery-photos";
 import { PORTRAIT_FACE_FOCAL } from "@/components/wedding-website/composition-primitives";
 import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, CatalogColorStory } from "@/lib/wedding-website/types";
 import type { PortalContext } from "@/lib/portal/types";
@@ -360,11 +360,6 @@ function SetupWizard({
     setSaving(true);
     try {
       if (step === "photo") {
-        const galleryPhotos = mergeWebsiteGalleryPhotos({
-          galleryPhotos: site.content?.gallery?.photos,
-          coverPhoto: selectedPhoto || site.content?.home?.coverImageUrl,
-          engagementPhotos: eng.map((p) => p.url),
-        });
         if (selectedPhoto) {
           await onSaveSection("home", {
             ...(site.content?.home ?? {}),
@@ -372,11 +367,17 @@ function SetupWizard({
             coverImageUrl: selectedPhoto,
           });
         }
-        // Beautiful-by-Default: engagement uploads must appear in the Photo
-        // Gallery — selecting a hero is not enough. Persist the full set so
-        // Preview and published pages render every uploaded photo (no fixed
-        // 3-up of the cover alone).
-        if (galleryPhotos.length > 0) {
+        // Beautiful-by-Default: seed the Photo Gallery once when empty so
+        // Preview is not a lonely cover 3-up. Never re-merge engagement into
+        // an already-authored gallery (that silently inflated Live Preview
+        // with duplicates the couple did not add in Photo Gallery).
+        const galleryPhotos = seedWebsiteGalleryPhotosIfEmpty({
+          galleryPhotos: site.content?.gallery?.photos,
+          coverPhoto: selectedPhoto || site.content?.home?.coverImageUrl,
+          engagementPhotos: eng.map((p) => p.url),
+        });
+        const existing = site.content?.gallery?.photos ?? [];
+        if (galleryPhotos.length > 0 && existing.length === 0) {
           await onSaveSection("gallery", {
             title: site.content?.gallery?.title ?? "Our Photos",
             photos: galleryPhotos,
@@ -1281,23 +1282,22 @@ export function WebsiteStudio({
         if (!wizardDismissed && completedSections < 2 && !initialSite.isPublished) {
           setWizardStep("welcome");
         }
-        // Beautiful-by-Default repair: if the couple has engagement uploads
-        // that never made it into gallery.photos (hero-only wizard path),
-        // merge them into the authored gallery and persist so Live Preview
-        // and published pages show the full set — never a fixed 3-up.
+        // Beautiful-by-Default: seed gallery only when still empty (hero-only
+        // wizard path). Never append engagement URLs onto an authored gallery
+        // on every Studio visit — that produced duplicate/inflated Live Previews.
         const engagementUrls = (d?.engagementPhotos ?? []).map(p => p.url);
-        if (engagementUrls.length === 0) return;
         setPreviewContent(c => {
-          const merged = mergeWebsiteGalleryPhotos({
-            galleryPhotos: c.gallery?.photos,
+          const existing = c.gallery?.photos ?? [];
+          if (existing.length > 0) return c;
+          const seeded = seedWebsiteGalleryPhotosIfEmpty({
+            galleryPhotos: existing,
             coverPhoto: c.home?.coverImageUrl,
             engagementPhotos: engagementUrls,
           });
-          const existing = c.gallery?.photos ?? [];
-          if (merged.length <= existing.length) return c;
+          if (seeded.length === 0) return c;
           const nextGallery = {
             title: c.gallery?.title ?? "Our Photos",
-            photos: merged,
+            photos: seeded,
           };
           void fetch("/api/portal/website", {
             method: "POST",

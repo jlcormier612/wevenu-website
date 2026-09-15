@@ -27,7 +27,31 @@ export function resolveWebsiteGalleryPhotos(input: {
   return out;
 }
 
-/** Merge engagement / cover URLs into an authored gallery without dropping existing entries. */
+/**
+ * Seed an empty authored gallery from cover + engagement uploads.
+ * When the couple already has gallery photos, returns that list unchanged —
+ * never silently appends engagement/cover URLs (that caused Live Preview to
+ * show 13+ images / visual duplicates while the Studio editor showed fewer).
+ */
+export function seedWebsiteGalleryPhotosIfEmpty(input: {
+  galleryPhotos?: string[] | null;
+  coverPhoto?: string | null;
+  engagementPhotos?: string[] | null;
+}): string[] {
+  const authored = (input.galleryPhotos ?? []).map((u) => u.trim()).filter(Boolean);
+  if (authored.length > 0) return [...authored];
+  return resolveWebsiteGalleryPhotos({
+    galleryPhotos: [],
+    coverPhoto: input.coverPhoto,
+    engagementPhotos: input.engagementPhotos,
+  });
+}
+
+/**
+ * Explicit opt-in union (e.g. Gallery editor "Import engagement photos").
+ * Do not use for silent Studio/wizard persistence — that re-inflates the
+ * gallery every visit. Use {@link seedWebsiteGalleryPhotosIfEmpty} instead.
+ */
 export function mergeWebsiteGalleryPhotos(input: {
   galleryPhotos?: string[] | null;
   coverPhoto?: string | null;

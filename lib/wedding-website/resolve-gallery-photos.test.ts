@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   mergeWebsiteGalleryPhotos,
   resolveWebsiteGalleryPhotos,
+  seedWebsiteGalleryPhotosIfEmpty,
 } from "@/lib/wedding-website/resolve-gallery-photos";
 
 describe("resolveWebsiteGalleryPhotos", () => {
@@ -38,6 +39,30 @@ describe("resolveWebsiteGalleryPhotos", () => {
     });
     assert.equal(result.length, 3);
     assert.deepEqual(result, ["cover.jpg", "e1.jpg", "e2.jpg"]);
+  });
+});
+
+describe("seedWebsiteGalleryPhotosIfEmpty", () => {
+  it("leaves an authored gallery untouched even when engagement has more URLs", () => {
+    assert.deepEqual(
+      seedWebsiteGalleryPhotosIfEmpty({
+        galleryPhotos: ["a.jpg", "b.jpg", "c.jpg"],
+        coverPhoto: "cover.jpg",
+        engagementPhotos: ["a.jpg", "d.jpg", "e.jpg", "f.jpg"],
+      }),
+      ["a.jpg", "b.jpg", "c.jpg"],
+    );
+  });
+
+  it("seeds from cover + engagement only when gallery is empty", () => {
+    assert.deepEqual(
+      seedWebsiteGalleryPhotosIfEmpty({
+        galleryPhotos: [],
+        coverPhoto: "cover.jpg",
+        engagementPhotos: ["e1.jpg", "e2.jpg"],
+      }),
+      ["cover.jpg", "e1.jpg", "e2.jpg"],
+    );
   });
 });
 
