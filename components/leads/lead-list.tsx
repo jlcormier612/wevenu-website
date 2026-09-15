@@ -99,7 +99,9 @@ export function LeadList({
       if (statusFilter !== "all" && stage !== statusFilter) return false;
       if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
       if (attentionFilter === "stale_contact") {
-        if (stage === "won" || stage === "lost" || stage === "cancelled" || stage === "booked") {
+        // Same closed set as generate_venue_recommendations (won/lost/cancelled)
+        // mapped onto the lead sales-stage vocabulary.
+        if (stage === "lost" || stage === "booked") {
           return false;
         }
         const contacted = l.lastContactedAt ? new Date(l.lastContactedAt).getTime() : null;
