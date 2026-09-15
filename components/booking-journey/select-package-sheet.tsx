@@ -136,7 +136,7 @@ export function SelectPackageSheet({
                 <button
                   key={pkg.id}
                   type="button"
-                  onClick={() => setPackageId(pkg.id)}
+                  onClick={() => choosePackage(pkg.id)}
                   className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
                     active ? "border-heading bg-muted/40" : "border-border hover:bg-muted/20"
                   }`}
