@@ -66,8 +66,8 @@ export function CommercialBookingPrefsSection({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="either">Offer or contract</SelectItem>
-              <SelectItem value="offer">Offer / proposal</SelectItem>
+              <SelectItem value="either">Proposal or contract</SelectItem>
+              <SelectItem value="offer">Proposal</SelectItem>
               <SelectItem value="contract">Contract only</SelectItem>
             </SelectContent>
           </Select>

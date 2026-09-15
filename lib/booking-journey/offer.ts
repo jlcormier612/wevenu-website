@@ -47,14 +47,14 @@ export function mapAcceptRpcResult(
   error: { message?: string } | null,
 ): { ok: true; alreadyAccepted?: boolean } | { ok: false; message: string } {
   if (error || !data || typeof data !== "object") {
-    return { ok: false, message: "Could not accept this offer." };
+    return { ok: false, message: "Could not accept this proposal." };
   }
   const row = data as Record<string, unknown>;
   if (row.ok === false) {
     const err = String(row.error ?? "error");
-    if (err === "invalid_token") return { ok: false, message: "This offer link is not valid." };
-    if (err === "not_offered") return { ok: false, message: "This offer cannot be accepted." };
-    return { ok: false, message: "Could not accept this offer." };
+    if (err === "invalid_token") return { ok: false, message: "This proposal link is not valid." };
+    if (err === "not_offered") return { ok: false, message: "This proposal cannot be accepted." };
+    return { ok: false, message: "Could not accept this proposal." };
   }
   return { ok: true, alreadyAccepted: row.alreadyAccepted === true };
 }

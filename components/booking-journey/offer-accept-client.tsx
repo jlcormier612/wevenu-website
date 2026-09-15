@@ -28,6 +28,7 @@ export function OfferAcceptClient({
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const accepted = offer.status === "accepted";
+  const showDeposit = offer.depositAmount > 0;
 
   function handleAccept() {
     startTransition(async () => {
@@ -43,12 +44,14 @@ export function OfferAcceptClient({
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Your offer</p>
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Your proposal</p>
       <h1 className="mt-2 font-heading text-3xl text-heading">{offer.name}</h1>
       <p className="mt-2 text-2xl font-semibold text-heading">{formatCurrency(offer.totalAmount)}</p>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Deposit {formatCurrency(offer.depositAmount)} · Remaining {formatCurrency(offer.remainingAmount)}
-      </p>
+      {showDeposit ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Deposit {formatCurrency(offer.depositAmount)} · Remaining {formatCurrency(offer.remainingAmount)}
+        </p>
+      ) : null}
       {offer.offerMessage && (
         <p className="mt-6 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-heading whitespace-pre-wrap">
           {offer.offerMessage}
@@ -71,7 +74,9 @@ export function OfferAcceptClient({
       <div className="mt-8">
         {accepted ? (
           <p className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-heading">
-            You&apos;ve accepted this package. Your venue will collect the deposit next.
+            {showDeposit
+              ? "You've accepted this package. Your venue will collect the deposit next."
+              : "You've accepted this package. Your venue will confirm the booking next."}
           </p>
         ) : (
           <Button type="button" size="lg" className="w-full" onClick={handleAccept} disabled={pending}>
@@ -81,7 +86,7 @@ export function OfferAcceptClient({
                 Accepting…
               </>
             ) : (
-              "Accept"
+              "Accept proposal"
             )}
           </Button>
         )}

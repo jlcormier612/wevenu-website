@@ -35,9 +35,9 @@ import { formatMoney } from "@/lib/event-orders/constants";
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 const FINANCIAL_FUNNEL: { key: FunnelStageKey; label: string; hint: string }[] = [
-  { key: "inquiry", label: "Leads", hint: "Every inquiry that came in during this period" },
+  { key: "inquiry", label: "Leads", hint: "Every lead created during this period" },
   { key: "tourScheduled", label: "Tours", hint: "Had a tour" },
-  { key: "proposalSent", label: "Offers sent", hint: "Reached the offer / proposal stage" },
+  { key: "proposalSent", label: "Proposals sent", hint: "Reached the proposal stage" },
   { key: "contractSent", label: "Agreements sent", hint: "Agreement sent for signature" },
   { key: "contractSigned", label: "Agreements completed", hint: "Agreement signed" },
   { key: "depositReceived", label: "First payment collected", hint: "First scheduled payment collected" },
@@ -96,7 +96,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     <div className="space-y-6">
       <ReportHeader
         title="Sales"
-        description="What came in during these dates, and how many of those inquiries later booked."
+        description="What came in during these dates, and how many of those leads later booked."
       />
       <DateRangeControl current={range.preset} label={range.label} />
       <p className="text-xs text-muted-foreground -mt-2">
@@ -108,18 +108,20 @@ export default async function SalesReportPage({ searchParams }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Inquiries from this period</CardTitle>
+          <CardTitle className="text-base">Leads from this period</CardTitle>
           <CardDescription>
-            {cohort.leadsEntered} {cohort.leadsEntered === 1 ? "inquiry" : "inquiries"} arrived during {range.label}
-            (lost inquiries stay in this group). {cohort.eventuallyBooked} of them later booked
-            — the booking can be after {range.label}. Bookings that happened during these dates
-            are listed separately below as Bookings this period.
+            These are leads created during the selected period. A lead can book after the selected period.{" "}
+            {cohort.leadsEntered === 1
+              ? `1 lead was created during ${range.label}`
+              : `${cohort.leadsEntered} leads were created during ${range.label}`}
+            {" "}(lost leads stay in this group). {cohort.eventuallyBooked} of these leads later booked — the booking can happen after the selected period.
+            Bookings that happened during these dates are listed separately below as Bookings this period.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Inquiries</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadsEntered}</p>
             </Link>
             <Link href={hrefWith(params, { detail: "stage:booked" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -129,28 +131,28 @@ export default async function SalesReportPage({ searchParams }: Props) {
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Booking rate</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.conversionRate}%</p>
-              <p className="text-[11px] text-muted-foreground">Leads who booked ÷ inquiries</p>
+              <p className="text-[11px] text-muted-foreground">Leads who booked ÷ leads</p>
             </div>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {leadCoverage.percent}% of these inquiries have a known source
+            {leadCoverage.percent}% of these leads have a known source
             ({leadCoverage.known} of {leadCoverage.total}). Missing source is listed as Not recorded.
           </p>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">Where inquiries came from</p>
+            <p className="mb-2 text-sm font-medium text-heading">Where leads came from</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Official source recorded when the inquiry arrived. Website includes tour-request form entries.
-              Rates are of this inquiry group only.
+              Official source recorded when the lead was created. Website includes tour-request form entries.
+              Rates are of these leads only.
             </p>
             {sourceCohort.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No inquiries in this period.</p>
+              <p className="text-sm text-muted-foreground">No leads in this period.</p>
             ) : (
               <div className="divide-y divide-border overflow-x-auto">
                 <div className="grid min-w-[40rem] grid-cols-[1.5fr_repeat(6,minmax(0,1fr))] gap-2 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   <span>Source</span>
-                  <span className="text-right">Inquiries</span>
+                  <span className="text-right">Leads</span>
                   <span className="text-right">Toured %</span>
                   <span className="text-right">Booked %</span>
                   <span className="text-right">Toured then booked</span>
@@ -175,10 +177,10 @@ export default async function SalesReportPage({ searchParams }: Props) {
           <div>
             <p className="mb-2 text-sm font-medium text-heading">By event type</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Same inquiries as above, grouped by the event type on the inquiry. Missing type is Not recorded.
+              Same leads as above, grouped by the event type on the lead. Missing type is Not recorded.
             </p>
             {eventTypeCohort.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No inquiries in this period.</p>
+              <p className="text-sm text-muted-foreground">No leads in this period.</p>
             ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-[28rem] divide-y divide-border">
@@ -202,12 +204,12 @@ export default async function SalesReportPage({ searchParams }: Props) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">How these inquiries progressed</p>
+            <p className="mb-2 text-sm font-medium text-heading">How these leads progressed</p>
             <p className="mb-3 text-xs text-muted-foreground">
-              Same inquiries as above. Offers, agreements, and first payments are paperwork and money — not the Bookings this period count.
+              Same leads as above. Proposals, agreements, and first payments are paperwork and money — not the Bookings this period count.
             </p>
             {!counts || counts.inquiry === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No leads have been recorded in this date range.</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">No leads in this period.</p>
             ) : (
               <div className="space-y-1">
                 {FINANCIAL_FUNNEL.map((stage) => {
@@ -265,7 +267,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">New inquiries</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">New leads</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{leads.total}</p>
             </Link>
             <Link href={hrefWith(params, { detail: "period-tours" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -348,14 +350,14 @@ export default async function SalesReportPage({ searchParams }: Props) {
             {bookingCoverage.percent}% of Bookings in this period have a known source
             ({bookingCoverage.known} of {bookingCoverage.total}).
             {timeToBook.sampleSize > 0 && timeToBook.medianDays != null
-              ? ` Median time to book (inquiry arrived → you marked them booked): ${timeToBook.medianDays} days (${timeToBook.sampleSize} with a lead).`
+              ? ` Median time to book (when the lead was created → you marked them booked): ${timeToBook.medianDays} days (${timeToBook.sampleSize} with a lead).`
               : ""}
           </p>
 
           <div>
             <p className="mb-2 text-sm font-medium text-heading">Time to book by source</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Median days from when the inquiry arrived to when you first marked them booked, for Bookings in this period that still have a lead.
+              Median days from when the lead was created to when you first marked them booked, for Bookings in this period that still have a lead.
               Bookings without a lead (you added the client already booked) are excluded.
             </p>
             {timeToBookBySource.length === 0 ? (
@@ -379,7 +381,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
           <div className="grid gap-6 lg:grid-cols-3">
             <div>
               <p className="mb-2 text-sm font-medium text-heading">Tours by source</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">By tour date in this period; source is what was recorded when the inquiry arrived.</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">By tour date in this period; source is what was recorded when the lead was created.</p>
               {toursBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No tours in this period.</p>
               ) : (
@@ -463,7 +465,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
         </CardHeader>
         <CardContent>
           {leads.total === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No leads have been recorded in this date range.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">No leads in this period.</p>
           ) : (
             <TrendChart data={leads.trend} />
           )}

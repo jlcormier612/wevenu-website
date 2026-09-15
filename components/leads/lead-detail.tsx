@@ -488,7 +488,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         />
       ) : null}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
-        <TabsList>
+        <TabsList className="max-w-full flex-nowrap overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="messages">Conversation</TabsTrigger>
           <TabsTrigger value="notes">

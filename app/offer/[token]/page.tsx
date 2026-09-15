@@ -9,8 +9,8 @@ type Props = { params: Promise<{ token: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const offer = await getOfferByToken(token);
-  if (!offer) return { title: "Offer" };
-  return { title: `${offer.name} · Offer` };
+  if (!offer) return { title: "Proposal" };
+  return { title: `${offer.name} · Proposal` };
 }
 
 export default async function OfferPage({ params }: Props) {

@@ -191,7 +191,7 @@ export async function sendOfferForSelection(input: {
       return { ok: false, message: "This selected package was replaced. Choose a package again." };
     }
     if (existing.status === "accepted") {
-      return { ok: false, message: "This offer was already accepted." };
+      return { ok: false, message: "This proposal was already accepted." };
     }
     const acceptToken = existing.acceptToken ?? randomBytes(24).toString("hex");
     const updated = await repo.markOffered(
@@ -201,7 +201,7 @@ export async function sendOfferForSelection(input: {
       acceptToken,
       input.message?.trim() || null,
     );
-    if (!updated) return { ok: false, message: "Could not send the offer." };
+    if (!updated) return { ok: false, message: "Could not send the proposal." };
     return { ok: true, acceptToken, selection: updated };
   });
   return result as

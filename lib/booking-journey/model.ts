@@ -285,7 +285,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
         direction = `Collect the ${formatCurrency(depositAmt)} deposit for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Agreement comes next.`;
       } else {
         const agreementLine = selection?.status === "accepted"
-          ? `They accepted the offer. Collect the ${formatCurrency(depositAmt)} deposit to confirm the booking.`
+          ? `They accepted the proposal. Collect the ${formatCurrency(depositAmt)} deposit to confirm the booking.`
           : `The agreement is complete for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Collect the ${formatCurrency(depositAmt)} deposit to confirm the booking.`;
         direction = `${agreementLine} ${formatCurrency(remaining!)} will remain on the payment plan.`;
       }
@@ -308,7 +308,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
     } else if (selection!.status === "offered") {
-      direction = "Offer sent — waiting for them to accept.";
+      direction = "Proposal sent — waiting for them to accept.";
       if (prefs.initialPaymentRequired && !paymentDone) {
         direction += " After they accept, collect the deposit to confirm the booking.";
       }
@@ -319,9 +319,9 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     } else {
       if (allowOffer && allowContract) {
         direction = depositFirst && paymentDone
-          ? "Deposit is in. Send an offer or create a contract to finish the agreement."
-          : "Send an offer so they can accept this package, or create a contract from this package.";
-        primaryLabel = "Send offer";
+          ? "Deposit is in. Send a proposal or create a contract to finish the agreement."
+          : "Send a proposal so they can accept this package, or create a contract from this package.";
+        primaryLabel = "Send proposal";
         primaryAction = "send_offer";
         secondaryLabel = "Create contract";
         secondaryAction = "create_contract";
@@ -335,9 +335,9 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
         primaryHref = contractNewHref(input, selection!);
       } else {
         direction = depositFirst && paymentDone
-          ? "Deposit is in. Send an offer so they can accept this package."
-          : "Send an offer so they can accept this package.";
-        primaryLabel = "Send offer";
+          ? "Deposit is in. Send a proposal so they can accept this package."
+          : "Send a proposal so they can accept this package.";
+        primaryLabel = "Send proposal";
         primaryAction = "send_offer";
       }
       if (!prefs.initialPaymentRequired) {

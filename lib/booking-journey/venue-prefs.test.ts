@@ -123,7 +123,7 @@ describe("Configurable commercial Booked conditions", () => {
     assert.equal(j.stages[2]?.key, "agreement");
   });
 
-  it("contract-only venues hide Send offer as primary", () => {
+  it("contract-only venues hide Send proposal as primary", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",
       clientId: "client-1",

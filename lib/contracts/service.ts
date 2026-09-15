@@ -460,7 +460,9 @@ export async function buildContractMergeData(opts: {
     if (!selection && opts.clientId) selection = await getActiveSelectedPackageForClient(opts.clientId);
     if (selection && selection.status !== "superseded") {
       packageFromSelection = true;
-      packageSection = formatPackageSection(selection.name, selection.totalAmount, selection.includedItems);
+      packageSection = formatPackageSection(selection.name, selection.totalAmount, selection.includedItems, {
+        depositAmount: selection.depositAmount,
+      });
       if (selection.includedItems.length > 0) {
         includedItemsSummary = selection.includedItems
           .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}${l.unit ? ` ${l.unit}` : ""}`)

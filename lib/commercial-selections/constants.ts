@@ -30,6 +30,7 @@ export function formatPackageSection(
   name: string,
   totalAmount: number,
   items: CommercialSelectionItem[],
+  opts?: { depositAmount?: number },
 ): string {
   const lines = [`Selected package / services:`, `• ${name}`];
   if (items.length > 0) {
@@ -43,12 +44,17 @@ export function formatPackageSection(
   }
   lines.push("");
   lines.push(`Package total: $${totalAmount.toFixed(2)}`);
+  const deposit = opts?.depositAmount ?? 0;
+  if (deposit > 0) {
+    lines.push(`Deposit: $${deposit.toFixed(2)}`);
+    lines.push(`Remaining: $${remainingAmount(totalAmount, deposit).toFixed(2)}`);
+  }
   return lines.join("\n");
 }
 
 export const SELECTION_STATUS_LABEL: Record<string, string> = {
   draft: "Not sent",
-  offered: "Offer sent",
-  accepted: "Accepted",
+  offered: "Proposal sent",
+  accepted: "Proposal accepted",
   superseded: "Replaced",
 };

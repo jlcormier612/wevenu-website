@@ -138,7 +138,7 @@ export function BookingJourneyPanel({
           toast.error(result.message ?? "Could not mark accepted.");
           return;
         }
-        toast.success("Offer marked accepted.");
+        toast.success("Proposal marked accepted.");
         router.refresh();
       } catch {
         toast.error("Could not mark accepted. Reload and try again.");
@@ -157,18 +157,18 @@ export function BookingJourneyPanel({
           clientId,
         });
         if (!result.ok || !("acceptUrl" in result)) {
-          toast.error(("message" in result && result.message) || "Could not send offer.");
+          toast.error(("message" in result && result.message) || "Could not send proposal.");
           return;
         }
         setAcceptUrl(result.acceptUrl);
-        toast.success("Offer ready — share the link with the couple.");
+        toast.success("Proposal ready — share the link with the couple.");
         router.refresh();
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
         if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
-          toast.error("The app was updated — reload this page and try Send offer again.");
+          toast.error("The app was updated — reload this page and try Send proposal again.");
         } else {
-          toast.error("Could not send offer. Reload and try again.");
+          toast.error("Could not send proposal. Reload and try again.");
         }
       }
     });
@@ -204,9 +204,12 @@ export function BookingJourneyPanel({
             <div className="flex flex-wrap gap-2">
               {journey.currentKey === "agreement" && (
                 <>
+                  {(journey.prefs.agreementMethod === "offer" || journey.prefs.agreementMethod === "either") && (
                   <Button type="button" size="sm" onClick={() => setOfferOpen(true)}>
-                    Send offer
+                    Send proposal
                   </Button>
+                  )}
+                  {(journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either") && (
                   <Button
                     type="button"
                     size="sm"
@@ -223,6 +226,7 @@ export function BookingJourneyPanel({
                       "Create contract"
                     )}
                   </Button>
+                  )}
                 </>
               )}
               {(journey.primaryAction === "setup_payments" ||
@@ -241,11 +245,11 @@ export function BookingJourneyPanel({
           {journey.currentKey === "agreement" && selection.status === "draft" && (
             <p className="mt-3 text-sm text-muted-foreground">
               {journey.prefs.initialPaymentRequired
-                ? `Sending an offer lets them accept ${selection.name}. After they accept, you'll collect the ${formatCurrency(selection.depositAmount)} deposit. Or create a contract from this package — they sign, then you collect the deposit. You do not need to start a booking file first.`
-                : `Sending an offer lets them accept ${selection.name}. After they accept — or after they sign a contract — they are Booked. No deposit is required. You do not need to start a booking file first.`}
+                ? `Sending a proposal lets them accept ${selection.name}. After they accept, you'll collect the ${formatCurrency(selection.depositAmount)} deposit. Or create a contract from this package — they sign, then you collect the deposit. You do not need to start a booking file first.`
+                : `Sending a proposal lets them accept ${selection.name}. After they accept — or after they sign a contract — they are Booked. No deposit is required. You do not need to start a booking file first.`}
             </p>
           )}
-          {journey.primaryAction === "setup_payments" && (
+          {journey.primaryAction === "setup_payments" && journey.prefs.initialPaymentRequired && (
             <p className="mt-3 text-sm text-muted-foreground">
               Next: set up payments for the {formatCurrency(selection.depositAmount)} deposit.
               Planning stays optional until after they&apos;re Booked.
@@ -296,7 +300,7 @@ export function BookingJourneyPanel({
       >
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader className="mb-6">
-            <SheetTitle>Send offer</SheetTitle>
+            <SheetTitle>Send proposal</SheetTitle>
             <p className="text-sm text-muted-foreground">
               Share {selection?.name} — {selection ? formatCurrency(selection.totalAmount) : ""}
               {journey.prefs.initialPaymentRequired && selection
@@ -362,7 +366,7 @@ export function BookingJourneyPanel({
                   Sending…
                 </>
               ) : (
-                "Send offer"
+                "Send proposal"
               )}
             </Button>
           </div>
