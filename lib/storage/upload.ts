@@ -56,3 +56,27 @@ export function bustCache(url: string): string {
   const base = url.split("?")[0];
   return `${base}?t=${Date.now()}`;
 }
+
+const IMAGE_NAME = /\.(jpe?g|png|gif|webp|avif|svg)$/i;
+
+/**
+ * Public URLs for existing objects under a prefix in the uploads bucket.
+ * Listing is not deletion — used so brochure photography can reuse authored media.
+ */
+export async function listPublicUploadUrls(prefix: string): Promise<string[]> {
+  const supabase = createClient();
+  const folder = prefix.replace(/\/+$/, "");
+  const { data, error } = await supabase.storage.from("uploads").list(folder, {
+    limit: 100,
+    sortBy: { column: "created_at", order: "desc" },
+  });
+  if (error || !data) return [];
+  const urls: string[] = [];
+  for (const item of data) {
+    if (!item.name || item.name.startsWith(".") || item.name.endsWith("/") || item.id == null) continue;
+    if (!IMAGE_NAME.test(item.name)) continue;
+    const { data: pub } = supabase.storage.from("uploads").getPublicUrl(`${folder}/${item.name}`);
+    if (pub.publicUrl) urls.push(pub.publicUrl);
+  }
+  return urls;
+}

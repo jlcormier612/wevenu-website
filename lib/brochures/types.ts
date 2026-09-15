@@ -1,3 +1,5 @@
+import type { BrochurePhotoLayout } from "@/lib/brochures/photo-layout";
+
 /**
  * Brochures — Work Package D7B. A reusable, brandable overview of the
  * venue to share with prospects. Content is mostly live-reused from
@@ -14,6 +16,8 @@ export type Brochure = {
   includePackages: boolean;
   includeFaqs: boolean;
   closingText: string | null;
+  photoUrls: string[];
+  photoLayout: BrochurePhotoLayout;
   shareToken: string;
   /** Hello to Cheers starter key when provisioned from a protected master. */
   sourceMasterKey: string | null;
@@ -60,6 +64,8 @@ export type BrochureRenderData = {
     includePackages: boolean;
     includeFaqs: boolean;
     closingText: string | null;
+    photoUrls: string[];
+    photoLayout: BrochurePhotoLayout;
   };
   venue: {
     id: string;

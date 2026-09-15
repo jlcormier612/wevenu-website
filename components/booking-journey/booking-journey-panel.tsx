@@ -11,7 +11,9 @@ import {
   prepareCreateContractAction,
   sendOfferAction,
 } from "@/app/(app)/booking-journey/actions";
+import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { BookingJourneyStrip } from "@/components/booking-journey/booking-journey-strip";
+import { ProposalArtifact } from "@/components/booking-journey/proposal-artifact";
 import { SelectPackageSheet } from "@/components/booking-journey/select-package-sheet";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import { selectionStatusLabel } from "@/lib/booking-journey/model";
+import { proposalViewFromSelection } from "@/lib/booking-journey/proposal-view";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { PackageWithItems } from "@/lib/packages/types";
@@ -50,6 +53,7 @@ export function BookingJourneyPanel({
   const router = useRouter();
   const [selectOpen, setSelectOpen] = React.useState(false);
   const [offerOpen, setOfferOpen] = React.useState(false);
+  const [offerReviewOpen, setOfferReviewOpen] = React.useState(false);
   const [paymentsOpen, setPaymentsOpen] = React.useState(false);
   const [offerMessage, setOfferMessage] = React.useState("");
   const [acceptUrl, setAcceptUrl] = React.useState<string | null>(null);
@@ -162,6 +166,8 @@ export function BookingJourneyPanel({
         }
         setAcceptUrl(result.acceptUrl);
         toast.success("Proposal ready — share the link with the couple.");
+        setOfferReviewOpen(false);
+        setOfferOpen(true);
         router.refresh();
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
@@ -292,7 +298,7 @@ export function BookingJourneyPanel({
         open={offerOpen}
         onOpenChange={(v) => {
           setOfferOpen(v);
-          if (!v) {
+          if (!v && !offerReviewOpen) {
             setAcceptUrl(null);
             setOfferMessage("");
           }
@@ -359,7 +365,46 @@ export function BookingJourneyPanel({
             <Button type="button" variant="outline" onClick={() => setOfferOpen(false)} disabled={pending}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleSendOffer} disabled={pending || !selection}>
+            <Button
+              type="button"
+              onClick={() => {
+                setOfferReviewOpen(true);
+                setOfferOpen(false);
+              }}
+              disabled={!selection}
+            >
+              Review proposal
+            </Button>
+          </div>
+          {selection && selection.status !== "accepted" && (
+            <div className="mt-8 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">
+                Internal exception — does not send the proposal to the couple.
+              </p>
+              <button
+                type="button"
+                className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
+                disabled={pending}
+                onClick={handleMarkAccepted}
+              >
+                Mark accepted (offline)
+              </button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {selection ? (
+        <ArtifactReviewOverlay
+          open={offerReviewOpen}
+          eyebrow="Customer-facing proposal"
+          title={selection.name}
+          onBack={() => {
+            setOfferReviewOpen(false);
+            setOfferOpen(true);
+          }}
+          primary={
+            <Button type="button" size="sm" onClick={handleSendOffer} disabled={pending}>
               {pending ? (
                 <>
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -369,19 +414,14 @@ export function BookingJourneyPanel({
                 "Send proposal"
               )}
             </Button>
-          </div>
-          {selection && selection.status !== "accepted" && (
-            <button
-              type="button"
-              className="mt-4 text-xs text-muted-foreground underline-offset-2 hover:underline"
-              disabled={pending}
-              onClick={handleMarkAccepted}
-            >
-              Mark accepted (offline)
-            </button>
-          )}
-        </SheetContent>
-      </Sheet>
+          }
+        >
+          <ProposalArtifact
+            proposal={proposalViewFromSelection(selection, offerMessage)}
+            context="venue-preview"
+          />
+        </ArtifactReviewOverlay>
+      ) : null}
     </div>
   );
 }

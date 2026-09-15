@@ -134,7 +134,7 @@ export function NewContractForm({
         clientSignerContactIds: selectedSignerIds.length > 0 ? selectedSignerIds : undefined,
         selectionId,
       });
-      if (result.ok) { toast.success("Contract created."); router.push(`/contracts/${result.contractId}`); return; }
+      if (result.ok) { toast.success("Contract created."); router.push(`/contracts/${result.contractId}?review=1`); return; }
       if (result.errors) setErrors(result.errors);
       toast.error(result.message ?? "Please fix the highlighted fields.");
     });

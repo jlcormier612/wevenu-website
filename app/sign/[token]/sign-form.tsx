@@ -12,7 +12,15 @@ import { Label } from "@/components/ui/label";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 
-export function SignForm({ token, expectedName }: { token: string; expectedName?: string | null }) {
+export function SignForm({
+  token,
+  expectedName,
+  preview = false,
+}: {
+  token?: string;
+  expectedName?: string | null;
+  preview?: boolean;
+}) {
   const [name, setName] = React.useState(expectedName ?? "");
   const [consent, setConsent] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -20,6 +28,7 @@ export function SignForm({ token, expectedName }: { token: string; expectedName?
   const [pending, startTransition] = React.useTransition();
 
   function handleSign() {
+    if (preview || !token) return;
     if (!name.trim()) { setError("Please enter your full name."); return; }
     if (!consent) { setError("Please confirm you agree this constitutes your legal signature."); return; }
     setError("");
@@ -64,6 +73,7 @@ export function SignForm({ token, expectedName }: { token: string; expectedName?
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Enter your full name"
+          disabled={preview}
           className="bg-white"
           onKeyDown={(e) => e.key === "Enter" && handleSign()}
           aria-invalid={error ? true : undefined}
@@ -75,6 +85,7 @@ export function SignForm({ token, expectedName }: { token: string; expectedName?
           id="signer-consent"
           checked={consent}
           onCheckedChange={(checked) => setConsent(checked === true)}
+          disabled={preview}
           className="mt-0.5 bg-white data-[checked]:!border-[var(--venue-accent)] data-[checked]:!bg-[var(--venue-accent)]"
         />
         <Label htmlFor="signer-consent" className="text-xs font-normal text-gray-700 leading-snug">
@@ -90,7 +101,7 @@ export function SignForm({ token, expectedName }: { token: string; expectedName?
       <Button
         type="button"
         onClick={handleSign}
-        disabled={pending}
+        disabled={pending || preview}
         className="w-full text-white hover:opacity-90"
         style={{ backgroundColor: "var(--venue-primary)", borderColor: "var(--venue-primary)" }}
       >

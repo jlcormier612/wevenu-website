@@ -70,7 +70,16 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
           ),
         ),
 
-        venue.heroImageUrl ? React.createElement(Image, { src: venue.heroImageUrl, style: styles.heroImage }) : null,
+        brochure.photoUrls[0]
+          ? React.createElement(Image, { src: brochure.photoUrls[0], style: styles.heroImage })
+          : null,
+        brochure.photoUrls.length > 1
+          ? React.createElement(View, { style: { flexDirection: "row", gap: 8, marginBottom: 20 } },
+              ...brochure.photoUrls.slice(1, 3).map((src, i) =>
+                React.createElement(Image, { key: i, src, style: { flex: 1, height: 110, objectFit: "cover", borderRadius: 4 } }),
+              ),
+            )
+          : null,
 
         // Work Package D7B — a real bug caught by rendering a live PDF:
         // "Next Steps" was appearing alone on one page with its own text

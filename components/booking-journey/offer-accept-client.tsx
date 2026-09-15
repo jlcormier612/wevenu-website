@@ -7,28 +7,20 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { acceptOfferAction } from "@/app/offer/actions";
+import { ProposalArtifact } from "@/components/booking-journey/proposal-artifact";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/invoices/constants";
+import type { ProposalView } from "@/lib/booking-journey/proposal-view";
 
 export function OfferAcceptClient({
   token,
   offer,
 }: {
   token: string;
-  offer: {
-    name: string;
-    totalAmount: number;
-    depositAmount: number;
-    remainingAmount: number;
-    includedItems: { description: string; quantity: number; unit: string | null }[];
-    status: string;
-    offerMessage: string | null;
-  };
+  offer: ProposalView;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const accepted = offer.status === "accepted";
-  const showDeposit = offer.depositAmount > 0;
 
   function handleAccept() {
     startTransition(async () => {
@@ -43,42 +35,11 @@ export function OfferAcceptClient({
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-12">
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Your proposal</p>
-      <h1 className="mt-2 font-heading text-3xl text-heading">{offer.name}</h1>
-      <p className="mt-2 text-2xl font-semibold text-heading">{formatCurrency(offer.totalAmount)}</p>
-      {showDeposit ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Deposit {formatCurrency(offer.depositAmount)} · Remaining {formatCurrency(offer.remainingAmount)}
-        </p>
-      ) : null}
-      {offer.offerMessage && (
-        <p className="mt-6 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-heading whitespace-pre-wrap">
-          {offer.offerMessage}
-        </p>
-      )}
-      {offer.includedItems.length > 0 && (
-        <div className="mt-6">
-          <p className="text-sm font-medium text-heading">What&apos;s included</p>
-          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            {offer.includedItems.map((item, i) => (
-              <li key={`${item.description}-${i}`}>
-                • {item.description}
-                {item.quantity ? ` × ${item.quantity}` : ""}
-                {item.unit ? ` ${item.unit}` : ""}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <div className="mt-8">
-        {accepted ? (
-          <p className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-heading">
-            {showDeposit
-              ? "You've accepted this package. Your venue will collect the deposit next."
-              : "You've accepted this package. Your venue will confirm the booking next."}
-          </p>
-        ) : (
+    <ProposalArtifact
+      proposal={offer}
+      context="couple"
+      acceptSlot={
+        accepted ? undefined : (
           <Button type="button" size="lg" className="w-full" onClick={handleAccept} disabled={pending}>
             {pending ? (
               <>
@@ -89,8 +50,8 @@ export function OfferAcceptClient({
               "Accept proposal"
             )}
           </Button>
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }

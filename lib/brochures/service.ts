@@ -8,6 +8,10 @@ import type {
   Brochure, BrochureActionResult, BrochureInput, BrochureRenderData, BrochureWithActivity,
   CreateBrochureResult,
 } from "@/lib/brochures/types";
+import {
+  normalizeBrochurePhotoLayout,
+  normalizeBrochurePhotoUrls,
+} from "@/lib/brochures/photo-layout";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getPackages } from "@/lib/packages/service";
 import { getLead } from "@/lib/leads/service";
@@ -71,6 +75,7 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
     brochure: {
       id: brochure.id, name: brochure.name, welcomeText: brochure.welcomeText,
       includePackages: brochure.includePackages, includeFaqs: brochure.includeFaqs, closingText: brochure.closingText,
+      photoUrls: brochure.photoUrls, photoLayout: brochure.photoLayout,
     },
     venue: {
       id: venue.id, name: venue.name ?? "Your Venue", businessName: venue.businessName ?? null,
@@ -88,6 +93,7 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
 
 type PublicBrochureRow = {
   id: string; name: string; welcome_text: string | null; include_packages: boolean; include_faqs: boolean; closing_text: string | null;
+  photo_urls?: string[] | null; photo_layout?: string | null;
   venue_id: string; venue_name: string; venue_business_name: string | null; venue_logo_url: string | null; venue_story: string | null;
   venue_hero_image_url: string | null; venue_primary_color: string; venue_secondary_color: string; venue_accent_color: string;
   venue_email: string | null; venue_phone: string | null; venue_website: string | null;
@@ -108,6 +114,8 @@ export async function getBrochureRenderDataByToken(token: string): Promise<Broch
     brochure: {
       id: row.id, name: row.name, welcomeText: row.welcome_text,
       includePackages: row.include_packages, includeFaqs: row.include_faqs, closingText: row.closing_text,
+      photoUrls: normalizeBrochurePhotoUrls(row.photo_urls),
+      photoLayout: normalizeBrochurePhotoLayout(row.photo_layout),
     },
     venue: {
       id: row.venue_id, name: row.venue_name ?? "Your Venue", businessName: row.venue_business_name,
@@ -145,6 +153,18 @@ export async function updateBrochure_(id: string, input: BrochureInput): Promise
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateBrochure(supabase, venueId, id, input);
     await repo.insertActivity(supabase, venueId, id, "updated", "Brochure updated");
+    return { ok: true } as BrochureActionResult;
+  });
+  return result as BrochureActionResult;
+}
+
+export async function updateBrochurePhotography_(
+  id: string,
+  photoUrls: string[],
+  photoLayout: string,
+): Promise<BrochureActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateBrochurePhotography(supabase, venueId, id, photoUrls, photoLayout);
     return { ok: true } as BrochureActionResult;
   });
   return result as BrochureActionResult;

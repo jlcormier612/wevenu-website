@@ -21,11 +21,13 @@ describe("Customer-facing Offer → Proposal terminology", () => {
     }
     const panel = readFileSync(resolve("components/booking-journey/booking-journey-panel.tsx"), "utf8");
     assert.match(panel, /Send proposal/);
+    assert.match(panel, /Review proposal/);
     const model = readFileSync(resolve("lib/booking-journey/model.ts"), "utf8");
     assert.match(model, /primaryLabel = "Send proposal"/);
     const couple = readFileSync(resolve("components/booking-journey/offer-accept-client.tsx"), "utf8");
-    assert.match(couple, /Your proposal/);
     assert.match(couple, /Accept proposal/);
+    const artifact = readFileSync(resolve("components/booking-journey/proposal-artifact.tsx"), "utf8");
+    assert.match(artifact, /Your proposal/);
     const labels = readFileSync(resolve("lib/commercial-selections/constants.ts"), "utf8");
     assert.match(labels, /Proposal sent/);
     assert.match(labels, /Proposal accepted/);
