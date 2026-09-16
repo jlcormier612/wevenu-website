@@ -154,6 +154,9 @@ describe("navigation terminology in user-facing copy", () => {
     );
     assert.match(sql, /update public\.success_library_articles/);
     assert.match(sql, /'Sales → Leads', 'Your Relationships → Leads'/);
+    // There is no "body" column — the editorial body lives in why_it_matters.
+    assert.match(sql, /why_it_matters/);
+    assert.doesNotMatch(sql, /\bset body\b|where body\b/);
     const seeded = readFileSync(
       resolve("supabase/migrations/20261386000000_help_guides_final_content.sql"),
       "utf8",
