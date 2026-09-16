@@ -465,8 +465,21 @@ html:has(.htc-staff) [data-slot="table"] {
   body {
     @apply bg-background text-foreground;
   }
+  /*
+   * Root type scale — 17px, deliberately global across all three
+   * experiences (staff, couple portal, vendor). The staff rules above are
+   * already expressed in rem, so they resolve to their intended larger
+   * sizes from this root alone (0.9375rem → ~16px card/table body,
+   * 1.0625rem → ~18px card titles). Do not also raise those rem values;
+   * that would apply the increase twice.
+   *
+   * Utilities pinned in px (text-[10px] and friends) intentionally do not
+   * scale — badges, calendar chips, and other genuinely micro text stay
+   * micro.
+   */
   html {
     @apply font-sans;
+    font-size: 17px;
   }
   h1,
   h2,
