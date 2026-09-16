@@ -27,7 +27,7 @@ import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/pr
 import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
 import { listOfferings } from "@/lib/offerings/service";
 
-export const metadata: Metadata = { title: "Library" };
+export const metadata: Metadata = { title: "Templates" };
 
 // Work Package BA4, Step 1B — the Library landing page. Organizes the
 // existing template destinations. Work Package D7 replaced the "Coming
@@ -120,7 +120,7 @@ export default async function LibraryPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Library"
+        title="Templates"
         description="Your venue's toolbox — the things you set up once and use again and again: agreements, packages, planning tools, marketing, and more."
       />
 

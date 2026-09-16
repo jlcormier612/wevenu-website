@@ -22,7 +22,9 @@ export function filterNavSectionsForRole(
 ): NavSection[] {
   return sections
     .map((section) => {
-      if (section.label !== "Financials") return section;
+      // Matched on the stable id, not the label: "Financials" is editorial and
+      // a rewording must not quietly expose invoices/payments to staff.
+      if (section.id !== "financials") return section;
       const items = section.items.filter((item: NavItem) =>
         canAccessFinancialNavHref(role, item.href),
       );

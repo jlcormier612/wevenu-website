@@ -7,6 +7,7 @@ import {
   FileSignature,
   FileText,
   GraduationCap,
+  FolderOpen,
   Inbox as InboxIcon,
   Info,
   LayoutDashboard,
@@ -22,16 +23,43 @@ import {
   Workflow,
 } from "lucide-react";
 
+/**
+ * Stable identity for a destination. Labels are editorial and have already
+ * changed once (Help & Guides → Guidance, Your People → Your Relationships);
+ * ids are what code should match on so a future rewording cannot silently
+ * break permission filtering or React keys.
+ */
+export type NavItemId =
+  | "dashboard" | "reports" | "guidance"
+  | "leads" | "clients" | "vendors"
+  | "calendar" | "tours"
+  | "inbox" | "automations"
+  | "templates" | "documents"
+  | "contracts" | "invoices" | "payments"
+  | "task-center" | "requests"
+  | "setup" | "settings" | "venue-guide" | "feedback";
+
+export type NavSectionId =
+  | "overview"
+  | "relationships"
+  | "scheduling"
+  | "communication"
+  | "library"
+  | "financials"
+  | "to-dos"
+  | "your-venue";
+
 export type NavItem = {
+  id: NavItemId;
   title: string;
   href: string;
   icon: LucideIcon;
 };
 
 export type NavSection = {
+  id: NavSectionId;
   label: string;
   items: NavItem[];
-  adminOnly?: boolean;
 };
 
 /**
@@ -43,69 +71,74 @@ export type NavSection = {
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
+    id: "overview",
     label: "Overview",
     items: [
-      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { title: "Reports", href: "/reporting", icon: BarChart3 },
-      { title: "Calendar", href: "/calendar", icon: CalendarDays },
-      { title: "Help & Guides", href: "/help", icon: GraduationCap },
+      { id: "dashboard", title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { id: "reports", title: "Reports", href: "/reporting", icon: BarChart3 },
+      // "Guidance" is how to use Hello to Cheers. Distinct from Venue Guide
+      // under Your Venue, which is the venue's own operational content.
+      { id: "guidance", title: "Guidance", href: "/help", icon: GraduationCap },
     ],
   },
   {
-    label: "Sales",
+    id: "relationships",
+    label: "Your Relationships",
     items: [
-      { title: "Leads", href: "/leads", icon: Workflow },
-      { title: "Tours", href: "/tours", icon: CalendarCheck },
+      { id: "leads", title: "Leads", href: "/leads", icon: Workflow },
+      { id: "clients", title: "Clients", href: "/clients", icon: Users },
+      { id: "vendors", title: "Vendors", href: "/vendors", icon: Store },
     ],
   },
   {
-    label: "Clients",
+    id: "scheduling",
+    label: "Scheduling",
     items: [
-      { title: "Clients", href: "/clients", icon: Users },
-      { title: "Vendors", href: "/vendors", icon: Store },
+      { id: "calendar", title: "Calendar", href: "/calendar", icon: CalendarDays },
+      { id: "tours", title: "Tours", href: "/tours", icon: CalendarCheck },
     ],
   },
   {
+    id: "communication",
     label: "Communication",
     items: [
-      { title: "Inbox", href: "/messaging", icon: InboxIcon },
-      { title: "Automations", href: "/communication/series", icon: Repeat },
+      { id: "inbox", title: "Inbox", href: "/messaging", icon: InboxIcon },
+      { id: "automations", title: "Automations", href: "/communication/series", icon: Repeat },
     ],
   },
   {
-    label: "Tasks",
-    items: [
-      { title: "Task Center", href: "/tasks", icon: ClipboardList },
-      { title: "Requests", href: "/requests", icon: ListChecks },
-    ],
-  },
-  {
-    label: "Financials",
-    items: [
-      { title: "Contracts", href: "/contracts", icon: FileSignature },
-      { title: "Invoices", href: "/invoices", icon: FileText },
-      { title: "Payments", href: "/payments", icon: CreditCard },
-    ],
-  },
-  {
+    id: "library",
     label: "Library",
     items: [
-      { title: "Library", href: "/library", icon: Library },
+      { id: "templates", title: "Templates", href: "/library", icon: Library },
+      { id: "documents", title: "Documents", href: "/library/documents", icon: FolderOpen },
     ],
   },
   {
+    id: "financials",
+    label: "Financials",
+    items: [
+      { id: "contracts", title: "Contracts", href: "/contracts", icon: FileSignature },
+      { id: "invoices", title: "Invoices", href: "/invoices", icon: FileText },
+      { id: "payments", title: "Payments", href: "/payments", icon: CreditCard },
+    ],
+  },
+  {
+    id: "to-dos",
+    label: "To Do’s",
+    items: [
+      { id: "task-center", title: "Task Center", href: "/tasks", icon: ClipboardList },
+      { id: "requests", title: "Requests", href: "/requests", icon: ListChecks },
+    ],
+  },
+  {
+    id: "your-venue",
     label: "Your Venue",
     items: [
-      { title: "Setup", href: "/setup-hub", icon: SquareCheckBig },
-      { title: "Settings", href: "/settings", icon: Settings },
-      { title: "Venue Guide", href: "/guide", icon: Info },
-    ],
-  },
-  {
-    label: "Help",
-    adminOnly: true,
-    items: [
-      { title: "Feedback/Requests", href: "/admin/feedback", icon: MessageSquareDot },
+      { id: "setup", title: "Setup", href: "/setup-hub", icon: SquareCheckBig },
+      { id: "settings", title: "Settings", href: "/settings", icon: Settings },
+      { id: "venue-guide", title: "Venue Guide", href: "/guide", icon: Info },
+      { id: "feedback", title: "Feedback", href: "/feedback", icon: MessageSquareDot },
     ],
   },
 ];

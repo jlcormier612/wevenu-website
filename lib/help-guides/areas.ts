@@ -54,7 +54,11 @@ export function isHelpGuideCategory(value: string): boolean {
   return HELP_GUIDE_CATEGORY_NAMES.includes(value);
 }
 
-/** Customer-facing product name. */
-export const HELP_GUIDES_TITLE = "Help & Guides";
+/**
+ * Customer-facing name of the product-guidance destination (Overview →
+ * Guidance). Deliberately not "Help & Guides" any more, and deliberately not
+ * "Venue Guide" — that is the venue's own operational content under Your Venue.
+ */
+export const HELP_GUIDES_TITLE = "Guidance";
 export const HELP_GUIDES_TAGLINE = HELP_GUIDES_LANDING_TAGLINE;
 export const HELP_GUIDES_HOME_HREF = "/help";

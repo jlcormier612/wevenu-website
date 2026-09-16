@@ -54,7 +54,7 @@ Make sure your basic venue information is correct.
 
 Then go to:
 
-**Sales → Leads**
+**Your Relationships → Leads**
 
 This is where you'll start working with inquiries and moving them through your sales process.
 
@@ -82,7 +82,7 @@ If you're ready to start creating bookings and invoices, make sure you have at l
 
 **3. Your inquiry process**
 
-Take a look at **Sales → Leads** and make sure your Pipeline makes sense for the way your venue handles new inquiries.
+Take a look at **Your Relationships → Leads** and make sure your Pipeline makes sense for the way your venue handles new inquiries.
 
 You can build message templates, questionnaires, planning templates, inventory, and other reusable pieces as you need them.
 
@@ -134,7 +134,7 @@ Different venues handle tours differently. Your schedule should reflect the way 
 
 Go to:
 
-**Sales → Leads → Pipeline**
+**Your Relationships → Leads → Pipeline**
 
 Each Lead appears in the stage that represents where they are in the process.
 
@@ -160,7 +160,7 @@ Your Pipeline answers one simple question:
 
 Go to:
 
-**Sales → Leads → Pipeline Templates**
+**Your Relationships → Leads → Pipeline Templates**
 
 You can customize the names and order of your Pipeline stages so they make sense for the way your venue sells.
 

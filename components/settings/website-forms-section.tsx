@@ -164,7 +164,7 @@ export function WebsiteFormsSection({
           </li>
           <li>
             <Link href="/leads/new" className="text-primary hover:underline">Manual entry</Link>
-            <span className="text-muted-foreground"> — add a lead yourself from Sales → Leads</span>
+            <span className="text-muted-foreground"> — add a lead yourself from Your Relationships → Leads</span>
           </li>
         </ul>
         <p className="text-xs text-muted-foreground italic pt-1">

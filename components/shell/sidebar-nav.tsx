@@ -26,28 +26,31 @@ export function SidebarNav({
       .catch(() => {});
   }, [pathname]);
 
-  const isAdmin  = process.env.NEXT_PUBLIC_WEVENU_ADMIN === "true";
-  const sections = filterNavSectionsForRole(
-    NAV_SECTIONS.filter(s => !s.adminOnly || isAdmin),
-    staffRole,
-  );
+  const sections = filterNavSectionsForRole(NAV_SECTIONS, staffRole);
 
   return (
     <nav className="flex flex-col gap-6 px-3 py-5" aria-label="Primary">
       {sections.map((section) => (
-        <div key={section.label} className="flex flex-col gap-1">
+        <div key={section.id} className="flex flex-col gap-1">
           <p className="px-3 pb-1.5 text-xs font-medium uppercase tracking-[0.2em] text-sidebar-foreground/60">
             {section.label}
           </p>
           {section.items.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            // Templates sits at /library, which prefixes every other Library
+            // destination including /library/documents — a plain prefix match
+            // would light both Library items at once. Templates still owns its
+            // own sub-pages (/library/contracts, /library/offerings, …); it just
+            // hands /library/documents to Documents.
+            const isActive = item.id === "templates"
+              ? pathname === item.href ||
+                (pathname.startsWith(`${item.href}/`) && !pathname.startsWith("/library/documents"))
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon     = item.icon;
-            const isMsg    = item.href === "/messaging";
-            const badge    = isMsg && unread > 0 ? unread : 0;
+            const badge    = item.id === "inbox" && unread > 0 ? unread : 0;
 
             return (
               <Link
-                key={item.href}
+                key={item.id}
                 href={item.href}
                 onClick={onNavigate}
                 aria-current={isActive ? "page" : undefined}
