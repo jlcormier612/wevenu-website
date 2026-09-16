@@ -122,6 +122,25 @@ export async function getVenueDocuments(client: DbClient, venueId: string): Prom
   return (data as DocRow[]).map(mapDoc);
 }
 
+/**
+ * One venue-level document. The four null predicates are the definition of
+ * "venue-level", so this cannot be used to reach an entity-scoped document —
+ * Library actions must never operate on a lead/client/event/vendor file.
+ */
+export async function findVenueDocument(
+  client: DbClient,
+  venueId: string,
+  documentId: string,
+): Promise<Document | null> {
+  const { data, error } = await client.from("documents").select("*")
+    .eq("id", documentId)
+    .eq("venue_id", venueId)
+    .is("lead_id", null).is("client_id", null).is("event_id", null).is("vendor_id", null)
+    .maybeSingle<DocRow>();
+  if (error) throw error;
+  return data ? mapDoc(data) : null;
+}
+
 export async function insertVenueDocument(client: DbClient, venueId: string, payload: DocumentUploadPayload): Promise<string> {
   const tags = payload.tags.split(",").map((t) => t.trim()).filter(Boolean);
   const { data, error } = await client.from("documents").insert({
@@ -288,6 +307,21 @@ export async function listDocumentFileVersionPaths(
     .eq("document_id", documentId);
   if (error) throw error;
   return ((data ?? []) as { storage_path: string }[]).map((r) => r.storage_path).filter(Boolean);
+}
+
+export async function findDocumentStoragePath(
+  client: DbClient,
+  venueId: string,
+  documentId: string,
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("documents")
+    .select("storage_path")
+    .eq("id", documentId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ storage_path: string }>();
+  if (error) throw error;
+  return data?.storage_path ?? null;
 }
 
 export async function deleteDocument(

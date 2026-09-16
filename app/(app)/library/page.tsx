@@ -21,6 +21,7 @@ import { getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { getBrochures } from "@/lib/brochures/service";
 import { getSavedReports } from "@/lib/saved-reports/service";
+import { getVenueDocuments } from "@/lib/documents/service";
 import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
 import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/provision";
 import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
@@ -89,6 +90,7 @@ export default async function LibraryPage() {
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
     packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates, inventoryTemplates,
     questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports, offeringsAll,
+    venueDocuments,
   ] = await Promise.all([
     getContractTemplates(),
     getPlaybookTemplates(),
@@ -104,6 +106,7 @@ export default async function LibraryPage() {
     getBrochures(true),
     getSavedReports(),
     listOfferings(true),
+    getVenueDocuments(),
   ]);
   const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
   const brochures = brochuresAll.filter((b) => !b.isArchived);
@@ -124,6 +127,10 @@ export default async function LibraryPage() {
       <Group title="Agreements & Forms">
         <ToolboxCard title="Contract Templates" description="Reusable contracts with fill-in details, ready to send." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
         <ToolboxCard title="Questionnaires & Feedback" description="Client Planning Questionnaire, Final Details, and Post-Event Feedback starters." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
+      </Group>
+
+      <Group title="Files">
+        <ToolboxCard title="Documents" description="Files you reuse across bookings — insurance certificates, maps, rain plans." href="/library/documents" count={venueDocuments.length} icon={FileText} />
       </Group>
 
       <Group title="Pricing &amp; Packages">
