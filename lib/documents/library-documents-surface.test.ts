@@ -66,9 +66,19 @@ describe("Library Documents surface", () => {
 
   it("tells the venue what to detach instead of failing silently", () => {
     assert.match(actions, /describeBlockingReferences/);
-    assert.match(actions, /Detach it there first/);
-    assert.match(manager, /state: "blocked"/);
-    assert.match(manager, /Can&rsquo;t delete/);
+    assert.match(manager, /Detach it there first/);
+    assert.match(manager, /Can&rsquo;t delete this yet/);
+    // Shown against the document itself, and persistent — not a toast that
+    // disappears before it has been read.
+    assert.match(manager, /blocked\?\.documentId === doc\.id/);
+    assert.match(manager, /role="alert"/);
+  });
+
+  it("phrases the refusal so it reads correctly for one or many references", () => {
+    // "1 floor plan template still use this" was the bug; subject-first fixes
+    // singular and plural at once.
+    assert.match(actions, /Still needed by \$\{describeBlockingReferences/);
+    assert.doesNotMatch(actions, /\} still use this document/);
   });
 
   it("says so when a sent message will keep its copy", () => {
@@ -79,5 +89,20 @@ describe("Library Documents surface", () => {
     const upload = manager.match(/async function handleUpload[\s\S]*?\n {2}\}/)?.[0] ?? "";
     assert.match(upload, /if \(!saved\.ok\)/);
     assert.match(upload, /storage\.from\("documents"\)\.remove\(\[storagePath\]\)/);
+  });
+
+  it("deletes the storage object with a client that storage actually accepts", () => {
+    // Found in Sandbox: deleteDocument ran the removal through the *browser*
+    // client, which has no session server-side, so storage returned 403
+    // AccessDenied for every delete. The error was never read, so the row
+    // vanished and the file stayed in the bucket — still fetchable by path.
+    const service = readFileSync(resolve("lib/documents/service.ts"), "utf8");
+    const del = service.match(/export async function deleteDocument[\s\S]*?\n\}/)?.[0] ?? "";
+    assert.ok(del.length > 0);
+    assert.match(del, /await c\.storage\.from\("documents"\)\.remove\(paths\)/);
+    // The failure must surface instead of leaving a phantom deletion behind.
+    assert.match(del, /if \(error\) throw error/);
+    assert.doesNotMatch(del, /browser\.storage/);
+    assert.doesNotMatch(service, /supabase\/client/);
   });
 });

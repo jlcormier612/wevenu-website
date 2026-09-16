@@ -13,7 +13,7 @@
 
 import * as React from "react";
 
-import { Download, Eye, FileText, Loader2, Pencil, Search, Trash2, Upload } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Lock, Pencil, Search, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -37,8 +37,14 @@ const ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp
 
 type DeleteTarget =
   | { doc: Document; state: "checking" }
-  | { doc: Document; state: "confirm"; retainStorage: boolean }
-  | { doc: Document; state: "blocked"; reason: string };
+  | { doc: Document; state: "confirm"; retainStorage: boolean };
+
+/**
+ * A refusal is shown against the document it concerns and stays until
+ * dismissed — a modal would make the venue dismiss the explanation to go read
+ * what it referred to, and a toast would take it away before they had.
+ */
+type BlockedNotice = { documentId: string; reason: string };
 
 export function LibraryDocumentsManager({ documents }: { documents: Document[] }) {
   const [query, setQuery] = React.useState("");
@@ -47,6 +53,7 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
   const [renameValue, setRenameValue] = React.useState("");
   const [pendingRename, setPendingRename] = React.useState(false);
   const [target, setTarget] = React.useState<DeleteTarget | null>(null);
+  const [blocked, setBlocked] = React.useState<BlockedNotice | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const fileInput = React.useRef<HTMLInputElement>(null);
 
@@ -119,6 +126,7 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
   }
 
   async function beginDelete(doc: Document) {
+    setBlocked(null);
     setTarget({ doc, state: "checking" });
     const info = await getLibraryDocumentDeletionInfoAction(doc.id);
     if (!info.ok) {
@@ -126,11 +134,12 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
       toast.error(info.message);
       return;
     }
-    setTarget(
-      info.blocked
-        ? { doc, state: "blocked", reason: info.reason }
-        : { doc, state: "confirm", retainStorage: info.retainStorage },
-    );
+    if (info.blocked) {
+      setTarget(null);
+      setBlocked({ documentId: doc.id, reason: `${info.reason} Detach it there first, then delete it here.` });
+      return;
+    }
+    setTarget({ doc, state: "confirm", retainStorage: info.retainStorage });
   }
 
   async function confirmDelete() {
@@ -138,13 +147,13 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
     setDeletePending(true);
     const result = await deleteLibraryDocumentAction(target.doc.id);
     setDeletePending(false);
+    setTarget(null);
     if (result.ok) {
-      setTarget(null);
       toast.success("Document deleted.");
     } else {
       // The server re-checks, so a reference added since the dialog opened
       // surfaces here rather than destroying the file.
-      setTarget({ doc: target.doc, state: "blocked", reason: result.message ?? "Still in use." });
+      setBlocked({ documentId: target.doc.id, reason: result.message ?? "This document is still in use." });
     }
   }
 
@@ -188,7 +197,8 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border bg-card">
           {visible.map((doc) => (
-            <li key={doc.id} className="flex flex-wrap items-center gap-3 p-3 sm:p-4">
+            <li key={doc.id} className="p-3 sm:p-4">
+              <div className="flex flex-wrap items-center gap-3">
               <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1">
                 {renaming === doc.id ? (
@@ -278,15 +288,37 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              </div>
+
+              {target?.state === "checking" && target.doc.id === doc.id && (
+                <p className="mt-2 text-sm text-muted-foreground" role="status">
+                  Checking what uses this document…
+                </p>
+              )}
+
+              {blocked?.documentId === doc.id && (
+                <div
+                  role="alert"
+                  className="mt-2 flex flex-wrap items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm"
+                >
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <p className="min-w-0 flex-1 text-muted-foreground">
+                    <span className="font-medium text-heading">Can&rsquo;t delete this yet. </span>
+                    {blocked.reason}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setBlocked(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
-      )}
-
-      {target?.state === "checking" && (
-        <p className="text-sm text-muted-foreground" role="status">
-          Checking what uses “{target.doc.name}”…
-        </p>
       )}
 
       <LibraryDeleteConfirmDialog
@@ -300,18 +332,6 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
         }
         pending={deletePending}
         onConfirm={() => void confirmDelete()}
-        onCancel={() => setTarget(null)}
-      />
-
-      <LibraryDeleteConfirmDialog
-        open={target?.state === "blocked"}
-        itemName={target?.doc.name ?? ""}
-        itemLabel="document"
-        title={<>Can&rsquo;t delete &ldquo;{target?.doc.name}&rdquo; yet</>}
-        description={target?.state === "blocked" ? target.reason : ""}
-        actionVerb="Close"
-        pendingLabel="Closing…"
-        onConfirm={() => setTarget(null)}
         onCancel={() => setTarget(null)}
       />
     </div>

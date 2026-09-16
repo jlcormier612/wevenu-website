@@ -92,10 +92,12 @@ export async function getLibraryDocumentDeletionInfoAction(
       }),
     );
     if (plan.blocked) {
+      // Subject-first so the sentence reads correctly whether one thing or
+      // several are using the file.
       return {
         ok: true,
         blocked: true,
-        reason: `${describeBlockingReferences(plan.blocking)} still use this document.`,
+        reason: `Still needed by ${describeBlockingReferences(plan.blocking)}.`,
       };
     }
     return { ok: true, blocked: false, retainStorage: plan.retainStorage };

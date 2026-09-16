@@ -1,5 +1,4 @@
 import { createClient } from "@/integrations/supabase/server";
-import { createClient as createBrowserClient } from "@/integrations/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/documents/repository";
 import type {
@@ -155,12 +154,19 @@ export async function deleteDocument(documentId: string): Promise<DocumentAction
     // message may still be serving that exact object. retainStorage covers
     // that case by keeping the file and dropping only the row.
     const { isDocumentsBucketPath } = await import("@/lib/conversations/attachment-document");
-    const browser = createBrowserClient();
     const paths = plan.retainStorage
       ? []
       : [storagePath, ...versionPaths].filter((p): p is string => !!p && isDocumentsBucketPath(p));
     if (paths.length > 0) {
-      await browser.storage.from("documents").remove(paths);
+      // The request-scoped server client, not the browser client. This runs
+      // server-side, where the browser client carries no session, so Storage
+      // answered every remove() with 403 AccessDenied — and the error was
+      // discarded, so the row went away while the object stayed in the bucket
+      // forever, leaving a "deleted" file still retrievable by anyone holding
+      // its path. documents_storage_delete grants delete to `authenticated`,
+      // which is exactly what this client is; no service-role escalation needed.
+      const { error } = await c.storage.from("documents").remove(paths);
+      if (error) throw error;
     }
     return { ok: true } as DocumentActionResult;
   });
