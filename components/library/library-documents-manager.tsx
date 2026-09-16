@@ -29,6 +29,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/integrations/supabase/client";
+import { venueFileHref } from "@/lib/documents/access";
 import type { Document } from "@/lib/documents/types";
 
 const MAX_FILE_SIZE_MB = 25;
@@ -234,11 +235,16 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
               </div>
 
               <div className="flex shrink-0 items-center gap-1">
+                {/*
+                  The documents bucket is private, so the stored public URL is
+                  dead. This route checks the caller's venue and redirects to a
+                  short-lived signed URL.
+                */}
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  render={<a href={doc.storageUrl} target="_blank" rel="noreferrer" />}
+                  render={<a href={venueFileHref(doc.id)} target="_blank" rel="noreferrer" />}
                 >
                   <Eye className="mr-1.5 h-4 w-4" />Preview
                 </Button>
@@ -257,7 +263,7 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      render={<a href={doc.storageUrl} download={doc.fileName} />}
+                      render={<a href={venueFileHref(doc.id)} download={doc.fileName} />}
                     >
                       <Download className="mr-2 h-4 w-4" />Download
                     </DropdownMenuItem>
