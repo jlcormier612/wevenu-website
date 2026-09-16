@@ -91,6 +91,17 @@ describe("Library Documents surface", () => {
     assert.match(upload, /storage\.from\("documents"\)\.remove\(\[storagePath\]\)/);
   });
 
+  it("uploads under {venue_id}/ so the bucket policies permit it", () => {
+    // Found in Sandbox: a literal `venue/` prefix is rejected outright. The
+    // documents policies compare (storage.foldername(name))[1] against
+    // current_user_venue_id(), so uploads AND deletes both 403 on any path that
+    // does not start with the venue's own id.
+    assert.match(manager, /\$\{venueId\}\/library\//);
+    assert.doesNotMatch(manager, /storagePath = `venue\//);
+    // The id has to reach the component for that path to be constructible.
+    assert.match(page, /venueId=\{venue\.id\}/);
+  });
+
   it("deletes the storage object with a client that storage actually accepts", () => {
     // Found in Sandbox: deleteDocument ran the removal through the *browser*
     // client, which has no session server-side, so storage returned 403

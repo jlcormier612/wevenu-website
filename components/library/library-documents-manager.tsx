@@ -46,7 +46,13 @@ type DeleteTarget =
  */
 type BlockedNotice = { documentId: string; reason: string };
 
-export function LibraryDocumentsManager({ documents }: { documents: Document[] }) {
+export function LibraryDocumentsManager({
+  documents,
+  venueId,
+}: {
+  documents: Document[];
+  venueId: string;
+}) {
   const [query, setQuery] = React.useState("");
   const [uploading, setUploading] = React.useState(false);
   const [renaming, setRenaming] = React.useState<string | null>(null);
@@ -77,7 +83,12 @@ export function LibraryDocumentsManager({ documents }: { documents: Document[] }
     setUploading(true);
     const supabase = createClient();
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-    const storagePath = `venue/${crypto.randomUUID()}.${ext}`;
+    // {venue_id}/… is required, not cosmetic: the documents bucket policies
+    // compare the first path segment to current_user_venue_id(), so a literal
+    // prefix here makes upload and delete both fail with an RLS violation.
+    // "library" takes the entity-type slot these paths carry, since a Library
+    // file belongs to the venue rather than to one lead or event.
+    const storagePath = `${venueId}/library/${crypto.randomUUID()}.${ext}`;
     try {
       const { error: uploadError } = await supabase.storage
         .from("documents")
