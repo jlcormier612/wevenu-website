@@ -59,7 +59,7 @@ export default function FeedbackPage() {
     <div className="space-y-6">
       <PageHeader
         title="Give feedback"
-        description="Talk to the people who build Hello to Cheers — ask for help, report a problem, or tell us what to build next."
+        description="Talk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next."
       />
 
       <div className="grid gap-2 sm:grid-cols-2">
