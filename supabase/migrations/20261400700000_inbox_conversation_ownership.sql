@@ -88,38 +88,54 @@ declare
   v_ellie_rel uuid := '59d4fb51-28b9-4a74-92c4-a1058303ed96';
   v_colby_rel uuid := 'c8c4c102-8603-48af-b003-b17b2a222fdd';
   v_colby_client uuid := 'e6097b70-3018-4392-a7db-79d0c40f805e';
-  v_colby_lead uuid := '2095f329-da89-4689-8453-d3bc6301a9ba';
+  v_colby_lead uuid;
+  v_ellie_client uuid := '509d5d56-6b4a-4ce5-906a-9b8a75f934ed';
 begin
-  if exists (
+  if not exists (
     select 1 from public.clients
     where id = v_colby_client and venue_id = v_venue and relationship_id = v_ellie_rel
-  ) and exists (
+  ) then
+    raise notice 'Colby Yagnesak client not on Ellie relationship — skip repair.';
+    return;
+  end if;
+
+  if not exists (
     select 1 from public.venue_customer_relationships where id = v_colby_rel and venue_id = v_venue
   ) then
-    update public.clients
-    set relationship_id = v_colby_rel
-    where id = v_colby_client and venue_id = v_venue;
+    raise notice 'Colby relationship missing — skip repair.';
+    return;
+  end if;
 
-    -- Re-stamp Colby venue_couple as lead-owned (tour_scheduled opportunity).
-    update public.conversations
-    set inbox_owner_kind = 'lead',
-        inbox_owner_lead_id = v_colby_lead,
-        inbox_owner_client_id = null
-    where venue_id = v_venue
-      and relationship_id = v_colby_rel
-      and conversation_kind = 'venue_couple';
+  update public.clients
+  set relationship_id = v_colby_rel
+  where id = v_colby_client and venue_id = v_venue;
 
-    -- Ellie conversation: client-owned (lifecycle booked), name from Ellie client.
+  select l.id into v_colby_lead
+  from public.leads l
+  where l.venue_id = v_venue
+    and l.relationship_id = v_colby_rel
+  order by l.created_at desc
+  limit 1;
+
+  update public.conversations
+  set inbox_owner_kind = 'lead',
+      inbox_owner_lead_id = v_colby_lead,
+      inbox_owner_client_id = null
+  where venue_id = v_venue
+    and relationship_id = v_colby_rel
+    and conversation_kind = 'venue_couple';
+
+  if exists (select 1 from public.clients where id = v_ellie_client and venue_id = v_venue) then
     update public.conversations
     set inbox_owner_kind = 'client',
         inbox_owner_lead_id = null,
-        inbox_owner_client_id = '509d5d56-6b4a-4ce5-906a-9b8a75f934ed'
+        inbox_owner_client_id = v_ellie_client
     where venue_id = v_venue
       and relationship_id = v_ellie_rel
       and conversation_kind = 'venue_couple';
-
-    raise notice 'Repaired Colby Yagnesak client onto Colby relationship';
   end if;
+
+  raise notice 'Repaired Colby Yagnesak client onto Colby relationship';
 end $$;
 
 -- Inbox Event attribute filters + expanded sort.

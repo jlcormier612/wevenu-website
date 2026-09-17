@@ -116,7 +116,7 @@ export function buildBusinessSnapshotCards(input: {
         ? "No open leads"
         : formatCount(input.openLeadCount, "open lead", "open leads"),
       secondary: leadEmpty
-        ? "Nothing currently in play (not booked, lost, or cancelled)."
+        ? "No active opportunities right now."
         : input.openLeadBudgetsPresent > 0
           ? `${formatUsd(input.openLeadValue)} estimated value`
           : "No estimated value yet",
@@ -138,7 +138,7 @@ export function buildBusinessSnapshotCards(input: {
       secondary: bookedEmpty
         ? "Your first booked event will appear here."
         : `${formatUsd(input.bookedValue)} contracted`,
-      tertiary: bookedEmpty ? "" : "Financially committed bookings",
+      tertiary: bookedEmpty ? "" : "Confirmed bookings with a signed commitment",
       href: clientListFilterHref("booked_business"),
       actionLabel: "View booked business",
       empty: bookedEmpty,
@@ -152,7 +152,7 @@ export function buildBusinessSnapshotCards(input: {
       secondary: cashEmpty
         ? "Collected payments will show here."
         : "All-time collected",
-      tertiary: cashEmpty ? "" : "Money actually received",
+      tertiary: cashEmpty ? "" : "Payments you've received",
       href: "/payments",
       actionLabel: "View payments",
       empty: cashEmpty,
@@ -164,14 +164,14 @@ export function buildBusinessSnapshotCards(input: {
         ? "Accounts current"
         : formatUsd(input.outstandingBalance),
       secondary: outstandingEmpty
-        ? "Nothing owed on financially committed bookings"
+        ? "Nothing left to collect on booked events"
         : formatCount(
           input.outstandingClientCount,
           "client account",
           "client accounts",
         ),
       tertiary: outstandingEmpty
-        ? "Gross booked minus cash collected"
+        ? "Booked totals minus what you've collected"
         : "Still owed on booked business",
       href: "/payments",
       actionLabel: "View balances",

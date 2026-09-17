@@ -86,7 +86,11 @@ describe("buildBusinessSnapshotCards", () => {
     assert.match(empty[1]!.primary, /No booked business yet/);
     assert.match(empty[2]!.primary, /No payments collected yet/);
     assert.match(empty[3]!.primary, /Accounts current/);
-    assert.match(empty[3]!.secondary, /financially committed bookings/i);
+    assert.match(empty[3]!.secondary, /Nothing left to collect on booked events/i);
+    assert.match(empty[3]!.tertiary, /Booked totals minus what you've collected/i);
+    assert.doesNotMatch(empty[3]!.secondary, /financially committed/i);
+    assert.doesNotMatch(empty[3]!.tertiary, /Gross booked/i);
+    assert.doesNotMatch(empty[0]!.secondary, /not booked, lost, or cancelled/i);
     assert.doesNotMatch(empty.map((c) => c.key).join(","), /upcoming/);
   });
 
@@ -153,6 +157,7 @@ describe("Dashboard Business Snapshot wiring", () => {
     const list = read("components/leads/lead-list.tsx");
     assert.match(leadsPage, /attention === "open"/);
     assert.match(list, /attentionFilter === "open"/);
-    assert.match(list, /\["lost", "booked", "won", "cancelled"\]/);
+    assert.match(list, /isOpenLeadLifecycle/);
+    assert.match(list, /from "@\/lib\/leads\/open-lifecycle"/);
   });
 });
