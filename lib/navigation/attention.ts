@@ -7,9 +7,10 @@
  */
 
 import {
-  inboxCategoryFromLifecycle,
-  isOpenLeadLifecycle,
-} from "@/lib/leads/open-lifecycle";
+  inboxCategoryFromConversation as inboxCategoryFromOwnershipConversation,
+  type InboxCategory as OwnershipInboxCategory,
+} from "@/lib/conversations/inbox-ownership";
+import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
 import { deriveScheduleStatus } from "@/lib/payments/constants";
 import type { PaymentLineItem } from "@/lib/payments/types";
 
@@ -64,6 +65,26 @@ export function formatAttentionBadge(count: number): string | null {
   if (count <= 0) return null;
   if (count > 99) return "99+";
   return String(count);
+}
+
+/** Destination when an attention badge is non-zero — same population as the count. */
+export function navAttentionHref(itemId: string, baseHref: string, count: number): string {
+  if (count <= 0) return baseHref;
+  switch (itemId) {
+    case "leads":
+      return "/leads?attention=unseen";
+    case "payments":
+      return "/payments?filter=attention";
+    case "task-center":
+      // Badge is staff-scoped past-due; land on My Work so the overdue list matches.
+      return "/tasks?perspective=my-work";
+    case "tours":
+      return "/tours";
+    case "inbox":
+      return "/messaging";
+    default:
+      return baseHref;
+  }
 }
 
 // ── Leads ────────────────────────────────────────────────────────────────────
@@ -166,7 +187,7 @@ export function countPaymentAttention(
 
 // ── Inbox category ───────────────────────────────────────────────────────────
 
-export type InboxCategory = "leads" | "clients" | "vendors";
+export type InboxCategory = OwnershipInboxCategory;
 
 export const INBOX_CATEGORY_OPTIONS: { value: InboxCategory; label: string }[] = [
   { value: "leads", label: "Leads" },
@@ -175,22 +196,15 @@ export const INBOX_CATEGORY_OPTIONS: { value: InboxCategory; label: string }[] =
 ];
 
 /**
- * Inbox Leads/Clients follows commercial lifecycle — not client_id alone.
- * Prefer passing leadSalesStage when known (resolveInboxCategoryAction).
+ * Inbox Leads/Clients from conversation ownership — never sales_stage / open-lead.
  */
 export function inboxCategoryFromConversation(input: {
   conversationKind?: string | null;
   clientId?: string | null;
   leadId?: string | null;
-  /** Canonical: lead.sales_stage on the relationship. */
-  leadSalesStage?: string | null;
+  inboxOwnerKind?: string | null;
 }): InboxCategory {
-  return inboxCategoryFromLifecycle({
-    conversationKind: input.conversationKind,
-    hasLead: Boolean(input.leadId) || input.leadSalesStage != null,
-    leadSalesStage: input.leadSalesStage,
-    hasClient: Boolean(input.clientId),
-  });
+  return inboxCategoryFromOwnershipConversation(input);
 }
 
 /** Map UI category → inbox RPC relationship param (clients → bookings). */

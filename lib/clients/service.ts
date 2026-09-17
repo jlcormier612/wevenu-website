@@ -509,6 +509,26 @@ export async function convertLeadToClient(
       // Start booking file / quiet ensure create the workspace only.
       // Commercial Booked (maybeStampCommercialBookedAt) is the only pipeline-Booked write.
       await markConvertedClientAsBookingFile(supabase, venueId, existingClient.id);
+      if (lead.relationshipId) {
+        const { setVenueCoupleInboxOwner } = await import(
+          "@/lib/conversations/inbox-ownership-write"
+        );
+        if (commercialOnly) {
+          await setVenueCoupleInboxOwner(supabase, {
+            venueId,
+            relationshipId: lead.relationshipId,
+            ownerKind: "lead",
+            leadId: lead.id,
+          });
+        } else {
+          await setVenueCoupleInboxOwner(supabase, {
+            venueId,
+            relationshipId: lead.relationshipId,
+            ownerKind: "client",
+            clientId: existingClient.id,
+          });
+        }
+      }
       if (eventId) {
         const eventDate = lead.eventDate || new Date().toISOString().slice(0, 10);
         try {
@@ -544,6 +564,26 @@ export async function convertLeadToClient(
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
           await markConvertedClientAsBookingFile(supabase, venueId, raceClient.id);
+          if (lead.relationshipId) {
+            const { setVenueCoupleInboxOwner } = await import(
+              "@/lib/conversations/inbox-ownership-write"
+            );
+            if (commercialOnly) {
+              await setVenueCoupleInboxOwner(supabase, {
+                venueId,
+                relationshipId: lead.relationshipId,
+                ownerKind: "lead",
+                leadId: lead.id,
+              });
+            } else {
+              await setVenueCoupleInboxOwner(supabase, {
+                venueId,
+                relationshipId: lead.relationshipId,
+                ownerKind: "client",
+                clientId: raceClient.id,
+              });
+            }
+          }
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
         }
       }
@@ -570,6 +610,29 @@ export async function convertLeadToClient(
       .eq("lead_id", lead.id).eq("venue_id", venueId);
 
     await markConvertedClientAsBookingFile(supabase, venueId, clientId);
+
+    // Inbox ownership: commercial-only keeps the lead conversation under Leads.
+    // Start booking file / full convert moves the venue_couple thread to Clients.
+    if (lead.relationshipId) {
+      const { setVenueCoupleInboxOwner } = await import(
+        "@/lib/conversations/inbox-ownership-write"
+      );
+      if (commercialOnly) {
+        await setVenueCoupleInboxOwner(supabase, {
+          venueId,
+          relationshipId: lead.relationshipId,
+          ownerKind: "lead",
+          leadId: lead.id,
+        });
+      } else {
+        await setVenueCoupleInboxOwner(supabase, {
+          venueId,
+          relationshipId: lead.relationshipId,
+          ownerKind: "client",
+          clientId,
+        });
+      }
+    }
 
     if (eventId) {
       const eventDate = lead.eventDate || new Date().toISOString().slice(0, 10);

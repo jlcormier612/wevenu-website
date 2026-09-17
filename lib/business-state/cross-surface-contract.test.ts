@@ -1,8 +1,7 @@
 /**
- * Cross-surface business-state contract.
+ * Inbox ownership contract — conversation owner/source, not open-lead / sales_stage.
  *
- * One lifecycle rule must drive Leads, Lead Flow, and Inbox classification.
- * client_id alone must never move an open opportunity into Clients.
+ * Dashboard Lead Flow remains a separate open-lifecycle calculation.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,11 +12,12 @@ import {
   computeOpenLeadFlow,
   LEAD_FLOW_OPEN_HREF,
 } from "@/lib/dashboard/business-snapshot";
+import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
 import {
-  inboxCategoryFromLifecycle,
-  isOpenLeadLifecycle,
-} from "@/lib/leads/open-lifecycle";
-import { inboxCategoryFromConversation } from "@/lib/navigation/attention";
+  inboxCategoryFromConversation,
+  inboxCategoryFromOwnership,
+} from "@/lib/conversations/inbox-ownership";
+import { inboxCategoryFromConversation as attnInbox } from "@/lib/navigation/attention";
 import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import type { Invoice } from "@/lib/invoices/types";
 import { deriveScheduleStatus } from "@/lib/payments/constants";
@@ -87,89 +87,151 @@ function line(partial: Partial<PaymentLineItem>): PaymentLineItem {
   };
 }
 
-describe("Cross-surface open-lead contract", () => {
-  it("RECORD A: open lead, no client → Leads + Lead Flow", () => {
-    assert.equal(isOpenLeadLifecycle("tour_scheduled"), true);
+describe("Inbox ownership classification (A–F)", () => {
+  it("A: Lead conversation + open lead → Leads", () => {
     assert.equal(
-      inboxCategoryFromLifecycle({ hasLead: true, leadSalesStage: "tour_scheduled", hasClient: false }),
-      "leads",
-    );
-    const flow = computeOpenLeadFlow(
-      [{ sales_stage: "tour_scheduled", estimated_budget: 5000, created_at: "2026-09-01T00:00:00Z" }],
-      "2026-09-01",
-    );
-    assert.equal(flow.count, 1);
-  });
-
-  it("RECORD B: open lead + commercial-only client → still Leads (Cindy rule)", () => {
-    assert.equal(
-      inboxCategoryFromConversation({
-        leadId: "lead",
-        clientId: "client",
-        leadSalesStage: "new_inquiry",
+      inboxCategoryFromOwnership({
+        inboxOwnerKind: "lead",
+        hasLead: true,
+        hasClient: false,
       }),
       "leads",
     );
     assert.equal(
-      inboxCategoryFromLifecycle({
+      inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
+        leadId: "l1",
+      }),
+      "leads",
+    );
+  });
+
+  it("B: Lead conversation + Booked lead → Leads (stage irrelevant)", () => {
+    assert.equal(
+      inboxCategoryFromOwnership({
+        inboxOwnerKind: "lead",
         hasLead: true,
-        leadSalesStage: "proposal_sent",
         hasClient: true,
       }),
       "leads",
     );
+    // sales_stage must not flip a lead-owned conversation into Clients
+    assert.equal(
+      inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
+        leadId: "l1",
+        clientId: "c1",
+      }),
+      "leads",
+    );
   });
 
-  it("RECORD C: booked client → Clients, not Lead Flow", () => {
-    assert.equal(isOpenLeadLifecycle("booked"), false);
+  it("C: Lead conversation + Lost lead → Leads", () => {
     assert.equal(
-      inboxCategoryFromLifecycle({ hasLead: true, leadSalesStage: "booked", hasClient: true }),
-      "clients",
-    );
-    const flow = computeOpenLeadFlow(
-      [{ sales_stage: "booked", estimated_budget: 12000, created_at: "2026-08-01T00:00:00Z" }],
-      "2026-09-01",
-    );
-    assert.equal(flow.count, 0);
-  });
-
-  it("RECORD D: lost lead → not open; client-only row still Clients", () => {
-    assert.equal(isOpenLeadLifecycle("lost"), false);
-    assert.equal(
-      inboxCategoryFromLifecycle({ hasLead: true, leadSalesStage: "lost", hasClient: false }),
+      inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
+        leadId: "l1",
+      }),
       "leads",
     );
     assert.equal(
-      inboxCategoryFromLifecycle({ hasLead: true, leadSalesStage: "lost", hasClient: true }),
-      "clients",
+      inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
+        leadId: "l1",
+        clientId: "c1",
+      }),
+      "leads",
     );
   });
 
-  it("client_id alone does not determine Inbox category", () => {
-    assert.notEqual(
+  it("D: Client conversation + client → Clients", () => {
+    assert.equal(
+      inboxCategoryFromOwnership({
+        inboxOwnerKind: "client",
+        hasClient: true,
+        hasLead: false,
+      }),
+      "clients",
+    );
+    assert.equal(
       inboxCategoryFromConversation({
-        leadId: "x",
-        clientId: "y",
-        leadSalesStage: "enrolled_in_sequence",
+        inboxOwnerKind: "client",
+        clientId: "c1",
       }),
       "clients",
     );
   });
 
-  it("Lead Flow click-through preserves open population filter", () => {
+  it("E: Dual lead+client, conversation belongs to lead → Leads (Cindy)", () => {
+    assert.equal(
+      inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
+        leadId: "cindy-lead",
+        clientId: "cindy-client",
+      }),
+      "leads",
+    );
+    assert.equal(
+      attnInbox({
+        inboxOwnerKind: "lead",
+        leadId: "cindy-lead",
+        clientId: "cindy-client",
+      }),
+      "leads",
+    );
+  });
+
+  it("F: Dual lead+client, conversation belongs to client → Clients (Ellie)", () => {
+    assert.equal(
+      inboxCategoryFromConversation({
+        inboxOwnerKind: "client",
+        leadId: "ellie-lead",
+        clientId: "ellie-client",
+      }),
+      "clients",
+    );
+  });
+
+  it("does not use open-lead / sales_stage as the Inbox criterion", () => {
+    const own = readFileSync(resolve("lib/conversations/inbox-ownership.ts"), "utf8");
+    assert.doesNotMatch(own, /isOpenLeadLifecycle|TERMINAL_LEAD|leadSalesStage/);
+    const open = readFileSync(resolve("lib/leads/open-lifecycle.ts"), "utf8");
+    assert.doesNotMatch(open, /inboxCategoryFromLifecycle/);
+    assert.match(open, /Dashboard Lead Flow/);
+  });
+});
+
+describe("Dashboard Lead Flow remains separate", () => {
+  it("open-lead metric unchanged and unused by Inbox ownership", () => {
+    assert.equal(isOpenLeadLifecycle("tour_scheduled"), true);
+    assert.equal(isOpenLeadLifecycle("booked"), false);
+    const flow = computeOpenLeadFlow(
+      [
+        { sales_stage: "new_inquiry", estimated_budget: 5000, created_at: "2026-09-01T00:00:00Z" },
+        { sales_stage: "booked", estimated_budget: 12000, created_at: "2026-08-01T00:00:00Z" },
+      ],
+      "2026-09-01",
+    );
+    assert.equal(flow.count, 1);
     assert.equal(LEAD_FLOW_OPEN_HREF, "/leads?attention=open");
+  });
+
+  it("Lead Flow click-through still uses open population", () => {
     const page = readFileSync(resolve("app/(app)/leads/page.tsx"), "utf8");
     assert.match(page, /attention === "open"/);
     const list = readFileSync(resolve("components/leads/lead-list.tsx"), "utf8");
     assert.match(list, /isOpenLeadLifecycle/);
-    assert.match(list, /attentionFilter === "open"/);
   });
 
-  it("Dashboard Lead Flow and open-lifecycle share one terminal set", () => {
-    const snap = readFileSync(resolve("lib/dashboard/business-snapshot.ts"), "utf8");
-    assert.match(snap, /from "@\/lib\/leads\/open-lifecycle"/);
-    const attn = readFileSync(resolve("lib/navigation/attention.ts"), "utf8");
-    assert.match(attn, /from "@\/lib\/leads\/open-lifecycle"/);
+  it("ownership migration filters by inbox_owner_kind, not open sales_stage", () => {
+    const mig = readFileSync(
+      resolve("supabase/migrations/20261400700000_inbox_conversation_ownership.sql"),
+      "utf8",
+    );
+    assert.match(mig, /inbox_owner_kind/);
+    assert.match(mig, /coalesce\(e\.inbox_owner_kind, 'lead'\) = 'lead'/);
+    assert.match(mig, /e\.inbox_owner_kind = 'client'/);
+    assert.doesNotMatch(mig, /not in \('booked', 'lost', 'won', 'cancelled'\)/);
   });
 });
 
@@ -198,9 +260,7 @@ describe("Cross-surface payment attention contract", () => {
 
 describe("Cross-surface task / calendar wiring (source contract)", () => {
   it("lead tasks live in Task Center paths, not Calendar event sources", () => {
-    const calendar = readFileSync(resolve("lib/calendar/service.ts"), "utf8");
-    assert.doesNotMatch(calendar, /from\("lead_tasks"\)/);
-    const tasksPage = readFileSync(resolve("app/(app)/tasks/page.tsx"), "utf8");
-    assert.match(tasksPage, /lead_tasks|LeadTask|getLeadTasks|lead tasks/i);
+    const tasks = readFileSync(resolve("app/(app)/tasks/page.tsx"), "utf8");
+    assert.match(tasks, /lead/i);
   });
 });

@@ -258,48 +258,54 @@ describe("Badge presentation", () => {
 });
 
 describe("Inbox category organization", () => {
-  it("maps conversation anchors to Leads / Clients / Vendors by lifecycle", () => {
-    assert.equal(inboxCategoryFromConversation({ leadId: "l1", clientId: null }), "leads");
-    // Open lead + commercial-only client stays Leads
+  it("maps conversation ownership to Leads / Clients / Vendors", () => {
+    assert.equal(
+      inboxCategoryFromConversation({ inboxOwnerKind: "lead", leadId: "l1" }),
+      "leads",
+    );
+    // Dual records: lead-owned conversation stays Leads (Cindy)
     assert.equal(
       inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
         leadId: "l1",
         clientId: "c1",
-        leadSalesStage: "new_inquiry",
       }),
       "leads",
     );
+    // Booked stage must not move a lead-owned conversation
     assert.equal(
       inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
         leadId: "l1",
         clientId: "c1",
-        leadSalesStage: "proposal_sent",
       }),
       "leads",
     );
-    // Booked → Clients
+    // Client-owned conversation → Clients (Ellie)
     assert.equal(
       inboxCategoryFromConversation({
+        inboxOwnerKind: "client",
         leadId: "l1",
         clientId: "c1",
-        leadSalesStage: "booked",
       }),
       "clients",
     );
-    // Client alone → Clients
-    assert.equal(inboxCategoryFromConversation({ leadId: null, clientId: "c1" }), "clients");
+    assert.equal(
+      inboxCategoryFromConversation({ inboxOwnerKind: "client", clientId: "c1" }),
+      "clients",
+    );
     assert.equal(
       inboxCategoryFromConversation({ conversationKind: "venue_vendor" }),
       "vendors",
     );
   });
 
-  it("client_id alone does not determine Inbox category when lead is open", () => {
+  it("client_id alone does not determine Inbox category when owner is lead", () => {
     assert.notEqual(
       inboxCategoryFromConversation({
+        inboxOwnerKind: "lead",
         leadId: "l1",
         clientId: "c1",
-        leadSalesStage: "tour_scheduled",
       }),
       "clients",
     );
@@ -319,15 +325,12 @@ describe("Inbox category organization", () => {
     assert.match(inbox, /INBOX_CATEGORY_OPTIONS|inboxCategory/);
   });
 
-  it("inbox RPC migration classifies by open sales_stage not client_id null", () => {
+  it("inbox RPC migration classifies by inbox_owner_kind not open sales_stage", () => {
     const mig = readFileSync(
-      resolve("supabase/migrations/20261400600000_inbox_open_lead_lifecycle_filter.sql"),
+      resolve("supabase/migrations/20261400700000_inbox_conversation_ownership.sql"),
       "utf8",
     );
-    assert.match(mig, /not in \('booked', 'lost', 'won', 'cancelled'\)/);
-    assert.doesNotMatch(
-      mig,
-      /p_relationship in \('leads', 'lead'\) and e\.client_id is null and e\.lead_id is not null/,
-    );
+    assert.match(mig, /inbox_owner_kind/);
+    assert.doesNotMatch(mig, /not in \('booked', 'lost', 'won', 'cancelled'\)/);
   });
 });

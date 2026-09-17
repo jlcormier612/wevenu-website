@@ -66,9 +66,15 @@ export async function resolveInboxCategoryAction(
   const supabase = await createClient();
   const { data } = await supabase
     .from("conversations")
-    .select("conversation_kind, relationship_id")
+    .select("conversation_kind, relationship_id, inbox_owner_kind, inbox_owner_lead_id, inbox_owner_client_id")
     .eq("id", conversationId)
-    .maybeSingle<{ conversation_kind: string | null; relationship_id: string | null }>();
+    .maybeSingle<{
+      conversation_kind: string | null;
+      relationship_id: string | null;
+      inbox_owner_kind: string | null;
+      inbox_owner_lead_id: string | null;
+      inbox_owner_client_id: string | null;
+    }>();
   if (!data) return "leads";
   if (
     data.conversation_kind === "venue_vendor"
@@ -77,26 +83,11 @@ export async function resolveInboxCategoryAction(
   ) {
     return "vendors";
   }
-  if (!data.relationship_id) return "leads";
-  const [{ data: client }, { data: lead }] = await Promise.all([
-    supabase
-      .from("clients")
-      .select("id")
-      .eq("relationship_id", data.relationship_id)
-      .limit(1)
-      .maybeSingle<{ id: string }>(),
-    supabase
-      .from("leads")
-      .select("id, sales_stage")
-      .eq("relationship_id", data.relationship_id)
-      .limit(1)
-      .maybeSingle<{ id: string; sales_stage: string | null }>(),
-  ]);
   return inboxCategoryFromConversation({
     conversationKind: data.conversation_kind,
-    clientId: client?.id ?? null,
-    leadId: lead?.id ?? null,
-    leadSalesStage: lead?.sales_stage ?? null,
+    inboxOwnerKind: data.inbox_owner_kind,
+    leadId: data.inbox_owner_lead_id,
+    clientId: data.inbox_owner_client_id,
   });
 }
 
