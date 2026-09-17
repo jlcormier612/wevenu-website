@@ -38,6 +38,7 @@ import {
   leadDisplayName,
 } from "@/lib/leads/constants";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
+import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 
 type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
@@ -93,19 +94,25 @@ export function LeadList({
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
-    const staleCutoffMs = Date.now() - 7 * 86_400_000;
+    const nowMs = Date.now();
     const base = leads.filter((l) => {
       const stage = l.salesStage ?? l.status;
       if (statusFilter !== "all" && stage !== statusFilter) return false;
       if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
       if (attentionFilter === "stale_contact") {
-        // Same closed set + reporting boundary as generate_venue_recommendations.
+        // Same closed set + opportunity-age rule as generate_venue_recommendations
+        // (coalesce last contact → inquiry → created; never treat null contact as ancient).
         if (["lost", "booked", "won", "cancelled"].includes(stage)) {
           return false;
         }
         if (l.excludeFromBusinessReporting) return false;
-        const contacted = l.lastContactedAt ? new Date(l.lastContactedAt).getTime() : null;
-        if (contacted != null && contacted >= staleCutoffMs) return false;
+        if (!isStaleWithoutContact({
+          lastContactedAt: l.lastContactedAt,
+          inquiryDate: l.inquiryDate,
+          createdAt: l.createdAt,
+        }, nowMs)) {
+          return false;
+        }
       }
       if (attentionFilter === "active") {
         if (stage === "lost" || stage === "booked") return false;
@@ -145,8 +152,7 @@ export function LeadList({
       {attentionFilter === "stale_contact" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/50 bg-rose-50/40 px-3 py-2 text-sm">
           <p className="text-foreground">
-            Showing active leads with no contact in 7+ days
-            <span className="text-muted-foreground"> — the same condition as Luv&apos;s follow-up insight.</span>
+            Showing active leads with no contact in 7+ days.
           </p>
           <button
             type="button"

@@ -2,15 +2,16 @@
  * What Luv says on the Dashboard.
  *
  * Luv's Dashboard role is interpretation, not reporting. Today's Focus already
- * lists the work; if Luv restates a row from it — "Sara Parker has a tour today
- * at 11:00 AM" directly beneath a Today's Focus row saying the same thing — the
- * Dashboard has spent two sections on one fact and Luv has contributed nothing.
+ * lists the work; if Luv restates a row from it — or reproduces a Leads list
+ * filter the owner can already open — the Dashboard has spent two sections on
+ * one fact and Luv has contributed nothing.
  *
  * So this picks, in order of how much interpretation it adds:
- *   1. a recommendation (already advice plus an action),
+ *   1. a recommendation that is not a Leads stale-contact filter duplicate,
  *   2. an observation about something NOT already in Today's Focus,
- *   3. failing both, an aggregate read of Today's Focus itself — the insight
- *      layer over those rows rather than a repeat of any one of them.
+ *   3. failing both, an aggregate read of Today's Focus — except when that
+ *      aggregate would only restate lead follow-ups already listed (and the
+ *      Leads page already owns that queue).
  */
 import type { ClassifiedItem } from "@/lib/dashboard-system/decision-engine";
 import type { VenueRecommendation } from "@/lib/luv/recommendation-types";
@@ -33,14 +34,12 @@ type Aggregate = { summary: (count: number) => string; suggestion: string; actio
  * Aggregate voice per publishing domain. Phrased as something the app can
  * actually do — Luv offers to take the owner to the work, and does not promise
  * to perform an action (drafting, sending) that no Dashboard control performs.
+ *
+ * Leads are intentionally omitted: aggregating Focus lead rows into a
+ * "/leads?attention=stale_contact" CTA duplicates Today's Focus and the Leads
+ * filter rather than interpreting anything new.
  */
 const DOMAIN_AGGREGATE: Record<string, Aggregate> = {
-  Leads: {
-    summary: (n) => `${countWord(n, "lead")} ${n === 1 ? "has" : "have"} been waiting for follow-up.`,
-    suggestion: "Want to work through them?",
-    actionLabel: "Review inquiries",
-    href: "/leads?attention=stale_contact",
-  },
   Tasks: {
     summary: (n) => `${countWord(n, "task")} ${n === 1 ? "is" : "are"} past due.`,
     suggestion: "Want to clear them?",
@@ -94,6 +93,14 @@ function firstCta(recommendation: VenueRecommendation): { label: string; href: s
   return cta ? { label: cta.label, href: cta.target } : null;
 }
 
+/** Recommendations that only restate the Leads stale-contact filter. */
+export function isLeadsFilterDuplicateRecommendation(rec: VenueRecommendation): boolean {
+  if (rec.type === "lead_followup") return true;
+  return rec.ctas.some(
+    (c) => c.type === "navigate" && /\/leads\?attention=stale_contact/.test(c.target),
+  );
+}
+
 /**
  * The insight layer over Today's Focus: reads the largest group of work in it
  * and says what it means, rather than repeating its rows.
@@ -137,11 +144,12 @@ export function selectLuvDashboardEntry({
   const focusSubjects = new Set(focusItems.map((i) => subject(i.href)));
 
   // 1. A recommendation is already interpretation plus an action, so it leads —
-  //    unless it points at a row Today's Focus is displaying anyway.
+  //    unless it points at a Focus row or merely opens the Leads stale filter.
   for (const rec of recommendations) {
+    if (isLeadsFilterDuplicateRecommendation(rec)) continue;
     const cta = firstCta(rec);
-    if (cta && focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))) continue;
     if (!cta) continue;
+    if (focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))) continue;
     return {
       message: rec.title,
       suggestion: rec.body || null,
@@ -162,6 +170,6 @@ export function selectLuvDashboardEntry({
     };
   }
 
-  // 3. Everything Luv had to say is already on screen — so interpret it instead.
+  // 3. Interpret Focus when that interpretation is not a Leads-filter restatement.
   return aggregateFocusEntry(focusItems);
 }

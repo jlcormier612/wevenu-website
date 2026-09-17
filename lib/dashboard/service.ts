@@ -32,9 +32,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 import { getClientListFilterCounts } from "@/lib/clients/service";
 import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
-import { clientDisplayName } from "@/lib/clients/constants";
 import { leadDisplayName } from "@/lib/leads/constants";
-import { resolveVenueNextSteps, VENUE_NEXT_STEPS_CANDIDATE_CAP } from "@/lib/dashboard/venue-next-steps";
 import type {
   ActivityItem,
   AttentionLead,
@@ -111,33 +109,6 @@ function embeddedName(row: EmbeddedLeadName): string {
 
 // ---- Client row types (dashboard queries) -----------------------------------
 
-type DashClientRow = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  partner_first_name: string | null;
-  partner_last_name: string | null;
-  event_type: string | null;
-  event_date: string | null;
-  guest_count: number | null;
-  status: string;
-  created_at: string;
-};
-
-function mapDashClient(r: DashClientRow): {
-  id: string;
-  firstName: string;
-  lastName: string;
-  partnerFirstName: string | null;
-  partnerLastName: string | null;
-  status: string;
-} {
-  return {
-    id: r.id, firstName: r.first_name, lastName: r.last_name,
-    partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
-    status: r.status,
-  };
-}
 
 const CLOSED = new Set(["booked", "lost", "won", "cancelled"]);
 
@@ -177,7 +148,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, eventsRes, paymentsRes, staffRes, clientListCounts] = await Promise.all([
     supabase
       .from("leads")
       .select("id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, commitment_score, responsiveness_score, interest_score, exclude_from_business_reporting")
@@ -200,17 +171,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("created_at", { ascending: false })
       .limit(15),
 
-    // Clients for Your Next Steps portal lifecycle only (id/name/status).
-    // Not used for a "recent bookings" widget — that field was unused dead weight.
-    supabase
-      .from("clients")
-      .select("id, first_name, last_name, partner_first_name, partner_last_name, event_type, event_date, guest_count, status, created_at")
-      .eq("venue_id", venue.id)
-      .neq("status", "cancelled")
-      .order("created_at", { ascending: false })
-      .limit(200),
-
-
     // Coming up source: events table only — real event_date, next 60 days.
     // Never join payment lines, invoices, or other dated facts into this query.
     supabase
@@ -223,7 +183,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("event_date", { ascending: true })
       .limit(8),
 
-    // Payment line items for Next Steps / today's dated Focus — not Coming up.
+    // Payment line items for today's dated Focus — not Coming up.
     supabase
       .from("payment_line_items")
       .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")
@@ -246,47 +206,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     // a 60-day events-table window and not a confirmed-only subset.
     getClientListFilterCounts(),
 
-    // Your Next Steps — portal lifecycle (invite vs unopened is one item per client)
-    supabase
-      .from("client_invitations")
-      .select("client_id, status, created_at")
-      .eq("venue_id", venue.id)
-      .order("created_at", { ascending: false }),
-
-    supabase
-      .from("client_portal_sessions")
-      .select("client_id, last_accessed_at")
-      .eq("venue_id", venue.id),
-
-    // Same open-task population as Task Center (pending/overdue/blocked, live events).
-    // Cap for dashboard Next Steps / open-task widgets — Task Center remains the full list.
-    supabase
-      .from("event_tasks")
-      .select(`
-        id, title, status, due_date, owner_type, event_id,
-        events (
-          id, name, status,
-          clients ( first_name, last_name, partner_first_name, partner_last_name )
-        )
-      `)
-      .eq("venue_id", venue.id)
-      .in("status", ["pending", "overdue", "blocked"])
-      .not("events.status", "in", "(cancelled,complete)")
-      .order("due_date", { ascending: true })
-      .limit(100),
-
-    supabase
-      .from("contracts")
-      .select("id, title, status, clients(first_name, last_name, partner_first_name, partner_last_name)")
-      .eq("venue_id", venue.id)
-      .in("status", ["draft", "sent"])
-      .limit(50),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
   if (tasksRes.error) throw tasksRes.error;
   if (activityRes.error) throw activityRes.error;
-  if (clientsRes.error) throw clientsRes.error;
   if (eventsRes.error) throw eventsRes.error;
   // payments error is non-fatal for the dashboard
 
@@ -362,9 +286,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     leadName: embeddedName(r.leads),
   }));
 
-  // ---- Client data (portal lifecycle for Your Next Steps) -------------------
-  const clients = (clientsRes.data as DashClientRow[]).map(mapDashClient);
-
   // ---- Upcoming events (from events table — canonical source) ---------------
   type DashEventRow = {
     id: string; name: string; event_date: string; start_time: string | null;
@@ -388,7 +309,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     };
   });
 
-
   // ---- Payment dashboard data -----------------------------------------------
   type PaymentItemDash = {
     id: string; schedule_id: string; label: string; amount: number;
@@ -406,133 +326,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   });
   const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
   const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
-
-  // ---- Your Next Steps (non-fatal extras; empty queue if a source fails) -----
-  type InvDashRow = { client_id: string; status: string; created_at: string };
-  const latestInvitation = new Map<string, InvDashRow>();
-  for (const row of (invitationsRes.error ? [] : (invitationsRes.data ?? [])) as InvDashRow[]) {
-    if (!latestInvitation.has(row.client_id)) latestInvitation.set(row.client_id, row);
-  }
-  const portalOpened = new Set(
-    ((portalSessionsRes.error ? [] : (portalSessionsRes.data ?? [])) as { client_id: string; last_accessed_at: string | null }[])
-      .filter((s) => s.last_accessed_at != null)
-      .map((s) => s.client_id),
-  );
-
-  type EventTaskDashRow = {
-    id: string;
-    title: string;
-    status: string;
-    due_date: string | null;
-    owner_type: string;
-    event_id: string;
-    events: {
-      id: string;
-      name: string;
-      status: string;
-      clients: {
-        first_name: string;
-        last_name: string;
-        partner_first_name: string | null;
-        partner_last_name: string | null;
-      } | null;
-    } | null;
-  };
-  const ownerType = (raw: string): "coordinator" | "team" | "couple" | "vendor" => {
-    if (raw === "team" || raw === "couple" || raw === "vendor") return raw;
-    return "coordinator";
-  };
-  const venueTasks = ((eventTasksRes.error ? [] : (eventTasksRes.data ?? [])) as unknown as EventTaskDashRow[]).map((t) => {
-    const couple = t.events?.clients;
-    return {
-      id: t.id,
-      title: t.title,
-      dueDate: t.due_date,
-      eventId: t.event_id,
-      eventName: t.events?.name ?? null,
-      clientName: couple
-        ? clientDisplayName(
-            couple.first_name,
-            couple.last_name,
-            couple.partner_first_name,
-            couple.partner_last_name,
-          )
-        : null,
-      ownerType: ownerType(t.owner_type),
-      status: t.status,
-    };
-  });
-
-  type ContractDashRow = {
-    id: string;
-    title: string;
-    status: string;
-    clients: {
-      first_name: string;
-      last_name: string;
-      partner_first_name: string | null;
-      partner_last_name: string | null;
-    } | null;
-  };
-  const nextStepContracts = ((contractsRes.error ? [] : (contractsRes.data ?? [])) as unknown as ContractDashRow[])
-    .filter((c) => c.status === "draft" || c.status === "sent")
-    .map((c) => ({
-      id: c.id,
-      title: c.title,
-      status: c.status as "draft" | "sent",
-      clientName: c.clients
-        ? clientDisplayName(
-            c.clients.first_name,
-            c.clients.last_name,
-            c.clients.partner_first_name,
-            c.clients.partner_last_name,
-          )
-        : null,
-    }));
-
-  const leadFollowUps = [
-    ...needsAttentionLeads.map((l) => ({
-      id: l.id,
-      name: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName),
-      followUpDate: l.followUpDate,
-      isOverdue: !!(l.followUpDate && l.followUpDate < today) || !l.followUpDate,
-    })),
-    ...followupsDueAll.map((l) => ({
-      id: l.id,
-      name: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName),
-      followUpDate: l.followUpDate,
-      isOverdue: false,
-    })),
-  ];
-
-  // Fetched at the larger candidate cap, not VENUE_NEXT_STEPS_CAP — the
-  // Dashboard page excludes anything already shown in Today's Focus and
-  // THEN caps to 5, so overlap with Today's Focus can't quietly shrink
-  // what Your Next Steps actually shows below 5 real, distinct items.
-  const nextSteps = resolveVenueNextSteps({
-    today,
-    clients: clients.map((c) => {
-      const inv = latestInvitation.get(c.id);
-      return {
-        id: c.id,
-        status: c.status,
-        name: clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName),
-        invitationSent: !!inv && (inv.status === "pending" || inv.status === "accepted"),
-        portalOpened: portalOpened.has(c.id),
-      };
-    }),
-    venueTasks,
-    leadFollowUps,
-    contracts: nextStepContracts,
-    payments: overduePayments.map((p) => ({
-      id: p.id,
-      scheduleId: p.scheduleId,
-      label: p.label,
-      dueDate: p.dueDate,
-      isOverdue: p.isOverdue,
-      clientName: p.clientName,
-    })),
-  }, VENUE_NEXT_STEPS_CANDIDATE_CAP).visible;
 
   // Extract first name from "Jordan Rivera" → "Jordan"
   const ownerFullName = staffRes.data?.full_name ?? null;
@@ -607,7 +400,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     venueName: venue.name,
     ownerFirstName,
     todayIso: today,
-    nextSteps,
     onboarding: await buildGuidedSetupChecklist(venue, activationScore, readyToInviteCouples),
     briefing,
     needsAttention,

@@ -20,6 +20,11 @@
  * rather than adding scope here. This is a real, disclosed subset of the
  * ten Event Readiness dimensions, not silent partial coverage.
  */
+import {
+  contractAttentionHref,
+  paymentsAttentionHref,
+  requestsAttentionHref,
+} from "@/lib/luv/briefing-attention-links";
 import { createClient } from "@/integrations/supabase/server";
 import { getContracts } from "@/lib/contracts/repository";
 import { getInvoices } from "@/lib/invoices/repository";
@@ -84,7 +89,7 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
   const needsAttentionNow: BriefingItem[] = [];
   for (const event of events) {
     if (!event.client_id) continue;
-    const link = `/clients/${event.client_id}`;
+    const clientId = event.client_id;
     const eventContracts = contractsByEvent.get(event.id) ?? [];
     const eventInvoices = invoicesByEvent.get(event.id) ?? [];
     const eventRequests = requestsByEvent.get(event.id) ?? [];
@@ -94,7 +99,8 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
       if (section.status === "needs_attention") {
         needsAttentionNow.push({
           id: `briefing-contract-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
-          label: section.label, detail: section.detail, link,
+          label: section.label, detail: section.detail,
+          link: contractAttentionHref(eventContracts, clientId),
         });
       }
     }
@@ -103,7 +109,8 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
       if (section.status === "needs_attention") {
         needsAttentionNow.push({
           id: `briefing-payments-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
-          label: section.label, detail: section.detail, link,
+          label: section.label, detail: section.detail,
+          link: paymentsAttentionHref(eventInvoices, clientId),
         });
       }
     }
@@ -112,7 +119,8 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
       if (section.status === "needs_attention") {
         needsAttentionNow.push({
           id: `briefing-requests-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
-          label: section.label, detail: section.detail, link,
+          label: section.label, detail: section.detail,
+          link: requestsAttentionHref(eventRequests, clientId),
         });
       }
     }

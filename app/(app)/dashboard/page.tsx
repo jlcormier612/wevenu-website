@@ -7,11 +7,9 @@ import { Greeting } from "@/components/dashboard/greeting";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
-import { YourNextStepsCard } from "@/components/dashboard/getting-started";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
-import { excludeTodayFocusFromNextSteps, VENUE_NEXT_STEPS_CAP } from "@/lib/dashboard/venue-next-steps";
 import {
   classifyBriefingItems, classifyUpcomingItems,
   collectCrossSectionSubjects, excludeByCrossSectionSubject,
@@ -31,21 +29,15 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
 };
 
 /**
- * Venue Dashboard — operational front door.
+ * Venue Dashboard — concise awareness / briefing surface.
  *
  * Section jobs (must stay distinct):
- *   1. Today's Focus — what requires attention TODAY (NOW queue)
- *   2. Your Next Steps — what to do AFTER today's urgent work (NEXT queue)
- *   3. Upcoming — what's coming (awareness, not another task queue)
+ *   1. Today's Focus — what requires attention TODAY (actionable NOW)
+ *   2. Coming up — what's coming (awareness, not another task queue)
  *
- * The same underlying entity must never appear across Today's Focus, Your
- * Next Steps, or Upcoming — see excludeTodayFocusFromNextSteps and
- * excludeByCrossSectionSubject (shared type:id identity keys; date
- * partitioning alone is not enough).
- *
- * The former shortcut grid was removed: every shortcut duplicated primary nav
- * or contextual creation. "+ New Lead" remains as the header primary action.
- * No Bookings nav item — booking is a lifecycle concept, not a domain object.
+ * Owning surfaces do the work (Leads, Inbox/Conversation, Contracts,
+ * Invoices, Tours, Task Center). Dashboard does not reproduce their queues.
+ * "+ New Lead" remains as the header primary action.
  */
 export default async function DashboardPage({ searchParams }: Props) {
   const [data] = await Promise.all([getDashboardData(), searchParams]);
@@ -58,28 +50,10 @@ export default async function DashboardPage({ searchParams }: Props) {
     );
   }
 
-  // Precedence: Today's Focus (NOW) is never filtered — it's the highest-
-  // priority section and every other section is filtered against it.
   const allFocusItems = classifyBriefingItems(data);
   const focusItems = allFocusItems.slice(0, 10);
 
-  // NEXT queue: exclude anything already claimed by Today's Focus, then cap
-  // for display. data.nextSteps arrives at a larger candidate cap
-  // (lib/dashboard/service.ts) specifically so this filter can't quietly
-  // shrink what's visible below VENUE_NEXT_STEPS_CAP real, distinct items.
-  const allNextSteps = excludeTodayFocusFromNextSteps(
-    data.nextSteps,
-    allFocusItems,
-    data.todayIso,
-  );
-  const nextSteps = allNextSteps.slice(0, VENUE_NEXT_STEPS_CAP);
-
-  // COMING queue: exclude anything already claimed by Today's Focus or by
-  // the Next Steps actually being shown (not the full candidate set — an
-  // item Next Steps itself didn't have room for is still fair game for
-  // Upcoming to surface).
   const claimedSubjects = collectCrossSectionSubjects(allFocusItems);
-  for (const step of nextSteps) claimedSubjects.add(step.subjectKey);
   const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
 
   const luvEntry = data.luvObservationsEnabled
@@ -106,7 +80,6 @@ export default async function DashboardPage({ searchParams }: Props) {
         setupHref={data.onboarding.show ? "/setup-hub" : "/setup-hub"}
       />
 
-      {/* 1. NOW — overdue, due today, urgent operational attention */}
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-primary" />}
@@ -124,17 +97,8 @@ export default async function DashboardPage({ searchParams }: Props) {
         />
       </section>
 
-      {/* Luv interprets Today's Focus — not a second task list */}
       {luvEntry && <DashboardLuvEntryCard entry={luvEntry} />}
 
-      {/* 2. NEXT — actionable follow-ups that are not today's urgent work */}
-      {nextSteps.length > 0 && (
-        <section id="your-next-steps">
-          <YourNextStepsCard items={nextSteps} today={data.todayIso} />
-        </section>
-      )}
-
-      {/* 3. COMING — upcoming events only (not payments, tasks, or other dates) */}
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}

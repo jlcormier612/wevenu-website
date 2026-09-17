@@ -46,20 +46,10 @@ export type ClassifiedItem = {
   /** ISO date, for sort ordering — null sorts last. */
   sortDate: string | null;
   /**
-   * Cross-section dedupe key (Dashboard IA cleanup) — "type:id" of the real
-   * underlying entity this item is about, set ONLY where a different
-   * Dashboard section's item is confirmed to represent the exact same
-   * entity, never inferred from label text. null means "no other section
-   * currently has a comparable item" — that is the correct, honest default,
-   * not a gap to fill in. In particular: Today's Focus tasks come from
-   * lead_tasks; Your Next Steps tasks come from event_tasks. These are
-   * different tables (a lead's pipeline task vs. a booked event's Task
-   * Center task) that happen to share the word "task" — never matched here.
-   * Event Readiness items (briefing-contract-{eventId}, etc.) are an
-   * event-level aggregate; Your Next Steps' contract/payment items are
-   * per-record. Matching those would require plumbing an eventId through
-   * the contracts/payments queries this phase intentionally leaves alone —
-   * a real, documented remaining gap, not silently papered over.
+   * Cross-section dedupe key — "type:id" of the real underlying entity this
+   * item is about, set ONLY where another Dashboard section's item is confirmed
+   * to represent the exact same entity. null means no other section currently
+   * has a comparable item.
    */
   crossSectionSubject: string | null;
 };
@@ -102,7 +92,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       domain: "Leads",
       label: leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName),
       detail: lead.reason,
-      href: `/leads/${lead.id}`,
+      href: `/leads/${lead.id}?tab=messages`,
       rightLabel: "Follow up",
       rightSeverity: "warning",
       sortDate: null,
@@ -127,7 +117,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       domain: "Leads",
       label: leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName),
       detail: lead.nextActionText ?? "Follow-up scheduled for today",
-      href: `/leads/${lead.id}`,
+      href: `/leads/${lead.id}?tab=messages`,
       rightLabel: "Today",
       rightSeverity: "warning",
       sortDate: today,
@@ -135,11 +125,9 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
     });
   }
 
-  // ── Tasks domain: overdue tasks (Critical — a missed commitment) ──────
+  // ── Tasks domain: overdue lead_tasks (Critical — a missed commitment) ─
   // crossSectionSubject stays null: these are lead_tasks (pipeline-stage
-  // tasks), a different table from Your Next Steps' event_tasks (Task
-  // Center). Both are called "task" but are not the same entity — never
-  // matched against each other.
+  // tasks), a different table from Task Center event_tasks.
   for (const task of data.openTasks) {
     if (!isOverdue(task.dueDate)) continue;
     items.push({
@@ -148,7 +136,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       domain: "Tasks",
       label: task.title,
       detail: task.leadName,
-      href: `/leads/${task.leadId}`,
+      href: `/leads/${task.leadId}?tab=tasks`,
       rightLabel: "Overdue",
       rightSeverity: "critical",
       sortDate: task.dueDate,
@@ -170,7 +158,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
   // this phase's own "Duplicate information removed" requirement rather
   // than introducing a new duplicate while building it.
 
-  // ── Bookings/Events domain: tours scheduled today (Needs Attention Today — same-day operational) ──
+  // ── Tours scheduled today — Tours surface owns the appointment list ──
   for (const lead of data.upcomingTours) {
     if (lead.tourDate !== today) continue;
     items.push({
@@ -179,7 +167,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       domain: "Calendar",
       label: `Tour: ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`,
       detail: lead.tourTime ? `Today at ${lead.tourTime.slice(0, 5)}` : "Today",
-      href: `/leads/${lead.id}`,
+      href: `/tours`,
       rightLabel: "Today",
       rightSeverity: "warning",
       sortDate: lead.tourDate,
@@ -195,20 +183,18 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
   // service.ts) already computes this exact "needs_attention" fan-out
   // across every active booking; reused directly, never re-derived. ──
   for (const item of data.briefing.needsAttentionNow) {
+    const who = item.eventName?.trim() || null;
     items.push({
       id: item.id,
       priority: "critical",
       domain: "Event Readiness",
-      label: item.eventName ?? item.label,
-      detail: item.detail,
+      // Issue first (what), then who/where (detail) — not a generic booking dump.
+      label: item.detail?.trim() || item.label,
+      detail: who ? `${item.label} · ${who}` : item.label,
       href: item.link,
       rightLabel: item.eventDate ? formatEventDate(item.eventDate) : undefined,
       rightSeverity: "critical",
       sortDate: item.eventDate,
-      // Event-level aggregate (this event's contracts/payments/requests
-      // need attention) vs. Your Next Steps' per-record contract/payment
-      // items — different granularity, no clean shared id without plumbing
-      // an eventId through those queries. Left unmatched, not guessed.
       crossSectionSubject: null,
     });
   }
@@ -240,7 +226,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       domain: "Calendar",
       label: `Tour: ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`,
       detail: "Tour",
-      href: `/leads/${lead.id}`,
+      href: `/tours`,
       rightLabel: lead.tourDate ? formatLeadDate(lead.tourDate) : undefined,
       sortDate: lead.tourDate,
       // Same reasoning as today's tour item above: not the same obligation

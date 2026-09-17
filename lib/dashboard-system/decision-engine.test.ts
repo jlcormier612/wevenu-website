@@ -10,7 +10,6 @@ import {
   excludeByCrossSectionSubject,
 } from "@/lib/dashboard-system/decision-engine";
 import type { DashboardData } from "@/lib/dashboard/types";
-import { resolveVenueNextSteps } from "@/lib/dashboard/venue-next-steps";
 
 const TODAY = "2026-08-31";
 const TOMORROW = "2026-09-01";
@@ -83,7 +82,7 @@ describe("Today's Focus and Upcoming partition the same data", () => {
     const data = dashboard({ upcomingTours: [tour("l1", TODAY)] as never });
 
     const focus = classifyBriefingItems(data);
-    const tourRows = focus.filter((i) => i.href === "/leads/l1");
+    const tourRows = focus.filter((i) => i.href === "/tours");
 
     assert.equal(tourRows.length, 1, "one tour, one row");
     assert.equal(tourRows[0].id, "tour-l1", "published as actionable work, not as a dated item");
@@ -199,27 +198,11 @@ describe("Upcoming identity exclusion (not date partitioning alone)", () => {
     assert.deepEqual(upcoming.map((i) => i.id), ["up-event-e2"]);
   });
 
-  it("Next Steps payment identity does not invent a Coming up payment row", () => {
+  it("does not invent Coming up payment rows from dated payment feeds", () => {
     const data = dashboard({
       upcomingPayments: [payment("p9", TOMORROW)] as never,
     });
     assert.deepEqual(classifyUpcomingItems(data), []);
-
-    const { visible: nextSteps } = resolveVenueNextSteps({
-      today: TODAY,
-      clients: [],
-      venueTasks: [],
-      leadFollowUps: [],
-      payments: [{
-        id: "overdue-line",
-        scheduleId: "sched-p9",
-        label: "Deposit",
-        dueDate: PAST,
-        isOverdue: true,
-        clientName: "Client",
-      }],
-    });
-    assert.ok(nextSteps.some((s) => s.subjectKey === "payment:sched-p9"));
   });
 });
 
@@ -240,7 +223,7 @@ describe("today's scheduled follow-ups reach Today's Focus", () => {
     const focus = classifyBriefingItems(data);
     assert.deepEqual(focus.map((i) => i.id), ["followup-l1"]);
     assert.equal(focus[0].priority, "needs_attention_today");
-    assert.equal(focus[0].href, "/leads/l1");
+    assert.equal(focus[0].href, "/leads/l1?tab=messages");
     assert.equal(focus[0].rightLabel, "Today");
   });
 
@@ -262,9 +245,10 @@ describe("today's scheduled follow-ups reach Today's Focus", () => {
       followupsDue: [lead("l1")] as never,
     });
 
-    const rows = classifyBriefingItems(data).filter((i) => i.href === "/leads/l1");
+    const rows = classifyBriefingItems(data).filter((i) => i.href.startsWith("/leads/l1"));
     assert.equal(rows.length, 1, "one lead, one row");
     assert.equal(rows[0].id, "lead-l1", "the needs-attention row wins");
+    assert.equal(rows[0].href, "/leads/l1?tab=messages");
   });
 
   it("keeps today's follow-ups out of Upcoming", () => {
@@ -293,7 +277,9 @@ describe("Today's Focus Event Readiness payment attention is intact", () => {
     assert.equal(focus.length, 1);
     assert.equal(focus[0]!.id, "briefing-payments-e1");
     assert.equal(focus[0]!.domain, "Event Readiness");
-    assert.match(focus[0]!.detail ?? "", /invoice overdue/);
+    assert.equal(focus[0]!.label, "1 invoice overdue");
+    assert.match(focus[0]!.detail ?? "", /Payments/);
+    assert.equal(focus[0]!.href, "/events/e1?tab=payments");
     assert.equal(classifyUpcomingItems(data).length, 0);
   });
 });

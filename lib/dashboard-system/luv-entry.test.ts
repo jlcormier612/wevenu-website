@@ -60,8 +60,9 @@ describe("Luv does not restate Today's Focus", () => {
       recommendations: [],
     });
 
-    assert.ok(entry);
-    assert.doesNotMatch(entry.message, /has a tour today/, "must not repeat the Focus row");
+    // Leads-only Focus has no non-duplicative aggregate — stay quiet rather
+    // than inventing an insight after skipping the repeated observation.
+    assert.equal(entry, null);
   });
 
   it("still shows an observation about something Today's Focus is not covering", () => {
@@ -82,7 +83,7 @@ describe("Luv does not restate Today's Focus", () => {
       recommendations: [],
     });
 
-    assert.doesNotMatch(entry!.message, /has a tour today/);
+    assert.equal(entry, null);
   });
 
   it("leads with a recommendation, which is already interpretation plus an action", () => {
@@ -97,17 +98,17 @@ describe("Luv does not restate Today's Focus", () => {
     assert.equal(entry?.actionLabel, "View report");
   });
 
-  it("keeps a stale-contact list CTA even when Focus has individual lead rows", () => {
+  it("skips the Leads stale-contact filter recommendation instead of duplicating Leads", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [focusItem({ href: "/leads/sara" })],
       observations: [],
       recommendations: [recommendation({
+        type: "lead_followup",
         title: "2 active leads haven't been contacted in 7+ days",
         ctas: [{ type: "navigate", target: "/leads?attention=stale_contact", label: "Review inquiries →" }] as never,
       })],
     });
-    assert.equal(entry?.actionHref, "/leads?attention=stale_contact");
-    assert.match(entry!.message, /haven't been contacted/);
+    assert.equal(entry, null);
   });
 
   it("skips a recommendation that only points back at a Focus row", () => {
@@ -117,8 +118,8 @@ describe("Luv does not restate Today's Focus", () => {
       recommendations: [recommendation({ ctas: [{ type: "navigate", target: "/leads/sara", label: "Open lead" }] as never })],
     });
 
-    // Falls through to the aggregate rather than echoing the row.
-    assert.match(entry!.message, /I noticed one lead has been waiting/);
+    // Leads-only Focus has no non-duplicative aggregate — stay quiet.
+    assert.equal(entry, null);
   });
 
   it("says nothing at all when there is nothing to add", () => {
@@ -127,30 +128,22 @@ describe("Luv does not restate Today's Focus", () => {
 });
 
 describe("Luv interprets Today's Focus when it has nothing new", () => {
-  it("summarises the largest group instead of repeating rows", () => {
+  it("does not aggregate Leads-only Focus into a stale-contact filter CTA", () => {
     const entry = aggregateFocusEntry([
       focusItem({ id: "lead-1", href: "/leads/a" }),
       focusItem({ id: "lead-2", href: "/leads/b" }),
       focusItem({ id: "lead-3", href: "/leads/c" }),
       focusItem({ id: "lead-4", href: "/leads/d" }),
     ]);
-
-    assert.equal(entry?.message, "I noticed four leads have been waiting for follow-up.");
-    assert.equal(entry?.suggestion, "Want to work through them?");
-    assert.equal(entry?.actionHref, "/leads?attention=stale_contact");
+    assert.equal(entry, null);
   });
 
-  it("gets singular grammar right", () => {
-    const entry = aggregateFocusEntry([focusItem()]);
-    assert.equal(entry?.message, "I noticed one lead has been waiting for follow-up.");
-  });
-
-  it("picks the domain with the most work", () => {
+  it("picks the domain with the most work among non-Leads aggregates", () => {
     const entry = aggregateFocusEntry([
       focusItem({ id: "l1", domain: "Leads", href: "/leads/a" }),
-      focusItem({ id: "t1", domain: "Tasks", href: "/leads/b" }),
-      focusItem({ id: "t2", domain: "Tasks", href: "/leads/c" }),
-      focusItem({ id: "t3", domain: "Tasks", href: "/leads/d" }),
+      focusItem({ id: "t1", domain: "Tasks", href: "/leads/b?tab=tasks" }),
+      focusItem({ id: "t2", domain: "Tasks", href: "/leads/c?tab=tasks" }),
+      focusItem({ id: "t3", domain: "Tasks", href: "/leads/d?tab=tasks" }),
     ]);
 
     assert.equal(entry?.message, "I noticed three tasks are past due.");
@@ -159,8 +152,8 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
 
   it("reads Event Readiness as bookings with something outstanding", () => {
     const entry = aggregateFocusEntry([
-      focusItem({ id: "r1", domain: "Event Readiness", href: "/events/a" }),
-      focusItem({ id: "r2", domain: "Event Readiness", href: "/events/b" }),
+      focusItem({ id: "r1", domain: "Event Readiness", href: "/contracts/a" }),
+      focusItem({ id: "r2", domain: "Event Readiness", href: "/invoices/b" }),
     ]);
 
     assert.equal(entry?.message, "I noticed two bookings have something still outstanding.");
@@ -168,13 +161,14 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
 
   it("returns nothing for domains it has no interpretation for", () => {
     assert.equal(aggregateFocusEntry([focusItem({ domain: "Unmapped" })]), null);
+    assert.equal(aggregateFocusEntry([focusItem({ domain: "Leads" })]), null);
     assert.equal(aggregateFocusEntry([]), null);
   });
 
   // Luv offers to take the owner to the work; it must not promise to perform
   // an action no Dashboard control actually performs.
   it("does not promise to send or draft anything", () => {
-    for (const domain of ["Leads", "Tasks", "Event Readiness", "Calendar", "Payments"]) {
+    for (const domain of ["Tasks", "Event Readiness", "Calendar", "Payments"]) {
       const entry = aggregateFocusEntry([focusItem({ domain })]);
       assert.ok(entry, `${domain} should have an aggregate`);
       assert.doesNotMatch(`${entry.suggestion} ${entry.actionLabel}`, /draft|send|write it|for you/i);
