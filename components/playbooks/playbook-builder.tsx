@@ -47,6 +47,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/integrations/supabase/client";
+import { ATTACHMENT_SOURCE_LABELS } from "@/lib/documents/attachment-source";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import {
   AUTO_COMPLETE_TRIGGERS, categoryColor, categoryLabel, defaultReminderForCategory,
@@ -191,14 +192,19 @@ function AttachmentsField({
 
       <div className="flex flex-wrap items-center gap-1.5">
         <input ref={fileRef} type="file" accept={ACCEPT} onChange={handleFileSelect} className="hidden" id={`upload-${taskId}`} />
-        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
-          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} Upload a file
-        </Button>
+        {/*
+          Documents first and filled; uploading is the bordered fallback. The
+          checklist file a task points at — policies, a setup diagram — is
+          reusable across every event this template is applied to.
+        */}
         {availableDocs.length > 0 && (
-          <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
-            <FileText className="mr-1 h-3 w-3" /> Use an existing document
+          <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
+            <FileText className="mr-1 h-3 w-3" /> {ATTACHMENT_SOURCE_LABELS.fromDocuments}
           </Button>
         )}
+        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} {ATTACHMENT_SOURCE_LABELS.fromComputer}
+        </Button>
         <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setAddingLink((v) => !v)}>
           <Link2 className="mr-1 h-3 w-3" /> Add a link
         </Button>

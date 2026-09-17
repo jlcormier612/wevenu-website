@@ -19,6 +19,7 @@ import { saveDocumentAction } from "@/app/(app)/documents/actions";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createClient } from "@/integrations/supabase/client";
+import { ATTACHMENT_SOURCE_LABELS } from "@/lib/documents/attachment-source";
 import type { Document } from "@/lib/documents/types";
 import type { TimelineEntryAttachment } from "@/lib/timeline/types";
 
@@ -105,14 +106,19 @@ export function TimelineAttachmentsField({
 
       <div className="flex flex-wrap items-center gap-1.5">
         <input ref={fileRef} type="file" accept={ACCEPT} onChange={handleFileSelect} className="hidden" id={`timeline-upload-${timelineEntryId}`} />
-        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
-          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} Upload a file
-        </Button>
+        {/*
+          Documents first and filled; uploading is the bordered fallback. A
+          timeline row usually points at something the venue already keeps — a
+          floor plan, a load-in map — rather than a one-off file.
+        */}
         {pickableDocs.length > 0 && (
-          <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
-            <FileText className="mr-1 h-3 w-3" /> Use an existing document
+          <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
+            <FileText className="mr-1 h-3 w-3" /> {ATTACHMENT_SOURCE_LABELS.fromDocuments}
           </Button>
         )}
+        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} {ATTACHMENT_SOURCE_LABELS.fromComputer}
+        </Button>
       </div>
 
       {attachingExisting && (

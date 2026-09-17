@@ -41,6 +41,7 @@ import {
   shouldShowEmailReadinessBanner,
   shouldShowSmsReadinessBanner,
 } from "@/lib/conversations/compose-readiness-ui";
+import { ATTACHMENT_ENTRY_LABEL } from "@/lib/documents/attachment-source";
 import {
   confirmationAfterSend,
   isAuthoritativeSendSuccess,
@@ -832,19 +833,18 @@ export function ConversationCompose({
           onChange={handleFilePick}
           className="hidden"
         />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <Paperclip className="h-4 w-4" /> Attach
-        </button>
+        {/*
+          One way in. It opens on the venue's own documents, with "upload from
+          computer" waiting inside for the file that isn't here yet — rather than
+          two buttons that quietly asked staff to know which filing cabinet a
+          given file lived in before they could send it.
+        */}
         <button
           type="button"
           onClick={() => setLibraryPickerOpen(true)}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground hover:bg-muted/40"
         >
-          <FolderOpen className="h-4 w-4" /> From Library
+          <Paperclip className="h-4 w-4" /> {ATTACHMENT_ENTRY_LABEL}
         </button>
         {canSchedule && (
           <button
@@ -884,6 +884,7 @@ export function ConversationCompose({
             prev.some((d) => d.id === doc.id) ? prev : [...prev, doc],
           )
         }
+        onUploadFromComputer={() => fileInputRef.current?.click()}
       />
     </div>
   );

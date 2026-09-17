@@ -1,16 +1,22 @@
 "use client";
 
 /**
- * Attach an existing Library Document to the message being composed.
+ * Add a document to the message being composed.
  *
- * Every Library Document is listed, including ones that cannot go out on the
- * channel currently selected — those are disabled and carry the reason. Hiding
- * them would be worse than useless: a coordinator looking for the rain plan
- * they know they uploaded would conclude the file was lost, rather than learn
- * that a 12 MB PDF cannot be a text message.
+ * This is the single place the composer sends anyone who wants to attach
+ * something, and the venue's own documents are what they land on. Uploading
+ * from the computer is here too, in the footer, for the file that isn't in
+ * Hello to Cheers yet — same OS picker as before, just reached from inside the
+ * one "add a document" decision instead of being a rival button beside it.
+ *
+ * Every document is listed, including ones that cannot go out on the channel
+ * currently selected — those are disabled and carry the reason. Hiding them
+ * would be worse than useless: a coordinator looking for the rain plan they
+ * know they uploaded would conclude the file was lost, rather than learn that a
+ * 12 MB PDF cannot be a text message.
  */
 import * as React from "react";
-import { FileText, Loader2, Search } from "lucide-react";
+import { FileText, Loader2, Search, Upload } from "lucide-react";
 
 import {
   Dialog,
@@ -28,6 +34,11 @@ import {
   type LibraryAttachmentCandidate,
 } from "@/lib/conversations/library-attachment";
 import type { AttachmentChannel } from "@/lib/conversations/attachment-constraints";
+import {
+  ATTACHMENT_ENTRY_LABEL,
+  ATTACHMENT_NO_DOCUMENTS_HINT,
+  ATTACHMENT_SOURCE_LABELS,
+} from "@/lib/documents/attachment-source";
 import { cn } from "@/lib/utils";
 
 export function LibraryDocumentPicker({
@@ -36,6 +47,7 @@ export function LibraryDocumentPicker({
   channel,
   alreadyAttachedBytes,
   onSelect,
+  onUploadFromComputer,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,6 +56,11 @@ export function LibraryDocumentPicker({
   /** Bytes already staged on this message, so the text/MMS total is honest. */
   alreadyAttachedBytes: number;
   onSelect: (doc: LibraryAttachmentCandidate) => void;
+  /**
+   * Hands the secondary path back to the composer, which still owns the file
+   * input and the existing upload flow — this dialog does not reimplement it.
+   */
+  onUploadFromComputer: () => void;
 }) {
   const [documents, setDocuments] = React.useState<LibraryAttachmentCandidate[] | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -84,10 +101,10 @@ export function LibraryDocumentPicker({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] w-full flex-col gap-0 p-0 sm:max-w-lg">
         <DialogHeader className="border-b px-5 pt-5 pb-4">
-          <DialogTitle>Attach from Library</DialogTitle>
+          <DialogTitle>{ATTACHMENT_ENTRY_LABEL}</DialogTitle>
           <DialogDescription>
-            Files your venue reuses across bookings. Attaching one sends a copy — the
-            Library keeps the original.
+            Your venue&rsquo;s documents. Sending one leaves your original exactly where
+            it is.
           </DialogDescription>
         </DialogHeader>
 
@@ -97,9 +114,9 @@ export function LibraryDocumentPicker({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search Library documents by name…"
+              placeholder="Search your documents by name…"
               className="pl-8"
-              aria-label="Search Library documents by name"
+              aria-label="Search your documents by name"
             />
           </div>
         </div>
@@ -109,16 +126,15 @@ export function LibraryDocumentPicker({
             <p className="py-6 text-center text-sm text-destructive">{loadError}</p>
           ) : documents === null ? (
             <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading your Library…
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading your documents…
             </p>
           ) : documents.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              You haven&rsquo;t added any Library documents yet. Add them under Library
-              &rarr; Documents and they&rsquo;ll show up here.
+              {ATTACHMENT_NO_DOCUMENTS_HINT}
             </p>
           ) : filtered.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No Library documents match &ldquo;{query}&rdquo;.
+              None of your documents match &ldquo;{query}&rdquo;.
             </p>
           ) : (
             <ul className="space-y-1.5">
@@ -182,8 +198,22 @@ export function LibraryDocumentPicker({
           )}
         </div>
 
-        <DialogFooter className="border-t px-5 py-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        {/*
+          The secondary source. Bordered rather than filled, and below the list,
+          so the file already in Hello to Cheers stays the first thing offered.
+        */}
+        <DialogFooter className="flex-row items-center justify-between gap-2 border-t px-5 py-3 sm:justify-between">
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              onUploadFromComputer();
+            }}
+          >
+            <Upload className="mr-1.5 h-4 w-4" />
+            {ATTACHMENT_SOURCE_LABELS.fromComputer}
+          </Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
         </DialogFooter>
