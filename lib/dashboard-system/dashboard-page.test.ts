@@ -55,16 +55,15 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /\+ New Lead/);
   });
 
-  it("does not render a Payments to Watch snapshot card", () => {
+  it("renders the locked Business Snapshot cards, not legacy KPI tiles", () => {
+    assert.match(page, /BusinessSnapshotSection/);
     assert.doesNotMatch(page, /label="Payments to Watch"/);
     assert.doesNotMatch(page, /getPaymentsToWatchSummary/);
-    assert.doesNotMatch(page, /Business Snapshot/);
     assert.doesNotMatch(page, /label="Active Leads"/);
     assert.doesNotMatch(page, /label="Coming up"/);
     assert.match(page, /title="Coming up"/);
     assert.doesNotMatch(page, /\/payments\?filter=attention/);
     assert.doesNotMatch(page, /\/leads\?attention=active/);
-    assert.doesNotMatch(page, /clientListFilterHref\("coming_up"\)/);
     assert.doesNotMatch(page, /label="Venue Health"/);
     assert.doesNotMatch(page, /getVenueHealth/);
   });

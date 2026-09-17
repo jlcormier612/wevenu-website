@@ -708,7 +708,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <CardHeader>
               <CardTitle className="text-base">Venue tasks</CardTitle>
               <CardDescription>
-                One-off things your team needs to do for this lead. They also appear in Task Center.
+                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates.
               </CardDescription>
             </CardHeader>
             <CardContent>

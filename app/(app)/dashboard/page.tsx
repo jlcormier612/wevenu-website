@@ -7,9 +7,11 @@ import { Greeting } from "@/components/dashboard/greeting";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
+import { BusinessSnapshotSection } from "@/components/dashboard/business-snapshot";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
+import { getBusinessSnapshot } from "@/lib/dashboard/business-snapshot";
 import {
   classifyBriefingItems, classifyUpcomingItems,
   collectCrossSectionSubjects, excludeByCrossSectionSubject,
@@ -34,13 +36,18 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
  * Section jobs (must stay distinct):
  *   1. Today's Focus — what requires attention TODAY (actionable NOW)
  *   2. Coming up — what's coming (awareness, not another task queue)
+ *   3. Business Snapshot — compact business-state numbers (not Reports)
  *
  * Owning surfaces do the work (Leads, Inbox/Conversation, Contracts,
  * Invoices, Tours, Task Center). Dashboard does not reproduce their queues.
  * "+ New Lead" remains as the header primary action.
  */
 export default async function DashboardPage({ searchParams }: Props) {
-  const [data] = await Promise.all([getDashboardData(), searchParams]);
+  const [data, snapshot] = await Promise.all([
+    getDashboardData(),
+    getBusinessSnapshot(),
+    searchParams,
+  ]);
 
   if (!data) {
     return (
@@ -114,6 +121,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           renderRow={(item) => <ClassifiedRow item={item} />}
         />
       </section>
+
+      {snapshot && <BusinessSnapshotSection cards={snapshot.cards} />}
 
       <section>
         <Link

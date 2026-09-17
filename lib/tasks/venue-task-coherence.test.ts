@@ -18,6 +18,7 @@ describe("venue task coherence", () => {
     const detail = read("components/leads/lead-detail.tsx");
     assert.match(detail, /Venue tasks/);
     assert.match(detail, /One-off things your team needs to do for this lead/);
+    assert.match(detail, /not client planning tasks/);
     assert.match(section, /Due date/);
     assert.match(section, /Assignee/);
     assert.match(section, /assignedToStaffId/);
@@ -43,5 +44,22 @@ describe("venue task coherence", () => {
     const center = read("components/tasks/task-center.tsx");
     assert.match(center, /assigned_to_staff_id === currentStaffId/);
     assert.match(center, /setTaskCompletedAction/);
+  });
+
+  it("does not create calendar events from lead task due dates", () => {
+    const section = read("components/leads/tasks-section.tsx");
+    const actions = read("app/(app)/leads/[id]/actions.ts");
+    const service = read("lib/leads/service.ts");
+    assert.doesNotMatch(section, /calendar|createEvent|insertEvent/);
+    assert.doesNotMatch(actions, /from\("events"\)|calendar_entries|timeline_entries/);
+    assert.doesNotMatch(service, /addTask[\s\S]{0,400}from\("events"\)/);
+  });
+
+  it("does not mutate playbook templates when adding a lead task", () => {
+    const service = read("lib/leads/service.ts");
+    const repo = read("lib/leads/repository.ts");
+    assert.match(repo, /from\("lead_tasks"\)/);
+    assert.doesNotMatch(service, /playbook_tasks|playbook_templates/);
+    assert.doesNotMatch(repo, /playbook_tasks|playbook_templates/);
   });
 });
