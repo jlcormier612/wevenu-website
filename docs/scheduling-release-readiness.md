@@ -29,8 +29,8 @@ Real, verified gaps that don't prevent scheduling but materially hurt usability.
 3. **Week view has no on-screen "Today" button** — only reachable via the `t` keyboard shortcut, inconsistent with Month and Day, which both have one.
 4. **No text search exists anywhere on Calendar** — confirmed absent (no search input, no query param, nothing) despite being explicitly named in this audit's own brief. A coordinator can filter by type/space/staff but cannot type a client or booking name to jump to it.
 5. **"Saved filters" doesn't deliver what the name implies.** `use-calendar-filters.ts`'s own code comment is explicit and honest about this: filter selections persist to `localStorage` per view (Month/Week/Day/Agenda each remember their own last-used filters across reloads), but there is no named-preset save/reapply capability, no backend table, nothing a coordinator could call "my Tuesday coordinator view" and switch back to on demand. If Phase 4's original scope implied true saved presets, that specific promise was not delivered — only implicit last-state memory was.
-6. **Booking Schedule has no discoverability path.** The view exists, works, and is genuinely useful (confirmed: real per-booking data, correct prev/next-booking navigation, correct link back to the event) at `/calendar/booking/{eventId}` — but nothing links to it. Not the Event Detail page, not the Client page, not the Event Readiness card, not the wedding-day dashboard (`today/page.tsx`). A coordinator would have to already know this URL exists.
-7. **The wedding-day dashboard has zero integration with Calendar or Booking Schedule.** Confirmed via direct grep: `today/page.tsx`/`wedding-day-dashboard.tsx` contain no reference to either. "Run of Show" (named in this audit's own brief as a fourth surface) is confirmed to be Timeline's own on-page alias, not a separate system — that part is not confusing, just worth naming precisely. The real gap is that a coordinator standing at the venue on the wedding day, using the one page built specifically for that moment, has no link into Calendar's own booking-scoped schedule view.
+6. **~~Booking Schedule has no discoverability path.~~** **Retired.** The per-booking Booking Schedule surface (`/calendar/booking/{eventId}`) has been removed from the product. Dated work stays on its owning surfaces; venue Calendar remains the schedule view.
+7. **~~The wedding-day dashboard has zero integration with Calendar or Booking Schedule.~~** **Superseded by retirement.** Wedding Day no longer links to Booking Schedule; Timeline on that page remains the day-of run-of-show.
 8. **Self-service tour booking has no self-service reschedule or cancel.** `app/book/[key]/page.tsx` (a real, working, unauthenticated tour-booking widget backed by `book_tour`/`get_tour_slots` SECURITY DEFINER RPCs — confirmed genuinely built, not a stub) only creates new bookings. No route or RPC lets a lead who already booked a tour change or cancel it themselves; that requires contacting the venue.
 
 ---
@@ -56,7 +56,7 @@ Missing scheduling capabilities, verified as genuinely absent rather than assume
 
 Kept intentionally small — real, plausible, not required for release:
 
-- Wire Booking Schedule into the wedding-day dashboard and Event Readiness card as a real navigation entry point (closes UX Improvement #6/#7 more completely than a single added link would).
+- ~~Wire Booking Schedule into the wedding-day dashboard and Event Readiness card as a real navigation entry point~~ — **obsolete:** Booking Schedule was retired rather than expanded.
 - A true named/saved Calendar filter-preset system, if the product ever wants more than last-state memory (would need a small new backend table — out of scope for "operational, not architectural" work).
 - Client-facing Calendar in the Wedding Workspace portal — already correctly named as unbuilt-and-deliberately-out-of-scope in `docs/calendar-platform-integration.md` §7, unchanged here.
 - A genuine appointment-type catalog and travel/prep buffer split, if a venue's real-world need for more than "tour" ever materializes.
@@ -83,7 +83,7 @@ Selected for implementation: the items directly serving the audit's own named op
 1. **Agenda view gained on-screen prev/next/today controls** — matching Month/Day's existing pattern, closing the mobile-usability gap named above.
 2. **Week view gained an on-screen "Today" button** — matching Month/Day.
 3. **Room and staff now render as visible text on calendar items** where the data exists (`spaceName` on the wedding-day event item, `assignedToName` on Planning items) — a small subtitle addition, not a redesign, directly closing the "What room? What staff member?" gap without leaving Calendar.
-4. **Booking Schedule gained a real entry point**: a link from the Event Detail page (and the wedding-day dashboard) directly into `/calendar/booking/{eventId}` — closing the discoverability gap without building any new page.
+4. **~~Booking Schedule gained a real entry point~~** — **superseded:** Booking Schedule (including those Event Detail / Wedding Day links) was later retired entirely.
 
 **Not implemented in this pass, named honestly:** Calendar text search (a genuinely new, non-trivial capability, not a small UX fix) and true named/saved filter presets (needs new backend storage) are both listed under Platform Gaps/Future Enhancements rather than attempted here, consistent with "operational, not architectural."
 
@@ -95,7 +95,7 @@ Selected for implementation: the items directly serving the audit's own named op
 - **Full-repo `eslint`**: identical pre-existing baseline, zero new issues introduced.
 - **Navigation bug**: re-traced the exact failure path (Week view several months forward → switch to Month) against the fixed code; `year`/`month` now correctly reflect the viewed period at every navigation call site.
 - **Tour conflict block**: re-traced `relationship-card.tsx`'s save path against the fixed wiring; a `calendar_blocked` date now disables the tour-scheduling save button exactly as it already does for event creation, with the identical advisory-vs-error visual treatment already established by `ConflictWarning`.
-- **Ownership boundary**: re-confirmed `lib/calendar/service.ts`, `lib/calendar/booking-schedule.ts`, and `lib/calendar/view-data.ts` contain zero write operations against any table other than what `lib/availability/`'s own dedicated action layer already owns — Calendar's changes in this pass are additive display/navigation fixes, not new business logic, and Calendar still owns nothing but time.
+- **Ownership boundary**: re-confirmed `lib/calendar/service.ts` and `lib/calendar/view-data.ts` contain zero write operations against any table other than what `lib/availability/`'s own dedicated action layer already owns — Calendar's changes in this pass are additive display/navigation fixes, not new business logic, and Calendar still owns nothing but time. (The former `lib/calendar/booking-schedule.ts` surface has since been retired.)
 - **Room/staff display**: confirmed the added subtitle text reads directly from the same `spaceName`/`assignedToName` fields Phase 4 already populated — no new query, no new computation.
 
 ---

@@ -267,8 +267,8 @@ function DayDetail({
 }
 
 // ---- Legend -----------------------------------------------------------------
-// Venue Calendar only — never Object.entries(TYPE_META). Booking Schedule and
-// other lenses may still use excluded TYPE_META entries; this legend must not.
+// Venue Calendar only — never Object.entries(TYPE_META). Excluded dated-work
+// TYPE_META entries must not appear in this legend.
 function Legend({ tastingEnabled }: { tastingEnabled: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -1094,8 +1094,7 @@ export function CalendarView({
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
               {MONTH_NAMES[month - 1]} at a glance — {filteredItems.length} item{filteredItems.length !== 1 ? "s" : ""}
               {/* Operational cue (Phase 4) — a count of items Calendar already
-                  knows are overdue, not a Readiness recomputation. See
-                  BookingScheduleView for the same convention. */}
+                  knows are overdue, not a Readiness recomputation. */}
               {filteredItems.filter((i) => i.subtitle === "Overdue").length > 0 && (
                 <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                   {filteredItems.filter((i) => i.subtitle === "Overdue").length} overdue

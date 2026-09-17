@@ -453,9 +453,6 @@ export function EventDetail({
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/day-sheet`} />}>
             <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
           </Button>
-          <Button variant="outline" size="sm" render={<Link href={`/calendar/booking/${event.id}`} />}>
-            <Calendar className="mr-1 h-3.5 w-3.5" /> Booking Schedule
-          </Button>
           {daysUntil(event.eventDate) === 0 && (
             <Button size="sm" render={<Link href={`/events/${event.id}/today`} />}
               style={{ background: "#5D6F5D", color: "white" }}>

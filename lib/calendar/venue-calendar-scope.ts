@@ -2,8 +2,8 @@
  * Calendar Slice 1 — venue Calendar display boundary.
  *
  * Venue Calendar shows scheduled / reserved / occupied / intentionally blocked
- * time only. Booking Schedule may still surface due dates and other dated work
- * for a single booking; those types remain on CalendarItemType for that lens.
+ * time only. Dated work types remain on CalendarItemType so persisted filters
+ * can be sanitized, but they are never aggregated into venue Calendar.
  */
 import type { CalendarItemType } from "@/lib/calendar/types";
 import type { ManualScheduleType } from "@/lib/availability/types";

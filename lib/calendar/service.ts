@@ -3,10 +3,10 @@
  *
  * getCalendarData() aggregates venue-wide scheduled / reserved / blocked time
  * for one month. Calendar Slice 1 removed dated work (payments, follow-ups,
- * request dues, expirations) from this aggregation — those remain
- * on their owning surfaces and on Booking Schedule where appropriate.
+ * request dues, expirations) from this aggregation — those remain on their
+ * owning surfaces (Payments, Leads, Requests, Contracts, Documents, Planning).
  *
- * See lib/calendar/venue-calendar-scope.ts and lib/calendar/booking-schedule.ts.
+ * See lib/calendar/venue-calendar-scope.ts.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";

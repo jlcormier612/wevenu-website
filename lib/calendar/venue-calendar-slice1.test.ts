@@ -25,7 +25,6 @@ import type { CalendarItemType } from "@/lib/calendar/types";
 import { venueCalendarLegendEntries } from "@/components/calendar/calendar-shared";
 
 const serviceSrc = readFileSync(resolve("lib/calendar/service.ts"), "utf8");
-const bookingSrc = readFileSync(resolve("lib/calendar/booking-schedule.ts"), "utf8");
 const pageSrc = readFileSync(resolve("app/(app)/calendar/page.tsx"), "utf8");
 const calendarViewSrc = readFileSync(resolve("components/calendar/calendar-view.tsx"), "utf8");
 const filtersSrc = readFileSync(resolve("components/calendar/use-calendar-filters.ts"), "utf8");
@@ -76,16 +75,6 @@ describe("Calendar Slice 1 — venue aggregation boundary", () => {
     assert.doesNotMatch(aggregation, /from\("event_tasks"\)/);
     assert.doesNotMatch(aggregation, /scheduled_date/);
     assert.doesNotMatch(aggregation, /type: "planning_activity"/);
-  });
-
-  it("Booking Schedule still includes due dates and planning tasks", () => {
-    assert.match(bookingSrc, /type: "payment_due"/);
-    assert.match(bookingSrc, /type: "request_due"/);
-    assert.match(bookingSrc, /type: "planning_task"/);
-    assert.match(bookingSrc, /type: "timeline_entry"/);
-    assert.match(bookingSrc, /type: "contract_expiration"/);
-    assert.match(bookingSrc, /type: "document_expiration"/);
-    assert.match(bookingSrc, /type: "planning_activity"/);
   });
 });
 

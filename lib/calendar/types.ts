@@ -6,16 +6,16 @@
 export type CalendarItemType =
   | "event"          // booked event (events table) — venue Calendar
   | "tour"           // venue tour (tour_appointments only) — venue Calendar
-  | "follow_up"      // lead follow-up — Booking Schedule / Dashboard only (not venue Calendar; Slice 1)
-  | "payment_due"    // payment line item — Booking Schedule / Dashboard only (not venue Calendar; Slice 1)
+  | "follow_up"      // lead follow-up — owning surfaces / Dashboard only (not venue Calendar; Slice 1)
+  | "payment_due"    // payment line item — owning surfaces / Dashboard only (not venue Calendar; Slice 1)
   | "date_hold"      // soft reservation (date_holds table) — venue Calendar
   | "calendar_block" // manual schedule / blocked time (calendar_blocks) — venue Calendar
-  | "planning_activity" // scheduled Planning task — Booking Schedule only (not venue Calendar)
-  | "request_due" // Request due date — Booking Schedule only (not venue Calendar; Slice 1)
-  | "contract_expiration" // Contract expires_at — Booking Schedule only (not venue Calendar; Slice 1)
-  | "document_expiration" // Document expires_at — Booking Schedule only (not venue Calendar; Slice 1)
-  | "planning_task" // Planning due-date task — Booking Schedule lens only
-  | "timeline_entry"; // Booking Timeline entry — Booking Schedule lens only
+  | "planning_activity" // scheduled Planning task — owning surfaces only (not venue Calendar)
+  | "request_due" // Request due date — owning surfaces only (not venue Calendar; Slice 1)
+  | "contract_expiration" // Contract expires_at — owning surfaces only (not venue Calendar; Slice 1)
+  | "document_expiration" // Document expires_at — owning surfaces only (not venue Calendar; Slice 1)
+  | "planning_task" // Planning due-date task — owning surfaces only (not venue Calendar)
+  | "timeline_entry"; // Booking Timeline entry — owning surfaces only (not venue Calendar)
 
 export type CalendarItem = {
   id: string;
@@ -34,7 +34,7 @@ export type CalendarItem = {
   rawId?: string;      // underlying DB record id for actionable types (e.g. calendar_block)
   // Passthrough metadata (Calendar Integration Phase 3) — every mapping
   // block already has access to these from its own query; exposing them
-  // lets Week/Day/Agenda/Booking Schedule slice the exact same items by
+  // lets Week/Day/Agenda slice the exact same items by
   // booking without a second, parallel aggregation. Not a new computation —
   // just carrying along IDs the query already selected.
   eventId?: string | null;

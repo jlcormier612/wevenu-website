@@ -2,9 +2,9 @@
 
 /**
  * Shared building blocks for every Calendar surface (Month grid, Week/Day/
- * Agenda views, Booking Schedule) — kept in their own file so those views
- * can import them without creating a circular dependency on
- * calendar-view.tsx, which itself renders the Week/Day/Agenda views.
+ * Agenda views) — kept in their own file so those views can import them
+ * without creating a circular dependency on calendar-view.tsx, which itself
+ * renders the Week/Day/Agenda views.
  */
 import * as React from "react";
 
@@ -135,10 +135,10 @@ export function ItemRow({
 }: {
   item: CalendarItem;
   onDeleteBlock?: (blockId: string) => void;
-  /** Manual Schedule Items are the one editable type; omitted on read-only surfaces (print, Booking Schedule). */
+  /** Manual Schedule Items are the one editable type; omitted on read-only surfaces (print). */
   onEditBlock?: (blockId: string) => void;
   deleting?: boolean;
-  /** Agenda/Booking Schedule span many days — show each row's own date. */
+  /** Agenda spans many days — show each row's own date. */
   showDate?: boolean;
 }) {
   const meta = resolveItemMeta(item);
