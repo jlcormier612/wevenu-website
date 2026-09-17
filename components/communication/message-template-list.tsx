@@ -78,7 +78,7 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
         badges={
           <>
             {t.emailBody && <Badge variant="muted" className="text-[10px]">Email</Badge>}
-            {t.smsBody && <Badge variant="muted" className="text-[10px]">SMS</Badge>}
+            {t.smsBody && <Badge variant="muted" className="text-[10px]">Text</Badge>}
           </>
         }
         primaryActions={archivedView

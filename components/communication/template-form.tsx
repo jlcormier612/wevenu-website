@@ -34,7 +34,7 @@ function buildInitial(template?: MessageTemplate | null): MessageTemplateInput {
   };
 }
 
-// A template belongs to Email, SMS, or both — content is always
+// A template belongs to Email, Text, or both — content is always
 // independently written per channel, never shared (§2.5, decided
 // 2026-07-13). Both sections are always visible; saving only requires at
 // least one to actually have content.
@@ -144,12 +144,12 @@ export function TemplateForm({
                   />
                   <div className="flex items-center gap-3">
                     <Select value={importChannel} onValueChange={(v) => setImportChannel(v as ImportChannel)}
-                      items={[{ value: "both", label: "Email + SMS" }, { value: "email", label: "Email only" }, { value: "sms", label: "SMS only" }]}>
+                      items={[{ value: "both", label: "Email + Text" }, { value: "email", label: "Email only" }, { value: "sms", label: "Text only" }]}>
                       <SelectTrigger className="h-9 w-40 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="both">Email + SMS</SelectItem>
+                        <SelectItem value="both">Email + Text</SelectItem>
                         <SelectItem value="email">Email only</SelectItem>
-                        <SelectItem value="sms">SMS only</SelectItem>
+                        <SelectItem value="sms">Text only</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button type="button" size="sm" onClick={handleImport} disabled={importing || !importText.trim()}>
@@ -199,7 +199,7 @@ export function TemplateForm({
 
               <div className="space-y-3 rounded-lg border border-border p-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-heading">SMS</p>
+                  <p className="text-sm font-semibold text-heading">Text</p>
                   <p className="text-xs text-muted-foreground">{input.smsBody.length} characters</p>
                 </div>
                 <div className="space-y-1.5">
@@ -229,7 +229,7 @@ export function TemplateForm({
 
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Merge fields</p>
-              <p className="text-xs text-muted-foreground">Same fields work in Email and SMS. They&apos;re replaced with real data when a message is sent.</p>
+              <p className="text-xs text-muted-foreground">Same fields work in Email and Text. They&apos;re replaced with real data when a message is sent.</p>
               <div className="space-y-2">
                 {MESSAGE_MERGE_FIELDS.map((f) => (
                   <div key={f.key}

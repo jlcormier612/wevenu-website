@@ -35,6 +35,7 @@ import type {
 import { isSendableChannel } from "@/lib/conversations/channels";
 import { acceptOutboundEmail, acceptOutboundSms } from "@/lib/conversations/delivery-result";
 import { getCommunicationMode } from "@/lib/communication/mode";
+import { isTextingConversationKind, TEXTING_KIND_BLOCKED_MESSAGE } from "@/lib/conversations/texting";
 import { sendSms, isSmsConfigured } from "@/lib/sms/send";
 import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
@@ -141,6 +142,7 @@ export async function getConversationComposeContext(
   let smsPermissionMessage: string | null = null;
   let emailPermissionMessage: string | null = null;
   let smsPermissionHint: string | null = null;
+  let smsConsentCollectionHint: string | null = null;
   if (venue) {
     const {
       assertChannelAllowed,
@@ -156,8 +158,14 @@ export async function getConversationComposeContext(
       });
       if (!sms.ok) {
         smsPermissionMessage = sms.message;
+        if (sms.status === "not_opted_in") {
+          smsConsentCollectionHint =
+            "Texting permission is collected on the inquiry and tour forms. It is not assumed from a reply.";
+        }
       } else if (sms.status === "not_opted_in") {
         smsPermissionHint = smsPermissionStatusLabel(sms.status);
+        smsConsentCollectionHint =
+          "Texting permission is collected on the inquiry and tour forms. It is not assumed from a reply.";
       } else if (sms.status === "opted_in") {
         smsPermissionHint = smsPermissionStatusLabel(sms.status);
       }
@@ -175,7 +183,8 @@ export async function getConversationComposeContext(
   }
 
   const smsConfigured = !!venue && (await isSmsConfigured(venue.id));
-  const smsReady = !sendingDisabled && smsConfigured && !smsPermissionMessage;
+  const smsProvisioned = !sendingDisabled && smsConfigured;
+  const smsReady = smsProvisioned && !smsPermissionMessage && isTextingConversationKind(facts.conversationKind);
 
   return {
     displayName: facts.displayName,
@@ -184,11 +193,13 @@ export async function getConversationComposeContext(
     recipientPhone: facts.recipientPhone,
     recipientPhoneDisplay: facts.recipientPhone ? formatPhoneDisplay(facts.recipientPhone) : null,
     emailReady: !sendingDisabled && isEmailConfigured() && !emailPermissionMessage,
+    smsProvisioned,
     smsReady,
     sendingDisabled,
     smsPermissionMessage,
     emailPermissionMessage,
     smsPermissionHint,
+    smsConsentCollectionHint,
     textingSetupHref:
       !sendingDisabled && !smsConfigured && !smsPermissionMessage
         ? TEXTING_SETUP_PATH
@@ -337,6 +348,10 @@ export async function sendConversationMessage(
   let providerAccountSid: string | undefined;
   let status: string | undefined;
   if (channel === "sms") {
+    const facts = await repo.getConversationComposeFacts(supabase, conversationId);
+    if (!isTextingConversationKind(facts?.conversationKind)) {
+      return { ok: false, message: TEXTING_KIND_BLOCKED_MESSAGE };
+    }
     const phone = await repo.getConversationRecipientPhone(supabase, conversationId);
     const e164 = phone ? toE164(phone) : null;
     if (!e164) {

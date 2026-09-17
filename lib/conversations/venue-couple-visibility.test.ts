@@ -32,7 +32,7 @@ describe("venue CRM Conversation resolves venue_couple (same as portal)", () => 
     const fn = src.slice(src.indexOf("export async function getConversationIdForRelationship"));
     const body = fn.slice(0, 400);
     assert.match(body, /findVenueCoupleConversationId/);
-    assert.doesNotMatch(body, /\.eq\("relationship_id".*\)\s*\.maybeSingle\(\)/s);
+    assert.doesNotMatch(body, /\.eq\("relationship_id"[\s\S]*\)\s*\.maybeSingle\(\)/);
   });
 
   it("client EventDetail Conversation tab is wired via getConversationIdForRelationship", () => {

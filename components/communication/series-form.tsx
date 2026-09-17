@@ -241,11 +241,11 @@ export function SeriesForm({
                   <div className="space-y-1.5 sm:w-28">
                     <Label className="text-xs">Send as</Label>
                     <Select value={step.channel} onValueChange={(v) => updateStep(i, { channel: v as SequenceStepInput["channel"], templateId: "" })}
-                      items={[{ value: "email", label: "Email" }, { value: "sms", label: "SMS" }]}>
+                      items={[{ value: "email", label: "Email" }, { value: "sms", label: "Text" }]}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="sms">SMS</SelectItem>
+                        <SelectItem value="sms">Text</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -257,7 +257,7 @@ export function SeriesForm({
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose a template" /></SelectTrigger>
                       <SelectContent>
                         {eligible.length === 0 && (
-                          <p className="px-2 py-1.5 text-xs text-muted-foreground">No {step.channel === "email" ? "email" : "SMS"} templates yet</p>
+                          <p className="px-2 py-1.5 text-xs text-muted-foreground">No {step.channel === "email" ? "email" : "text"} templates yet</p>
                         )}
                         {eligible.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                       </SelectContent>

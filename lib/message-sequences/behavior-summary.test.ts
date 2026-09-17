@@ -30,7 +30,7 @@ describe("buildAutomationBehaviorSummary", () => {
     assert.match(s.paragraph, /new inquiry/i);
     assert.match(s.paragraph, /immediately/i);
     assert.match(s.paragraph, /2 days after the previous message/i);
-    assert.match(s.paragraph, /SMS/i);
+    assert.match(s.paragraph, /text/i);
     assert.match(s.paragraph, /5 days after the previous message/i);
     assert.equal(s.lines.steps.length, 3);
   });

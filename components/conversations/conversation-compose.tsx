@@ -112,8 +112,6 @@ export function ConversationCompose({
   >(null);
   const [appliedPrefillNonce, setAppliedPrefillNonce] = React.useState<number | null>(null);
 
-  const channel: SendableChannel = mode === "internal_note" ? "internal_note" : outboundChannel;
-
   /**
    * Both attachment sources in one list, in the shape the channel validator
    * wants. Text/MMS caps the combined size of everything on the message, so a
@@ -157,7 +155,17 @@ export function ConversationCompose({
   }, [conversationId, initialSubject]);
 
   const emailReady = !context || context.emailReady;
+  const smsProvisioned = !context || context.smsProvisioned;
   const smsReady = !context || context.smsReady;
+  const textingKindOk = !context || context.conversationKind === "venue_couple";
+  const outboundChannels = textingKindOk
+    ? OUTBOUND_CHANNELS
+    : OUTBOUND_CHANNELS.filter((c) => c !== "sms");
+  const activeOutbound: OutboundChannel =
+    outboundChannel === "sms" && context && (context.conversationKind !== "venue_couple" || !context.smsProvisioned)
+      ? "portal"
+      : outboundChannel;
+  const channel: SendableChannel = mode === "internal_note" ? "internal_note" : activeOutbound;
   const channelReady =
     channel === "email" ? emailReady : channel === "sms" ? smsReady : true;
   const channelDisabledReason =
@@ -558,7 +566,7 @@ export function ConversationCompose({
             <span className="sr-only">Channel</span>
             <select
               aria-label="Channel"
-              value={outboundChannel}
+              value={activeOutbound}
               onChange={(e) => {
                 setOutboundChannel(e.target.value as OutboundChannel);
                 setTemplateId("");
@@ -567,8 +575,9 @@ export function ConversationCompose({
               }}
               className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm"
             >
-              {OUTBOUND_CHANNELS.map((c) => {
-                const disabled = (c === "email" && !emailReady) || (c === "sms" && !smsReady);
+              {outboundChannels.map((c) => {
+                const disabled =
+                  (c === "email" && !emailReady) || (c === "sms" && !smsProvisioned);
                 const label = OUTBOUND_CHANNEL_LABEL[c];
                 return (
                   <option key={c} value={c} disabled={disabled}>
@@ -650,6 +659,10 @@ export function ConversationCompose({
 
       {!channelDisabledReason && channel === "sms" && context?.smsPermissionHint && (
         <p className="text-xs text-muted-foreground">{context.smsPermissionHint}</p>
+      )}
+
+      {channel === "sms" && context?.smsConsentCollectionHint && (
+        <p className="text-xs text-muted-foreground">{context.smsConsentCollectionHint}</p>
       )}
 
       {channel === "email" && (

@@ -8,6 +8,7 @@
  * See lib/communication/mode.ts for COMMUNICATION_MODE.
  */
 
+import { translateSmsFailure } from "@/lib/communication/failure-messages";
 import { getCommunicationMode, sandboxPhoneRecipient } from "@/lib/communication/mode";
 import { resolveVenueTwilioForSend } from "@/lib/sms/venue-twilio-resolve";
 import { twilioRestBasicAuth } from "@/lib/sms/venue-twilio-secrets";
@@ -135,9 +136,25 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
     },
   );
 
-  const data = await res.json().catch(() => null) as { sid?: string; message?: string } | null;
+  const data = await res.json().catch(() => null) as { sid?: string; message?: string; code?: number } | null;
   if (!res.ok) {
-    return { ok: false, message: data?.message ?? `Text send failed (${res.status}).` };
+    const providerMessage = data?.message ?? `Text send failed (${res.status}).`;
+    console.error("SMS provider send failed", {
+      httpStatus: res.status,
+      providerCode: data?.code ?? null,
+      providerMessage,
+      accountSid: account.twilioAccountSid,
+      venueId: payload.venueId,
+    });
+    const translated = translateSmsFailure(`${data?.code ?? ""} ${providerMessage}`);
+    const genericDelivery = "Your message couldn't be delivered.";
+    return {
+      ok: false,
+      message:
+        translated === genericDelivery
+          ? "Your message couldn’t be sent. Please try again."
+          : translated,
+    };
   }
   return {
     ok: true,

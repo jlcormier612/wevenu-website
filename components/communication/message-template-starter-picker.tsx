@@ -34,8 +34,8 @@ import type { MessageTemplate, MessageTemplateCategory } from "@/lib/message-tem
 
 const CHANNEL_OPTIONS: { value: ImportChannel; label: string }[] = [
   { value: "email", label: "Email only" },
-  { value: "sms", label: "Text (SMS) only" },
-  { value: "both", label: "Both — propose an SMS version too" },
+  { value: "sms", label: "Text only" },
+  { value: "both", label: "Both — propose a Text version too" },
 ];
 
 type StarterChoice = "existing" | "scratch" | "import";

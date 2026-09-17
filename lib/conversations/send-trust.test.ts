@@ -26,11 +26,16 @@ function captureEnv() {
 }
 
 function restoreEnv() {
+  const env = process.env as Record<string, string | undefined>;
   for (const key of KEYS) {
-    if (snapshot[key] === undefined) delete process.env[key];
-    else process.env[key] = snapshot[key];
+    if (snapshot[key] === undefined) delete env[key];
+    else env[key] = snapshot[key];
   }
   clearVenueTwilioSecretCache();
+}
+
+function setEnv(key: string, value: string) {
+  (process.env as Record<string, string | undefined>)[key] = value;
 }
 
 captureEnv();
@@ -81,7 +86,7 @@ describe("SMS send trust", () => {
   });
 
   it("fails clearly when sending is disabled — it does not report success", async () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     process.env.COMMUNICATION_MODE = "disabled";
     process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([{
       venue_id: "test-venue",
@@ -105,7 +110,7 @@ describe("SMS send trust", () => {
   });
 
   it("does not send to a real recipient when sandbox phone is missing", async () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     process.env.COMMUNICATION_MODE = "sandbox";
     delete process.env.COMMUNICATION_SANDBOX_PHONE;
     process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([{

@@ -9,7 +9,8 @@
  *   3. From → find_relationship_by_phone_for_venue(phone, venue_id)
  *   4. Match → find-or-create venue_couple Conversation, insert message (idempotent on MessageSid)
  *   5. Persist NumMedia MediaUrl* with venue credentials + Documents registration
- *   6. No match → log and skip
+ *   6. Zero or ambiguous matches → persist inbound_sms_unmatched; do not guess
+ *      a relationship. STOP still records phone-level opt-out at the venue.
  *
  * Media-only MMS (empty Body) is allowed when NumMedia > 0.
  */
@@ -24,6 +25,11 @@ import { parseInboundTwilioMedia, persistTwilioMediaToConversationStorage } from
 import { registerMessageAttachmentAsDocument } from "@/lib/conversations/attachment-document";
 import { resolveVenueTwilioForWebhookAccountSid } from "@/lib/sms/venue-twilio-resolve";
 import { twilioMediaBasicAuth } from "@/lib/sms/venue-twilio-secrets";
+import {
+  inboundFromDigits,
+  persistInboundSmsUnmatched,
+  unmatchedReasonFromCount,
+} from "@/lib/sms/inbound-unmatched";
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
@@ -67,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (existingMsg) return NextResponse.json({ ok: true, deduped: true });
   }
 
-  const { data: match } = await supabase.rpc("find_relationship_by_phone_for_venue", {
+  const { data: match, error: matchError } = await supabase.rpc("find_relationship_by_phone_for_venue", {
     p_phone: from,
     p_venue_id: venueId,
   }).maybeSingle<{
@@ -78,8 +84,68 @@ export async function POST(request: NextRequest) {
     display_name: string | null;
   }>();
 
-  if (!match) {
-    console.warn("Inbound SMS from unmatched number for venue:", venueId, from);
+  if (matchError || !match) {
+    // Zero or multiple relationships with this number → do not guess or merge.
+    let matchCount = 0;
+    let reason = unmatchedReasonFromCount(0);
+    if (matchError) {
+      reason = "rpc_error";
+      console.error("find_relationship_by_phone_for_venue failed:", matchError.message);
+    } else {
+      const { data: counted } = await supabase.rpc("count_relationships_by_phone_for_venue", {
+        p_phone: from,
+        p_venue_id: venueId,
+      });
+      matchCount = typeof counted === "number" ? counted : Number(counted ?? 0);
+      reason = unmatchedReasonFromCount(matchCount);
+    }
+    console.warn("inbound_sms_unmatched", {
+      venueId,
+      fromDigits: inboundFromDigits(from),
+      reason,
+      matchCount,
+      hasOptOutType: Boolean(optOutType),
+    });
+    await persistInboundSmsUnmatched(supabase, {
+      venueId,
+      from,
+      matchCount,
+      reason,
+      messageSid,
+    });
+
+    const { permissionFromTwilioOptOut, upsertCommunicationPermission, getCommunicationPermission, normalizeSmsAddressKey } =
+      await import("@/lib/communication/permissions");
+    const permChange = permissionFromTwilioOptOut(optOutType, body);
+    if (permChange?.status === "opted_out") {
+      await upsertCommunicationPermission(supabase, {
+        venueId,
+        channel: "sms",
+        rawAddress: from,
+        status: "opted_out",
+        source: permChange.source,
+        evidence: { optOutType, body, messageSid, accountSid, unmatched: true },
+      });
+    } else if (permChange?.status === "opted_in") {
+      const addressKey = normalizeSmsAddressKey(from);
+      if (addressKey) {
+        const current = await getCommunicationPermission(supabase, {
+          venueId,
+          channel: "sms",
+          addressKey,
+        });
+        if (current === "opted_out") {
+          await upsertCommunicationPermission(supabase, {
+            venueId,
+            channel: "sms",
+            rawAddress: from,
+            status: "opted_in",
+            source: permChange.source,
+            evidence: { optOutType, body, messageSid, accountSid, unmatched: true },
+          });
+        }
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 

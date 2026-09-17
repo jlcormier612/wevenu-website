@@ -23,9 +23,21 @@ describe("conversation composer send surface", () => {
     assert.match(compose, /Internal note/);
     assert.match(compose, /Staff note for your venue team/);
     assert.match(compose, /switchMode\("internal_note"\)/);
-    const outboundSelect = compose.match(/OUTBOUND_CHANNELS\.map\(\(c\) => \{[\s\S]*?\}\)/)?.[0] ?? "";
+    const outboundSelect = compose.match(/outboundChannels\.map\(\(c\) => \{[\s\S]*?\}\)/)?.[0]
+      ?? compose.match(/OUTBOUND_CHANNELS\.map\(\(c\) => \{[\s\S]*?\}\)/)?.[0]
+      ?? "";
     assert.ok(outboundSelect.length > 0, "outbound channel select should map OUTBOUND_CHANNELS");
     assert.doesNotMatch(outboundSelect, /internal_note/);
+  });
+
+  it("disables Text when the venue is not provisioned, not when permission is missing", () => {
+    assert.match(compose, /c === "sms" && !smsProvisioned/);
+    assert.match(compose, /c === "email" && !emailReady/);
+    assert.doesNotMatch(compose, /c === "sms" && !smsReady/);
+    assert.match(compose, /conversationKind !== "venue_couple"/);
+    assert.match(compose, /Send text now/);
+    assert.match(compose, /smsConsentCollectionHint/);
+    assert.match(compose, /channelReady/);
   });
 
   it("does not use a one-line Enter-to-send footer", () => {

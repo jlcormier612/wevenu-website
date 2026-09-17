@@ -179,7 +179,7 @@ function ContextBody({
                   <span className="truncate">{a.fileName}</span>
                 </a>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  Shared in conversation{a.channel === "sms" ? " · SMS" : a.channel === "email" ? " · Email" : ""}
+                  Shared in conversation{a.channel === "sms" ? " · Text" : a.channel === "email" ? " · Email" : ""}
                 </p>
                 {docsHref && (
                   <Link href={docsHref} className="mt-1 block text-[10px] font-medium text-primary hover:underline">

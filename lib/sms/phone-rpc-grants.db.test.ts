@@ -26,9 +26,25 @@ function canExecute(role: string, signature: string): boolean {
   ) === "t";
 }
 
+function functionExists(signature: string): boolean {
+  return psql(`select to_regprocedure('${signature}') is not null`) === "t";
+}
+
 describe("phone RPC EXECUTE grants", () => {
   it("find_relationship_by_phone_for_venue: public/anon/authenticated denied; service_role allowed", () => {
     const sig = "public.find_relationship_by_phone_for_venue(text,uuid)";
+    assert.equal(canExecute("public", sig), false);
+    assert.equal(canExecute("anon", sig), false);
+    assert.equal(canExecute("authenticated", sig), false);
+    assert.equal(canExecute("service_role", sig), true);
+  });
+
+  it("count_relationships_by_phone_for_venue: public/anon/authenticated denied; service_role allowed", (t) => {
+    const sig = "public.count_relationships_by_phone_for_venue(text,uuid)";
+    if (!functionExists(sig)) {
+      t.skip("20261400000000 not applied to local DB");
+      return;
+    }
     assert.equal(canExecute("public", sig), false);
     assert.equal(canExecute("anon", sig), false);
     assert.equal(canExecute("authenticated", sig), false);

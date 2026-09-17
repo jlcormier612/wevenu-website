@@ -30,7 +30,7 @@ function timingPhrase(offsetDays: number, isFirst: boolean): string {
 }
 
 function channelWord(channel: SequenceStepInput["channel"]): string {
-  return channel === "sms" ? "SMS" : "email";
+  return channel === "sms" ? "text" : "email";
 }
 
 function startsWhen(input: MessageSequenceInput): string {
@@ -47,7 +47,8 @@ function startsWhen(input: MessageSequenceInput): string {
 
 function stepLine(step: SequenceStepInput, index: number): string {
   const when = timingPhrase(step.offsetDays, index === 0);
-  return `Send an ${channelWord(step.channel)} ${when}`;
+  const article = step.channel === "sms" ? "a" : "an";
+  return `Send ${article} ${channelWord(step.channel)} ${when}`;
 }
 
 function stepsNarrative(steps: SequenceStepInput[]): string {

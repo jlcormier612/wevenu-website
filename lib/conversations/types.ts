@@ -141,6 +141,9 @@ export type ConversationComposeContext = {
   recipientPhone: string | null;
   recipientPhoneDisplay: string | null;
   emailReady: boolean;
+  /** Venue Twilio is provisioned and sending is not disabled (consent is separate). */
+  smsProvisioned: boolean;
+  /** Provisioned and the recipient currently may receive Text. */
   smsReady: boolean;
   sendingDisabled: boolean;
   /** Server-side permission/suppression — null when channel is allowed. */
@@ -148,6 +151,8 @@ export type ConversationComposeContext = {
   emailPermissionMessage: string | null;
   /** Informational SMS permission label when send is still allowed. */
   smsPermissionHint: string | null;
+  /** When permission is missing — points at the existing inquiry/tour consent flow. */
+  smsConsentCollectionHint: string | null;
   /** When SMS isn't configured yet — deep link to venue texting setup. */
   textingSetupHref: string | null;
 };

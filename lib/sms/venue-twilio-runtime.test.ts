@@ -26,11 +26,16 @@ function captureEnv() {
 }
 
 function restoreEnv() {
+  const env = process.env as Record<string, string | undefined>;
   for (const key of KEYS) {
-    if (snapshot[key] === undefined) delete process.env[key];
-    else process.env[key] = snapshot[key];
+    if (snapshot[key] === undefined) delete env[key];
+    else env[key] = snapshot[key];
   }
   clearVenueTwilioSecretCache();
+}
+
+function setEnv(key: string, value: string) {
+  (process.env as Record<string, string | undefined>)[key] = value;
 }
 
 const AC = "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -42,16 +47,16 @@ afterEach(restoreEnv);
 
 describe("twilio venue test overrides", () => {
   it("allows JSON overrides only when NODE_ENV=test", () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     assert.equal(twilioVenueTestOverridesAllowed(), true);
-    process.env.NODE_ENV = "production";
+    setEnv("NODE_ENV", "production");
     assert.equal(twilioVenueTestOverridesAllowed(), false);
-    process.env.NODE_ENV = "development";
+    setEnv("NODE_ENV", "development");
     assert.equal(twilioVenueTestOverridesAllowed(), false);
   });
 
   it("ignores TWILIO_VENUE_SECRETS_JSON when NODE_ENV=production (ECS sandbox/prod)", async () => {
-    process.env.NODE_ENV = "production";
+    setEnv("NODE_ENV", "production");
     process.env.QUICKBOOKS_ENVIRONMENT = "sandbox";
     process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({
       [AC]: {
@@ -66,7 +71,7 @@ describe("twilio venue test overrides", () => {
   });
 
   it("ignores TWILIO_VENUE_ACCOUNTS_JSON when NODE_ENV=production", async () => {
-    process.env.NODE_ENV = "production";
+    setEnv("NODE_ENV", "production");
     process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([{
       venue_id: VENUE,
       twilio_account_sid: AC,
@@ -78,7 +83,7 @@ describe("twilio venue test overrides", () => {
   });
 
   it("uses TWILIO_VENUE_SECRETS_JSON when NODE_ENV=test", async () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({
       [AC]: {
         account_sid: AC,
@@ -95,7 +100,7 @@ describe("twilio venue test overrides", () => {
 
 describe("twilio venue secret prefix", () => {
   it("sandbox (QUICKBOOKS_ENVIRONMENT) resolves htc/sandbox/twilio/venues", () => {
-    process.env.NODE_ENV = "production";
+    setEnv("NODE_ENV", "production");
     process.env.QUICKBOOKS_ENVIRONMENT = "sandbox";
     delete process.env.TWILIO_VENUE_SECRET_PREFIX;
     assert.equal(resolveHtcDeployEnvironment(), "sandbox");
@@ -103,7 +108,7 @@ describe("twilio venue secret prefix", () => {
   });
 
   it("production resolves htc/production/twilio/venues", () => {
-    process.env.NODE_ENV = "production";
+    setEnv("NODE_ENV", "production");
     process.env.QUICKBOOKS_ENVIRONMENT = "production";
     delete process.env.TWILIO_VENUE_SECRET_PREFIX;
     assert.equal(resolveHtcDeployEnvironment(), "production");
@@ -111,7 +116,7 @@ describe("twilio venue secret prefix", () => {
   });
 
   it("production never silently defaults to sandbox when deploy env is unknown", () => {
-    process.env.NODE_ENV = "production";
+    setEnv("NODE_ENV", "production");
     delete process.env.QUICKBOOKS_ENVIRONMENT;
     delete process.env.HTC_ENVIRONMENT;
     delete process.env.EnvironmentName;
@@ -121,14 +126,14 @@ describe("twilio venue secret prefix", () => {
   });
 
   it("production rejects an explicit sandbox secret prefix", () => {
-    process.env.NODE_ENV = "production";
+    setEnv("NODE_ENV", "production");
     process.env.QUICKBOOKS_ENVIRONMENT = "production";
     process.env.TWILIO_VENUE_SECRET_PREFIX = "htc/sandbox/twilio/venues";
     assert.throws(() => venueTwilioSecretPrefix(), /sandbox namespace/i);
   });
 
   it("local/test (non-production NODE_ENV) defaults to sandbox namespace", () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     delete process.env.QUICKBOOKS_ENVIRONMENT;
     delete process.env.TWILIO_VENUE_SECRET_PREFIX;
     assert.equal(resolveHtcDeployEnvironment(), "sandbox");

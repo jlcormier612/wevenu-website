@@ -42,21 +42,6 @@ export type PermissionCheck =
   | { ok: true; status: CommunicationPermissionStatus }
   | { ok: false; status: CommunicationPermissionStatus; message: string };
 
-type DbLike = {
-  from: (table: string) => {
-    select: (cols: string) => {
-      eq: (col: string, val: string) => {
-        eq: (col: string, val: string) => {
-          eq: (col: string, val: string) => {
-            maybeSingle: <T>() => Promise<{ data: T | null }>;
-          };
-        };
-      };
-    };
-    upsert: (row: Record<string, unknown>, opts?: { onConflict?: string }) => Promise<{ error: { message: string } | null }>;
-  };
-};
-
 export function normalizeSmsAddressKey(phone: string): string | null {
   const e164 = toE164(phone);
   if (!e164) return null;
@@ -72,10 +57,10 @@ export function normalizeEmailAddressKey(email: string): string | null {
 function blockMessage(channel: CommunicationChannel, status: CommunicationPermissionStatus): string {
   if (channel === "sms") {
     if (status === "opted_out") {
-      return "Texting isn't available for this contact because they opted out of texts. Try email instead.";
+      return "This contact has opted out of text messages.";
     }
     if (status === "not_opted_in") {
-      return "Texting isn't available for this contact because they haven't given permission to be texted. Ask them to opt in, or try email instead.";
+      return "Texting isn’t available for this contact because they haven’t given permission to receive texts.";
     }
     if (status === "provider_blocked") {
       return "Texting isn't available for this contact — delivery was blocked for this number. Try email instead.";

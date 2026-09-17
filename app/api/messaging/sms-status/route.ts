@@ -79,6 +79,14 @@ export async function POST(request: NextRequest) {
     if (newStatus === "failed" || newStatus === "undelivered") {
       const errorCode = params.get("ErrorCode");
       const errorMessage = params.get("ErrorMessage") ?? "";
+      console.error("SMS provider status failure", {
+        providerCode: errorCode,
+        providerMessage: errorMessage,
+        twilioStatus,
+        messageSid,
+        accountSid,
+        venueId: message.venue_id,
+      });
       patch.failure_reason = translateSmsFailure(`${errorCode ?? ""} ${errorMessage}`);
       // Persist provider opt-out / block so future sends are refused server-side.
       const to = params.get("To")?.trim();

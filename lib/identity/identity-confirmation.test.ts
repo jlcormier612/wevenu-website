@@ -171,10 +171,13 @@ describe("Identity confirmation — inbound and portal", () => {
   });
 
   it("inbound SMS refuses to choose when more than one relationship shares the phone", () => {
-    const sql = read("supabase/migrations/20261399000000_identity_confirmation_relationships.sql");
+    const sql = read("supabase/migrations/20261400000000_find_relationship_by_phone_unique_only.sql");
     const fn = sql.slice(sql.indexOf("create or replace function public.find_relationship_by_phone_for_venue"));
-    assert.match(fn, /count\(distinct x\.relationship_id\)/);
-    assert.match(fn, /if v_rel_count is distinct from 1 then/);
+    assert.match(fn, /array_agg\(distinct x\.relationship_id\)/);
+    assert.match(fn, /cardinality\(v_rels\) is distinct from 1/);
+    assert.doesNotMatch(fn, /min\(/);
+    const countFn = sql.slice(sql.indexOf("create or replace function public.count_relationships_by_phone_for_venue"));
+    assert.match(countFn, /count\(distinct x\.relationship_id\)/);
   });
 
   it("each new relationship still provisions one venue_couple conversation", () => {

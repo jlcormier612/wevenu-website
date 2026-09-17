@@ -41,7 +41,10 @@ export function translateSmsFailure(raw: string): string {
   }
   // Twilio error 21610 — recipient has opted out (STOP)
   if (s.includes("21610") || s.includes("unsubscribed") || s.includes("opted out")) {
-    return "This client has opted out of text messages.";
+    return "This contact has opted out of text messages.";
+  }
+  if (s.includes("couldn't be sent") || s.includes("couldn’t be sent")) {
+    return "Your message couldn’t be sent. Please try again.";
   }
   if (
     s.includes("isn't configured")
