@@ -87,15 +87,16 @@ export async function resolveInboxCategoryAction(
       .maybeSingle<{ id: string }>(),
     supabase
       .from("leads")
-      .select("id")
+      .select("id, sales_stage")
       .eq("relationship_id", data.relationship_id)
       .limit(1)
-      .maybeSingle<{ id: string }>(),
+      .maybeSingle<{ id: string; sales_stage: string | null }>(),
   ]);
   return inboxCategoryFromConversation({
     conversationKind: data.conversation_kind,
     clientId: client?.id ?? null,
     leadId: lead?.id ?? null,
+    leadSalesStage: lead?.sales_stage ?? null,
   });
 }
 

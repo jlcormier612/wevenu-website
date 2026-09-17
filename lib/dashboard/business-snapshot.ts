@@ -8,6 +8,10 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { clientListFilterHref } from "@/lib/clients/list-filters";
+import {
+  isOpenLeadLifecycle,
+  TERMINAL_LEAD_LIFECYCLE_STATES,
+} from "@/lib/leads/open-lifecycle";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
 import {
   getGrossBookedRevenue,
@@ -17,14 +21,8 @@ import {
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 
-/** Terminal lifecycle states — not open opportunities. Independent of venue stage names. */
-export const TERMINAL_LEAD_LIFECYCLE_STATES = new Set([
-  "booked",
-  "lost",
-  "won",
-  "cancelled",
-]);
-
+/** @deprecated Import from `@/lib/leads/open-lifecycle` — re-exported for existing callers. */
+export { isOpenLeadLifecycle, TERMINAL_LEAD_LIFECYCLE_STATES };
 export const LEAD_FLOW_OPEN_HREF = "/leads?attention=open";
 
 export type SnapshotCardModel = {
@@ -49,11 +47,6 @@ export type OpenLeadRow = {
   created_at: string | null;
   exclude_from_business_reporting?: boolean | null;
 };
-
-export function isOpenLeadLifecycle(salesStage: string | null | undefined): boolean {
-  const stage = (salesStage ?? "").toLowerCase();
-  return !TERMINAL_LEAD_LIFECYCLE_STATES.has(stage);
-}
 
 /** Pure: open leads = not booked/lost/won/cancelled, reporting-visible. */
 export function computeOpenLeadFlow(

@@ -6,16 +6,12 @@
  * sidebar-nav import it from Client Components.
  */
 
+import {
+  inboxCategoryFromLifecycle,
+  isOpenLeadLifecycle,
+} from "@/lib/leads/open-lifecycle";
 import { deriveScheduleStatus } from "@/lib/payments/constants";
 import type { PaymentLineItem } from "@/lib/payments/types";
-
-/** Same terminal set as Business Snapshot Lead Flow (pipeline-agnostic). */
-const TERMINAL_LEAD_LIFECYCLE_STATES = new Set([
-  "booked",
-  "lost",
-  "won",
-  "cancelled",
-]);
 
 export type NavAttentionCounts = {
   leads: number;
@@ -83,8 +79,7 @@ export type LeadAttentionRow = {
  */
 export function isUnseenLeadAttention(row: LeadAttentionRow): boolean {
   if (row.venueSeenAt) return false;
-  const stage = (row.salesStage ?? "").toLowerCase();
-  if (TERMINAL_LEAD_LIFECYCLE_STATES.has(stage)) return false;
+  if (!isOpenLeadLifecycle(row.salesStage)) return false;
   return true;
 }
 
@@ -179,21 +174,23 @@ export const INBOX_CATEGORY_OPTIONS: { value: InboxCategory; label: string }[] =
   { value: "vendors", label: "Vendors" },
 ];
 
+/**
+ * Inbox Leads/Clients follows commercial lifecycle — not client_id alone.
+ * Prefer passing leadSalesStage when known (resolveInboxCategoryAction).
+ */
 export function inboxCategoryFromConversation(input: {
   conversationKind?: string | null;
   clientId?: string | null;
   leadId?: string | null;
+  /** Canonical: lead.sales_stage on the relationship. */
+  leadSalesStage?: string | null;
 }): InboxCategory {
-  const kind = input.conversationKind ?? "";
-  if (
-    kind === "venue_vendor"
-    || kind === "couple_vendor"
-    || kind === "couple_vendor_inquiry"
-  ) {
-    return "vendors";
-  }
-  if (input.clientId) return "clients";
-  return "leads";
+  return inboxCategoryFromLifecycle({
+    conversationKind: input.conversationKind,
+    hasLead: Boolean(input.leadId) || input.leadSalesStage != null,
+    leadSalesStage: input.leadSalesStage,
+    hasClient: Boolean(input.clientId),
+  });
 }
 
 /** Map UI category → inbox RPC relationship param (clients → bookings). */

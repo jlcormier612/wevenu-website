@@ -258,12 +258,50 @@ describe("Badge presentation", () => {
 });
 
 describe("Inbox category organization", () => {
-  it("maps conversation anchors to Leads / Clients / Vendors", () => {
+  it("maps conversation anchors to Leads / Clients / Vendors by lifecycle", () => {
     assert.equal(inboxCategoryFromConversation({ leadId: "l1", clientId: null }), "leads");
-    assert.equal(inboxCategoryFromConversation({ leadId: "l1", clientId: "c1" }), "clients");
+    // Open lead + commercial-only client stays Leads
+    assert.equal(
+      inboxCategoryFromConversation({
+        leadId: "l1",
+        clientId: "c1",
+        leadSalesStage: "new_inquiry",
+      }),
+      "leads",
+    );
+    assert.equal(
+      inboxCategoryFromConversation({
+        leadId: "l1",
+        clientId: "c1",
+        leadSalesStage: "proposal_sent",
+      }),
+      "leads",
+    );
+    // Booked → Clients
+    assert.equal(
+      inboxCategoryFromConversation({
+        leadId: "l1",
+        clientId: "c1",
+        leadSalesStage: "booked",
+      }),
+      "clients",
+    );
+    // Client alone → Clients
+    assert.equal(inboxCategoryFromConversation({ leadId: null, clientId: "c1" }), "clients");
     assert.equal(
       inboxCategoryFromConversation({ conversationKind: "venue_vendor" }),
       "vendors",
+    );
+  });
+
+  it("client_id alone does not determine Inbox category when lead is open", () => {
+    assert.notEqual(
+      inboxCategoryFromConversation({
+        leadId: "l1",
+        clientId: "c1",
+        leadSalesStage: "tour_scheduled",
+      }),
+      "clients",
     );
   });
 
@@ -279,5 +317,17 @@ describe("Inbox category organization", () => {
     assert.match(inbox, /Clients/);
     assert.match(inbox, /Vendors/);
     assert.match(inbox, /INBOX_CATEGORY_OPTIONS|inboxCategory/);
+  });
+
+  it("inbox RPC migration classifies by open sales_stage not client_id null", () => {
+    const mig = readFileSync(
+      resolve("supabase/migrations/20261400600000_inbox_open_lead_lifecycle_filter.sql"),
+      "utf8",
+    );
+    assert.match(mig, /not in \('booked', 'lost', 'won', 'cancelled'\)/);
+    assert.doesNotMatch(
+      mig,
+      /p_relationship in \('leads', 'lead'\) and e\.client_id is null and e\.lead_id is not null/,
+    );
   });
 });

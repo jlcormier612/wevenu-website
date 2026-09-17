@@ -38,6 +38,7 @@ import {
   leadDisplayName,
   statusLabel,
 } from "@/lib/leads/constants";
+import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
 import { normalizeEventType } from "@/lib/event-types/canonical";
 import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
@@ -152,7 +153,7 @@ export function LeadList({
       }
       if (attentionFilter === "open") {
         // Same open-lead definition as Dashboard Lead Flow (terminal lifecycle only).
-        if (["lost", "booked", "won", "cancelled"].includes(stage)) {
+        if (!isOpenLeadLifecycle(stage)) {
           return false;
         }
         if (l.excludeFromBusinessReporting) return false;
@@ -167,10 +168,19 @@ export function LeadList({
   }, [leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, usingVenueStages, venueStages]);
 
   const statusCounts = React.useMemo(() => {
+    // When "open" attention is active, chip counts must match the open population
+    // (same terminal set as Dashboard Lead Flow) — not the full lead inventory.
+    const population = attentionFilter === "open"
+      ? leads.filter((l) => {
+        if (!isOpenLeadLifecycle(l.salesStage ?? l.status)) return false;
+        if (l.excludeFromBusinessReporting) return false;
+        return true;
+      })
+      : leads;
     if (usingVenueStages && venueStages) {
-      const map = new Map<string, number>([["all", leads.length]]);
+      const map = new Map<string, number>([["all", population.length]]);
       for (const s of venueStages) map.set(s.id, 0);
-      for (const l of leads) {
+      for (const l of population) {
         const id = resolveVenuePipelineStageId(venueStages, {
           pipelineStageId: l.pipelineStageId,
           salesStage: (l.salesStage ?? l.status) as SalesStage,
@@ -179,14 +189,14 @@ export function LeadList({
       }
       return map;
     }
-    const map = new Map<string, number>([["all", leads.length]]);
+    const map = new Map<string, number>([["all", population.length]]);
     LEAD_STATUSES.forEach((s) => map.set(s.value, 0));
-    leads.forEach((l) => {
+    population.forEach((l) => {
       const stage = l.salesStage ?? l.status;
       map.set(stage, (map.get(stage) ?? 0) + 1);
     });
     return map;
-  }, [leads, usingVenueStages, venueStages]);
+  }, [leads, usingVenueStages, venueStages, attentionFilter]);
 
   const stageChips: { key: string; label: string }[] = usingVenueStages && venueStages
     ? [{ key: "all", label: "All" }, ...venueStages.map((s) => ({ key: s.id, label: s.name }))]
