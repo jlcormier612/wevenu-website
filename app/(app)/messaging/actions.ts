@@ -71,7 +71,14 @@ export async function sendConversationMessageAction(
   channel: string,
   emailSubject?: string,
   hasAttachment = false,
-  attachments: Array<{ url: string; name: string; size?: number | null; mimeType?: string | null }> = [],
+  attachments: Array<{
+    url: string;
+    name: string;
+    size?: number | null;
+    mimeType?: string | null;
+    /** Present when the file came from Library → Documents (no duplicate Documents row). */
+    libraryDocumentId?: string | null;
+  }> = [],
 ): Promise<SendMessageResult> {
   // P0: do NOT revalidate the /messaging route on the hot send path.
   // Full-route revalidation aborts in-flight Server Actions / RSC fetches and

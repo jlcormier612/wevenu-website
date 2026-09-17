@@ -8,7 +8,7 @@
  */
 import * as React from "react";
 import Link from "next/link";
-import { Clock, Paperclip, StickyNote, X } from "lucide-react";
+import { Clock, FolderOpen, Paperclip, StickyNote, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -32,6 +32,11 @@ import {
   validateAttachmentsForChannel,
   type AttachmentChannel,
 } from "@/lib/conversations/attachment-constraints";
+import { LibraryDocumentPicker } from "@/components/conversations/library-document-picker";
+import {
+  describeLibraryDocument,
+  type LibraryAttachmentCandidate,
+} from "@/lib/conversations/library-attachment";
 import {
   shouldShowEmailReadinessBanner,
   shouldShowSmsReadinessBanner,
@@ -85,6 +90,10 @@ export function ConversationCompose({
   const [outboundChannel, setOutboundChannel] = React.useState<OutboundChannel>(initialSubject ? "email" : "portal");
   const [sending, setSending] = React.useState(false);
   const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
+  // Library Documents are already stored, so they carry no File object — they
+  // are staged into the delivery bucket at send time instead of uploaded.
+  const [pendingLibraryDocs, setPendingLibraryDocs] = React.useState<LibraryAttachmentCandidate[]>([]);
+  const [libraryPickerOpen, setLibraryPickerOpen] = React.useState(false);
   const [uploadingFile, setUploadingFile] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [templates, setTemplates] = React.useState<MessageTemplate[]>([]);
@@ -103,6 +112,26 @@ export function ConversationCompose({
   const [appliedPrefillNonce, setAppliedPrefillNonce] = React.useState<number | null>(null);
 
   const channel: SendableChannel = mode === "internal_note" ? "internal_note" : outboundChannel;
+
+  /**
+   * Both attachment sources in one list, in the shape the channel validator
+   * wants. Text/MMS caps the combined size of everything on the message, so a
+   * fresh upload and a Library pick have to be weighed together — validating
+   * them separately would let two 3 MB files through a 5 MB limit.
+   */
+  const stagedAttachments = React.useMemo(
+    () => [
+      ...pendingFiles.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
+      ...pendingLibraryDocs.map((d) => ({
+        name: d.fileName,
+        size: d.fileSize ?? 0,
+        mimeType: d.mimeType ?? "",
+      })),
+    ],
+    [pendingFiles, pendingLibraryDocs],
+  );
+  const stagedBytes = stagedAttachments.reduce((sum, a) => sum + a.size, 0);
+  const hasStagedAttachments = stagedAttachments.length > 0;
 
   if (prefill && prefill.nonce !== appliedPrefillNonce) {
     setAppliedPrefillNonce(prefill.nonce);
@@ -191,10 +220,14 @@ export function ConversationCompose({
     if (picked.length === 0) return;
     const attachChannel = (isNote ? "internal_note" : channel) as AttachmentChannel;
     const next = [...pendingFiles, ...picked];
-    const check = validateAttachmentsForChannel(
-      attachChannel,
-      next.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
-    );
+    const check = validateAttachmentsForChannel(attachChannel, [
+      ...next.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
+      ...pendingLibraryDocs.map((d) => ({
+        name: d.fileName,
+        size: d.fileSize ?? 0,
+        mimeType: d.mimeType ?? "",
+      })),
+    ]);
     if (!check.ok) {
       toast.error(check.message);
       return;
@@ -219,18 +252,17 @@ export function ConversationCompose({
     setSchedulePanelOpen(false);
     setConfirm(null);
     setPendingFiles([]);
+    setPendingLibraryDocs([]);
     if (next === "internal_note") setEmailSubject("");
   }
 
   React.useEffect(() => {
-    if (pendingFiles.length === 0) return;
+    if (!hasStagedAttachments) return;
     const attachChannel = (mode === "internal_note" ? "internal_note" : channel) as AttachmentChannel;
-    const check = validateAttachmentsForChannel(
-      attachChannel,
-      pendingFiles.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
-    );
+    const check = validateAttachmentsForChannel(attachChannel, stagedAttachments);
     if (!check.ok) {
       setPendingFiles([]);
+      setPendingLibraryDocs([]);
       toast.error(check.message);
     }
   }, [channel, mode]); // eslint-disable-line react-hooks/exhaustive-deps -- revalidate when channel changes
@@ -267,7 +299,7 @@ export function ConversationCompose({
 
   async function send() {
     const text = body.trim();
-    if ((!text && pendingFiles.length === 0) || sending || uploadingFile) return;
+    if ((!text && !hasStagedAttachments) || sending || uploadingFile) return;
     if (!channelReady) {
       toast.error(channelDisabledReason ?? "This channel isn't ready to send.");
       return;
@@ -277,10 +309,7 @@ export function ConversationCompose({
       return;
     }
     const attachChannel = (isNote ? "internal_note" : channel) as AttachmentChannel;
-    const precheck = validateAttachmentsForChannel(
-      attachChannel,
-      pendingFiles.map((f) => ({ name: f.name, size: f.size, mimeType: f.type })),
-    );
+    const precheck = validateAttachmentsForChannel(attachChannel, stagedAttachments);
     if (!precheck.ok) {
       toast.error(precheck.message);
       return;
@@ -289,7 +318,13 @@ export function ConversationCompose({
     setConfirm(null);
 
     try {
-      const uploaded: Array<{ url: string; name: string; size: number; mimeType: string }> = [];
+      const uploaded: Array<{
+        url: string;
+        name: string;
+        size: number;
+        mimeType: string;
+        libraryDocumentId?: string;
+      }> = [];
       if (pendingFiles.length > 0) {
         setUploadingFile(true);
         try {
@@ -316,6 +351,46 @@ export function ConversationCompose({
         } catch {
           setConfirm({ kind: "failed", message: "Upload failed." });
           toast.error("Upload failed.");
+          return;
+        } finally {
+          setUploadingFile(false);
+        }
+      }
+
+      // Library picks are already stored; this copies each into the delivery
+      // bucket and hands back library_document_id so the send path knows the
+      // file already has a Documents row and skips re-registering it.
+      if (pendingLibraryDocs.length > 0) {
+        setUploadingFile(true);
+        try {
+          for (const doc of pendingLibraryDocs) {
+            const res = await fetch("/api/conversations/attach-document", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ conversationId, documentId: doc.id }),
+            });
+            const data = await res.json() as {
+              ok: boolean; url?: string; file_name?: string; file_size?: number;
+              mime_type?: string; library_document_id?: string; error?: string;
+            };
+            if (!data.ok || !data.url) {
+              const message = data.error ?? `Could not attach "${doc.name}".`;
+              setConfirm({ kind: "failed", message });
+              toast.error(message);
+              return;
+            }
+            uploaded.push({
+              url: data.url,
+              name: data.file_name ?? doc.fileName,
+              size: data.file_size ?? doc.fileSize ?? 0,
+              mimeType: data.mime_type ?? doc.mimeType ?? "",
+              libraryDocumentId: data.library_document_id ?? doc.id,
+            });
+          }
+        } catch {
+          const message = "Could not attach that Library document.";
+          setConfirm({ kind: "failed", message });
+          toast.error(message);
           return;
         } finally {
           setUploadingFile(false);
@@ -350,6 +425,7 @@ export function ConversationCompose({
       setEmailSubject("");
       setTemplateId("");
       setPendingFiles([]);
+      setPendingLibraryDocs([]);
       setPreview(null);
       setConfirm({ kind: "sent", channel });
 
@@ -408,7 +484,7 @@ export function ConversationCompose({
 
   const canSchedule = (channel === "email" || channel === "sms") && channelReady;
   const sendDisabled =
-    (!body.trim() && pendingFiles.length === 0) ||
+    (!body.trim() && !hasStagedAttachments) ||
     sending ||
     uploadingFile ||
     !channelReady ||
@@ -605,6 +681,35 @@ export function ConversationCompose({
         />
       </label>
 
+      {pendingLibraryDocs.length > 0 && (
+        <div className="space-y-1">
+          {pendingLibraryDocs.map((doc) => (
+            <div
+              key={doc.id}
+              className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-2.5 py-1.5"
+            >
+              <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate text-xs text-heading">{doc.name}</span>
+              <span className="shrink-0 text-[10px] text-muted-foreground">
+                Library · {describeLibraryDocument(doc)}
+              </span>
+              {!uploadingFile && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPendingLibraryDocs((prev) => prev.filter((d) => d.id !== doc.id))
+                  }
+                  aria-label={`Remove ${doc.name}`}
+                  className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {pendingFiles.length > 0 && (
         <div className="space-y-1">
           {pendingFiles.map((file, idx) => (
@@ -734,6 +839,13 @@ export function ConversationCompose({
         >
           <Paperclip className="h-4 w-4" /> Attach
         </button>
+        <button
+          type="button"
+          onClick={() => setLibraryPickerOpen(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <FolderOpen className="h-4 w-4" /> From Library
+        </button>
         {canSchedule && (
           <button
             type="button"
@@ -761,6 +873,18 @@ export function ConversationCompose({
       <p className="text-[11px] text-muted-foreground">
         {isNote ? "Enter does not save." : "Enter does not send."}
       </p>
+
+      <LibraryDocumentPicker
+        open={libraryPickerOpen}
+        onOpenChange={setLibraryPickerOpen}
+        channel={attachChannel}
+        alreadyAttachedBytes={stagedBytes}
+        onSelect={(doc) =>
+          setPendingLibraryDocs((prev) =>
+            prev.some((d) => d.id === doc.id) ? prev : [...prev, doc],
+          )
+        }
+      />
     </div>
   );
 }

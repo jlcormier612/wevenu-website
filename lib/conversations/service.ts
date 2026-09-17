@@ -254,7 +254,18 @@ export async function sendConversationMessage(
   channel = "portal",
   emailSubject?: string,
   hasAttachment = false,
-  attachments: Array<{ url: string; name: string; size?: number | null; mimeType?: string | null }> = [],
+  attachments: Array<{
+    url: string;
+    name: string;
+    size?: number | null;
+    mimeType?: string | null;
+    /**
+     * Set when the file came from Library → Documents. That row is already the
+     * system of record for this file, so the attachment must not trigger a
+     * second, entity-scoped Documents row.
+     */
+    libraryDocumentId?: string | null;
+  }> = [],
 ): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!isSendableChannel(channel)) {
@@ -417,7 +428,11 @@ export async function sendConversationMessage(
       size: file.size,
       mimeType: file.mimeType,
     });
-    if (attached.ok) {
+    // A Library pick keeps the Library Document as its single Documents record.
+    // Registering it again would scope a duplicate row to this lead or client,
+    // so attaching one reusable file to nine relationships would leave nine
+    // copies of it in the workspace.
+    if (attached.ok && !file.libraryDocumentId) {
       const { registerMessageAttachmentAsDocument } = await import("@/lib/conversations/attachment-document");
       await registerMessageAttachmentAsDocument(supabase, {
         messageId: result.messageId!,
