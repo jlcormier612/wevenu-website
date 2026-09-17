@@ -36,7 +36,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -352,7 +351,10 @@ function FaqStarterRestoreMenu({ missingKeys }: { missingKeys: FaqStarterMasterK
         }
       />
       <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuLabel>Hello to Cheers starters</DropdownMenuLabel>
+        {/* Section heading — not DropdownMenuLabel (Base UI GroupLabel needs Menu.Group). */}
+        <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+          Hello to Cheers starters
+        </div>
         {missingKeys.map((key) => {
           const master = getFaqStarterMaster(key);
           if (!master) return null;

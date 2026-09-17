@@ -9,7 +9,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -51,9 +50,10 @@ export function UserMenu({ email }: { email: string }) {
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
+        {/* Identity only — not DropdownMenuLabel (Base UI GroupLabel needs Menu.Group). */}
+        <div className="truncate px-1.5 py-1 text-xs font-normal text-muted-foreground">
           {email}
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
