@@ -25,6 +25,8 @@ import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import type { PackageWithItems } from "@/lib/packages/types";
 import {
   deleteLeadRecordAction,
+  confirmPipelineBookedMoveAction,
+  markLeadLostAction,
   moveLeadBackToSalesPipelineAction,
   previewDeleteLeadAction,
   returnLeadToBookedAction,
@@ -35,10 +37,15 @@ import {
 import { DeleteRecordButton } from "@/components/records/delete-record-button";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm-dialog";
+import { LostReasonDialog } from "@/components/leads/lost-reason-dialog";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-banner";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
+import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import type { LostReasonValue } from "@/lib/leads/lost-reasons";
+import { lostReasonLabel } from "@/lib/leads/lost-reasons";
+import { resolveTransitionKind } from "@/lib/leads/pipeline-stage-transition";
 import { Badge } from "@/components/ui/badge";
 import { NotesSection } from "@/components/leads/notes-section";
 import { RelationshipCard } from "@/components/leads/relationship-card";
@@ -76,7 +83,7 @@ import {
   leadDisplayName,
   sourceLabel,
 } from "@/lib/leads/constants";
-import { isManuallyAssignableSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
+import { type SalesStage } from "@/lib/leads/sales-stages";
 import type { DuplicateReview } from "@/lib/leads/duplicate-review";
 import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
@@ -144,6 +151,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [confirmBookOpen, setConfirmBookOpen] = React.useState(false);
   const [confirmMoveBackOpen, setConfirmMoveBackOpen] = React.useState(false);
   const [confirmReturnBookedOpen, setConfirmReturnBookedOpen] = React.useState(false);
+  const [lostMove, setLostMove] = React.useState<{ targetKey: string; label: string } | null>(null);
+  const [bookedMove, setBookedMove] = React.useState<{ targetKey: string; label: string } | null>(null);
   const [eventDateBlocked, setEventDateBlocked] = React.useState(false);
   const spacesRequired = maxSimultaneousEvents >= 2 && !!lead.eventDate && !lead.linkedClientId;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
@@ -219,6 +228,31 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   );
 
   function handleStatusChange(status: string) {
+    const kind = resolveTransitionKind({
+      targetKey: status,
+      venueStages: venueStages?.length ? venueStages : null,
+    });
+    const label = venueStages?.length
+      ? (venueStages.find((s) => s.id === status)?.name ?? status)
+      : (LEAD_STATUSES.find((s) => s.value === status)?.label ?? status);
+
+    if (kind === "booked") {
+      if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
+        toast.error("Assign an Event Space before moving to Booked.");
+        return;
+      }
+      if (lead.eventDate && eventDateBlocked) {
+        toast.error("That date is already protected. Resolve the conflict before moving to Booked.");
+        return;
+      }
+      setBookedMove({ targetKey: status, label });
+      return;
+    }
+    if (kind === "lost") {
+      setLostMove({ targetKey: status, label });
+      return;
+    }
+
     startStatus(async () => {
       const check = await wouldEnrollOnPipelineStageMoveAction(lead.id, status);
       if (!check.ok) {
@@ -256,6 +290,39 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
+  async function confirmLostFromStage(input: { reason: LostReasonValue; detail: string | null }) {
+    if (!lostMove) return;
+    startLifecycle(async () => {
+      const result = await markLeadLostAction(lead.id, input, lostMove.targetKey);
+      if (result.ok) {
+        setLostMove(null);
+        toast.success("Marked as Lost.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not mark this lead Lost.");
+      }
+    });
+  }
+
+  async function confirmBookedFromStage() {
+    if (!bookedMove) return;
+    startLifecycle(async () => {
+      const result = await confirmPipelineBookedMoveAction(lead.id, bookedMove.targetKey, {
+        spaceId: bookingSpaceId || undefined,
+        selectionId: bookingJourney.selection?.id,
+      });
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not move this lead to Booked.");
+        return;
+      }
+      setBookedMove(null);
+      if (result.warning) toast.warning(result.warning);
+      const qs = new URLSearchParams({ from: "booking_started" });
+      if (result.eventId) qs.set("eventId", result.eventId);
+      router.push(`/clients/${result.clientId}/booked?${qs.toString()}`);
+    });
+  }
+
   const currentStage = (lead.salesStage ?? lead.status) as SalesStage;
   const isBookingStarted = currentStage === "booked";
   const previouslyConverted = !!lead.linkedClientId;
@@ -265,13 +332,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       salesStage: currentStage,
     })
     : null;
-  // When Booking Started, only Lost remains in the generic stage menu — leaving
-  // Booking Started for an active sales stage uses Move back to Sales Pipeline.
+  // Booked stages appear so users can confirm conversion; when already Booking
+  // Started, only Lost remains in the generic stage menu.
   const assignableStages = venueStages?.length
     ? venueStages
       .filter((s) => {
         const sales = salesStageForCanonical(s.canonicalStage, lead.salesStage);
-        if (!isManuallyAssignableSalesStage(sales)) return false;
         if (isBookingStarted) return sales === "lost";
         return true;
       })
@@ -282,7 +348,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         current: s.id === currentVenueStageId,
       }))
     : LEAD_STATUSES.filter((s) => {
-      if (!isManuallyAssignableSalesStage(s.value)) return false;
       if (isBookingStarted) return s.value === "lost";
       return true;
     }).map((s) => ({
@@ -337,6 +402,20 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         confirming={lifecyclePending}
         onCancel={() => setConfirmReturnBookedOpen(false)}
         onConfirm={confirmReturnToBooked}
+      />
+      <LostReasonDialog
+        open={lostMove != null}
+        stageLabel={lostMove?.label}
+        confirming={lifecyclePending}
+        onCancel={() => setLostMove(null)}
+        onConfirm={confirmLostFromStage}
+      />
+      <PipelineBookedConfirmDialog
+        open={bookedMove != null}
+        stageLabel={bookedMove?.label}
+        confirming={lifecyclePending}
+        onCancel={() => setBookedMove(null)}
+        onConfirm={confirmBookedFromStage}
       />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -422,6 +501,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           )}
           <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
           <LeadStatusBadge status={currentStage} />
+          {currentStage === "lost" && lead.lostReason && (
+            <Badge variant="outline" className="max-w-[16rem] truncate" title={lead.lostReasonDetail ?? undefined}>
+              {lostReasonLabel(lead.lostReason)}
+              {lead.lostReasonDetail ? ` — ${lead.lostReasonDetail}` : ""}
+            </Badge>
+          )}
           {assignableStages.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger

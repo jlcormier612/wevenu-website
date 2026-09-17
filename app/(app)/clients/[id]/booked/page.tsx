@@ -20,7 +20,7 @@ import { getEventPlaybookApplications, getTemplates } from "@/lib/playbooks/serv
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ eventId?: string; invited?: string }>;
+  searchParams: Promise<{ eventId?: string; invited?: string; from?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -34,10 +34,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BookedPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { eventId } = await searchParams;
+  const { eventId, from } = await searchParams;
   const client = await getClient(id);
   if (!client) notFound();
   const resolvedEventId = eventId ?? client.linkedEventId ?? null;
+  const fromBookingStarted = from === "booking_started";
 
   const journey = await loadBookingJourneyForClient({
     clientId: client.id,
@@ -45,8 +46,8 @@ export default async function BookedPage({ params, searchParams }: Props) {
     leadId: client.leadId,
   });
 
-  // Venue-facing Booked celebration only after agreement + deposit paid.
-  if (!journey.isCommerciallyBooked) {
+  // Venue-facing celebration: commercial Booked, or pipeline Booking Started handoff.
+  if (!journey.isCommerciallyBooked && !fromBookingStarted) {
     redirect(`/clients/${client.id}`);
   }
 
@@ -121,14 +122,25 @@ export default async function BookedPage({ params, searchParams }: Props) {
     experienceSummary: experience.summary,
   });
 
-  // Override celebration copy for commercial Booked (agreement + deposit).
-  handoff.eyebrow = "They're Booked";
-  handoff.bookingLine = selection
-    ? `${selection.name} · ${formatCurrency(selection.totalAmount)} · Deposit ${formatCurrency(selection.depositAmount)} received · ${formatCurrency(remaining ?? 0)} remaining`
-    : "Agreement complete and deposit received.";
-  handoff.prepareHeading = "What to do next";
-  handoff.tagline =
-    "Client Planning is optional and separate. Invite them to the portal and release planning only when those are ready — Booked does not mean planning is released.";
+  // Override celebration copy for commercial Booked (agreement + deposit),
+  // or for the Booking Started handoff after a confirmed pipeline Booked move.
+  if (journey.isCommerciallyBooked) {
+    handoff.eyebrow = "They're Booked";
+    handoff.bookingLine = selection
+      ? `${selection.name} · ${formatCurrency(selection.totalAmount)} · Deposit ${formatCurrency(selection.depositAmount)} received · ${formatCurrency(remaining ?? 0)} remaining`
+      : "Agreement complete and deposit received.";
+    handoff.prepareHeading = "What to do next";
+    handoff.tagline =
+      "Client Planning is optional and separate. Invite them to the portal and release planning only when those are ready — Booked does not mean planning is released.";
+  } else {
+    handoff.eyebrow = "Booking Started";
+    handoff.bookingLine = selection
+      ? `${selection.name} · ${formatCurrency(selection.totalAmount)} — complete the agreement and any required deposit to mark them commercially Booked.`
+      : "Booking file is open. Complete the agreement and any required deposit to mark them commercially Booked.";
+    handoff.prepareHeading = "What to do next";
+    handoff.tagline =
+      "They left the active lead pipeline. Next: finish commercial Booked, then invite and release Client Planning when ready.";
+  }
   handoff.primaryLabel = "Continue to booking";
   handoff.primaryHref = `/clients/${client.id}`;
 

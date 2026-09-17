@@ -74,6 +74,12 @@ export type Lead = {
   excludeFromBusinessReporting?: boolean;
   /** 0-100, set only for assisted/extracted sources (e.g. email-parsed) — Lead Intake architecture. Null for directly-submitted or manually-entered leads. */
   intakeConfidence: number | null;
+  /** Structured Lost reason when sales_stage is lost. */
+  lostReason: string | null;
+  /** Optional detail; required when lostReason is other. */
+  lostReasonDetail: string | null;
+  /** When the lead was marked Lost. */
+  lostAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

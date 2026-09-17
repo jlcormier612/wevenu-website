@@ -187,6 +187,7 @@ describe("Direct Add and celebration destinations", () => {
   it("commercial celebration page still requires isCommerciallyBooked", () => {
     const page = read("app/(app)/clients/[id]/booked/page.tsx");
     assert.match(page, /isCommerciallyBooked/);
+    assert.match(page, /fromBookingStarted|booking_started/);
     assert.match(page, /redirect\(`\/clients\/\$\{client\.id\}`\)/);
     assert.match(page, /Client Planning is optional/);
   });

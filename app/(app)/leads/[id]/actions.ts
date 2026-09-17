@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache";
 import {
   addNote,
   addTask,
+  confirmPipelineBookedMove,
   deleteNote,
   deleteTask,
+  markLeadLost,
   moveLeadBackToSalesPipeline,
   returnLeadToBooked,
   setTaskCompleted,
@@ -60,6 +62,38 @@ export async function updateLeadPipelineStageAction(
   if (result.ok) {
     revalidateLead(leadId);
     void refreshLeadScore(leadId).catch(() => {}); // same as status changes — the underlying status did change
+  }
+  return result;
+}
+
+export async function markLeadLostAction(
+  leadId: string,
+  input: { reason: string; detail?: string | null },
+  stageKeyOrId?: string,
+): Promise<LeadActionResult> {
+  const result = await markLeadLost(leadId, input, stageKeyOrId);
+  if (result.ok) {
+    revalidateLead(leadId);
+    void refreshLeadScore(leadId).catch(() => {});
+  }
+  return result;
+}
+
+export async function confirmPipelineBookedMoveAction(
+  leadId: string,
+  stageKeyOrId: string,
+  opts?: { spaceId?: string; selectionId?: string },
+): Promise<
+  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string }
+  | { ok: false; message: string }
+> {
+  const result = await confirmPipelineBookedMove(leadId, stageKeyOrId, opts);
+  if (result.ok) {
+    revalidateLead(leadId);
+    revalidatePath("/clients");
+    revalidatePath(`/clients/${result.clientId}`);
+    if (result.eventId) revalidatePath(`/events/${result.eventId}`);
+    void refreshLeadScore(leadId).catch(() => {});
   }
   return result;
 }

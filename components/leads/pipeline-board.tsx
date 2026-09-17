@@ -6,11 +6,17 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  confirmPipelineBookedMoveAction,
+  markLeadLostAction,
   updateLeadPipelineStageAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
+import { LostReasonDialog } from "@/components/leads/lost-reason-dialog";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
+import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import { eventTypeLabel, formatCurrency, formatDate, leadDisplayName } from "@/lib/leads/constants";
+import type { LostReasonValue } from "@/lib/leads/lost-reasons";
+import { resolveTransitionKind } from "@/lib/leads/pipeline-stage-transition";
 import { SALES_STAGE_META, type SalesStage } from "@/lib/leads/sales-stages";
 import type { Lead } from "@/lib/leads/types";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
@@ -67,6 +73,9 @@ export function PipelineBoard({
     targetKey: string;
     preview: AutomationMessagePreview | null;
   } | null>(null);
+  const [lostMove, setLostMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
+  const [bookedMove, setBookedMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
+  const [lifecyclePending, setLifecyclePending] = React.useState(false);
 
   const { columns, currentKeyByLead } = React.useMemo(() => {
     const currentByLead: Record<string, string> = {};
@@ -133,12 +142,22 @@ export function PipelineBoard({
     const currentMeta = columnsMeta.find((c) => c.key === currentKeyByLead[leadId]);
     if (!targetMeta) return;
 
-    if (targetMeta.salesStage === "booked") {
-      toast.error("Booking Started is only set by starting a booking file.");
-      return;
-    }
     if (currentMeta?.salesStage === "booked" && targetMeta.salesStage !== "lost") {
       toast.error("Open this lead and use Move back to Sales Pipeline.");
+      return;
+    }
+
+    const kind = resolveTransitionKind({
+      targetKey,
+      venueStages: usingVenue ? venueStages : null,
+    });
+
+    if (kind === "booked") {
+      setBookedMove({ leadId, targetKey, label: targetMeta.label });
+      return;
+    }
+    if (kind === "lost") {
+      setLostMove({ leadId, targetKey, label: targetMeta.label });
       return;
     }
 
@@ -159,6 +178,39 @@ export function PipelineBoard({
       }
       commitMove(leadId, targetKey);
     });
+  }
+
+  async function confirmLost(input: { reason: LostReasonValue; detail: string | null }) {
+    if (!lostMove) return;
+    const { leadId, targetKey } = lostMove;
+    setLifecyclePending(true);
+    const result = await markLeadLostAction(leadId, input, targetKey);
+    setLifecyclePending(false);
+    if (!result.ok) {
+      toast.error(result.message ?? "Could not mark this lead Lost.");
+      return;
+    }
+    setLostMove(null);
+    setOverrides((p) => ({ ...p, [leadId]: targetKey }));
+    toast.success("Marked as Lost.");
+    router.refresh();
+  }
+
+  async function confirmBooked() {
+    if (!bookedMove) return;
+    const { leadId, targetKey } = bookedMove;
+    setLifecyclePending(true);
+    const result = await confirmPipelineBookedMoveAction(leadId, targetKey);
+    setLifecyclePending(false);
+    if (!result.ok) {
+      toast.error(result.message ?? "Could not move this lead to Booked.");
+      return;
+    }
+    setBookedMove(null);
+    if (result.warning) toast.warning(result.warning);
+    const qs = new URLSearchParams({ from: "booking_started" });
+    if (result.eventId) qs.set("eventId", result.eventId);
+    router.push(`/clients/${result.clientId}/booked?${qs.toString()}`);
   }
 
   return (
@@ -243,6 +295,22 @@ export function PipelineBoard({
           setConfirmMove(null);
           commitMove(leadId, targetKey);
         }}
+      />
+
+      <LostReasonDialog
+        open={lostMove != null}
+        stageLabel={lostMove?.label}
+        confirming={lifecyclePending}
+        onCancel={() => setLostMove(null)}
+        onConfirm={confirmLost}
+      />
+
+      <PipelineBookedConfirmDialog
+        open={bookedMove != null}
+        stageLabel={bookedMove?.label}
+        confirming={lifecyclePending}
+        onCancel={() => setBookedMove(null)}
+        onConfirm={confirmBooked}
       />
     </>
   );

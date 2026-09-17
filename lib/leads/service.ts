@@ -259,15 +259,28 @@ export async function updateLeadSalesStage(
     allowLeaveBooked?: boolean;
     /** Venue pipeline stage id to store alongside sales_stage (custom pipelines). */
     pipelineStageId?: string | null;
+    /** Required when stage is lost — structured reason + optional detail. */
+    lost?: { reason: string; detail: string | null } | null;
   },
 ): Promise<LeadActionResult> {
   if (!validateStatus(stage) || !isSalesStage(stage))
     return { ok: false, message: `"${stage}" is not a valid sales stage.` };
   if (stage === "booked" && !opts?.allowBooked) {
-    return { ok: false, message: "Booking Started is only set by starting a booking file." };
+    return { ok: false, message: "Move to Booked requires confirmation — use Confirm Booked move." };
   }
   if (!opts?.allowBooked && !isManuallyAssignableSalesStage(stage)) {
     return { ok: false, message: "That stage cannot be set manually." };
+  }
+  if (stage === "lost") {
+    const { validateLostReasonInput, isLostReasonValue } = await import("@/lib/leads/lost-reasons");
+    if (!opts?.lost || !isLostReasonValue(opts.lost.reason)) {
+      return { ok: false, message: "Marking a lead Lost requires a lost reason." };
+    }
+    const lostErr = validateLostReasonInput({
+      reason: opts.lost.reason,
+      detail: opts.lost.detail,
+    });
+    if (lostErr) return { ok: false, message: lostErr };
   }
 
   const result = await withVenue(async (supabase, venueId) => {
@@ -296,6 +309,11 @@ export async function updateLeadSalesStage(
       leadId,
       stage,
       opts?.pipelineStageId !== undefined ? opts.pipelineStageId : undefined,
+      stage === "lost" && opts?.lost
+        ? { reason: opts.lost.reason, detail: opts.lost.detail }
+        : stage === "lost"
+          ? null
+          : undefined,
     );
 
     if (stage === "booked") {
@@ -428,8 +446,22 @@ export async function updateLeadPipelineStage(leadId: string, stageKeyOrId: stri
 
       const { salesStageForCanonical } = await import("@/lib/pipeline-templates/sales-stage-bridge");
       const { isCanonicalStage } = await import("@/lib/pipeline-templates/types");
+      const { transitionKindForCanonical } = await import("@/lib/leads/pipeline-stage-transition");
       if (!isCanonicalStage(stage.canonical_stage)) {
         return { ok: false, message: "That stage has an invalid reporting category." } as LeadActionResult;
+      }
+      const kind = transitionKindForCanonical(stage.canonical_stage);
+      if (kind === "booked") {
+        return {
+          ok: false,
+          message: "Moving to Booked requires confirmation — use Confirm Booked move.",
+        } as LeadActionResult;
+      }
+      if (kind === "lost") {
+        return {
+          ok: false,
+          message: "Marking a lead Lost requires a lost reason.",
+        } as LeadActionResult;
       }
       const { data: currentLead } = await supabase
         .from("leads")
@@ -442,14 +474,180 @@ export async function updateLeadPipelineStage(leadId: string, stageKeyOrId: stri
         : "new_inquiry";
       const salesStage = salesStageForCanonical(stage.canonical_stage, fallback);
       return updateLeadSalesStage(leadId, salesStage, {
-        allowBooked: salesStage === "booked",
         pipelineStageId: stage.id,
       });
     });
     return result as LeadActionResult;
   }
 
+  const { transitionKindForSalesStageKey } = await import("@/lib/leads/pipeline-stage-transition");
+  const kind = transitionKindForSalesStageKey(stageKeyOrId);
+  if (kind === "booked") {
+    return { ok: false, message: "Moving to Booked requires confirmation — use Confirm Booked move." };
+  }
+  if (kind === "lost") {
+    return { ok: false, message: "Marking a lead Lost requires a lost reason." };
+  }
   return updateLeadSalesStage(leadId, stageKeyOrId);
+}
+
+/**
+ * Mark a lead Lost with a required structured reason.
+ * Accepts a venue pipeline stage id (Lost / Cancelled reporting category) or the sales_stage key "lost".
+ */
+export async function markLeadLost(
+  leadId: string,
+  input: { reason: string; detail?: string | null },
+  stageKeyOrId?: string,
+): Promise<LeadActionResult> {
+  const { validateLostReasonInput, isLostReasonValue } = await import("@/lib/leads/lost-reasons");
+  if (!isLostReasonValue(input.reason)) {
+    return { ok: false, message: "Choose a lost reason." };
+  }
+  const lostErr = validateLostReasonInput({
+    reason: input.reason,
+    detail: input.detail,
+  });
+  if (lostErr) return { ok: false, message: lostErr };
+
+  const detail = input.detail?.trim() || null;
+  const target = stageKeyOrId?.trim() || "lost";
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
+
+  if (looksLikeUuid) {
+    return withVenue(async (supabase, venueId) => {
+      const { data: stage, error } = await supabase
+        .from("pipeline_stages")
+        .select("id, canonical_stage, pipeline_template_id")
+        .eq("id", target)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; canonical_stage: string; pipeline_template_id: string }>();
+      if (error) throw error;
+      if (!stage) return { ok: false, message: "That pipeline stage was not found." } as LeadActionResult;
+
+      const { transitionKindForCanonical } = await import("@/lib/leads/pipeline-stage-transition");
+      if (transitionKindForCanonical(stage.canonical_stage) !== "lost") {
+        return { ok: false, message: "That stage is not a Lost stage." } as LeadActionResult;
+      }
+      const { data: tpl } = await supabase
+        .from("pipeline_templates")
+        .select("is_active")
+        .eq("id", stage.pipeline_template_id)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ is_active: boolean }>();
+      if (!tpl?.is_active) {
+        return { ok: false, message: "That stage is not on the active pipeline." } as LeadActionResult;
+      }
+
+      return updateLeadSalesStage(leadId, "lost", {
+        pipelineStageId: stage.id,
+        lost: { reason: input.reason, detail },
+      });
+    }) as Promise<LeadActionResult>;
+  }
+
+  return updateLeadSalesStage(leadId, "lost", {
+    pipelineStageId: null,
+    lost: { reason: input.reason, detail },
+  });
+}
+
+/**
+ * Confirmed move into a Booked reporting-category stage:
+ * convert Lead → Client (+ Event), set Booking Started, preserve identity.
+ * Does not mark commercially Booked (agreement + deposit remain separate).
+ */
+export async function confirmPipelineBookedMove(
+  leadId: string,
+  stageKeyOrId: string,
+  opts?: { spaceId?: string; selectionId?: string },
+): Promise<
+  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string }
+  | { ok: false; message: string }
+> {
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
+
+  const resolved = await withVenue(async (supabase, venueId) => {
+    let pipelineStageId: string | null = null;
+
+    if (looksLikeUuid) {
+      const { data: stage, error } = await supabase
+        .from("pipeline_stages")
+        .select("id, canonical_stage, pipeline_template_id")
+        .eq("id", stageKeyOrId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; canonical_stage: string; pipeline_template_id: string }>();
+      if (error) throw error;
+      if (!stage) return { ok: false as const, message: "That pipeline stage was not found." };
+      const { transitionKindForCanonical } = await import("@/lib/leads/pipeline-stage-transition");
+      if (transitionKindForCanonical(stage.canonical_stage) !== "booked") {
+        return { ok: false as const, message: "That stage is not mapped to Booked." };
+      }
+      const { data: tpl } = await supabase
+        .from("pipeline_templates")
+        .select("is_active")
+        .eq("id", stage.pipeline_template_id)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ is_active: boolean }>();
+      if (!tpl?.is_active) {
+        return { ok: false as const, message: "That stage is not on the active pipeline." };
+      }
+      pipelineStageId = stage.id;
+    } else if (stageKeyOrId !== "booked") {
+      return { ok: false as const, message: "That is not a Booked stage." };
+    }
+
+    const lead = await repo.getLead(supabase, venueId, leadId);
+    if (!lead) return { ok: false as const, message: "Lead not found." };
+
+    const { convertLeadToClient } = await import("@/lib/clients/service");
+    const converted = await convertLeadToClient(lead, { spaceId: opts?.spaceId });
+    if (!converted.ok) return converted;
+
+    let warning: string | undefined;
+    const { getActiveSelectedPackageForLead, attachSelectionToBookingFile } = await import(
+      "@/lib/commercial-selections/service"
+    );
+    const attachId = opts?.selectionId
+      ?? (await getActiveSelectedPackageForLead(lead.id))?.id
+      ?? null;
+    if (attachId) {
+      const attached = await attachSelectionToBookingFile(attachId, {
+        clientId: converted.clientId,
+        eventId: converted.eventId,
+        leadId: lead.id,
+      });
+      if (!attached.ok) {
+        warning = attached.message
+          ? `Booking file started, but the selected package could not be linked: ${attached.message}.`
+          : "Booking file started, but the selected package could not be linked.";
+      }
+    }
+
+    const stageResult = await updateLeadSalesStage(leadId, "booked", {
+      allowBooked: true,
+      clientId: converted.clientId,
+      pipelineStageId: pipelineStageId !== null ? pipelineStageId : undefined,
+    });
+    if (!stageResult.ok) {
+      return {
+        ok: false as const,
+        message: stageResult.message ?? "Client was created but Booking Started could not be set.",
+      };
+    }
+
+    return {
+      ok: true as const,
+      clientId: converted.clientId,
+      eventId: converted.eventId,
+      invitationSent: false as const,
+      warning,
+    };
+  });
+
+  return resolved as
+    | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string }
+    | { ok: false; message: string };
 }
 
 /**

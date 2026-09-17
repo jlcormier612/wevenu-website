@@ -21,9 +21,10 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.equal(SALES_PIPELINE_RETURN_STAGE, "new_inquiry");
   });
 
-  it("Booking Started is not manually assignable; move-back destination is", () => {
+  it("Booking Started is not manually assignable without allowBooked; move-back destination is", () => {
     assert.equal(isManuallyAssignableSalesStage("booked"), false);
     assert.equal(isManuallyAssignableSalesStage(SALES_PIPELINE_RETURN_STAGE), true);
+    assert.match(service, /Move to Booked requires confirmation|allowBooked/);
   });
 
   it("Booking Started copy does not imply contract or payment complete", () => {
@@ -86,6 +87,7 @@ describe("Sales → Booking lifecycle product rules", () => {
 
   it("pipeline board blocks leaving Booking Started except via dedicated path", () => {
     assert.match(board, /Move back to Sales Pipeline/);
-    assert.match(board, /Booking Started is only set by starting a booking file/);
+    assert.match(board, /confirmPipelineBookedMoveAction/);
+    assert.match(board, /PipelineBookedConfirmDialog/);
   });
 });

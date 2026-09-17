@@ -163,14 +163,17 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
             {input.stages.map((stage, i) => (
               <div
                 key={stage.id ?? `new-${i}`}
-                draggable
-                onDragStart={() => handleDragStart(i)}
                 onDragOver={(e) => handleDragOver(e, i)}
                 onDrop={() => handleDrop(i)}
                 onDragEnd={handleDragEnd}
                 className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-end ${dragOverIndex === i ? "border-primary bg-primary/5" : "border-border"}`}
               >
-                <div className="flex shrink-0 cursor-grab items-center gap-1.5 self-start pt-2 text-muted-foreground sm:pt-0 sm:self-center" aria-label="Drag to reorder">
+                <div
+                  className="flex shrink-0 cursor-grab items-center gap-1.5 self-start pt-2 text-muted-foreground sm:pt-0 sm:self-center"
+                  aria-label="Drag to reorder"
+                  draggable
+                  onDragStart={() => handleDragStart(i)}
+                >
                   <GripVertical className="h-4 w-4" />
                   <span className="text-xs font-medium">{i + 1}</span>
                 </div>
@@ -205,12 +208,21 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
                   </div>
                 </div>
 
-                <div className="flex-1 space-y-1.5 sm:min-w-40">
+                <div
+                  className="flex-1 space-y-1.5 sm:min-w-40"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
                   <Label className="text-xs sm:sr-only">Reporting category</Label>
-                  <Select value={stage.canonicalStage} onValueChange={(v) => updateStage(i, { canonicalStage: v as PipelineStageInput["canonicalStage"] })}
-                    items={CANONICAL_STAGES}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
+                  <Select
+                    value={stage.canonicalStage}
+                    onValueChange={(v) => updateStage(i, { canonicalStage: v as PipelineStageInput["canonicalStage"] })}
+                    items={CANONICAL_STAGES.map((c) => ({ value: c.value, label: c.label }))}
+                  >
+                    <SelectTrigger className="h-9 text-sm" aria-label={`Reporting category for ${stage.name || `stage ${i + 1}`}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
                       {CANONICAL_STAGES.map((c) => (
                         <SelectItem key={c.value} value={c.value}>
                           <span className="font-medium">{c.label}</span>

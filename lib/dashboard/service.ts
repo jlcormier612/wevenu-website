@@ -99,6 +99,9 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     relationshipId: (r.relationship_id as string | null) ?? null,
     excludeFromBusinessReporting: Boolean(r.exclude_from_business_reporting),
     intakeConfidence: null,
+    lostReason: null,
+    lostReasonDetail: null,
+    lostAt: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }

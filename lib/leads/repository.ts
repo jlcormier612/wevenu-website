@@ -192,6 +192,9 @@ type LeadRow = {
   relationship_id: string | null;
   intake_confidence: number | null;
   exclude_from_business_reporting?: boolean;
+  lost_reason?: string | null;
+  lost_reason_detail?: string | null;
+  lost_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -247,6 +250,9 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     relationshipId: r.relationship_id ?? null,
     intakeConfidence: r.intake_confidence ?? null,
     excludeFromBusinessReporting: r.exclude_from_business_reporting ?? false,
+    lostReason: r.lost_reason ?? null,
+    lostReasonDetail: r.lost_reason_detail ?? null,
+    lostAt: r.lost_at ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -438,12 +444,25 @@ export async function updateLeadSalesStage(
   leadId: string,
   salesStage: SalesStage,
   pipelineStageId?: string | null,
+  lost?: { reason: string; detail: string | null } | null,
 ): Promise<void> {
-  const patch: { sales_stage: SalesStage; pipeline_stage_id?: string | null } = {
+  const patch: Record<string, unknown> = {
     sales_stage: salesStage,
   };
   if (pipelineStageId !== undefined) {
     patch.pipeline_stage_id = pipelineStageId;
+  }
+  if (salesStage === "lost") {
+    if (lost) {
+      patch.lost_reason = lost.reason;
+      patch.lost_reason_detail = lost.detail;
+      patch.lost_at = new Date().toISOString();
+    }
+  } else {
+    // Leaving Lost clears the reason so a later re-open is clean.
+    patch.lost_reason = null;
+    patch.lost_reason_detail = null;
+    patch.lost_at = null;
   }
   const { error } = await client
     .from("leads")
