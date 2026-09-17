@@ -151,7 +151,7 @@ export function CommandPalette({
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search leads, events, vendors, guests, documents, tasks, conversations, requests…"
+            placeholder="Search leads, clients, and vendors"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
           />
           {query && (
@@ -183,7 +183,7 @@ export function CommandPalette({
             <div className="py-12 text-center px-8">
               <p className="text-2xl mb-2">🔍</p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Search across leads, events, vendors, guests, documents, tasks, conversations, and requests.
+                Search across leads, clients, and vendors.
               </p>
               <p className="mt-3 text-xs text-muted-foreground/50">
                 ↑↓ to navigate · ↵ to open · Esc to close
