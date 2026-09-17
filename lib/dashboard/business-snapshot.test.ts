@@ -86,6 +86,7 @@ describe("buildBusinessSnapshotCards", () => {
     assert.match(empty[1]!.primary, /No booked business yet/);
     assert.match(empty[2]!.primary, /No payments collected yet/);
     assert.match(empty[3]!.primary, /Accounts current/);
+    assert.match(empty[3]!.secondary, /financially committed bookings/i);
     assert.doesNotMatch(empty.map((c) => c.key).join(","), /upcoming/);
   });
 

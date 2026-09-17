@@ -171,13 +171,15 @@ export function buildBusinessSnapshotCards(input: {
         ? "Accounts current"
         : formatUsd(input.outstandingBalance),
       secondary: outstandingEmpty
-        ? "No outstanding balances"
+        ? "Nothing owed on financially committed bookings"
         : formatCount(
           input.outstandingClientCount,
           "client account",
           "client accounts",
         ),
-      tertiary: outstandingEmpty ? "" : "Still owed on booked business",
+      tertiary: outstandingEmpty
+        ? "Gross booked minus cash collected"
+        : "Still owed on booked business",
       href: "/payments",
       actionLabel: "View balances",
       empty: outstandingEmpty,

@@ -28,6 +28,7 @@ import {
 import { createClient } from "@/integrations/supabase/server";
 import { getContracts } from "@/lib/contracts/repository";
 import { getInvoices } from "@/lib/invoices/repository";
+import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import { getRequestsForVenue } from "@/lib/requests/service";
 import { computeContractsReadiness, computePaymentsReadiness, computeRequestsReadiness } from "@/lib/readiness/compute";
 import { coordinatorCelebrationMessage, type CelebrationType } from "@/lib/luv/celebrations";
@@ -61,6 +62,7 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
 
   const [
     eventsRes, contracts, invoices, requests,
+    schedules, lineItems,
     toursRes, holdsRes, viewRes,
   ] = await Promise.all([
     supabase.from("events").select("id, name, event_date, client_id, status")
@@ -68,6 +70,8 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
     getContracts(supabase, venueId),
     getInvoices(supabase, venueId),
     getRequestsForVenue(supabase, venueId),
+    getSchedules(supabase, venueId),
+    getAllLineItems(supabase, venueId),
     supabase.from("tour_appointments").select("id, contact_name, scheduled_at, status")
       .eq("venue_id", venueId).neq("status", "cancelled")
       .gte("scheduled_at", nowIso).lte("scheduled_at", weekOutIso),
@@ -81,6 +85,26 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
   const events = (eventsRes.data ?? []) as EventRow[];
   const eventById = new Map(events.map((e) => [e.id, e]));
 
+  // Same source Event Readiness uses: overdue comes from schedule lines,
+  // never from a draft/void invoice.due_date alone.
+  const linesByScheduleId = new Map<string, typeof lineItems>();
+  for (const line of lineItems) {
+    const list = linesByScheduleId.get(line.scheduleId) ?? [];
+    list.push(line);
+    linesByScheduleId.set(line.scheduleId, list);
+  }
+  const scheduleLinesByEventId = new Map<string, { status: string; dueDate: string | null; amount: number }[]>();
+  for (const schedule of schedules) {
+    if (!schedule.eventId) continue;
+    const lines = (linesByScheduleId.get(schedule.id) ?? []).map((l) => ({
+      status: l.status,
+      dueDate: l.dueDate,
+      amount: l.amount,
+    }));
+    const existing = scheduleLinesByEventId.get(schedule.eventId) ?? [];
+    scheduleLinesByEventId.set(schedule.eventId, existing.concat(lines));
+  }
+
   // ---- Needs attention now (§4 item 1) ---------------------------------------
   const contractsByEvent = byEventId(contracts as (Contract & { eventId: string | null })[]);
   const invoicesByEvent = byEventId(invoices as (Invoice & { eventId: string | null })[]);
@@ -93,6 +117,7 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
     const eventContracts = contractsByEvent.get(event.id) ?? [];
     const eventInvoices = invoicesByEvent.get(event.id) ?? [];
     const eventRequests = requestsByEvent.get(event.id) ?? [];
+    const eventScheduleLines = scheduleLinesByEventId.get(event.id) ?? [];
 
     if (eventContracts.length > 0) {
       const section = computeContractsReadiness(eventContracts);
@@ -104,8 +129,10 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
         });
       }
     }
-    if (eventInvoices.length > 0) {
-      const section = computePaymentsReadiness(eventInvoices);
+    if (eventInvoices.length > 0 || eventScheduleLines.length > 0) {
+      // Always pass schedule lines (possibly []) so invoice.due_date cannot
+      // override the payment-plan truth Event Readiness already certified.
+      const section = computePaymentsReadiness(eventInvoices, eventScheduleLines);
       if (section.status === "needs_attention") {
         needsAttentionNow.push({
           id: `briefing-payments-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
