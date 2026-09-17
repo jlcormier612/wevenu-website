@@ -93,7 +93,7 @@ describe("Pipeline stage transition service contracts", () => {
   const detail = read("components/leads/lead-detail.tsx");
   const form = read("components/settings/pipeline-template-form.tsx");
   const bookedPage = read("app/(app)/clients/[id]/booked/page.tsx");
-  const migration = read("supabase/migrations/20260917180000_lead_lost_reason.sql");
+  const migration = read("supabase/migrations/20261400400000_lead_lost_reason.sql");
 
   it("persists lost_reason columns via migration", () => {
     assert.match(migration, /lost_reason/);
