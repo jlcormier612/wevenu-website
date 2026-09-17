@@ -17,6 +17,7 @@ const SETTINGS = "supabase/migrations/20261399500000_tour_protection_venue_setti
 const REQUESTS = "supabase/migrations/20261399600000_tour_protection_requests.sql";
 const APPTS = "supabase/migrations/20261399700000_tour_appointments_protection_state.sql";
 const BOOK = "supabase/migrations/20261399800000_book_protected_tour.sql";
+const GRANTS = "supabase/migrations/20261399900000_tour_protection_service_role_grants.sql";
 const ATOMICITY = "supabase/migrations/20261322000000_tour_booking_atomicity.sql";
 const WEBHOOK_ROUTE = "app/api/webhooks/stripe-connect/route.ts";
 const WEBHOOK_HANDLERS = "lib/stripe/webhook-handlers.ts";
@@ -129,6 +130,13 @@ describe("Tour protection migrations", () => {
     assert.match(requests, /'paid_unbooked'/);
     assert.match(requests, /'abandoned'/);
     assert.doesNotMatch(requests, /grant .* to anon/);
+    assert.doesNotMatch(requests, /grant .* to service_role/);
+  });
+
+  it("grants service_role insert/select/update so webhooks can stage and complete requests", () => {
+    const grants = read(GRANTS);
+    assert.match(grants, /grant select, insert, update on public\.tour_protection_requests to service_role/);
+    assert.doesNotMatch(grants, /grant .* to anon/);
   });
 
   it("associates appointments without adding payment columns", () => {
