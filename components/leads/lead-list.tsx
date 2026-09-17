@@ -203,14 +203,21 @@ export function LeadList({
     : [{ key: "all", label: "All" }, ...LEAD_STATUSES.map((s) => ({ key: s.value, label: s.label }))];
 
   const activeEventTypes = React.useMemo(() => {
+    const population = attentionFilter === "open"
+      ? leads.filter((l) => {
+        if (!isOpenLeadLifecycle(l.salesStage ?? l.status)) return false;
+        if (l.excludeFromBusinessReporting) return false;
+        return true;
+      })
+      : leads;
     const seen = new Map<string, number>();
-    leads.forEach((l) => {
+    population.forEach((l) => {
       const key = normalizeEventType(l.eventType);
       if (!key) return;
       seen.set(key, (seen.get(key) ?? 0) + 1);
     });
     return [...seen.entries()].sort((a, b) => b[1] - a[1]);
-  }, [leads]);
+  }, [leads, attentionFilter]);
 
   const hasActiveFilters =
     statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
