@@ -64,19 +64,21 @@ export default function FeedbackPage() {
 
       <div className="grid gap-2 sm:grid-cols-2">
         {CHANNELS.map(({ type, icon: Icon, title, description }) => (
-          <FeedbackSheet key={type} surface="venue" presentation="dialog" initialType={type}>
-            <button
-              type="button"
-              className="flex h-full w-full items-start gap-3 rounded-sm border border-border bg-card p-4 text-left outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-sm font-medium text-heading">{title}</p>
-                <p className="text-xs text-muted-foreground">{description}</p>
-              </div>
-            </button>
+          <FeedbackSheet
+            key={type}
+            surface="venue"
+            presentation="dialog"
+            initialType={type}
+            triggerAsButton
+            triggerClassName="flex h-full w-full items-start gap-3 rounded-sm border border-border bg-card p-4 text-left outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <Icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-sm font-medium text-heading">{title}</p>
+              <p className="text-xs text-muted-foreground">{description}</p>
+            </div>
           </FeedbackSheet>
         ))}
       </div>

@@ -110,10 +110,18 @@ describe("Give feedback — landing page", () => {
   });
 
   it("makes every choice a real button, not a bordered div", () => {
-    // Four <button type="button"> cards, each wrapped in its own trigger.
-    assert.equal((page.match(/<button\s+type="button"/g) ?? []).length, 1);
     assert.match(page, /CHANNELS\.map/);
-    assert.match(page, /<FeedbackSheet[\s\S]*?>\s*<button/);
+    assert.match(page, /triggerAsButton/);
+  });
+
+  it("gives each card exactly one tab stop", () => {
+    // The card is the trigger, rather than a real button wrapped in a
+    // span[role=button][tabindex=0] — which is two stops for one card, the
+    // outer one carrying no focus ring.
+    const sheet = read(SHEET);
+    assert.match(sheet, /triggerAsButton \? \(\s*<button type="button" className=\{triggerClassName\} \/>/);
+    assert.match(sheet, /nativeButton=\{triggerAsButton\}/);
+    assert.ok(!page.includes("<button"), "the page should hand over content, not a nested control");
   });
 
   it("gives the cards a visible keyboard focus state", () => {
@@ -249,6 +257,11 @@ describe("Give feedback — other surfaces keep the drawer", () => {
       const src = read(surface);
       assert.match(src, /<FeedbackSheet/);
       assert.doesNotMatch(src, /presentation=/);
+      assert.doesNotMatch(src, /triggerAsButton/);
     }
+  });
+
+  it("defaults triggerAsButton off, so their triggers still wrap as before", () => {
+    assert.match(read(SHEET), /triggerAsButton = false/);
   });
 });

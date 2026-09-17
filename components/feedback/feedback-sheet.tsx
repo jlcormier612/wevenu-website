@@ -80,6 +80,7 @@ export function FeedbackSheet({
   relatedVenueId = null,
   portalToken,
   triggerClassName,
+  triggerAsButton = false,
   presentation = "drawer",
   initialType = "general",
 }: {
@@ -90,6 +91,17 @@ export function FeedbackSheet({
   /** Portal access token — required when surface is client. */
   portalToken?: string;
   triggerClassName?: string;
+  /**
+   * Render the trigger as the button itself, with `children` as its content,
+   * instead of wrapping whatever is passed in.
+   *
+   * The wrapping form gives the trigger a `span[role=button][tabindex=0]`, so a
+   * caller whose children are already a real control ends up with two tab stops
+   * for one card and a focus ring on only one of them. Callers that hand over
+   * plain content — an icon and two lines of text — should set this and get a
+   * single native button.
+   */
+  triggerAsButton?: boolean;
   presentation?: FeedbackPresentation;
   /**
    * Category to open on. A landing card that already says "Report a Bug" has
@@ -320,7 +332,15 @@ export function FeedbackSheet({
     if (!o) reset();
   }
 
-  const trigger = children ?? (
+  // Either the trigger *is* the button and the children are its content, or the
+  // children are their own control and the trigger wraps them.
+  const triggerRender = triggerAsButton ? (
+    <button type="button" className={triggerClassName} />
+  ) : (
+    <span />
+  );
+
+  const triggerChildren = triggerAsButton ? children : children ?? (
     <button
       type="button"
       className={cn(
@@ -572,8 +592,8 @@ export function FeedbackSheet({
   if (presentation === "dialog") {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogTrigger render={<span />} nativeButton={false}>
-          {trigger}
+        <DialogTrigger render={triggerRender} nativeButton={triggerAsButton}>
+          {triggerChildren}
         </DialogTrigger>
 
         <DialogContent className="flex max-h-[min(90vh,44rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
@@ -592,8 +612,8 @@ export function FeedbackSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetTrigger render={<span />} nativeButton={false}>
-        {trigger}
+      <SheetTrigger render={triggerRender} nativeButton={triggerAsButton}>
+        {triggerChildren}
       </SheetTrigger>
 
       <SheetContent side="right" className="flex flex-col w-full sm:max-w-md p-0">
