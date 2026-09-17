@@ -1,70 +1,86 @@
 /**
- * Dashboard Business Snapshot — four locked business-state cards.
+ * Dashboard Business Snapshot — four business-health cards.
  *
- * Reuses authoritative HTC metrics (pipeline leads, canonical bookings,
- * Gross Booked Revenue, outstanding balance, Coming-up 60-day horizon).
- * Venue-facing copy never hard-codes Inquiry/Tour/Proposal stage names.
+ * Lead Flow · Booked Business · Cash Collected · Outstanding
+ * No Upcoming card (Coming up above already covers events).
+ * Venue-facing copy never hard-codes custom pipeline stage names.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import {
-  COMING_UP_HORIZON_DAYS,
-  comingUpHorizonEnd,
-  clientListFilterHref,
-} from "@/lib/clients/list-filters";
+import { clientListFilterHref } from "@/lib/clients/list-filters";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
-import { getGrossBookedRevenue, getOutstandingBalance } from "@/lib/metrics/revenue";
-import { loadReportingExclusions } from "@/lib/reporting/business-scope";
+import {
+  getGrossBookedRevenue,
+  getOutstandingBalance,
+  getPaymentsCollected,
+} from "@/lib/metrics/revenue";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 
-export const BUSINESS_SNAPSHOT_UPCOMING_DAYS = COMING_UP_HORIZON_DAYS;
+/** Terminal lifecycle states — not open opportunities. Independent of venue stage names. */
+export const TERMINAL_LEAD_LIFECYCLE_STATES = new Set([
+  "booked",
+  "lost",
+  "won",
+  "cancelled",
+]);
 
-/** Closed/won pipeline stages — not "active opportunities." */
-const CLOSED_PIPELINE_STAGES = new Set(["booked", "lost", "won", "cancelled"]);
+export const LEAD_FLOW_OPEN_HREF = "/leads?attention=open";
 
 export type SnapshotCardModel = {
-  key: "pipeline" | "booked" | "upcoming" | "outstanding";
+  key: "lead_flow" | "booked_business" | "cash_collected" | "outstanding";
   label: string;
-  /** Primary headline number (count or currency depending on card). */
   primary: string;
-  /** Secondary supporting line. */
   secondary: string;
+  /** Optional third context line (e.g. new-this-month). Always rendered for equal height. */
+  tertiary: string;
   href: string;
+  actionLabel: string;
   empty: boolean;
 };
 
 export type BusinessSnapshotModel = {
   cards: SnapshotCardModel[];
-  upcomingWindowDays: number;
 };
 
-export type PipelineLeadRow = {
+export type OpenLeadRow = {
   sales_stage: string | null;
   estimated_budget: number | null;
+  created_at: string | null;
   exclude_from_business_reporting?: boolean | null;
 };
 
-/** Pure: active opportunities = not booked/lost/won/cancelled, reporting-visible. */
-export function computeActivePipeline(rows: PipelineLeadRow[]): {
+export function isOpenLeadLifecycle(salesStage: string | null | undefined): boolean {
+  const stage = (salesStage ?? "").toLowerCase();
+  return !TERMINAL_LEAD_LIFECYCLE_STATES.has(stage);
+}
+
+/** Pure: open leads = not booked/lost/won/cancelled, reporting-visible. */
+export function computeOpenLeadFlow(
+  rows: OpenLeadRow[],
+  monthStartIso: string,
+): {
   count: number;
   value: number;
   budgetsPresent: number;
+  newThisMonth: number;
 } {
   let count = 0;
   let value = 0;
   let budgetsPresent = 0;
+  let newThisMonth = 0;
   for (const r of rows) {
     if (r.exclude_from_business_reporting) continue;
-    const stage = (r.sales_stage ?? "").toLowerCase();
-    if (CLOSED_PIPELINE_STAGES.has(stage)) continue;
+    if (!isOpenLeadLifecycle(r.sales_stage)) continue;
     count += 1;
     if (r.estimated_budget != null && Number.isFinite(Number(r.estimated_budget))) {
       value += Number(r.estimated_budget);
       budgetsPresent += 1;
     }
+    const created = (r.created_at ?? "").slice(0, 10);
+    if (created && created >= monthStartIso) newThisMonth += 1;
   }
-  return { count, value, budgetsPresent };
+  return { count, value, budgetsPresent, newThisMonth };
 }
 
 function formatUsd(amount: number): string {
@@ -79,61 +95,74 @@ function formatCount(n: number, singular: string, plural: string): string {
   return `${n} ${n === 1 ? singular : plural}`;
 }
 
+function monthStartFromToday(todayIso: string): string {
+  return `${todayIso.slice(0, 7)}-01`;
+}
+
 export function buildBusinessSnapshotCards(input: {
-  pipelineCount: number;
-  pipelineValue: number;
-  pipelineBudgetsPresent: number;
+  openLeadCount: number;
+  openLeadValue: number;
+  openLeadBudgetsPresent: number;
+  openLeadsNewThisMonth: number;
   bookedCount: number;
   bookedValue: number;
-  upcomingCount: number;
-  upcomingValue: number;
+  cashCollected: number;
   outstandingBalance: number;
   outstandingClientCount: number;
-  upcomingWindowDays: number;
 }): SnapshotCardModel[] {
-  const pipelineEmpty = input.pipelineCount === 0;
+  const leadEmpty = input.openLeadCount === 0;
   const bookedEmpty = input.bookedCount === 0;
-  const upcomingEmpty = input.upcomingCount === 0;
+  const cashEmpty = input.cashCollected <= 0;
   const outstandingEmpty = input.outstandingBalance <= 0;
 
   return [
     {
-      key: "pipeline",
-      label: "Pipeline",
-      primary: pipelineEmpty
-        ? "No active opportunities"
-        : formatCount(input.pipelineCount, "active lead", "active leads"),
-      secondary: pipelineEmpty
-        ? "Nothing currently in your pipeline."
-        : input.pipelineBudgetsPresent > 0
-          ? `${formatUsd(input.pipelineValue)} estimated value`
-          : "Estimated value not set on these leads",
-      href: "/leads",
-      empty: pipelineEmpty,
+      key: "lead_flow",
+      label: "Lead Flow",
+      primary: leadEmpty
+        ? "No open leads"
+        : formatCount(input.openLeadCount, "open lead", "open leads"),
+      secondary: leadEmpty
+        ? "Nothing currently in play (not booked, lost, or cancelled)."
+        : input.openLeadBudgetsPresent > 0
+          ? `${formatUsd(input.openLeadValue)} estimated value`
+          : "No estimated value yet",
+      tertiary: leadEmpty
+        ? ""
+        : input.openLeadsNewThisMonth > 0
+          ? `${input.openLeadsNewThisMonth} new this month`
+          : "No new leads this month",
+      href: LEAD_FLOW_OPEN_HREF,
+      actionLabel: "View open leads",
+      empty: leadEmpty,
     },
     {
-      key: "booked",
-      label: "Booked",
+      key: "booked_business",
+      label: "Booked Business",
       primary: bookedEmpty
-        ? "No booked events"
+        ? "No booked business yet"
         : formatCount(input.bookedCount, "booked event", "booked events"),
       secondary: bookedEmpty
-        ? "No committed bookings yet."
+        ? "Your first booked event will appear here."
         : `${formatUsd(input.bookedValue)} contracted`,
-      href: "/clients",
+      tertiary: bookedEmpty ? "" : "Financially committed bookings",
+      href: clientListFilterHref("booked_business"),
+      actionLabel: "View booked business",
       empty: bookedEmpty,
     },
     {
-      key: "upcoming",
-      label: "Upcoming",
-      primary: upcomingEmpty
-        ? "No upcoming events"
-        : formatCount(input.upcomingCount, "event", "events"),
-      secondary: upcomingEmpty
-        ? `Nothing booked in the next ${input.upcomingWindowDays} days.`
-        : `${formatUsd(input.upcomingValue)} contracted · next ${input.upcomingWindowDays} days`,
-      href: clientListFilterHref("coming_up"),
-      empty: upcomingEmpty,
+      key: "cash_collected",
+      label: "Cash Collected",
+      primary: cashEmpty
+        ? "No payments collected yet"
+        : formatUsd(input.cashCollected),
+      secondary: cashEmpty
+        ? "Collected payments will show here."
+        : "All-time collected",
+      tertiary: cashEmpty ? "" : "Money actually received",
+      href: "/payments",
+      actionLabel: "View payments",
+      empty: cashEmpty,
     },
     {
       key: "outstanding",
@@ -142,13 +171,15 @@ export function buildBusinessSnapshotCards(input: {
         ? "Accounts current"
         : formatUsd(input.outstandingBalance),
       secondary: outstandingEmpty
-        ? "Nothing outstanding right now."
+        ? "No outstanding balances"
         : formatCount(
           input.outstandingClientCount,
-          "client with a balance",
-          "clients with a balance",
+          "client account",
+          "client accounts",
         ),
+      tertiary: outstandingEmpty ? "" : "Still owed on booked business",
       href: "/payments",
+      actionLabel: "View balances",
       empty: outstandingEmpty,
     },
   ];
@@ -163,66 +194,22 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
   if (!venue) return null;
   const supabase = await createClient();
   const today = venueToday(venue.timezone);
-  const comingUpOut = comingUpHorizonEnd(today);
+  const monthStart = monthStartFromToday(today);
 
-  const [{ data: leadRows }, bookings, bookedValue, outstandingBalance, upcomingEventsRes] =
+  const [{ data: leadRows }, bookings, bookedValue, cashCollected, outstandingBalance] =
     await Promise.all([
       supabase
         .from("leads")
-        .select("sales_stage, estimated_budget, exclude_from_business_reporting")
+        .select("sales_stage, estimated_budget, created_at, exclude_from_business_reporting")
         .eq("venue_id", venue.id),
       getCanonicalBookings(),
       getGrossBookedRevenue(),
+      getPaymentsCollected(),
       getOutstandingBalance(),
-      supabase
-        .from("events")
-        .select("id, client_id, event_date, status, exclude_from_business_reporting")
-        .eq("venue_id", venue.id)
-        .gte("event_date", today)
-        .lte("event_date", comingUpOut)
-        .not("status", "in", "(cancelled,complete)"),
     ]);
 
-  const pipeline = computeActivePipeline((leadRows ?? []) as PipelineLeadRow[]);
-  const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookedClientIds = new Set(bookings.map((b) => b.clientId));
+  const leadFlow = computeOpenLeadFlow((leadRows ?? []) as OpenLeadRow[], monthStart);
 
-  const upcomingEvents = ((upcomingEventsRes.data ?? []) as {
-    id: string;
-    client_id: string | null;
-    event_date: string;
-    status: string;
-    exclude_from_business_reporting: boolean | null;
-  }[]).filter((e) => {
-    if (e.exclude_from_business_reporting) return false;
-    if (!e.client_id || !bookedClientIds.has(e.client_id)) return false;
-    if (exclusions.clientIds.has(e.client_id)) return false;
-    if (exclusions.eventIds.has(e.id)) return false;
-    return true;
-  });
-
-  const upcomingClientIds = [...new Set(
-    upcomingEvents.map((e) => e.client_id).filter((id): id is string => Boolean(id)),
-  )];
-
-  let upcomingValue = 0;
-  if (upcomingClientIds.length > 0) {
-    const { data: invoices } = await supabase
-      .from("invoices")
-      .select("client_id, subtotal, discount_amount, status")
-      .eq("venue_id", venue.id)
-      .neq("status", "void")
-      .in("client_id", upcomingClientIds);
-    for (const inv of (invoices ?? []) as {
-      client_id: string;
-      subtotal: number;
-      discount_amount: number;
-    }[]) {
-      upcomingValue += Number(inv.subtotal) - Number(inv.discount_amount);
-    }
-  }
-
-  // Outstanding client count: all-time contracted vs collected per canonical booking client.
   let outstandingClientCount = 0;
   if ((outstandingBalance ?? 0) > 0 && bookings.length > 0) {
     const clientIds = bookings.map((b) => b.clientId);
@@ -271,17 +258,16 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
   }
 
   const cards = buildBusinessSnapshotCards({
-    pipelineCount: pipeline.count,
-    pipelineValue: pipeline.value,
-    pipelineBudgetsPresent: pipeline.budgetsPresent,
+    openLeadCount: leadFlow.count,
+    openLeadValue: leadFlow.value,
+    openLeadBudgetsPresent: leadFlow.budgetsPresent,
+    openLeadsNewThisMonth: leadFlow.newThisMonth,
     bookedCount: bookings.length,
     bookedValue: bookedValue ?? 0,
-    upcomingCount: upcomingEvents.length,
-    upcomingValue,
+    cashCollected: Math.max(0, cashCollected ?? 0),
     outstandingBalance: Math.max(0, outstandingBalance ?? 0),
     outstandingClientCount,
-    upcomingWindowDays: BUSINESS_SNAPSHOT_UPCOMING_DAYS,
   });
 
-  return { cards, upcomingWindowDays: BUSINESS_SNAPSHOT_UPCOMING_DAYS };
+  return { cards };
 }

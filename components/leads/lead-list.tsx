@@ -87,7 +87,7 @@ export function LeadList({
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
-  initialAttention?: "stale_contact" | "active" | null;
+  initialAttention?: "stale_contact" | "open" | "active" | null;
   /** Active Pipeline Template stages — when present, Stage chips use venue names. */
   venueStages?: PipelineStage[] | null;
 }) {
@@ -98,8 +98,8 @@ export function LeadList({
   const [sort, setSort] = React.useState<SortKey>(
     initialAttention === "stale_contact" ? "last_contacted" : "newest",
   );
-  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "active">(
-    initialAttention === "stale_contact" ? "stale_contact" : initialAttention === "active" ? "active" : "all",
+  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open">(
+    initialAttention === "stale_contact" ? "stale_contact" : initialAttention === "open" ? "open" : "all",
   );
 
   function venueStageIdFor(lead: Lead): string | null {
@@ -150,8 +150,11 @@ export function LeadList({
           return false;
         }
       }
-      if (attentionFilter === "active") {
-        if (stage === "lost" || stage === "booked") return false;
+      if (attentionFilter === "open") {
+        // Same open-lead definition as Dashboard Lead Flow (terminal lifecycle only).
+        if (["lost", "booked", "won", "cancelled"].includes(stage)) {
+          return false;
+        }
         if (l.excludeFromBusinessReporting) return false;
       }
       if (!q) return true;
@@ -219,10 +222,10 @@ export function LeadList({
           </button>
         </div>
       )}
-      {attentionFilter === "active" && (
+      {attentionFilter === "open" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
           <p className="text-foreground">
-            Showing active leads still in play.
+            Showing open leads — not booked, lost, won, or cancelled.
           </p>
           <button
             type="button"

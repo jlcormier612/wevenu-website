@@ -12,7 +12,8 @@ export type ClientListFilterKey =
   | "wedding_week"
   | "needs_attention"
   | "past"
-  | "cancelled";
+  | "cancelled"
+  | "booked_business";
 
 export const CLIENT_LIST_FILTERS: { key: ClientListFilterKey; label: string }[] = [
   { key: "all", label: "All" },
@@ -22,6 +23,7 @@ export const CLIENT_LIST_FILTERS: { key: ClientListFilterKey; label: string }[] 
   { key: "needs_attention", label: "Needs Attention" },
   { key: "past", label: "Past" },
   { key: "cancelled", label: "Cancelled" },
+  { key: "booked_business", label: "Booked business" },
 ];
 
 /** Near-term horizon for Dashboard "Coming up" — same 60-day window the
@@ -46,6 +48,11 @@ export type ClientListFilterContext = {
   /** Inclusive end of Coming up (today + COMING_UP_HORIZON_DAYS), YYYY-MM-DD. */
   comingUpOut: string;
   attentionClientIds: ReadonlySet<string>;
+  /**
+   * Client IDs in `canonical_bookings` (financially committed).
+   * Required for the Booked business filter / Dashboard Snapshot destination.
+   */
+  bookedBusinessClientIds?: ReadonlySet<string>;
 };
 
 /**
@@ -114,6 +121,8 @@ export function clientMatchesListFilter(
       return client.status !== "cancelled" && !!client.eventDate && client.eventDate < ctx.today;
     case "cancelled":
       return client.status === "cancelled";
+    case "booked_business":
+      return (ctx.bookedBusinessClientIds ?? new Set()).has(client.id);
   }
 }
 

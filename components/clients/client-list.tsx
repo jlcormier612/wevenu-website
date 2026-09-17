@@ -72,7 +72,18 @@ function persistFilter(next: ClientListFilterKey) {
   try { window.localStorage.setItem(FILTER_STORAGE_KEY, next); } catch { /* ignore */ }
 }
 
-export function ClientList({ clients, attentionClientIds = new Set(), today }: { clients: Client[]; attentionClientIds?: Set<string>; today: string }) {
+export function ClientList({
+  clients,
+  attentionClientIds = new Set(),
+  bookedBusinessClientIds = new Set(),
+  today,
+}: {
+  clients: Client[];
+  attentionClientIds?: Set<string>;
+  /** Clients in canonical_bookings — Booked business Snapshot destination. */
+  bookedBusinessClientIds?: Set<string>;
+  today: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -102,8 +113,8 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
   const weekOut = React.useMemo(() => weddingWeekEnd(today), [today]);
   const comingUpOut = React.useMemo(() => comingUpHorizonEnd(today), [today]);
   const filterCtx = React.useMemo(
-    () => ({ today, weekOut, comingUpOut, attentionClientIds }),
-    [today, weekOut, comingUpOut, attentionClientIds],
+    () => ({ today, weekOut, comingUpOut, attentionClientIds, bookedBusinessClientIds }),
+    [today, weekOut, comingUpOut, attentionClientIds, bookedBusinessClientIds],
   );
 
   const filtered = React.useMemo(() => {

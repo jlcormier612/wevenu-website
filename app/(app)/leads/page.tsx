@@ -18,7 +18,8 @@ export default async function LeadsPage({ searchParams }: Props) {
   const { attention } = await searchParams;
   const initialAttention =
     attention === "stale_contact" ? "stale_contact" as const
-    : attention === "active" ? "active" as const
+    : attention === "open" ? "open" as const
+    : attention === "active" ? "open" as const
     : null;
   const venueStages = activeTemplate?.stages?.length ? activeTemplate.stages : null;
   return (

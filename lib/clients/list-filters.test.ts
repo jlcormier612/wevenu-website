@@ -140,3 +140,21 @@ describe("the other Client list filters stay internally consistent", () => {
     assert.equal(counts.upcoming, 4);
   });
 });
+
+describe("Booked business filter", () => {
+  it("matches only clients in the canonical bookings set", () => {
+    const ctx = {
+      today: TODAY,
+      weekOut: WEEK_OUT,
+      comingUpOut: COMING_UP_OUT,
+      attentionClientIds: new Set<string>(),
+      bookedBusinessClientIds: new Set(["a"]),
+    };
+    assert.equal(clientMatchesListFilter(client({ id: "a" }), "booked_business", ctx), true);
+    assert.equal(clientMatchesListFilter(client({ id: "b" }), "booked_business", ctx), false);
+    assert.equal(
+      countClientListFilters([client({ id: "a" }), client({ id: "b" })], ctx).booked_business,
+      1,
+    );
+  });
+});
