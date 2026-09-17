@@ -37,7 +37,7 @@ import {
   setMilestoneKindAction,
   updateTemplateTaskAction,
 } from "@/app/(app)/playbooks/actions";
-import { saveVenueDocumentAction } from "@/app/(app)/documents/actions";
+import { saveVenueDocumentAction, venueDocumentUploadPathAction } from "@/app/(app)/documents/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -129,12 +129,15 @@ function AttachmentsField({
     setUploading(true);
     try {
       const supabase = createClient();
-      const docId = crypto.randomUUID();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
       // Venue-level path — this file belongs to the venue itself, not one
       // lead/client/event/vendor, so it outlives any single application of
       // this template (venue-level documents, Planning Templates UX Rebuild).
-      const storagePath = `venue/${docId}.${ext}`;
+      // The venue id has to lead the path or the bucket policy rejects the
+      // upload, and the browser can't be trusted for it, so the server hands
+      // it back from the session.
+      const pathResult = await venueDocumentUploadPathAction(file.name);
+      if (!pathResult.ok) { toast.error(pathResult.message); return; }
+      const storagePath = pathResult.storagePath;
       const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, { upsert: false, contentType: file.type });
       if (uploadError) throw new Error(uploadError.message);
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);

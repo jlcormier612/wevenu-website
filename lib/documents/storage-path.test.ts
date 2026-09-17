@@ -6,14 +6,15 @@ import { describe, it } from "node:test";
 import { documentFileExtension, venueLibraryDocumentPath } from "@/lib/documents/storage-path";
 
 /**
- * Two venue-level uploaders were still writing `venue/${docId}.${ext}` after
+ * Three venue-level uploaders were still writing `venue/${docId}.${ext}` after
  * 20261370000000_documents_workspace_completion.sql tightened the documents
  * bucket to require the venue id in the first path segment. The literal
  * `venue/` can never equal a venue uuid, so every upload from the Message
- * Template attachment field and the Setup migration step was rejected by RLS.
+ * Template attachment field, the Setup migration step and the Planning
+ * Template task attachment field was rejected by RLS.
  *
  * These tests pin the corrected construction to the policy it has to satisfy,
- * so the two can't drift apart again silently.
+ * so they can't drift apart again silently.
  */
 
 const VENUE = "3f1c9a44-0b2e-4d7f-9a55-1c8e6b2d4f70";
@@ -81,10 +82,11 @@ describe("venue-level document storage paths", () => {
   });
 });
 
-describe("the two repaired uploaders", () => {
+describe("the three repaired uploaders", () => {
   const files = {
     "Message Template attachments": "components/communication/template-attachments-field.tsx",
     "Setup migration upload": "components/setup/setup-migration-steps.tsx",
+    "Planning Template task attachments": "components/playbooks/playbook-builder.tsx",
   } as const;
 
   for (const [label, path] of Object.entries(files)) {
@@ -130,6 +132,36 @@ describe("the two repaired uploaders", () => {
   it("preserves the Template field's single-file abort", () => {
     const src = readFileSync(resolve(files["Message Template attachments"]), "utf8");
     assert.match(src, /if \(!pathResult\.ok\) \{ toast\.error\(pathResult\.message\); return; \}/);
+  });
+
+  describe("Planning Template task attachments, specifically", () => {
+    const src = readFileSync(resolve(files["Planning Template task attachments"]), "utf8");
+
+    it("aborts that upload rather than proceeding with no path", () => {
+      assert.match(src, /if \(!pathResult\.ok\) \{ toast\.error\(pathResult\.message\); return; \}/);
+      // Reached before the object is stored, so nothing lands anywhere on failure.
+      assert.ok(
+        src.indexOf("pathResult") < src.indexOf('.upload(storagePath, file'),
+        "path must be resolved before the upload call",
+      );
+    });
+
+    it("keeps the surrounding attachment behavior it already had", () => {
+      // Same size guard, same venue-level category, same link-and-toast tail —
+      // this was a path fix, not a rewrite of the field.
+      assert.match(src, /file\.size > MAX_FILE_SIZE_MB \* 1024 \* 1024/);
+      assert.match(src, /category: "other"/);
+      assert.match(src, /addPlaybookTaskAttachmentAction\(templateId, taskId, \{ documentId: saved\.documentId \}/);
+      assert.match(src, /toast\.success\("File attached\."\)/);
+      assert.match(src, /if \(fileRef\.current\) fileRef\.current\.value = ""/);
+    });
+
+    it("still lets an existing document be attached without re-uploading it", () => {
+      const fn = src.match(/async function handleAttachExisting\(\)[\s\S]*?\n {2}\}/)?.[0];
+      assert.ok(fn, "expected handleAttachExisting");
+      assert.match(fn, /documentId: existingDocId/);
+      assert.doesNotMatch(fn, /\.upload\(/);
+    });
   });
 });
 

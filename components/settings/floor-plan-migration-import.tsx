@@ -57,6 +57,43 @@ type PendingRow = {
   sourceId: string;
 };
 
+/**
+ * Store the batch ZIP under the session and register it as a venue-level
+ * Document, reporting the outcome rather than throwing — the caller has already
+ * uploaded the floor plans and must not lose them over the ZIP copy.
+ */
+async function retainBatchZip(
+  sessionId: string,
+  file: File,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const { attachMigrationSourceFileAction, migrationArtifactUploadPathAction } =
+      await import("@/app/(app)/settings/migration-actions");
+    const pathResult = await migrationArtifactUploadPathAction(sessionId, file.name);
+    if (!pathResult.ok) return pathResult;
+    const path = pathResult.storagePath;
+    const supabase = createClient();
+    const contentType = file.type || "application/zip";
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(path, file, { upsert: false, contentType });
+    if (uploadError) return { ok: false, message: uploadError.message };
+    const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
+    const attached = await attachMigrationSourceFileAction(sessionId, {
+      fileName: file.name, fileSize: file.size, mimeType: contentType,
+      storagePath: path, storageUrl: urlData.publicUrl,
+    });
+    if (!attached.ok) {
+      // Never leave a stored object with no row pointing at it.
+      await supabase.storage.from("documents").remove([path]);
+      return { ok: false, message: attached.message };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Unknown error." };
+  }
+}
+
 export function FloorPlanMigrationImport({
   venueId,
   sourceKey,
@@ -134,19 +171,23 @@ export function FloorPlanMigrationImport({
         return;
       }
 
-      // Retain the batch ZIP/files as session source artifacts when a single ZIP was used.
+      // Retain the batch ZIP as a session source artifact. The floor plans
+      // themselves are already stored and registered by
+      // prepareFloorPlanSourceUpload above, so keeping the ZIP is a
+      // convenience — a record of what the batch came from — and its failure
+      // must not throw away an import that otherwise worked.
+      //
+      // It must not be silent either, which is what it was: neither the upload
+      // error nor the attach result was read, so a venue was told their ZIP was
+      // kept when nothing had been stored at all.
+      const zipFailures: string[] = [];
       for (const f of Array.from(picked)) {
         if (f.name.toLowerCase().endsWith(".zip") || f.type.includes("zip")) {
-          const supabase = createClient();
-          const docId = crypto.randomUUID();
-          const path = `migration/${started.session.id}/${docId}.zip`;
-          await supabase.storage.from("documents").upload(path, f, { upsert: false, contentType: f.type || "application/zip" });
-          const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
-          const { attachMigrationSourceFileAction } = await import("@/app/(app)/settings/migration-actions");
-          await attachMigrationSourceFileAction(started.session.id, {
-            fileName: f.name, fileSize: f.size, mimeType: f.type || "application/zip",
-            storagePath: path, storageUrl: urlData.publicUrl,
-          });
+          const retained = await retainBatchZip(started.session.id, f);
+          if (!retained.ok) {
+            console.error(`Migration ZIP retention failed for ${f.name}:`, retained.message);
+            zipFailures.push(f.name);
+          }
         }
       }
 
@@ -172,6 +213,14 @@ export function FloorPlanMigrationImport({
         + (skippedNonFloorPlan ? ` (${skippedNonFloorPlan} other file${skippedNonFloorPlan === 1 ? "" : "s"} skipped)` : "")
         + ".",
       );
+      // Said after the floor plans are safely in, and only about the ZIP —
+      // the plans themselves are stored either way.
+      if (zipFailures.length > 0) {
+        toast.warning(
+          `Your floor plans are in, but we couldn't keep a copy of ${zipFailures.join(", ")}. `
+          + `It won't be listed under "Original file", so hold on to your own copy.`,
+        );
+      }
       onSessionReady(started.session.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not import those floor plans.");

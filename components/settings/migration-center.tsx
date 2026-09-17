@@ -39,6 +39,7 @@ import {
   getMigrationSessionSourceFilesAction,
   getMigrationVendorMatchLabelsAction,
   listMigrationSessionsAction,
+  migrationArtifactUploadPathAction,
   proposeActiveCommitmentFromFileAction,
   proposeActiveCommitmentFromTextAction,
   proposeMigrationFieldMappingAction,
@@ -49,6 +50,7 @@ import {
 } from "@/app/(app)/settings/migration-actions";
 import { ActiveCommitmentReview } from "@/components/settings/active-commitment-review";
 import { FloorPlanMigrationImport } from "@/components/settings/floor-plan-migration-import";
+import { venueFileHref } from "@/lib/documents/access";
 import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
 import {
@@ -542,26 +544,38 @@ export function MigrationCenter({
     });
   }
 
-  async function uploadSourceFile(sessionId: string, file: File) {
+  // Keeps the original file the venue imported from, as an ordinary venue-level
+  // Document linked to this session — not a parallel storage system.
+  //
+  // This reports back instead of toasting. Retaining the original and importing
+  // the rows are two different promises: the rows were already parsed in the
+  // browser before this runs, so a storage failure here says nothing about
+  // whether the import worked. The old message asserted both at once, and
+  // asserted the import half before the rows had even been sent.
+  async function uploadSourceFile(
+    sessionId: string,
+    file: File,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
+      const pathResult = await migrationArtifactUploadPathAction(sessionId, file.name);
+      if (!pathResult.ok) return pathResult;
+      const fullPath = pathResult.storagePath;
       const supabase = createClient();
-      const docId = crypto.randomUUID();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "csv";
-      // Same storage architecture components/document-workspace/upload-
-      // button.tsx already uses (the `documents` bucket, an unguessable
-      // random path) — a migration source file is stored as an ordinary,
-      // venue-level document, not a parallel storage system. sessionId and
-      // docId are both random UUIDs, so this path is not enumerable —
-      // matching every other document in this bucket's own security model.
-      const fullPath = `migration/${sessionId}/${docId}.${ext}`;
       const { error: uploadError } = await supabase.storage.from("documents").upload(fullPath, file, { upsert: false, contentType: file.type });
-      if (uploadError) { toast.error("Could not save the original file, but your data was still read and imported."); return; }
+      if (uploadError) return { ok: false, message: uploadError.message };
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(fullPath);
-      await attachMigrationSourceFileAction(sessionId, {
+      const attached = await attachMigrationSourceFileAction(sessionId, {
         fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath: fullPath, storageUrl: urlData.publicUrl,
       });
-    } catch {
-      toast.error("Could not save the original file, but your data was still read and imported.");
+      if (!attached.ok) {
+        // Same rollback the other document uploaders do — never leave a stored
+        // object with no row pointing at it.
+        await supabase.storage.from("documents").remove([fullPath]);
+        return { ok: false, message: attached.message };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : "Unknown error." };
     }
   }
 
@@ -575,7 +589,8 @@ export function MigrationCenter({
     try {
       const started = await startMigrationSessionAction(sourceKey);
       if (!started.ok) { toast.error(started.message); return; }
-      if (pendingFile) await uploadSourceFile(started.session.id, pendingFile);
+      const sourceFile = pendingFile;
+      const retained = sourceFile ? await uploadSourceFile(started.session.id, sourceFile) : null;
       const sourceRows = rows.map((row) => {
         const mapped: Record<string, string | null> = {};
         for (const [key, col] of Object.entries(mapping)) mapped[key] = (row[col] ?? "").trim() || null;
@@ -586,6 +601,15 @@ export function MigrationCenter({
       const deduped = await runMigrationDedupeAction(started.session.id);
       if (!deduped.ok) { toast.error(deduped.message); return; }
       toast.success("Files recognized and checked for duplicates — review below.");
+      // Said only now, when the import outcome is actually known, and only
+      // about the half that failed. The reason goes to the console for support
+      // rather than into a sentence a coordinator has to decode.
+      if (sourceFile && retained && !retained.ok) {
+        console.error("Migration source file retention failed:", retained.message);
+        toast.warning(
+          `Your rows were imported, but we couldn't keep a copy of ${sourceFile.name}. It won't be listed under "Original file", so hold on to your own copy.`,
+        );
+      }
       setRows([]); setHeaders([]); setMapping({}); setPendingFile(null);
       if (fileRef.current) fileRef.current.value = "";
       refreshSessions();
@@ -866,7 +890,11 @@ export function MigrationCenter({
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original file{sourceFiles.length === 1 ? "" : "s"}</p>
                 {sourceFiles.map((f) => (
-                  <a key={f.documentId} href={f.storageUrl} target="_blank" rel="noopener noreferrer"
+                  // Through the authorized route, not the stored URL: the
+                  // documents bucket is private, so the stored public URL
+                  // resolves to nothing. Same href every other Documents
+                  // surface uses.
+                  <a key={f.documentId} href={venueFileHref(f.documentId)} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted/20">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate">{f.fileName}</span>
