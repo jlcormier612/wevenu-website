@@ -2,11 +2,20 @@
  * Navigation attention badges — "what needs my look?" not inventory counts.
  *
  * Pure helpers only. Fetching lives in attention-service.ts.
+ * Keep this module free of server-only imports — conversation-inbox and
+ * sidebar-nav import it from Client Components.
  */
 
-import { TERMINAL_LEAD_LIFECYCLE_STATES } from "@/lib/dashboard/business-snapshot";
 import { deriveScheduleStatus } from "@/lib/payments/constants";
 import type { PaymentLineItem } from "@/lib/payments/types";
+
+/** Same terminal set as Business Snapshot Lead Flow (pipeline-agnostic). */
+const TERMINAL_LEAD_LIFECYCLE_STATES = new Set([
+  "booked",
+  "lost",
+  "won",
+  "cancelled",
+]);
 
 export type NavAttentionCounts = {
   leads: number;
