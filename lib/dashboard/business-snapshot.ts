@@ -185,6 +185,7 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
 
   const pipeline = computeActivePipeline((leadRows ?? []) as PipelineLeadRow[]);
   const exclusions = await loadReportingExclusions(supabase, venue.id);
+  const bookedClientIds = new Set(bookings.map((b) => b.clientId));
 
   const upcomingEvents = ((upcomingEventsRes.data ?? []) as {
     id: string;
@@ -194,7 +195,8 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
     exclude_from_business_reporting: boolean | null;
   }[]).filter((e) => {
     if (e.exclude_from_business_reporting) return false;
-    if (e.client_id && exclusions.clientIds.has(e.client_id)) return false;
+    if (!e.client_id || !bookedClientIds.has(e.client_id)) return false;
+    if (exclusions.clientIds.has(e.client_id)) return false;
     if (exclusions.eventIds.has(e.id)) return false;
     return true;
   });
