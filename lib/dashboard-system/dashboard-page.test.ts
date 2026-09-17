@@ -63,6 +63,14 @@ describe("Dashboard page information architecture", () => {
     assert.doesNotMatch(page, /getVenueHealth/);
   });
 
+  it("does not render the morning priorities email banner", () => {
+    assert.doesNotMatch(page, /DigestCallout/);
+    assert.doesNotMatch(page, /showDigestCallout/);
+    assert.doesNotMatch(page, /morning email each day with your priorities/);
+    assert.doesNotMatch(service, /showDigestCallout/);
+    assert.doesNotMatch(service, /getNotificationPreferences/);
+  });
+
   it("Coming up classifies events only — not the mixed dated stream", () => {
     assert.match(page, /classifyUpcomingItems/);
     const engine = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");

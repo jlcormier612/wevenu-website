@@ -23,7 +23,6 @@ import { GAP_COPY } from "@/lib/dashboard/gap-copy";
 import { computeSetupGapObservations } from "@/lib/luv/setup-observations";
 import { getDailyBriefing } from "@/lib/luv/briefing-service";
 import { getArticlesForGapKeys } from "@/lib/success-library/service";
-import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
@@ -545,7 +544,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
   const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, notificationPrefs, briefing] = await Promise.all([
+  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, briefing] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
@@ -558,7 +557,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     getLuvPerformanceObservations().catch(() => []),
     getActivationScore(venue.id).catch(() => null),
     getNextPendingMilestone(venue.id).catch(() => null),
-    getNotificationPreferences().catch(() => null),
     getDailyBriefing(venue.id).catch(() => emptyBriefing),
   ]);
   // Communication and setup-gap observations respect the same
@@ -570,7 +568,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const luvObservations = observationsOn
     ? [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations]
     : [];
-  const showDigestCallout = !!notificationPrefs && notificationPrefs.dailyDigestEnabled && !notificationPrefs.digestIntroDismissed;
   const trendObservations  = observationsOn && rawTrends   ? computeTrendObservations(rawTrends) : [];
   const storyObservation   = observationsOn && rawTrends   ? computeStoryMode(rawTrends) : null;
   const memoryObservations = observationsOn && rawMemories
@@ -641,7 +638,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     momentumSegments: { heatingUp, coolingOff },
     activationScore,
     nextPendingMilestone,
-    showDigestCallout,
     // When false, Dashboard must not render the restrained Luv card at all —
     // including aggregates and recommendations that would otherwise still speak.
     luvObservationsEnabled: observationsOn,

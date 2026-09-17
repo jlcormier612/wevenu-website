@@ -158,7 +158,6 @@ export type DashboardData = {
   // ---- Activation Engine (Sprint 108) ----
   activationScore: import("@/lib/activation/types").ActivationScore | null;
   nextPendingMilestone: import("@/lib/activation/types").VenueMilestone | null;
-  showDigestCallout: boolean;
   /** When false, Dashboard Luv (observations, recommendations, aggregates) stays hidden. */
   luvObservationsEnabled: boolean;
   showLuvIntro: boolean;

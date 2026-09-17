@@ -8,7 +8,6 @@ import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
 import { YourNextStepsCard } from "@/components/dashboard/getting-started";
-import { DigestCallout } from "@/components/dashboard/digest-callout";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
@@ -106,7 +105,6 @@ export default async function DashboardPage({ searchParams }: Props) {
         show={data.showLuvIntro}
         setupHref={data.onboarding.show ? "/setup-hub" : "/setup-hub"}
       />
-      {data.showDigestCallout && <DigestCallout />}
 
       {/* 1. NOW — overdue, due today, urgent operational attention */}
       <section>
