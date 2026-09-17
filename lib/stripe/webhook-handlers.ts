@@ -38,12 +38,22 @@ import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 import { postPaymentFailedMessage, postPaymentReceivedReceipt } from "@/lib/stripe/notify";
 import type { Invoice } from "@/lib/invoices/types";
 import type { PaymentObligationKind } from "@/lib/payments/types";
+import {
+  abandonTourProtectionFromWebhook,
+  completeProtectedTourFromWebhook,
+  failTourProtectionFromWebhook,
+  markTourProtectionRefundedFromStripe,
+  tourProtectionRequestExists,
+} from "@/lib/tours/protection";
+import { isTourProtectionMetadata } from "@/lib/tours/protection-rules";
 
 type PiMetadata = {
   htc_payment_line_item_id?: string;
   htc_venue_id?: string;
   htc_client_id?: string;
   htc_schedule_id?: string;
+  htc_kind?: string;
+  htc_tour_protection_request_id?: string;
   // Legacy keys — still accepted for PaymentIntents created before brand cleanup.
   wevenu_payment_line_item_id?: string;
   wevenu_venue_id?: string;
@@ -71,9 +81,25 @@ function paymentMethodTypeFrom(pi: Stripe.PaymentIntent): "card" | "us_bank_acco
  * once the debit actually settles, days later). An invoice is never
  * marked paid before this fires.
  */
-export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Promise<void> {
+export async function handlePaymentIntentSucceeded(
+  pi: Stripe.PaymentIntent,
+  connectedAccountVenueId: string | null,
+): Promise<void> {
   const meta = pi.metadata as PiMetadata;
   const { itemId, venueId, clientId, scheduleId } = paymentMeta(meta);
+
+  if (itemId || isTourProtectionMetadata(meta)) {
+    const handled = await completeProtectedTourFromWebhook({
+      requestId: meta.htc_tour_protection_request_id ?? itemId ?? null,
+      connectedAccountVenueId,
+      metadataVenueId: venueId ?? null,
+      stripePaymentIntentId: pi.id,
+      stripePaymentMethodId: typeof pi.payment_method === "string" ? pi.payment_method : pi.payment_method?.id ?? null,
+      stripeCustomerId: typeof pi.customer === "string" ? pi.customer : pi.customer?.id ?? null,
+    });
+    if (handled === "handled") return;
+  }
+
   if (!itemId || !venueId || !scheduleId) return; // not one of ours (or malformed) — nothing to do
 
   const admin = createAdminClient();
@@ -133,8 +159,8 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: paidLine } = await (admin as any).from("payment_line_items")
       .select("obligation_kind").eq("id", itemId).eq("venue_id", venueId).maybeSingle();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await celebrateFinalPaymentObligationIfNeeded(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       admin as any,
       venueId,
       eventId,
@@ -177,9 +203,13 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
 }
 
 /** payment_intent.processing — ACH only. Debit initiated, not yet settled. */
-export async function handlePaymentIntentProcessing(pi: Stripe.PaymentIntent): Promise<void> {
+export async function handlePaymentIntentProcessing(
+  pi: Stripe.PaymentIntent,
+): Promise<void> {
   const meta = pi.metadata as PiMetadata;
   const { itemId, venueId } = paymentMeta(meta);
+  const requestId = meta.htc_tour_protection_request_id ?? itemId ?? null;
+  if (requestId && await tourProtectionRequestExists(requestId)) return;
   if (!itemId || !venueId) return;
 
   const admin = createAdminClient();
@@ -190,9 +220,19 @@ export async function handlePaymentIntentProcessing(pi: Stripe.PaymentIntent): P
 }
 
 /** payment_intent.payment_failed — an immediate card decline, or an ACH debit that failed after initiating (e.g. insufficient funds). Reverts to pending — nothing was actually collected. */
-export async function handlePaymentIntentFailed(pi: Stripe.PaymentIntent): Promise<void> {
+export async function handlePaymentIntentFailed(
+  pi: Stripe.PaymentIntent,
+  connectedAccountVenueId: string | null,
+): Promise<void> {
   const meta = pi.metadata as PiMetadata;
   const { itemId, venueId, clientId } = paymentMeta(meta);
+  if (itemId || isTourProtectionMetadata(meta)) {
+    const handled = await failTourProtectionFromWebhook({
+      requestId: meta.htc_tour_protection_request_id ?? itemId ?? null,
+      connectedAccountVenueId,
+    });
+    if (handled === "handled") return;
+  }
   if (!itemId || !venueId) return;
 
   const admin = createAdminClient();
@@ -210,9 +250,15 @@ export async function handlePaymentIntentFailed(pi: Stripe.PaymentIntent): Promi
 }
 
 /** charge.refunded — confirms a refund Hello to Cheers already initiated (lib/payments/service.ts's refundLineItem_ calls Stripe synchronously; this is a defensive, idempotent confirmation, not the primary trigger). */
-export async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+export async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  connectedAccountVenueId: string | null,
+): Promise<void> {
   const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
   if (!paymentIntentId) return;
+
+  const tourHandled = await markTourProtectionRefundedFromStripe(paymentIntentId, connectedAccountVenueId);
+  if (tourHandled === "handled") return;
 
   const admin = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,4 +289,57 @@ export async function handleChargeRefunded(charge: Stripe.Charge): Promise<void>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await paymentsRepo.reconcileInvoiceBalance(admin as any, item.venue_id, schedule.invoice_id);
   }
+}
+
+function setupIntentIdFrom(session: Stripe.Checkout.Session): string | null {
+  if (typeof session.setup_intent === "string") return session.setup_intent;
+  return session.setup_intent?.id ?? null;
+}
+
+function paymentIntentIdFrom(session: Stripe.Checkout.Session): string | null {
+  if (typeof session.payment_intent === "string") return session.payment_intent;
+  return session.payment_intent?.id ?? null;
+}
+
+function paymentMethodIdFrom(session: Stripe.Checkout.Session): string | null {
+  const setup = typeof session.setup_intent === "object" ? session.setup_intent : null;
+  if (setup && typeof setup.payment_method === "string") return setup.payment_method;
+  if (setup && setup.payment_method && typeof setup.payment_method === "object") {
+    return setup.payment_method.id;
+  }
+  return null;
+}
+
+/**
+ * checkout.session.completed — authoritative for Setup mode (no payment_intent)
+ * and a second success signal for fee mode. book_protected_tour is idempotent.
+ */
+export async function handleCheckoutSessionCompleted(
+  session: Stripe.Checkout.Session,
+  connectedAccountVenueId: string | null,
+): Promise<void> {
+  const meta = (session.metadata ?? {}) as PiMetadata;
+  if (session.mode === "payment" && session.payment_status !== "paid") return;
+  if (session.mode === "setup" && session.status !== "complete") return;
+
+  await completeProtectedTourFromWebhook({
+    requestId: meta.htc_tour_protection_request_id ?? meta.htc_payment_line_item_id ?? null,
+    checkoutSessionId: session.id,
+    connectedAccountVenueId,
+    metadataVenueId: meta.htc_venue_id ?? meta.wevenu_venue_id ?? null,
+    stripePaymentIntentId: paymentIntentIdFrom(session),
+    stripeSetupIntentId: setupIntentIdFrom(session),
+    stripePaymentMethodId: paymentMethodIdFrom(session),
+    stripeCustomerId: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
+  });
+}
+
+export async function handleCheckoutSessionExpired(
+  session: Stripe.Checkout.Session,
+  connectedAccountVenueId: string | null,
+): Promise<void> {
+  await abandonTourProtectionFromWebhook({
+    checkoutSessionId: session.id,
+    connectedAccountVenueId,
+  });
 }

@@ -96,6 +96,13 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
     },
     tourSchedulingEnabled: Boolean(payload.tourSchedulingEnabled),
     tourEmbedKey: (payload.tourEmbedKey as string | null) ?? null,
+    tourProtectionRequired: Boolean(payload.tourProtectionRequired),
+    tourProtectionKind:
+      payload.tourProtectionKind === "fee" || payload.tourProtectionKind === "setup"
+        ? payload.tourProtectionKind
+        : null,
+    tourProtectionFeeCents:
+      typeof payload.tourProtectionFeeCents === "number" ? payload.tourProtectionFeeCents : null,
     inquiryEventDateMode: payload.inquiryEventDateMode === "choose_available" ? "choose_available" : "request_preferred",
     inquiryFormFields: parseFieldsConfig(payload.inquiryFormFields),
     acceptedEventTypes: parseAcceptedEventTypes(payload.acceptedEventTypes),

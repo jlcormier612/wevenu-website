@@ -50,6 +50,10 @@ export type PublicInquiryFormConfig = {
   venue: PublicInquiryVenue;
   tourSchedulingEnabled: boolean;
   tourEmbedKey: string | null;
+  /** Eligible public protection only. Never Stripe account identifiers. */
+  tourProtectionRequired: boolean;
+  tourProtectionKind: "setup" | "fee" | null;
+  tourProtectionFeeCents: number | null;
   inquiryEventDateMode: InquiryEventDateMode;
   inquiryFormFields: InquiryFormFieldsConfig;
   /** Subset of PUBLIC_INQUIRY_EVENT_TYPES this venue accepts. Never empty. */

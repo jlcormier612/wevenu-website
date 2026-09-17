@@ -336,9 +336,11 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: tourKey, slotStart: selectedSlot.start, ...fields, guestCount: fields.guestCount ? parseInt(fields.guestCount) : null, turnstileToken, qrCampaignId }),
       });
-      const data = await res.json() as { ok: boolean; error?: string; scheduledAt?: string; duration?: number };
+      const data = await res.json() as { ok: boolean; error?: string; scheduledAt?: string; duration?: number; checkoutUrl?: string };
       if (!data.ok) { toast.error(data.error ?? "Could not complete booking. Please try again."); }
-      else { setConfirmation({ scheduledAt: data.scheduledAt!, duration: data.duration ?? venue.duration }); setStep("confirm"); }
+      else if (data.checkoutUrl) { window.location.assign(data.checkoutUrl); }
+      else if (data.scheduledAt) { setConfirmation({ scheduledAt: data.scheduledAt, duration: data.duration ?? venue.duration }); setStep("confirm"); }
+      else { toast.error("Your tour is not booked yet. Please complete the payment step."); }
     } catch { toast.error("Something went wrong. Please try again."); }
     finally { setSubmitting(false); }
   }

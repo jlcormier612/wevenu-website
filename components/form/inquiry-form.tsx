@@ -260,7 +260,7 @@ export function InquiryForm({
   config: PublicInquiryFormConfig;
   initialMode?: InquiryMode | null;
 }) {
-  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm } = config;
+  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm, tourProtectionRequired, tourProtectionKind, tourProtectionFeeCents } = config;
   const primary = venue.primaryColor || "#5D6F5D";
   const eventTypeOptions = EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
   const smsConsentText = buildInquirySmsConsentText(venue.name);
@@ -493,7 +493,12 @@ export function InquiryForm({
           }),
         });
         const data = await res.json();
-        if (data.ok) {
+        if (data.ok && data.checkoutUrl) {
+          fireVenueLeadAnalytics("schedule_tour", sourceData);
+          window.location.assign(data.checkoutUrl as string);
+          return;
+        }
+        if (data.ok && data.appointmentId && data.scheduledAt) {
           fireVenueLeadAnalytics("schedule_tour", sourceData);
           setTourConfirmation({
             scheduledAt: data.scheduledAt,
@@ -506,6 +511,9 @@ export function InquiryForm({
             stateRegion: data.stateRegion ?? venue.stateRegion,
           });
           setState("success_tour");
+        } else if (data.ok) {
+          setError("Your tour is not booked yet. Please complete the payment step.");
+          setState("error");
         } else {
           setError(INQUIRY_API_ERRORS[data.error] ?? data.error ?? "Something went wrong. Please try again.");
           setState("error");
@@ -551,6 +559,27 @@ export function InquiryForm({
             {mode === "schedule_tour" && tourEmbedKey && (
               <div className="space-y-4 border-b border-gray-100 pb-5">
                 <p className="text-sm font-semibold text-gray-900">Select your tour</p>
+                {tourProtectionRequired && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950 space-y-1">
+                    {tourProtectionKind === "fee" ? (
+                      <>
+                        <p className="font-semibold">A tour fee is required before this tour is booked.</p>
+                        <p>
+                          {venue.name} collects a ${((tourProtectionFeeCents ?? 0) / 100).toFixed(2)} tour fee.
+                          Your tour is not booked until that payment is complete.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold">A card on file is required before this tour is booked.</p>
+                        <p>
+                          You will save a payment method. You are not charged just for saving a card.
+                          Your tour is not booked until that step is complete.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
                 {loadingTourSlots ? (
                   <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
                 ) : (
@@ -784,7 +813,11 @@ export function InquiryForm({
             >
               {state === "submitting"
                 ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</>
-                : mode === "schedule_tour" ? "Confirm Tour" : "Send Inquiry"}
+                : mode === "schedule_tour"
+                  ? (tourProtectionRequired
+                    ? (tourProtectionKind === "fee" ? "Continue to payment" : "Continue to save a card")
+                    : "Confirm Tour")
+                  : "Send Inquiry"}
             </button>
 
             <p className="text-center text-xs text-gray-400">Your information is used only to respond to your inquiry.</p>

@@ -21,6 +21,8 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { getStripeClient, isStripeWebhookConfigured } from "@/lib/stripe/config";
 import {
   handleChargeRefunded,
+  handleCheckoutSessionCompleted,
+  handleCheckoutSessionExpired,
   handlePaymentIntentFailed,
   handlePaymentIntentProcessing,
   handlePaymentIntentSucceeded,
@@ -69,16 +71,22 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case "payment_intent.succeeded":
-        await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent, venueId);
         break;
       case "payment_intent.processing":
         await handlePaymentIntentProcessing(event.data.object as Stripe.PaymentIntent);
         break;
       case "payment_intent.payment_failed":
-        await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent, venueId);
         break;
       case "charge.refunded":
-        await handleChargeRefunded(event.data.object as Stripe.Charge);
+        await handleChargeRefunded(event.data.object as Stripe.Charge, venueId);
+        break;
+      case "checkout.session.completed":
+        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session, venueId);
+        break;
+      case "checkout.session.expired":
+        await handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session, venueId);
         break;
       default:
         // Not an event type we act on — still a valid, successfully

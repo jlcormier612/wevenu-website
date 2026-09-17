@@ -24,6 +24,8 @@ export type TourVenueInfo = {
   logoUrl: string | null;
 };
 
+export type TourProtectionMode = "none" | "setup" | "fee";
+
 export type TourSettings = {
   tourSchedulingEnabled: boolean;
   tourEmbedKey: string;
@@ -33,6 +35,9 @@ export type TourSettings = {
   tourBufferMinutes: number;
   tourPageHeadline: string | null;
   tourPageDescription: string | null;
+  tourProtectionMode: TourProtectionMode;
+  tourProtectionFeeCents: number;
+  tourProtectionEligible: boolean;
 };
 
 /**
@@ -120,6 +125,10 @@ export type BookingResult = {
   duration?: number;
   /** Lead Intake architecture — lets the caller record a coordinator-notification outcome onto the same intake attempt row. */
   intakeAttemptId?: string | null;
+  /** Present when protection is required: Stripe Checkout/Setup URL. No appointment yet. */
+  protectionRequired?: boolean;
+  checkoutUrl?: string;
+  protectionRequestId?: string;
 };
 
 // Coordinator Tour Scheduling — the Lead already exists, so there's no

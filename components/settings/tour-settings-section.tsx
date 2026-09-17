@@ -176,6 +176,74 @@ export function TourSettingsSection({ initialSettings }: Props) {
             </div>
           </div>
 
+          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Before a tour is booked</p>
+            <p className="text-xs text-muted-foreground">
+              Online visitors can book a tour immediately, or you can ask them to save a card or pay a tour fee first. A tour is never held until that step succeeds.
+            </p>
+            {!s.tourProtectionEligible && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Connect online payments and finish account setup before offering a card or fee step. Until then, visitors book tours normally.
+              </p>
+            )}
+            <div className="space-y-2">
+              <label className="flex items-start gap-3 rounded-lg border border-border px-3 py-2.5">
+                <input
+                  type="radio"
+                  name="tour-protection"
+                  className="mt-1"
+                  checked={s.tourProtectionMode === "none"}
+                  onChange={() => set("tourProtectionMode", "none")}
+                />
+                <span>
+                  <span className="block text-sm font-medium text-heading">Book the tour immediately</span>
+                  <span className="block text-xs text-muted-foreground">No extra step. The appointment is created when they submit.</span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-3 rounded-lg border border-border px-3 py-2.5 ${!s.tourProtectionEligible ? "opacity-60" : ""}`}>
+                <input
+                  type="radio"
+                  name="tour-protection"
+                  className="mt-1"
+                  disabled={!s.tourProtectionEligible}
+                  checked={s.tourProtectionMode === "setup"}
+                  onChange={() => set("tourProtectionMode", "setup")}
+                />
+                <span>
+                  <span className="block text-sm font-medium text-heading">Save a card on file first</span>
+                  <span className="block text-xs text-muted-foreground">They are not charged just for saving a card. The tour is booked only after that step succeeds.</span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-3 rounded-lg border border-border px-3 py-2.5 ${!s.tourProtectionEligible ? "opacity-60" : ""}`}>
+                <input
+                  type="radio"
+                  name="tour-protection"
+                  className="mt-1"
+                  disabled={!s.tourProtectionEligible}
+                  checked={s.tourProtectionMode === "fee"}
+                  onChange={() => set("tourProtectionMode", "fee")}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-heading">Collect a tour fee first</span>
+                  <span className="block text-xs text-muted-foreground">The fee is paid to your venue. It is not an event invoice. The tour is booked only after payment succeeds.</span>
+                </span>
+              </label>
+            </div>
+            {s.tourProtectionMode === "fee" && (
+              <div className="space-y-1.5 max-w-xs">
+                <Label className="text-xs">Tour fee (USD)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={(s.tourProtectionFeeCents / 100).toFixed(2)}
+                  onChange={(e) => set("tourProtectionFeeCents", Math.round((parseFloat(e.target.value) || 0) * 100))}
+                  disabled={!s.tourProtectionEligible}
+                />
+              </div>
+            )}
+          </div>
+
           {/* Available slot preview — always the output of the availability
               configured under Availability & Capacity, never a separate
               source of truth. */}

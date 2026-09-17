@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { bookTour } from "@/lib/tours/service";
-import { sendEmail } from "@/lib/email/send";
-import { createAdminClient } from "@/integrations/supabase/admin";
-import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+import { runTourBookedSideEffects } from "@/lib/tours/booked-side-effects";
 import type { BookingResult } from "@/lib/tours/types";
 
 type BookPayload = {
@@ -32,30 +30,25 @@ export async function POST(request: Request) {
     }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null, sourceData: body.sourceData ?? {} });
 
     if (result.ok && result.appointmentId) {
-      // Couple confirmation email is sent inside bookTour().
-      void Promise.all([
-        sendCoordinatorNotification(result).catch(() => {}),
-        scheduleTourReminders(result).catch(() => {}),
-        trackTourBooked(result).catch(() => {}),
-      ]);
+      void runTourBookedSideEffects(result);
+    }
 
-      if (result.leadId && result.venueId) {
-        try {
-          const { applyInquiryCommunicationCapture } = await import("@/lib/communication/apply-inquiry-consent");
-          await applyInquiryCommunicationCapture({
-            venueId: result.venueId,
-            venueName: result.venueName ?? "Venue",
-            leadId: result.leadId,
-            relationshipId: result.relationshipId ?? null,
-            phone: body.phone ?? null,
-            preferredChannels: body.preferredCommunicationChannels,
-            smsPermissionGranted: body.smsPermissionGranted === true,
-            embedKey: body.key,
-            source: "tour_form",
-          });
-        } catch {
-          /* lead already created */
-        }
+    if (result.ok && result.leadId && result.venueId) {
+      try {
+        const { applyInquiryCommunicationCapture } = await import("@/lib/communication/apply-inquiry-consent");
+        await applyInquiryCommunicationCapture({
+          venueId: result.venueId,
+          venueName: result.venueName ?? "Venue",
+          leadId: result.leadId,
+          relationshipId: result.relationshipId ?? null,
+          phone: body.phone ?? null,
+          preferredChannels: body.preferredCommunicationChannels,
+          smsPermissionGranted: body.smsPermissionGranted === true,
+          embedKey: body.key,
+          source: "tour_form",
+        });
+      } catch {
+        /* lead already created */
       }
     }
 
@@ -63,95 +56,4 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "Internal error." }, { status: 500 });
   }
-}
-
-// ── Coordinator notification ──────────────────────────────────────────────────
-
-async function sendCoordinatorNotification(result: BookingResult): Promise<void> {
-  // Use venue DB email — fall back to COORDINATOR_NOTIFY_EMAIL env var if not set
-  const coordinatorEmail = result.venueEmail ?? process.env.COORDINATOR_NOTIFY_EMAIL;
-  if (!coordinatorEmail || !result.scheduledAt) return;
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const scheduledDate = new Date(result.scheduledAt).toLocaleString("en-US", {
-    weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
-  });
-
-  // Internal ops notification, not a message to the lead — no Message
-  // History tracking needed, but still one send implementation, not a
-  // second raw fetch to Resend. Outcome recorded onto the same intake
-  // attempt as the couple's confirmation email (lib/tours/communication.ts)
-  // — last write wins if both fire, which is fine: they usually succeed or
-  // fail together (a Resend outage takes both down at once).
-  const emailResult = await sendEmail({
-    to: coordinatorEmail,
-    subject: `New tour booked — ${scheduledDate}`,
-    text: [
-      `A new tour has been scheduled at ${result.venueName}.`,
-      "",
-      `Date: ${scheduledDate}`,
-      `Duration: ${result.duration ?? 60} minutes`,
-      result.contactName ? `Contact: ${result.contactName}` : null,
-      "",
-      "A new lead has been created in Hello to Cheers.",
-      `${appUrl}/leads`,
-    ].filter(Boolean).join("\n"),
-  });
-  if (result.intakeAttemptId) {
-    await recordNotificationStatus(createAdminClient(), result.intakeAttemptId, emailResult.ok ? "sent" : "failed");
-  }
-}
-
-// ── Tour reminders (24h before, for coordinator + couple) ─────────────────────
-
-async function scheduleTourReminders(result: BookingResult): Promise<void> {
-  if (!result.appointmentId || !result.scheduledAt) return;
-  const { createClient } = await import("@supabase/supabase-js");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key || !result.venueId) return;
-
-  const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-  const remindAt = new Date(new Date(result.scheduledAt).getTime() - 24 * 3600 * 1000);
-
-  const reminders: Array<Record<string, unknown>> = [
-    {
-      venue_id: result.venueId,
-      tour_appointment_id: result.appointmentId,
-      reminder_type: "upcoming",
-      notify_role: "coordinator",
-      scheduled_for: remindAt.toISOString(),
-      status: "pending",
-    },
-  ];
-  if (result.contactEmail) {
-    reminders.push({
-      venue_id: result.venueId,
-      tour_appointment_id: result.appointmentId,
-      reminder_type: "upcoming",
-      notify_role: "couple",
-      scheduled_for: remindAt.toISOString(),
-      status: "pending",
-    });
-  }
-  await supabase.from("task_reminders").insert(reminders);
-}
-
-// ── Tour conversion analytics ─────────────────────────────────────────────────
-
-async function trackTourBooked(result: BookingResult): Promise<void> {
-  if (!result.leadId || !result.venueId) return;
-  const { createClient } = await import("@supabase/supabase-js");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return;
-
-  const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-  await supabase.from("lead_signal_events").insert({
-    venue_id: result.venueId,
-    lead_id: result.leadId,
-    signal_type: "tour_booked",
-    signal_strength: 3,
-    metadata: { appointment_id: result.appointmentId, scheduled_at: result.scheduledAt },
-  });
 }

@@ -12,6 +12,8 @@ import { sendTourConfirmation, sendTourConfirmationRequest } from "@/lib/tours/c
 import { advanceLeadSalesStageIfForward } from "@/lib/leads/service";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+import { loadVenueProtectionByTourKey, startProtectedTour, venueRequiresPublicProtection } from "@/lib/tours/protection";
+import { isConnectEligible, type TourProtectionMode } from "@/lib/tours/protection-rules";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -114,6 +116,7 @@ const TOUR_BOOK_ERRORS: Record<string, string> = {
   invalid_key: "This booking link is not valid.",
   event_type_required: "Event type is required.",
   date_unavailable: "That date is no longer available. Please choose another date.",
+  protection_required: "This venue requires a payment step before the tour can be booked.",
 };
 
 export async function bookTour(
@@ -136,15 +139,13 @@ export async function bookTour(
   // Venue resolution happens up front (not only inside book_tour) so the
   // Lead Intake pipeline can log/rate-limit against a known venue_id before
   // the RPC call — book_tour still independently re-validates the key.
-  const { data: venueRow } = await admin
-    .from("venues")
-    .select("id, timezone")
-    .eq("tour_embed_key", key)
-    .eq("tour_scheduling_enabled", true)
-    .maybeSingle<{ id: string; timezone: string | null }>();
-
+  const venueRow = await loadVenueProtectionByTourKey(admin, key);
   if (!venueRow) {
     return { ok: false, error: TOUR_BOOK_ERRORS.invalid_key };
+  }
+
+  if (venueRequiresPublicProtection(venueRow)) {
+    return startProtectedTour({ key, slotStart, fields, ...opts });
   }
 
   // book_tour's own response carries booking-specific fields (appointmentId,
@@ -274,9 +275,25 @@ export async function getTourSettings(): Promise<TourSettings | null> {
   const venue = await getCurrentVenue();
   if (!venue) return null;
   const supabase = await createClient();
-  const { data } = await supabase.from("venues").select("tour_scheduling_enabled,tour_embed_key,tour_duration_minutes,tour_min_notice_hours,tour_max_advance_days,tour_buffer_minutes,tour_page_headline,tour_page_description").eq("id", venue.id).maybeSingle<Record<string, unknown>>();
+  const { data } = await supabase.from("venues").select("tour_scheduling_enabled,tour_embed_key,tour_duration_minutes,tour_min_notice_hours,tour_max_advance_days,tour_buffer_minutes,tour_page_headline,tour_page_description,tour_protection_mode,tour_protection_fee_cents,stripe_account_id,stripe_charges_enabled").eq("id", venue.id).maybeSingle<Record<string, unknown>>();
   if (!data) return null;
-  return { tourSchedulingEnabled: data.tour_scheduling_enabled as boolean, tourEmbedKey: data.tour_embed_key as string, tourDurationMinutes: data.tour_duration_minutes as number, tourMinNoticeHours: data.tour_min_notice_hours as number, tourMaxAdvanceDays: data.tour_max_advance_days as number, tourBufferMinutes: data.tour_buffer_minutes as number, tourPageHeadline: (data.tour_page_headline ?? null) as string | null, tourPageDescription: (data.tour_page_description ?? null) as string | null };
+  const mode = (data.tour_protection_mode as TourProtectionMode | null) ?? "none";
+  return {
+    tourSchedulingEnabled: data.tour_scheduling_enabled as boolean,
+    tourEmbedKey: data.tour_embed_key as string,
+    tourDurationMinutes: data.tour_duration_minutes as number,
+    tourMinNoticeHours: data.tour_min_notice_hours as number,
+    tourMaxAdvanceDays: data.tour_max_advance_days as number,
+    tourBufferMinutes: data.tour_buffer_minutes as number,
+    tourPageHeadline: (data.tour_page_headline ?? null) as string | null,
+    tourPageDescription: (data.tour_page_description ?? null) as string | null,
+    tourProtectionMode: mode === "setup" || mode === "fee" ? mode : "none",
+    tourProtectionFeeCents: Number(data.tour_protection_fee_cents ?? 0),
+    tourProtectionEligible: isConnectEligible({
+      stripeAccountId: (data.stripe_account_id as string | null) ?? null,
+      stripeChargesEnabled: Boolean(data.stripe_charges_enabled),
+    }),
+  };
 }
 
 export async function updateTourSettings(patch: Partial<Omit<TourSettings, "tourEmbedKey">>): Promise<{ ok: boolean }> {
@@ -292,6 +309,16 @@ export async function updateTourSettings(patch: Partial<Omit<TourSettings, "tour
   if (patch.tourBufferMinutes !== undefined) dbPatch.tour_buffer_minutes = patch.tourBufferMinutes;
   if (patch.tourPageHeadline !== undefined) dbPatch.tour_page_headline = patch.tourPageHeadline || null;
   if (patch.tourPageDescription !== undefined) dbPatch.tour_page_description = patch.tourPageDescription || null;
+  if (patch.tourProtectionMode !== undefined) {
+    dbPatch.tour_protection_mode = patch.tourProtectionMode;
+  }
+  if (patch.tourProtectionFeeCents !== undefined) {
+    dbPatch.tour_protection_fee_cents = Math.max(0, Math.round(patch.tourProtectionFeeCents));
+  }
+  if ((patch.tourProtectionMode ?? undefined) === "fee") {
+    const fee = patch.tourProtectionFeeCents ?? Number(dbPatch.tour_protection_fee_cents ?? 0);
+    if (fee <= 0) return { ok: false };
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("venues") as any).update(dbPatch).eq("id", venue.id);
   return { ok: !error };

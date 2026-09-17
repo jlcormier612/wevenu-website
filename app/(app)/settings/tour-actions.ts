@@ -55,3 +55,8 @@ export async function removeTourAvailabilityExceptionAction(id: string): Promise
 export async function getTourSlotPreviewAction(startDate: string, endDate: string): Promise<TourSlot[]> {
   return getCoordinatorTourSlots(startDate, endDate);
 }
+
+export async function refundTourProtectionFeeAction(requestId: string): Promise<{ ok: boolean; message?: string }> {
+  const { refundTourProtectionFee } = await import("@/lib/tours/protection");
+  return refundTourProtectionFee(requestId);
+}

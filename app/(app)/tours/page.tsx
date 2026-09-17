@@ -7,13 +7,19 @@ import { TourList } from "@/components/tours/tour-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTourAppointments, getTourSettings } from "@/lib/tours/service";
+import { listUnresolvedProtectionRequests } from "@/lib/tours/protection";
+import { getCurrentUserRole } from "@/lib/venue/service";
+import { PaidUnbookedProtectionList } from "@/components/tours/paid-unbooked-protection-list";
+import { canRefundTourFee } from "@/lib/tours/protection-rules";
 
 export const metadata: Metadata = { title: "Tours" };
 
 export default async function ToursPage() {
-  const [appointments, tourSettings] = await Promise.all([
+  const [appointments, tourSettings, unresolvedProtection, role] = await Promise.all([
     getTourAppointments(),
     getTourSettings(),
+    listUnresolvedProtectionRequests(),
+    getCurrentUserRole(),
   ]);
 
   const upcoming = appointments.filter((a) => a.status !== "cancelled" && a.status !== "completed" && a.status !== "no_show" && new Date(a.scheduledAt) >= new Date());
@@ -29,6 +35,20 @@ export default async function ToursPage() {
           </Button>
         )}
       </div>
+
+      {unresolvedProtection.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Needs follow-up ({unresolvedProtection.length})</CardTitle>
+            <CardDescription>
+              Payment or card-on-file succeeded, but the requested time was no longer available. No tour was booked.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PaidUnbookedProtectionList requests={unresolvedProtection} canRefund={canRefundTourFee(role)} />
+          </CardContent>
+        </Card>
+      )}
 
       {appointments.length === 0 ? (
         <Card>
