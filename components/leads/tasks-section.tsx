@@ -148,9 +148,9 @@ function TaskRow({
         >
           {task.title}
         </span>
-        {task.assigneeName && (
-          <span className="text-xs text-muted-foreground">{task.assigneeName}</span>
-        )}
+        <span className="text-xs text-muted-foreground">
+          {task.assigneeName ?? "Unassigned"}
+        </span>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {task.dueDate && (
