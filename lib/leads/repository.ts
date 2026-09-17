@@ -210,6 +210,8 @@ type TaskRow = {
   id: string; venue_id: string; lead_id: string;
   title: string; due_date: string | null;
   completed: boolean; completed_at: string | null; created_at: string;
+  assigned_to_staff_id?: string | null;
+  assignee?: { full_name: string } | null | { full_name: string }[];
 };
 
 function resolveSalesStage(r: LeadRow): SalesStage {
@@ -262,9 +264,15 @@ function mapNote(r: NoteRow): LeadNote {
 }
 
 function mapTask(r: TaskRow): LeadTask {
-  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id,
+  const assigneeRaw = r.assignee;
+  const assignee = Array.isArray(assigneeRaw) ? assigneeRaw[0] : assigneeRaw;
+  return {
+    id: r.id, venueId: r.venue_id, leadId: r.lead_id,
     title: r.title, dueDate: r.due_date, completed: r.completed,
-    completedAt: r.completed_at, createdAt: r.created_at };
+    completedAt: r.completed_at, createdAt: r.created_at,
+    assignedToStaffId: r.assigned_to_staff_id ?? null,
+    assigneeName: assignee?.full_name ?? null,
+  };
 }
 
 // ---- list / single ----------------------------------------------------------
@@ -295,7 +303,7 @@ export async function getLead(
   const [leadRes, notesRes, tasksRes, activitiesRes, clientRes] = await Promise.all([
     client.from("leads").select("*").eq("id", leadId).eq("venue_id", venueId).maybeSingle<LeadRow>(),
     client.from("lead_notes").select("*").eq("lead_id", leadId).order("created_at", { ascending: false }),
-    client.from("lead_tasks").select("*").eq("lead_id", leadId)
+    client.from("lead_tasks").select("*, assignee:assigned_to_staff_id ( full_name )").eq("lead_id", leadId)
       .order("completed", { ascending: true })
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
@@ -505,8 +513,9 @@ export async function insertTask(
       lead_id: leadId,
       title: input.title.trim(),
       due_date: input.dueDate || null,
+      assigned_to_staff_id: input.assignedToStaffId?.trim() || null,
     })
-    .select()
+    .select("*, assignee:assigned_to_staff_id ( full_name )")
     .single<TaskRow>();
   if (error) throw error;
   return mapTask(data);
@@ -652,19 +661,94 @@ export async function updateNote(
   if (error) throw error;
 }
 
-/** Edit an existing task's title and/or due date. */
+/** Edit an existing task's title, due date, and/or assignee. */
 export async function updateTask(
   client: DbClient,
   venueId: string,
   taskId: string,
-  input: { title: string; dueDate: string },
+  input: { title: string; dueDate: string; assignedToStaffId?: string | null },
 ): Promise<void> {
+  const patch: Record<string, unknown> = {
+    title: input.title.trim(),
+    due_date: input.dueDate || null,
+  };
+  if (input.assignedToStaffId !== undefined) {
+    patch.assigned_to_staff_id = input.assignedToStaffId?.trim() || null;
+  }
   const { error } = await client
     .from("lead_tasks")
-    .update({ title: input.title.trim(), due_date: input.dueDate || null })
+    .update(patch)
     .eq("id", taskId)
     .eq("venue_id", venueId);
   if (error) throw error;
+}
+
+/**
+ * Move open one-off venue lead tasks onto an event as canonical event_tasks,
+ * preserving ids so Task Center / workspace views stay one record.
+ */
+export async function migrateLeadTasksToEvent(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  eventId: string,
+  eventDate: string,
+): Promise<number> {
+  const { data: rows, error } = await client
+    .from("lead_tasks")
+    .select("id, title, due_date, completed, completed_at, assigned_to_staff_id")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId);
+  if (error) throw error;
+  if (!rows?.length) return 0;
+
+  let moved = 0;
+  for (const row of rows as {
+    id: string;
+    title: string;
+    due_date: string | null;
+    completed: boolean;
+    completed_at: string | null;
+    assigned_to_staff_id: string | null;
+  }[]) {
+    const dueDate = row.due_date || eventDate || new Date().toISOString().slice(0, 10);
+    const { error: insertError } = await client.from("event_tasks").insert({
+      id: row.id,
+      venue_id: venueId,
+      event_id: eventId,
+      title: row.title,
+      description: null,
+      owner_type: "coordinator",
+      visibility: "coordinator_only",
+      due_date: dueDate,
+      days_offset: 0,
+      due_date_locked: true,
+      category: "custom",
+      is_required: true,
+      status: row.completed ? "complete" : "pending",
+      completed_at: row.completed_at,
+      assigned_to_staff_id: row.assigned_to_staff_id,
+      sort_order: 0,
+    });
+    if (insertError) {
+      // Id collision or schema drift — skip rather than fail conversion.
+      console.error("migrateLeadTasksToEvent insert failed:", insertError.message);
+      continue;
+    }
+    const { error: deleteError } = await client
+      .from("lead_tasks")
+      .delete()
+      .eq("id", row.id)
+      .eq("venue_id", venueId);
+    if (deleteError) {
+      console.error("migrateLeadTasksToEvent delete failed:", deleteError.message);
+      // Roll back the event_task copy so we do not duplicate.
+      await client.from("event_tasks").delete().eq("id", row.id).eq("venue_id", venueId);
+      continue;
+    }
+    moved += 1;
+  }
+  return moved;
 }
 
 /** Log an activity record from the service layer (notes, tasks, relationship events). */

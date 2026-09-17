@@ -26,6 +26,8 @@ describe("sales-stage ↔ canonical bridge", () => {
     assert.equal(salesStageForCanonical("booked"), "booked");
     assert.equal(salesStageForCanonical("lost"), "lost");
     assert.equal(salesStageForCanonical("cancelled"), "lost");
+    assert.equal(salesStageForCanonical("unmapped"), "new_inquiry");
+    assert.equal(salesStageForCanonical("unmapped", "proposal_sent"), "proposal_sent");
   });
 
   it("maps sales stages back to a reporting category family", () => {

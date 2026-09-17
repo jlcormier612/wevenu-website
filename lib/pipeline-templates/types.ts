@@ -4,10 +4,12 @@
  * reporting/normalization layer — see docs/booking-journey-design.md §2.
  */
 
-export type CanonicalStage = "inquiry" | "tour" | "proposal" | "decision" | "booked" | "lost" | "cancelled";
+export type CanonicalStage =
+  | "inquiry" | "tour" | "proposal" | "decision" | "booked" | "lost" | "cancelled"
+  | "unmapped";
 
 const CANONICAL_STAGE_VALUES: readonly CanonicalStage[] = [
-  "inquiry", "tour", "proposal", "decision", "booked", "lost", "cancelled",
+  "inquiry", "tour", "proposal", "decision", "booked", "lost", "cancelled", "unmapped",
 ];
 
 export function isCanonicalStage(value: string): value is CanonicalStage {

@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 
 import { completeTaskAction, setTaskStatusAction } from "@/app/(app)/playbooks/actions";
+import { setTaskCompletedAction } from "@/app/(app)/leads/[id]/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,9 @@ export type TaskRow = {
   assigned_to_staff_id: string | null;
   assignee: { full_name: string } | null;
   milestone_kind: string | null;
+  /** Canonical venue task backing store. Default event_task for playbook rows. */
+  record_kind?: "event_task" | "lead_task";
+  lead_id?: string | null;
   events: {
     id: string;
     name: string;
@@ -106,13 +110,19 @@ function DoTaskItem({
   task, onComplete, onWaive, completing, waiving,
 }: {
   task: TaskRow;
-  onComplete: (id: string, eventId: string) => void;
-  onWaive: (id: string, eventId: string) => void;
+  onComplete: (task: TaskRow) => void;
+  onWaive: (task: TaskRow) => void;
   completing: string | null;
   waiving: string | null;
 }) {
   const isActing = completing === task.id || waiving === task.id;
   const { eventId, couple, eventDate } = eventMeta(task);
+  const isLeadTask = task.record_kind === "lead_task";
+  const openHref = isLeadTask && task.lead_id
+    ? `/leads/${task.lead_id}?tab=tasks`
+    : eventId
+      ? `/events/${eventId}`
+      : null;
 
   return (
     <div className="group flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
@@ -127,7 +137,7 @@ function DoTaskItem({
           )}
           <span aria-hidden>·</span>
           <span style={{ color: categoryColor(task.category as import("@/lib/playbooks/types").TaskCategory) }}>
-            {categoryLabel(task.category as import("@/lib/playbooks/types").TaskCategory)}
+            {isLeadTask ? "Lead" : categoryLabel(task.category as import("@/lib/playbooks/types").TaskCategory)}
           </span>
           <span aria-hidden>·</span>
           <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
@@ -154,19 +164,21 @@ function DoTaskItem({
       </div>
       <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
         <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs"
-          disabled={isActing} onClick={() => onComplete(task.id, eventId)}
+          disabled={isActing} onClick={() => onComplete(task)}
           aria-label={`Mark complete: ${task.title}`}>
           {completing === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
         </Button>
-        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
-          disabled={isActing} onClick={() => onWaive(task.id, eventId)}
-          aria-label={`Waive: ${task.title}`}>
-          Waive
-        </Button>
-        {eventId && (
+        {!isLeadTask && (
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
+            disabled={isActing} onClick={() => onWaive(task)}
+            aria-label={`Waive: ${task.title}`}>
+            Waive
+          </Button>
+        )}
+        {openHref && (
           <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0"
-            render={<Link href={`/events/${eventId}`} />}
-            aria-label={`Open event for ${couple || task.title}`}>
+            render={<Link href={openHref} />}
+            aria-label={`Open ${isLeadTask ? "lead" : "event"} for ${couple || task.title}`}>
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -210,18 +222,20 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
 }
 
 function EventGroup({
-  eventName, couple, eventId, tasks, mode, onComplete, onWaive, completing, waiving,
+  eventName, couple, eventId, tasks, mode, onComplete, onWaive, completing, waiving, href,
 }: {
   eventName: string;
   couple: string;
   eventId: string;
   tasks: TaskRow[];
   mode: "do" | "watch";
-  onComplete?: (id: string, eventId: string) => void;
-  onWaive?: (id: string, eventId: string) => void;
+  onComplete?: (task: TaskRow) => void;
+  onWaive?: (task: TaskRow) => void;
   completing?: string | null;
   waiving?: string | null;
+  href?: string | null;
 }) {
+  const openHref = href ?? (eventId ? `/events/${eventId}` : null);
   return (
     <div className={cn(
       "rounded-sm border bg-card",
@@ -234,10 +248,12 @@ function EventGroup({
             {tasks.length} {mode === "watch" ? "to watch" : `task${tasks.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Button type="button" size="sm" variant="ghost" className="h-7 text-xs shrink-0 text-muted-foreground"
-          render={<Link href={`/events/${eventId}`} />}>
-          View event →
-        </Button>
+        {openHref && (
+          <Button type="button" size="sm" variant="ghost" className="h-7 text-xs shrink-0 text-muted-foreground"
+            render={<Link href={openHref} />}>
+            {href?.includes("/leads/") ? "View lead →" : "View event →"}
+          </Button>
+        )}
       </div>
       <div className="px-4">
         {mode === "watch"
@@ -259,8 +275,8 @@ function StaffGroup({
 }: {
   staffName: string;
   tasks: TaskRow[];
-  onComplete: (id: string, eventId: string) => void;
-  onWaive: (id: string, eventId: string) => void;
+  onComplete: (task: TaskRow) => void;
+  onWaive: (task: TaskRow) => void;
   completing: string | null;
   waiving: string | null;
 }) {
@@ -288,8 +304,8 @@ function DoSection({
   icon: React.ReactNode;
   tasks: TaskRow[];
   priority?: "high" | "normal";
-  onComplete: (id: string, eventId: string) => void;
-  onWaive: (id: string, eventId: string) => void;
+  onComplete: (task: TaskRow) => void;
+  onWaive: (task: TaskRow) => void;
   completing: string | null;
   waiving: string | null;
   collapsed?: boolean;
@@ -301,7 +317,7 @@ function DoSection({
   const visible = previewLimit && !showAll ? tasks.slice(0, previewLimit) : tasks;
   const hiddenCount = tasks.length - visible.length;
 
-  const byEvent = new Map<string, { name: string; couple: string; tasks: TaskRow[] }>();
+  const byEvent = new Map<string, { name: string; couple: string; href: string | null; tasks: TaskRow[] }>();
   const byStaff = new Map<string, { name: string; tasks: TaskRow[] }>();
   for (const t of visible) {
     if (groupBy === "staff") {
@@ -311,15 +327,20 @@ function DoSection({
       }
       byStaff.get(staffId)!.tasks.push(t);
     } else {
-      const eventId = t.events?.id ?? "no-event";
-      if (!byEvent.has(eventId)) {
-        byEvent.set(eventId, {
-          name: t.events?.name ?? "Unknown event",
+      const groupKey = t.record_kind === "lead_task" && t.lead_id
+        ? `lead:${t.lead_id}`
+        : (t.events?.id ?? "no-event");
+      if (!byEvent.has(groupKey)) {
+        byEvent.set(groupKey, {
+          name: t.events?.name ?? "Lead",
           couple: coupleName(t.events?.clients ?? null),
+          href: t.record_kind === "lead_task" && t.lead_id
+            ? `/leads/${t.lead_id}?tab=tasks`
+            : (t.events?.id ? `/events/${t.events.id}` : null),
           tasks: [],
         });
       }
-      byEvent.get(eventId)!.tasks.push(t);
+      byEvent.get(groupKey)!.tasks.push(t);
     }
   }
 
@@ -357,7 +378,7 @@ function DoSection({
               ))
             : [...byEvent.entries()].map(([eventId, group]) => (
                 <EventGroup key={eventId} eventId={eventId} eventName={group.name} couple={group.couple}
-                  tasks={group.tasks} mode="do"
+                  tasks={group.tasks} mode="do" href={group.href}
                   onComplete={onComplete} onWaive={onWaive}
                   completing={completing} waiving={waiving} />
               ))}
@@ -469,19 +490,22 @@ export function TaskCenter({
     setRemovedIds((prev) => new Set(prev).add(id));
   }
 
-  async function handleComplete(taskId: string, eventId: string) {
-    setCompleting(taskId);
-    const result = await completeTaskAction(taskId, eventId);
+  async function handleComplete(task: TaskRow) {
+    setCompleting(task.id);
+    const result = task.record_kind === "lead_task"
+      ? await setTaskCompletedAction(task.id, true, task.lead_id ?? undefined, task.title)
+      : await completeTaskAction(task.id, task.events?.id ?? "");
     setCompleting(null);
-    if (result.ok) { removeDoTask(taskId); toast.success("Task complete."); router.refresh(); }
-    else toast.error(result.message ?? "Could not complete task.");
+    if (result.ok) { removeDoTask(task.id); toast.success("Task complete."); router.refresh(); }
+    else toast.error(("message" in result ? result.message : null) ?? "Could not complete task.");
   }
 
-  async function handleWaive(taskId: string, eventId: string) {
-    setWaiving(taskId);
-    const result = await setTaskStatusAction(taskId, eventId, "waived");
+  async function handleWaive(task: TaskRow) {
+    if (task.record_kind === "lead_task") return;
+    setWaiving(task.id);
+    const result = await setTaskStatusAction(task.id, task.events?.id ?? "", "waived");
     setWaiving(null);
-    if (result.ok) { removeDoTask(taskId); }
+    if (result.ok) { removeDoTask(task.id); }
     else toast.error("Could not waive task.");
   }
 

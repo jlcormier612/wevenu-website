@@ -13,10 +13,12 @@ import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
 import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 import { getPackagesWithItems } from "@/lib/packages/service";
+import { getCurrentStaffMember, getTeamMembers } from "@/lib/team/service";
 import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
 const LEAD_DETAIL_LOAD_TIMEOUT_MS = 45_000;
@@ -53,7 +55,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
 
   const page = await withTimeout(
     (async () => {
-      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages, activeTemplate] = await Promise.all([
+      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages, activeTemplate, venue] = await Promise.all([
         getLead(id),
         getHolds({ leadId: id }),
         getSpaces(),
@@ -66,14 +68,17 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getTourAppointmentsForLead(id),
         getPackagesWithItems(true),
         getActiveTemplate(),
+        getCurrentVenue(),
       ]);
       if (!lead) return null;
-      const [conversationId, smsPermission, duplicateReview] = await Promise.all([
+      const [conversationId, smsPermission, duplicateReview, teamMembers, currentStaff] = await Promise.all([
         lead.relationshipId
           ? getConversationIdForRelationship(lead.relationshipId)
           : Promise.resolve(null),
         getSmsPermissionEvidenceForContact({ venueId: lead.venueId, phone: lead.phone }),
         getDuplicateReviewForLead(id),
+        venue ? getTeamMembers(venue.id) : Promise.resolve([]),
+        venue ? getCurrentStaffMember(venue.id) : Promise.resolve(null),
       ]);
       const bookingJourney = await loadBookingJourneyForLead({
         leadId: lead.id,
@@ -97,6 +102,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         duplicateReview,
         bookingJourney,
         venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
+        staffOptions: teamMembers.map((m) => ({ id: m.id, name: m.name })),
+        currentStaffId: currentStaff?.id ?? null,
       };
     })(),
     LEAD_DETAIL_LOAD_TIMEOUT_MS,
@@ -129,6 +136,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       smsPermission={page.smsPermission}
       duplicateReview={page.duplicateReview}
       venueStages={page.venueStages}
+      staffOptions={page.staffOptions}
+      currentStaffId={page.currentStaffId}
     />
   );
 }

@@ -25,7 +25,7 @@ export default async function TaskCenterPage() {
       <div className="space-y-6">
         <PageHeader
           title="Task Center"
-          description="What your team needs to do — and which clients need watching."
+          description="Tasks your venue needs to complete across leads and events."
         />
         <p className="text-sm text-muted-foreground">Configure Supabase to see tasks.</p>
       </div>
@@ -41,7 +41,7 @@ export default async function TaskCenterPage() {
   weekAnchor.setUTCDate(weekAnchor.getUTCDate() + 7);
   const weekOut = weekAnchor.toISOString().slice(0, 10);
 
-  const [{ data: rawTasks }, { data: clientApps }, { data: eventRows }, currentStaff, currentRole] =
+  const [{ data: rawTasks }, { data: rawLeadTasks }, { data: clientApps }, { data: eventRows }, currentStaff, currentRole] =
     await Promise.all([
       supabase
         .from("event_tasks")
@@ -59,6 +59,18 @@ export default async function TaskCenterPage() {
         .in("status", ["pending", "overdue", "blocked"])
         .not("events.status", "in", "(cancelled,complete)")
         .order("due_date", { ascending: true }),
+      supabase
+        .from("lead_tasks")
+        .select(`
+          id, title, due_date, completed, assigned_to_staff_id,
+          assignee:assigned_to_staff_id ( full_name ),
+          leads (
+            id, first_name, last_name, partner_first_name, partner_last_name, event_date, sales_stage
+          )
+        `)
+        .eq("venue_id", venue.id)
+        .eq("completed", false)
+        .order("due_date", { ascending: true, nullsFirst: false }),
       supabase
         .from("event_playbook_applications")
         .select("event_id, released_at")
@@ -89,12 +101,58 @@ export default async function TaskCenterPage() {
     const urgency = computeTaskCenterUrgency(t.status, t.due_date, today, weekOut);
     return {
       ...t,
+      record_kind: "event_task" as const,
       auto_complete_trigger: t.auto_complete_trigger ?? null,
       computedStatus: (urgency === "overdue" ? "overdue"
         : t.status === "complete" ? "complete"
         : "pending") as TaskRow["computedStatus"],
     };
   });
+
+  // One-off venue tasks from lead workspace — same Task Center DO lane.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (rawLeadTasks ?? []) as any[]) {
+    const leadRaw = row.leads;
+    const lead = Array.isArray(leadRaw) ? leadRaw[0] : leadRaw;
+    if (!lead) continue;
+    // Skip lost/cancelled sales stages — no active venue work.
+    if (lead.sales_stage === "lost") continue;
+    const dueDate = row.due_date ?? today;
+    const status = "pending";
+    const urgency = computeTaskCenterUrgency(status, dueDate, today, weekOut);
+    const assigneeRaw = row.assignee;
+    const assignee = Array.isArray(assigneeRaw) ? assigneeRaw[0] : assigneeRaw;
+    enriched.push({
+      id: row.id,
+      title: row.title,
+      status,
+      computedStatus: urgency === "overdue" ? "overdue" : "pending",
+      due_date: dueDate,
+      days_offset: null,
+      due_date_locked: true,
+      category: "custom",
+      owner_type: "coordinator",
+      visibility: "coordinator_only",
+      is_required: true,
+      auto_complete_trigger: null,
+      assigned_to_staff_id: row.assigned_to_staff_id ?? null,
+      assignee: assignee ? { full_name: assignee.full_name } : null,
+      milestone_kind: null,
+      record_kind: "lead_task",
+      lead_id: lead.id,
+      events: {
+        id: `lead:${lead.id}`,
+        name: "Lead",
+        event_date: lead.event_date ?? dueDate,
+        clients: {
+          first_name: lead.first_name,
+          last_name: lead.last_name,
+          partner_first_name: lead.partner_first_name,
+          partner_last_name: lead.partner_last_name,
+        },
+      },
+    });
+  }
 
   const doTasks = enriched.filter((t) => isDoOwned(t.owner_type));
   const watchTasks = enriched.filter((t) =>
@@ -151,7 +209,7 @@ export default async function TaskCenterPage() {
       <div className="flex items-start justify-between gap-4">
         <PageHeader
           title="Task Center"
-          description="What your team needs to do — and which clients need watching."
+          description="Tasks your venue needs to complete across leads and events."
         />
         <div className="shrink-0 flex flex-col items-end gap-0.5 text-xs text-muted-foreground pt-1">
           <span>

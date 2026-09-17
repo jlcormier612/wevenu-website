@@ -37,6 +37,7 @@ import type { CoordinatorTourResult, SimpleTourResult, TourSlot } from "@/lib/to
 function revalidateLead(leadId: string) {
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/leads");
+  revalidatePath("/tasks");
 }
 
 export async function updateLeadStatusAction(
@@ -139,7 +140,7 @@ export async function addTaskAction(
 
 export async function updateTaskAction(
   taskId: string,
-  input: { title: string; dueDate: string },
+  input: { title: string; dueDate: string; assignedToStaffId?: string | null },
 ): Promise<LeadActionResult> {
   return updateTask(taskId, input);
 }

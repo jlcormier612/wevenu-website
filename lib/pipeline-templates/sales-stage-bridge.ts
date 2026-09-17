@@ -8,8 +8,15 @@
 import type { CanonicalStage } from "@/lib/pipeline-templates/types";
 import type { SalesStage } from "@/lib/leads/sales-stages";
 
-/** Map a reporting/canonical category onto the authoritative sales_stage key. */
-export function salesStageForCanonical(canonical: CanonicalStage): SalesStage {
+/**
+ * Map a reporting/canonical category onto the authoritative sales_stage key.
+ * `unmapped` preserves the lead's current sales_stage when provided so
+ * custom venue stages do not force an inaccurate lifecycle key.
+ */
+export function salesStageForCanonical(
+  canonical: CanonicalStage,
+  fallback: SalesStage = "new_inquiry",
+): SalesStage {
   switch (canonical) {
     case "inquiry":
       return "new_inquiry";
@@ -24,6 +31,8 @@ export function salesStageForCanonical(canonical: CanonicalStage): SalesStage {
     case "lost":
     case "cancelled":
       return "lost";
+    case "unmapped":
+      return fallback;
   }
 }
 

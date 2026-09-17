@@ -505,6 +505,15 @@ export async function convertLeadToClient(
       // Start booking file / quiet ensure create the workspace only.
       // Commercial Booked (maybeStampCommercialBookedAt) is the only pipeline-Booked write.
       await markConvertedClientAsBookingFile(supabase, venueId, existingClient.id);
+      if (eventId) {
+        const eventDate = lead.eventDate || new Date().toISOString().slice(0, 10);
+        try {
+          const { migrateLeadTasksToEvent } = await import("@/lib/leads/repository");
+          await migrateLeadTasksToEvent(supabase, venueId, lead.id, eventId, eventDate);
+        } catch (err) {
+          console.error("Could not migrate lead venue tasks to event:", err);
+        }
+      }
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
     let clientId: string;
@@ -557,6 +566,16 @@ export async function convertLeadToClient(
       .eq("lead_id", lead.id).eq("venue_id", venueId);
 
     await markConvertedClientAsBookingFile(supabase, venueId, clientId);
+
+    if (eventId) {
+      const eventDate = lead.eventDate || new Date().toISOString().slice(0, 10);
+      try {
+        const { migrateLeadTasksToEvent } = await import("@/lib/leads/repository");
+        await migrateLeadTasksToEvent(supabase, venueId, lead.id, eventId, eventDate);
+      } catch (err) {
+        console.error("Could not migrate lead venue tasks to event:", err);
+      }
+    }
 
     return { ok: true, clientId, eventId } as CreateClientResult;
   });

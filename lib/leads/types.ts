@@ -96,6 +96,8 @@ export type LeadTask = {
   completed: boolean;
   completedAt: string | null;
   createdAt: string;
+  assignedToStaffId: string | null;
+  assigneeName: string | null;
 };
 
 export type LeadActivity = {
@@ -163,6 +165,8 @@ export type LeadErrors = Record<string, string>;
 export type TaskInput = {
   title: string;
   dueDate: string;
+  /** Venue staff assignee — required for Task Center My Work / By Person. */
+  assignedToStaffId?: string | null;
 };
 
 export type LeadActionResult =

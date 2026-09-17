@@ -13,6 +13,7 @@ export const CANONICAL_STAGES: { value: CanonicalStage; label: string; descripti
   { value: "booked",    label: "Booked",    description: "Won / booking file started — reporting bucket" },
   { value: "lost",      label: "Lost",      description: "Did not book — reporting bucket" },
   { value: "cancelled", label: "Cancelled", description: "Booking cancelled — reporting bucket" },
+  { value: "unmapped",  label: "Uncategorized", description: "No reporting bucket — keep your stage name only" },
 ];
 
 export function canonicalStageLabel(stage: CanonicalStage): string {

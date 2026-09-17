@@ -431,7 +431,16 @@ export async function updateLeadPipelineStage(leadId: string, stageKeyOrId: stri
       if (!isCanonicalStage(stage.canonical_stage)) {
         return { ok: false, message: "That stage has an invalid reporting category." } as LeadActionResult;
       }
-      const salesStage = salesStageForCanonical(stage.canonical_stage);
+      const { data: currentLead } = await supabase
+        .from("leads")
+        .select("sales_stage")
+        .eq("id", leadId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ sales_stage: string | null }>();
+      const fallback = currentLead?.sales_stage && isSalesStage(currentLead.sales_stage)
+        ? currentLead.sales_stage
+        : "new_inquiry";
+      const salesStage = salesStageForCanonical(stage.canonical_stage, fallback);
       return updateLeadSalesStage(leadId, salesStage, {
         allowBooked: salesStage === "booked",
         pipelineStageId: stage.id,
@@ -512,7 +521,13 @@ export async function wouldEnrollOnPipelineStageMove(
     const { salesStageForCanonical } = await import("@/lib/pipeline-templates/sales-stage-bridge");
     const { isCanonicalStage } = await import("@/lib/pipeline-templates/types");
     if (!isCanonicalStage(stage.canonical_stage)) return { ok: false, message: "Invalid reporting category." };
-    salesStageKey = salesStageForCanonical(stage.canonical_stage);
+    const { data: currentLead } = await supabase.from("leads").select("sales_stage")
+      .eq("id", leadId).eq("venue_id", venue.id)
+      .maybeSingle<{ sales_stage: string | null }>();
+    const fallback = currentLead?.sales_stage && isSalesStage(currentLead.sales_stage)
+      ? currentLead.sales_stage
+      : "new_inquiry";
+    salesStageKey = salesStageForCanonical(stage.canonical_stage, fallback);
   }
   if (!isSalesStage(salesStageKey)) return { ok: false, message: "Invalid sales stage." };
   const venue = await getCurrentVenue();
@@ -599,7 +614,7 @@ export async function addTask(
 
 export async function updateTask(
   taskId: string,
-  input: { title: string; dueDate: string },
+  input: { title: string; dueDate: string; assignedToStaffId?: string | null },
 ): Promise<LeadActionResult> {
   if (!input.title.trim()) return { ok: false, message: "Task title is required." };
   const result = await withVenue(async (supabase, venueId) => {

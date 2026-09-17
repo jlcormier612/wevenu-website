@@ -14,32 +14,43 @@ import {
 } from "@/app/(app)/leads/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatDate, isOverdue, isDueToday } from "@/lib/leads/constants";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { LeadTask } from "@/lib/leads/types";
 import { cn } from "@/lib/utils";
 
+export type StaffOption = { id: string; name: string };
+
 function TaskRow({
   task,
-  leadId,
+  staffOptions,
   onToggle,
   onDelete,
   onUpdate,
 }: {
   task: LeadTask;
-  leadId: string;
+  staffOptions: StaffOption[];
   onToggle: (id: string, completed: boolean, title: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, title: string, dueDate: string) => void;
+  onUpdate: (id: string, title: string, dueDate: string, assignedToStaffId: string | null) => void;
 }) {
   const [editMode, setEditMode] = React.useState(false);
   const [title, setTitle] = React.useState(task.title);
   const [dueDate, setDueDate] = React.useState(task.dueDate ?? "");
+  const [assigneeId, setAssigneeId] = React.useState(task.assignedToStaffId ?? "");
 
   function saveEdit() {
     if (!title.trim()) return;
-    onUpdate(task.id, title, dueDate);
+    onUpdate(task.id, title, dueDate, assigneeId || null);
     setEditMode(false);
   }
 
@@ -48,29 +59,66 @@ function TaskRow({
 
   if (editMode) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-ring bg-card p-2.5">
+      <div className="flex flex-col gap-2 rounded-lg border border-ring bg-card p-2.5 sm:flex-row sm:items-center">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="flex-1 h-7 text-sm"
+          className="flex-1 h-8 text-sm"
           autoFocus
+          aria-label="Task title"
           onKeyDown={(e) => {
             if (e.key === "Enter") saveEdit();
-            if (e.key === "Escape") { setTitle(task.title); setDueDate(task.dueDate ?? ""); setEditMode(false); }
+            if (e.key === "Escape") {
+              setTitle(task.title);
+              setDueDate(task.dueDate ?? "");
+              setAssigneeId(task.assignedToStaffId ?? "");
+              setEditMode(false);
+            }
           }}
         />
-        <Input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="w-32 h-7 shrink-0 text-sm"
-        />
-        <Button type="button" size="sm" disabled={!title.trim()} onClick={saveEdit}>
-          <Check className="mr-1 h-3.5 w-3.5" />Save
-        </Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => { setTitle(task.title); setDueDate(task.dueDate ?? ""); setEditMode(false); }}>
-          Cancel
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="w-36 h-8 shrink-0 text-sm"
+            aria-label="Due date"
+          />
+          <Select
+            value={assigneeId || "__unassigned__"}
+            onValueChange={(v) => setAssigneeId(v === "__unassigned__" ? "" : v)}
+            items={[
+              { value: "__unassigned__", label: "Unassigned" },
+              ...staffOptions.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          >
+            <SelectTrigger className="h-8 w-40 text-sm" aria-label="Assignee">
+              <SelectValue placeholder="Assignee" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+              {staffOptions.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="button" size="sm" disabled={!title.trim()} onClick={saveEdit}>
+            <Check className="mr-1 h-3.5 w-3.5" />Save
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setTitle(task.title);
+              setDueDate(task.dueDate ?? "");
+              setAssigneeId(task.assignedToStaffId ?? "");
+              setEditMode(false);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     );
   }
@@ -90,15 +138,20 @@ function TaskRow({
       >
         {task.completed && <Check className="h-3 w-3" />}
       </button>
-      <span
-        className={cn(
-          "flex-1 text-sm cursor-pointer",
-          task.completed ? "text-muted-foreground line-through" : "text-foreground",
+      <div className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block text-sm cursor-pointer truncate",
+            task.completed ? "text-muted-foreground line-through" : "text-foreground",
+          )}
+          onClick={() => !task.completed && setEditMode(true)}
+        >
+          {task.title}
+        </span>
+        {task.assigneeName && (
+          <span className="text-xs text-muted-foreground">{task.assigneeName}</span>
         )}
-        onClick={() => !task.completed && setEditMode(true)}
-      >
-        {task.title}
-      </span>
+      </div>
       <div className="flex shrink-0 items-center gap-2">
         {task.dueDate && (
           <span
@@ -112,7 +165,7 @@ function TaskRow({
             {formatDate(task.dueDate)}
           </span>
         )}
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           {!task.completed && (
             <button
               type="button"
@@ -140,9 +193,13 @@ function TaskRow({
 export function TasksSection({
   leadId,
   initialTasks,
+  staffOptions,
+  defaultAssigneeId,
 }: {
   leadId: string;
   initialTasks: LeadTask[];
+  staffOptions: StaffOption[];
+  defaultAssigneeId?: string | null;
 }) {
   const router = useRouter();
   // See lib/hooks/use-synced-state.ts — DateHoldsSection is a true sibling
@@ -152,12 +209,19 @@ export function TasksSection({
   const [tasks, setTasks] = useSyncedState(initialTasks);
   const [titleInput, setTitleInput] = React.useState("");
   const [dueDateInput, setDueDateInput] = React.useState("");
+  const [assigneeInput, setAssigneeInput] = React.useState(defaultAssigneeId ?? "");
   const [addPending, startAdd] = React.useTransition();
 
   function handleAdd() {
     if (!titleInput.trim()) return;
+    const assignedToStaffId = assigneeInput || null;
+    const assigneeName = staffOptions.find((s) => s.id === assignedToStaffId)?.name ?? null;
     startAdd(async () => {
-      const result = await addTaskAction(leadId, { title: titleInput, dueDate: dueDateInput });
+      const result = await addTaskAction(leadId, {
+        title: titleInput,
+        dueDate: dueDateInput,
+        assignedToStaffId,
+      });
       if (result.ok) {
         setTasks((prev) => [
           ...prev,
@@ -165,6 +229,7 @@ export function TasksSection({
             id: crypto.randomUUID(), venueId: "", leadId,
             title: titleInput.trim(), dueDate: dueDateInput || null,
             completed: false, completedAt: null, createdAt: new Date().toISOString(),
+            assignedToStaffId, assigneeName,
           },
         ]);
         setTitleInput("");
@@ -196,10 +261,19 @@ export function TasksSection({
     }
   }
 
-  async function handleUpdate(taskId: string, title: string, dueDate: string) {
-    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, title, dueDate: dueDate || null } : t));
-    const result = await updateTaskAction(taskId, { title, dueDate });
+  async function handleUpdate(
+    taskId: string,
+    title: string,
+    dueDate: string,
+    assignedToStaffId: string | null,
+  ) {
+    const assigneeName = staffOptions.find((s) => s.id === assignedToStaffId)?.name ?? null;
+    setTasks((prev) => prev.map((t) => t.id === taskId
+      ? { ...t, title, dueDate: dueDate || null, assignedToStaffId, assigneeName }
+      : t));
+    const result = await updateTaskAction(taskId, { title, dueDate, assignedToStaffId });
     if (!result.ok) toast.error(result.message ?? "Could not update task.");
+    else router.refresh();
   }
 
   const { open, completed: done } = partitionByCompletion(tasks, {
@@ -209,34 +283,74 @@ export function TasksSection({
 
   return (
     <div className="space-y-4">
-      {/* Add task */}
-      <div className="flex items-center gap-2">
-        <Input
-          value={titleInput}
-          onChange={(e) => setTitleInput(e.target.value)}
-          placeholder="New task…"
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          className="flex-1"
-        />
-        <Input
-          type="date"
-          value={dueDateInput}
-          onChange={(e) => setDueDateInput(e.target.value)}
-          className="w-36 shrink-0"
-        />
-        <Button type="button" disabled={!titleInput.trim() || addPending} onClick={handleAdd}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Label htmlFor={`venue-task-title-${leadId}`} className="text-xs">Task title</Label>
+          <Input
+            id={`venue-task-title-${leadId}`}
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            placeholder="New task…"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+        </div>
+        <div className="space-y-1.5 sm:w-40">
+          <Label htmlFor={`venue-task-due-${leadId}`} className="text-xs">Due date</Label>
+          <Input
+            id={`venue-task-due-${leadId}`}
+            type="date"
+            value={dueDateInput}
+            onChange={(e) => setDueDateInput(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5 sm:w-44">
+          <Label className="text-xs">Assignee</Label>
+          <Select
+            value={assigneeInput || "__unassigned__"}
+            onValueChange={(v) => setAssigneeInput(v === "__unassigned__" ? "" : v)}
+            items={[
+              { value: "__unassigned__", label: "Unassigned" },
+              ...staffOptions.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          >
+            <SelectTrigger className="w-full" aria-label="Assignee">
+              <SelectValue placeholder="Assignee" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+              {staffOptions.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          className="sm:mb-0.5"
+          disabled={!titleInput.trim() || addPending}
+          onClick={handleAdd}
+        >
           <Plus className="mr-1 h-4 w-4" />Add
         </Button>
       </div>
 
       {tasks.length === 0 && (
-        <p className="py-4 text-center text-sm text-muted-foreground">No tasks yet. Add one above.</p>
+        <p className="py-4 text-center text-sm text-muted-foreground">
+          No venue tasks yet. Add a one-off action above — it also appears in Task Center.
+        </p>
       )}
 
       {open.length > 0 && (
         <div className="space-y-1.5">
           {open.map((t) => (
-            <TaskRow key={t.id} task={t} leadId={leadId} onToggle={handleToggle} onDelete={handleDelete} onUpdate={handleUpdate} />
+            <TaskRow
+              key={t.id}
+              task={t}
+              staffOptions={staffOptions}
+              onToggle={handleToggle}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+            />
           ))}
         </div>
       )}
@@ -245,7 +359,14 @@ export function TasksSection({
         <div className="space-y-1.5">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Completed</p>
           {done.map((t) => (
-            <TaskRow key={t.id} task={t} leadId={leadId} onToggle={handleToggle} onDelete={handleDelete} onUpdate={handleUpdate} />
+            <TaskRow
+              key={t.id}
+              task={t}
+              staffOptions={staffOptions}
+              onToggle={handleToggle}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+            />
           ))}
         </div>
       )}

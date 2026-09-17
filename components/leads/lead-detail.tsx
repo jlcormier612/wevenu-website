@@ -113,7 +113,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null, venueStages = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -270,7 +270,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const assignableStages = venueStages?.length
     ? venueStages
       .filter((s) => {
-        const sales = salesStageForCanonical(s.canonicalStage);
+        const sales = salesStageForCanonical(s.canonicalStage, lead.salesStage);
         if (!isManuallyAssignableSalesStage(sales)) return false;
         if (isBookingStarted) return sales === "lost";
         return true;
@@ -706,13 +706,18 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             </Card>
             <Card>
             <CardHeader>
-              <CardTitle className="text-base">Tasks</CardTitle>
+              <CardTitle className="text-base">Venue tasks</CardTitle>
               <CardDescription>
-                Action items for this lead. Click a title to edit.
+                One-off things your team needs to do for this lead. They also appear in Task Center.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TasksSection leadId={lead.id} initialTasks={lead.tasks} />
+              <TasksSection
+                leadId={lead.id}
+                initialTasks={lead.tasks}
+                staffOptions={staffOptions}
+                defaultAssigneeId={currentStaffId}
+              />
             </CardContent>
           </Card>
           </div>
