@@ -254,4 +254,4 @@ begin
 
   return jsonb_build_object('ok', true, 'generated', v_recs_generated);
 end;
-$$;\n
+$$;
