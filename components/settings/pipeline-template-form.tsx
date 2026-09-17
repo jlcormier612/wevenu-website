@@ -24,6 +24,7 @@ function buildInitial(template?: PipelineTemplateWithStages | null): PipelineTem
     description: template?.description ?? "",
     isActive: template?.isActive ?? true,
     stages: template?.stages.map((s) => ({
+      id: s.id,
       name: s.name, color: s.color, canonicalStage: s.canonicalStage,
       probability: s.probability != null ? String(s.probability) : "",
     })) ?? [],
@@ -118,14 +119,28 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
       <div className="space-y-1.5">
         <Label htmlFor="ptd">Description</Label>
         <Textarea id="ptd" value={input.description} onChange={(e) => set("description", e.target.value)}
-          rows={2} placeholder="What kind of bookings is this pipeline for?" />
+          rows={2} placeholder="e.g. How we sell weddings from first inquiry to booking" />
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Your stages are what your team works in.</p>
+        <p className="mt-1">
+          Name and order them for how you actually sell. Each stage also has a reporting category so Hello to Cheers
+          can still roll up analytics across venues — that category is not your workflow name.
+        </p>
+        <p className="mt-1">
+          A lead is the prospect record. An inquiry stage is just one early step — you do not have to name a stage
+          “Inquiry” for reporting to work.
+        </p>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-heading">Stages</p>
-            <p className="text-xs text-muted-foreground">Use the Hello to Cheers palette to keep the pipeline visually consistent.</p>
+            <p className="text-sm font-semibold text-heading">Your stages</p>
+            <p className="text-xs text-muted-foreground">
+              Define the steps your team uses to move a lead from first contact to booking. Drag to reorder.
+            </p>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={addStage}>+ Add Stage</Button>
         </div>
@@ -137,9 +152,17 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
           </p>
         ) : (
           <div className="space-y-2">
+            <div className="hidden gap-3 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[auto_10rem_1fr_minmax(9rem,1fr)_7rem_auto]">
+              <span className="w-8" />
+              <span>Your stage</span>
+              <span>Color</span>
+              <span>Reporting category</span>
+              <span>Probability %</span>
+              <span />
+            </div>
             {input.stages.map((stage, i) => (
               <div
-                key={i}
+                key={stage.id ?? `new-${i}`}
                 draggable
                 onDragStart={() => handleDragStart(i)}
                 onDragOver={(e) => handleDragOver(e, i)}
@@ -153,13 +176,13 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
                 </div>
 
                 <div className="space-y-1.5 sm:w-40">
-                  <Label className="text-xs">Stage name</Label>
+                  <Label className="text-xs sm:sr-only">Your stage</Label>
                   <Input value={stage.name} onChange={(e) => updateStage(i, { name: e.target.value })}
-                    placeholder="Tour Scheduled" className="h-9 text-sm" />
+                    placeholder="e.g. Site Visit" className="h-9 text-sm" />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Color</Label>
+                  <Label className="text-xs sm:sr-only">Color</Label>
                   <div className="flex items-center gap-1.5" role="radiogroup" aria-label={`${stage.name || `Stage ${i + 1}`} color`}>
                     {PIPELINE_STAGE_COLORS.map((color) => {
                       const selected = stage.color.toUpperCase() === color.value;
@@ -183,18 +206,23 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
                 </div>
 
                 <div className="flex-1 space-y-1.5 sm:min-w-40">
-                  <Label className="text-xs">Canonical stage</Label>
+                  <Label className="text-xs sm:sr-only">Reporting category</Label>
                   <Select value={stage.canonicalStage} onValueChange={(v) => updateStage(i, { canonicalStage: v as PipelineStageInput["canonicalStage"] })}
                     items={CANONICAL_STAGES}>
                     <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {CANONICAL_STAGES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                      {CANONICAL_STAGES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          <span className="font-medium">{c.label}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">{c.description}</span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1.5 sm:w-28">
-                  <Label className="text-xs">Probability %</Label>
+                  <Label className="text-xs sm:sr-only">Probability %</Label>
                   <Input type="number" min={0} max={100} value={stage.probability}
                     onChange={(e) => updateStage(i, { probability: e.target.value })}
                     placeholder="Optional" className="h-9 text-sm" />

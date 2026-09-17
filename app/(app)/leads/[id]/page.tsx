@@ -11,6 +11,7 @@ import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocume
 import { getDraftsForLead } from "@/lib/luv/drafts";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
+import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 import { getPackagesWithItems } from "@/lib/packages/service";
 import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
@@ -52,7 +53,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
 
   const page = await withTimeout(
     (async () => {
-      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages] = await Promise.all([
+      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages, activeTemplate] = await Promise.all([
         getLead(id),
         getHolds({ leadId: id }),
         getSpaces(),
@@ -64,6 +65,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getDraftsForLead(id),
         getTourAppointmentsForLead(id),
         getPackagesWithItems(true),
+        getActiveTemplate(),
       ]);
       if (!lead) return null;
       const [conversationId, smsPermission, duplicateReview] = await Promise.all([
@@ -94,6 +96,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         smsPermission,
         duplicateReview,
         bookingJourney,
+        venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
       };
     })(),
     LEAD_DETAIL_LOAD_TIMEOUT_MS,
@@ -125,6 +128,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       packages={page.packages}
       smsPermission={page.smsPermission}
       duplicateReview={page.duplicateReview}
+      venueStages={page.venueStages}
     />
   );
 }

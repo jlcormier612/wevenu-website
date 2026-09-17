@@ -72,6 +72,11 @@ export async function getTemplateWithStages(client: DbClient, venueId: string, i
 }
 
 export async function insertTemplate(client: DbClient, venueId: string, input: PipelineTemplateInput): Promise<string> {
+  if (input.isActive) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("pipeline_templates") as any)
+      .update({ is_active: false }).eq("venue_id", venueId);
+  }
   const { data, error } = await client.from("pipeline_templates")
     .insert({ venue_id: venueId, name: input.name.trim(), description: input.description.trim() || null, is_active: input.isActive })
     .select("id").single<{ id: string }>();
@@ -88,12 +93,78 @@ export async function updateTemplate(client: DbClient, venueId: string, id: stri
     .eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
 
-  // Stages are replaced wholesale on every save — same rationale as
-  // Automations' steps (lib/message-sequences/repository.ts): no per-stage
-  // identity a venue needs preserved across an edit, since a Pipeline
-  // Template isn't connected to real leads yet in this phase.
-  await client.from("pipeline_stages").delete().eq("pipeline_template_id", id).eq("venue_id", venueId);
-  await insertStages(client, venueId, id, input);
+  if (input.isActive) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("pipeline_templates") as any)
+      .update({ is_active: false }).eq("venue_id", venueId).neq("id", id);
+  }
+
+  // Preserve stage row ids so leads.pipeline_stage_id stays valid across edits.
+  const existing = await getTemplateWithStages(client, venueId, id);
+  const existingById = new Map((existing?.stages ?? []).map((s) => [s.id, s]));
+  const finalStages: { id: string; canonicalStage: PipelineStage["canonicalStage"] }[] = [];
+
+  for (let i = 0; i < input.stages.length; i++) {
+    const s = input.stages[i];
+    const probability = s.probability.trim() ? Number(s.probability) : null;
+    if (s.id && existingById.has(s.id)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updErr } = await (client.from("pipeline_stages") as any)
+        .update({
+          name: s.name.trim(),
+          color: s.color,
+          sort_order: i,
+          canonical_stage: s.canonicalStage,
+          probability,
+        })
+        .eq("id", s.id)
+        .eq("venue_id", venueId)
+        .eq("pipeline_template_id", id);
+      if (updErr) throw updErr;
+      finalStages.push({ id: s.id, canonicalStage: s.canonicalStage });
+    } else {
+      const { data: inserted, error: insErr } = await client.from("pipeline_stages")
+        .insert({
+          venue_id: venueId,
+          pipeline_template_id: id,
+          name: s.name.trim(),
+          color: s.color,
+          sort_order: i,
+          canonical_stage: s.canonicalStage,
+          probability,
+        })
+        .select("id")
+        .single<{ id: string }>();
+      if (insErr) throw insErr;
+      finalStages.push({ id: inserted.id, canonicalStage: s.canonicalStage });
+    }
+  }
+
+  const keptIdSet = new Set(finalStages.map((s) => s.id));
+  const removed = [...existingById.keys()].filter((stageId) => !keptIdSet.has(stageId));
+  if (removed.length > 0) {
+    for (const removedId of removed) {
+      const prior = existingById.get(removedId);
+      const fallback =
+        finalStages.find((s) => s.canonicalStage === prior?.canonicalStage)?.id
+        ?? finalStages[0]?.id
+        ?? null;
+      if (fallback) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (client.from("leads") as any)
+          .update({ pipeline_stage_id: fallback })
+          .eq("venue_id", venueId)
+          .eq("pipeline_stage_id", removedId);
+      }
+    }
+
+    const { error: delErr } = await client.from("pipeline_stages")
+      .delete()
+      .eq("pipeline_template_id", id)
+      .eq("venue_id", venueId)
+      .in("id", removed);
+    if (delErr) throw delErr;
+  }
 }
 
 async function insertStages(client: DbClient, venueId: string, templateId: string, input: PipelineTemplateInput): Promise<void> {
@@ -143,6 +214,13 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
 }
 
 export async function setTemplateActive(client: DbClient, venueId: string, id: string, isActive: boolean): Promise<void> {
+  if (isActive) {
+    // Exactly one active pipeline at a time — deactivate others first.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: clearError } = await (client.from("pipeline_templates") as any)
+      .update({ is_active: false }).eq("venue_id", venueId).neq("id", id);
+    if (clearError) throw clearError;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("pipeline_templates") as any)
     .update({ is_active: isActive }).eq("id", id).eq("venue_id", venueId);

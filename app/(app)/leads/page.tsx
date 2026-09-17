@@ -6,6 +6,7 @@ import { LeadList } from "@/components/leads/lead-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
+import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 
 export const metadata: Metadata = { title: "Leads" };
 
@@ -13,12 +14,13 @@ type Props = { searchParams: Promise<{ attention?: string }> };
 
 export default async function LeadsPage({ searchParams }: Props) {
   await ensureStandardSalesPipelineForCurrentVenue();
-  const leads = await getLeads();
+  const [leads, activeTemplate] = await Promise.all([getLeads(), getActiveTemplate()]);
   const { attention } = await searchParams;
   const initialAttention =
     attention === "stale_contact" ? "stale_contact" as const
     : attention === "active" ? "active" as const
     : null;
+  const venueStages = activeTemplate?.stages?.length ? activeTemplate.stages : null;
   return (
     <div className="space-y-6">
       <PageHeader
@@ -35,7 +37,7 @@ export default async function LeadsPage({ searchParams }: Props) {
           </div>
         }
       />
-      <LeadList leads={leads} initialAttention={initialAttention} />
+      <LeadList leads={leads} initialAttention={initialAttention} venueStages={venueStages} />
     </div>
   );
 }

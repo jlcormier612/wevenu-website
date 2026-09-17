@@ -63,7 +63,7 @@ export function ComparisonCard({
     : `${Math.abs(pct)}% ${direction === "up" ? "higher" : direction === "down" ? "lower" : "different"} ${comparisonLabel}.`;
 
   const body: ReactNode = (
-    <CardContent className="p-4 space-y-1.5">
+    <CardContent className="flex h-full flex-col gap-1.5 p-4">
       <div className="flex items-center gap-2">
         {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
@@ -73,20 +73,30 @@ export function ComparisonCard({
         {hasComparison && pct !== null && <DirectionIcon className="h-3 w-3" aria-hidden="true" />}
         <span>{accessibleText}</span>
       </div>
-      {sub && <p className="text-xs text-muted-foreground pt-0.5">{sub}</p>}
+      {/* Sub copy may wrap differently per card; remaining space stays empty so
+          every KPI card keeps identical outer dimensions in the grid. */}
+      {sub ? (
+        <p className="mt-auto pt-0.5 text-xs text-muted-foreground">{sub}</p>
+      ) : (
+        <div className="mt-auto min-h-[2.5rem]" aria-hidden="true" />
+      )}
     </CardContent>
   );
 
   if (href) {
     return (
-      <Link href={href} className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <Card className="transition-colors hover:bg-muted/20">{body}</Card>
+      <Link href={href} className="block h-full rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Card className="h-full transition-colors hover:bg-muted/20">{body}</Card>
       </Link>
     );
   }
-  return <Card>{body}</Card>;
+  return <Card className="h-full">{body}</Card>;
 }
 
 export function ComparisonCardGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4", className)}>{children}</div>;
+  return (
+    <div className={cn("grid auto-rows-fr grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4", className)}>
+      {children}
+    </div>
+  );
 }

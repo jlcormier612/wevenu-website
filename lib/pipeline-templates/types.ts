@@ -1,9 +1,18 @@
 /**
- * Pipeline Templates domain types — Phase 1 (editor only, no Leads connection).
- * See docs/booking-journey-design.md §2 for the canonical/venue-facing split.
+ * Pipeline Templates domain types.
+ * Venue-facing stages (name/order/color) are primary; canonicalStage is the
+ * reporting/normalization layer — see docs/booking-journey-design.md §2.
  */
 
 export type CanonicalStage = "inquiry" | "tour" | "proposal" | "decision" | "booked" | "lost" | "cancelled";
+
+const CANONICAL_STAGE_VALUES: readonly CanonicalStage[] = [
+  "inquiry", "tour", "proposal", "decision", "booked", "lost", "cancelled",
+];
+
+export function isCanonicalStage(value: string): value is CanonicalStage {
+  return (CANONICAL_STAGE_VALUES as readonly string[]).includes(value);
+}
 
 export type PipelineStage = {
   id: string;
@@ -19,6 +28,8 @@ export type PipelineStage = {
 };
 
 export type PipelineStageInput = {
+  /** Existing stage id when editing — preserves FK identity for leads.pipeline_stage_id. */
+  id?: string;
   name: string;
   color: string;
   canonicalStage: CanonicalStage;

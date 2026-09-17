@@ -82,6 +82,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
   const salesStage = (r.sales_stage ?? r.status) as Lead["salesStage"];
   return {
     id: r.id, venueId: r.venue_id, salesStage, status: salesStage,
+    pipelineStageId: null,
     source: r.source, firstName: r.first_name, lastName: r.last_name,
     email: r.email, phone: r.phone,
     preferredCommunicationChannels: [],

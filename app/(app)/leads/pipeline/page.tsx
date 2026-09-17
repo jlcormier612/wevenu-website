@@ -6,18 +6,24 @@ import { PipelineBoard } from "@/components/leads/pipeline-board";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
+import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 
 export const metadata: Metadata = { title: "Pipeline" };
 
 export default async function PipelinePage() {
   await ensureStandardSalesPipelineForCurrentVenue();
-  const leads = await getLeads();
+  const [leads, activeTemplate] = await Promise.all([getLeads(), getActiveTemplate()]);
+  const venueStages = activeTemplate?.stages?.length ? activeTemplate.stages : null;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Pipeline"
-        description="Drag a lead to move it to a different stage."
+        description={
+          venueStages
+            ? `Drag a lead to move it through ${activeTemplate!.name}.`
+            : "Drag a lead to move it to a different stage."
+        }
         actions={
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
@@ -28,7 +34,7 @@ export default async function PipelinePage() {
         }
       />
 
-      <PipelineBoard leads={leads} />
+      <PipelineBoard leads={leads} venueStages={venueStages} />
     </div>
   );
 }

@@ -4,6 +4,7 @@
  * Maps snake_case rows to camelCase domain types. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { normalizeEventType } from "@/lib/event-types/canonical";
 import { identityRpcFields } from "@/lib/identity/decision";
 import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
 import { TourCapacityWriteError, tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
@@ -161,6 +162,7 @@ type LeadRow = {
   venue_id: string;
   sales_stage: string | null;
   status: string | null;
+  pipeline_stage_id: string | null;
   source: string | null;
   first_name: string;
   last_name: string;
@@ -224,6 +226,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     : [];
   return {
     id: r.id, venueId: r.venue_id, salesStage, status: salesStage, source: r.source,
+    pipelineStageId: r.pipeline_stage_id ?? null,
     firstName: r.first_name, lastName: r.last_name, email: r.email, phone: r.phone,
     preferredCommunicationChannels: prefs,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
@@ -371,7 +374,7 @@ export async function insertLead(
       partnerFirstName: input.partnerFirstName.trim(),
       partnerLastName: input.partnerLastName.trim(),
       partnerEmail: input.partnerEmail.trim(),
-      eventType: input.eventType,
+      eventType: normalizeEventType(input.eventType) ?? (input.eventType.trim() || null),
       eventDate: input.eventDate,
       endDate: input.endDate,
       guestCount: input.guestCount,
@@ -426,10 +429,17 @@ export async function updateLeadSalesStage(
   venueId: string,
   leadId: string,
   salesStage: SalesStage,
+  pipelineStageId?: string | null,
 ): Promise<void> {
+  const patch: { sales_stage: SalesStage; pipeline_stage_id?: string | null } = {
+    sales_stage: salesStage,
+  };
+  if (pipelineStageId !== undefined) {
+    patch.pipeline_stage_id = pipelineStageId;
+  }
   const { error } = await client
     .from("leads")
-    .update({ sales_stage: salesStage })
+    .update(patch)
     .eq("id", leadId)
     .eq("venue_id", venueId);
   if (error) throw error;
@@ -554,7 +564,7 @@ export async function updateLeadInfo(
     partner_first_name: input.partnerFirstName.trim() || null,
     partner_last_name: input.partnerLastName.trim() || null,
     partner_email: input.partnerEmail.trim() || null,
-    event_type: input.eventType || null,
+    event_type: normalizeEventType(input.eventType) ?? (input.eventType.trim() || null),
     event_date: input.eventDate || null,
     end_date: input.endDate || null,
     guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,

@@ -257,6 +257,8 @@ export async function updateLeadSalesStage(
     clientId?: string | null;
     /** Required to leave Booked for a non-Lost sales-pipeline stage (Move back to Sales Pipeline). */
     allowLeaveBooked?: boolean;
+    /** Venue pipeline stage id to store alongside sales_stage (custom pipelines). */
+    pipelineStageId?: string | null;
   },
 ): Promise<LeadActionResult> {
   if (!validateStatus(stage) || !isSalesStage(stage))
@@ -288,7 +290,13 @@ export async function updateLeadSalesStage(
       } as LeadActionResult;
     }
 
-    await repo.updateLeadSalesStage(supabase, venueId, leadId, stage);
+    await repo.updateLeadSalesStage(
+      supabase,
+      venueId,
+      leadId,
+      stage,
+      opts?.pipelineStageId !== undefined ? opts.pipelineStageId : undefined,
+    );
 
     if (stage === "booked") {
       // Idempotent: already Booked → do not emit another lifecycle event.
@@ -393,9 +401,46 @@ export async function advanceLeadSalesStageIfForward(
   return result as LeadActionResult;
 }
 
-/** Board / detail: move to a sales stage key (not a pipeline_templates stage id). */
-export async function updateLeadPipelineStage(leadId: string, stageKey: string): Promise<LeadActionResult> {
-  return updateLeadSalesStage(leadId, stageKey);
+/** Board / detail: move to a venue pipeline stage id, or a sales_stage key when no custom template is active. */
+export async function updateLeadPipelineStage(leadId: string, stageKeyOrId: string): Promise<LeadActionResult> {
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
+
+  if (looksLikeUuid) {
+    const result = await withVenue(async (supabase, venueId) => {
+      const { data: stage, error } = await supabase
+        .from("pipeline_stages")
+        .select("id, canonical_stage, pipeline_template_id")
+        .eq("id", stageKeyOrId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; canonical_stage: string; pipeline_template_id: string }>();
+      if (error) throw error;
+      if (!stage) return { ok: false, message: "That pipeline stage was not found." } as LeadActionResult;
+
+      const { data: tpl } = await supabase
+        .from("pipeline_templates")
+        .select("id, is_active")
+        .eq("id", stage.pipeline_template_id)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; is_active: boolean }>();
+      if (!tpl?.is_active) {
+        return { ok: false, message: "That stage is not on the active pipeline." } as LeadActionResult;
+      }
+
+      const { salesStageForCanonical } = await import("@/lib/pipeline-templates/sales-stage-bridge");
+      const { isCanonicalStage } = await import("@/lib/pipeline-templates/types");
+      if (!isCanonicalStage(stage.canonical_stage)) {
+        return { ok: false, message: "That stage has an invalid reporting category." } as LeadActionResult;
+      }
+      const salesStage = salesStageForCanonical(stage.canonical_stage);
+      return updateLeadSalesStage(leadId, salesStage, {
+        allowBooked: salesStage === "booked",
+        pipelineStageId: stage.id,
+      });
+    });
+    return result as LeadActionResult;
+  }
+
+  return updateLeadSalesStage(leadId, stageKeyOrId);
 }
 
 /**
@@ -446,12 +491,30 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
 
 export async function wouldEnrollOnPipelineStageMove(
   leadId: string,
-  stageKey: string,
+  stageKeyOrId: string,
 ): Promise<
   | { ok: true; wouldEnroll: boolean; preview: AutomationMessagePreview | null }
   | { ok: false; message: string }
 > {
-  if (!isSalesStage(stageKey)) return { ok: false, message: "Invalid sales stage." };
+  let salesStageKey = stageKeyOrId;
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
+  if (looksLikeUuid) {
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "No venue found." };
+    const supabase = await createClient();
+    const { data: stage } = await supabase
+      .from("pipeline_stages")
+      .select("canonical_stage")
+      .eq("id", stageKeyOrId)
+      .eq("venue_id", venue.id)
+      .maybeSingle<{ canonical_stage: string }>();
+    if (!stage) return { ok: false, message: "That pipeline stage was not found." };
+    const { salesStageForCanonical } = await import("@/lib/pipeline-templates/sales-stage-bridge");
+    const { isCanonicalStage } = await import("@/lib/pipeline-templates/types");
+    if (!isCanonicalStage(stage.canonical_stage)) return { ok: false, message: "Invalid reporting category." };
+    salesStageKey = salesStageForCanonical(stage.canonical_stage);
+  }
+  if (!isSalesStage(salesStageKey)) return { ok: false, message: "Invalid sales stage." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
@@ -459,7 +522,7 @@ export async function wouldEnrollOnPipelineStageMove(
     .eq("id", leadId).eq("venue_id", venue.id)
     .maybeSingle<{ relationship_id: string | null }>();
   if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null };
-  const check = await wouldEnrollOnStageChange(supabase, venue.id, lead.relationship_id, stageKey);
+  const check = await wouldEnrollOnStageChange(supabase, venue.id, lead.relationship_id, salesStageKey);
   let preview: AutomationMessagePreview | null = null;
   if (check.wouldEnroll && check.sequenceId) {
     preview = await previewFirstStepForSequence(supabase, venue.id, check.sequenceId, lead.relationship_id);

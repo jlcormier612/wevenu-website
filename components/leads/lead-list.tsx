@@ -36,9 +36,15 @@ import {
   formatDate,
   formatCurrency,
   leadDisplayName,
+  statusLabel,
 } from "@/lib/leads/constants";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
+import { normalizeEventType } from "@/lib/event-types/canonical";
 import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
+import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
+import type { PipelineStage } from "@/lib/pipeline-templates/types";
+import type { SalesStage } from "@/lib/leads/sales-stages";
+import { salesStageLabel } from "@/lib/leads/sales-stages";
 
 type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
@@ -77,13 +83,17 @@ function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
 export function LeadList({
   leads,
   initialAttention,
+  venueStages = null,
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
   initialAttention?: "stale_contact" | "active" | null;
+  /** Active Pipeline Template stages — when present, Stage chips use venue names. */
+  venueStages?: PipelineStage[] | null;
 }) {
+  const usingVenueStages = (venueStages?.length ?? 0) > 0;
   const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<FilterKey>("all");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [sort, setSort] = React.useState<SortKey>(
     initialAttention === "stale_contact" ? "last_contacted" : "newest",
@@ -92,13 +102,39 @@ export function LeadList({
     initialAttention === "stale_contact" ? "stale_contact" : initialAttention === "active" ? "active" : "all",
   );
 
+  function venueStageIdFor(lead: Lead): string | null {
+    if (!venueStages?.length) return null;
+    return resolveVenuePipelineStageId(venueStages, {
+      pipelineStageId: lead.pipelineStageId,
+      salesStage: (lead.salesStage ?? lead.status) as SalesStage,
+    });
+  }
+
+  function stageDisplayName(lead: Lead): string {
+    if (venueStages?.length) {
+      const id = venueStageIdFor(lead);
+      const named = venueStages.find((s) => s.id === id)?.name;
+      if (named) return named;
+    }
+    return salesStageLabel(lead.salesStage ?? lead.status) || statusLabel(lead.salesStage ?? lead.status);
+  }
+
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
     const nowMs = Date.now();
     const base = leads.filter((l) => {
       const stage = l.salesStage ?? l.status;
-      if (statusFilter !== "all" && stage !== statusFilter) return false;
-      if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
+      if (statusFilter !== "all") {
+        if (usingVenueStages) {
+          if (venueStageIdFor(l) !== statusFilter) return false;
+        } else if (stage !== statusFilter) {
+          return false;
+        }
+      }
+      if (eventTypeFilter !== "all") {
+        // Group by canonical key so "Wedding" / "wedding" never become two filters.
+        if (normalizeEventType(l.eventType) !== eventTypeFilter) return false;
+      }
       if (attentionFilter === "stale_contact") {
         // Same closed set + opportunity-age rule as generate_venue_recommendations
         // (coalesce last contact → inquiry → created; never treat null contact as ancient).
@@ -125,21 +161,41 @@ export function LeadList({
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [leads, query, statusFilter, eventTypeFilter, sort, attentionFilter]);
+  }, [leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, usingVenueStages, venueStages]);
 
   const statusCounts = React.useMemo(() => {
-    const map = new Map<FilterKey, number>([["all", leads.length]]);
+    if (usingVenueStages && venueStages) {
+      const map = new Map<string, number>([["all", leads.length]]);
+      for (const s of venueStages) map.set(s.id, 0);
+      for (const l of leads) {
+        const id = resolveVenuePipelineStageId(venueStages, {
+          pipelineStageId: l.pipelineStageId,
+          salesStage: (l.salesStage ?? l.status) as SalesStage,
+        });
+        if (id) map.set(id, (map.get(id) ?? 0) + 1);
+      }
+      return map;
+    }
+    const map = new Map<string, number>([["all", leads.length]]);
     LEAD_STATUSES.forEach((s) => map.set(s.value, 0));
     leads.forEach((l) => {
       const stage = l.salesStage ?? l.status;
       map.set(stage, (map.get(stage) ?? 0) + 1);
     });
     return map;
-  }, [leads]);
+  }, [leads, usingVenueStages, venueStages]);
+
+  const stageChips: { key: string; label: string }[] = usingVenueStages && venueStages
+    ? [{ key: "all", label: "All" }, ...venueStages.map((s) => ({ key: s.id, label: s.name }))]
+    : [{ key: "all", label: "All" }, ...LEAD_STATUSES.map((s) => ({ key: s.value, label: s.label }))];
 
   const activeEventTypes = React.useMemo(() => {
     const seen = new Map<string, number>();
-    leads.forEach((l) => { if (l.eventType) seen.set(l.eventType, (seen.get(l.eventType) ?? 0) + 1); });
+    leads.forEach((l) => {
+      const key = normalizeEventType(l.eventType);
+      if (!key) return;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    });
     return [...seen.entries()].sort((a, b) => b[1] - a[1]);
   }, [leads]);
 
@@ -202,22 +258,21 @@ export function LeadList({
 
       <div className="flex flex-wrap gap-1.5 items-center">
         <span className="text-xs text-muted-foreground font-medium mr-0.5">Stage:</span>
-        {(["all", ...LEAD_STATUSES.map((s) => s.value)] as FilterKey[]).map((key) => {
-          const label = key === "all" ? "All" : LEAD_STATUSES.find((s) => s.value === key)?.label ?? key;
-          const count = statusCounts.get(key) ?? 0;
-          const active = statusFilter === key;
+        {stageChips.map((chip) => {
+          const count = statusCounts.get(chip.key) ?? 0;
+          const active = statusFilter === chip.key;
           return (
             <button
-              key={key}
+              key={chip.key}
               type="button"
-              onClick={() => setStatusFilter(key)}
+              onClick={() => setStatusFilter(chip.key)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
-              {label}
+              {chip.label}
               <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                 {count}
               </span>
@@ -319,7 +374,11 @@ export function LeadList({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <LeadStatusBadge status={stage} />
+                      {usingVenueStages ? (
+                        <Badge variant="outline">{stageDisplayName(lead)}</Badge>
+                      ) : (
+                        <LeadStatusBadge status={stage} />
+                      )}
                       {lead.commitmentScore > 0 && (() => {
                         const { tier } = momentumLabel(lead.commitmentScore, stage);
                         const dot = tier === "hot" ? "bg-success" : tier === "warm" ? "bg-[#C7A66A]" : tier === "growing" ? "bg-primary/50" : null;

@@ -1,7 +1,7 @@
 /**
- * Pipeline Templates application service — Phase 1. Server-only.
- * Deliberately has no dependency on lib/leads anywhere — this phase builds
- * the reusable template/stage editor only, per explicit instruction.
+ * Pipeline Templates application service. Server-only.
+ * Templates define venue-facing sales stages; leads.sales_stage remains the
+ * reporting/automation normalization layer via canonical_stage mapping.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";

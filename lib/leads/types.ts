@@ -28,6 +28,12 @@ export type Lead = {
   /** Authoritative Sales Pipeline stage (seven fixed stages). */
   salesStage: SalesStage;
   /**
+   * Venue-facing pipeline stage from the active Pipeline Template.
+   * Null when the lead has not been placed on a custom stage yet — UI
+   * derives display from salesStage + the active template.
+   */
+  pipelineStageId: string | null;
+  /**
    * @deprecated Alias of salesStage for transitional call sites.
    * Prefer salesStage.
    */

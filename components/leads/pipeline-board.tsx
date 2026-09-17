@@ -14,29 +14,81 @@ import { eventTypeLabel, formatCurrency, formatDate, leadDisplayName } from "@/l
 import { SALES_STAGE_META, type SalesStage } from "@/lib/leads/sales-stages";
 import type { Lead } from "@/lib/leads/types";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import { salesStageForCanonical } from "@/lib/pipeline-templates/sales-stage-bridge";
+import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
+import type { PipelineStage } from "@/lib/pipeline-templates/types";
+
+type BoardColumn = {
+  key: string;
+  label: string;
+  /** sales_stage key used for Booked / Lost guards when on fixed board */
+  salesStage: SalesStage;
+  color?: string;
+};
+
+function fixedColumns(): BoardColumn[] {
+  return SALES_STAGE_META.map((s) => ({
+    key: s.value,
+    label: s.label,
+    salesStage: s.value,
+  }));
+}
+
+function venueColumns(stages: PipelineStage[]): BoardColumn[] {
+  return stages.map((s) => ({
+    key: s.id,
+    label: s.name,
+    salesStage: salesStageForCanonical(s.canonicalStage),
+    color: s.color,
+  }));
+}
 
 /**
- * Fixed seven-column Sales Pipeline board.
- * Stage keys are authoritative sales_stage values — not pipeline_templates stage ids.
+ * Pipeline board — venue-defined stages when an active Pipeline Template
+ * exists; otherwise the fixed seven-stage Sales Pipeline.
  */
-export function PipelineBoard({ leads }: { leads: Lead[] }) {
+export function PipelineBoard({
+  leads,
+  venueStages = null,
+}: {
+  leads: Lead[];
+  venueStages?: PipelineStage[] | null;
+}) {
   const router = useRouter();
-  const stages = SALES_STAGE_META;
+  const usingVenue = (venueStages?.length ?? 0) > 0;
+  const columnsMeta = usingVenue ? venueColumns(venueStages!) : fixedColumns();
 
-  const [overrides, setOverrides] = React.useState<Record<string, SalesStage>>({});
+  const [overrides, setOverrides] = React.useState<Record<string, string>>({});
   const [pendingLeadIds, setPendingLeadIds] = React.useState<Set<string>>(new Set());
   const [draggingLeadId, setDraggingLeadId] = React.useState<string | null>(null);
-  const [dragOverStage, setDragOverStage] = React.useState<SalesStage | null>(null);
+  const [dragOverStage, setDragOverStage] = React.useState<string | null>(null);
   const [confirmMove, setConfirmMove] = React.useState<{
     leadId: string;
-    targetStage: SalesStage;
+    targetKey: string;
     preview: AutomationMessagePreview | null;
   } | null>(null);
 
-  const { columns, currentStageByLead } = React.useMemo(() => {
-    const cols = new Map<SalesStage, Lead[]>();
-    stages.forEach((s) => cols.set(s.value, []));
-    const currentByLead: Record<string, SalesStage> = {};
+  const { columns, currentKeyByLead } = React.useMemo(() => {
+    const currentByLead: Record<string, string> = {};
+    if (usingVenue && venueStages) {
+      const cols = new Map<string, Lead[]>();
+      for (const stage of venueStages) cols.set(stage.id, []);
+      for (const lead of leads) {
+        const key = overrides[lead.id]
+          ?? resolveVenuePipelineStageId(venueStages, {
+            pipelineStageId: lead.pipelineStageId,
+            salesStage: lead.salesStage ?? lead.status,
+          });
+        if (key) {
+          currentByLead[lead.id] = key;
+          if (cols.has(key)) cols.get(key)!.push(lead);
+        }
+      }
+      return { columns: cols, currentKeyByLead: currentByLead };
+    }
+
+    const cols = new Map<string, Lead[]>();
+    for (const s of SALES_STAGE_META) cols.set(s.value, []);
     for (const lead of leads) {
       const stage = (overrides[lead.id] ?? lead.salesStage ?? lead.status) as SalesStage;
       if (cols.has(stage)) {
@@ -44,14 +96,14 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
         currentByLead[lead.id] = stage;
       }
     }
-    return { columns: cols, currentStageByLead: currentByLead };
-  }, [leads, overrides, stages]);
+    return { columns: cols, currentKeyByLead: currentByLead };
+  }, [leads, overrides, usingVenue, venueStages]);
 
-  function commitMove(leadId: string, targetStage: SalesStage) {
-    setOverrides((p) => ({ ...p, [leadId]: targetStage }));
+  function commitMove(leadId: string, targetKey: string) {
+    setOverrides((p) => ({ ...p, [leadId]: targetKey }));
     setPendingLeadIds((p) => new Set(p).add(leadId));
 
-    updateLeadPipelineStageAction(leadId, targetStage).then((result) => {
+    updateLeadPipelineStageAction(leadId, targetKey).then((result) => {
       setPendingLeadIds((p) => {
         const n = new Set(p);
         n.delete(leadId);
@@ -70,23 +122,28 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
     });
   }
 
-  function handleDrop(targetStage: SalesStage) {
+  function handleDrop(targetKey: string) {
     const leadId = draggingLeadId;
     setDraggingLeadId(null);
     setDragOverStage(null);
     if (!leadId) return;
-    if (currentStageByLead[leadId] === targetStage) return;
-    if (targetStage === "booked") {
+    if (currentKeyByLead[leadId] === targetKey) return;
+
+    const targetMeta = columnsMeta.find((c) => c.key === targetKey);
+    const currentMeta = columnsMeta.find((c) => c.key === currentKeyByLead[leadId]);
+    if (!targetMeta) return;
+
+    if (targetMeta.salesStage === "booked") {
       toast.error("Booking Started is only set by starting a booking file.");
       return;
     }
-    if (currentStageByLead[leadId] === "booked" && targetStage !== "lost") {
+    if (currentMeta?.salesStage === "booked" && targetMeta.salesStage !== "lost") {
       toast.error("Open this lead and use Move back to Sales Pipeline.");
       return;
     }
 
     setPendingLeadIds((p) => new Set(p).add(leadId));
-    wouldEnrollOnPipelineStageMoveAction(leadId, targetStage).then((check) => {
+    wouldEnrollOnPipelineStageMoveAction(leadId, targetKey).then((check) => {
       setPendingLeadIds((p) => {
         const n = new Set(p);
         n.delete(leadId);
@@ -97,33 +154,42 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
         return;
       }
       if (check.wouldEnroll) {
-        setConfirmMove({ leadId, targetStage, preview: check.preview });
+        setConfirmMove({ leadId, targetKey, preview: check.preview });
         return;
       }
-      commitMove(leadId, targetStage);
+      commitMove(leadId, targetKey);
     });
   }
 
   return (
     <>
       <div className="flex gap-4 overflow-x-auto pb-2">
-        {stages.map((stage) => {
-          const stageLeads = columns.get(stage.value) ?? [];
+        {columnsMeta.map((stage) => {
+          const stageLeads = columns.get(stage.key) ?? [];
           const stageValue = stageLeads.reduce((sum, l) => sum + (l.estimatedBudget ?? 0), 0);
-          const isDragTarget = dragOverStage === stage.value;
+          const isDragTarget = dragOverStage === stage.key;
           return (
             <div
-              key={stage.value}
+              key={stage.key}
               onDragOver={(e) => {
                 e.preventDefault();
-                setDragOverStage(stage.value);
+                setDragOverStage(stage.key);
               }}
-              onDragLeave={() => setDragOverStage((p) => (p === stage.value ? null : p))}
-              onDrop={() => handleDrop(stage.value)}
+              onDragLeave={() => setDragOverStage((p) => (p === stage.key ? null : p))}
+              onDrop={() => handleDrop(stage.key)}
               className={`flex w-72 shrink-0 flex-col rounded-sm border transition-colors ${isDragTarget ? "border-primary bg-primary/5" : "border-border bg-card/40"}`}
             >
               <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-                <p className="truncate text-sm font-semibold text-heading">{stage.label}</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  {stage.color && (
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: stage.color }}
+                      aria-hidden
+                    />
+                  )}
+                  <p className="truncate text-sm font-semibold text-heading">{stage.label}</p>
+                </div>
                 <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                   {stageLeads.length}
                 </span>
@@ -173,9 +239,9 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
         onCancel={() => setConfirmMove(null)}
         onContinue={() => {
           if (!confirmMove) return;
-          const { leadId, targetStage } = confirmMove;
+          const { leadId, targetKey } = confirmMove;
           setConfirmMove(null);
-          commitMove(leadId, targetStage);
+          commitMove(leadId, targetKey);
         }}
       />
     </>

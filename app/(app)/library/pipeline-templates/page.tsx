@@ -15,7 +15,7 @@ export default async function PipelineTemplatesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Pipeline Templates"
-        description="Customize the stages on your Leads Pipeline. Names and order here are what you see on the board."
+        description="Define the steps your team follows to move a lead from first contact to booking. Your stage names appear on the Leads board; reporting categories keep analytics consistent."
         actions={
           <Button render={<Link href="/library/pipeline-templates/new" />}>+ New Pipeline Template</Button>
         }

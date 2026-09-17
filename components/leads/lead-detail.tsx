@@ -28,6 +28,7 @@ import {
   moveLeadBackToSalesPipelineAction,
   previewDeleteLeadAction,
   returnLeadToBookedAction,
+  updateLeadPipelineStageAction,
   updateLeadStatusAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
@@ -81,6 +82,9 @@ import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
 import type { Document } from "@/lib/documents/types";
 import type { LuvDraft } from "@/lib/luv/drafts";
+import { salesStageForCanonical } from "@/lib/pipeline-templates/sales-stage-bridge";
+import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
+import type { PipelineStage } from "@/lib/pipeline-templates/types";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -109,7 +113,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null, venueStages = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -226,7 +230,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         setConfirmPreview(check.preview);
         return;
       }
-      const result = await updateLeadStatusAction(lead.id, status);
+      const result = venueStages?.length
+        ? await updateLeadPipelineStageAction(lead.id, status)
+        : await updateLeadStatusAction(lead.id, status);
       if (result.ok) {
         toast.success("Stage updated.");
         router.refresh();
@@ -238,7 +244,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
   function commitStageChange(stageKey: string) {
     startStatus(async () => {
-      const result = await updateLeadStatusAction(lead.id, stageKey);
+      const result = venueStages?.length
+        ? await updateLeadPipelineStageAction(lead.id, stageKey)
+        : await updateLeadStatusAction(lead.id, stageKey);
       if (result.ok) {
         toast.success("Stage updated.");
         router.refresh();
@@ -251,13 +259,38 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const currentStage = (lead.salesStage ?? lead.status) as SalesStage;
   const isBookingStarted = currentStage === "booked";
   const previouslyConverted = !!lead.linkedClientId;
+  const currentVenueStageId = venueStages?.length
+    ? resolveVenuePipelineStageId(venueStages, {
+      pipelineStageId: lead.pipelineStageId,
+      salesStage: currentStage,
+    })
+    : null;
   // When Booking Started, only Lost remains in the generic stage menu — leaving
   // Booking Started for an active sales stage uses Move back to Sales Pipeline.
-  const assignableStages = LEAD_STATUSES.filter((s) => {
-    if (!isManuallyAssignableSalesStage(s.value)) return false;
-    if (isBookingStarted) return s.value === "lost";
-    return true;
-  });
+  const assignableStages = venueStages?.length
+    ? venueStages
+      .filter((s) => {
+        const sales = salesStageForCanonical(s.canonicalStage);
+        if (!isManuallyAssignableSalesStage(sales)) return false;
+        if (isBookingStarted) return sales === "lost";
+        return true;
+      })
+      .map((s) => ({
+        value: s.id,
+        label: s.name,
+        description: `Reporting: ${s.canonicalStage}`,
+        current: s.id === currentVenueStageId,
+      }))
+    : LEAD_STATUSES.filter((s) => {
+      if (!isManuallyAssignableSalesStage(s.value)) return false;
+      if (isBookingStarted) return s.value === "lost";
+      return true;
+    }).map((s) => ({
+      value: s.value,
+      label: s.label,
+      description: s.description,
+      current: s.value === currentStage,
+    }));
 
   const openTaskCount = lead.tasks.filter((t) => !t.completed).length;
 
@@ -400,7 +433,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 {assignableStages.map((s) => (
                   <DropdownMenuItem
                     key={s.value}
-                    disabled={s.value === currentStage}
+                    disabled={s.current}
                     onClick={() => handleStatusChange(s.value)}
                   >
                     {s.label}

@@ -6,13 +6,13 @@
 import type { CanonicalStage } from "@/lib/pipeline-templates/types";
 
 export const CANONICAL_STAGES: { value: CanonicalStage; label: string; description: string }[] = [
-  { value: "inquiry",   label: "Inquiry",   description: "A client reached out" },
-  { value: "tour",      label: "Tour",      description: "A tour is scheduled or has happened" },
-  { value: "proposal",  label: "Proposal",  description: "Pricing or a contract was sent" },
-  { value: "decision",  label: "Decision",  description: "Waiting on the client to decide" },
-  { value: "booked",    label: "Booked",    description: "They said yes" },
-  { value: "lost",      label: "Lost",      description: "Did not book" },
-  { value: "cancelled", label: "Cancelled", description: "Booking was cancelled" },
+  { value: "inquiry",   label: "Inquiry",   description: "Early interest — reporting bucket, not your stage name" },
+  { value: "tour",      label: "Tour",      description: "Visit / site walk-through reporting bucket" },
+  { value: "proposal",  label: "Proposal",  description: "Pricing or offer sent — reporting bucket" },
+  { value: "decision",  label: "Decision",  description: "Waiting on a yes/no — reporting bucket" },
+  { value: "booked",    label: "Booked",    description: "Won / booking file started — reporting bucket" },
+  { value: "lost",      label: "Lost",      description: "Did not book — reporting bucket" },
+  { value: "cancelled", label: "Cancelled", description: "Booking cancelled — reporting bucket" },
 ];
 
 export function canonicalStageLabel(stage: CanonicalStage): string {
