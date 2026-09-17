@@ -138,7 +138,10 @@ export const NAV_SECTIONS: NavSection[] = [
       { id: "setup", title: "Setup", href: "/setup-hub", icon: SquareCheckBig },
       { id: "settings", title: "Settings", href: "/settings", icon: Settings },
       { id: "venue-guide", title: "Venue Guide", href: "/guide", icon: Info },
-      { id: "feedback", title: "Feedback", href: "/feedback", icon: MessageSquareDot },
+      // "Give feedback", not "Feedback": the venue is giving it to us, and this
+      // is the only entry point for that — the sidebar footer used to carry a
+      // second one that skipped this page and opened the form directly.
+      { id: "feedback", title: "Give feedback", href: "/feedback", icon: MessageSquareDot },
     ],
   },
 ];

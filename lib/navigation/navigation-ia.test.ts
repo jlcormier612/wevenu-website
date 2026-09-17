@@ -53,7 +53,7 @@ describe("venue navigation IA", () => {
       library: ["Templates", "Documents"],
       financials: ["Contracts", "Invoices", "Payments"],
       "to-dos": ["Task Center", "Requests"],
-      "your-venue": ["Setup", "Settings", "Venue Guide", "Feedback"],
+      "your-venue": ["Setup", "Settings", "Venue Guide", "Give feedback"],
     });
   });
 
@@ -81,11 +81,13 @@ describe("venue navigation IA", () => {
     assert.equal(NAV_ITEMS.filter((i) => i.href === "/requests").length, 1);
   });
 
-  it("shows Feedback exactly once, as the last Your Venue item", () => {
+  it("shows Give feedback exactly once, as the last Your Venue item", () => {
     const owners = NAV_SECTIONS.filter((s) => s.items.some((i) => i.id === "feedback"));
     assert.equal(owners.length, 1);
     assert.equal(owners[0].id, "your-venue");
     assert.equal(owners[0].items.at(-1)?.id, "feedback");
+    // The venue is giving feedback to us, so say so.
+    assert.equal(NAV_ITEMS.find((i) => i.id === "feedback")?.title, "Give feedback");
     // Venue-facing, not the HQ triage console.
     assert.equal(NAV_ITEMS.find((i) => i.id === "feedback")?.href, "/feedback");
   });

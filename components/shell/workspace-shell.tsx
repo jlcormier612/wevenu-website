@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { Wordmark } from "@/components/brand/wordmark";
-import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { WorkspaceShellHeader } from "@/components/shell/workspace-shell-header";
 import { cn } from "@/lib/utils";
@@ -50,11 +49,12 @@ export function WorkspaceShell({
         <div className="flex h-20 items-center border-b border-sidebar-border px-5">
           <Wordmark sizeClassName="h-[66.8px] w-auto" />
         </div>
+        {/* Giving feedback lives in the nav with everything else, under Your
+            Venue → Give feedback. A second trigger pinned down here opened the
+            form directly and bypassed the four choices, so staff met two
+            different feedback experiences depending on which one they found. */}
         <div className="flex-1 overflow-y-auto">
           <SidebarNav staffRole={staffRole} />
-        </div>
-        <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
-          <FeedbackSheet surface="venue" />
         </div>
       </aside>
 
