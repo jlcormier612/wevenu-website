@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   addTemplateAttachmentAction, removeTemplateAttachmentAction,
 } from "@/app/(app)/communication/templates/actions";
-import { saveVenueDocumentAction } from "@/app/(app)/documents/actions";
+import { saveVenueDocumentAction, venueDocumentUploadPathAction } from "@/app/(app)/documents/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,9 +53,12 @@ export function TemplateAttachmentsField({
     setUploading(true);
     try {
       const supabase = createClient();
-      const docId = crypto.randomUUID();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-      const storagePath = `venue/${docId}.${ext}`;
+      // The documents bucket only accepts objects whose first path segment is
+      // the caller's venue id, so the path is resolved from the session rather
+      // than built here (see lib/documents/storage-path.ts).
+      const pathResult = await venueDocumentUploadPathAction(file.name);
+      if (!pathResult.ok) { toast.error(pathResult.message); return; }
+      const storagePath = pathResult.storagePath;
       const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, { upsert: false, contentType: file.type });
       if (uploadError) throw new Error(uploadError.message);
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);

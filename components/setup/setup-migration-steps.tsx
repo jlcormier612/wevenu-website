@@ -38,7 +38,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ImportWizard } from "@/components/settings/import-wizard";
-import { saveVenueDocumentAction } from "@/app/(app)/documents/actions";
+import { saveVenueDocumentAction, venueDocumentUploadPathAction } from "@/app/(app)/documents/actions";
 import { getSetupReadyCountsAction } from "@/app/setup/actions";
 import { createClient } from "@/integrations/supabase/client";
 import type { SetupReadyCounts } from "@/lib/venue/service";
@@ -149,9 +149,15 @@ function DocumentsUploadStep({ onDone }: { onDone: () => void }) {
         toast.error(`${file.name} is too large (max ${MAX_FILE_SIZE_MB} MB).`);
         continue;
       }
-      const docId = crypto.randomUUID();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-      const storagePath = `venue/${docId}.${ext}`;
+      // The documents bucket only accepts objects whose first path segment is
+      // the caller's venue id, so the path is resolved from the session rather
+      // than built here (see lib/documents/storage-path.ts).
+      const pathResult = await venueDocumentUploadPathAction(file.name);
+      if (!pathResult.ok) {
+        toast.error(`Could not upload ${file.name}: ${pathResult.message}`);
+        continue;
+      }
+      const storagePath = pathResult.storagePath;
       const { error: uploadError } = await supabase.storage
         .from("documents")
         .upload(storagePath, file, { upsert: false, contentType: file.type });
