@@ -5,6 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { NAV_SECTIONS } from "@/lib/navigation";
+import {
+  badgeCountForNavItem,
+  emptyNavAttentionCounts,
+  formatAttentionBadge,
+  NAV_ATTENTION_BADGE_CLASS,
+  type NavAttentionCounts,
+} from "@/lib/navigation/attention";
 import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
 import { cn } from "@/lib/utils";
 
@@ -15,14 +22,21 @@ export function SidebarNav({
   onNavigate?: () => void;
   staffRole?: string | null;
 }) {
-  const pathname   = usePathname();
-  const [unread, setUnread] = React.useState(0);
+  const pathname = usePathname();
+  const [counts, setCounts] = React.useState<NavAttentionCounts>(emptyNavAttentionCounts);
 
-  // Fetch unread message count — runs once on mount, refreshes when path changes
   React.useEffect(() => {
-    fetch("/api/messages/unread")
-      .then(r => r.json())
-      .then((d: { count?: number }) => setUnread(d.count ?? 0))
+    fetch("/api/navigation/attention")
+      .then((r) => r.json())
+      .then((d: Partial<NavAttentionCounts>) => {
+        setCounts({
+          leads: Number(d.leads) || 0,
+          tours: Number(d.tours) || 0,
+          inbox: Number(d.inbox) || 0,
+          tasks: Number(d.tasks) || 0,
+          payments: Number(d.payments) || 0,
+        });
+      })
       .catch(() => {});
   }, [pathname]);
 
@@ -45,8 +59,8 @@ export function SidebarNav({
               ? pathname === item.href ||
                 (pathname.startsWith(`${item.href}/`) && !pathname.startsWith("/library/documents"))
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
-            const Icon     = item.icon;
-            const badge    = item.id === "inbox" && unread > 0 ? unread : 0;
+            const Icon = item.icon;
+            const badgeLabel = formatAttentionBadge(badgeCountForNavItem(item.id, counts));
 
             return (
               <Link
@@ -71,9 +85,9 @@ export function SidebarNav({
                   )}
                 />
                 <span className="flex-1 truncate">{item.title}</span>
-                {badge > 0 && (
-                  <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                    {badge > 99 ? "99+" : badge}
+                {badgeLabel && (
+                  <span className={NAV_ATTENTION_BADGE_CLASS} aria-label={`${badgeLabel} need attention`}>
+                    {badgeLabel}
                   </span>
                 )}
               </Link>

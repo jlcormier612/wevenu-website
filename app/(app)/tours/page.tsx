@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { TourList } from "@/components/tours/tour-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { markVenueToursSeen } from "@/lib/navigation/attention-service";
 import { getTourAppointments, getTourSettings } from "@/lib/tours/service";
 import { listUnresolvedProtectionRequests } from "@/lib/tours/protection";
 import { getCurrentUserRole } from "@/lib/venue/service";
@@ -21,6 +22,10 @@ export default async function ToursPage() {
     listUnresolvedProtectionRequests(),
     getCurrentUserRole(),
   ]);
+
+  // Staff opened Tours — clear unseen tour appointment attention (protection
+  // follow-ups remain until resolved).
+  void markVenueToursSeen();
 
   const upcoming = appointments.filter((a) => a.status !== "cancelled" && a.status !== "completed" && a.status !== "no_show" && new Date(a.scheduledAt) >= new Date());
   const past     = appointments.filter((a) => a.status === "completed" || a.status === "no_show" || (a.status !== "cancelled" && new Date(a.scheduledAt) < new Date()));

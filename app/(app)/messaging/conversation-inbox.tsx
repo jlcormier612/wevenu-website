@@ -13,6 +13,7 @@ import { Filter, Paperclip, Search, X } from "lucide-react";
 import {
   getConversationInboxPageAction,
   getInboxFilterEventLabelAction,
+  resolveInboxCategoryAction,
   searchInboxFilterEventsAction,
 } from "@/app/(app)/messaging/actions";
 import { CHANNEL_META, ConversationThread } from "@/components/conversations/conversation-thread";
@@ -37,6 +38,11 @@ import {
 } from "@/lib/conversations/inbox-filters";
 import { formatInboxListEventCue } from "@/lib/conversations/inbox-header";
 import type { ConversationMessagePreview, ConversationSummary } from "@/lib/conversations/types";
+import {
+  INBOX_CATEGORY_OPTIONS,
+  inboxRelationshipParam,
+  type InboxCategory,
+} from "@/lib/navigation/attention";
 import type { StaffMember } from "@/lib/team/types";
 
 type InboxEventOption = {
@@ -112,7 +118,11 @@ function ConversationRow({
         )}
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="rounded-full bg-muted px-1.5 py-0.5 font-medium">
-            {conversation.clientId ? "Booking" : "Lead"}
+            {conversation.conversationKind === "venue_vendor"
+              || conversation.conversationKind === "couple_vendor"
+              || conversation.conversationKind === "couple_vendor_inquiry"
+              ? "Vendor"
+              : conversation.clientId ? "Client" : "Lead"}
           </span>
           {ChannelIcon && <ChannelIcon className="h-3 w-3" aria-hidden />}
           {conversation.hasAttachments && (
@@ -171,10 +181,28 @@ export function ConversationInbox({
   const [search, setSearch] = React.useState("");
   const [searchDebounced, setSearchDebounced] = React.useState("");
   const [filters, setFilters] = React.useState<InboxFilterState>(defaultInboxFilters);
+  const [category, setCategory] = React.useState<InboxCategory>("leads");
   const [eventSearch, setEventSearch] = React.useState("");
   const [eventSearchResults, setEventSearchResults] = React.useState<InboxEventOption[]>([]);
   const [eventSearchPending, setEventSearchPending] = React.useState(false);
   const [selectedEventLabel, setSelectedEventLabel] = React.useState<string | null>(null);
+  const deepLinkResolved = React.useRef<string | null>(null);
+
+  // Deep link: select the matching category for ?conversation=
+  React.useEffect(() => {
+    const fromUrl = searchParams.get("conversation");
+    if (!fromUrl || deepLinkResolved.current === fromUrl) return;
+    deepLinkResolved.current = fromUrl;
+    void resolveInboxCategoryAction(fromUrl).then((cat) => {
+      setCategory(cat);
+      setFilters((f) => ({ ...f, relationship: inboxRelationshipParam(cat) }));
+    });
+  }, [searchParams]);
+
+  function selectCategory(next: InboxCategory) {
+    setCategory(next);
+    setFilters((f) => ({ ...f, relationship: inboxRelationshipParam(next) }));
+  }
 
   React.useEffect(() => {
     setNowMs(Date.now());
@@ -320,6 +348,7 @@ export function ConversationInbox({
   }
 
   function clearAllFilters() {
+    setCategory("leads");
     setFilters(defaultInboxFilters());
     setSearch("");
     setSearchDebounced("");
@@ -347,34 +376,61 @@ export function ConversationInbox({
         </Link>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, phone, or event…"
-            aria-label="Search inbox conversations"
-            className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((o) => !o)}
-          aria-expanded={filtersOpen}
-          className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs ${
-            filtersOpen || !inboxFiltersAreDefault(filters)
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-muted-foreground"
-          }`}
+      <div className="flex shrink-0 flex-col gap-2">
+        <div
+          role="tablist"
+          aria-label="Inbox category"
+          className="flex min-w-0 gap-1 rounded-lg border border-border bg-muted/30 p-1"
         >
-          <Filter className="h-3.5 w-3.5" /> Filters
-          {!inboxFiltersAreDefault(filters) && (
-            <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-              {chips.length}
-            </span>
-          )}
-        </button>
+          {INBOX_CATEGORY_OPTIONS.map((opt) => {
+            const selected = category === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => selectCategory(opt.value)}
+                className={`min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                  selected
+                    ? "bg-background text-heading shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email, phone, or event…"
+              aria-label="Search inbox conversations"
+              className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((o) => !o)}
+            aria-expanded={filtersOpen}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs ${
+              filtersOpen || !inboxFiltersAreDefault(filters)
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5" /> Filters
+            {!inboxFiltersAreDefault(filters) && (
+              <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {chips.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {chips.length > 0 && (
@@ -428,22 +484,13 @@ export function ConversationInbox({
             </fieldset>
 
             <fieldset className="space-y-2">
-              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Relationship</legend>
-              <select
-                aria-label="Filter by lead or booking"
-                value={filters.relationship}
-                onChange={(e) => setFilters((f) => ({ ...f, relationship: e.target.value as InboxFilterState["relationship"] }))}
-                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-              >
-                <option value="all">All</option>
-                <option value="leads">Leads</option>
-                <option value="bookings">Bookings</option>
-              </select>
+              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Booking stage</legend>
               <select
                 aria-label="Filter by booking stage"
                 value={filters.bookingStage}
                 onChange={(e) => setFilters((f) => ({ ...f, bookingStage: e.target.value }))}
                 className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
+                disabled={category !== "clients"}
               >
                 <option value={INBOX_FILTER_ALL}>Any stage</option>
                 <option value="package">Package</option>
@@ -452,6 +499,9 @@ export function ConversationInbox({
                 <option value="booked">Booked</option>
                 <option value="planning">Planning</option>
               </select>
+              <p className="text-[10px] text-muted-foreground">
+                Category is controlled above ({category === "leads" ? "Leads" : category === "clients" ? "Clients" : "Vendors"}).
+              </p>
             </fieldset>
 
             <fieldset className="space-y-2">

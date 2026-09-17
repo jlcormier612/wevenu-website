@@ -57,6 +57,48 @@ export async function getConversationComposeContextAction(
   return conversations.getConversationComposeContext(conversationId);
 }
 
+/** Resolve Inbox category for deep links (?conversation=). */
+export async function resolveInboxCategoryAction(
+  conversationId: string,
+): Promise<"leads" | "clients" | "vendors"> {
+  const { inboxCategoryFromConversation } = await import("@/lib/navigation/attention");
+  const { createClient } = await import("@/integrations/supabase/server");
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("conversations")
+    .select("conversation_kind, relationship_id")
+    .eq("id", conversationId)
+    .maybeSingle<{ conversation_kind: string | null; relationship_id: string | null }>();
+  if (!data) return "leads";
+  if (
+    data.conversation_kind === "venue_vendor"
+    || data.conversation_kind === "couple_vendor"
+    || data.conversation_kind === "couple_vendor_inquiry"
+  ) {
+    return "vendors";
+  }
+  if (!data.relationship_id) return "leads";
+  const [{ data: client }, { data: lead }] = await Promise.all([
+    supabase
+      .from("clients")
+      .select("id")
+      .eq("relationship_id", data.relationship_id)
+      .limit(1)
+      .maybeSingle<{ id: string }>(),
+    supabase
+      .from("leads")
+      .select("id")
+      .eq("relationship_id", data.relationship_id)
+      .limit(1)
+      .maybeSingle<{ id: string }>(),
+  ]);
+  return inboxCategoryFromConversation({
+    conversationKind: data.conversation_kind,
+    clientId: client?.id ?? null,
+    leadId: lead?.id ?? null,
+  });
+}
+
 export async function previewConversationSendAction(
   conversationId: string,
   body: string,

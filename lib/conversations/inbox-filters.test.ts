@@ -147,7 +147,7 @@ describe("toggleInboxEventType + chips", () => {
     };
     const chips = inboxActiveChips(state, { eventLabel: "Grace · Nov 11" });
     assert.ok(chips.some((c) => c.label === "Unread"));
-    assert.ok(chips.some((c) => c.label === "Bookings"));
+    assert.ok(!chips.some((c) => c.label === "Bookings" || c.label === "Clients"));
     assert.ok(chips.some((c) => c.label === "Portal"));
     assert.ok(chips.some((c) => c.label === "Wedding"));
     assert.ok(chips.some((c) => c.label === "This month"));

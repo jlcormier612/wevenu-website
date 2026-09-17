@@ -237,7 +237,7 @@ export type InboxPageQuery = {
   search?: string | null;
   unreadOnly?: boolean;
   needsResponseOnly?: boolean;
-  relationship?: "all" | "leads" | "bookings";
+  relationship?: "all" | "leads" | "bookings" | "clients" | "vendors";
   channel?: string | null;
   bookingStage?: string | null;
   assignedStaffId?: string | null;
@@ -266,6 +266,10 @@ export type InboxPageResult = {
 };
 
 function inboxPageRpcArgs(query: InboxPageQuery) {
+  const relationship =
+    query.relationship === "clients" ? "bookings"
+    : query.relationship === "vendors" ? "all" // vendors use a separate path
+    : (query.relationship ?? "all");
   return {
     p_limit: query.limit ?? 40,
     p_cursor_last_message_at: query.cursorLastMessageAt ?? null,
@@ -273,7 +277,7 @@ function inboxPageRpcArgs(query: InboxPageQuery) {
     p_search: query.search ?? null,
     p_unread_only: query.unreadOnly ?? false,
     p_needs_response_only: query.needsResponseOnly ?? false,
-    p_relationship: query.relationship ?? "all",
+    p_relationship: relationship,
     p_channel: query.channel ?? null,
     p_booking_stage: null, // applied in app via Booking Journey after enrich
     p_assigned_staff_id: query.unassignedOnly ? null : (query.assignedStaffId ?? null),
@@ -289,10 +293,212 @@ function inboxPageRpcArgs(query: InboxPageQuery) {
   };
 }
 
+/**
+ * Venue↔vendor conversations for the Inbox Vendors category.
+ * Distinct from venue_couple — never mixed into Leads/Clients.
+ */
+async function getVendorInboxPage(
+  client: DbClient,
+  query: InboxPageQuery,
+): Promise<InboxPageResult> {
+  const limit = query.limit ?? 40;
+  let q = client
+    .from("conversations")
+    .select(`
+      id,
+      venue_unread,
+      contact_unread,
+      last_message_at,
+      assigned_staff_id,
+      conversation_kind,
+      event_vendor_assignment_id,
+      vendor_relationship_id
+    `)
+    .eq("conversation_kind", "venue_vendor")
+    .order("last_message_at", { ascending: false, nullsFirst: false })
+    .limit(Math.min(100, (limit + 1) * 3));
+
+  if (query.unreadOnly) q = q.gt("venue_unread", 0);
+  if (query.assignedStaffId) q = q.eq("assigned_staff_id", query.assignedStaffId);
+  if (query.unassignedOnly) q = q.is("assigned_staff_id", null);
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  type VendorRow = {
+    id: string;
+    venue_unread: number;
+    contact_unread: number;
+    last_message_at: string | null;
+    assigned_staff_id: string | null;
+    conversation_kind: string;
+    event_vendor_assignment_id: string | null;
+    vendor_relationship_id: string | null;
+  };
+
+  let rows = (data ?? []) as VendorRow[];
+
+  if (query.cursorLastMessageAt && query.cursorId) {
+    const cursorAt = query.cursorLastMessageAt;
+    const cursorId = query.cursorId;
+    rows = rows.filter((r) => {
+      const at = r.last_message_at ?? "";
+      if (at < cursorAt) return true;
+      if (at === cursorAt && r.id < cursorId) return true;
+      return false;
+    });
+  }
+
+  const assignmentIds = [...new Set(rows.map((r) => r.event_vendor_assignment_id).filter(Boolean))] as string[];
+  const relationshipIds = [...new Set(rows.map((r) => r.vendor_relationship_id).filter(Boolean))] as string[];
+  const staffIds = [...new Set(rows.map((r) => r.assigned_staff_id).filter(Boolean))] as string[];
+
+  const nameByAssignment = new Map<string, string>();
+  const nameByRelationship = new Map<string, string>();
+  const staffNameById = new Map<string, string>();
+
+  await Promise.all([
+    assignmentIds.length
+      ? client
+          .from("event_vendor_assignments")
+          .select("id, vendors(business_name)")
+          .in("id", assignmentIds)
+          .then(({ data: aRows }) => {
+            for (const row of (aRows ?? []) as {
+              id: string;
+              vendors: { business_name: string | null } | { business_name: string | null }[] | null;
+            }[]) {
+              const v = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+              if (v?.business_name) nameByAssignment.set(row.id, v.business_name);
+            }
+          })
+      : Promise.resolve(),
+    relationshipIds.length
+      ? client
+          .from("venue_vendor_relationships")
+          .select("id, vendors(business_name)")
+          .in("id", relationshipIds)
+          .then(({ data: rRows }) => {
+            for (const row of (rRows ?? []) as {
+              id: string;
+              vendors: { business_name: string | null } | { business_name: string | null }[] | null;
+            }[]) {
+              const v = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+              if (v?.business_name) nameByRelationship.set(row.id, v.business_name);
+            }
+          })
+      : Promise.resolve(),
+    staffIds.length
+      ? client
+          .from("venue_staff")
+          .select("id, full_name")
+          .in("id", staffIds)
+          .then(({ data: sRows }) => {
+            for (const row of (sRows ?? []) as { id: string; full_name: string }[]) {
+              staffNameById.set(row.id, row.full_name);
+            }
+          })
+      : Promise.resolve(),
+  ]);
+
+  const search = (query.search ?? "").trim().toLowerCase();
+  if (search) {
+    rows = rows.filter((r) => {
+      const name =
+        (r.event_vendor_assignment_id && nameByAssignment.get(r.event_vendor_assignment_id))
+        || (r.vendor_relationship_id && nameByRelationship.get(r.vendor_relationship_id))
+        || "";
+      return name.toLowerCase().includes(search);
+    });
+  }
+
+  let conversations: ConversationSummary[] = rows.map((r) => {
+    const name =
+      (r.event_vendor_assignment_id && nameByAssignment.get(r.event_vendor_assignment_id))
+      || (r.vendor_relationship_id && nameByRelationship.get(r.vendor_relationship_id))
+      || "Vendor";
+    return {
+      id: r.id,
+      relationshipId: "",
+      displayName: name,
+      lastMessageAt: r.last_message_at,
+      venueUnread: r.venue_unread ?? 0,
+      contactUnread: r.contact_unread ?? 0,
+      assignedStaffId: r.assigned_staff_id,
+      assignedStaffName: r.assigned_staff_id
+        ? (staffNameById.get(r.assigned_staff_id) ?? null)
+        : null,
+      leadId: null,
+      clientId: null,
+      latestMessage: null,
+      latestMeaningfulMessage: null,
+      conversationKind: "venue_vendor",
+    };
+  });
+
+  if (conversations.length > 0) {
+    const ids = conversations.map((c) => c.id);
+    const { data: msgRows } = await client
+      .from("conversation_messages")
+      .select("conversation_id, body, sender_type, sent_at, channel")
+      .in("conversation_id", ids)
+      .order("sent_at", { ascending: false });
+    const latestById = new Map<string, ConversationMessagePreview>();
+    for (const m of (msgRows ?? []) as {
+      conversation_id: string;
+      body: string;
+      sender_type: ConversationMessagePreview["senderType"];
+      sent_at: string;
+      channel: ConversationMessagePreview["channel"];
+    }[]) {
+      if (latestById.has(m.conversation_id)) continue;
+      latestById.set(m.conversation_id, {
+        body: m.body,
+        senderType: m.sender_type,
+        sentAt: m.sent_at,
+        channel: m.channel,
+      });
+    }
+    conversations = conversations
+      .map((c) => {
+        const tip = latestById.get(c.id) ?? null;
+        return { ...c, latestMessage: tip, latestMeaningfulMessage: tip };
+      })
+      .filter((c) => c.latestMessage != null);
+
+    if (query.needsResponseOnly) {
+      const { conversationNeedsResponse } = await import("@/lib/conversations/inbox-attention");
+      conversations = conversations.filter((c) =>
+        conversationNeedsResponse(c.latestMeaningfulMessage),
+      );
+    }
+  }
+
+  conversations = await enrichInboxLatestMeaningful(client, conversations);
+
+  const hasMore = conversations.length > limit;
+  const page = conversations.slice(0, limit);
+  const last = page[page.length - 1];
+  const totalUnread = page.reduce((sum, c) => sum + (c.venueUnread || 0), 0);
+
+  return {
+    conversations: page,
+    totalUnread,
+    hasMore,
+    nextCursor: hasMore && last
+      ? { lastMessageAt: last.lastMessageAt, id: last.id, sortKey: null }
+      : null,
+  };
+}
+
 export async function getConversationInboxPage(
   client: DbClient,
   query: InboxPageQuery = {},
 ): Promise<InboxPageResult> {
+  if (query.relationship === "vendors") {
+    return getVendorInboxPage(client, query);
+  }
+
   const rpcArgs = inboxPageRpcArgs(query);
   const { data, error } = await client.rpc("get_conversation_inbox_page", rpcArgs);
   if (error) throw error;
@@ -337,6 +543,7 @@ export async function getConversationInboxPage(
       eventType: r.event_type ?? null,
       preferredDate: r.preferred_date ?? null,
       leadEventType: r.lead_event_type ?? null,
+      conversationKind: "venue_couple",
     };
   });
 

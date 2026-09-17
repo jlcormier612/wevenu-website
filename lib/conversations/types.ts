@@ -59,6 +59,8 @@ export type ConversationSummary = {
   hasAttachments?: boolean;
   /** Booking Journey stage key when enriched for filters/display. */
   bookingStage?: string | null;
+  /** Present for vendor-kind rows in the Inbox Vendors category. */
+  conversationKind?: ConversationKind | null;
 };
 
 export type ConversationMessageAttachment = {

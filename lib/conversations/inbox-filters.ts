@@ -8,7 +8,7 @@ import { EVENT_TYPES, eventTypeLabel } from "@/lib/event-types/canonical";
 export const INBOX_FILTER_ALL = "__all__";
 
 export type InboxAttention = "all" | "unread" | "needs_response";
-export type InboxRelationship = "all" | "leads" | "bookings";
+export type InboxRelationship = "all" | "leads" | "bookings" | "clients" | "vendors";
 
 export type InboxSort =
   | "recent"
@@ -157,7 +157,7 @@ export function resolveInboxEventDateRange(
 export function defaultInboxFilters(): InboxFilterState {
   return {
     attention: "all",
-    relationship: "all",
+    relationship: "leads",
     bookingStage: INBOX_FILTER_ALL,
     channel: INBOX_FILTER_ALL,
     assignment: { mode: "any" },
@@ -176,7 +176,7 @@ export function inboxFiltersAreDefault(state: InboxFilterState): boolean {
   const d = defaultInboxFilters();
   return (
     state.attention === d.attention
-    && state.relationship === d.relationship
+    // relationship is the top category toggle, not an advanced filter
     && state.bookingStage === d.bookingStage
     && state.channel === d.channel
     && state.assignment.mode === d.assignment.mode
@@ -237,8 +237,7 @@ export function inboxActiveChips(
   const chips: InboxActiveChip[] = [];
   if (state.attention === "unread") chips.push({ id: "attention", label: "Unread" });
   if (state.attention === "needs_response") chips.push({ id: "attention", label: "Needs response" });
-  if (state.relationship === "leads") chips.push({ id: "relationship", label: "Leads" });
-  if (state.relationship === "bookings") chips.push({ id: "relationship", label: "Bookings" });
+  // Relationship/category is owned by the top Leads/Clients/Vendors toggle — not a chip.
   if (state.bookingStage !== INBOX_FILTER_ALL) {
     chips.push({ id: "bookingStage", label: STAGE_LABELS[state.bookingStage] ?? state.bookingStage });
   }
@@ -356,7 +355,10 @@ export function inboxFiltersToQuery(
   return {
     unreadOnly: state.attention === "unread",
     needsResponseOnly: state.attention === "needs_response",
-    relationship: state.relationship,
+    relationship:
+      state.relationship === "clients" ? "bookings"
+      : state.relationship === "all" ? "all"
+      : state.relationship,
     channel: state.channel === INBOX_FILTER_ALL ? null : state.channel,
     bookingStage: state.bookingStage === INBOX_FILTER_ALL ? null : state.bookingStage,
     assignedStaffId,
