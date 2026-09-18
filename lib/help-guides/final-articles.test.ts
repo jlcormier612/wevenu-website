@@ -130,4 +130,34 @@ describe("Help & Guides final IA", () => {
     assert.match(sql, /You decide what "booked" means for your venue/);
     assert.doesNotMatch(sql, /client\/event workspace/);
   });
+
+  it("Guidance Library copy uses templates, not definitions, in the two package-difference articles", () => {
+    const inventory = FINAL_HELP_ARTICLES.find(
+      (a) => a.slug === "whats-the-difference-between-a-package-inventory-and-an-inventory-template",
+    );
+    const payment = FINAL_HELP_ARTICLES.find(
+      (a) => a.slug === "whats-the-difference-between-a-package-payment-schedule-and-payment",
+    );
+    assert.ok(inventory);
+    assert.ok(payment);
+    assert.match(inventory.body, /\*\*Library = reusable templates\.\*\*/);
+    assert.doesNotMatch(inventory.body, /\bdefinitions?\b/i);
+    assert.match(payment.body, /The Library holds reusable templates such as Packages/);
+    assert.match(
+      payment.body,
+      /changing a reusable Library template should not silently rewrite/,
+    );
+    assert.doesNotMatch(payment.body, /\bdefinitions?\b/i);
+
+    const sql = readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations/20261402200000_help_guidance_library_templates_copy.sql",
+      ),
+      "utf8",
+    );
+    assert.match(sql, /Library = reusable templates/);
+    assert.match(sql, /holds reusable templates such as Packages/);
+    assert.match(sql, /reusable Library template should not silently rewrite/);
+  });
 });

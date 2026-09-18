@@ -370,11 +370,11 @@ A Payment Schedule defines when payments are due and how the total is divided ov
 
 Payments are the actual financial activity associated with a booking.
 
-The Library holds reusable definitions such as Packages and payment-plan structures.
+The Library holds reusable templates such as Packages and payment-plan structures.
 
 The event/client record holds what was actually used for that relationship.
 
-That distinction matters because changing a reusable Library definition should not silently rewrite something your venue has already committed to a client.`,
+That distinction matters because changing a reusable Library template should not silently rewrite something your venue has already committed to a client.`,
   },
   {
     slug: "whats-the-difference-between-a-package-inventory-and-an-inventory-template",
@@ -392,7 +392,7 @@ You can organize those items into reusable templates so you don't have to build 
 
 The important mental model is:
 
-**Library = reusable definitions.**
+**Library = reusable templates.**
 
 **Event = what is actually being used for this event.**
 
