@@ -1,5 +1,5 @@
 -- Lead vs Client / Booking terminology: venue-centric definition.
--- Replaces internal "client/event workspace" language with the approved
+-- Replaces internal product/workspace language with the approved
 -- customer-facing copy. Contracts and payments remain separately tracked;
 -- "booked" is explicitly venue-defined.
 
