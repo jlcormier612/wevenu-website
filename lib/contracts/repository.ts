@@ -498,7 +498,7 @@ export async function updateContractContent(
     .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "client");
   const anyClientSigned = ((clientSigners ?? []) as { signed_at: string | null }[])
     .some((r) => r.signed_at != null);
-  if (anyClientSigned || existing.status === "signed") {
+  if (anyClientSigned) {
     return {
       ok: false,
       message:
