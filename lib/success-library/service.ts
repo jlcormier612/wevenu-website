@@ -115,6 +115,27 @@ export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]
   return areas;
 }
 
+function mapEditorialArticle(slug: string): SuccessLibraryArticle | null {
+  const article = PUBLISHABLE_HELP_ARTICLES.find((a) => a.slug === slug);
+  if (!article) return null;
+  return {
+    id: `editorial-${article.slug}`,
+    slug: article.slug,
+    title: article.title,
+    goalCategory: article.category,
+    whyItMatters: article.body,
+    whenToUse: "",
+    bestPractices: "",
+    commonMistakes: "",
+    relatedFeatures: [],
+    linkedGapKeys: [],
+    status: "published",
+    version: 1,
+    createdAt: "2026-08-29T00:00:00.000Z",
+    updatedAt: "2026-08-29T00:00:00.000Z",
+  };
+}
+
 export async function getPublishedArticleBySlug(slug: string): Promise<SuccessLibraryArticle | null> {
   if (isSupabaseConfigured) {
     const supabase = await createClient();
@@ -122,7 +143,7 @@ export async function getPublishedArticleBySlug(slug: string): Promise<SuccessLi
       .select(SELECT_COLUMNS).eq("slug", slug).eq("status", "published").maybeSingle<ArticleRow>();
     if (data) return mapArticle(data);
   }
-  return mapIntegrationGuide(slug);
+  return mapEditorialArticle(slug) ?? mapIntegrationGuide(slug);
 }
 
 /** Guided Setup §4.2 — one published article per gap key, for the Getting Started card's secondary "read more" link. Never the primary CTA — see the plan's "Luv is a companion, not documentation" rule. */
