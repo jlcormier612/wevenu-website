@@ -50,7 +50,7 @@ export function EnrollWorkflowButton({
         <label className="text-sm">
           <span className="ws-muted">Workflow</span>
           <select
-            className="mt-1 block min-w-[14rem] rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2"
+            className="mt-1 block min-w-[14rem] rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-foreground"
             value={workflowId}
             onChange={(e) => setWorkflowId(e.target.value)}
           >

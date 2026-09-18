@@ -230,7 +230,7 @@ export function CoupleNotificationBell({
                   <button
                     type="button"
                     onClick={() => void clearAll()}
-                    className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs text-[#8A837D] transition-colors hover:bg-white/70 hover:text-[#B45A5A]"
+                    className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs text-[#8A837D] transition-colors hover:bg-card/70 hover:text-[#B45A5A]"
                     aria-label="Clear all notifications"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -305,7 +305,7 @@ export function CoupleNotificationBell({
                                   e.stopPropagation();
                                   void clearOne(n.id, isUnread);
                                 }}
-                                className="rounded p-0.5 text-[#8A837D]/70 transition-colors hover:bg-white hover:text-[#B45A5A]"
+                                className="rounded p-0.5 text-[#8A837D]/70 transition-colors hover:bg-card hover:text-[#B45A5A]"
                                 aria-label="Clear notification"
                               >
                                 <Trash2 className="h-3 w-3" />

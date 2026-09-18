@@ -29,7 +29,7 @@ function badgeToneClass(
     case "healthy":
       return "bg-[color-mix(in_srgb,var(--soft-sage)_40%,var(--true-white))] text-[var(--forest-sage)]";
     case "needs_attention":
-      return "bg-[color-mix(in_srgb,var(--taupe-medium)_25%,var(--true-white))] text-[var(--forest-sage)]";
+      return "bg-[color-mix(in_srgb,var(--taupe-medium)_25%,var(--true-white))] text-foreground";
     case "at_risk":
       return "bg-[color-mix(in_srgb,var(--dusty-rose)_22%,var(--true-white))] text-[var(--dusty-rose)]";
     case "critical":
@@ -293,7 +293,7 @@ export function CustomerSuccessBoard({
                       <label className="mt-3 block text-[0.65rem] uppercase tracking-wider ws-muted">
                         Move to
                         <select
-                          className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-2 py-1.5 text-xs text-[var(--forest-sage)]"
+                          className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-2 py-1.5 text-xs text-foreground"
                           value={stage}
                           disabled={movingId === r.id}
                           onChange={(e) => {

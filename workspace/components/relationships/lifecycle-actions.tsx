@@ -175,7 +175,7 @@ export function LifecycleActions({
         <label className="text-sm">
           <span className="ws-eyebrow block mb-1">Plan</span>
           <select
-            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
             disabled={pending}
@@ -359,7 +359,7 @@ export function LifecycleActions({
           <label className="block text-sm">
             <span className="ws-muted">Title</span>
             <input
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
               placeholder="e.g. Follow up on walkthrough"
@@ -371,7 +371,7 @@ export function LifecycleActions({
               <span className="ws-muted">Due date</span>
               <input
                 type="date"
-                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
                 value={taskDue}
                 onChange={(e) => setTaskDue(e.target.value)}
                 disabled={ownerBusy}
@@ -380,7 +380,7 @@ export function LifecycleActions({
             <label className="block text-sm sm:col-span-1">
               <span className="ws-muted">Notes (optional)</span>
               <input
-                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
                 placeholder="Context for the assignee"
@@ -418,7 +418,7 @@ export function LifecycleActions({
           <label className="block text-sm">
             <span className="ws-muted">Subject</span>
             <input
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
               value={msgSubject}
               onChange={(e) => setMsgSubject(e.target.value)}
               disabled={ownerBusy}
@@ -428,7 +428,7 @@ export function LifecycleActions({
             <span className="ws-muted">Message</span>
             <textarea
               rows={8}
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed text-foreground"
               value={msgBody}
               onChange={(e) => setMsgBody(e.target.value)}
               disabled={ownerBusy}
@@ -469,7 +469,7 @@ export function LifecycleActions({
             <span className="ws-muted">Note</span>
             <textarea
               rows={5}
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed text-foreground"
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="Capture context for the team…"
@@ -511,7 +511,7 @@ export function LifecycleActions({
       ) : null}
 
       {message ? (
-        <p className="mt-3 text-sm text-[var(--forest-sage)]" role="status">
+        <p className="mt-3 text-sm text-foreground" role="status">
           {message}
         </p>
       ) : null}

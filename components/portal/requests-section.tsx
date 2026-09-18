@@ -172,7 +172,7 @@ function RequestDetailView({
             <>
               <textarea value={responseText} onChange={(e) => setResponseText(e.target.value)}
                 placeholder={detail.requestType === "selection" ? "Type your selection…" : "Your answer…"}
-                rows={3} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-white/80"
+                rows={3} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-card"
                 style={{ borderColor: `${ROSE}40` }} />
               <button type="button" disabled={submitting || !responseText.trim()} onClick={() => submit(responseText, null)}
                 className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-40" style={{ background: ROSE_DEEP }}>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -20,6 +21,29 @@ export const metadata: Metadata = { title: "Vendor sign in — Hello to Cheers" 
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ next?: string }> };
+
+/** Always-light brand surface — same contract as venue login. */
+const LIGHT_THEME_VARS = {
+  "--background": "var(--true-white)",
+  "--foreground": "var(--black)",
+  "--card": "var(--true-white)",
+  "--card-foreground": "var(--black)",
+  "--popover": "var(--true-white)",
+  "--popover-foreground": "var(--black)",
+  "--heading": "var(--forest-sage)",
+  "--muted": "var(--natural-cream)",
+  "--muted-foreground":
+    "color-mix(in oklch, var(--forest-sage) 80%, transparent)",
+  "--secondary": "var(--natural-cream)",
+  "--secondary-foreground": "var(--forest-sage)",
+  "--primary": "var(--heritage-sage)",
+  "--primary-foreground": "var(--true-white)",
+  "--accent": "var(--soft-sage)",
+  "--accent-foreground": "var(--forest-sage)",
+  "--border": "var(--taupe-light)",
+  "--input": "var(--taupe-light)",
+  "--ring": "var(--heritage-sage)",
+} as CSSProperties;
 
 /**
  * Vendor-only login. Uses the vendor auth cookie jar so a venue session in the
@@ -49,10 +73,18 @@ export default async function VendorLoginPage({ searchParams }: Props) {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-12">
+    <main
+      data-theme-lock="light"
+      className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
+      style={{
+        background:
+          "color-mix(in oklch, var(--linen), var(--taupe-dark) 45%)",
+        ...LIGHT_THEME_VARS,
+      }}
+    >
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex justify-center">
-          <Wordmark />
+          <Wordmark forceLight />
         </div>
         <Card>
           <CardHeader className="text-center space-y-1">

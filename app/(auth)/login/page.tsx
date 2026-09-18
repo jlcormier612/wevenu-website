@@ -31,7 +31,14 @@ const LIGHT_THEME_VARS = {
   "--popover": "var(--true-white)",
   "--popover-foreground": "var(--black)",
   "--heading": "var(--forest-sage)",
-  "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 70%, transparent)",
+  "--muted": "var(--natural-cream)",
+  "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 80%, transparent)",
+  "--secondary": "var(--natural-cream)",
+  "--secondary-foreground": "var(--forest-sage)",
+  "--primary": "var(--heritage-sage)",
+  "--primary-foreground": "var(--true-white)",
+  "--accent": "var(--soft-sage)",
+  "--accent-foreground": "var(--forest-sage)",
   "--border": "var(--taupe-light)",
   "--input": "var(--taupe-light)",
   "--ring": "var(--heritage-sage)",
@@ -46,6 +53,7 @@ export default async function LoginPage({ searchParams }: Props) {
 
   return (
     <main
+      data-theme-lock="light"
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
       style={{
         // Plain --linen — and even a --taupe-light mix, tried previously —

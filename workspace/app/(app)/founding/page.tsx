@@ -186,11 +186,11 @@ export default async function FounderDashboardPage() {
                 <li key={e.id} className="text-sm">
                   <Link
                     href={`/relationships/${e.relationshipId}`}
-                    className="font-medium text-[var(--forest-sage)] hover:underline"
+                    className="font-medium text-foreground hover:underline"
                   >
                     {e.venueName}
                   </Link>
-                  <p className="mt-0.5 text-[var(--forest-sage)]">{e.title}</p>
+                  <p className="mt-0.5 text-foreground">{e.title}</p>
                   <p className="ws-muted">{formatRelativeDay(e.occurredAt)}</p>
                 </li>
               ))}

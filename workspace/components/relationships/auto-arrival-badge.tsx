@@ -12,8 +12,8 @@ export function AutoArrivalBadge({
     <span
       className={`ml-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium tabular-nums leading-none ${
         active
-          ? "bg-[color-mix(in_srgb,var(--true-white)_88%,transparent)] text-[var(--forest-sage)]"
-          : "bg-[color-mix(in_srgb,var(--heritage-sage)_22%,var(--true-white))] text-[var(--forest-sage)]"
+          ? "bg-[color-mix(in_srgb,var(--true-white)_88%,transparent)] text-foreground"
+          : "bg-[color-mix(in_srgb,var(--heritage-sage)_22%,var(--true-white))] text-foreground"
       }`}
       title={`${count} new auto-arrival${count === 1 ? "" : "s"}`}
       aria-label={`${count} new`}

@@ -243,7 +243,7 @@ export default async function CustomerSuccessPage({
             className={
               view === "pipeline"
                 ? "rounded-sm bg-[var(--soft-sage)]/50 px-3 py-1.5 text-sm"
-                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-[var(--forest-sage)]"
+                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-foreground"
             }
           >
             Pipeline
@@ -253,7 +253,7 @@ export default async function CustomerSuccessPage({
             className={
               view === "list"
                 ? "rounded-sm bg-[var(--soft-sage)]/50 px-3 py-1.5 text-sm"
-                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-[var(--forest-sage)]"
+                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-foreground"
             }
           >
             List

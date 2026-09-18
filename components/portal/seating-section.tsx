@@ -1295,7 +1295,7 @@ export default function SeatingSection({ token }: { token: string }) {
           <svg
             viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
             style={{ width: "100%", maxWidth: canvasWidth, height: "auto" }}
-            className="bg-white border border-border rounded-lg"
+            className="bg-card border border-border rounded-lg"
             onClick={() => setSelectedTableId(null)}
           >
             {data.floorPlan.backgroundImageUrl && (

@@ -1472,7 +1472,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                     heroFraction={0.38}
                   />
                   {isSelected && (
-                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white/90 flex items-center justify-center shadow">
+                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-card/90 flex items-center justify-center shadow">
                       <Check className="h-3 w-3 text-foreground" />
                     </div>
                   )}
@@ -1531,7 +1531,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                 const isActive = !hasCustomColors && cs.id === site.colorStoryId;
                 return (
                   <button key={cs.id} type="button" onClick={() => applyColorStory(cs)}
-                    className={`rounded-xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${isActive ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
+                    className={`rounded-xl overflow-hidden text-left bg-card border transition-all hover:scale-[1.01] ${isActive ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
                     <div className="h-9">
                       <ColorStoryPreview colorStory={cs} />
                     </div>

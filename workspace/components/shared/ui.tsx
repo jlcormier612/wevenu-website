@@ -98,8 +98,8 @@ export function StatusPill({
   const tones = {
     neutral: "bg-[var(--soft-sage)]/35 text-[var(--forest-sage)]",
     good: "bg-[var(--soft-sage)]/55 text-[var(--forest-sage)]",
-    warn: "bg-[var(--dusty-rose)]/35 text-[var(--forest-sage)]",
-    muted: "bg-[var(--taupe-light)]/60 text-[var(--forest-sage)]",
+    warn: "bg-[var(--dusty-rose)]/35 text-foreground",
+    muted: "bg-[var(--taupe-light)]/60 text-foreground",
   };
   return (
     <span
@@ -130,7 +130,7 @@ export function RelationshipLink({
       href={href ?? `/relationships/${id}`}
       className="group block rounded-sm py-1"
     >
-      <span className="font-medium text-[var(--forest-sage)] group-hover:text-[var(--heritage-sage)]">
+      <span className="font-medium text-foreground group-hover:text-[var(--heritage-sage)]">
         {name}
       </span>
       {subtitle ? <span className="mt-0.5 block text-sm ws-muted">{subtitle}</span> : null}

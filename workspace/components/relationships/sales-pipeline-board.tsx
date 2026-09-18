@@ -130,7 +130,7 @@ export function SalesPipelineBoard({
                       <label className="mt-3 block text-[0.65rem] uppercase tracking-wider ws-muted">
                         Move to
                         <select
-                          className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-2 py-1.5 text-xs text-[var(--forest-sage)]"
+                          className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-2 py-1.5 text-xs text-foreground"
                           value={stage}
                           disabled={movingId === r.id}
                           onChange={(e) => {

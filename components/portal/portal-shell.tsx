@@ -274,7 +274,7 @@ function PlanningJourney({ du }: { du: number | null }) {
                             ? ROSE
                             : isPast
                               ? SAGE
-                              : "#DED6CA",
+                              : "var(--border)",
                         boxShadow: isCurrent ? `0 0 0 4px ${ROSE}28` : "none",
                       }}
                       aria-hidden
@@ -298,7 +298,7 @@ function PlanningJourney({ du }: { du: number | null }) {
                   {i < model.steps.length - 1 && (
                     <div
                       className="flex-1 h-0.5 mt-[6px] min-w-[6px]"
-                      style={{ background: isPast ? SAGE : "#DED6CA" }}
+                      style={{ background: isPast ? SAGE : "var(--border)" }}
                       aria-hidden
                     />
                   )}
@@ -598,7 +598,7 @@ function WeddingJourneySection({ guestStats }: { guestStats: GuestStats | null }
             <div key={m.key} className={`flex items-start gap-4 ${!done && !isNext ? "opacity-50" : ""}`}>
               <div className="h-7 w-7 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5"
                 style={{
-                  borderColor: done ? SAGE : isNext ? ROSE : "#DED6CA",
+                  borderColor: done ? SAGE : isNext ? ROSE : "var(--border)",
                   background: done ? SAGE : isNext ? `${ROSE}12` : "white",
                 }}>
                 {done
@@ -794,7 +794,7 @@ function FeedbackFlow({
                 <label className="text-xs font-medium text-heading block mb-1.5">What did you love most?</label>
                 <textarea value={lovedMost} onChange={e => setLovedMost(e.target.value)}
                   placeholder="The ceremony space, our coordinator, the little details..."
-                  rows={3} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-white/80"
+                  rows={3} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-card"
                   style={{ borderColor: `${ROSE}40` }} />
               </div>
               <div>
@@ -804,10 +804,10 @@ function FeedbackFlow({
                 </label>
                 <textarea value={couldImprove} onChange={e => setCouldImprove(e.target.value)}
                   placeholder="Even the smallest things help us improve..."
-                  rows={2} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-white/80"
+                  rows={2} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-card"
                   style={{ borderColor: `${ROSE}40` }} />
               </div>
-              <div className="flex items-center justify-between rounded-xl border p-3.5 bg-white/50"
+              <div className="flex items-center justify-between rounded-xl border p-3.5 bg-card/50"
                 style={{ borderColor: `${ROSE}30` }}>
                 <p className="text-sm font-medium text-heading">Would you recommend {venueName}?</p>
                 <div className="flex gap-2">
@@ -864,7 +864,7 @@ function FeedbackFlow({
         {/* ── Step 3: Hello to Cheers platform feedback (separate — never to venue) ── */}
         {step === "step3" && (
           <>
-            <div className="rounded-xl border p-4 space-y-4 bg-white">
+            <div className="rounded-xl border p-4 space-y-4 bg-card">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
                   Just for the Hello to Cheers team
@@ -1540,7 +1540,7 @@ function WeddingDayPortal({
             {entries.map((e, i) => {
               const isFirst = i === 0;
               return (
-                <div key={e.id} className={`flex items-start gap-3 px-5 py-3 ${isFirst ? "bg-white" : ""}`}>
+                <div key={e.id} className={`flex items-start gap-3 px-5 py-3 ${isFirst ? "bg-card" : ""}`}>
                   <div className="shrink-0 w-14 text-right pt-0.5">
                     <p className="text-xs font-semibold" style={{ color: isFirst ? ROSE_DEEP : "#A09690" }}>
                       {fmtPortalTime(e.entryTime)}
@@ -1548,7 +1548,7 @@ function WeddingDayPortal({
                   </div>
                   <div className="shrink-0 mt-1.5">
                     <div className="h-2.5 w-2.5 rounded-full"
-                      style={{ background: isFirst ? ROSE : "#DED6CA" }} />
+                      style={{ background: isFirst ? ROSE : "var(--border)" }} />
                   </div>
                   <p className={`text-sm leading-snug ${isFirst ? "font-semibold text-heading" : "text-muted-foreground"}`}>
                     {e.title}
@@ -1570,7 +1570,7 @@ function WeddingDayPortal({
           <div className="divide-y divide-border/40">
             {weddingDayTasks.map(t => (
               <div key={t.id} className="flex items-center gap-3 px-5 py-3">
-                <div className="h-4 w-4 rounded border-2 shrink-0" style={{ borderColor: "#DED6CA" }} />
+                <div className="h-4 w-4 rounded border-2 shrink-0" style={{ borderColor: "var(--border)" }} />
                 <p className="text-sm text-heading">{t.title}</p>
               </div>
             ))}
@@ -1680,7 +1680,7 @@ function WeddingDaySection({
             {finalDetailsTasks.map(t => (
               <div key={t.id} className="flex items-center gap-3 px-5 py-3">
                 <div className="h-4 w-4 rounded border-2 shrink-0"
-                  style={{ borderColor: t.status === "complete" ? SAGE : "#DED6CA",
+                  style={{ borderColor: t.status === "complete" ? SAGE : "var(--border)",
                            background: t.status === "complete" ? SAGE : "white" }}>
                   {t.status === "complete" && <Check className="h-3 w-3 text-white" />}
                 </div>
@@ -3977,7 +3977,7 @@ function OurStorySection({
                 <div className="relative inline-block">
                   <img src={entryMediaUrl} alt="" className="rounded-xl h-28 w-28 object-cover" />
                   <button type="button" onClick={() => { setEntryMediaId(null); setEntryMediaUrl(null); }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-border flex items-center justify-center text-[10px] text-muted-foreground hover:text-heading shadow-sm">
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center text-[10px] text-muted-foreground hover:text-heading shadow-sm">
                     ×
                   </button>
                 </div>
@@ -4688,7 +4688,7 @@ export function PortalShell({
           <p className="font-heading text-xl text-[var(--forest-sage)]">
             Preparing your workspace
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_70%,transparent)]">
+          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_80%,transparent)]">
             We&apos;re confirming a few required documents. Refresh if this
             takes too long, or contact your venue for help.
           </p>
@@ -4742,7 +4742,7 @@ export function PortalShell({
     >
 
       {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#DED6CA]">
+      <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border">
         {/* Venue + couple identity */}
         <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">

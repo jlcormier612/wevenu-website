@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 
 import { productAppBaseUrl } from "@shared/email";
@@ -6,6 +7,31 @@ import { getEnrollmentByActivationToken } from "@shared/product-account";
 import { ActivateAccountForm } from "@/components/activate/activate-account-form";
 
 export const metadata = { title: "Let's get you started" };
+
+/**
+ * Always-light brand surface (same contract as venue login / welcome).
+ * next-themes may put `.dark` on <html> from system preference; re-pin
+ * semantic + brand surface tokens so activation never inherits dark-mode
+ * remaps of --warm-gray / card ink that collapse contrast.
+ */
+const LIGHT_THEME_VARS = {
+  "--warm-gray": "#f8f7f4",
+  "--header-linen": "#efe9e1",
+  "--natural-cream": "#fefefc",
+  "--true-white": "#ffffff",
+  "--background": "#f8f7f4",
+  "--foreground": "var(--forest-sage)",
+  "--heading": "var(--forest-sage)",
+  "--card": "#ffffff",
+  "--card-foreground": "var(--forest-sage)",
+  "--muted": "#fefefc",
+  "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 80%, transparent)",
+  "--border": "var(--taupe-medium)",
+  "--input": "var(--taupe-medium)",
+  "--ring": "var(--heritage-sage)",
+  "--primary": "var(--heritage-sage)",
+  "--primary-foreground": "#ffffff",
+} as CSSProperties;
 
 function ActivationErrorPanel({
   title,
@@ -17,10 +43,16 @@ function ActivationErrorPanel({
   showLogin?: boolean;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--warm-gray)] px-6">
+    <div
+      data-theme-lock="light"
+      className="flex min-h-screen items-center justify-center bg-[var(--warm-gray)] px-6"
+      style={LIGHT_THEME_VARS}
+    >
       <div className="ws-panel ws-enter w-full max-w-md p-8 md:p-10">
         <p className="ws-eyebrow">Hello to Cheers</p>
-        <h1 className="mt-3 font-heading text-3xl tracking-tight">{title}</h1>
+        <h1 className="mt-3 font-heading text-3xl tracking-tight text-heading">
+          {title}
+        </h1>
         <p className="mt-3 text-sm leading-relaxed ws-muted" role="alert">
           {message}
         </p>
@@ -92,10 +124,14 @@ export default async function ActivateAccountPage({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--warm-gray)] px-6">
+    <div
+      data-theme-lock="light"
+      className="flex min-h-screen items-center justify-center bg-[var(--warm-gray)] px-6"
+      style={LIGHT_THEME_VARS}
+    >
       <div className="ws-panel ws-enter w-full max-w-md p-8 md:p-10">
         <p className="ws-eyebrow">Hello to Cheers</p>
-        <h1 className="mt-3 font-heading text-4xl tracking-tight">
+        <h1 className="mt-3 font-heading text-4xl tracking-tight text-heading">
           Let&apos;s get you started
         </h1>
         <p className="mt-3 text-[1.05rem] leading-relaxed ws-muted">

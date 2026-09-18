@@ -37,7 +37,7 @@ export function InviteTeamForm() {
           name="name"
           required
           placeholder="Alex Morgan"
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         />
       </label>
       <label className="block text-sm">
@@ -47,7 +47,7 @@ export function InviteTeamForm() {
           type="email"
           required
           placeholder="alex@hellotocheers.com"
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         />
       </label>
       <label className="block text-sm sm:col-span-2">
@@ -55,7 +55,7 @@ export function InviteTeamForm() {
         <select
           name="role"
           defaultValue="viewer"
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         >
           {TEAM_ROLES.map((r) => (
             <option key={r} value={r}>

@@ -101,7 +101,8 @@
   --secondary: var(--natural-cream);
   --secondary-foreground: var(--forest-sage);
   --muted: var(--natural-cream);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 70%, transparent);
+  /* 82% keeps muted secondary while meeting WCAG AA for helper/placeholder copy */
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 82%, transparent);
   --accent: var(--soft-sage);
   --accent-foreground: var(--forest-sage);
   --destructive: var(--dusty-rose);
@@ -201,7 +202,7 @@ html:has(.htc-staff) {
   --popover: var(--true-white);
   --popover-foreground: var(--forest-sage);
   --muted: var(--natural-cream);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 68%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 80%, transparent);
   --secondary: var(--natural-cream);
   --secondary-foreground: var(--forest-sage);
   --border: var(--taupe-medium);
@@ -235,11 +236,11 @@ html.dark:has(.htc-staff) {
   --popover: var(--heritage-sage);
   --popover-foreground: var(--true-white);
   --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 78%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
   --secondary: var(--heritage-sage);
   --secondary-foreground: var(--true-white);
-  --border: color-mix(in oklch, var(--true-white) 20%, transparent);
-  --input: color-mix(in oklch, var(--true-white) 24%, transparent);
+  --border: color-mix(in oklch, var(--true-white) 28%, transparent);
+  --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --primary: var(--soft-sage);
   --primary-foreground: var(--forest-sage);
   --ring: var(--soft-sage);
@@ -302,6 +303,15 @@ html:has(.htc-staff) [data-slot="select-trigger"] {
   border-radius: var(--radius-sm);
   --tw-ring-shadow: 0 0 #0000;
   box-shadow: none;
+  color: var(--foreground);
+}
+
+/* Dark staff: never inherit light-brand ink into translucent controls */
+html.dark:has(.htc-staff) [data-slot="input"],
+html.dark:has(.htc-staff) [data-slot="textarea"],
+html.dark:has(.htc-staff) [data-slot="select-trigger"] {
+  color: var(--foreground);
+  background-color: color-mix(in oklch, var(--true-white) 12%, transparent);
 }
 
 html:has(.htc-staff) [data-slot="input"]:focus-visible,
@@ -421,7 +431,7 @@ html:has(.htc-staff) [data-slot="table"] {
   --secondary: var(--heritage-sage);
   --secondary-foreground: var(--true-white);
   --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 78%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
   --accent: var(--heritage-sage);
   --accent-foreground: var(--true-white);
   --destructive: var(--dusty-rose);
@@ -432,8 +442,8 @@ html:has(.htc-staff) [data-slot="table"] {
   --warning-foreground: var(--forest-sage);
   --info: var(--soft-sage);
   --info-foreground: var(--forest-sage);
-  --border: color-mix(in oklch, var(--true-white) 20%, transparent);
-  --input: color-mix(in oklch, var(--true-white) 24%, transparent);
+  --border: color-mix(in oklch, var(--true-white) 28%, transparent);
+  --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --ring: var(--soft-sage);
 
   --chart-1: var(--soft-sage);
@@ -487,6 +497,17 @@ html:has(.htc-staff) [data-slot="table"] {
   h4 {
     @apply font-heading text-heading;
   }
+}
+
+/*
+ * Always-light brand locks (login / welcome). Keep control ink readable when
+ * html.dark is set from system preference.
+ */
+[data-theme-lock="light"] [data-slot="input"],
+[data-theme-lock="light"] [data-slot="textarea"],
+[data-theme-lock="light"] [data-slot="select-trigger"] {
+  color: var(--foreground);
+  background-color: transparent;
 }
 
 /* ---- Confetti animation (booking celebration) ----------------------------- */

@@ -113,7 +113,7 @@ export function SupportInboxList({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-[color-mix(in_oklch,var(--forest-sage)_65%,transparent)]">
-                  <span className="rounded-sm bg-[var(--header-linen)] px-1.5 py-0.5 font-medium capitalize text-[var(--forest-sage)]">
+                  <span className="rounded-sm bg-[var(--header-linen)] px-1.5 py-0.5 font-medium capitalize text-foreground">
                     {item.surface}
                   </span>
                   <span>{TYPE_LABELS[item.type] ?? item.type}</span>
@@ -126,7 +126,7 @@ export function SupportInboxList({
                     </>
                   ) : null}
                 </div>
-                <h2 className="font-heading text-lg text-[var(--forest-sage)]">
+                <h2 className="font-heading text-lg text-foreground">
                   {item.subject}
                 </h2>
                 <p className="text-sm text-[color-mix(in_oklch,var(--forest-sage)_80%,transparent)]">
@@ -149,7 +149,7 @@ export function SupportInboxList({
             </div>
 
             {item.body ? (
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-[var(--forest-sage)]">
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                 {item.body}
               </p>
             ) : null}
@@ -162,7 +162,7 @@ export function SupportInboxList({
               {item.relatedRelationshipId ? (
                 <Link
                   href={`/relationships/${item.relatedRelationshipId}`}
-                  className="underline decoration-dotted underline-offset-2 hover:text-[var(--forest-sage)]"
+                  className="underline decoration-dotted underline-offset-2 hover:text-foreground"
                 >
                   Related venue: {item.relatedVenueName || "View relationship"}
                 </Link>

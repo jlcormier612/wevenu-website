@@ -57,7 +57,7 @@ export function WelcomeBackVerifyControl({
       ? "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-2 py-1 text-[0.7rem] font-medium text-[var(--forest-sage)] disabled:opacity-60"
       : "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60";
   const followUpBtn =
-    "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60";
+    "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-foreground disabled:opacity-60";
 
   const actions = (
     <div className="flex flex-wrap gap-2">
@@ -148,7 +148,7 @@ export function WelcomeBackVerifyControl({
             type="button"
             disabled={pending}
             onClick={() => void onAction("needs_follow_up")}
-            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-3 py-1.5 text-xs font-medium text-[var(--forest-sage)] disabled:opacity-60"
+            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-60"
           >
             Needs Follow Up
           </button>

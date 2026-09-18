@@ -110,8 +110,8 @@ export function ActivateAccountForm({
       {relationshipId ? (
         <input type="hidden" name="relationshipId" value={relationshipId} />
       ) : null}
-      <div className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-light)_80%,transparent)] bg-[var(--warm-gray)]/40 px-4 py-3 text-sm">
-        <p className="font-medium text-[var(--forest-sage)]">{venueName}</p>
+      <div className="rounded-sm border border-border/60 bg-muted/60 px-4 py-3 text-sm">
+        <p className="font-medium text-foreground">{venueName}</p>
       </div>
       {state?.error ? (
         <p
@@ -129,7 +129,7 @@ export function ActivateAccountForm({
           readOnly
           autoComplete="username"
           aria-readonly="true"
-          className="mt-2 w-full cursor-default rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--warm-gray)]/50 px-3 py-2.5 text-sm text-[var(--forest-sage)] outline-none"
+          className="ws-control-muted mt-2 w-full cursor-default rounded-sm px-3 py-2.5 text-sm outline-none"
         />
       </label>
       <div>
@@ -145,12 +145,12 @@ export function ActivateAccountForm({
             minLength={ACTIVATE_PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             aria-describedby="activate-password-hint"
-            className="w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            className="ws-control w-full rounded-sm px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--forest-sage)]/55 hover:text-[var(--forest-sage)]"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             aria-label={activatePasswordToggleLabel(showPassword, "password")}
             tabIndex={-1}
           >
@@ -177,12 +177,12 @@ export function ActivateAccountForm({
             required
             minLength={ACTIVATE_PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
-            className="w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            className="ws-control w-full rounded-sm px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
           />
           <button
             type="button"
             onClick={() => setShowConfirm((v) => !v)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--forest-sage)]/55 hover:text-[var(--forest-sage)]"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             aria-label={activatePasswordToggleLabel(showConfirm, "confirm")}
             tabIndex={-1}
           >
@@ -194,7 +194,7 @@ export function ActivateAccountForm({
           </button>
         </div>
       </div>
-      <div className="flex items-start gap-3 text-sm leading-relaxed text-[var(--forest-sage)]/85">
+      <div className="flex items-start gap-3 text-sm leading-relaxed text-foreground">
         <input
           id="activate-legal-accepted"
           name="legalAccepted"
@@ -203,7 +203,7 @@ export function ActivateAccountForm({
           required
           disabled={pending}
           aria-labelledby="activate-legal-copy"
-          className="mt-1 size-4 shrink-0 rounded border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] accent-[var(--heritage-sage)]"
+          className="mt-1 size-4 shrink-0 rounded border-border accent-[var(--heritage-sage)]"
         />
         <span
           id="activate-legal-copy"
@@ -223,7 +223,7 @@ export function ActivateAccountForm({
             href={VENUE_TERMS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-[var(--forest-sage)]"
+            className="underline underline-offset-2 text-[var(--heritage-sage)] hover:text-foreground"
           >
             Terms of Service
           </a>{" "}
@@ -232,7 +232,7 @@ export function ActivateAccountForm({
             href={PRIVACY_POLICY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-[var(--forest-sage)]"
+            className="underline underline-offset-2 text-[var(--heritage-sage)] hover:text-foreground"
           >
             Privacy Policy
           </a>

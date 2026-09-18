@@ -14,7 +14,7 @@ export function ImpersonateBanner({
   return (
     <div className="border-b border-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_40%,transparent)] px-8 py-2.5">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-sm">
-        <p className="text-[var(--forest-sage)]">
+        <p className="text-foreground">
           Impersonating <span className="font-medium">{actingAs.name}</span>
           <span className="ws-muted">
             {" "}

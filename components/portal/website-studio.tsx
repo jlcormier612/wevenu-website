@@ -110,7 +110,7 @@ function PhonePreviewFrame({
 
 function collectionSwatch(c: CatalogCollection): string {
   return c.colorStories[0] ? swatchGradient(c.colorStories[0].tokens)
-    : `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
+    : `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "var(--border)"} 100%)`;
 }
 
 // Part 10 — what each role actually does in the accepted renderer. Verified
@@ -494,7 +494,7 @@ function SetupWizard({
           </h1>
         </div>
         {known.length > 0 && (
-          <div className="rounded-2xl bg-white/10 backdrop-blur p-4 space-y-3 text-left">
+          <div className="rounded-2xl bg-card/10 backdrop-blur p-4 space-y-3 text-left">
             <p className="text-white/70 text-[10px] font-semibold uppercase tracking-[0.2em]">Already waiting for you</p>
             <div className="space-y-2.5">
               {known.map((k, i) => (
@@ -507,7 +507,7 @@ function SetupWizard({
           </div>
         )}
         <button type="button" onClick={() => setStep("photo")}
-          className="w-full rounded-2xl py-4 text-base font-semibold bg-white hover:bg-white/90 transition-colors" style={{ color: "var(--venue-secondary)" }}>
+          className="w-full rounded-2xl py-4 text-base font-semibold bg-card hover:bg-card/90 transition-colors" style={{ color: "var(--venue-secondary)" }}>
           Let's get started
         </button>
         <button type="button" onClick={onComplete} className="text-white/50 text-sm hover:text-white/80 transition-colors">
@@ -664,7 +664,7 @@ function SetupWizard({
               setColorStoryId(c.colorStories[0].id);
             }
           }}
-          className={`relative rounded-2xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary shadow-md" : "border-border"}`}>
+          className={`relative rounded-2xl overflow-hidden text-left bg-card border transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary shadow-md" : "border-border"}`}>
           <div className="relative overflow-hidden" style={{ height: 320 }}>
             {/* Signature Color Story + Collection DNA fonts — not the
                 couple's currently selected Color/Typography — so each
@@ -680,7 +680,7 @@ function SetupWizard({
               heroFraction={0.38}
             />
             {isSelected && (
-              <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow border border-primary/30">
+              <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-card flex items-center justify-center shadow border border-primary/30">
                 <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />
               </div>
             )}
@@ -797,7 +797,7 @@ function SetupWizard({
           <div className="grid grid-cols-2 gap-3">
             {curated.map(cs => (
               <button key={cs.id} type="button" onClick={() => applyStory(cs.id, cs.tokens)}
-                className={`rounded-xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${colorStoryId === cs.id ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
+                className={`rounded-xl overflow-hidden text-left bg-card border transition-all hover:scale-[1.01] ${colorStoryId === cs.id ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
                 <div className="h-9">
                   <ColorStoryPreview colorStory={cs} />
                 </div>
@@ -869,7 +869,7 @@ function SetupWizard({
               <div className="h-[188px] shrink-0 overflow-hidden bg-[#FAF8F4]">
                 {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={188} naturalWidth={480} />}
               </div>
-              <div className="px-3 py-2.5 bg-white border-t border-black/5 shrink-0 min-h-[3.5rem]">
+              <div className="px-3 py-2.5 bg-card border-t border-black/5 shrink-0 min-h-[3.5rem]">
                 <p className="text-xs font-bold text-heading line-clamp-1">{p.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
               </div>

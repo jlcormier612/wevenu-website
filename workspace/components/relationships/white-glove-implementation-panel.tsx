@@ -201,7 +201,7 @@ export function WhiteGloveImplementationPanel({
             <label key={key} className="block text-sm">
               <span className="ws-eyebrow">{label}</span>
               <textarea
-                className="mt-1.5 min-h-[88px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm"
+                className="mt-1.5 min-h-[88px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm text-foreground"
                 value={assets[key] ?? ""}
                 disabled={!canEdit || pending}
                 onChange={(e) =>
@@ -217,7 +217,7 @@ export function WhiteGloveImplementationPanel({
       <section className="ws-panel p-6">
         <h2 className="font-heading text-xl">Internal notes</h2>
         <textarea
-          className="mt-3 min-h-[120px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm"
+          className="mt-3 min-h-[120px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm text-foreground"
           value={notes}
           disabled={!canEdit || pending}
           onChange={(e) => setNotes(e.target.value)}
@@ -236,7 +236,7 @@ export function WhiteGloveImplementationPanel({
       </section>
 
       {message ? (
-        <p className="text-sm text-[var(--forest-sage)]" role="status">
+        <p className="text-sm text-foreground" role="status">
           {message}
         </p>
       ) : null}

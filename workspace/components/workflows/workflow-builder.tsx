@@ -102,7 +102,7 @@ export function WorkflowBuilder({
         <label className="block text-sm">
           Name
           <input
-            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2"
+            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-foreground"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -110,7 +110,7 @@ export function WorkflowBuilder({
         <label className="block text-sm">
           Description
           <textarea
-            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2"
+            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-foreground"
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -128,7 +128,7 @@ export function WorkflowBuilder({
           <label className="block text-sm">
             Trigger
             <select
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-foreground"
               value={triggerType}
               onChange={(e) =>
                 setTriggerType(e.target.value as "manual" | "status_enter")
@@ -142,7 +142,7 @@ export function WorkflowBuilder({
             <label className="block text-sm">
               Status
               <select
-                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2"
+                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-foreground"
                 value={triggerStatus}
                 onChange={(e) =>
                   setTriggerStatus(e.target.value as typeof triggerStatus)

@@ -63,7 +63,7 @@ export function EnrollSequenceButton({
         <label className="text-sm">
           <span className="ws-muted">Sequence</span>
           <select
-            className="mt-1 block min-w-[14rem] rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2"
+            className="mt-1 block min-w-[14rem] rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-foreground"
             value={sequenceId}
             onChange={(e) => setSequenceId(e.target.value)}
           >
