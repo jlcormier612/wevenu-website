@@ -21,20 +21,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: article ? `${article.title} — ${HELP_GUIDES_TITLE}` : HELP_GUIDES_TITLE };
 }
 
-/** Render editorial Help copy: paragraphs + **bold** + simple bullet lines. */
+/** Render editorial Help copy: paragraphs + **bold** + ### headings + * / - bullets. */
 function HelpProse({ body }: { body: string }) {
   const blocks = body.trim().split(/\n\n+/);
   return (
     <div className="space-y-4 text-sm text-foreground leading-relaxed">
       {blocks.map((block, i) => {
         const lines = block.split("\n");
-        const isList = lines.every((l) => l.trim() === "" || l.trim().startsWith("* "));
+        const heading = block.trim().match(/^###\s+(.+)$/);
+        if (heading && lines.length === 1) {
+          return (
+            <h2 key={i} className="text-sm font-semibold text-foreground pt-2">
+              {heading[1]}
+            </h2>
+          );
+        }
+        const isList = lines.every(
+          (l) => l.trim() === "" || /^[-*]\s/.test(l.trim()),
+        );
         if (isList) {
           return (
             <ul key={i} className="list-disc pl-5 space-y-1.5 text-muted-foreground">
-              {lines.filter((l) => l.trim().startsWith("* ")).map((l, j) => (
-                <li key={j}>{renderInline(l.trim().slice(2))}</li>
-              ))}
+              {lines
+                .filter((l) => /^[-*]\s/.test(l.trim()))
+                .map((l, j) => (
+                  <li key={j}>{renderInline(l.trim().replace(/^[-*]\s/, ""))}</li>
+                ))}
             </ul>
           );
         }

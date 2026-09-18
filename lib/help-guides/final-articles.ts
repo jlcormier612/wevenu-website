@@ -150,7 +150,29 @@ If you're waiting for someone to respond or complete something, that's what **Re
 
 Your Pipeline answers one simple question:
 
-**Where is this relationship in the sales process?**`,
+**Where is this relationship in the sales process?**
+
+### Customize your sales process
+
+Every venue can have a sales process that works a little differently.
+
+You can customize your Pipeline by creating and using Pipeline Templates.
+
+Go to:
+
+Your Relationships → Leads → Pipeline Templates
+
+From Pipeline Templates, you can create a pipeline that matches the way your venue sells.
+
+You can:
+- create your own stages
+- name the stages to match your process
+- arrange the stages in the order your team uses them
+- choose the reporting category that each stage belongs to
+
+Once you activate a template, that pipeline becomes the sales process your team uses for Leads.
+
+Your Pipeline Templates are about shaping the sales process to fit your venue. Your Leads then move through those stages as each relationship progresses.`,
   },
   {
     slug: "can-i-customize-my-pipeline-stages",
