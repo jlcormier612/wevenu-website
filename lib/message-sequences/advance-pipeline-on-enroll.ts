@@ -57,7 +57,8 @@ export function nextActivePipelineStage(
  * open sales_stage key forward. No wrap; never invent a stage past the last open.
  */
 export function nextOpenSalesStage(current: SalesStage): SalesStage | null {
-  const open = SALES_STAGES.filter((s) => s !== "booked" && s !== "lost");
+  if (current === "booked" || current === "lost") return null;
+  const open: SalesStage[] = SALES_STAGES.filter((s) => s !== "booked" && s !== "lost");
   const idx = open.indexOf(current);
   if (idx < 0 || idx >= open.length - 1) return null;
   const next = open[idx + 1]!;
