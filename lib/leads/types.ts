@@ -80,6 +80,11 @@ export type Lead = {
   lostReasonDetail: string | null;
   /** When the lead was marked Lost. */
   lostAt: string | null;
+  /**
+   * When venue staff last acknowledged this lead for nav attention.
+   * Null = unseen open-lead attention candidate.
+   */
+  venueSeenAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

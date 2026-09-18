@@ -195,6 +195,7 @@ type LeadRow = {
   lost_reason?: string | null;
   lost_reason_detail?: string | null;
   lost_at?: string | null;
+  venue_seen_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -253,6 +254,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     lostReason: r.lost_reason ?? null,
     lostReasonDetail: r.lost_reason_detail ?? null,
     lostAt: r.lost_at ?? null,
+    venueSeenAt: r.venue_seen_at ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }

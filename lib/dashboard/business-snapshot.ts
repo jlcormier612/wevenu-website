@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { clientListFilterHref } from "@/lib/clients/list-filters";
 import {
   isOpenLeadLifecycle,
+  isOpenLeadOpportunity,
   TERMINAL_LEAD_LIFECYCLE_STATES,
 } from "@/lib/leads/open-lifecycle";
 import { getCanonicalBookings } from "@/lib/metrics/booking";
@@ -45,10 +46,14 @@ export type OpenLeadRow = {
   sales_stage: string | null;
   estimated_budget: number | null;
   created_at: string | null;
-  exclude_from_business_reporting?: boolean | null;
+  /** Pipeline reporting category when resolved; preferred over sales_stage. */
+  canonical_stage?: string | null;
 };
 
-/** Pure: open leads = not booked/lost/won/cancelled, reporting-visible. */
+/**
+ * Pure: open leads = non-terminal pipeline reporting category (or sales_stage).
+ * Does not use exclude_from_business_reporting or client_id.
+ */
 export function computeOpenLeadFlow(
   rows: OpenLeadRow[],
   monthStartIso: string,
@@ -63,8 +68,10 @@ export function computeOpenLeadFlow(
   let budgetsPresent = 0;
   let newThisMonth = 0;
   for (const r of rows) {
-    if (r.exclude_from_business_reporting) continue;
-    if (!isOpenLeadLifecycle(r.sales_stage)) continue;
+    if (!isOpenLeadOpportunity({
+      salesStage: r.sales_stage,
+      canonicalStage: r.canonical_stage,
+    })) continue;
     count += 1;
     if (r.estimated_budget != null && Number.isFinite(Number(r.estimated_budget))) {
       value += Number(r.estimated_budget);
@@ -191,11 +198,15 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
   const today = venueToday(venue.timezone);
   const monthStart = monthStartFromToday(today);
 
-  const [{ data: leadRows }, bookings, bookedValue, cashCollected, outstandingBalance] =
+  const [{ data: leadRows }, { data: stageRows }, bookings, bookedValue, cashCollected, outstandingBalance] =
     await Promise.all([
       supabase
         .from("leads")
-        .select("sales_stage, estimated_budget, created_at, exclude_from_business_reporting")
+        .select("sales_stage, estimated_budget, created_at, pipeline_stage_id")
+        .eq("venue_id", venue.id),
+      supabase
+        .from("pipeline_stages")
+        .select("id, canonical_stage")
         .eq("venue_id", venue.id),
       getCanonicalBookings(),
       getGrossBookedRevenue(),
@@ -203,7 +214,26 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
       getOutstandingBalance(),
     ]);
 
-  const leadFlow = computeOpenLeadFlow((leadRows ?? []) as OpenLeadRow[], monthStart);
+  const canonicalByStageId = new Map(
+    ((stageRows ?? []) as { id: string; canonical_stage: string }[]).map((s) => [
+      s.id,
+      s.canonical_stage,
+    ]),
+  );
+  const openRows: OpenLeadRow[] = ((leadRows ?? []) as {
+    sales_stage: string | null;
+    estimated_budget: number | null;
+    created_at: string | null;
+    pipeline_stage_id: string | null;
+  }[]).map((r) => ({
+    sales_stage: r.sales_stage,
+    estimated_budget: r.estimated_budget,
+    created_at: r.created_at,
+    canonical_stage: r.pipeline_stage_id
+      ? (canonicalByStageId.get(r.pipeline_stage_id) ?? null)
+      : null,
+  }));
+  const leadFlow = computeOpenLeadFlow(openRows, monthStart);
 
   let outstandingClientCount = 0;
   if ((outstandingBalance ?? 0) > 0 && bookings.length > 0) {

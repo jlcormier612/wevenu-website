@@ -26,6 +26,7 @@ import { getArticlesForGapKeys } from "@/lib/success-library/service";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
+import { isOpenLeadLifecycle, TERMINAL_LEAD_LIFECYCLE_STATES } from "@/lib/leads/open-lifecycle";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/leads/repository";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -102,6 +103,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     lostReason: null,
     lostReasonDetail: null,
     lostAt: null,
+    venueSeenAt: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -113,8 +115,6 @@ function embeddedName(row: EmbeddedLeadName): string {
 
 // ---- Client row types (dashboard queries) -----------------------------------
 
-
-const CLOSED = new Set(["booked", "lost", "won", "cancelled"]);
 
 function attentionReason(lead: Lead, today: string): string {
   if (lead.followUpDate && lead.followUpDate < today) {
@@ -227,7 +227,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const businessLeads = leads.filter((l) => !l.excludeFromBusinessReporting);
   const needsAttentionLeads = businessLeads.filter((l) => {
     const stage = l.salesStage ?? l.status;
-    if (CLOSED.has(stage)) return false;
+    if (!isOpenLeadLifecycle(stage)) return false;
     if (l.followUpDate && l.followUpDate < today) return true; // overdue follow-up
     if (
       stage === "new_inquiry" &&
@@ -245,7 +245,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // ---- Follow-ups Due --------------------------------------------------------
   // Leads with follow_up_date = today (not overdue — that goes in Needs Attention)
   const followupsDueAll = businessLeads.filter(
-    (l) => l.followUpDate === today && !CLOSED.has(l.salesStage ?? l.status),
+    (l) => l.followUpDate === today && isOpenLeadLifecycle(l.salesStage ?? l.status),
   );
   const followupsDue = followupsDueAll.slice(0, 8);
 
@@ -381,7 +381,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     supabase.from("leads")
       .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
       .eq("venue_id", venue.id)
-      .not("sales_stage", "in", "(booked,lost)")
+      .not("sales_stage", "in", `(${[...TERMINAL_LEAD_LIFECYCLE_STATES].join(",")})`)
       .order("commitment_score", { ascending: false })
       .limit(30),
   );
@@ -411,7 +411,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     upcomingTours,
     pipelineStages,
     totalLeads: businessLeads.length,
-    activeLeadCount: businessLeads.filter((l) => !CLOSED.has(l.salesStage ?? l.status)).length,
+    activeLeadCount: businessLeads.filter((l) => isOpenLeadLifecycle(l.salesStage ?? l.status)).length,
     newLeadCount: businessLeads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,

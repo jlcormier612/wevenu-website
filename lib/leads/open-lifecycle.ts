@@ -1,13 +1,21 @@
 /**
- * Canonical open-lead lifecycle — Dashboard Lead Flow and Leads attention.
+ * Canonical open-lead lifecycle — Dashboard Lead Flow and Leads open filter.
  *
- * OPEN = sales_stage NOT IN booked | lost | won | cancelled
+ * OPEN = current pipeline reporting category is not terminal.
+ * Terminal reporting categories: booked | lost | cancelled
+ * (sales_stage keys booked | lost | won | cancelled when no pipeline stage)
  *
- * A client row from commercial-only conversion does NOT close a lead.
+ * Does NOT use:
+ * - client_id / whether a client row exists
+ * - Inbox conversation ownership
+ * - exclude_from_business_reporting (Reporting metrics only — not Lead Flow)
  *
  * Inbox Leads vs Clients does NOT use this module — see
  * lib/conversations/inbox-ownership.ts (conversation owner/source).
  */
+
+import { transitionKindForCanonical } from "@/lib/leads/pipeline-stage-transition";
+import type { CanonicalStage } from "@/lib/pipeline-templates/types";
 
 export const TERMINAL_LEAD_LIFECYCLE_STATES = new Set([
   "booked",
@@ -16,7 +24,34 @@ export const TERMINAL_LEAD_LIFECYCLE_STATES = new Set([
   "cancelled",
 ]);
 
+/** sales_stage / legacy status key — terminal when booked/lost/won/cancelled. */
 export function isOpenLeadLifecycle(salesStage: string | null | undefined): boolean {
   const stage = (salesStage ?? "").toLowerCase();
   return !TERMINAL_LEAD_LIFECYCLE_STATES.has(stage);
+}
+
+/**
+ * Pipeline reporting category (canonical_stage) — terminal when booked/lost/cancelled.
+ * Custom venue stage *names* are never consulted; only the reporting category.
+ * `unmapped` stays open (still in the sales process).
+ */
+export function isOpenReportingCategory(
+  canonical: CanonicalStage | string | null | undefined,
+): boolean {
+  if (canonical == null || canonical === "") return true;
+  return transitionKindForCanonical(canonical) === "normal";
+}
+
+/**
+ * Prefer pipeline reporting category when known; otherwise sales_stage.
+ * Shared by Dashboard Lead Flow and Leads `attention=open`.
+ */
+export function isOpenLeadOpportunity(opts: {
+  salesStage?: string | null;
+  canonicalStage?: CanonicalStage | string | null;
+}): boolean {
+  if (opts.canonicalStage != null && opts.canonicalStage !== "") {
+    return isOpenReportingCategory(opts.canonicalStage);
+  }
+  return isOpenLeadLifecycle(opts.salesStage);
 }

@@ -2,9 +2,12 @@
  * Classification of internal verification / E2E / release-readiness records.
  *
  * These records remain in the venue CRM so tests can keep using them.
- * Customer-facing Reporting and dashboard snapshot metrics exclude them via
- * `exclude_from_business_reporting`, which is stamped by this classifier
- * (SQL trigger + this module — keep the two in sync).
+ * Customer-facing Reporting excludes them via `exclude_from_business_reporting`,
+ * which is stamped by this classifier (SQL trigger + this module — keep the
+ * two in sync).
+ *
+ * Dashboard Lead Flow / Leads open filter do NOT use this flag — open means
+ * non-terminal pipeline reporting category (see lib/leads/open-lifecycle.ts).
  *
  * This is origin classification, not a UI string-hide. Do not use this to
  * guess at real customer names. Real dogfood (e.g. Colby Yagnesak & Nicole)

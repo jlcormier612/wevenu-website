@@ -38,7 +38,7 @@ import {
   leadDisplayName,
   statusLabel,
 } from "@/lib/leads/constants";
-import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
+import { isOpenLeadOpportunity } from "@/lib/leads/open-lifecycle";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
 import { normalizeEventType } from "@/lib/event-types/canonical";
 import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
@@ -88,7 +88,7 @@ export function LeadList({
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
-  initialAttention?: "stale_contact" | "open" | "active" | null;
+  initialAttention?: "stale_contact" | "open" | "active" | "unseen" | null;
   /** Active Pipeline Template stages — when present, Stage chips use venue names. */
   venueStages?: PipelineStage[] | null;
 }) {
@@ -99,8 +99,11 @@ export function LeadList({
   const [sort, setSort] = React.useState<SortKey>(
     initialAttention === "stale_contact" ? "last_contacted" : "newest",
   );
-  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open">(
-    initialAttention === "stale_contact" ? "stale_contact" : initialAttention === "open" ? "open" : "all",
+  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open" | "unseen">(
+    initialAttention === "stale_contact" ? "stale_contact"
+      : initialAttention === "open" ? "open"
+      : initialAttention === "unseen" ? "unseen"
+      : "all",
   );
 
   function venueStageIdFor(lead: Lead): string | null {
@@ -109,6 +112,21 @@ export function LeadList({
       pipelineStageId: lead.pipelineStageId,
       salesStage: (lead.salesStage ?? lead.status) as SalesStage,
     });
+  }
+
+  /** Same open definition as Dashboard Lead Flow — reporting category, not exclude flag. */
+  function leadIsOpenOpportunity(lead: Lead): boolean {
+    if (usingVenueStages && venueStages?.length) {
+      const id = venueStageIdFor(lead);
+      const stage = venueStages.find((s) => s.id === id);
+      if (stage) {
+        return isOpenLeadOpportunity({
+          salesStage: lead.salesStage ?? lead.status,
+          canonicalStage: stage.canonicalStage,
+        });
+      }
+    }
+    return isOpenLeadOpportunity({ salesStage: lead.salesStage ?? lead.status });
   }
 
   function stageDisplayName(lead: Lead): string {
@@ -137,9 +155,9 @@ export function LeadList({
         if (normalizeEventType(l.eventType) !== eventTypeFilter) return false;
       }
       if (attentionFilter === "stale_contact") {
-        // Same closed set + opportunity-age rule as generate_venue_recommendations
+        // Same open-lifecycle + opportunity-age rule as generate_venue_recommendations
         // (coalesce last contact → inquiry → created; never treat null contact as ancient).
-        if (["lost", "booked", "won", "cancelled"].includes(stage)) {
+        if (!leadIsOpenOpportunity(l)) {
           return false;
         }
         if (l.excludeFromBusinessReporting) return false;
@@ -152,11 +170,13 @@ export function LeadList({
         }
       }
       if (attentionFilter === "open") {
-        // Same open-lead definition as Dashboard Lead Flow (terminal lifecycle only).
-        if (!isOpenLeadLifecycle(stage)) {
-          return false;
-        }
-        if (l.excludeFromBusinessReporting) return false;
+        // Same open-lead definition as Dashboard Lead Flow (non-terminal reporting category).
+        if (!leadIsOpenOpportunity(l)) return false;
+      }
+      if (attentionFilter === "unseen") {
+        // Same population as Leads nav attention badge (open + venue_seen_at null).
+        if (l.venueSeenAt) return false;
+        if (!leadIsOpenOpportunity(l)) return false;
       }
       if (!q) return true;
       return [
@@ -170,10 +190,10 @@ export function LeadList({
   const statusCounts = React.useMemo(() => {
     // When "open" attention is active, chip counts must match the open population
     // (same terminal set as Dashboard Lead Flow) — not the full lead inventory.
-    const population = attentionFilter === "open"
+    const population = attentionFilter === "open" || attentionFilter === "unseen"
       ? leads.filter((l) => {
-        if (!isOpenLeadLifecycle(l.salesStage ?? l.status)) return false;
-        if (l.excludeFromBusinessReporting) return false;
+        if (!leadIsOpenOpportunity(l)) return false;
+        if (attentionFilter === "unseen" && l.venueSeenAt) return false;
         return true;
       })
       : leads;
@@ -203,10 +223,10 @@ export function LeadList({
     : [{ key: "all", label: "All" }, ...LEAD_STATUSES.map((s) => ({ key: s.value, label: s.label }))];
 
   const activeEventTypes = React.useMemo(() => {
-    const population = attentionFilter === "open"
+    const population = attentionFilter === "open" || attentionFilter === "unseen"
       ? leads.filter((l) => {
-        if (!isOpenLeadLifecycle(l.salesStage ?? l.status)) return false;
-        if (l.excludeFromBusinessReporting) return false;
+        if (!leadIsOpenOpportunity(l)) return false;
+        if (attentionFilter === "unseen" && l.venueSeenAt) return false;
         return true;
       })
       : leads;
@@ -243,6 +263,20 @@ export function LeadList({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
           <p className="text-foreground">
             Showing open leads — not booked, lost, won, or cancelled.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAttentionFilter("all")}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Show all leads
+          </button>
+        </div>
+      )}
+      {attentionFilter === "unseen" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
+          <p className="text-foreground">
+            Showing unseen open leads — same population as the Leads navigation badge.
           </p>
           <button
             type="button"

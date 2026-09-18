@@ -12,6 +12,7 @@ import {
   computeOpenLeadFlow,
   isOpenLeadLifecycle,
 } from "@/lib/dashboard/business-snapshot";
+import { isOpenLeadOpportunity, isOpenReportingCategory } from "@/lib/leads/open-lifecycle";
 
 const root = path.join(import.meta.dirname, "../..");
 
@@ -20,7 +21,7 @@ function read(rel: string) {
 }
 
 describe("computeOpenLeadFlow / open lifecycle", () => {
-  it("counts open leads and estimated value; ignores terminal lifecycle states", () => {
+  it("counts all qualifying non-terminal leads including exclude_from_business_reporting", () => {
     const result = computeOpenLeadFlow(
       [
         { sales_stage: "new_inquiry", estimated_budget: 10_000, created_at: "2026-09-05T12:00:00Z" },
@@ -34,15 +35,57 @@ describe("computeOpenLeadFlow / open lifecycle", () => {
           sales_stage: "proposal_sent",
           estimated_budget: 2_000,
           created_at: "2026-09-11T12:00:00Z",
-          exclude_from_business_reporting: true,
         },
       ],
       "2026-09-01",
     );
-    assert.equal(result.count, 3);
-    assert.equal(result.value, 15_000);
-    assert.equal(result.budgetsPresent, 2);
-    assert.equal(result.newThisMonth, 2);
+    // new_inquiry + custom + tour + proposal = 4; terminals excluded; no exclude-flag gate
+    assert.equal(result.count, 4);
+    assert.equal(result.value, 17_000);
+    assert.equal(result.budgetsPresent, 3);
+    assert.equal(result.newThisMonth, 3);
+  });
+
+  it("uses pipeline reporting category over sales_stage when both present", () => {
+    const result = computeOpenLeadFlow(
+      [
+        // sales_stage says booked but reporting category is still proposal → open
+        {
+          sales_stage: "booked",
+          canonical_stage: "proposal",
+          estimated_budget: 4_000,
+          created_at: "2026-09-12T12:00:00Z",
+        },
+        // reporting category booked → terminal even if sales_stage looks open
+        {
+          sales_stage: "new_inquiry",
+          canonical_stage: "booked",
+          estimated_budget: 9_000,
+          created_at: "2026-09-12T12:00:00Z",
+        },
+        {
+          sales_stage: "enrolled_in_sequence",
+          canonical_stage: "decision",
+          estimated_budget: 1_000,
+          created_at: "2026-09-12T12:00:00Z",
+        },
+        {
+          sales_stage: "lost",
+          canonical_stage: "lost",
+          estimated_budget: 500,
+          created_at: "2026-09-12T12:00:00Z",
+        },
+        {
+          sales_stage: "tour_scheduled",
+          canonical_stage: "cancelled",
+          estimated_budget: 800,
+          created_at: "2026-09-12T12:00:00Z",
+        },
+      ],
+      "2026-09-01",
+    );
+    assert.equal(result.count, 2);
+    assert.equal(result.value, 5_000);
   });
 
   it("treats custom pipeline stage slugs as open when not terminal", () => {
@@ -51,6 +94,20 @@ describe("computeOpenLeadFlow / open lifecycle", () => {
     assert.equal(isOpenLeadLifecycle("booked"), false);
     assert.equal(isOpenLeadLifecycle("BOOKED"), false);
     assert.equal(isOpenLeadLifecycle("lost"), false);
+    assert.equal(isOpenReportingCategory("inquiry"), true);
+    assert.equal(isOpenReportingCategory("decision"), true);
+    assert.equal(isOpenReportingCategory("booked"), false);
+    assert.equal(isOpenReportingCategory("lost"), false);
+    assert.equal(isOpenReportingCategory("cancelled"), false);
+    assert.equal(isOpenReportingCategory("unmapped"), true);
+    assert.equal(
+      isOpenLeadOpportunity({ salesStage: "booked", canonicalStage: "tour" }),
+      true,
+    );
+    assert.equal(
+      isOpenLeadOpportunity({ salesStage: "new_inquiry", canonicalStage: "booked" }),
+      false,
+    );
   });
 
   it("does not hard-code Inquiry/Tour/Proposal in venue-facing card builders", () => {
@@ -58,6 +115,17 @@ describe("computeOpenLeadFlow / open lifecycle", () => {
     const cardBuilder = src.slice(src.indexOf("export function buildBusinessSnapshotCards"));
     assert.doesNotMatch(cardBuilder, /"Inquiry"|"Tour"|"Proposal"|"Decision"/);
     assert.doesNotMatch(cardBuilder, /active leads/i);
+  });
+
+  it("Lead Flow compute path does not gate on exclude_from_business_reporting or client_id", () => {
+    const snap = read("lib/dashboard/business-snapshot.ts");
+    const compute = snap.slice(
+      snap.indexOf("export function computeOpenLeadFlow"),
+      snap.indexOf("function formatUsd"),
+    );
+    assert.doesNotMatch(compute, /exclude_from_business_reporting/);
+    assert.doesNotMatch(compute, /client_id/);
+    assert.match(compute, /isOpenLeadOpportunity/);
   });
 });
 
@@ -157,7 +225,14 @@ describe("Dashboard Business Snapshot wiring", () => {
     const list = read("components/leads/lead-list.tsx");
     assert.match(leadsPage, /attention === "open"/);
     assert.match(list, /attentionFilter === "open"/);
-    assert.match(list, /isOpenLeadLifecycle/);
+    assert.match(list, /leadIsOpenOpportunity/);
+    assert.match(list, /isOpenLeadOpportunity/);
     assert.match(list, /from "@\/lib\/leads\/open-lifecycle"/);
+    // Open filter must not gate on reporting-exclusion (protected Sandbox personas stay open).
+    const openBlock = list.slice(
+      list.indexOf('if (attentionFilter === "open")'),
+      list.indexOf('if (attentionFilter === "unseen")'),
+    );
+    assert.doesNotMatch(openBlock, /excludeFromBusinessReporting/);
   });
 });

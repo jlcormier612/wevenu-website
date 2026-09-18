@@ -20,6 +20,7 @@ export default async function LeadsPage({ searchParams }: Props) {
     attention === "stale_contact" ? "stale_contact" as const
     : attention === "open" ? "open" as const
     : attention === "active" ? "open" as const
+    : attention === "unseen" ? "unseen" as const
     : null;
   const venueStages = activeTemplate?.stages?.length ? activeTemplate.stages : null;
   return (
