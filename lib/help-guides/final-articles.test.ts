@@ -131,6 +131,29 @@ describe("Help & Guides final IA", () => {
     assert.doesNotMatch(sql, /client\/event workspace/);
   });
 
+  it("Vendors article describes invite, portal ownership, and shared event context", () => {
+    const vendors = FINAL_HELP_ARTICLES.filter(
+      (a) => a.title === "How Do Vendors Work in Hello to Cheers?",
+    );
+    assert.equal(vendors.length, 1);
+    const body = vendors[0].body;
+    assert.match(body, /Vendors can be invited into Hello to Cheers/);
+    assert.match(body, /their own portal/);
+    assert.match(body, /Vendor = owns their information/);
+    assert.match(body, /when appropriate/);
+    assert.doesNotMatch(body, /three layers/);
+    assert.doesNotMatch(body, /\bdirectory\b/i);
+    assert.doesNotMatch(body, /system of record|domain model|synchronization/i);
+
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20261402300000_help_vendors_portal_guidance.sql"),
+      "utf8",
+    );
+    assert.match(sql, /how-do-vendors-work-in-hello-to-cheers/);
+    assert.match(sql, /Vendor = owns their information/);
+    assert.doesNotMatch(sql, /insert into public\.success_library_articles/);
+  });
+
   it("Guidance Library copy uses templates, not definitions, in the two package-difference articles", () => {
     const inventory = FINAL_HELP_ARTICLES.find(
       (a) => a.slug === "whats-the-difference-between-a-package-inventory-and-an-inventory-template",

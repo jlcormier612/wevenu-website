@@ -598,27 +598,21 @@ This keeps the Calendar from becoming a second task list full of noise.`,
     slug: "how-do-vendors-work-in-hello-to-cheers",
     title: "How Do Vendors Work in Hello to Cheers?",
     category: "Vendors",
-    body: `Hello to Cheers keeps the vendor relationship separate from a specific event.
+    body: `Vendors can be invited into Hello to Cheers so everyone is working from the same information.
 
-A vendor can have a relationship with your venue and then be assigned to individual events.
+When you invite a vendor, they can create or access their own portal and maintain their business information, contact details, services, and other profile information. You don't have to keep updating their information for them.
 
-That means the same photographer, florist, caterer, DJ, or other vendor can work with your venue across multiple events without creating a completely new vendor identity every time.
+Once a vendor is connected to an event, clients can see the vendor information you've made available to them, communicate with the vendor, and make vendor choices directly when appropriate.
 
-Think of the relationship in three layers:
+Those interactions stay connected to the event, so your venue can see the pertinent details without having to chase information across emails, texts, and separate vendor systems.
 
-**Vendor**
+Vendor = owns their information.
 
-The vendor's overall identity.
+Client = can connect and make choices.
 
-**Venue relationship**
+Venue = stays connected to the whole relationship.
 
-Your venue's relationship with that vendor.
-
-**Event assignment**
-
-The vendor's role on a particular event.
-
-Once a vendor is assigned to an event, the event workspace can show the information that matters for that event without exposing unrelated information from other events.`,
+The goal is simple: everyone works together, while the venue keeps the context it needs to manage the event.`,
   },
   {
     slug: "what-is-the-day-of-sheet-and-how-do-i-get-one",
