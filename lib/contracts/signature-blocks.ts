@@ -101,11 +101,11 @@ export function canReopenContractForEditing(opts: {
   venueSigned: boolean;
   clientSigners: { signedAt: string | null }[];
 }): { ok: true } | { ok: false; message: string } {
-  if (opts.venueSigned || opts.clientSigners.some((s) => s.signedAt)) {
+  if (opts.clientSigners.some((s) => s.signedAt) || opts.venueSigned || opts.status === "signed") {
     return {
       ok: false,
       message:
-        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+        "This contract cannot be reopened for editing after a signature. Content is immutable — use Create New Version to start a new draft.",
     };
   }
   if (opts.status !== "sent") {
@@ -114,14 +114,13 @@ export function canReopenContractForEditing(opts: {
   return {
     ok: false,
     message:
-      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+      "This contract cannot be reopened for editing. Content is immutable — use Create New Version to start a new draft.",
   };
 }
 
 /**
- * Create New Version once venue signature locks content
- * (released / partial / fully signed / finalized).
- * Product name for the existing clone engine — not a second mechanism.
+ * Create New Version once a client has signed or the contract is fully executed
+ * (preserves signed history; revised draft must re-enter review/signing).
  */
 export function canCreateNewVersionFromContract(opts: {
   venueSigned: boolean;
@@ -136,12 +135,12 @@ export function canCreateNewVersionFromContract(opts: {
         "Externally executed agreements cannot start a new Hello to Cheers signing version. Attach a revised signed file as a document instead.",
     };
   }
-  if (opts.venueSigned || opts.anyClientSigned || opts.status === "signed") {
+  if (opts.anyClientSigned || opts.venueSigned || opts.status === "signed") {
     return { ok: true };
   }
   return {
     ok: false,
-    message: "Create New Version is available after the venue has signed (content is then immutable).",
+    message: "Create New Version is available after the client has signed (so the signed version is preserved).",
   };
 }
 

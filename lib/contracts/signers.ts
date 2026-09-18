@@ -34,13 +34,15 @@ export type ContractSigner = {
 };
 
 /**
- * Human-facing progressive labels (approved product language).
+ * Human-facing progressive labels (locked client-first product language).
  * Underlying status enum stays draft | sent | signed | cancelled | expired.
+ *
+ * Journey: Draft → Sent to Client → Awaiting Venue Signature → Fully Executed
  */
 export type ContractSigningUiState =
   | "draft"
-  | "ready_to_send"
-  | "awaiting_client_signature"
+  | "sent_to_client"
+  | "awaiting_venue_signature"
   | "fully_signed"
   | "cancelled"
   | "expired";
@@ -57,21 +59,40 @@ export function deriveContractSigningUiState(opts: {
   if (status === "expired" || (expiresAt && expiresAt < new Date().toISOString().slice(0, 10) && status !== "signed")) {
     return { state: "expired", label: "Expired" };
   }
-  if (status === "signed") return { state: "fully_signed", label: "Fully signed" };
+  if (status === "signed") return { state: "fully_signed", label: "Fully Executed" };
+
   if (status === "sent") {
-    if (requiredClientTotal > 1) {
+    const total = Math.max(1, requiredClientTotal);
+    const clientsDone = requiredClientSigned >= total;
+    if (clientsDone && !venueSigned) {
+      return { state: "awaiting_venue_signature", label: "Awaiting Venue Signature" };
+    }
+    if (total > 1 && requiredClientSigned > 0 && !clientsDone) {
       return {
-        state: "awaiting_client_signature",
-        label: `Awaiting client signature (${requiredClientSigned} of ${requiredClientTotal})`,
+        state: "sent_to_client",
+        label: `Sent to Client (${requiredClientSigned} of ${total})`,
       };
     }
-    return { state: "awaiting_client_signature", label: "Awaiting client signature" };
+    return { state: "sent_to_client", label: "Sent to Client" };
   }
-  if (venueSigned) return { state: "ready_to_send", label: "Ready to send" };
+
   return { state: "draft", label: "Draft" };
 }
 
 /** True when any required (or any) client signer has completed a signature. */
 export function anyClientHasSigned(signers: Pick<ContractSigner, "signerType" | "signedAt" | "isRequired">[]): boolean {
   return signers.some((s) => s.signerType === "client" && s.signedAt != null);
+}
+
+/** True when every required client signer has signed (venue may still be pending). */
+export function allRequiredClientsHaveSigned(
+  signers: Pick<ContractSigner, "signerType" | "signedAt" | "isRequired">[],
+): boolean {
+  const required = signers.filter((s) => s.signerType === "client" && s.isRequired);
+  if (required.length === 0) {
+    // No explicit required clients — treat any client signer set as the bar.
+    const clients = signers.filter((s) => s.signerType === "client");
+    return clients.length > 0 && clients.every((s) => s.signedAt != null);
+  }
+  return required.every((s) => s.signedAt != null);
 }

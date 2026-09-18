@@ -121,7 +121,7 @@ export function NewContractForm({
     const clientLabel = client ? clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName) : "this client";
     const confirmed = confirm(
       `Create a draft contract for ${clientLabel}?\n\nTemplate: ${template?.name ?? "—"}\n\n`
-      + "This creates a working draft only. It does not email the client or request a signature — you'll sign as the venue, then release for signing from the contract page.",
+      + "This creates a working draft only. It does not email the client or request a signature — you'll prepare it, then send it to the client for review from the contract page.",
     );
     if (!confirmed) return;
     startTransition(async () => {

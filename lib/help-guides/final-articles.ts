@@ -258,6 +258,10 @@ That separation keeps each part of Hello to Cheers useful instead of making one 
     category: "Working With Clients",
     body: `Event Readiness gives you a quick way to see whether an event has something that needs your attention.
 
+You'll find it on the client's booking workspace:
+
+**Clients → open the client → Overview → Event Readiness**
+
 It isn't another task list.
 
 If something needs actual work, you'll find that work in places such as **Task Center**, **Requests**, **Financials**, or the relevant planning area of the event.
@@ -270,25 +274,31 @@ Use the underlying workspace to do the actual work.`,
   },
   {
     slug: "who-signs-a-contract-first-and-what-happens-after",
-    title: "Who Signs a Contract First, and What Happens After?",
+    title: "How Does Contract Signing Work?",
     category: "Contracts & Payments",
-    body: `Hello to Cheers uses a venue-first signing process.
+    body: `Hello to Cheers uses a client-first signing process.
 
-When you create a contract, the venue signs it first.
+When you create a contract, you prepare it and send it to the client for review.
 
-After the venue has signed, you explicitly **Release** the contract to the client.
+The client can read through the contract and ask questions or request changes before signing.
 
-The client cannot see or sign the contract until you release it.
+Once the client is comfortable with the agreement, the client signs it first.
+
+After the client signs, the contract comes back to you for review and your signature.
 
 The sequence is:
 
-**Create → Venue signs → Release → Client signs**
+Create → Send to Client → Client Reviews → Client Signs → Venue Signs → Fully Executed
 
-Releasing the contract is a separate step from signing it. This gives your venue a chance to make sure the agreement is ready before the client sees it.
+If changes are needed while the client is reviewing the contract, you can make those changes before the client signs.
 
-Signing a contract also does not automatically create an invoice or payment plan.
+Once the client has signed, the version they signed is preserved. If you need to make changes instead of signing, the signed version remains part of the contract history and the revised version must go through the review and signing process again.
 
-Contracts and payments are related, but they are separate records in Hello to Cheers.`,
+Once both the client and venue have signed, the contract is Fully Executed and becomes locked.
+
+The completed contract then appears in Documents for both the venue and the client.
+
+Contracts and payments are related, but they are separate records in Hello to Cheers. Signing a contract does not automatically create an invoice or payment plan.`,
   },
   {
     slug: "can-more-than-one-person-sign-a-contract",

@@ -25,7 +25,7 @@ function read(path: string): string {
 }
 
 describe("progressive human-facing contract status", () => {
-  it("Draft before venue signature", () => {
+  it("Draft before send", () => {
     const r = deriveContractSigningUiState({
       status: "draft", venueSigned: false, requiredClientTotal: 1, requiredClientSigned: 0, expiresAt: null,
     });
@@ -33,45 +33,45 @@ describe("progressive human-facing contract status", () => {
     assert.equal(r.label, "Draft");
   });
 
-  it("Ready to send after venue signature, before release", () => {
+  it("Sent to Client after issue", () => {
     const r = deriveContractSigningUiState({
-      status: "draft", venueSigned: true, requiredClientTotal: 1, requiredClientSigned: 0, expiresAt: null,
+      status: "sent", venueSigned: false, requiredClientTotal: 1, requiredClientSigned: 0, expiresAt: null,
     });
-    assert.equal(r.state, "ready_to_send");
-    assert.equal(r.label, "Ready to send");
+    assert.equal(r.state, "sent_to_client");
+    assert.equal(r.label, "Sent to Client");
   });
 
-  it("Awaiting client signature after release", () => {
+  it("Awaiting Venue Signature after client signs", () => {
     const r = deriveContractSigningUiState({
-      status: "sent", venueSigned: true, requiredClientTotal: 1, requiredClientSigned: 0, expiresAt: null,
+      status: "sent", venueSigned: false, requiredClientTotal: 1, requiredClientSigned: 1, expiresAt: null,
     });
-    assert.equal(r.state, "awaiting_client_signature");
-    assert.equal(r.label, "Awaiting client signature");
+    assert.equal(r.state, "awaiting_venue_signature");
+    assert.equal(r.label, "Awaiting Venue Signature");
   });
 
-  it("partial multi-signer shows honest count, not Fully signed", () => {
+  it("partial multi-signer shows honest count, not Fully Executed", () => {
     const r = deriveContractSigningUiState({
-      status: "sent", venueSigned: true, requiredClientTotal: 2, requiredClientSigned: 1, expiresAt: null,
+      status: "sent", venueSigned: false, requiredClientTotal: 2, requiredClientSigned: 1, expiresAt: null,
     });
-    assert.equal(r.state, "awaiting_client_signature");
-    assert.equal(r.label, "Awaiting client signature (1 of 2)");
-    assert.doesNotMatch(r.label, /Fully signed/i);
+    assert.equal(r.state, "sent_to_client");
+    assert.equal(r.label, "Sent to Client (1 of 2)");
+    assert.doesNotMatch(r.label, /Fully Executed/i);
   });
 
-  it("Fully signed only when status is signed", () => {
+  it("Fully Executed only when status is signed", () => {
     const r = deriveContractSigningUiState({
       status: "signed", venueSigned: true, requiredClientTotal: 2, requiredClientSigned: 2, expiresAt: null,
     });
     assert.equal(r.state, "fully_signed");
-    assert.equal(r.label, "Fully signed");
+    assert.equal(r.label, "Fully Executed");
   });
 
   it("list and badge use progressive labels, not Sent/Signed jargon", () => {
     const list = read("components/contracts/contract-list.tsx");
     const badge = read("components/contracts/contract-status-badge.tsx");
-    assert.match(list, /Ready to send/);
-    assert.match(list, /Awaiting client signature/);
-    assert.match(list, /Fully signed/);
+    assert.match(list, /Sent to Client/);
+    assert.match(list, /Awaiting Venue Signature/);
+    assert.match(list, /Fully Executed/);
     assert.match(badge, /deriveContractSigningUiState/);
     assert.doesNotMatch(badge, /STATUS_LABEL/);
   });
@@ -113,12 +113,12 @@ describe("event auto-linking on create", () => {
 });
 
 describe("signed-contract immutability + Clone & Resend", () => {
-  it("reopen rejects after venue signature (released, no client signed yet)", () => {
+  it("reopen rejects after a signature (client or venue)", () => {
     const repo = read("lib/contracts/repository.ts");
     const start = repo.indexOf("export async function reopenForEditing");
     const end = repo.indexOf("export async function updateContractStatus", start);
     const reopen = repo.slice(start, end);
-    assert.match(reopen, /cannot be reopened for editing after the venue has signed/);
+    assert.match(reopen, /cannot be reopened for editing/);
     assert.match(reopen, /Content is immutable — use Create New Version/);
     assert.doesNotMatch(reopen, /status: "draft"/);
     assert.doesNotMatch(reopen, /signed_at: null/);
@@ -133,12 +133,10 @@ describe("signed-contract immutability + Clone & Resend", () => {
   });
 
   it("reopen rejects when any client has signed", () => {
-    const repo = read("lib/contracts/repository.ts");
-    assert.match(repo, /A client has already signed this contract\. Use Create New Version/);
     assert.equal(
       canReopenContractForEditing({
         status: "sent",
-        venueSigned: true,
+        venueSigned: false,
         clientSigners: [{ signedAt: "2026-01-02" }, { signedAt: null }],
       }).ok,
       false,
@@ -296,9 +294,9 @@ describe("signed-contract immutability + Clone & Resend", () => {
     assert.doesNotMatch(detail, /Create Amendment/);
   });
 
-  it("content edit remains gated after venue signature in repository", () => {
+  it("content edit remains gated after a client signature in repository", () => {
     const repo = read("lib/contracts/repository.ts");
-    assert.match(repo, /signed by the venue and can no longer be edited/);
+    assert.match(repo, /client signature and can no longer be edited/);
     assert.match(repo, /Use Create New Version/);
   });
 });
@@ -313,10 +311,10 @@ describe("public draft-token RPC", () => {
 });
 
 describe("database content immutability", () => {
-  it("migration adds contracts_content_immutability trigger after venue signature", () => {
-    const sql = read("supabase/migrations/20261355000000_contracts_signing_integrity.sql");
+  it("client-first migration locks content after a client has signed", () => {
+    const sql = read("supabase/migrations/20261401800000_contracts_client_first_signing.sql");
     assert.match(sql, /contracts_enforce_content_immutability/);
-    assert.match(sql, /immutable after the venue has signed/);
+    assert.match(sql, /immutable after a client has signed/);
     assert.match(sql, /new\.content is not distinct from old\.content/);
   });
 });
@@ -343,7 +341,7 @@ describe("Finalize Contract remains explicit", () => {
   it("detail keeps Finalize Contract distinct from Fully signed", () => {
     const detail = read("components/contracts/contract-detail.tsx");
     assert.match(detail, /Finalize Contract/);
-    assert.match(detail, /Fully signed means all required signatures/);
+    assert.match(detail, /Fully Executed means both parties have signed/);
     assert.match(detail, /does not collect payment/);
   });
 });

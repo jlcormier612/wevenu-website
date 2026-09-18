@@ -48,13 +48,13 @@ export function deriveVersionNumber(
   return n;
 }
 
-/** True when content is immutable under venue-first signing (UI lock presentation). */
+/** True when content is immutable under client-first signing (UI lock presentation). */
 export function isContractContentLocked(opts: {
   status: string;
   venueSigned: boolean;
   anyClientSigned?: boolean;
 }): boolean {
-  if (opts.venueSigned || opts.anyClientSigned) return true;
+  if (opts.anyClientSigned) return true;
   return opts.status === "signed" || opts.status === "cancelled" || opts.status === "expired";
 }
 
@@ -138,7 +138,6 @@ export function statusLabelForVersion(entry: Pick<ContractVersionEntry, "status"
   if (entry.status === "signed") return "Signed";
   if (entry.status === "sent") return "Sent";
   if (entry.status === "draft") {
-    if (entry.locked) return "Ready to send";
     return "Draft";
   }
   if (entry.status === "cancelled") return "Cancelled";

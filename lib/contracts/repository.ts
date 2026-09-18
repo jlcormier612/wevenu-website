@@ -353,11 +353,22 @@ export async function venueSignContract(
     .maybeSingle<{ id: string; status: Contract["status"]; content: string }>();
   if (cErr) throw cErr;
   if (!contract) return { ok: false, message: "Contract not found." };
-  if (contract.status !== "draft") {
-    return { ok: false, message: "Only a draft contract can be signed by the venue." };
+  if (contract.status !== "sent") {
+    return { ok: false, message: "The venue can sign only after the client has signed and the contract is awaiting venue signature." };
   }
   if (!opts.consent) {
     return { ok: false, message: "Please confirm you agree this constitutes your legal signature." };
+  }
+
+  const { data: requiredClients, error: cErr2 } = await client.from("contract_signers")
+    .select("id, signed_at, is_required")
+    .eq("contract_id", contractId).eq("venue_id", venueId).eq("signer_type", "client");
+  if (cErr2) throw cErr2;
+  const clients = (requiredClients ?? []) as { id: string; signed_at: string | null; is_required: boolean }[];
+  const required = clients.filter((c) => c.is_required);
+  const bar = required.length > 0 ? required : clients;
+  if (bar.length === 0 || bar.some((c) => !c.signed_at)) {
+    return { ok: false, message: "All required client signatures must be complete before the venue can sign." };
   }
 
   const { data: venueSigner, error: sErr } = await client.from("contract_signers")
@@ -398,6 +409,25 @@ export async function venueSignContract(
     `Signed by ${opts.signerName.trim()}`,
     opts.actorId, opts.actorLabel,
   );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: statusErr } = await (client.from("contracts") as any)
+    .update({
+      status: "signed",
+      signed_at: new Date().toISOString(),
+      signer_name: opts.signerName.trim(),
+    })
+    .eq("id", contractId)
+    .eq("venue_id", venueId)
+    .eq("status", "sent");
+  if (statusErr) throw statusErr;
+
+  await insertContractActivity(
+    client, venueId, contractId, "fully_executed", "Contract fully executed",
+    "Client and venue signatures are complete",
+    opts.actorId, opts.actorLabel,
+  );
+
   return { ok: true };
 }
 
@@ -445,8 +475,9 @@ export async function insertContract(client: DbClient, venueId: string, input: N
 }
 
 /**
- * TR-L1 + venue-first signing: editable only while draft AND venue has not
- * yet signed. Once the venue signer has signed_at set, content is immutable.
+ * Client-first signing: editable while draft, or while sent with no client
+ * signatures yet. Once a client has signed (or the contract is executed),
+ * content is immutable — use Create New Version for revisions.
  */
 export async function updateContractContent(
   client: DbClient, venueId: string, id: string, title: string, content: string, expectedUpdatedAt: string,
@@ -458,19 +489,20 @@ export async function updateContractContent(
     .maybeSingle<{ status: Contract["status"] }>();
   if (fetchError) throw fetchError;
   if (!existing) return { ok: false, message: "Contract not found.", reason: "not_found" };
-  if (existing.status !== "draft") {
-    return { ok: false, message: "This contract has already been sent and can no longer be edited.", reason: "not_editable" };
+  if (existing.status !== "draft" && existing.status !== "sent") {
+    return { ok: false, message: "This contract can no longer be edited.", reason: "not_editable" };
   }
 
-  const { data: venueSigner } = await client.from("contract_signers")
+  const { data: clientSigners } = await client.from("contract_signers")
     .select("signed_at")
-    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
-    .maybeSingle<{ signed_at: string | null }>();
-  if (venueSigner?.signed_at) {
+    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "client");
+  const anyClientSigned = ((clientSigners ?? []) as { signed_at: string | null }[])
+    .some((r) => r.signed_at != null);
+  if (anyClientSigned || existing.status === "signed") {
     return {
       ok: false,
       message:
-        "This contract has been signed by the venue and can no longer be edited. Use Create New Version for a revised draft, or withdraw the venue signature while this contract is still an unreleased draft.",
+        "This contract has a client signature and can no longer be edited. Use Create New Version for a revised draft — the signed version is preserved.",
       reason: "not_editable",
     };
   }
@@ -512,7 +544,7 @@ export async function reopenForEditing(
     return {
       ok: false,
       message:
-        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+        "This contract cannot be reopened for editing after a signature. Content is immutable — use Create New Version to start a new draft.",
     };
   }
 
@@ -527,16 +559,15 @@ export async function reopenForEditing(
     return {
       ok: false,
       message:
-        "A client has already signed this contract. Use Create New Version to start a new draft — the signed record cannot be reopened or edited.",
+        "This contract cannot be reopened for editing after a signature. Content is immutable — use Create New Version to start a new draft.",
     };
   }
 
-  // Venue-first: released contracts always have a venue signature, so the
-  // historical sent→draft reopen path is unreachable. Fail closed.
+  // Client-first: fail closed — never mutate a sent/signed agreement in place.
   return {
     ok: false,
     message:
-      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+      "This contract cannot be reopened for editing. Content is immutable — use Create New Version to start a new draft.",
   };
 }
 
@@ -621,19 +652,7 @@ export async function updateContractStatus(
   if (!current) return { ok: false, message: "Contract not found." };
 
   if (status === "sent" && current.status !== "draft") {
-    return { ok: false, message: "Only a draft contract can be sent for signing." };
-  }
-  if (status === "sent") {
-    const { data: venueSigner } = await client.from("contract_signers")
-      .select("signed_at")
-      .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
-      .maybeSingle<{ signed_at: string | null }>();
-    // New-model contracts always have a venue signer row; require signed_at.
-    // Legacy contracts created before this migration may have zero signer rows
-    // — those are not created anymore; block release without venue signature.
-    if (!venueSigner?.signed_at) {
-      return { ok: false, message: "The venue must sign this contract before it can be released to the client." };
-    }
+    return { ok: false, message: "Only a draft contract can be sent to the client." };
   }
   if (status === "cancelled" && !["draft", "sent"].includes(current.status)) {
     return { ok: false, message: "A signed contract cannot be cancelled this way — it's a permanent record." };

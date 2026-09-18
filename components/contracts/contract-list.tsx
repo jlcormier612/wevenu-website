@@ -18,17 +18,17 @@ import type { Contract } from "@/lib/contracts/types";
 type FilterKey =
   | "all"
   | "draft"
-  | "ready_to_send"
-  | "awaiting_client_signature"
+  | "sent_to_client"
+  | "awaiting_venue_signature"
   | "fully_signed"
   | "cancelled";
 
 const FILTERS: { value: FilterKey; label: string }[] = [
   { value: "all", label: "All" },
   { value: "draft", label: "Draft" },
-  { value: "ready_to_send", label: "Ready to send" },
-  { value: "awaiting_client_signature", label: "Awaiting client signature" },
-  { value: "fully_signed", label: "Fully signed" },
+  { value: "sent_to_client", label: "Sent to Client" },
+  { value: "awaiting_venue_signature", label: "Awaiting Venue Signature" },
+  { value: "fully_signed", label: "Fully Executed" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
@@ -43,8 +43,8 @@ function contractFilterKey(c: Contract): FilterKey {
     expiresAt: c.expiresAt,
   });
   if (progressive.state === "fully_signed") return "fully_signed";
-  if (progressive.state === "awaiting_client_signature") return "awaiting_client_signature";
-  if (progressive.state === "ready_to_send") return "ready_to_send";
+  if (progressive.state === "awaiting_venue_signature") return "awaiting_venue_signature";
+  if (progressive.state === "sent_to_client") return "sent_to_client";
   if (progressive.state === "draft") return "draft";
   return "all";
 }

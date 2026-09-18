@@ -750,6 +750,39 @@ export async function venueSignContract(
       actorLabel: actor.label,
     });
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
+
+    // Fully executed side-effects fire when the venue countersigns (client-first).
+    void recordEngagementEvent({
+      venueId,
+      eventType: "contract.signed",
+      actorType: "venue",
+      entityType: "contract",
+      entityId: id,
+    });
+    if (contract.eventId) {
+      const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+      await triggerAutoComplete(supabase, venueId, contract.eventId, "contract_signed");
+    }
+    if (contract.clientId) {
+      const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
+      await maybeStampCommercialBookedAt(supabase, venueId, {
+        clientId: contract.clientId,
+        eventId: contract.eventId,
+      });
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from("luv_celebrations") as any).insert({
+          venue_id: venueId,
+          client_id: contract.clientId,
+          event_id: contract.eventId,
+          celebration_type: "contract_signed",
+          entity_id: id,
+        });
+      } catch {
+        // Unique conflict is fine — celebration already recorded.
+      }
+    }
+
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
@@ -780,12 +813,8 @@ export async function sendContract(id: string, customMessage?: string): Promise<
       } as ContractActionResult;
     }
 
-    const venueSigner = (contract.signers ?? []).find((s) => s.signerType === "venue");
-    if (!venueSigner?.signedAt) {
-      return { ok: false, message: "The venue must sign this contract before it can be released to the client." } as ContractActionResult;
-    }
+    // Client-first: venue signature is not required to issue the contract.
 
-    // Content is immutable after venue sign — do not force-resolve tokens here.
     const safety = assertCustomerSafeContractContent(contract.content);
     if (!safety.ok) {
       return { ok: false, message: safety.message } as ContractActionResult;
@@ -800,7 +829,7 @@ export async function sendContract(id: string, customMessage?: string): Promise<
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     const actor = await currentActor(venueId);
     await repo.insertContractActivity(
-      supabase, venueId, id, "sent", "Contract released for client signature",
+      supabase, venueId, id, "sent", "Contract sent to client for review",
       undefined, actor.userId, actor.label,
     );
 
@@ -919,7 +948,7 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
     if (!venueSigned && !anyClientSigned && source.status !== "signed") {
       return {
         ok: false,
-        message: "Create New Version is available after the venue has signed (content is then immutable).",
+        message: "Create New Version is available after the client has signed (so the signed version is preserved).",
       } as CreateContractResult;
     }
 
