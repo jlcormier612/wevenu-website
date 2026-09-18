@@ -755,7 +755,7 @@ export async function venueSignContract(
     void recordEngagementEvent({
       venueId,
       eventType: "contract.signed",
-      actorType: "venue",
+      actorType: "venue_user",
       entityType: "contract",
       entityId: id,
     });
