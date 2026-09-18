@@ -183,10 +183,11 @@ export async function triggerSequencesForRelationship(
 }
 
 /**
- * When a sequence has update_pipeline_on_enroll, move the open lead for this
- * relationship to enrolled_in_sequence (forward-only). Does not move Booked/Lost
- * or regress. Does not re-fire stage triggers here — avoids enrollment loops;
- * coordinators who manually set Enrolled still get lead_stage_changed triggers.
+ * When a sequence has update_pipeline_on_enroll, advance the open lead for this
+ * relationship exactly one stage on the venue's active Pipeline (forward-only).
+ * Does not move Booked/Lost, does not wrap from the final stage, and does not
+ * hard-code a destination such as "In Follow-Up". Does not re-fire stage
+ * triggers here — avoids enrollment loops.
  */
 async function maybeAdvanceLeadOnSequenceEnroll(
   supabase: AnyDbClient,
@@ -195,20 +196,35 @@ async function maybeAdvanceLeadOnSequenceEnroll(
   updatePipelineOnEnroll: boolean,
 ): Promise<void> {
   if (!updatePipelineOnEnroll) return;
-  const { isSalesStage, isForwardSalesStageMove } = await import("@/lib/leads/sales-stages");
   const { data: lead } = await supabase.from("leads")
-    .select("id, sales_stage")
+    .select("id, sales_stage, pipeline_stage_id")
     .eq("venue_id", venueId)
     .eq("relationship_id", relationshipId)
     .not("sales_stage", "in", "(booked,lost)")
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle<{ id: string; sales_stage: string }>();
-  if (!lead || !isSalesStage(lead.sales_stage)) return;
-  if (!isForwardSalesStageMove(lead.sales_stage, "enrolled_in_sequence")) return;
+    .maybeSingle<{ id: string; sales_stage: string; pipeline_stage_id: string | null }>();
+  if (!lead) return;
+
+  const { getActiveTemplateWithStages } = await import("@/lib/pipeline-templates/repository");
+  const { resolveAdvanceOnEnrollTarget } = await import(
+    "@/lib/message-sequences/advance-pipeline-on-enroll"
+  );
+  const active = await getActiveTemplateWithStages(supabase as DbClient, venueId);
+  const target = resolveAdvanceOnEnrollTarget({
+    stages: active?.stages ?? null,
+    pipelineStageId: lead.pipeline_stage_id,
+    salesStage: lead.sales_stage,
+  });
+  if (!target) return;
+
+  const patch =
+    target.kind === "pipeline"
+      ? { sales_stage: target.salesStage, pipeline_stage_id: target.stageId }
+      : { sales_stage: target.salesStage };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from("leads") as any)
-    .update({ sales_stage: "enrolled_in_sequence" })
+    .update(patch)
     .eq("id", lead.id)
     .eq("venue_id", venueId);
 }

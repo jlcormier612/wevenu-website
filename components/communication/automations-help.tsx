@@ -104,7 +104,7 @@ export function AutomationsHelp({ className }: { className?: string }) {
             <p>
               Each person moves through the messages on their own timeline. Timing is relative —
               for example, “send immediately, then again 2 days later.” Editing an automation
-              affects people who join after you save; people already in it keep the plan they started with.
+              affects people who enter this automation after you save; people already in it keep the plan they started with.
             </p>
           </HelpSection>
 
@@ -122,7 +122,7 @@ export function AutomationsHelp({ className }: { className?: string }) {
           <HelpSection title="Pause vs stop">
             <p>
               <span className="font-medium text-heading">Pause the automation</span> — new people
-              won&apos;t join, and people already in it won&apos;t receive scheduled messages until you resume.
+              won&apos;t enter this automation, and people already in it won&apos;t receive scheduled messages until you resume.
             </p>
             <p>
               <span className="font-medium text-heading">Pause one person</span> — only that person

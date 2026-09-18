@@ -8,7 +8,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getVenueDocuments } from "@/lib/documents/service";
 import { getTemplate, getTemplateAttachments } from "@/lib/message-templates/service";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+};
+
+function safeReturnTo(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const path = raw.startsWith("/") ? raw : null;
+  if (!path) return null;
+  if (!path.startsWith("/communication/")) return null;
+  if (path.includes("//") || path.includes("\\")) return null;
+  return path;
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -16,8 +28,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t ? `Edit · ${t.name}` : "Edit Template" };
 }
 
-export default async function EditMessageTemplatePage({ params }: Props) {
+export default async function EditMessageTemplatePage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  const returnTo = safeReturnTo(sp.returnTo);
   const template = await getTemplate(id);
   if (!template) notFound();
   const [attachments, venueDocuments] = await Promise.all([
@@ -37,7 +51,12 @@ export default async function EditMessageTemplatePage({ params }: Props) {
           <CardDescription>Changes take effect the next time this template is used.</CardDescription>
         </CardHeader>
         <CardContent>
-          <TemplateForm template={template} attachments={attachments} venueDocuments={venueDocuments} />
+          <TemplateForm
+            template={template}
+            attachments={attachments}
+            venueDocuments={venueDocuments}
+            returnTo={returnTo}
+          />
         </CardContent>
       </Card>
     </div>

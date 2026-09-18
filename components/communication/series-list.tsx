@@ -109,7 +109,7 @@ export function SeriesList({ initialSeries }: { initialSeries: MessageSequenceLi
       setSeries((p) => p.map((x) => (x.id === s.id ? { ...x, status: next } : x)));
       toast.success(
         next === "active"
-          ? "Automation resumed — new people can join and scheduled messages can send again."
+          ? "Automation resumed — new people can enter this automation and scheduled messages can send again."
           : "Automation paused for everyone.",
       );
       setPausing(null);
@@ -137,7 +137,7 @@ export function SeriesList({ initialSeries }: { initialSeries: MessageSequenceLi
   const groups: { key: string; title: string; blurb: string; items: MessageSequenceListItem[] }[] = [
     { key: "sales", title: AUTOMATION_AUDIENCE_LABELS.sales.title, blurb: AUTOMATION_AUDIENCE_LABELS.sales.blurb, items: sales },
     { key: "client", title: AUTOMATION_AUDIENCE_LABELS.client.title, blurb: AUTOMATION_AUDIENCE_LABELS.client.blurb, items: client },
-    { key: "manual", title: "Manual", blurb: "You choose who joins.", items: manual },
+    { key: "manual", title: "Manual", blurb: "You choose who enters this automation.", items: manual },
   ].filter((g) => g.items.length > 0);
 
   return (

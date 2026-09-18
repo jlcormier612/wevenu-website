@@ -39,11 +39,13 @@ function buildInitial(template?: MessageTemplate | null): MessageTemplateInput {
 // 2026-07-13). Both sections are always visible; saving only requires at
 // least one to actually have content.
 export function TemplateForm({
-  template, attachments = [], venueDocuments = [],
+  template, attachments = [], venueDocuments = [], returnTo = null,
 }: {
   template?: MessageTemplate | null;
   attachments?: MessageTemplateAttachment[];
   venueDocuments?: Document[];
+  /** Safe in-app path to return to after save (e.g. Automation builder). */
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const isEdit = !!template;
@@ -93,7 +95,7 @@ export function TemplateForm({
         : await createTemplateAction(input);
       if (result.ok) {
         toast.success(isEdit ? librarySavedToastMessage() : "Template created.");
-        router.push("/communication/templates");
+        router.push(returnTo || "/communication/templates");
         return;
       }
       if (result.errors) setErrors(result.errors);

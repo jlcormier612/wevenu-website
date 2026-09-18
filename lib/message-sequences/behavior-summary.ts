@@ -19,13 +19,15 @@ export type AutomationBehaviorSummary = {
 
 function timingPhrase(offsetDays: number, isFirst: boolean): string {
   if (offsetDays === 0) {
-    return isFirst ? "immediately" : "right after the previous message";
+    return isFirst ? "immediately" : "immediately after the previous message";
   }
   if (offsetDays === 1) {
-    return isFirst ? "1 day after they join" : "1 day after the previous message";
+    return isFirst
+      ? "1 day after they enter this automation"
+      : "1 day after the previous message";
   }
   return isFirst
-    ? `${offsetDays} days after they join`
+    ? `${offsetDays} days after they enter this automation`
     : `${offsetDays} days after the previous message`;
 }
 

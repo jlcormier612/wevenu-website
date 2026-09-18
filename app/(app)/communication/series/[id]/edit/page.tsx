@@ -46,7 +46,7 @@ export default async function EditSeriesPage({ params }: Props) {
         <CardHeader>
           <CardTitle>Automation</CardTitle>
           <CardDescription>
-            Changes to messages only affect people who join after you save. Preview updates as you edit.
+            Changes to messages only affect people who enter this automation after you save. Preview updates as you edit.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -58,7 +58,7 @@ export default async function EditSeriesPage({ params }: Props) {
           <CardTitle>People in this automation</CardTitle>
           <CardDescription>
             {series.triggerType
-              ? `People can join automatically, or you can add someone yourself. ${activeCount} active right now.`
+              ? `People can enter this automation automatically, or you can add someone yourself. ${activeCount} active right now.`
               : `This automation only starts when you add someone. ${activeCount} active right now.`}
           </CardDescription>
         </CardHeader>

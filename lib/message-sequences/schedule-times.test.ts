@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  AUTOMATION_DEFAULT_SEND_TIME,
   addCalendarDays,
   computeDelayedSendIso,
   computeEnrollmentStepScheduleIsos,
@@ -32,11 +33,23 @@ describe("computeDelayedSendIso", () => {
     assert.equal(parts.time, "10:00");
   });
 
+  it("offset 2 is two venue-local calendar days at 10:00 AM", () => {
+    const from = new Date("2026-03-11T03:30:00.000Z"); // Mar 10 evening Eastern
+    const iso = computeDelayedSendIso(from, 2, "America/New_York");
+    const parts = utcToVenueLocalParts(iso, "America/New_York");
+    assert.equal(parts.date, "2026-03-12");
+    assert.equal(parts.time, "10:00");
+  });
+
   it("differs from naive UTC + N*86400000 near evening", () => {
     const from = new Date("2026-03-11T03:30:00.000Z");
     const venueAware = computeDelayedSendIso(from, 1, "America/New_York");
     const naive = new Date(from.getTime() + 86_400_000).toISOString();
     assert.notEqual(venueAware, naive);
+  });
+
+  it("default send time is morning 10:00 (AM), not PM", () => {
+    assert.equal(AUTOMATION_DEFAULT_SEND_TIME, "10:00");
   });
 });
 

@@ -42,7 +42,7 @@ describe("buildAutomationBehaviorSummary", () => {
       steps: [{ templateId: "t1", channel: "email", offsetDays: 1 }],
     }));
     assert.match(s.paragraph, /Tour Scheduled/i);
-    assert.match(s.paragraph, /1 day after they join/i);
+    assert.match(s.paragraph, /1 day after they enter this automation/i);
   });
 
   it("reflects tour completed start", () => {

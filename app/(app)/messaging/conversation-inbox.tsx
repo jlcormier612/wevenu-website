@@ -129,7 +129,7 @@ function ConversationRow({
             <Paperclip className="h-3 w-3" aria-label="Has attachments" />
           )}
           {needsResponse && (
-            <span className="rounded-full bg-warning/20 px-1.5 py-0.5 font-medium text-warning-foreground">
+            <span className="rounded-full bg-destructive px-1.5 py-0.5 font-medium text-destructive-foreground">
               Needs response
             </span>
           )}
