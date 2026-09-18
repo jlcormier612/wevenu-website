@@ -27,10 +27,16 @@ export type ConversationSummary = {
   latestMessage: ConversationMessagePreview | null;
   /**
    * Latest meaningful customer/staff message (excludes system + internal notes).
-   * Authoritative input for Needs Response on the Inbox list — enriched in
-   * getConversationInbox, not inferred from tip-of-thread alone.
+   * Used for preview / triage context. Needs Response itself is persisted on
+   * `needsResponse` (independent of unread).
    */
   latestMeaningfulMessage?: ConversationMessagePreview | null;
+  /**
+   * Persisted venue-level Needs Response flag (conversations.needs_response).
+   * Independent of venueUnread. Cleared by reply or explicit dismissal;
+   * reactivated by new meaningful inbound.
+   */
+  needsResponse?: boolean;
   // Communication Workspace Completion — Inbox filtering/cards/shortcuts.
   assignedStaffId: string | null;
   assignedStaffName: string | null;
@@ -71,6 +77,13 @@ export type ConversationMessageAttachment = {
   mimeType: string | null;
 };
 
+export type ConversationDetail = {
+  conversationId: string;
+  messages: ConversationMessage[];
+  /** Persisted Needs Response — unchanged by mark-read on open. */
+  needsResponse?: boolean;
+};
+
 export type ConversationMessage = {
   id: string;
   senderType: ConversationSenderType;
@@ -87,11 +100,6 @@ export type ConversationMessage = {
   // the UI can explain *why* it was automated, not just that it was.
   channelMetadata: Record<string, unknown> | null;
   attachments: ConversationMessageAttachment[];
-};
-
-export type ConversationDetail = {
-  conversationId: string;
-  messages: ConversationMessage[];
 };
 
 export type PortalConversationMessage = {

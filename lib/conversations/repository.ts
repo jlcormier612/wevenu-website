@@ -41,6 +41,7 @@ type InboxConversationRow = {
   last_message_at: string | null;
   venue_unread: number;
   contact_unread: number;
+  needs_response?: boolean;
   assigned_staff_id: string | null;
   assigned_staff_name: string | null;
   lead_id: string | null;
@@ -59,6 +60,7 @@ function mapInboxRow(r: InboxConversationRow): ConversationSummary {
     lastMessageAt: r.last_message_at,
     venueUnread: r.venue_unread,
     contactUnread: r.contact_unread,
+    needsResponse: Boolean(r.needs_response),
     assignedStaffId: r.assigned_staff_id,
     assignedStaffName: r.assigned_staff_name,
     leadId: r.lead_id,
@@ -261,6 +263,8 @@ export type InboxPageQuery = {
 export type InboxPageResult = {
   conversations: ConversationSummary[];
   totalUnread: number;
+  /** Venue-wide count of conversations with needs_response = true. */
+  totalNeedsResponse: number;
   hasMore: boolean;
   nextCursor: { lastMessageAt: string | null; id: string; sortKey?: string | null } | null;
 };
@@ -308,6 +312,7 @@ async function getVendorInboxPage(
       id,
       venue_unread,
       contact_unread,
+      needs_response,
       last_message_at,
       assigned_staff_id,
       conversation_kind,
@@ -319,6 +324,7 @@ async function getVendorInboxPage(
     .limit(Math.min(100, (limit + 1) * 3));
 
   if (query.unreadOnly) q = q.gt("venue_unread", 0);
+  if (query.needsResponseOnly) q = q.eq("needs_response", true);
   if (query.assignedStaffId) q = q.eq("assigned_staff_id", query.assignedStaffId);
   if (query.unassignedOnly) q = q.is("assigned_staff_id", null);
 
@@ -329,6 +335,7 @@ async function getVendorInboxPage(
     id: string;
     venue_unread: number;
     contact_unread: number;
+    needs_response?: boolean;
     last_message_at: string | null;
     assigned_staff_id: string | null;
     conversation_kind: string;
@@ -424,6 +431,7 @@ async function getVendorInboxPage(
       lastMessageAt: r.last_message_at,
       venueUnread: r.venue_unread ?? 0,
       contactUnread: r.contact_unread ?? 0,
+      needsResponse: Boolean(r.needs_response),
       assignedStaffId: r.assigned_staff_id,
       assignedStaffName: r.assigned_staff_id
         ? (staffNameById.get(r.assigned_staff_id) ?? null)
@@ -465,13 +473,6 @@ async function getVendorInboxPage(
         return { ...c, latestMessage: tip, latestMeaningfulMessage: tip };
       })
       .filter((c) => c.latestMessage != null);
-
-    if (query.needsResponseOnly) {
-      const { conversationNeedsResponse } = await import("@/lib/conversations/inbox-attention");
-      conversations = conversations.filter((c) =>
-        conversationNeedsResponse(c.latestMeaningfulMessage),
-      );
-    }
   }
 
   conversations = await enrichInboxLatestMeaningful(client, conversations);
@@ -480,10 +481,12 @@ async function getVendorInboxPage(
   const page = conversations.slice(0, limit);
   const last = page[page.length - 1];
   const totalUnread = page.reduce((sum, c) => sum + (c.venueUnread || 0), 0);
+  const totalNeedsResponse = page.reduce((sum, c) => sum + (c.needsResponse ? 1 : 0), 0);
 
   return {
     conversations: page,
     totalUnread,
+    totalNeedsResponse,
     hasMore,
     nextCursor: hasMore && last
       ? { lastMessageAt: last.lastMessageAt, id: last.id, sortKey: null }
@@ -503,7 +506,7 @@ export async function getConversationInboxPage(
   const { data, error } = await client.rpc("get_conversation_inbox_page", rpcArgs);
   if (error) throw error;
   if (!data || "error" in data) {
-    return { conversations: [], totalUnread: 0, hasMore: false, nextCursor: null };
+    return { conversations: [], totalUnread: 0, totalNeedsResponse: 0, hasMore: false, nextCursor: null };
   }
 
   type PageRow = InboxConversationRow & {
@@ -637,6 +640,7 @@ export async function getConversationInboxPage(
   return {
     conversations,
     totalUnread: data.total_unread ?? 0,
+    totalNeedsResponse: data.total_needs_response ?? 0,
     hasMore,
     nextCursor: next
       ? {
@@ -742,7 +746,25 @@ export async function getConversation(
     channelMetadata: m.channel_metadata ?? null,
     attachments: m.attachments ?? [],
   }));
-  return { conversationId: data.conversation_id, messages };
+  return {
+    conversationId: data.conversation_id,
+    messages,
+    needsResponse: Boolean(data.needs_response),
+  };
+}
+
+export async function clearConversationNeedsResponse(
+  client: DbClient,
+  conversationId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await client.rpc("clear_conversation_needs_response", {
+    p_conversation_id: conversationId,
+  });
+  if (error) throw error;
+  if (!data || data.ok === false) {
+    return { ok: false, error: data?.error ?? "Could not update Needs Response." };
+  }
+  return { ok: true };
 }
 
 /**

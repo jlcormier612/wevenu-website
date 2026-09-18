@@ -51,6 +51,15 @@ export async function getConversationAction(conversationId: string): Promise<Con
   return conversations.getConversation(conversationId);
 }
 
+/** Explicit dismissal: Needs Response → cleared. Does not change unread/read. */
+export async function clearConversationNeedsResponseAction(
+  conversationId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const result = await conversations.clearConversationNeedsResponse(conversationId);
+  if (result.ok) revalidatePath("/messaging");
+  return result;
+}
+
 export async function getConversationComposeContextAction(
   conversationId: string,
 ): Promise<ConversationComposeContext | null> {

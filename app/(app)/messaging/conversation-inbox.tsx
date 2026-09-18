@@ -15,6 +15,7 @@ import {
   getInboxFilterEventLabelAction,
   resolveInboxCategoryAction,
   searchInboxFilterEventsAction,
+  clearConversationNeedsResponseAction,
 } from "@/app/(app)/messaging/actions";
 import { CHANNEL_META, ConversationThread } from "@/components/conversations/conversation-thread";
 import {
@@ -79,13 +80,14 @@ function needsResponseForRow(
 }
 
 function ConversationRow({
-  conversation, isActive, needsResponse, timeLabel, onClick,
+  conversation, isActive, needsResponse, timeLabel, onClick, onNoResponseNeeded,
 }: {
   conversation: ConversationSummary;
   isActive: boolean;
   needsResponse: boolean;
   timeLabel: string;
   onClick: () => void;
+  onNoResponseNeeded?: () => void;
 }) {
   const meaningful = conversation.latestMeaningfulMessage ?? conversation.latestMessage;
   const preview = meaningful && isMeaningfulCommunication(meaningful)
@@ -139,11 +141,35 @@ function ConversationRow({
             {previewText}
           </p>
           {conversation.venueUnread > 0 && (
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+            <span
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
+              title={`${conversation.venueUnread} unread message${conversation.venueUnread === 1 ? "" : "s"}`}
+              aria-label={`${conversation.venueUnread} unread`}
+            >
               {conversation.venueUnread > 9 ? "9+" : conversation.venueUnread}
             </span>
           )}
         </div>
+        {needsResponse && onNoResponseNeeded && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNoResponseNeeded();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onNoResponseNeeded();
+              }
+            }}
+            className="inline-block text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            No response needed
+          </span>
+        )}
       </div>
     </button>
   );
@@ -168,6 +194,7 @@ export function ConversationInbox({
     sortKey?: string | null;
   } | null>(null);
   const [totalUnread, setTotalUnread] = React.useState(0);
+  const [totalNeedsResponse, setTotalNeedsResponse] = React.useState(0);
   const [needsResponseOverrides, setNeedsResponseOverrides] = React.useState<Record<string, boolean>>({});
   const [activeId, setActiveId] = React.useState<string | null>(() => searchParams.get("conversation"));
   const [nowMs, setNowMs] = React.useState<number | null>(null);
@@ -306,6 +333,7 @@ export function ConversationInbox({
         setHasMore(page.hasMore);
         setNextCursor(page.nextCursor);
         setTotalUnread(page.totalUnread);
+        setTotalNeedsResponse(page.totalNeedsResponse ?? 0);
         setNeedsResponseOverrides({});
       } catch {
         setLoadError("Couldn’t load conversations. Try again.");
@@ -319,11 +347,15 @@ export function ConversationInbox({
   }, [queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeSummary = items.find((c) => c.id === activeId) ?? null;
-  const needsResponseCount = items.filter((c) => needsResponseForRow(c, needsResponseOverrides)).length;
+  const needsResponseCount = typeof totalNeedsResponse === "number"
+    ? totalNeedsResponse
+    : items.filter((c) => needsResponseForRow(c, needsResponseOverrides)).length;
 
   function markConversationOpened(conversationId: string, needsResponse: boolean) {
     setItems((prev) => prev.map((c) => (
-      c.id === conversationId ? { ...c, venueUnread: 0 } : c
+      c.id === conversationId
+        ? { ...c, venueUnread: 0, needsResponse }
+        : c
     )));
     setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: needsResponse }));
   }
@@ -341,10 +373,28 @@ export function ConversationInbox({
             latestMeaningfulMessage: isMeaningfulCommunication(latestMessage) ? latestMessage : c.latestMeaningfulMessage,
             lastMessageAt: latestMessage.sentAt,
             venueUnread: 0,
+            needsResponse,
           }
         : c
     )));
     setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: needsResponse }));
+    if (!needsResponse) {
+      setTotalNeedsResponse((n) => Math.max(0, n - 1));
+    }
+  }
+
+  async function markNoResponseNeeded(conversationId: string) {
+    const result = await clearConversationNeedsResponseAction(conversationId);
+    if (!result.ok) return;
+    const wasNeeded = needsResponseForRow(
+      items.find((c) => c.id === conversationId) ?? { id: conversationId, needsResponse: true } as ConversationSummary,
+      needsResponseOverrides,
+    );
+    setItems((prev) => prev.map((c) => (
+      c.id === conversationId ? { ...c, needsResponse: false } : c
+    )));
+    setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: false }));
+    if (wasNeeded) setTotalNeedsResponse((n) => Math.max(0, n - 1));
   }
 
   function clearAllFilters() {
@@ -366,9 +416,11 @@ export function ConversationInbox({
             Email, text, and portal conversations in one place.
           </p>
           <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-            {totalUnread > 0 ? `${totalUnread} unread` : "No unread"}
+            {totalUnread > 0 ? `${totalUnread} unread messages` : "No unread messages"}
             {" · "}
-            {needsResponseCount > 0 ? `${needsResponseCount} need response (this page)` : "None need response on this page"}
+            {needsResponseCount > 0
+              ? `${needsResponseCount} need response`
+              : "None need response"}
           </p>
         </div>
         <Link href="/messaging/health" className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline">
@@ -787,6 +839,7 @@ export function ConversationInbox({
                   needsResponse={needsResponseForRow(c, needsResponseOverrides)}
                   timeLabel={formatListTime(c.lastMessageAt, nowMs)}
                   onClick={() => setActiveId(c.id)}
+                  onNoResponseNeeded={() => void markNoResponseNeeded(c.id)}
                 />
               ))}
               {hasMore && (
@@ -816,6 +869,7 @@ export function ConversationInbox({
               onInboxSent={(latestMessage, needsResponse) => {
                 markConversationSent(activeId, latestMessage, needsResponse);
               }}
+              onNeedsResponseCleared={() => void markNoResponseNeeded(activeId)}
             />
           ) : (
             <div className="max-w-xs space-y-1 px-6 text-center">

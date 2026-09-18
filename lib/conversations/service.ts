@@ -57,7 +57,7 @@ export async function getConversationInboxPage(
   query: repo.InboxPageQuery = {},
 ): Promise<repo.InboxPageResult> {
   if (!isSupabaseConfigured) {
-    return { conversations: [], totalUnread: 0, hasMore: false, nextCursor: null };
+    return { conversations: [], totalUnread: 0, totalNeedsResponse: 0, hasMore: false, nextCursor: null };
   }
   const supabase = await createClient();
   return repo.getConversationInboxPage(supabase, query);
@@ -126,6 +126,15 @@ export async function getConversation(conversationId: string): Promise<Conversat
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
   return repo.getConversation(supabase, conversationId);
+}
+
+/** Explicit "No response needed" — clears Needs Response without a reply. */
+export async function clearConversationNeedsResponse(
+  conversationId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Not configured." };
+  const supabase = await createClient();
+  return repo.clearConversationNeedsResponse(supabase, conversationId);
 }
 
 export async function getConversationComposeContext(

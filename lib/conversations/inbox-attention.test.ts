@@ -35,6 +35,7 @@ function summary(partial: Partial<ConversationSummary> & Pick<ConversationSummar
     lastMessageAt: partial.latestMessage?.sentAt ?? null,
     venueUnread: partial.venueUnread ?? 0,
     contactUnread: 0,
+    needsResponse: partial.needsResponse,
     latestMessage: partial.latestMessage,
     latestMeaningfulMessage: partial.latestMeaningfulMessage,
     assignedStaffId: null,
@@ -147,9 +148,21 @@ describe("Case G — list truth equals thread truth", () => {
       latestMessage: inbound,
       latestMeaningfulMessage: inbound,
       venueUnread: 0,
+      needsResponse: true,
     });
     assert.equal(row.venueUnread, 0);
     assert.equal(conversationNeedsResponseFromSummary(row), true);
+  });
+
+  it("persisted dismissal wins over inbound tip", () => {
+    const inbound = preview({ senderType: "lead_or_client", channel: "portal" });
+    const row = summary({
+      latestMessage: inbound,
+      latestMeaningfulMessage: inbound,
+      venueUnread: 2,
+      needsResponse: false,
+    });
+    assert.equal(conversationNeedsResponseFromSummary(row), false);
   });
 });
 

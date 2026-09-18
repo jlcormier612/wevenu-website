@@ -1,13 +1,14 @@
 /**
  * Inbox attention helpers — Pass 1 calm + trustworthy Inbox.
  *
- * Needs response and empty-conversation rules are derived from existing
- * message fields (sender_type / channel). No stored attention flag.
+ * Needs Response auto-classification (what *sets* the flag on inbound) is
+ * derived from message sender/channel. The live filter/UI state is the
+ * persisted `conversations.needs_response` column — independent of unread —
+ * so venue dismissal and reply clearing survive without coupling to open/read.
  *
- * List and thread share conversationNeedsResponse(latestMeaningful…).
- * latestMeaningfulFromMessages is the in-memory walker; Inbox rows carry
- * latestMeaningfulMessage from a scoped repository enrich so the list does
- * not depend on the tip-of-thread preview alone.
+ * List and thread share conversationNeedsResponseFromSummary for the
+ * persisted flag; conversationNeedsResponse(latestMeaningful) remains the
+ * classifier used by triggers / backfill / tests of auto-set rules.
  */
 import type {
   ConversationChannel,
@@ -53,9 +54,9 @@ export function isMeaningfulCommunication(message: {
 }
 
 /**
- * Needs response (v1): latest meaningful communication is inbound from the
- * client/contact/vendor, with no subsequent meaningful venue response.
- * Unread is a separate concept.
+ * Auto-classifier: would this latest meaningful tip create / keep Needs
+ * Response? Used by DB trigger semantics and tests — not by the Inbox filter
+ * once `needsResponse` is persisted on the summary.
  */
 export function conversationNeedsResponse(
   latestMeaningful: ConversationMessagePreview | null | undefined,
@@ -130,11 +131,32 @@ export function conversationBelongsInInbox(conversation: Pick<ConversationSummar
 }
 
 /**
- * Authoritative Needs Response for an Inbox row — same rule as the thread.
- * Requires latestMeaningfulMessage from repository enrich (or optimistic patch).
+ * Authoritative Needs Response for an Inbox row — persisted flag when present.
+ * Falls back to the classifier only when the row was built without the column
+ * (legacy / partial enrich paths).
  */
 export function conversationNeedsResponseFromSummary(
-  conversation: Pick<ConversationSummary, "latestMeaningfulMessage">,
+  conversation: Pick<ConversationSummary, "needsResponse" | "latestMeaningfulMessage">,
 ): boolean {
+  if (typeof conversation.needsResponse === "boolean") {
+    return conversation.needsResponse;
+  }
   return conversationNeedsResponse(conversation.latestMeaningfulMessage ?? null);
+}
+
+/** Four locked state combinations (read/unread × needs response). */
+export function inboxAttentionState(opts: {
+  venueUnread: number;
+  needsResponse: boolean;
+}): {
+  unread: boolean;
+  needsResponse: boolean;
+  label: "unread_needs_response" | "read_needs_response" | "unread_no_response" | "read_no_response";
+} {
+  const unread = opts.venueUnread > 0;
+  const needsResponse = opts.needsResponse;
+  const label = unread
+    ? (needsResponse ? "unread_needs_response" : "unread_no_response")
+    : (needsResponse ? "read_needs_response" : "read_no_response");
+  return { unread, needsResponse, label };
 }

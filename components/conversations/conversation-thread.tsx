@@ -18,7 +18,8 @@ import {
 import { toast } from "sonner";
 
 import {
-  cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getConversationAction,
+  cancelScheduledMessageAction, clearConversationNeedsResponseAction,
+  getActiveEnrollmentsForConversationAction, getConversationAction,
   getRelationshipContextAction, getScheduledForConversationAction, setConversationAssignedStaffAction,
 } from "@/app/(app)/messaging/actions";
 import {
@@ -349,7 +350,7 @@ const NO_ASSIGNEE = "__none__";
 
 export function ConversationThread({
   conversationId, onBack, showHeader = true, summary, teamMembers = [], initialBody, initialSubject,
-  onInboxOpened, onInboxSent, flow = "contained",
+  onInboxOpened, onInboxSent, onNeedsResponseCleared, flow = "contained",
 }: {
   conversationId: string;
   onBack?: () => void;
@@ -375,12 +376,18 @@ export function ConversationThread({
    */
   initialBody?: string;
   initialSubject?: string;
-  /** Inbox list sync — called once after messages load (marks read + needs response). */
+  /** Inbox list sync — after open: unread cleared; Needs Response unchanged (persisted). */
   onInboxOpened?: (needsResponse: boolean) => void;
   /** Inbox list sync — after a successful venue send. */
   onInboxSent?: (latestMessage: ConversationMessagePreview, needsResponse: boolean) => void;
+  /** Called after explicit "No response needed" succeeds. */
+  onNeedsResponseCleared?: () => void;
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
+  const [needsResponse, setNeedsResponse] = React.useState<boolean>(
+    () => Boolean(summary?.needsResponse),
+  );
+  const [clearingNeedsResponse, setClearingNeedsResponse] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   /** Stick to newest unless the user scrolls up into history. */
@@ -453,9 +460,15 @@ export function ConversationThread({
         if (cancelled) return;
         const next = detail?.messages ?? [];
         setMessages(next);
+        const persistedNeeds =
+          typeof detail?.needsResponse === "boolean"
+            ? detail.needsResponse
+            : conversationNeedsResponse(latestMeaningfulFromMessages(next));
+        setNeedsResponse(persistedNeeds);
         if (!openedNotifiedRef.current) {
           openedNotifiedRef.current = true;
-          onInboxOpenedRef.current?.(conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+          // Open clears unread only — pass persisted Needs Response unchanged.
+          onInboxOpenedRef.current?.(persistedNeeds);
         }
       })
       .catch(() => {
@@ -530,6 +543,11 @@ export function ConversationThread({
       const detail = await getConversationAction(conversationId);
       const next = detail?.messages ?? [];
       setMessages(next);
+      const persistedNeeds =
+        typeof detail?.needsResponse === "boolean"
+          ? detail.needsResponse
+          : conversationNeedsResponse(latestMeaningfulFromMessages(next));
+      setNeedsResponse(persistedNeeds);
       const last = next[next.length - 1];
       if (last && onInboxSentRef.current) {
         const preview: ConversationMessagePreview = {
@@ -538,12 +556,13 @@ export function ConversationThread({
           sentAt: last.sentAt,
           channel: last.channel,
         };
-        onInboxSentRef.current(preview, conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+        onInboxSentRef.current(preview, persistedNeeds);
       }
     } catch {
       // Post-send refresh failed — reconcile from authoritative ack when present.
       if (ack) {
         setMessages((prev) => mergeSentAckIntoMessages(prev, ack));
+        setNeedsResponse(false);
         if (onInboxSentRef.current) {
           const channel = (ack.channel as ConversationChannel) || "email";
           const preview: ConversationMessagePreview = {
@@ -557,6 +576,19 @@ export function ConversationThread({
       } else {
         setMessages((prev) => prev ?? []);
       }
+    }
+  }
+
+  async function handleNoResponseNeeded() {
+    if (clearingNeedsResponse) return;
+    setClearingNeedsResponse(true);
+    try {
+      const result = await clearConversationNeedsResponseAction(conversationId);
+      if (!result.ok) return;
+      setNeedsResponse(false);
+      onNeedsResponseCleared?.();
+    } finally {
+      setClearingNeedsResponse(false);
     }
   }
 
@@ -627,6 +659,16 @@ export function ConversationThread({
                   <span className="text-xs text-muted-foreground">Conversation</span>
                 )}
                 <div className="min-w-0 flex-1" />
+                {needsResponse && (
+                  <button
+                    type="button"
+                    disabled={clearingNeedsResponse}
+                    onClick={() => void handleNoResponseNeeded()}
+                    className="shrink-0 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:opacity-50"
+                  >
+                    {clearingNeedsResponse ? "Updating…" : "No response needed"}
+                  </button>
+                )}
                 <select
                   aria-label="Assigned coordinator" value={assignedStaffId}
                   onChange={(e) => handleAssignedStaffChange(e.target.value)}
