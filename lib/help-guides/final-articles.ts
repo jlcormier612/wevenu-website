@@ -218,17 +218,15 @@ Automations should save you work without taking control away from you.`,
     category: "Finding & Booking Clients",
     body: `A **Lead** is someone you're working with as a potential booking.
 
-A **Client** is the relationship once it has moved into the client/event workspace.
+A **Client** is a Lead who has become a booking.
 
-When a Lead is booked, Hello to Cheers carries that relationship into the client experience so you can continue working with the same person and event.
+**You decide what "booked" means for your venue.**
 
-One important distinction:
+For some venues, a booking might mean the contract has been signed. For others, it might mean a deposit has been paid, both have happened, or another milestone has been reached.
 
-**Booked does not automatically mean the contract is signed or the invoice is paid.**
+Hello to Cheers lets you define your sales process around the way your venue actually works. When a Lead becomes booked, that relationship becomes a Client so your team can continue managing the event and everything that follows.
 
-Booking is part of the sales lifecycle.
-
-Contracts and payments are separate parts of the relationship, and Hello to Cheers keeps those records distinct so you can see what has actually happened.`,
+Contracts and payments are tracked separately, so you can always see what has actually been signed, invoiced, and paid.`,
   },
   {
     slug: "what-is-the-difference-between-task-center-and-requests",

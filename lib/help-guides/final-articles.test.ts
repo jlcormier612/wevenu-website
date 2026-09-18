@@ -57,7 +57,10 @@ describe("Help & Guides final IA", () => {
     assert.match(reports.body, /Contracted, Collected, and Outstanding/);
     const leadClient = PUBLISHABLE_HELP_ARTICLES.find((a) => a.slug === "whats-the-difference-between-a-lead-and-a-client");
     assert.ok(leadClient);
-    assert.match(leadClient.body, /Booked does not automatically mean the contract is signed/);
+    assert.match(leadClient.body, /A \*\*Client\*\* is a Lead who has become a booking/);
+    assert.match(leadClient.body, /You decide what "booked" means for your venue/);
+    assert.doesNotMatch(leadClient.body, /client\/event workspace/);
+    assert.doesNotMatch(leadClient.body, /Booked does not automatically mean the contract is signed/);
   });
 
   it("matches expected publishable counts per category", () => {
@@ -112,5 +115,19 @@ describe("Help & Guides final IA", () => {
     assert.doesNotMatch(sql, /Settings → Payments/);
     assert.match(sql, /Availability & Capacity/);
     assert.match(sql, /Financials & Integrations/);
+  });
+
+  it("lead/client booking terminology migration uses approved venue-centric copy", () => {
+    const sql = readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations/20261401700000_help_lead_client_booking_terminology.sql",
+      ),
+      "utf8",
+    );
+    assert.match(sql, /whats-the-difference-between-a-lead-and-a-client/);
+    assert.match(sql, /A \*\*Client\*\* is a Lead who has become a booking/);
+    assert.match(sql, /You decide what "booked" means for your venue/);
+    assert.doesNotMatch(sql, /client\/event workspace/);
   });
 });
