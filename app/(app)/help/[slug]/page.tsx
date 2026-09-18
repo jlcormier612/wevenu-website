@@ -36,18 +36,24 @@ function HelpProse({ body }: { body: string }) {
             </h2>
           );
         }
-        const isList = lines.every(
-          (l) => l.trim() === "" || /^[-*]\s/.test(l.trim()),
+        const bulletLines = lines.filter((l) => /^[-*]\s/.test(l.trim()));
+        const proseLines = lines.filter(
+          (l) => l.trim() !== "" && !/^[-*]\s/.test(l.trim()),
         );
-        if (isList) {
+        if (bulletLines.length > 0) {
           return (
-            <ul key={i} className="list-disc pl-5 space-y-1.5 text-muted-foreground">
-              {lines
-                .filter((l) => /^[-*]\s/.test(l.trim()))
-                .map((l, j) => (
+            <div key={i} className="space-y-2">
+              {proseLines.map((line, j) => (
+                <p key={`p-${j}`} className="text-muted-foreground whitespace-pre-wrap">
+                  {renderInline(line)}
+                </p>
+              ))}
+              <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground">
+                {bulletLines.map((l, j) => (
                   <li key={j}>{renderInline(l.trim().replace(/^[-*]\s/, ""))}</li>
                 ))}
-            </ul>
+              </ul>
+            </div>
           );
         }
         return (
