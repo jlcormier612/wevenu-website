@@ -131,7 +131,7 @@ export function ContractDetail({
   );
 
   const canEditContent =
-    (contract.status === "draft" || contract.status === "sent") && !clientSigned && contract.status !== "signed";
+    (contract.status === "draft" || contract.status === "sent") && !clientSigned;
   /**
    * Reopen-for-editing is retired after a client signature (content immutable).
    * Kept false so the action cannot circumvent DB immutability.
