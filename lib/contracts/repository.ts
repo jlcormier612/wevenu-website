@@ -695,16 +695,16 @@ export async function deleteContract(client: DbClient, venueId: string, id: stri
 }
 
 /**
- * Work Package D6 §11 — internal-only. Also blocked once venue has signed
- * (force-resolve must not alter committed content).
+ * Work Package D6 §11 — internal-only. Blocked once any required party has
+ * signed (client-first: client signature locks content; venue countersign also locks).
  */
 export async function forceResolveContractContent(client: DbClient, venueId: string, id: string, content: string): Promise<void> {
-  const { data: venueSigner } = await client.from("contract_signers")
-    .select("signed_at")
-    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
-    .maybeSingle<{ signed_at: string | null }>();
-  if (venueSigner?.signed_at) {
-    throw new Error("Cannot modify content after the venue has signed.");
+  const { data: signers } = await client.from("contract_signers")
+    .select("signer_type, signed_at, is_required")
+    .eq("contract_id", id).eq("venue_id", venueId);
+  const rows = (signers ?? []) as { signer_type: string; signed_at: string | null; is_required: boolean }[];
+  if (rows.some((r) => r.signed_at && (r.signer_type === "venue" || r.is_required))) {
+    throw new Error("Cannot modify content after a signature has been recorded. Use Create New Version.");
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contracts") as any).update({ content }).eq("id", id).eq("venue_id", venueId);

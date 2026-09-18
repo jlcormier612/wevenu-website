@@ -43,6 +43,10 @@ export function describeExperience(input: {
   isCompanionUpload?: boolean;
   hasFinalArtifact?: boolean;
   relationshipName?: string | null;
+  /** Contract signing progress — distinguishes Sent to Client vs Awaiting Venue. */
+  venueSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 }): ExperienceView {
   const who = coupleNameSuffix(input.relationshipName ?? null);
 
@@ -153,6 +157,19 @@ export function describeExperience(input: {
       };
     }
     if (status === "sent") {
+      const total = Math.max(1, input.requiredClientTotal ?? 1);
+      const clientSigned = input.requiredClientSigned ?? 0;
+      const awaitingVenue = clientSigned >= total && !input.venueSigned;
+      if (awaitingVenue) {
+        return {
+          experienceStatus: "review",
+          nextActor: "venue",
+          nextActionLabel: "Venue to countersign",
+          filterStatus: "action_needed",
+          producerHref: `/contracts/${input.id}`,
+          artifactAuthority: "working_record",
+        };
+      }
       return {
         experienceStatus: "with_someone",
         nextActor: "couple",

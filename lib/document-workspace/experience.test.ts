@@ -40,6 +40,22 @@ describe("experience labels", () => {
     assert.equal(describeExperience({ docType: "questionnaire", rawStatus: "complete", eventId: "e1", id: "q1" }).experienceStatus, "complete");
   });
 
+  it("maps contract sent vs awaiting venue countersignature", () => {
+    const awaitingClient = describeExperience({
+      docType: "contract", rawStatus: "sent", eventId: "e1", id: "c1",
+      requiredClientTotal: 1, requiredClientSigned: 0, venueSigned: false,
+    });
+    assert.equal(awaitingClient.nextActor, "couple");
+    assert.match(awaitingClient.nextActionLabel ?? "", /to sign/);
+
+    const awaitingVenue = describeExperience({
+      docType: "contract", rawStatus: "sent", eventId: "e1", id: "c1",
+      requiredClientTotal: 1, requiredClientSigned: 1, venueSigned: false,
+    });
+    assert.equal(awaitingVenue.nextActor, "venue");
+    assert.match(awaitingVenue.nextActionLabel ?? "", /countersign/i);
+  });
+
   it("maps signed+finalized contracts to Final and keeps companion uploads distinct", () => {
     const signed = describeExperience({ docType: "contract", rawStatus: "signed", eventId: "e1", id: "c1", hasFinalArtifact: true });
     assert.equal(signed.experienceStatus, "final");

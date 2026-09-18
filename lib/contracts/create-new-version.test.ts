@@ -69,7 +69,20 @@ describe("contract version lineage (amends_contract_id)", () => {
     assert.equal(formatVersionLabel(2), "Version 2");
     assert.equal(statusLabelForVersion({ status: "draft", finalized: false, locked: false }), "Draft");
     assert.equal(statusLabelForVersion({ status: "draft", finalized: false, locked: true }), "Draft");
-    assert.equal(statusLabelForVersion({ status: "signed", finalized: true, locked: true }), "Signed · Final");
+    assert.equal(statusLabelForVersion({ status: "signed", finalized: true, locked: true }), "Fully Executed · Final");
+    assert.equal(statusLabelForVersion({ status: "signed", finalized: false, locked: true }), "Fully Executed");
+    assert.equal(statusLabelForVersion({ status: "sent", finalized: false, locked: false }), "Sent to Client");
+    assert.equal(
+      statusLabelForVersion({
+        status: "sent",
+        finalized: false,
+        locked: true,
+        requiredClientTotal: 1,
+        requiredClientSigned: 1,
+        venueSigned: false,
+      }),
+      "Awaiting Venue Signature",
+    );
   });
 
   it("treats client-signed or executed content as locked", () => {

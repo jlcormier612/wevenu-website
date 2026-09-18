@@ -149,6 +149,10 @@ export function applyContractVersionLineage(
     createdAt: string;
     signedAt: string | null;
     finalized?: boolean;
+    venueSigned?: boolean;
+    anyClientSigned?: boolean;
+    requiredClientTotal?: number;
+    requiredClientSigned?: number;
   }[],
 ): WorkspaceDocument[] {
   if (lineageNodes.length === 0) return docs;
@@ -169,6 +173,9 @@ export function applyContractVersionLineage(
       id: doc.id,
       hasFinalArtifact: finalized,
       relationshipName: doc.relationshipName,
+      venueSigned: node.venueSigned,
+      requiredClientTotal: node.requiredClientTotal,
+      requiredClientSigned: node.requiredClientSigned,
     });
     const versions: WorkspaceVersion[] = family.map((v) => ({
       versionNumber: v.versionNumber,

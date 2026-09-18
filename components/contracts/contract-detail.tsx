@@ -196,7 +196,7 @@ export function ContractDetail({
   function handleReopen() {
     if (!confirm(
       "Reopen this contract for editing?\n\n"
-      + "No client has signed yet. You'll need to sign for the venue again and release it afterward.",
+      + "After any signature, content cannot be reopened in place. Use Create New Version instead.",
     )) return;
     startReopen(async () => {
       const result = await reopenContractForEditingAction(contract.id);
@@ -639,8 +639,12 @@ export function ContractDetail({
               {finalized
                 ? "This is a copy of the signed content. The final PDF (above) is the official record."
                 : contract.status === "signed"
-                  ? "Signed agreement — not yet finalized."
-                  : "Review before sending for signature."}
+                  ? "Fully Executed — both parties have signed. Finalize to generate the official PDF."
+                  : clientSigned && !venueSigned
+                    ? "Client-signed version — content is locked. Countersign below, or Create New Version for substantive changes."
+                    : contract.status === "sent"
+                      ? "Sent to Client — they are reviewing. You can still edit until they sign."
+                      : "Draft — prepare the agreement, then send it to the client for signature."}
             </CardDescription>
           </CardHeader>
           <CardContent>

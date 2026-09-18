@@ -60,6 +60,9 @@ export type ClientSigningParty = {
 /**
  * Pure lifecycle helper — one client signing event cannot complete another
  * signer's requirement. Used by tests; the database RPC is the system of record.
+ *
+ * `allRequiredClientsSigned` is NOT Fully Executed — venue countersignature
+ * is still required under client-first signing.
  */
 export function recordRequiredClientSignature(
   parties: ClientSigningParty[],
@@ -67,12 +70,14 @@ export function recordRequiredClientSignature(
   opts: { signedAt: string; contentHash: string },
 ): {
   parties: ClientSigningParty[];
+  /** @deprecated Alias for allRequiredClientsSigned — does NOT mean Fully Executed. */
   fullyExecuted: boolean;
+  allRequiredClientsSigned: boolean;
   hashMismatch: boolean;
 } {
   const acting = parties.find((p) => p.id === actingSignerId);
   if (!acting || acting.signedAt) {
-    return { parties, fullyExecuted: false, hashMismatch: false };
+    return { parties, fullyExecuted: false, allRequiredClientsSigned: false, hashMismatch: false };
   }
 
   const next = parties.map((p) =>
@@ -84,17 +89,18 @@ export function recordRequiredClientSignature(
   const allSigned = next.every((p) => p.signedAt);
   const hashes = next.map((p) => p.contentHash).filter((h): h is string => Boolean(h));
   const hashMismatch = allSigned && new Set(hashes).size > 1;
+  const allRequiredClientsSigned = allSigned && !hashMismatch;
   return {
     parties: next,
-    fullyExecuted: allSigned && !hashMismatch,
+    fullyExecuted: allRequiredClientsSigned,
+    allRequiredClientsSigned,
     hashMismatch,
   };
 }
 
 /**
- * Reopen-for-editing is retired once the venue has signed.
- * Content is immutable after venue signature; use Create New Version for revisions.
- * (Kept as an explicit guard so any leftover callers fail closed.)
+ * Reopen-for-editing is retired once any signature exists (client-first).
+ * Content is immutable after client or venue signature; use Create New Version.
  */
 export function canReopenContractForEditing(opts: {
   status: string;

@@ -12,8 +12,12 @@ export type ContractLineageNode = {
   signedAt: string | null;
   /** Document Domain finalized (Final PDF), when known. */
   finalized?: boolean;
-  /** Venue signature present — content locked even while status is still draft. */
+  /** Venue countersignature present. */
   venueSigned?: boolean;
+  /** At least one required client signature captured. */
+  anyClientSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 };
 
 export type ContractVersionEntry = {
@@ -27,6 +31,10 @@ export type ContractVersionEntry = {
   finalized: boolean;
   createdAt: string;
   amendsContractId: string | null;
+  venueSigned?: boolean;
+  anyClientSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 };
 
 /** Walk parents until root; depth of this node is the version ordinal (1-based). */
@@ -104,13 +112,16 @@ export function buildContractVersionFamily(
     .map((id) => {
       const n = byId.get(id)!;
       const versionNumber = deriveVersionNumber(id, byId);
+      const anyClientSigned = Boolean(n.anyClientSigned);
+      const venueSigned = Boolean(n.venueSigned);
       const locked =
         n.status === "signed" ||
         n.status === "cancelled" ||
         n.status === "expired" ||
         Boolean(n.signedAt) ||
         Boolean(n.finalized) ||
-        Boolean(n.venueSigned);
+        anyClientSigned ||
+        venueSigned;
       return {
         id,
         versionNumber,
@@ -122,6 +133,10 @@ export function buildContractVersionFamily(
         finalized: Boolean(n.finalized),
         createdAt: n.createdAt,
         amendsContractId: n.amendsContractId,
+        venueSigned,
+        anyClientSigned,
+        requiredClientTotal: n.requiredClientTotal,
+        requiredClientSigned: n.requiredClientSigned,
       } satisfies ContractVersionEntry;
     })
     .sort((a, b) => a.versionNumber - b.versionNumber || a.createdAt.localeCompare(b.createdAt));
@@ -133,13 +148,22 @@ export function formatVersionLabel(versionNumber: number): string {
   return `Version ${versionNumber}`;
 }
 
-export function statusLabelForVersion(entry: Pick<ContractVersionEntry, "status" | "finalized" | "locked">): string {
-  if (entry.finalized) return "Signed · Final";
-  if (entry.status === "signed") return "Signed";
-  if (entry.status === "sent") return "Sent";
-  if (entry.status === "draft") {
-    return "Draft";
+export function statusLabelForVersion(entry: Pick<
+  ContractVersionEntry,
+  "status" | "finalized" | "locked" | "venueSigned" | "anyClientSigned" | "requiredClientTotal" | "requiredClientSigned"
+>): string {
+  if (entry.finalized) return "Fully Executed · Final";
+  if (entry.status === "signed") return "Fully Executed";
+  if (entry.status === "sent") {
+    const total = Math.max(1, entry.requiredClientTotal ?? 1);
+    const signed = entry.requiredClientSigned ?? (entry.anyClientSigned ? total : 0);
+    if (signed >= total && !entry.venueSigned) return "Awaiting Venue Signature";
+    if (total > 1 && signed > 0 && signed < total) {
+      return `Sent to Client (${signed} of ${total})`;
+    }
+    return "Sent to Client";
   }
+  if (entry.status === "draft") return "Draft";
   if (entry.status === "cancelled") return "Cancelled";
   if (entry.status === "expired") return "Expired";
   return entry.status;

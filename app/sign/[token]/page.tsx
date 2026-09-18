@@ -29,9 +29,9 @@ export default async function SignPage({ params }: Props) {
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
         <div className="w-full max-w-2xl space-y-3 text-center">
           <p className="text-2xl">✓</p>
-          <h1 className="text-xl font-semibold text-gray-800">This agreement has already been signed.</h1>
+          <h1 className="text-xl font-semibold text-gray-800">This agreement is fully executed.</h1>
           {contract.signerName ? (
-            <p className="text-sm text-gray-500">Signed by {contract.signerName}.</p>
+            <p className="text-sm text-gray-500">Both parties have signed.</p>
           ) : null}
         </div>
       </div>
@@ -44,6 +44,21 @@ export default async function SignPage({ params }: Props) {
         <div className="w-full max-w-2xl space-y-3 text-center">
           <h1 className="text-xl font-semibold text-gray-800">This agreement is not available for signing.</h1>
           <p className="text-sm text-gray-500">The link may be expired or the contract may have been cancelled.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Client already signed this token — status stays "sent" until venue countersigns.
+  if (contract.tokenSigner?.signedAt) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-2xl space-y-3 text-center">
+          <p className="text-2xl">✓</p>
+          <h1 className="text-xl font-semibold text-gray-800">Your signature is recorded.</h1>
+          <p className="text-sm text-gray-500">
+            The venue has been notified and will review and countersign. This agreement is not fully executed until the venue signs.
+          </p>
         </div>
       </div>
     );

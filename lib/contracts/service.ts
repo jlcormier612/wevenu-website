@@ -214,24 +214,54 @@ export async function getContractVersionFamily(contractId: string): Promise<
   const nodes = await repo.listContractLineageNodes(supabase, venue.id, [contractId]);
   const { isContractFinalized } = await import("@/lib/contracts/document-integration");
   const ids = nodes.map((n) => n.id);
-  const { data: venueSigners } = ids.length
+  const { data: signerRows } = ids.length
     ? await supabase
         .from("contract_signers")
-        .select("contract_id, signed_at")
+        .select("contract_id, signer_type, signed_at, is_required")
         .eq("venue_id", venue.id)
-        .eq("signer_type", "venue")
         .in("contract_id", ids)
-    : { data: [] as { contract_id: string; signed_at: string | null }[] };
-  const venueSignedByContract = new Map<string, boolean>();
-  for (const row of (venueSigners ?? []) as { contract_id: string; signed_at: string | null }[]) {
-    venueSignedByContract.set(row.contract_id, Boolean(row.signed_at));
+    : { data: [] as { contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean }[] };
+
+  type Progress = {
+    venueSigned: boolean;
+    requiredClientTotal: number;
+    requiredClientSigned: number;
+    anyClientSigned: boolean;
+  };
+  const progressByContract = new Map<string, Progress>();
+  for (const row of (signerRows ?? []) as {
+    contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean;
+  }[]) {
+    const cur = progressByContract.get(row.contract_id) ?? {
+      venueSigned: false,
+      requiredClientTotal: 0,
+      requiredClientSigned: 0,
+      anyClientSigned: false,
+    };
+    if (row.signer_type === "venue") {
+      cur.venueSigned = Boolean(row.signed_at);
+    } else if (row.signer_type === "client") {
+      if (row.is_required) {
+        cur.requiredClientTotal += 1;
+        if (row.signed_at) cur.requiredClientSigned += 1;
+      }
+      if (row.signed_at) cur.anyClientSigned = true;
+    }
+    progressByContract.set(row.contract_id, cur);
   }
+
   const withFinal = await Promise.all(
-    nodes.map(async (n) => ({
-      ...n,
-      venueSigned: venueSignedByContract.get(n.id) ?? false,
-      finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
-    })),
+    nodes.map(async (n) => {
+      const progress = progressByContract.get(n.id);
+      return {
+        ...n,
+        venueSigned: progress?.venueSigned ?? false,
+        anyClientSigned: progress?.anyClientSigned ?? false,
+        requiredClientTotal: progress?.requiredClientTotal ?? 0,
+        requiredClientSigned: progress?.requiredClientSigned ?? 0,
+        finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
+      };
+    }),
   );
   const { buildContractVersionFamily } = await import("@/lib/contracts/version-lineage");
   return buildContractVersionFamily(contractId, withFinal);

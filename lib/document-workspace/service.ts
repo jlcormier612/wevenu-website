@@ -39,11 +39,55 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
   try {
     const nodes = await contractRepo.listContractLineageNodes(supabase, venue.id, contractIds);
     const { isContractFinalized } = await import("@/lib/contracts/document-integration");
+    const ids = nodes.map((n) => n.id);
+    const { data: signerRows } = ids.length
+      ? await supabase
+          .from("contract_signers")
+          .select("contract_id, signer_type, signed_at, is_required")
+          .eq("venue_id", venue.id)
+          .in("contract_id", ids)
+      : { data: [] as { contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean }[] };
+
+    type Progress = {
+      venueSigned: boolean;
+      requiredClientTotal: number;
+      requiredClientSigned: number;
+      anyClientSigned: boolean;
+    };
+    const progressByContract = new Map<string, Progress>();
+    for (const row of (signerRows ?? []) as {
+      contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean;
+    }[]) {
+      const cur = progressByContract.get(row.contract_id) ?? {
+        venueSigned: false,
+        requiredClientTotal: 0,
+        requiredClientSigned: 0,
+        anyClientSigned: false,
+      };
+      if (row.signer_type === "venue") {
+        cur.venueSigned = Boolean(row.signed_at);
+      } else if (row.signer_type === "client") {
+        if (row.is_required) {
+          cur.requiredClientTotal += 1;
+          if (row.signed_at) cur.requiredClientSigned += 1;
+        }
+        if (row.signed_at) cur.anyClientSigned = true;
+      }
+      progressByContract.set(row.contract_id, cur);
+    }
+
     const withFinal = await Promise.all(
-      nodes.map(async (n) => ({
-        ...n,
-        finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
-      })),
+      nodes.map(async (n) => {
+        const progress = progressByContract.get(n.id);
+        return {
+          ...n,
+          finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
+          venueSigned: progress?.venueSigned ?? false,
+          anyClientSigned: progress?.anyClientSigned ?? false,
+          requiredClientTotal: progress?.requiredClientTotal ?? 0,
+          requiredClientSigned: progress?.requiredClientSigned ?? 0,
+        };
+      }),
     );
     return applyContractVersionLineage(docs, withFinal);
   } catch (err) {
