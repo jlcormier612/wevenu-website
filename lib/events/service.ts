@@ -157,6 +157,12 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
         .update({ status: "cancelled" })
         .eq("id", before.clientId)
         .eq("venue_id", venueId);
+      // Booked pipeline state means the active relationship. Cancellation
+      // keeps events.booked_at and moves the lead off sales_stage booked.
+      if (before.bookedAt) {
+        const { leaveActiveBookedPipeline } = await import("@/lib/leads/service");
+        await leaveActiveBookedPipeline(supabase, venueId, before.clientId);
+      }
     }
     return { ok: true } as EventActionResult;
   });

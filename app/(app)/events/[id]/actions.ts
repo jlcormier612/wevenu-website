@@ -12,6 +12,7 @@ import {
   updateEventNote_,
   updateEventStatus_,
 } from "@/lib/events/service";
+import { returnClientToBooked } from "@/lib/leads/service";
 import type { EventActionResult, EventInput, TeamMemberInput } from "@/lib/events/types";
 
 function revalidateEvent(eventId: string) {
@@ -23,8 +24,27 @@ function revalidateEvent(eventId: string) {
 
 export async function updateEventStatusAction(eventId: string, status: string): Promise<EventActionResult> {
   const result = await updateEventStatus_(eventId, status);
-  if (result.ok) revalidateEvent(eventId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    if (status === "cancelled") {
+      revalidatePath("/clients");
+      revalidatePath("/calendar");
+      revalidatePath("/leads");
+    }
+  }
   return result;
+}
+
+export async function returnClientToBookedAction(clientId: string): Promise<EventActionResult> {
+  const result = await returnClientToBooked(clientId);
+  if (result.ok) {
+    revalidatePath("/clients");
+    revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/calendar");
+    revalidatePath("/leads");
+    revalidatePath("/events");
+  }
+  return result.ok ? { ok: true } : { ok: false, message: result.message };
 }
 
 export async function updateEventAction(eventId: string, input: EventInput): Promise<EventActionResult> {

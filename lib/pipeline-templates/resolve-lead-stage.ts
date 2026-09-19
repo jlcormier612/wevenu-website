@@ -13,6 +13,8 @@ export function resolveVenuePipelineStageId(
   },
 ): string | null {
   if (stages.length === 0) return null;
+  // Cancelled relationships are not on the active sales board.
+  if (opts.salesStage === ("cancelled" as SalesStage)) return null;
   if (opts.pipelineStageId && stages.some((s) => s.id === opts.pipelineStageId)) {
     return opts.pipelineStageId;
   }

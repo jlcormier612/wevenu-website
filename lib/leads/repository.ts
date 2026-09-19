@@ -219,6 +219,9 @@ type TaskRow = {
 };
 
 function resolveSalesStage(r: LeadRow): SalesStage {
+  // Cancelled is terminal and outside the seven sales columns. Preserve it
+  // so a legacy status (won/cancelled) cannot paint the lead back as Booked.
+  if (r.sales_stage === "cancelled") return "cancelled" as SalesStage;
   if (r.sales_stage && isSalesStage(r.sales_stage)) return r.sales_stage;
   if (r.status) return migrateLegacyStatusToSalesStage(r.status, false);
   return "new_inquiry";
@@ -431,7 +434,7 @@ export async function findActiveDuplicate(
 ): Promise<{ id: string } | null> {
   let q = client.from("leads").select("id")
     .eq("venue_id", venueId)
-    .not("sales_stage", "in", "(booked,lost)");
+    .not("sales_stage", "in", "(booked,lost,cancelled)");
   const trimmedEmail = email.trim();
   q = trimmedEmail
     ? q.ilike("email", trimmedEmail)

@@ -67,24 +67,32 @@ export async function bookClient(
     return { ok: true, booked: true, newlyBooked: false, eventId, clientId };
   }
 
+  // First booking is the only celebration: booked_at NULL → timestamp.
+  // A cancelled relationship keeps that historical timestamp, so restoring
+  // it is not a new Lead → Booked conversion.
   const newlyBooked = before.booked_at == null;
   const tz = await getVenueTimezone(supabase, venueId);
-  await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
+  if (newlyBooked) {
+    await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("events") as any)
-    .update({
-      status: "confirmed",
-      ...(newlyBooked ? { booking_celebration_pending: true } : {}),
-    })
+  const { error: confirmError } = await (supabase.from("events") as any)
+    .update({ status: "confirmed" })
     .eq("id", eventId)
     .eq("venue_id", venueId);
+  if (confirmError) {
+    return { ok: false, message: confirmError.message ?? "Could not confirm the event." };
+  }
 
-  await supabase
+  const { error: clientError } = await supabase
     .from("clients")
     .update({ status: "confirmed" })
     .eq("id", clientId)
     .eq("venue_id", venueId);
+  if (clientError) {
+    return { ok: false, message: clientError.message ?? "Could not confirm the client." };
+  }
 
   let leadId = input.leadId ?? null;
   if (!leadId) {
@@ -123,6 +131,27 @@ export async function bookClient(
       actorUserId: user?.id ?? null,
       metadata: { source: input.source },
     });
+  }
+
+  // Last write. Lead-stage work in this same request must not be able to
+  // land the caller on a booked workspace with the flag still false.
+  // Set only for a true NULL → booked_at transition, never for reactivation
+  // or a repeated call against an already active booking.
+  if (newlyBooked) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: celebrateError, data: celebrated } = await (supabase.from("events") as any)
+      .update({ booking_celebration_pending: true })
+      .eq("id", eventId)
+      .eq("venue_id", venueId)
+      .not("booked_at", "is", null)
+      .select("booking_celebration_pending");
+    if (celebrateError) {
+      return { ok: false, message: celebrateError.message ?? "Could not start the booking celebration." };
+    }
+    const row = Array.isArray(celebrated) ? celebrated[0] : celebrated;
+    if (!row?.booking_celebration_pending) {
+      return { ok: false, message: "The booking was saved, but the celebration could not be started." };
+    }
   }
 
   return { ok: true, booked: true, newlyBooked, eventId, clientId };

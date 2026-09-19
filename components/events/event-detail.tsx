@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
+import { updateEventStatusAction, returnClientToBookedAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
@@ -441,6 +441,28 @@ export function EventDetail({
               }}
             >
               Cancel event
+            </Button>
+          )}
+          {event.status === "cancelled" && event.bookedAt && event.clientId && (
+            <Button
+              size="sm"
+              disabled={statusPending}
+              onClick={() => {
+                if (!confirm("Return this client to Booked? This restores the existing client, event, and calendar. It is not a new booking.")) return;
+                const clientId = event.clientId;
+                if (!clientId) return;
+                startStatus(async () => {
+                  const result = await returnClientToBookedAction(clientId);
+                  if (result.ok) {
+                    toast.success("Returned to Booked.");
+                    router.refresh();
+                  } else {
+                    toast.error(result.message ?? "Could not return to Booked.");
+                  }
+                });
+              }}
+            >
+              Return to Booked
             </Button>
           )}
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/edit`} />}>

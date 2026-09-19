@@ -330,6 +330,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
   const currentStage = (lead.salesStage ?? lead.status) as SalesStage;
   const isBookingStarted = currentStage === "booked";
+  const relationshipCancelled = (lead.salesStage as string) === "cancelled";
   const previouslyConverted = !!lead.linkedClientId;
   const currentVenueStageId = venueStages?.length
     ? resolveVenuePipelineStageId(venueStages, {
@@ -550,7 +551,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             previewAction={previewDeleteLeadAction}
             deleteAction={deleteLeadRecordAction}
           />
-          {previouslyConverted && !isBookingStarted && currentStage !== "lost" && (
+          {(previouslyConverted && (relationshipCancelled || (!isBookingStarted && currentStage !== "lost"))) && (
             <Button
               size="sm"
               disabled={lifecyclePending}

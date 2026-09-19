@@ -32,6 +32,7 @@ import {
   wouldEnrollOnStageChange,
 } from "@/lib/message-sequences/service";
 import {
+  CANCELLED_RELATIONSHIP_STAGE,
   isForwardSalesStageMove,
   isManuallyAssignableSalesStage,
   isSalesStage,
@@ -695,8 +696,51 @@ export async function moveLeadBackToSalesPipeline(leadId: string): Promise<LeadA
 }
 
 /**
- * Return a previously converted relationship to Booked (rebooking when first_booked_at already set).
+ * A cancelled booked relationship is not an active Booked Client.
+ * sales_stage leaves `booked`. Historical events.booked_at is not cleared.
+ * `cancelled` is not a sales-pipeline column and is not Lost.
+ */
+export async function leaveActiveBookedPipeline(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  clientId: string,
+): Promise<void> {
+  const { data: client } = await supabase
+    .from("clients")
+    .select("lead_id")
+    .eq("id", clientId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ lead_id: string | null }>();
+  const leadId = client?.lead_id;
+  if (!leadId) return;
+
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("sales_stage")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ sales_stage: string | null }>();
+  if (!lead || lead.sales_stage !== "booked") return;
+
+  const { error } = await supabase
+    .from("leads")
+    .update({
+      sales_stage: CANCELLED_RELATIONSHIP_STAGE,
+      pipeline_stage_id: null,
+      lost_reason: null,
+      lost_reason_detail: null,
+      lost_at: null,
+    })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Return a previously converted relationship to Booked.
  * Requires an existing linked client — does not create a new client/event.
+ * An already-active Booked lead is a no-op. A cancelled relationship
+ * (even if sales_stage was left on booked) calls bookClient.
  */
 export async function returnLeadToBooked(leadId: string): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
@@ -704,9 +748,7 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
       .eq("id", leadId).eq("venue_id", venueId)
       .maybeSingle<{ sales_stage: string | null }>();
     if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
-    if (row.sales_stage === "booked") {
-      return { ok: true } as LeadActionResult;
-    }
+
     const { data: linked } = await supabase.from("clients").select("id")
       .eq("lead_id", leadId).eq("venue_id", venueId)
       .maybeSingle<{ id: string }>();
@@ -716,11 +758,42 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
         message: "There is no client linked to this inquiry yet. Create a contract or set up payments from the Booking Journey first, or start the booking file.",
       } as LeadActionResult;
     }
+
+    if (row.sales_stage === "booked") {
+      const { data: cancelledEvent } = await supabase.from("events").select("id")
+        .eq("client_id", linked.id).eq("venue_id", venueId)
+        .eq("status", "cancelled")
+        .not("booked_at", "is", null)
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (!cancelledEvent) {
+        return { ok: true } as LeadActionResult;
+      }
+    }
+
     const { bookClient } = await import("@/lib/booking-journey/book-client");
     const booked = await bookClient(supabase, {
       venueId,
       clientId: linked.id,
       leadId,
+      source: "manual",
+    });
+    if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+/**
+ * Same canonical bookClient transition as Return to Booked, starting from
+ * the client rather than the lead. Does not create records.
+ */
+export async function returnClientToBooked(clientId: string): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
+      clientId,
       source: "manual",
     });
     if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;

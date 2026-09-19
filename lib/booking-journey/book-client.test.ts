@@ -41,6 +41,22 @@ describe("one canonical booking transition", () => {
     assert.match(book, /else if \(newlyBooked\)/);
     assert.match(book, /booking_celebration_pending: true/);
     assert.match(book, /before\.booked_at == null/);
+    const stage = book.indexOf("updateLeadSalesStage");
+    const flag = book.lastIndexOf("booking_celebration_pending: true");
+    assert.ok(stage > 0 && flag > stage, "celebration flag is written after the lead stage update");
+  });
+
+  it("cancellation leaves the booked pipeline without clearing booked_at", () => {
+    const events = read("lib/events/service.ts");
+    const leads = read("lib/leads/service.ts");
+    assert.match(events, /leaveActiveBookedPipeline/);
+    assert.match(events, /before\.bookedAt/);
+    assert.doesNotMatch(events, /booked_at:\s*null/);
+    assert.match(leads, /CANCELLED_RELATIONSHIP_STAGE/);
+    assert.match(leads, /pipeline_stage_id: null/);
+    const ret = leads.slice(leads.indexOf("export async function returnLeadToBooked"));
+    assert.match(ret, /\.eq\("status", "cancelled"\)/);
+    assert.match(ret, /source: "manual"/);
   });
 
   it("calendar lists official booked events only", () => {

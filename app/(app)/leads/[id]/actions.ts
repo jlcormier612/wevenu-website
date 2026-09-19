@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import {
   addNote,
@@ -91,9 +92,16 @@ export async function confirmPipelineBookedMoveAction(
   if (result.ok) {
     revalidateLead(leadId);
     revalidatePath("/clients");
-    revalidatePath(`/clients/${result.clientId}`);
+    revalidatePath("/calendar");
     if (result.eventId) revalidatePath(`/events/${result.eventId}`);
     void refreshLeadScore(leadId).catch(() => {});
+    // Caller responds to newlyBooked here. The celebration page consumes
+    // the flag bookClient just wrote. Do not revalidate the client workspace
+    // first — that page would skip the celebration if the flag were already gone.
+    if (result.newlyBooked) {
+      const qs = result.eventId ? `?eventId=${encodeURIComponent(result.eventId)}` : "";
+      redirect(`/clients/${result.clientId}/booked${qs}`);
+    }
   }
   return result;
 }
@@ -116,6 +124,7 @@ export async function returnLeadToBookedAction(
   if (result.ok) {
     revalidateLead(leadId);
     revalidatePath(`/clients`);
+    revalidatePath("/calendar");
     void refreshLeadScore(leadId).catch(() => {});
   }
   return result;
