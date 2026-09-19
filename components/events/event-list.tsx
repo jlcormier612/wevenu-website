@@ -13,12 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { EVENT_STATUSES, daysUntil, eventStatusLabel, formatEventDateRange, formatTime } from "@/lib/events/constants";
-import type { EventStatus, VenueEvent } from "@/lib/events/types";
+import { daysUntil, formatEventDateRange, formatTime } from "@/lib/events/constants";
+import type { VenueEvent } from "@/lib/events/types";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import { cn } from "@/lib/utils";
 
-type FilterKey = "all" | EventStatus;
+type FilterKey = "all" | "booked" | "cancelled";
 type SortKey = "event_asc" | "event_desc" | "az" | "za" | "newest";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -37,7 +37,8 @@ export function EventList({ events }: { events: VenueEvent[] }) {
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase();
     const base = events.filter((e) => {
-      if (filter !== "all" && e.status !== filter) return false;
+      if (filter === "booked" && (!e.bookedAt || e.status === "cancelled")) return false;
+      if (filter === "cancelled" && e.status !== "cancelled") return false;
       if (!q) return true;
       return [e.name, e.eventType].some((v) => v?.toLowerCase().includes(q));
     });
@@ -53,10 +54,11 @@ export function EventList({ events }: { events: VenueEvent[] }) {
   }, [events, query, filter, sort]);
 
   const counts = React.useMemo(() => {
-    const m = new Map<FilterKey, number>([["all", events.length]]);
-    EVENT_STATUSES.forEach((s) => m.set(s.value, 0));
-    events.forEach((e) => m.set(e.status, (m.get(e.status) ?? 0) + 1));
-    return m;
+    return {
+      all: events.length,
+      booked: events.filter((e) => e.bookedAt && e.status !== "cancelled").length,
+      cancelled: events.filter((e) => e.status === "cancelled").length,
+    };
   }, [events]);
 
   return (
@@ -75,9 +77,12 @@ export function EventList({ events }: { events: VenueEvent[] }) {
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {(["all", ...EVENT_STATUSES.map((s) => s.value)] as FilterKey[]).map((key) => {
-          const label = key === "all" ? "All" : eventStatusLabel(key);
-          const count = counts.get(key) ?? 0;
+        {([
+          ["all", "All"],
+          ["booked", "Booked"],
+          ["cancelled", "Cancelled"],
+        ] as const).map(([key, label]) => {
+          const count = counts[key];
           const active = filter === key;
           return (
             <button key={key} type="button" onClick={() => setFilter(key)}
@@ -141,7 +146,7 @@ export function EventList({ events }: { events: VenueEvent[] }) {
                     <TableCell className="text-sm">
                       {ev.guestCount != null ? ev.guestCount.toLocaleString() : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell><EventStatusBadge status={ev.status} /></TableCell>
+                    <TableCell><EventStatusBadge status={ev.status} bookedAt={ev.bookedAt} /></TableCell>
                     <TableCell>
                       {days != null ? (
                         <span className={cn("text-xs font-medium", past ? "text-muted-foreground" : soon ? "text-destructive" : "text-muted-foreground")}>

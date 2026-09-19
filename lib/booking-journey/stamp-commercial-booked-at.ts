@@ -3,7 +3,7 @@
  * agreement complete (offer accepted or contract signed) + required deposit paid.
  *
  * Does not stamp for Start booking file, Direct Add, or mere Client/Event create.
- * ensureEventBookedAt is write-once — safe to call repeatedly.
+ * bookClient is write-once on events.booked_at — safe to call repeatedly.
  *
  * Works with session or service_role clients (no getCurrentVenue dependency).
  */
@@ -11,9 +11,7 @@
 import type { createClient } from "@/integrations/supabase/server";
 import { isCommerciallyBooked } from "@/lib/booking-journey/model";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
-import { ensureEventBookedAt } from "@/lib/events/repository";
 import type { PaymentItemStatus, PaymentObligationKind } from "@/lib/payments/types";
-import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -22,13 +20,19 @@ function mapSelectionStatus(raw: string): CommercialSelection["status"] {
   return "draft";
 }
 
+export type CommercialStampResult = {
+  firstTime: boolean;
+  clientId: string;
+  eventId: string;
+};
+
 export async function maybeStampCommercialBookedAt(
   supabase: DbClient,
   venueId: string,
   opts: { clientId: string; eventId?: string | null },
-): Promise<void> {
+): Promise<CommercialStampResult | null> {
   const clientId = opts.clientId;
-  if (!clientId) return;
+  if (!clientId) return null;
 
   let eventId = opts.eventId ?? null;
   if (!eventId) {
@@ -42,7 +46,7 @@ export async function maybeStampCommercialBookedAt(
       .maybeSingle<{ id: string }>();
     eventId = ev?.id ?? null;
   }
-  if (!eventId) return;
+  if (!eventId) return null;
 
   const { data: selRow } = await supabase
     .from("commercial_selections")
@@ -129,43 +133,21 @@ export async function maybeStampCommercialBookedAt(
     paymentLines,
     prefs,
   });
-  if (!commerciallyBooked) return;
+  if (!commerciallyBooked) return null;
 
-  const tz = await getVenueTimezone(supabase, venueId);
-  await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
-
-  await supabase.from("events")
-    .update({ status: "confirmed" })
-    .eq("id", eventId)
-    .eq("venue_id", venueId)
-    .eq("status", "draft");
+  const { bookClient } = await import("@/lib/booking-journey/book-client");
+  const booked = await bookClient(supabase, {
+    venueId,
+    clientId,
+    eventId,
+    source: "commercial_rule",
+  });
+  if (!booked.ok) return null;
 
   if (selRow && selRow.status !== "accepted" && contract?.status === "signed") {
     const { markAcceptedVenue } = await import("@/lib/commercial-selections/repository");
     await markAcceptedVenue(supabase, venueId, selRow.id);
   }
 
-  const { data: clientRow } = await supabase.from("clients")
-    .select("lead_id")
-    .eq("id", clientId)
-    .eq("venue_id", venueId)
-    .maybeSingle<{ lead_id: string | null }>();
-
-  if (clientRow?.lead_id) {
-    const { updateLeadSalesStage } = await import("@/lib/leads/service");
-    await updateLeadSalesStage(clientRow.lead_id, "booked", {
-      allowBooked: true,
-      clientId,
-    });
-  } else {
-    const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
-    const { data: { user } } = await supabase.auth.getUser();
-    await recordLifecycleBooking(supabase, {
-      venueId,
-      clientId,
-      origin: "pipeline",
-      actorUserId: user?.id ?? null,
-      metadata: { source: "commercial_booked" },
-    });
-  }
+  return { firstTime: booked.firstTime, clientId, eventId: booked.eventId };
 }

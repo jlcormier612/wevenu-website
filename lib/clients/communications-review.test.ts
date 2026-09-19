@@ -84,7 +84,7 @@ describe("buildCommunicationsReview", () => {
       ],
     });
     const automated = model.rows.find((r) => r.key === "automated_messages");
-    assert.equal(automated?.detail, "Nothing is scheduled to send automatically when Booking Started.");
+    assert.equal(automated?.detail, "Nothing is scheduled to send automatically when Booked.");
     assert.equal(automated?.onFile, false);
     assert.equal(
       isActiveBookedStageAutomation({
@@ -111,7 +111,7 @@ describe("buildCommunicationsReview", () => {
       ],
     });
     const automated = model.rows.find((r) => r.key === "automated_messages");
-    assert.equal(automated?.detail, "Post-Booking Follow-up is set to start when Booking Started.");
+    assert.equal(automated?.detail, "Post-Booking Follow-up is set to start when Booked.");
     assert.equal(automated?.href, "/communication/series/booked-1/edit");
     assert.equal(automated?.actionLabel, "Edit");
     assert.doesNotMatch(automated?.detail ?? "", /enroll/i);
@@ -165,7 +165,7 @@ describe("Phase 5 communications review seams", () => {
 
   it("applying Client Planning does not send the invitation", () => {
     const panel = readFileSync(resolve("components/clients/prepare-planning-panel.tsx"), "utf8");
-    assert.match(panel, /applyPlaybookAction/);
+    assert.match(panel, /PlaybookApplyPreviewSheet/);
     assert.doesNotMatch(panel, /inviteClient/);
     assert.doesNotMatch(panel, /releasePlaybookAction/);
     const apply = readFileSync(resolve("lib/playbooks/repository.ts"), "utf8");

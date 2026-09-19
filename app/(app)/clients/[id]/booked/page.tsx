@@ -7,7 +7,6 @@ import { buildCommunicationsReview } from "@/lib/clients/communications-review";
 import { buildEventExperienceReview } from "@/lib/clients/event-experience-review";
 import { buildFinancialReadiness } from "@/lib/clients/financial-readiness";
 import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
-import { remainingAmount } from "@/lib/commercial-selections/constants";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getClientInvitation } from "@/lib/client-auth/service";
@@ -38,7 +37,14 @@ export default async function BookedPage({ params, searchParams }: Props) {
   const client = await getClient(id);
   if (!client) notFound();
   const resolvedEventId = eventId ?? client.linkedEventId ?? null;
-  const fromBookingStarted = from === "booking_started";
+  const justBooked = from === "booked" || from === "booking_started";
+  const event = resolvedEventId ? await getEvent(resolvedEventId) : null;
+
+  // Celebration is the handoff after the canonical transition. It is not a
+  // standing status page, and it is not shown for a pre-booking shell.
+  if (!event?.bookedAt || !justBooked) {
+    redirect(`/clients/${client.id}`);
+  }
 
   const journey = await loadBookingJourneyForClient({
     clientId: client.id,
@@ -46,18 +52,12 @@ export default async function BookedPage({ params, searchParams }: Props) {
     leadId: client.leadId,
   });
 
-  // Venue-facing celebration: commercial Booked, or pipeline Booking Started handoff.
-  if (!journey.isCommerciallyBooked && !fromBookingStarted) {
-    redirect(`/clients/${client.id}`);
-  }
-
-  const [invitation, applications, contracts, schedules, templates, event, automations, enrollments] = await Promise.all([
+  const [invitation, applications, contracts, schedules, templates, automations, enrollments] = await Promise.all([
     getClientInvitation(client.id),
     resolvedEventId ? getEventPlaybookApplications(resolvedEventId) : Promise.resolve([]),
     getContracts(),
     getPaymentSchedules(),
     getTemplates(),
-    resolvedEventId ? getEvent(resolvedEventId) : Promise.resolve(null),
     getSequences(),
     client.relationshipId
       ? getActiveEnrollmentsForRelationship(client.relationshipId)
@@ -105,9 +105,6 @@ export default async function BookedPage({ params, searchParams }: Props) {
   });
 
   const selection = journey.selection;
-  const remaining = selection
-    ? remainingAmount(selection.totalAmount, selection.depositAmount)
-    : null;
 
   const handoff = buildBookingHandoff({
     clientId: client.id,
@@ -122,30 +119,20 @@ export default async function BookedPage({ params, searchParams }: Props) {
     experienceSummary: experience.summary,
   });
 
-  // Override celebration copy for commercial Booked (agreement + deposit),
-  // or for the Booking Started handoff after a confirmed pipeline Booked move.
-  if (journey.isCommerciallyBooked) {
-    handoff.eyebrow = "They're Booked";
-    handoff.bookingLine = selection
-      ? `${selection.name} · ${formatCurrency(selection.totalAmount)} · Deposit ${formatCurrency(selection.depositAmount)} received · ${formatCurrency(remaining ?? 0)} remaining`
-      : "Agreement complete and deposit received.";
-    handoff.prepareHeading = "What to do next";
-    handoff.tagline =
-      "Client Planning is optional and separate. Invite them to the portal and release planning only when those are ready — Booked does not mean planning is released.";
-  } else {
-    handoff.eyebrow = "Booking Started";
-    handoff.bookingLine = selection
-      ? `${selection.name} · ${formatCurrency(selection.totalAmount)} — complete the agreement and any required deposit to mark them commercially Booked.`
-      : "Booking file is open. Complete the agreement and any required deposit to mark them commercially Booked.";
-    handoff.prepareHeading = "What to do next";
-    handoff.tagline =
-      "They left the active lead pipeline. Next: finish commercial Booked, then invite and release Client Planning when ready.";
-  }
+  // Same celebration for automatic and manual booking. Confetti is once.
+  handoff.eyebrow = "They're Booked";
+  handoff.bookingLine = selection
+    ? `${selection.name} · ${formatCurrency(selection.totalAmount)}`
+    : "This client is booked.";
+  handoff.prepareHeading = "What to do next";
+  handoff.tagline =
+    "Planning continues with tasks, the timeline, vendors, messages, payments, and contracts. Booked does not mean planning is released.";
   handoff.primaryLabel = "Continue to booking";
   handoff.primaryHref = `/clients/${client.id}`;
 
   return (
     <BookingCelebration
+      celebrate
       client={client}
       eventId={resolvedEventId}
       eventDate={event?.eventDate ?? client.eventDate}

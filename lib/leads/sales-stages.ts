@@ -31,9 +31,9 @@ export const SALES_STAGE_META: SalesStageMeta[] = [
   { value: "proposal_sent", label: "Proposal Sent", order: 4, description: "Proposal has been sent" },
   {
     value: "booked",
-    label: "Booking Started",
+    label: "Booked",
     order: 5,
-    description: "Booking file opened — not commercially Booked until agreement and deposit",
+    description: "The venue's booking transition is complete",
   },
   { value: "lost", label: "Lost", order: 6, description: "Opportunity marked lost" },
 ];

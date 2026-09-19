@@ -429,7 +429,7 @@ export function EventDetail({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <EventStatusBadge status={event.status} />
+          <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
           {event.status !== "cancelled" && (
             <Button
               variant="outline"

@@ -116,10 +116,11 @@ export async function getCalendarData(
   const [
     eventsRes, tourItems, holdsRes, blocksRes,
   ] = await Promise.all([
-    // 1. Booked events
+    // 1. Official booked events only — pre-booking shells stay off the calendar.
     supabase.from("events")
       .select("id, name, event_date, event_end_date, start_time, event_type, status, client_id, space_id, clients(first_name, last_name), venue_spaces(name)")
       .eq("venue_id", venue.id)
+      .not("booked_at", "is", null)
       .neq("status", "cancelled")
       .lte("event_date", end)
       .or(`event_end_date.gte.${start},and(event_end_date.is.null,event_date.gte.${start})`),

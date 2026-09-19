@@ -26,8 +26,8 @@ export function BookingJourneyStrip({
         Booking Journey
       </p>
       <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
-        Commercial path — Booked means the agreement is complete and any required initial payment is satisfied
-        (see Settings → Leads & Booking). Pipeline “Booking Started” means the booking file is open — not commercially Booked.
+        Commercial path — automatic booking follows your venue booking rule
+        (see Settings → Leads & Booking). Mark as Booked uses that same booked state.
       </p>
       <ol className="mb-4 flex flex-wrap items-center gap-1 sm:gap-2">
         {journey.stages.map((stage, i) => (

@@ -491,6 +491,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
     }
 
     // Payment.Received → Client Automations + commercial booked stamp.
+    let bookingCelebration: { clientId: string; eventId: string } | undefined;
     {
       const { data: scheduleClient } = await supabase.from("payment_schedules")
         .select("client_id, event_id").eq("id", scheduleId)
@@ -508,10 +509,13 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       });
       if (scheduleClient?.client_id) {
         const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-        await maybeStampCommercialBookedAt(supabase, venueId, {
+        const stamped = await maybeStampCommercialBookedAt(supabase, venueId, {
           clientId: scheduleClient.client_id,
           eventId: scheduleClient.event_id ?? sch?.event_id ?? null,
         });
+        if (stamped?.firstTime) {
+          bookingCelebration = { clientId: stamped.clientId, eventId: stamped.eventId };
+        }
       }
     }
 
@@ -562,7 +566,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       }
     }
 
-    return { ok: true, celebrated, obligationCelebrated } as PaymentActionResult;
+    return { ok: true, celebrated, obligationCelebrated, bookingCelebration } as PaymentActionResult;
   });
   return result as PaymentActionResult;
 }

@@ -15,37 +15,32 @@ const root = resolve(process.cwd());
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 
 describe("Pipeline terminology — Booking Started vs commercial Booked", () => {
-  it("pipeline sales_stage booked is labeled Booking Started", () => {
-    assert.equal(salesStageLabel("booked"), "Booking Started");
-    assert.equal(SALES_STAGE_META.find((s) => s.value === "booked")!.label, "Booking Started");
-    assert.doesNotMatch(
-      SALES_STAGE_META.find((s) => s.value === "booked")!.description,
-      /^Booked$|commercially Booked milestone alone/i,
-    );
+  it("pipeline sales_stage booked is labeled Booked", () => {
+    assert.equal(salesStageLabel("booked"), "Booked");
+    assert.equal(SALES_STAGE_META.find((s) => s.value === "booked")!.label, "Booked");
     assert.match(
       SALES_STAGE_META.find((s) => s.value === "booked")!.description,
-      /not commercially Booked/i,
+      /booking transition is complete/i,
     );
   });
 
-  it("Booking Journey keeps commercial Booked label", () => {
+  it("Booking Journey keeps the venue booking rule as the automatic trigger", () => {
     const model = read("lib/booking-journey/model.ts");
     assert.match(model, /key: "booked", label: "Booked"/);
     const strip = read("components/booking-journey/booking-journey-strip.tsx");
-    assert.match(strip, /Commercial path/);
-    assert.match(strip, /Booking Started/);
+    assert.match(strip, /automatic booking follows your venue booking rule/);
+    assert.doesNotMatch(strip, /Booking Started/);
   });
 
   it("Lead confirm does not call the result a planning workspace", () => {
     const detail = read("components/leads/lead-detail.tsx");
     assert.match(detail, /Start booking file\?/);
-    assert.match(detail, /Booking Started/);
+    assert.match(detail, /not Booked until you confirm Mark as Booked/);
     assert.match(detail, /booking file/);
     assert.doesNotMatch(
       detail.slice(detail.indexOf("title=\"Start booking file?\""), detail.indexOf("confirmLabel=\"Start booking file\"")),
       /planning workspace/i,
     );
-    assert.match(detail, /not commercially Booked until/i);
   });
 });
 
@@ -65,7 +60,7 @@ describe("events.booked_at — commercial Booked only", () => {
     const stamp = read("lib/booking-journey/stamp-commercial-booked-at.ts");
     assert.match(stamp, /maybeStampCommercialBookedAt/);
     assert.match(stamp, /isCommerciallyBooked/);
-    assert.match(stamp, /ensureEventBookedAt/);
+    assert.match(stamp, /bookClient/);
     assert.match(read("lib/payments/service.ts"), /maybeStampCommercialBookedAt/);
     assert.match(read("lib/stripe/webhook-handlers.ts"), /maybeStampCommercialBookedAt/);
     assert.match(read("lib/contracts/service.ts"), /maybeStampCommercialBookedAt/);
@@ -158,7 +153,7 @@ describe("Canonical Start booking file path", () => {
     const detail = read("components/leads/lead-detail.tsx");
     assert.doesNotMatch(detail, /wouldEnrollOnPipelineStageMoveAction\(lead\.id, "booked"\)/);
     assert.doesNotMatch(detail, /pendingBookAfterAutomation/);
-    assert.match(detail, /not commercially Booked until/i);
+    assert.match(detail, /not Booked until you confirm Mark as Booked/i);
   });
 
   it("Lead detail surfaces ConflictWarning for the event date", () => {
@@ -184,20 +179,20 @@ describe("Direct Add and celebration destinations", () => {
     assert.doesNotMatch(form, /\/booked/);
   });
 
-  it("commercial celebration page still requires isCommerciallyBooked", () => {
+  it("celebration page requires events.booked_at and the transition handoff", () => {
     const page = read("app/(app)/clients/[id]/booked/page.tsx");
-    assert.match(page, /isCommerciallyBooked/);
-    assert.match(page, /fromBookingStarted|booking_started/);
+    assert.match(page, /event\?\.bookedAt/);
+    assert.match(page, /from === "booked"/);
     assert.match(page, /redirect\(`\/clients\/\$\{client\.id\}`\)/);
-    assert.match(page, /Client Planning is optional/);
+    assert.match(page, /They're Booked/);
   });
 });
 
 describe("Booked-stage automation copy", () => {
-  it("communications review says Booking Started not after booking", () => {
+  it("communications review says when Booked", () => {
     const src = read("lib/clients/communications-review.ts");
-    assert.match(src, /when Booking Started/);
-    assert.doesNotMatch(src, /after booking/);
+    assert.match(src, /when Booked/);
+    assert.doesNotMatch(src, /Booking Started/);
   });
 });
 

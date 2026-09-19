@@ -1,15 +1,22 @@
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { eventStatusLabel } from "@/lib/events/constants";
 import type { EventStatus } from "@/lib/events/types";
 
-const STATUS_VARIANT: Record<EventStatus, BadgeVariant> = {
-  draft:       "muted",
-  confirmed:   "default",
-  in_progress: "accent",
-  complete:    "success",
-  cancelled:   "destructive",
-};
-
-export function EventStatusBadge({ status }: { status: EventStatus }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{eventStatusLabel(status)}</Badge>;
+/**
+ * Customer-facing event state is Booked or Cancelled.
+ * Draft / In Progress / Complete are not a planning lifecycle.
+ */
+export function EventStatusBadge({
+  status,
+  bookedAt,
+}: {
+  status: EventStatus;
+  bookedAt?: string | null;
+}) {
+  if (status === "cancelled") {
+    return <Badge variant={"destructive" satisfies BadgeVariant}>Cancelled</Badge>;
+  }
+  if (bookedAt) {
+    return <Badge variant={"default" satisfies BadgeVariant}>Booked</Badge>;
+  }
+  return null;
 }

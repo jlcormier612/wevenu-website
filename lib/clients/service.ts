@@ -507,7 +507,7 @@ export async function convertLeadToClient(
         }
       }
       // Start booking file / quiet ensure create the workspace only.
-      // Commercial Booked (maybeStampCommercialBookedAt) is the only pipeline-Booked write.
+      // bookClient is the only pipeline-Booked write. Start booking file must not call it.
       await markConvertedClientAsBookingFile(supabase, venueId, existingClient.id);
       if (lead.relationshipId) {
         const { setVenueCoupleInboxOwner } = await import(

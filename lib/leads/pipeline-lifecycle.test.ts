@@ -118,10 +118,11 @@ describe("Pipeline stage transition service contracts", () => {
     assert.match(fn, /That stage is not a Lost stage/);
   });
 
-  it("confirmPipelineBookedMove converts then sets Booking Started", () => {
+  it("confirmPipelineBookedMove converts then calls bookClient", () => {
     const fn = service.slice(service.indexOf("export async function confirmPipelineBookedMove"));
     assert.match(fn, /convertLeadToClient/);
-    assert.match(fn, /allowBooked:\s*true/);
+    assert.match(fn, /bookClient/);
+    assert.match(fn, /source: "manual"/);
     assert.match(fn, /That stage is not mapped to Booked/);
     assert.match(fn, /attachSelectionToBookingFile|getActiveSelectedPackageForLead/);
   });
@@ -136,17 +137,18 @@ describe("Pipeline stage transition service contracts", () => {
     assert.match(board, /LostReasonDialog/);
     assert.match(board, /confirmPipelineBookedMoveAction/);
     assert.match(board, /markLeadLostAction/);
-    assert.match(board, /from=booking_started|from:\s*"booking_started"/);
+    assert.match(board, /from: "booked"/);
     assert.match(detail, /PipelineBookedConfirmDialog/);
     assert.match(detail, /LostReasonDialog/);
     assert.match(detail, /confirmPipelineBookedMoveAction/);
     assert.match(detail, /markLeadLostAction/);
   });
 
-  it("Booked celebration accepts booking_started handoff without commercial Booked", () => {
-    assert.match(bookedPage, /fromBookingStarted|from === "booking_started"/);
-    assert.match(bookedPage, /isCommerciallyBooked && !fromBookingStarted|!journey\.isCommerciallyBooked && !fromBookingStarted/);
-    assert.match(bookedPage, /Booking Started/);
+  it("Booked celebration follows the canonical transition, not a separate handoff", () => {
+    assert.match(bookedPage, /from === "booked"/);
+    assert.match(bookedPage, /event\?\.bookedAt/);
+    assert.match(bookedPage, /They're Booked/);
+    assert.doesNotMatch(bookedPage, /Booking Started/);
   });
 
   it("pipeline editor Reporting Category Select has items and opens outside drag handle", () => {

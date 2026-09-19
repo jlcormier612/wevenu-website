@@ -140,6 +140,8 @@ export type PaymentActionResult =
       celebrated?: boolean;
       /** Final Payment obligation Luv (`final_payment_obligation_paid`) — first win only. */
       obligationCelebrated?: boolean;
+      /** Canonical booking transition just succeeded — celebrate once. */
+      bookingCelebration?: { clientId: string; eventId: string };
     }
   | { ok: false; errors?: PaymentErrors; message?: string };
 

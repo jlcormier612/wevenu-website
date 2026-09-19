@@ -299,7 +299,7 @@ export async function updateLeadSalesStage(
     ) {
       return {
         ok: false,
-        message: "Use Move back to Sales Pipeline to leave Booking Started.",
+        message: "Use Move back to Sales Pipeline to leave Booked.",
       } as LeadActionResult;
     }
 
@@ -553,16 +553,15 @@ export async function markLeadLost(
 }
 
 /**
- * Confirmed move into a Booked reporting-category stage:
- * convert Lead → Client (+ Event), set Booking Started, preserve identity.
- * Does not mark commercially Booked (agreement + deposit remain separate).
+ * Confirmed Mark as Booked: reuse or create the client and event, then
+ * run the same bookClient transition automatic booking uses.
  */
 export async function confirmPipelineBookedMove(
   leadId: string,
   stageKeyOrId: string,
   opts?: { spaceId?: string; selectionId?: string },
 ): Promise<
-  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string }
+  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; firstTime: boolean }
   | { ok: false; message: string }
 > {
   const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
@@ -624,30 +623,30 @@ export async function confirmPipelineBookedMove(
       }
     }
 
-    const stageResult = await updateLeadSalesStage(leadId, "booked", {
-      allowBooked: true,
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
       clientId: converted.clientId,
-      pipelineStageId: pipelineStageId !== null ? pipelineStageId : undefined,
+      eventId: converted.eventId,
+      leadId: lead.id,
+      pipelineStageId,
+      source: "manual",
     });
-    if (!stageResult.ok) {
-      return {
-        ok: false as const,
-        message: stageResult.message ?? "Client was created but Booking Started could not be set.",
-      };
+    if (!booked.ok) {
+      return { ok: false as const, message: booked.message };
     }
 
     return {
       ok: true as const,
       clientId: converted.clientId,
-      eventId: converted.eventId,
+      eventId: booked.eventId,
       invitationSent: false as const,
       warning,
+      firstTime: booked.firstTime,
     };
   });
 
-  return resolved as
-    | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string }
-    | { ok: false; message: string };
+  return resolved;
 }
 
 /**
@@ -662,7 +661,24 @@ export async function moveLeadBackToSalesPipeline(leadId: string): Promise<LeadA
       .maybeSingle<{ sales_stage: string | null }>();
     if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
     if (row.sales_stage !== "booked") {
-      return { ok: false, message: "This lead is not currently in Booking Started." } as LeadActionResult;
+      return { ok: false, message: "This lead is not currently Booked." } as LeadActionResult;
+    }
+    const { data: linked } = await supabase.from("clients").select("id")
+      .eq("lead_id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ id: string }>();
+    if (linked) {
+      const { data: bookedEvent } = await supabase.from("events").select("id")
+        .eq("client_id", linked.id).eq("venue_id", venueId)
+        .not("booked_at", "is", null)
+        .neq("status", "cancelled")
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (bookedEvent) {
+        return {
+          ok: false,
+          message: "This client is booked. Cancel the event to leave Booked.",
+        } as LeadActionResult;
+      }
     }
     return updateLeadSalesStage(leadId, SALES_PIPELINE_RETURN_STAGE, { allowLeaveBooked: true });
   });
@@ -691,7 +707,15 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
         message: "There is no client linked to this inquiry yet. Create a contract or set up payments from the Booking Journey first, or start the booking file.",
       } as LeadActionResult;
     }
-    return updateLeadSalesStage(leadId, "booked", { allowBooked: true, clientId: linked.id });
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
+      clientId: linked.id,
+      leadId,
+      source: "manual",
+    });
+    if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;
+    return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
 }

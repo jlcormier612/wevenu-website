@@ -46,7 +46,29 @@ function monthBuckets(from: string, to: string): { key: string; label: string }[
   return buckets;
 }
 
-export type BookingDrillRow = { clientId: string; clientName: string; contractId: string; bookedAt: string; source: string | null };
+export type BookingDrillRow = { clientId: string; clientName: string; contractId: string | null; bookedAt: string; source: string | null };
+
+async function bookedRelationshipsInWindow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  window: DateWindow,
+): Promise<{ client_id: string; booked_at: string }[]> {
+  const { data } = await supabase
+    .from("events")
+    .select("client_id, booked_at")
+    .eq("venue_id", venueId)
+    .not("booked_at", "is", null)
+    .neq("status", "cancelled")
+    .gte("booked_at", window.from)
+    .lte("booked_at", window.to);
+  const byClient = new Map<string, string>();
+  for (const row of (data ?? []) as { client_id: string | null; booked_at: string }[]) {
+    if (!row.client_id || !row.booked_at) continue;
+    const prev = byClient.get(row.client_id);
+    if (!prev || row.booked_at < prev) byClient.set(row.client_id, row.booked_at);
+  }
+  return [...byClient.entries()].map(([client_id, booked_at]) => ({ client_id, booked_at }));
+}
 
 /**
  * Canonical Bookings in range, with client name + frozen acquisition source
@@ -74,14 +96,7 @@ export async function getBookingsWithClientNames(window: DateWindow): Promise<Bo
   if (!venue) return [];
   const supabase = await createClient();
 
-  const { data: bookings } = await supabase
-    .from("canonical_bookings")
-    .select("client_id, contract_id, booked_at")
-    .eq("venue_id", venue.id)
-    .gte("booked_at", window.from)
-    .lte("booked_at", window.to)
-    .order("booked_at", { ascending: false });
-  const bookingRows = (bookings ?? []) as { client_id: string; contract_id: string; booked_at: string }[];
+  const bookingRows = await bookedRelationshipsInWindow(supabase, venue.id, window);
   if (bookingRows.length === 0) return [];
   const exclusions = await loadReportingExclusions(supabase, venue.id);
   const included = bookingRows.filter((b) => !exclusions.clientIds.has(b.client_id));
@@ -100,7 +115,7 @@ export async function getBookingsWithClientNames(window: DateWindow): Promise<Bo
     const c = clientById.get(b.client_id);
     const primary = c ? [c.first_name, c.last_name].filter(Boolean).join(" ") : "Client";
     const partner = c?.partner_first_name ? ` & ${[c.partner_first_name, c.partner_last_name].filter(Boolean).join(" ")}` : "";
-    return { clientId: b.client_id, clientName: `${primary}${partner}`, contractId: b.contract_id, bookedAt: b.booked_at, source: c?.leads?.acquisition_source ?? null };
+    return { clientId: b.client_id, clientName: `${primary}${partner}`, contractId: null, bookedAt: b.booked_at, source: c?.leads?.acquisition_source ?? null };
   });
 }
 
@@ -122,15 +137,8 @@ export async function getRevenueTrend(window: DateWindow): Promise<TrendPoint[]>
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
-
-  const { data: bookings } = await supabase
-    .from("canonical_bookings")
-    .select("client_id, booked_at")
-    .eq("venue_id", venue.id)
-    .gte("booked_at", window.from)
-    .lte("booked_at", window.to);
   const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
+  const bookingRows = (await bookedRelationshipsInWindow(supabase, venue.id, window))
     .filter((b) => !exclusions.clientIds.has(b.client_id));
   if (bookingRows.length === 0) return monthBuckets(window.from, window.to).map((b) => ({ label: b.label, value: 0 }));
 
@@ -188,6 +196,8 @@ export async function getEventsInRange(window: DateWindow): Promise<EventDrillRo
     supabase.from("events")
       .select("id, client_id, name, event_date, event_type, guest_count")
       .eq("venue_id", venue.id)
+      .not("booked_at", "is", null)
+      .neq("status", "cancelled")
       .gte("event_date", window.from).lte("event_date", window.to)
       .order("event_date", { ascending: true }),
   );
@@ -322,10 +332,8 @@ export async function getOutstandingBalanceDetail(window: DateWindow): Promise<O
   if (!venue) return [];
   const supabase = await createClient();
 
-  const { data: bookings } = await supabase.from("canonical_bookings").select("client_id, booked_at")
-    .eq("venue_id", venue.id).gte("booked_at", window.from).lte("booked_at", window.to);
   const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
+  const bookingRows = (await bookedRelationshipsInWindow(supabase, venue.id, window))
     .filter((b) => !exclusions.clientIds.has(b.client_id));
   if (bookingRows.length === 0) return [];
   const clientIds = bookingRows.map((b) => b.client_id);
@@ -377,9 +385,12 @@ export async function getCategoryDetail(category: string, window: DateWindow): P
   if (!venue) return [];
   const supabase = await createClient();
 
-  const { data: bookings } = await supabase.from("canonical_bookings").select("client_id, booked_at")
-    .eq("venue_id", venue.id).gte("booked_at", window.from).lte("booked_at", window.to);
-  const bookedClientIds = new Set((bookings ?? []).map((b: { client_id: string }) => b.client_id));
+  const exclusions = await loadReportingExclusions(supabase, venue.id);
+  const bookedClientIds = new Set(
+    (await bookedRelationshipsInWindow(supabase, venue.id, window))
+      .filter((b) => !exclusions.clientIds.has(b.client_id))
+      .map((b) => b.client_id),
+  );
   if (bookedClientIds.size === 0) return [];
 
   const { data } = await supabase

@@ -83,9 +83,11 @@ describe("Lifecycle booking writers", () => {
     assert.doesNotMatch(convert, /updateLeadSalesStage/);
     assert.doesNotMatch(convert, /recordLifecycleBooking/);
     assert.match(convert, /markConvertedClientAsBookingFile/);
+    const book = readFileSync(resolve("lib/booking-journey/book-client.ts"), "utf8");
+    assert.match(book, /updateLeadSalesStage/);
+    assert.match(book, /allowBooked: true/);
     const stamp = readFileSync(resolve("lib/booking-journey/stamp-commercial-booked-at.ts"), "utf8");
-    assert.match(stamp, /updateLeadSalesStage/);
-    assert.match(stamp, /allowBooked: true/);
+    assert.match(stamp, /bookClient/);
   });
 
   it("Direct Add records origin=direct for live dated creates", () => {

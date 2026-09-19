@@ -49,16 +49,11 @@ export function PipelineBookedConfirmDialog({
         className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-lg"
       >
         <h2 id="pipeline-booked-title" className="text-base font-semibold text-heading">
-          Move this lead to {stageLabel}?
+          Mark this client as booked?
         </h2>
         <div id="pipeline-booked-desc" className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground">
           <p>
-            Moving this lead to {stageLabel} starts the booking file: a client (and event when a date
-            is set) will be created or linked, and this relationship leaves the active lead workflow.
-          </p>
-          <p>
-            They are not commercially Booked until the agreement and any required deposit are
-            complete. You can cancel now with no changes.
+            This will move the client into your booked workspace and begin event planning.
           </p>
         </div>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
@@ -66,7 +61,7 @@ export function PipelineBookedConfirmDialog({
             Cancel
           </Button>
           <Button type="button" variant="default" disabled={confirming} onClick={onConfirm}>
-            {confirming ? "Starting…" : `Move to ${stageLabel}`}
+            {confirming ? "Booking…" : "Mark as Booked"}
           </Button>
         </div>
       </div>

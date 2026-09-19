@@ -151,6 +151,13 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
         status,
       });
     }
+    if (status === "cancelled" && before?.clientId) {
+      await supabase
+        .from("clients")
+        .update({ status: "cancelled" })
+        .eq("id", before.clientId)
+        .eq("venue_id", venueId);
+    }
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;

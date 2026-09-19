@@ -43,10 +43,16 @@ type Particle = {
   round: boolean;
 };
 
-function Confetti() {
+function Confetti({ onceKey }: { onceKey: string }) {
   const [particles, setParticles] = React.useState<Particle[]>([]);
 
   React.useEffect(() => {
+    try {
+      if (sessionStorage.getItem(onceKey)) return;
+      sessionStorage.setItem(onceKey, "1");
+    } catch {
+      // Private mode — still celebrate this visit.
+    }
     setParticles(
       Array.from({ length: 45 }, (_, i) => ({
         id: i,
@@ -59,7 +65,7 @@ function Confetti() {
         round: Math.random() > 0.45,
       })),
     );
-  }, []);
+  }, [onceKey]);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-20 overflow-hidden">
@@ -127,6 +133,7 @@ function PrepareChecklist({ handoff }: { handoff: BookingHandoffModel }) {
 }
 
 export function BookingCelebration({
+  celebrate = false,
   client,
   eventId,
   eventDate,
@@ -148,6 +155,7 @@ export function BookingCelebration({
   financial: FinancialReadinessModel;
   communications: CommunicationsReviewModel;
   experience: EventExperienceReviewModel;
+  celebrate?: boolean;
 }) {
   const displayName = clientDisplayName(
     client.firstName,
@@ -166,7 +174,7 @@ export function BookingCelebration({
 
   return (
     <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 py-16 text-center">
-      <Confetti />
+      {celebrate ? <Confetti onceKey={`htc-booked:${client.id}`} /> : null}
 
       <div className="relative z-30 mx-auto max-w-xl space-y-8">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-success/10 text-5xl select-none">

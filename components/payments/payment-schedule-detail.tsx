@@ -327,9 +327,9 @@ function LineItemRow({
       if (result.ok) {
         onMarkPaid(item.id);
         setPayMode(false);
-        if (item.obligationKind === "deposit" && clientId) {
-          toast.success("Deposit recorded.");
-          window.location.href = `/clients/${clientId}/booked`;
+        if (result.bookingCelebration) {
+          const qs = new URLSearchParams({ from: "booked", eventId: result.bookingCelebration.eventId });
+          window.location.href = `/clients/${result.bookingCelebration.clientId}/booked?${qs.toString()}`;
           return;
         }
         if (result.celebrated) {

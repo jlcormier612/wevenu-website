@@ -179,7 +179,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       if (result.warning) toast.warning(result.warning);
       else {
         toast.success(
-          "Booking file started. They are not Booked until the agreement and any required deposit are complete.",
+          "Booking file started. They are not Booked until you mark them booked or your booking rule is met.",
         );
       }
       router.push(`/clients/${result.clientId}${result.eventId ? `?eventId=${result.eventId}` : ""}`);
@@ -214,10 +214,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     startLifecycle(async () => {
       const result = await returnLeadToBookedAction(lead.id);
       if (result.ok) {
-        toast.success("Returned to Booking Started.");
+        toast.success("Returned to Booked.");
         router.refresh();
       } else {
-        toast.error(result.message ?? "Could not return to Booking Started.");
+        toast.error(result.message ?? "Could not return to Booked.");
       }
     });
   }
@@ -317,7 +317,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       }
       setBookedMove(null);
       if (result.warning) toast.warning(result.warning);
-      const qs = new URLSearchParams({ from: "booking_started" });
+      if ("firstTime" in result && result.firstTime === false) {
+        toast.success("Already booked.");
+        router.refresh();
+        return;
+      }
+      const qs = new URLSearchParams({ from: "booked" });
       if (result.eventId) qs.set("eventId", result.eventId);
       router.push(`/clients/${result.clientId}/booked?${qs.toString()}`);
     });
@@ -379,7 +384,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
         title="Start booking file?"
-        description="This opens their booking file (Client and Event when a date applies). The lead stays on the sales pipeline. The Event stays a draft — they are not commercially Booked until the agreement is complete and any required deposit is paid. The event date is protected by existing availability rules when it applies. This does not invite them to the portal or start Client Planning. Contracts and payments can still run from the Booking Journey without this step."
+        description="This opens their booking file (Client and Event when a date applies). The lead stays on the sales pipeline. They are not Booked until you confirm Mark as Booked or your booking rule is met. The event date is protected by existing availability rules when it applies. This does not invite them to the portal. Contracts and payments can still run from the Booking Journey without this step."
         confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}
@@ -388,7 +393,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <LeadLifecycleConfirmDialog
         open={confirmMoveBackOpen}
         title="Move this lead back to the Sales Pipeline?"
-        description="This changes the current sales stage only. The client, event, documents, messages, and financial information you've already created will stay in place."
+        description="This changes the sales stage only when the client is not booked. A booked client stays booked until you cancel the event. The client, event, documents, messages, and financial information stay in place."
         confirmLabel="Move Back to Sales Pipeline"
         confirming={lifecyclePending}
         onCancel={() => setConfirmMoveBackOpen(false)}
@@ -396,9 +401,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       />
       <LeadLifecycleConfirmDialog
         open={confirmReturnBookedOpen}
-        title="Return to Booking Started?"
-        description="This returns the sales stage to Booking Started (booking file open). Your existing client, event, documents, messages, and financial information stay in place. They are commercially Booked only after the agreement is complete and the required deposit is paid."
-        confirmLabel="Return to Booking Started"
+        title="Return to Booked?"
+        description="This runs the same booking transition as Mark as Booked. The existing client, event, documents, messages, and payments stay in place. They return directly to Booked."
+        confirmLabel="Return to Booked"
         confirming={lifecyclePending}
         onCancel={() => setConfirmReturnBookedOpen(false)}
         onConfirm={confirmReturnToBooked}
@@ -545,23 +550,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             previewAction={previewDeleteLeadAction}
             deleteAction={deleteLeadRecordAction}
           />
-          {isBookingStarted && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={lifecyclePending}
-              onClick={() => setConfirmMoveBackOpen(true)}
-            >
-              Move back to Sales Pipeline
-            </Button>
-          )}
           {previouslyConverted && !isBookingStarted && currentStage !== "lost" && (
             <Button
               size="sm"
               disabled={lifecyclePending}
               onClick={() => setConfirmReturnBookedOpen(true)}
             >
-              Return to Booking Started
+              Return to Booked
             </Button>
           )}
           {previouslyConverted ? (

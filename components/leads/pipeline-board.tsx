@@ -208,7 +208,12 @@ export function PipelineBoard({
     }
     setBookedMove(null);
     if (result.warning) toast.warning(result.warning);
-    const qs = new URLSearchParams({ from: "booking_started" });
+    if ("firstTime" in result && result.firstTime === false) {
+      toast.success("Already booked.");
+      router.refresh();
+      return;
+    }
+    const qs = new URLSearchParams({ from: "booked" });
     if (result.eventId) qs.set("eventId", result.eventId);
     router.push(`/clients/${result.clientId}/booked?${qs.toString()}`);
   }
