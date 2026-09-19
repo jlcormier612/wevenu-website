@@ -22,7 +22,14 @@ export type BookClientInput = {
 };
 
 export type BookClientResult =
-  | { ok: true; eventId: string; clientId: string; firstTime: boolean }
+  | {
+      ok: true;
+      booked: true;
+      /** True only when events.booked_at changed from null to a timestamp. */
+      newlyBooked: boolean;
+      eventId: string;
+      clientId: string;
+    }
   | { ok: false; message: string };
 
 export async function bookClient(
@@ -57,16 +64,19 @@ export async function bookClient(
   // Automatic booking must not undo an explicit cancellation.
   // Manual Mark as Booked / Return to Booked is the reactivation path.
   if (before.status === "cancelled" && input.source !== "manual") {
-    return { ok: true, eventId, clientId, firstTime: false };
+    return { ok: true, booked: true, newlyBooked: false, eventId, clientId };
   }
 
-  const firstTime = before.booked_at == null;
+  const newlyBooked = before.booked_at == null;
   const tz = await getVenueTimezone(supabase, venueId);
   await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
 
-  await supabase
-    .from("events")
-    .update({ status: "confirmed" })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("events") as any)
+    .update({
+      status: "confirmed",
+      ...(newlyBooked ? { booking_celebration_pending: true } : {}),
+    })
     .eq("id", eventId)
     .eq("venue_id", venueId);
 
@@ -103,7 +113,7 @@ export async function bookClient(
       });
       if (!stage.ok) return { ok: false, message: stage.message ?? "Could not mark the lead booked." };
     }
-  } else if (firstTime) {
+  } else if (newlyBooked) {
     const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
     const { data: { user } } = await supabase.auth.getUser();
     await recordLifecycleBooking(supabase, {
@@ -115,5 +125,5 @@ export async function bookClient(
     });
   }
 
-  return { ok: true, eventId, clientId, firstTime };
+  return { ok: true, booked: true, newlyBooked, eventId, clientId };
 }

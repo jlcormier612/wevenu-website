@@ -328,7 +328,7 @@ function LineItemRow({
         onMarkPaid(item.id);
         setPayMode(false);
         if (result.bookingCelebration) {
-          const qs = new URLSearchParams({ from: "booked", eventId: result.bookingCelebration.eventId });
+          const qs = new URLSearchParams({ eventId: result.bookingCelebration.eventId });
           window.location.href = `/clients/${result.bookingCelebration.clientId}/booked?${qs.toString()}`;
           return;
         }

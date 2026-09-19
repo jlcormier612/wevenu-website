@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { BookingCelebration } from "@/components/clients/booking-celebration";
+import { consumeBookingCelebration } from "@/lib/booking-journey/booking-celebration";
 import { buildBookingHandoff } from "@/lib/clients/booking-handoff";
 import { buildCommunicationsReview } from "@/lib/clients/communications-review";
 import { buildEventExperienceReview } from "@/lib/clients/event-experience-review";
@@ -33,16 +34,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BookedPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { eventId, from } = await searchParams;
+  const { eventId } = await searchParams;
   const client = await getClient(id);
   if (!client) notFound();
   const resolvedEventId = eventId ?? client.linkedEventId ?? null;
-  const justBooked = from === "booked" || from === "booking_started";
   const event = resolvedEventId ? await getEvent(resolvedEventId) : null;
+  if (!event?.bookedAt || !resolvedEventId) {
+    redirect(`/clients/${client.id}`);
+  }
 
-  // Celebration is the handoff after the canonical transition. It is not a
-  // standing status page, and it is not shown for a pre-booking shell.
-  if (!event?.bookedAt || !justBooked) {
+  // Celebration belongs to the booking transition, not to the screen that
+  // triggered it. bookClient sets the pending flag only when booked_at
+  // goes from null to a timestamp. Consuming it is the one-shot gate.
+  const celebrate = await consumeBookingCelebration(resolvedEventId);
+  if (!celebrate) {
     redirect(`/clients/${client.id}`);
   }
 

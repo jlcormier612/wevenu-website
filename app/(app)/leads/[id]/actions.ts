@@ -84,7 +84,7 @@ export async function confirmPipelineBookedMoveAction(
   stageKeyOrId: string,
   opts?: { spaceId?: string; selectionId?: string },
 ): Promise<
-  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; firstTime: boolean }
+  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; newlyBooked: boolean }
   | { ok: false; message: string }
 > {
   const result = await confirmPipelineBookedMove(leadId, stageKeyOrId, opts);

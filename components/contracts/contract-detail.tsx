@@ -252,6 +252,12 @@ export function ContractDetail({
     startVenueSign(async () => {
       const result = await venueSignContractAction(contract.id, venueSignerName, venueConsent);
       if (result.ok) {
+        if (result.newlyBooked && result.clientId) {
+          const qs = new URLSearchParams();
+          if (result.eventId) qs.set("eventId", result.eventId);
+          window.location.href = `/clients/${result.clientId}/booked?${qs.toString()}`;
+          return;
+        }
         toast.success("Signed by venue. Contract is fully executed.");
         setShowVenueSign(false);
         router.refresh();

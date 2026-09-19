@@ -85,7 +85,7 @@ describe("Sales → Booking lifecycle product rules", () => {
   it("pipeline board confirms Mark as Booked before the canonical transition", () => {
     assert.match(board, /confirmPipelineBookedMoveAction/);
     assert.match(board, /PipelineBookedConfirmDialog/);
-    assert.match(board, /from: "booked"/);
-    assert.match(board, /firstTime === false/);
+    assert.match(board, /newlyBooked/);
+    assert.doesNotMatch(board, /from: "booked"/);
   });
 });

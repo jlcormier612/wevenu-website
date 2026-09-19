@@ -561,7 +561,7 @@ export async function confirmPipelineBookedMove(
   stageKeyOrId: string,
   opts?: { spaceId?: string; selectionId?: string },
 ): Promise<
-  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; firstTime: boolean }
+  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; newlyBooked: boolean }
   | { ok: false; message: string }
 > {
   const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
@@ -642,10 +642,19 @@ export async function confirmPipelineBookedMove(
       eventId: booked.eventId,
       invitationSent: false as const,
       warning,
-      firstTime: booked.firstTime,
+      newlyBooked: booked.newlyBooked,
     };
   });
 
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      message: "message" in resolved && resolved.message ? resolved.message : "Could not book this client.",
+    };
+  }
+  if (!("newlyBooked" in resolved)) {
+    return { ok: false, message: "Could not book this client." };
+  }
   return resolved;
 }
 

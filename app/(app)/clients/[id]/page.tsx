@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
 import { EventDetail } from "@/components/events/event-detail";
@@ -49,6 +49,7 @@ import { getEventOrder } from "@/lib/event-orders/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { listActiveOfferings } from "@/lib/offerings/service";
 import { getPackages, getPackagesWithItems } from "@/lib/packages/service";
+import { bookingCelebrationPending } from "@/lib/booking-journey/booking-celebration";
 import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
 import { getActiveSelectedPackageForClient } from "@/lib/commercial-selections/service";
 import { getItems as getInventoryItems } from "@/lib/inventory/service";
@@ -96,6 +97,10 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
         </div>
       </div>
     );
+  }
+
+  if (await bookingCelebrationPending(client.linkedEventId)) {
+    redirect(`/clients/${client.id}/booked?eventId=${client.linkedEventId}`);
   }
 
   const eventId = client.linkedEventId;

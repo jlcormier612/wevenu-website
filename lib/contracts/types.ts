@@ -123,7 +123,13 @@ export type NewContractInput = {
 export type ContractErrors = Record<string, string>;
 
 export type ContractActionResult =
-  | { ok: true }
+  | {
+      ok: true;
+      /** Set when venue countersign caused bookClient to stamp booked_at for the first time. */
+      newlyBooked?: boolean;
+      clientId?: string | null;
+      eventId?: string | null;
+    }
   /** reason:"stale" — Work Package D4's concurrency check — a save was rejected because someone else saved first; the UI should prompt a reload, never silently overwrite. */
   | { ok: false; errors?: ContractErrors; message?: string; reason?: "stale" | "not_editable" | "not_found" };
 

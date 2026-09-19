@@ -182,7 +182,7 @@ describe("Direct Add and celebration destinations", () => {
   it("celebration page requires events.booked_at and the transition handoff", () => {
     const page = read("app/(app)/clients/[id]/booked/page.tsx");
     assert.match(page, /event\?\.bookedAt/);
-    assert.match(page, /from === "booked"/);
+    assert.match(page, /consumeBookingCelebration/);
     assert.match(page, /redirect\(`\/clients\/\$\{client\.id\}`\)/);
     assert.match(page, /They're Booked/);
   });

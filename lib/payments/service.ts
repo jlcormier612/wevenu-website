@@ -513,7 +513,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
           clientId: scheduleClient.client_id,
           eventId: scheduleClient.event_id ?? sch?.event_id ?? null,
         });
-        if (stamped?.firstTime) {
+        if (stamped?.newlyBooked) {
           bookingCelebration = { clientId: stamped.clientId, eventId: stamped.eventId };
         }
       }

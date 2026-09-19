@@ -137,7 +137,7 @@ describe("Pipeline stage transition service contracts", () => {
     assert.match(board, /LostReasonDialog/);
     assert.match(board, /confirmPipelineBookedMoveAction/);
     assert.match(board, /markLeadLostAction/);
-    assert.match(board, /from: "booked"/);
+    assert.match(board, /newlyBooked/);
     assert.match(detail, /PipelineBookedConfirmDialog/);
     assert.match(detail, /LostReasonDialog/);
     assert.match(detail, /confirmPipelineBookedMoveAction/);
@@ -145,7 +145,7 @@ describe("Pipeline stage transition service contracts", () => {
   });
 
   it("Booked celebration follows the canonical transition, not a separate handoff", () => {
-    assert.match(bookedPage, /from === "booked"/);
+    assert.match(bookedPage, /consumeBookingCelebration/);
     assert.match(bookedPage, /event\?\.bookedAt/);
     assert.match(bookedPage, /They're Booked/);
     assert.doesNotMatch(bookedPage, /Booking Started/);

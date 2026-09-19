@@ -32,13 +32,14 @@ describe("one canonical booking transition", () => {
     const fn = service.slice(service.indexOf("export async function confirmPipelineBookedMove"));
     assert.match(fn, /bookClient/);
     assert.match(fn, /source: "manual"/);
-    assert.match(fn, /firstTime: booked\.firstTime/);
+    assert.match(fn, /newlyBooked: booked\.newlyBooked/);
   });
 
   it("a second call does not re-enter the sales stage or lifecycle record", () => {
     const book = read("lib/booking-journey/book-client.ts");
     assert.match(book, /lead\.sales_stage !== "booked"/);
-    assert.match(book, /else if \(firstTime\)/);
+    assert.match(book, /else if \(newlyBooked\)/);
+    assert.match(book, /booking_celebration_pending: true/);
     assert.match(book, /before\.booked_at == null/);
   });
 
@@ -48,12 +49,12 @@ describe("one canonical booking transition", () => {
     assert.match(cal, /\.neq\("status", "cancelled"\)/);
   });
 
-  it("celebration is gated on the transition and fires once", () => {
+  it("celebration is consumed from the booking transition, not a query string", () => {
     const page = read("app/(app)/clients/[id]/booked/page.tsx");
-    const burst = read("components/clients/booking-celebration.tsx");
-    assert.match(page, /justBooked/);
+    const gate = read("lib/booking-journey/booking-celebration.ts");
+    assert.match(page, /consumeBookingCelebration/);
     assert.match(page, /event\?\.bookedAt/);
-    assert.match(burst, /sessionStorage/);
-    assert.match(burst, /celebrate/);
+    assert.doesNotMatch(page, /from === "booked"/);
+    assert.match(gate, /booking_celebration_pending/);
   });
 });

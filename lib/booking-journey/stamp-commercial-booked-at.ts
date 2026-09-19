@@ -21,7 +21,8 @@ function mapSelectionStatus(raw: string): CommercialSelection["status"] {
 }
 
 export type CommercialStampResult = {
-  firstTime: boolean;
+  /** True only when this call stamped events.booked_at for the first time. */
+  newlyBooked: boolean;
   clientId: string;
   eventId: string;
 };
@@ -149,5 +150,5 @@ export async function maybeStampCommercialBookedAt(
     await markAcceptedVenue(supabase, venueId, selRow.id);
   }
 
-  return { firstTime: booked.firstTime, clientId, eventId: booked.eventId };
+  return { newlyBooked: booked.newlyBooked, clientId, eventId: booked.eventId };
 }
