@@ -63,9 +63,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
@@ -77,7 +74,6 @@ import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/servic
 import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplateWithStats, TaskContact } from "@/lib/playbooks/types";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import {
-  EVENT_STATUSES,
   daysUntil,
   formatEventDateRange,
   formatTime,
@@ -434,19 +430,19 @@ export function EventDetail({
 
         <div className="flex shrink-0 items-center gap-2">
           <EventStatusBadge status={event.status} />
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" disabled={statusPending} />}>
-              Change status
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {EVENT_STATUSES.map((s) => (
-                <DropdownMenuItem key={s.value} disabled={s.value === event.status} onClick={() => handleStatusChange(s.value)}>
-                  {s.label}
-                  <span className="ml-auto pl-4 text-xs text-muted-foreground">{s.description}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {event.status !== "cancelled" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={statusPending}
+              onClick={() => {
+                if (!confirm("Cancel this event? It leaves the active client list. History, contracts, and payments stay.")) return;
+                handleStatusChange("cancelled");
+              }}
+            >
+              Cancel event
+            </Button>
+          )}
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/edit`} />}>
             <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
           </Button>

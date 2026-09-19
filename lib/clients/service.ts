@@ -33,8 +33,8 @@ import {
   comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
+import { getCanonicallyBookedClientIds } from "@/lib/booking-journey/canonical-booked";
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
-import { getCanonicalBookings } from "@/lib/metrics/booking";
 import { venueToday } from "@/lib/venue/timezone";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -200,10 +200,10 @@ export async function getClientListFilterCounts(): Promise<Record<ClientListFilt
   const venue = await getCurrentVenue();
   if (!venue) return EMPTY_CLIENT_LIST_COUNTS;
   const supabase = await createClient();
-  const [clients, attentionClientIds, bookings] = await Promise.all([
+  const [clients, attentionClientIds, bookedIds] = await Promise.all([
     repo.getClients(supabase, venue.id),
     repo.getClientAttentionFlags(supabase, venue.id),
-    getCanonicalBookings(),
+    getCanonicallyBookedClientIds(),
   ]);
   const today = venueToday(venue.timezone);
   return countClientListFilters(clients, {
@@ -211,7 +211,7 @@ export async function getClientListFilterCounts(): Promise<Record<ClientListFilt
     weekOut: weddingWeekEnd(today),
     comingUpOut: comingUpHorizonEnd(today),
     attentionClientIds,
-    bookedBusinessClientIds: new Set(bookings.map((b) => b.clientId)),
+    bookedBusinessClientIds: bookedIds,
   });
 }
 

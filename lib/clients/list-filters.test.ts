@@ -142,7 +142,7 @@ describe("the other Client list filters stay internally consistent", () => {
 });
 
 describe("Booked business filter", () => {
-  it("matches only clients in the canonical bookings set", () => {
+  it("matches only clients that completed the canonical booking transition", () => {
     const ctx = {
       today: TODAY,
       weekOut: WEEK_OUT,

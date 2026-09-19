@@ -85,11 +85,21 @@ export function clientListFilterHref(key: ClientListFilterKey): string {
 }
 
 /**
- * Upcoming = booked client with an event date on or after today, not cancelled.
- * Planning / Confirmed / Complete / any non-cancelled status all count.
- * Coming up = same population restricted to the next COMING_UP_HORIZON_DAYS
- * (Dashboard attention card + destination).
+ * When `bookedBusinessClientIds` is provided, it is the only definition of
+ * an active client: the relationship has completed the venue's booking
+ * transition (`events.booked_at`). Pre-booking shells stay off this list.
+ * Cancelled is the only other bucket. Date filters are views of that same
+ * booked set, not extra lifecycle stages.
  */
+function isActiveBookedClient(
+  client: ClientListFilterRecord,
+  ctx: ClientListFilterContext,
+): boolean {
+  if (client.status === "cancelled") return false;
+  if (ctx.bookedBusinessClientIds) return ctx.bookedBusinessClientIds.has(client.id);
+  return true;
+}
+
 export function clientMatchesListFilter(
   client: ClientListFilterRecord,
   key: ClientListFilterKey,
@@ -97,32 +107,32 @@ export function clientMatchesListFilter(
 ): boolean {
   switch (key) {
     case "all":
-      return client.status !== "cancelled";
+      return isActiveBookedClient(client, ctx);
     case "upcoming":
-      return client.status !== "cancelled" && !!client.eventDate && client.eventDate >= ctx.today;
+      return isActiveBookedClient(client, ctx) && !!client.eventDate && client.eventDate >= ctx.today;
     case "coming_up":
       return (
         !client.excludeFromBusinessReporting &&
-        client.status !== "cancelled" &&
+        isActiveBookedClient(client, ctx) &&
         !!client.eventDate &&
         client.eventDate >= ctx.today &&
         client.eventDate <= ctx.comingUpOut
       );
     case "wedding_week":
       return (
-        client.status !== "cancelled" &&
+        isActiveBookedClient(client, ctx) &&
         !!client.eventDate &&
         client.eventDate >= ctx.today &&
         client.eventDate <= ctx.weekOut
       );
     case "needs_attention":
-      return client.status !== "cancelled" && ctx.attentionClientIds.has(client.id);
+      return isActiveBookedClient(client, ctx) && ctx.attentionClientIds.has(client.id);
     case "past":
-      return client.status !== "cancelled" && !!client.eventDate && client.eventDate < ctx.today;
+      return isActiveBookedClient(client, ctx) && !!client.eventDate && client.eventDate < ctx.today;
     case "cancelled":
       return client.status === "cancelled";
     case "booked_business":
-      return (ctx.bookedBusinessClientIds ?? new Set()).has(client.id);
+      return isActiveBookedClient(client, ctx);
   }
 }
 

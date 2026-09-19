@@ -5,6 +5,7 @@
  * No Upcoming card (Coming up above already covers events).
  * Venue-facing copy never hard-codes custom pipeline stage names.
  */
+import { getCanonicallyBookedClientIds } from "@/lib/booking-journey/canonical-booked";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { clientListFilterHref } from "@/lib/clients/list-filters";
@@ -13,7 +14,6 @@ import {
   isOpenLeadOpportunity,
   TERMINAL_LEAD_LIFECYCLE_STATES,
 } from "@/lib/leads/open-lifecycle";
-import { getCanonicalBookings } from "@/lib/metrics/booking";
 import {
   getGrossBookedRevenue,
   getOutstandingBalance,
@@ -145,7 +145,7 @@ export function buildBusinessSnapshotCards(input: {
       secondary: bookedEmpty
         ? "Your first booked event will appear here."
         : `${formatUsd(input.bookedValue)} contracted`,
-      tertiary: bookedEmpty ? "" : "Confirmed bookings with a signed commitment",
+      tertiary: bookedEmpty ? "" : "Relationships that met your booking rule",
       href: clientListFilterHref("booked_business"),
       actionLabel: "View booked business",
       empty: bookedEmpty,
@@ -198,7 +198,7 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
   const today = venueToday(venue.timezone);
   const monthStart = monthStartFromToday(today);
 
-  const [{ data: leadRows }, { data: stageRows }, bookings, bookedValue, cashCollected, outstandingBalance] =
+  const [{ data: leadRows }, { data: stageRows }, bookedIds, bookedValue, cashCollected, outstandingBalance] =
     await Promise.all([
       supabase
         .from("leads")
@@ -208,7 +208,7 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
         .from("pipeline_stages")
         .select("id, canonical_stage")
         .eq("venue_id", venue.id),
-      getCanonicalBookings(),
+      getCanonicallyBookedClientIds(),
       getGrossBookedRevenue(),
       getPaymentsCollected(),
       getOutstandingBalance(),
@@ -236,8 +236,8 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
   const leadFlow = computeOpenLeadFlow(openRows, monthStart);
 
   let outstandingClientCount = 0;
-  if ((outstandingBalance ?? 0) > 0 && bookings.length > 0) {
-    const clientIds = bookings.map((b) => b.clientId);
+  if ((outstandingBalance ?? 0) > 0 && bookedIds.size > 0) {
+    const clientIds = [...bookedIds];
     const [{ data: invoices }, { data: payments }] = await Promise.all([
       supabase
         .from("invoices")
@@ -287,7 +287,7 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
     openLeadValue: leadFlow.value,
     openLeadBudgetsPresent: leadFlow.budgetsPresent,
     openLeadsNewThisMonth: leadFlow.newThisMonth,
-    bookedCount: bookings.length,
+    bookedCount: bookedIds.size,
     bookedValue: bookedValue ?? 0,
     cashCollected: Math.max(0, cashCollected ?? 0),
     outstandingBalance: Math.max(0, outstandingBalance ?? 0),
