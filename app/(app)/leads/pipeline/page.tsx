@@ -6,13 +6,15 @@ import { PipelineBoard } from "@/components/leads/pipeline-board";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
+import { activeSalesLeads } from "@/lib/leads/open-lifecycle";
 import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 
 export const metadata: Metadata = { title: "Pipeline" };
 
 export default async function PipelinePage() {
   await ensureStandardSalesPipelineForCurrentVenue();
-  const [leads, activeTemplate] = await Promise.all([getLeads(), getActiveTemplate()]);
+  const [inventory, activeTemplate] = await Promise.all([getLeads(), getActiveTemplate()]);
+  const leads = activeSalesLeads(inventory);
   const venueStages = activeTemplate?.stages?.length ? activeTemplate.stages : null;
 
   return (
@@ -21,8 +23,8 @@ export default async function PipelinePage() {
         title="Pipeline"
         description={
           venueStages
-            ? `Drag a lead to move it through ${activeTemplate!.name}.`
-            : "Drag a lead to move it to a different stage."
+            ? `Drag a lead to move it through ${activeTemplate!.name}. Booked, lost, and cancelled relationships leave this board.`
+            : "Drag a lead to move it to a different stage. Booked, lost, and cancelled relationships leave this board."
         }
         actions={
           <div className="flex items-center gap-2">

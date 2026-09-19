@@ -32,17 +32,19 @@ import {
 } from "@/components/ui/table";
 import {
   LEAD_STATUSES,
+  ACTIVE_STATUSES,
   eventTypeLabel,
   formatDate,
   formatCurrency,
   leadDisplayName,
   statusLabel,
 } from "@/lib/leads/constants";
-import { isOpenLeadOpportunity } from "@/lib/leads/open-lifecycle";
+import { isOpenLeadLifecycle, isOpenLeadOpportunity } from "@/lib/leads/open-lifecycle";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
 import { normalizeEventType } from "@/lib/event-types/canonical";
 import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
+import { transitionKindForCanonical } from "@/lib/leads/pipeline-stage-transition";
 import type { PipelineStage } from "@/lib/pipeline-templates/types";
 import type { SalesStage } from "@/lib/leads/sales-stages";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
@@ -85,12 +87,18 @@ export function LeadList({
   leads,
   initialAttention,
   venueStages = null,
+  scope = "active",
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
   initialAttention?: "stale_contact" | "open" | "active" | "unseen" | null;
   /** Active Pipeline Template stages — when present, Stage chips use venue names. */
   venueStages?: PipelineStage[] | null;
+  /**
+   * active = sales opportunities still being worked.
+   * closed = Booked, Lost, and Cancelled history. Not the working queue.
+   */
+  scope?: "active" | "closed";
 }) {
   const usingVenueStages = (venueStages?.length ?? 0) > 0;
   const [query, setQuery] = React.useState("");
@@ -106,9 +114,21 @@ export function LeadList({
       : "all",
   );
 
+  const queue = React.useMemo(() => {
+    if (scope === "closed") {
+      return leads.filter((l) => !isOpenLeadLifecycle(l.salesStage ?? l.status));
+    }
+    return leads.filter((l) => isOpenLeadLifecycle(l.salesStage ?? l.status));
+  }, [leads, scope]);
+
+  const workingVenueStages = scope === "active" && venueStages?.length
+    ? venueStages.filter((s) => transitionKindForCanonical(s.canonicalStage) === "normal")
+    : null;
+  const usingWorkingVenueStages = (workingVenueStages?.length ?? 0) > 0;
+
   function venueStageIdFor(lead: Lead): string | null {
-    if (!venueStages?.length) return null;
-    return resolveVenuePipelineStageId(venueStages, {
+    if (!workingVenueStages?.length) return null;
+    return resolveVenuePipelineStageId(workingVenueStages, {
       pipelineStageId: lead.pipelineStageId,
       salesStage: (lead.salesStage ?? lead.status) as SalesStage,
     });
@@ -130,9 +150,10 @@ export function LeadList({
   }
 
   function stageDisplayName(lead: Lead): string {
-    if (venueStages?.length) {
+    if (scope === "active" && venueStages?.length) {
       const id = venueStageIdFor(lead);
-      const named = venueStages.find((s) => s.id === id)?.name;
+      const named = workingVenueStages?.find((s) => s.id === id)?.name
+        ?? venueStages.find((s) => s.id === id)?.name;
       if (named) return named;
     }
     return salesStageLabel(lead.salesStage ?? lead.status) || statusLabel(lead.salesStage ?? lead.status);
@@ -141,10 +162,16 @@ export function LeadList({
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
     const nowMs = Date.now();
-    const base = leads.filter((l) => {
+    const base = queue.filter((l) => {
       const stage = l.salesStage ?? l.status;
       if (statusFilter !== "all") {
-        if (usingVenueStages) {
+        if (scope === "closed") {
+          if (statusFilter === "booked") {
+            if (stage !== "booked" && stage !== "won") return false;
+          } else if (stage !== statusFilter) {
+            return false;
+          }
+        } else if (usingWorkingVenueStages) {
           if (venueStageIdFor(l) !== statusFilter) return false;
         } else if (stage !== statusFilter) {
           return false;
@@ -185,51 +212,72 @@ export function LeadList({
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, usingVenueStages, venueStages]);
+  }, [queue, query, statusFilter, eventTypeFilter, sort, attentionFilter, usingWorkingVenueStages, scope]);
 
   const statusCounts = React.useMemo(() => {
+    if (scope === "closed") {
+      const map = new Map<string, number>([
+        ["all", queue.length],
+        ["booked", 0],
+        ["lost", 0],
+        ["cancelled", 0],
+      ]);
+      for (const l of queue) {
+        const stage = l.salesStage ?? l.status;
+        const key = stage === "won" ? "booked" : stage;
+        if (key !== "all" && map.has(key)) map.set(key, (map.get(key) ?? 0) + 1);
+      }
+      return map;
+    }
     // When "open" attention is active, chip counts must match the open population
     // (same terminal set as Dashboard Lead Flow) — not the full lead inventory.
     const population = attentionFilter === "open" || attentionFilter === "unseen"
-      ? leads.filter((l) => {
+      ? queue.filter((l) => {
         if (!leadIsOpenOpportunity(l)) return false;
         if (attentionFilter === "unseen" && l.venueSeenAt) return false;
         return true;
       })
-      : leads;
-    if (usingVenueStages && venueStages) {
+      : queue;
+    if (usingWorkingVenueStages && workingVenueStages) {
       const map = new Map<string, number>([["all", population.length]]);
-      for (const s of venueStages) map.set(s.id, 0);
+      for (const s of workingVenueStages) map.set(s.id, 0);
       for (const l of population) {
-        const id = resolveVenuePipelineStageId(venueStages, {
+        const id = resolveVenuePipelineStageId(workingVenueStages, {
           pipelineStageId: l.pipelineStageId,
           salesStage: (l.salesStage ?? l.status) as SalesStage,
         });
-        if (id) map.set(id, (map.get(id) ?? 0) + 1);
+        if (id && map.has(id)) map.set(id, (map.get(id) ?? 0) + 1);
       }
       return map;
     }
     const map = new Map<string, number>([["all", population.length]]);
-    LEAD_STATUSES.forEach((s) => map.set(s.value, 0));
+    ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
     population.forEach((l) => {
       const stage = l.salesStage ?? l.status;
       map.set(stage, (map.get(stage) ?? 0) + 1);
     });
     return map;
-  }, [leads, usingVenueStages, venueStages, attentionFilter]);
+  }, [queue, usingWorkingVenueStages, workingVenueStages, attentionFilter, scope]);
 
-  const stageChips: { key: string; label: string }[] = usingVenueStages && venueStages
-    ? [{ key: "all", label: "All" }, ...venueStages.map((s) => ({ key: s.id, label: s.name }))]
-    : [{ key: "all", label: "All" }, ...LEAD_STATUSES.map((s) => ({ key: s.value, label: s.label }))];
+  const stageChips: { key: string; label: string }[] = scope === "closed"
+    ? [
+      { key: "all", label: "All" },
+      { key: "booked", label: "Booked" },
+      { key: "lost", label: "Lost" },
+      { key: "cancelled", label: "Cancelled" },
+    ]
+    : usingWorkingVenueStages && workingVenueStages
+      ? [{ key: "all", label: "All" }, ...workingVenueStages.map((s) => ({ key: s.id, label: s.name }))]
+      : [{ key: "all", label: "All" }, ...LEAD_STATUSES.filter((s) => (ACTIVE_STATUSES as readonly string[]).includes(s.value)).map((s) => ({ key: s.value, label: s.label }))];
 
   const activeEventTypes = React.useMemo(() => {
     const population = attentionFilter === "open" || attentionFilter === "unseen"
-      ? leads.filter((l) => {
+      ? queue.filter((l) => {
         if (!leadIsOpenOpportunity(l)) return false;
         if (attentionFilter === "unseen" && l.venueSeenAt) return false;
         return true;
       })
-      : leads;
+      : queue;
     const seen = new Map<string, number>();
     population.forEach((l) => {
       const key = normalizeEventType(l.eventType);
@@ -237,7 +285,7 @@ export function LeadList({
       seen.set(key, (seen.get(key) ?? 0) + 1);
     });
     return [...seen.entries()].sort((a, b) => b[1] - a[1]);
-  }, [leads, attentionFilter]);
+  }, [queue, attentionFilter]);
 
   const hasActiveFilters =
     statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
@@ -255,7 +303,7 @@ export function LeadList({
             onClick={() => setAttentionFilter("all")}
             className="text-xs font-medium text-primary hover:underline"
           >
-            Show all leads
+            Show all active leads
           </button>
         </div>
       )}
@@ -269,7 +317,7 @@ export function LeadList({
             onClick={() => setAttentionFilter("all")}
             className="text-xs font-medium text-primary hover:underline"
           >
-            Show all leads
+            Show all active leads
           </button>
         </div>
       )}
@@ -283,7 +331,7 @@ export function LeadList({
             onClick={() => setAttentionFilter("all")}
             className="text-xs font-medium text-primary hover:underline"
           >
-            Show all leads
+            Show all active leads
           </button>
         </div>
       )}
@@ -361,7 +409,7 @@ export function LeadList({
         </button>
       )}
 
-      {leads.length === 0 && (
+      {queue.length === 0 && scope === "active" && leads.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No leads yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
@@ -373,7 +421,28 @@ export function LeadList({
         </div>
       )}
 
-      {leads.length > 0 && filtered.length === 0 && (
+      {queue.length === 0 && scope === "active" && leads.length > 0 && (
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+          <p className="font-heading text-lg font-medium text-heading">No active leads</p>
+          <p className="mt-1 mb-4 text-sm text-muted-foreground">
+            Booked, lost, and cancelled relationships are not in this queue.
+          </p>
+          <Button variant="outline" render={<Link href="/leads?view=closed" />}>
+            Closed relationships
+          </Button>
+        </div>
+      )}
+
+      {queue.length === 0 && scope === "closed" && (
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+          <p className="font-heading text-lg font-medium text-heading">No closed relationships</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Booked, lost, and cancelled relationships appear here. The active queue does not include them.
+          </p>
+        </div>
+      )}
+
+      {queue.length > 0 && filtered.length === 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No leads match your filters.</p>
           <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}>

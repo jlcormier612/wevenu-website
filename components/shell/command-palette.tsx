@@ -102,9 +102,12 @@ export function CommandPalette({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
-  function navigate(link: string) {
+  function navigate(item: SearchResult) {
     onOpenChange(false);
-    router.push(link);
+    // Lead search must open the inquiry record, including after Booked/Lost/Cancelled
+    // have left the active Leads queue. The RPC link is the list, not the record.
+    const href = item.kind === "lead" && item.id ? `/leads/${item.id}` : item.link;
+    router.push(href);
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -122,7 +125,7 @@ export function CommandPalette({
         break;
       case "Enter": {
         const r = results[selectedIdx];
-        if (r) navigate(r.link);
+        if (r) navigate(r);
         break;
       }
     }
@@ -203,7 +206,7 @@ export function CommandPalette({
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => navigate(item.link)}
+                        onClick={() => navigate(item)}
                         onMouseEnter={() => setSelectedIdx(flatIdx)}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                           selected ? "bg-accent" : "hover:bg-accent/50"

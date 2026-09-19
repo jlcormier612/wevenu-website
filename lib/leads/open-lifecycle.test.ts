@@ -7,6 +7,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import {
+  activeSalesLeads,
+  closedRelationshipLeads,
+  isActiveSalesLead,
   isOpenLeadLifecycle,
   isOpenLeadOpportunity,
   isOpenReportingCategory,
@@ -62,5 +65,64 @@ describe("isOpenLeadOpportunity", () => {
     const body = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     assert.doesNotMatch(body, /client_id|exclude_from_business_reporting|excludeFromBusinessReporting/);
     assert.match(body, /isOpenReportingCategory|isOpenLeadLifecycle/);
+  });
+});
+
+describe("active sales working bucket", () => {
+  const rows = [
+    { id: "open", salesStage: "new_inquiry", status: "new_inquiry" },
+    { id: "booked", salesStage: "booked", status: "booked" },
+    { id: "lost", salesStage: "lost", status: "lost" },
+    { id: "cancelled", salesStage: "cancelled", status: "cancelled" },
+    { id: "won", salesStage: "won", status: "won" },
+  ];
+
+  it("keeps only open sales stages in the active queue", () => {
+    assert.deepEqual(activeSalesLeads(rows).map((r) => r.id), ["open"]);
+    assert.equal(isActiveSalesLead(rows[1]!), false);
+  });
+
+  it("keeps booked, lost, and cancelled as closed history, not a new record", () => {
+    assert.deepEqual(
+      closedRelationshipLeads(rows).map((r) => r.id),
+      ["booked", "lost", "cancelled", "won"],
+    );
+    assert.equal(closedRelationshipLeads(rows)[0], rows[1]);
+  });
+
+  it("does not treat a leftover pipeline stage as still active once sales_stage is booked", () => {
+    assert.equal(
+      isActiveSalesLead({ salesStage: "booked", status: "booked" }),
+      false,
+    );
+    assert.equal(isOpenLeadLifecycle("booked"), false);
+  });
+});
+
+describe("Leads surfaces", () => {
+  it("working pages partition the inventory; getLeads stays the full inventory", () => {
+    const leadsPage = readFileSync(path.join(root, "app/(app)/leads/page.tsx"), "utf8");
+    const pipelinePage = readFileSync(path.join(root, "app/(app)/leads/pipeline/page.tsx"), "utf8");
+    const list = readFileSync(path.join(root, "components/leads/lead-list.tsx"), "utf8");
+    const repo = readFileSync(path.join(root, "lib/leads/repository.ts"), "utf8");
+    const brochure = readFileSync(path.join(root, "app/(app)/library/brochures/[id]/page.tsx"), "utf8");
+    const palette = readFileSync(path.join(root, "components/shell/command-palette.tsx"), "utf8");
+
+    assert.match(leadsPage, /view === "closed"/);
+    assert.match(leadsPage, /scope=\{scope\}/);
+    assert.match(leadsPage, /getLeads\(\)/);
+    assert.doesNotMatch(leadsPage, /activeSalesLeads\(/);
+
+    assert.match(pipelinePage, /activeSalesLeads\(inventory\)/);
+    assert.match(list, /isOpenLeadLifecycle/);
+    assert.match(list, /scope === "closed"/);
+    assert.match(list, /transitionKindForCanonical/);
+
+    const getLeadsFn = repo.slice(repo.indexOf("export async function getLeads"), repo.indexOf("export async function getLead"));
+    assert.doesNotMatch(getLeadsFn, /isOpenLeadLifecycle|activeSalesLeads|booked,lost/);
+
+    assert.match(brochure, /getLeads\(\)/);
+    assert.doesNotMatch(brochure, /activeSalesLeads/);
+    assert.match(palette, /item\.kind === "lead" && item\.id \? `\/leads\/\$\{item\.id\}`/);
   });
 });

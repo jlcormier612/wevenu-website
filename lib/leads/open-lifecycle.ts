@@ -55,3 +55,28 @@ export function isOpenLeadOpportunity(opts: {
   }
   return isOpenLeadLifecycle(opts.salesStage);
 }
+
+type LeadStageCarrier = {
+  salesStage?: string | null;
+  status?: string | null;
+};
+
+/**
+ * Active Leads working bucket: sales_stage is still an open opportunity.
+ * Booked, lost, won, and cancelled are the same relationship, not deleted —
+ * they are no longer active sales work.
+ *
+ * Uses sales_stage, not the pipeline reporting category. A booked
+ * relationship must leave this bucket even if a venue stage id is still set.
+ */
+export function isActiveSalesLead(lead: LeadStageCarrier): boolean {
+  return isOpenLeadLifecycle(lead.salesStage ?? lead.status);
+}
+
+export function activeSalesLeads<T extends LeadStageCarrier>(leads: readonly T[]): T[] {
+  return leads.filter(isActiveSalesLead);
+}
+
+export function closedRelationshipLeads<T extends LeadStageCarrier>(leads: readonly T[]): T[] {
+  return leads.filter((lead) => !isActiveSalesLead(lead));
+}

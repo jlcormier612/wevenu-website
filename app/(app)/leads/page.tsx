@@ -10,14 +10,16 @@ import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 
 export const metadata: Metadata = { title: "Leads" };
 
-type Props = { searchParams: Promise<{ attention?: string }> };
+type Props = { searchParams: Promise<{ attention?: string; view?: string }> };
 
 export default async function LeadsPage({ searchParams }: Props) {
   await ensureStandardSalesPipelineForCurrentVenue();
   const [leads, activeTemplate] = await Promise.all([getLeads(), getActiveTemplate()]);
-  const { attention } = await searchParams;
-  const initialAttention =
-    attention === "stale_contact" ? "stale_contact" as const
+  const { attention, view } = await searchParams;
+  const scope = view === "closed" ? "closed" : "active";
+  const initialAttention = scope === "closed"
+    ? null
+    : attention === "stale_contact" ? "stale_contact" as const
     : attention === "open" ? "open" as const
     : attention === "active" ? "open" as const
     : attention === "unseen" ? "unseen" as const
@@ -26,20 +28,34 @@ export default async function LeadsPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Leads"
-        description="Manage leads and track them through your pipeline."
+        title={scope === "closed" ? "Closed relationships" : "Leads"}
+        description={
+          scope === "closed"
+            ? "Not the active Leads queue. Open a row for the original inquiry. Booked relationships are worked in Clients."
+            : "Active sales opportunities. Booked, lost, and cancelled relationships are not in this queue."
+        }
         actions={
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
               <GitBranch className="mr-1.5 h-3.5 w-3.5" />Pipeline Templates
             </Button>
+            {scope === "closed" ? (
+              <Button variant="outline" size="sm" render={<Link href="/leads" />}>Active leads</Button>
+            ) : (
+              <Button variant="outline" size="sm" render={<Link href="/leads?view=closed" />}>Closed relationships</Button>
+            )}
             <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board view</Button>
             <Button variant="outline" render={<Link href="/settings/import?type=leads" />}>Import Leads</Button>
             <Button render={<Link href="/leads/new" />}>+ New Lead</Button>
           </div>
         }
       />
-      <LeadList leads={leads} initialAttention={initialAttention} venueStages={venueStages} />
+      <LeadList
+        leads={leads}
+        initialAttention={initialAttention}
+        venueStages={venueStages}
+        scope={scope}
+      />
     </div>
   );
 }
