@@ -51,6 +51,10 @@ export type BrochureActionResult =
   | { ok: true }
   | { ok: false; message?: string; errors?: BrochureErrors };
 
+export type DeleteBrochurePhotoResult =
+  | { ok: true; photoUrls: string[] }
+  | { ok: false; message: string };
+
 export type CreateBrochureResult =
   | { ok: true; brochureId: string }
   | { ok: false; message?: string; errors?: BrochureErrors };

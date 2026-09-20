@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  createBrochure, deleteBrochure_, duplicateBrochure_, sendBrochureToLead,
+  createBrochure, deleteBrochure_, deleteBrochurePhoto_, duplicateBrochure_, sendBrochureToLead,
   setBrochureArchived_, updateBrochure_, updateBrochurePhotography_,
 } from "@/lib/brochures/service";
-import type { BrochureActionResult, BrochureInput, CreateBrochureResult } from "@/lib/brochures/types";
+import type { BrochureActionResult, BrochureInput, CreateBrochureResult, DeleteBrochurePhotoResult } from "@/lib/brochures/types";
 
 function revalidateLibrary(id?: string) {
   revalidatePath("/library/brochures");
@@ -34,9 +34,28 @@ export async function updateBrochurePhotographyAction(
   photoUrls: string[],
   photoLayout: string,
 ): Promise<BrochureActionResult> {
-  const result = await updateBrochurePhotography_(id, photoUrls, photoLayout);
-  if (result.ok) revalidateLibrary(id);
-  return result;
+  try {
+    const result = await updateBrochurePhotography_(id, photoUrls, photoLayout);
+    if (result.ok) revalidateLibrary(id);
+    return result;
+  } catch (err) {
+    const message = err instanceof Error && err.message ? err.message : "Could not save photos.";
+    return { ok: false, message };
+  }
+}
+
+export async function deleteBrochurePhotoAction(
+  brochureId: string,
+  url: string,
+): Promise<DeleteBrochurePhotoResult> {
+  try {
+    const result = await deleteBrochurePhoto_(brochureId, url);
+    if (result.ok) revalidateLibrary(brochureId);
+    return result;
+  } catch (err) {
+    const message = err instanceof Error && err.message ? err.message : "Could not delete the photo.";
+    return { ok: false, message };
+  }
 }
 
 export async function setBrochureArchivedAction(id: string, isArchived: boolean): Promise<BrochureActionResult> {

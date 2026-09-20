@@ -97,12 +97,27 @@ export function BrochureDetail({
   }
 
   function handlePhotosChange(next: { photoUrls: string[]; photoLayout: BrochurePhotoLayout }) {
+    const previous = { photoUrls, photoLayout };
     setPhotoUrls(next.photoUrls);
     setPhotoLayout(next.photoLayout);
     startPhotos(async () => {
-      const result = await updateBrochurePhotographyAction(brochure.id, next.photoUrls, next.photoLayout);
-      if (!result.ok) toast.error(result.message ?? "Could not save photos.");
+      try {
+        const result = await updateBrochurePhotographyAction(brochure.id, next.photoUrls, next.photoLayout);
+        if (!result.ok) {
+          setPhotoUrls(previous.photoUrls);
+          setPhotoLayout(previous.photoLayout);
+          toast.error(result.message ?? "Could not save photos.");
+        }
+      } catch (err) {
+        setPhotoUrls(previous.photoUrls);
+        setPhotoLayout(previous.photoLayout);
+        toast.error(err instanceof Error ? err.message : "Could not save photos.");
+      }
     });
+  }
+
+  function handlePhotosDeleted(nextUrls: string[]) {
+    setPhotoUrls(nextUrls);
   }
 
   function handleSave() {
@@ -191,12 +206,14 @@ export function BrochureDetail({
         <CardHeader><p className="text-sm font-medium text-heading">Photography</p></CardHeader>
         <CardContent>
           <BrochurePhotosEditor
+            brochureId={brochure.id}
             venueId={venueId}
             venueHeroUrl={venueHeroUrl}
             photoUrls={photoUrls}
             photoLayout={photoLayout}
             pending={photosPending}
             onChange={handlePhotosChange}
+            onDeleted={handlePhotosDeleted}
           />
         </CardContent>
       </Card>

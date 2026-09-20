@@ -5,13 +5,14 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/brochures/repository";
 import type {
-  Brochure, BrochureActionResult, BrochureInput, BrochureRenderData, BrochureWithActivity,
-  CreateBrochureResult,
+  Brochure,   BrochureActionResult, BrochureInput, BrochureRenderData, BrochureWithActivity,
+  CreateBrochureResult, DeleteBrochurePhotoResult,
 } from "@/lib/brochures/types";
 import {
   normalizeBrochurePhotoLayout,
   normalizeBrochurePhotoUrls,
 } from "@/lib/brochures/photo-layout";
+import { brochurePhotoObjectPath, withoutBrochurePhoto } from "@/lib/brochures/photo-storage";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getPackages } from "@/lib/packages/service";
 import { getLead } from "@/lib/leads/service";
@@ -158,16 +159,75 @@ export async function updateBrochure_(id: string, input: BrochureInput): Promise
   return result as BrochureActionResult;
 }
 
+function actionErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof err.message === "string" && err.message) {
+    return err.message;
+  }
+  return fallback;
+}
+
 export async function updateBrochurePhotography_(
   id: string,
   photoUrls: string[],
   photoLayout: string,
 ): Promise<BrochureActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateBrochurePhotography(supabase, venueId, id, photoUrls, photoLayout);
-    return { ok: true } as BrochureActionResult;
-  });
-  return result as BrochureActionResult;
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      await repo.updateBrochurePhotography(supabase, venueId, id, photoUrls, photoLayout);
+      return { ok: true } as BrochureActionResult;
+    });
+    return result as BrochureActionResult;
+  } catch (err) {
+    return { ok: false, message: actionErrorMessage(err, "Could not save photos.") };
+  }
+}
+
+/**
+ * Permanently delete one uploaded brochure photo.
+ * Venue hero images are not brochure-photo objects and are refused.
+ * Another venue's path is refused. Storage is removed only after every
+ * brochure row for this venue has dropped the URL.
+ */
+export async function deleteBrochurePhoto_(
+  brochureId: string,
+  url: string,
+): Promise<DeleteBrochurePhotoResult> {
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      const path = brochurePhotoObjectPath(url, venueId);
+      if (!path) {
+        return {
+          ok: false,
+          message: "Only a photo uploaded for brochures can be deleted. The venue photo stays in your venue settings.",
+        } as DeleteBrochurePhotoResult;
+      }
+      const brochures = await repo.getBrochures(supabase, venueId, true);
+      for (const brochure of brochures) {
+        const next = withoutBrochurePhoto(brochure.photoUrls, url);
+        if (next.length === brochure.photoUrls.length) continue;
+        await repo.updateBrochurePhotography(supabase, venueId, brochure.id, next, brochure.photoLayout);
+      }
+      const { error } = await supabase.storage.from("uploads").remove([path]);
+      if (error) {
+        return {
+          ok: false,
+          message: error.message || "Could not delete the uploaded photo.",
+        } as DeleteBrochurePhotoResult;
+      }
+      const current = brochures.find((brochure) => brochure.id === brochureId);
+      return {
+        ok: true,
+        photoUrls: withoutBrochurePhoto(current?.photoUrls ?? [], url),
+      } as DeleteBrochurePhotoResult;
+    });
+    if (result && typeof result === "object" && "ok" in result && result.ok === false && !("photoUrls" in result)) {
+      return { ok: false, message: result.message ?? "Could not delete the photo." };
+    }
+    return result as DeleteBrochurePhotoResult;
+  } catch (err) {
+    return { ok: false, message: actionErrorMessage(err, "Could not delete the photo.") };
+  }
 }
 
 export async function setBrochureArchived_(id: string, isArchived: boolean): Promise<BrochureActionResult> {

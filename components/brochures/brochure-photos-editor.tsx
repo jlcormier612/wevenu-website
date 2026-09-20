@@ -2,9 +2,11 @@
 
 import * as React from "react";
 
-import { ChevronDown, ChevronUp, Loader2, Star, Upload, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Star, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+import { deleteBrochurePhotoAction } from "@/app/(app)/library/brochures/actions";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { uploadToStorage, listPublicUploadUrls } from "@/lib/storage/upload";
@@ -15,29 +17,35 @@ import {
   BROCHURE_PHOTO_LAYOUTS,
   moveBrochurePhoto,
   normalizeBrochurePhotoLayout,
-  removeBrochurePhoto,
   setPrimaryBrochurePhoto,
   type BrochurePhotoLayout,
 } from "@/lib/brochures/photo-layout";
+import { isDeletableBrochurePhoto, sameBrochurePhotoUrl, withoutBrochurePhoto } from "@/lib/brochures/photo-storage";
 import { cn } from "@/lib/utils";
 
 export function BrochurePhotosEditor({
+  brochureId,
   venueId,
   venueHeroUrl,
   photoUrls,
   photoLayout,
   onChange,
+  onDeleted,
   pending,
 }: {
+  brochureId: string;
   venueId: string;
   venueHeroUrl: string | null;
   photoUrls: string[];
   photoLayout: BrochurePhotoLayout;
   onChange: (next: { photoUrls: string[]; photoLayout: BrochurePhotoLayout }) => void;
+  onDeleted: (photoUrls: string[]) => void;
   pending?: boolean;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const [deleteUrl, setDeleteUrl] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const [library, setLibrary] = React.useState<string[]>(() => {
     const urls: string[] = [];
@@ -105,13 +113,34 @@ export function BrochurePhotosEditor({
     }
   }
 
+  async function confirmDelete() {
+    if (!deleteUrl) return;
+    const url = deleteUrl;
+    setDeleting(true);
+    try {
+      const result = await deleteBrochurePhotoAction(brochureId, url);
+      if (!result.ok) {
+        toast.error(result.message || "Could not delete the photo.");
+        return;
+      }
+      setLibrary((prev) => prev.filter((item) => !sameBrochurePhotoUrl(item, url)));
+      onDeleted(result.photoUrls);
+      setDeleteUrl(null);
+      toast.success("Photo deleted.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete the photo.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div>
         <p className="text-sm font-medium text-heading">Photos</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Choose the photos you&apos;d like to feature in your brochure. Removing a photo here does not delete it from your venue.
-        </p>
+        Choose the photos for this brochure. Remove from brochure keeps the file in your photo library. Delete photo permanently removes an uploaded brochure photo.
+      </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -133,9 +162,12 @@ export function BrochurePhotosEditor({
       {library.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {library.map((url) => {
-            const selected = photoUrls.includes(url);
-            const isPrimary = selected && photoUrls[0] === url;
-            const selectedIndex = photoUrls.indexOf(url);
+            const selected = photoUrls.some((item) => sameBrochurePhotoUrl(item, url));
+            const selectedUrl = photoUrls.find((item) => sameBrochurePhotoUrl(item, url)) ?? url;
+            const isPrimary = selected && sameBrochurePhotoUrl(photoUrls[0] ?? "", url);
+            const selectedIndex = photoUrls.findIndex((item) => sameBrochurePhotoUrl(item, url));
+            const canDelete = isDeletableBrochurePhoto(url, venueId);
+            const isVenuePhoto = Boolean(venueHeroUrl && sameBrochurePhotoUrl(venueHeroUrl, url));
             return (
               <div
                 key={url}
@@ -158,7 +190,7 @@ export function BrochurePhotosEditor({
                           variant="ghost"
                           className="h-7 px-2 text-xs"
                           disabled={pending}
-                          onClick={() => persist(setPrimaryBrochurePhoto(photoUrls, url), photoLayout)}
+                          onClick={() => persist(setPrimaryBrochurePhoto(photoUrls, selectedUrl), photoLayout)}
                         >
                           <Star className="mr-1 h-3 w-3" />
                           Primary
@@ -190,14 +222,13 @@ export function BrochurePhotosEditor({
                       ) : null}
                       <Button
                         type="button"
-                        size="icon-sm"
+                        size="sm"
                         variant="ghost"
-                        className="ml-auto text-muted-foreground hover:text-destructive"
-                        disabled={pending}
-                        aria-label="Remove from brochure"
-                        onClick={() => persist(removeBrochurePhoto(photoUrls, url), photoLayout)}
+                        className="h-7 px-2 text-xs"
+                        disabled={pending || deleting}
+                        onClick={() => persist(withoutBrochurePhoto(photoUrls, selectedUrl), photoLayout)}
                       >
-                        <X className="h-3.5 w-3.5" />
+                        Remove from brochure
                       </Button>
                     </>
                   ) : (
@@ -206,12 +237,27 @@ export function BrochurePhotosEditor({
                       size="sm"
                       variant="outline"
                       className="h-7 text-xs"
-                      disabled={pending}
+                      disabled={pending || deleting}
                       onClick={() => persist(addBrochurePhoto(photoUrls, url), photoLayout)}
                     >
                       Use in brochure
                     </Button>
                   )}
+                  {isVenuePhoto ? (
+                    <span className="text-[10px] text-muted-foreground">Venue photo</span>
+                  ) : null}
+                  {canDelete ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs text-destructive"
+                      disabled={pending || deleting}
+                      onClick={() => setDeleteUrl(url)}
+                    >
+                      Delete photo
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             );
@@ -220,6 +266,17 @@ export function BrochurePhotosEditor({
       ) : (
         <p className="text-sm text-muted-foreground">No photos yet. Add a photo to begin.</p>
       )}
+
+      <LibraryDeleteConfirmDialog
+        open={deleteUrl !== null}
+        itemName="this uploaded photo"
+        itemLabel="photo"
+        title="Delete this photo?"
+        description="This permanently deletes the uploaded file from your brochure photo library and removes it from every brochure that uses it. This cannot be undone. Removing a photo from one brochure is a different action."
+        pending={deleting}
+        onCancel={() => { if (!deleting) setDeleteUrl(null); }}
+        onConfirm={() => { void confirmDelete(); }}
+      />
 
       <div className="space-y-2">
         <Label className="text-sm font-medium text-heading">Photo layout</Label>
