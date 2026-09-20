@@ -8,6 +8,8 @@ export function inboxListKindLabel(category: "leads" | "clients" | "vendors"): s
 
 const VENDOR_KINDS = new Set(["venue_vendor", "couple_vendor", "couple_vendor_inquiry"]);
 
+export type InboxWorkingCategory = "leads" | "clients" | "vendors" | "historical";
+
 /**
  * Active Inbox category for one conversation.
  * A row with no messages is not an Inbox row; callers must not invent one.
