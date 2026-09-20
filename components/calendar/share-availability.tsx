@@ -17,19 +17,22 @@ export function ShareAvailability({ url }: { url: string }) {
   return (
     <div className="rounded-lg border border-border bg-card px-4 py-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Share your availability
+        Public availability
       </p>
       <p className="mt-1 text-sm text-foreground">
-        Let couples see which dates are currently available.
+        Share your current available dates with couples.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button type="button" size="lg" onClick={copy}>
-          Copy link
+          Copy availability link
         </Button>
         <Button type="button" size="lg" variant="outline" render={<a href={url} target="_blank" rel="noopener noreferrer" />}>
           Preview
         </Button>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Your link always reflects your current availability.
+      </p>
     </div>
   );
 }

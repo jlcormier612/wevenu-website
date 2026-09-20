@@ -8,6 +8,7 @@ import { ScheduledAppointmentTypesSection } from "@/components/settings/schedule
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
 import { ToursOfferedControl } from "@/components/settings/tours-offered-control";
+import { HoldAvailabilityControl } from "@/components/settings/hold-availability-control";
 import {
   Card,
   CardContent,
@@ -19,18 +20,19 @@ import { getScheduleItemTypesForSettings } from "@/lib/calendar/schedule-item-ca
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
 import { getTourAvailability, getTourSettings } from "@/lib/tours/service";
-import { getCurrentUserRole } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Availability & Capacity — Settings" };
 
 export default async function AvailabilityCapacitySettingsPage() {
-  const [spaces, capacityRules, tourAvailability, catalogTypes, role, tourSettings] = await Promise.all([
+  const [spaces, capacityRules, tourAvailability, catalogTypes, role, tourSettings, venue] = await Promise.all([
     getSpaces(),
     getCapacityRules(),
     getTourAvailability(),
     getScheduleItemTypesForSettings(),
     getCurrentUserRole(),
     getTourSettings(),
+    getCurrentVenue(),
   ]);
   const { windows, exceptions, loadError } = editorHydrationFromAvailability(tourAvailability);
   const canEditCatalog = role === "owner" || role === "manager";
@@ -74,6 +76,18 @@ export default async function AvailabilityCapacitySettingsPage() {
             initialTypes={catalogTypes}
             canEdit={canEditCatalog}
           />
+        </CardContent>
+      </Card>
+
+      <Card id="date-holds" className="scroll-mt-20">
+        <CardHeader>
+          <CardTitle className="text-base">Date holds and availability</CardTitle>
+          <CardDescription>
+            A hold temporarily protects a date. It is not a booking, and it is separate from tours and appointments.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <HoldAvailabilityControl initialBlocks={venue?.holdBlocksAvailability !== false} />
         </CardContent>
       </Card>
 

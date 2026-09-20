@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
-import { monthBounds, publicMonthCells } from "@/lib/availability/public-calendar-month";
+import { monthBounds, publicAvailabilityPath, publicMonthCells } from "@/lib/availability/public-calendar-month";
 
 const sql = readFileSync(
   resolve("supabase/migrations/20261403000000_public_availability_calendar.sql"),
@@ -80,18 +80,38 @@ describe("public month grid", () => {
 
 describe("authoritative date rules", () => {
   const migration = readFileSync(
-    resolve("supabase/migrations/20261321000000_calendar_block_recurrence_coverage.sql"),
+    resolve("supabase/migrations/20261403200000_hold_blocks_public_availability.sql"),
     "utf8",
   );
   const fn = migration.slice(
     migration.indexOf("function public._is_event_date_available"),
-    migration.indexOf("function public.events_enforce_availability"),
+    migration.indexOf("drop function if exists public.get_brochure_by_token"),
   );
 
-  it("closes a date for a covering block or full-day event occupancy, not for holds or tours", () => {
+  it("closes a date for a covering block, full-day event occupancy, or an active hold when the venue asks", () => {
     assert.match(fn, /covering_calendar_block_title/);
     assert.match(fn, /evaluate_event_availability/);
-    assert.doesNotMatch(fn, /date_holds|tour_appointments/);
+    assert.match(fn, /hold_blocks_availability/);
+    assert.match(fn, /date_holds/);
+    assert.match(fn, /h\.status = 'active'/);
+    assert.match(fn, /expires_at is null or h\.expires_at > now\(\)/);
+    assert.doesNotMatch(fn, /tour_appointments/);
+    assert.doesNotMatch(fn, /h\.title|h\.notes/);
+  });
+
+  it("keeps inquiry dates on the same function and does not snapshot brochure dates", () => {
+    const inquiry = readFileSync(
+      resolve("supabase/migrations/20261309000000_inquiry_form_config.sql"),
+      "utf8",
+    );
+    assert.match(inquiry, /_is_event_date_available\(v_venue_id, v_cur\)/);
+    const brochure = readFileSync(resolve("components/brochures/brochure-preview-view.tsx"), "utf8");
+    const service = readFileSync(resolve("lib/brochures/service.ts"), "utf8");
+    assert.match(brochure, /availabilityPath/);
+    assert.match(brochure, /See available dates/);
+    assert.match(service, /publicAvailabilityPath/);
+    assert.doesNotMatch(brochure, /app\.sandbox\.hellotocheers\.com/);
+    assert.doesNotMatch(service, /September 20/);
   });
 });
 describe("share control and public page", () => {
@@ -102,10 +122,11 @@ describe("share control and public page", () => {
     const view = readFileSync(resolve("components/availability/public-availability-view.tsx"), "utf8");
     const month = readFileSync(resolve("lib/availability/public-calendar-month.ts"), "utf8");
     assert.match(calendar, /\/availability\/\$\{venue\.embedKey\}/);
-    assert.match(share, /Copy link/);
+    assert.match(share, /Copy availability link/);
     assert.match(share, /Preview/);
     assert.match(share, /Availability link copied/);
-    assert.match(share, /Share your availability/);
+    assert.match(share, /Public availability/);
+    assert.match(share, /always reflects your current availability/);
     assert.match(share, /href=\{url\}/);
     assert.match(share, /writeText\(url\)/);
     assert.doesNotMatch(share, /Send calendar|Calendar sent|Share sent/);
@@ -116,5 +137,22 @@ describe("share control and public page", () => {
     assert.match(month, /\/form\//);
     assert.doesNotMatch(view, /Wedding Day|Everything|Sales|Planning|Operations|Hold|Blocked Time|Appointment|Tour/);
     assert.doesNotMatch(readFileSync(resolve("lib/availability/public-calendar.ts"), "utf8"), /from\("leads"\)|from\("events"\)|from\("clients"\)/);
+    assert.equal(publicAvailabilityPath("abc key"), "/availability/abc%20key");
+    assert.equal(publicAvailabilityPath("  "), null);
+  });
+});
+
+describe("hold availability preference", () => {
+  it("defaults holds to blocking public availability and explains the choice in plain language", () => {
+    const sql = readFileSync(
+      resolve("supabase/migrations/20261403200000_hold_blocks_public_availability.sql"),
+      "utf8",
+    );
+    assert.match(sql, /hold_blocks_availability boolean not null default true/);
+    const settings = readFileSync(resolve("components/settings/hold-availability-control.tsx"), "utf8");
+    assert.match(settings, /Hold dates from public availability/);
+    assert.match(settings, /Keep held dates available/);
+    assert.match(settings, /Tours and appointments do not close dates/);
+    assert.doesNotMatch(settings, /database|RPC|occupancy authority/i);
   });
 });

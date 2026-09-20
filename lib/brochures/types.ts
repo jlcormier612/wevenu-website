@@ -87,4 +87,6 @@ export type BrochureRenderData = {
   };
   packages: { name: string; description: string | null; basePrice: number | null; category: string | null }[];
   faqs: { question: string; answer: string }[];
+  /** Live public availability path. Relative so it follows the current app domain. Not a date list. */
+  availabilityPath: string | null;
 };

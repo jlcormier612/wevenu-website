@@ -11,8 +11,9 @@
  * "always render current data" is the correct behavior, not a gap.
  */
 import * as React from "react";
-import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, Link, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
 import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
+import { publicAppOrigin } from "@/lib/env";
 import type { BrochureRenderData } from "@/lib/brochures/types";
 
 Font.registerHyphenationCallback((word) => [word]);
@@ -129,6 +130,14 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
         brochure.closingText ? React.createElement(View, { wrap: false },
           React.createElement(Text, { style: sectionHeadStyle }, "Next Steps"),
           React.createElement(Text, { style: styles.closingText }, brochure.closingText),
+        ) : null,
+
+        data.availabilityPath ? React.createElement(View, { wrap: false },
+          React.createElement(Text, { style: sectionHeadStyle }, "Available dates"),
+          React.createElement(Text, { style: styles.bodyText }, "Check which dates are currently available. This link always shows current availability."),
+          React.createElement(Link, { src: `${publicAppOrigin()}${data.availabilityPath}` },
+            React.createElement(Text, { style: styles.bodyText }, `${publicAppOrigin()}${data.availabilityPath}`),
+          ),
         ) : null,
 
         React.createElement(View, { style: styles.footer, fixed: true },

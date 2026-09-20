@@ -130,6 +130,8 @@ export type Venue = {
   onboardingDismissed: boolean;
   luvIntroSeenAt: string | null;
   embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}
+  /** When true, an active date hold closes that date on the public availability calendar and inquiry form. */
+  holdBlocksAvailability: boolean;
   leadEmailKey: string;   // Email Intake Engine — leads+{leadEmailKey}@{inbound domain}
   tourSchedulingEnabled: boolean;
   // Program 2 Phase 2B rollout flag — per docs/conversation-experience-cutover.md's

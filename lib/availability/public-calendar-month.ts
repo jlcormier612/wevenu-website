@@ -15,6 +15,12 @@ function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+export function publicAvailabilityPath(embedKey: string | null | undefined): string | null {
+  const key = embedKey?.trim();
+  if (!key) return null;
+  return `/availability/${encodeURIComponent(key)}`;
+}
+
 export function monthBounds(year: number, month: number): { start: string; end: string } {
   const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
   return {

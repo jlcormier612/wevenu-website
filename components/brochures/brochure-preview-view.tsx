@@ -111,6 +111,18 @@ export function BrochurePreviewView({
         </section>
       ) : null}
 
+      {data.availabilityPath ? (
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Available dates</h2>
+          <p className="text-sm leading-relaxed text-foreground">
+            Check which dates are currently available. This link always shows current availability.
+          </p>
+          <a href={data.availabilityPath} className="text-sm font-medium text-heading underline">
+            See available dates
+          </a>
+        </section>
+      ) : null}
+
       {contactLine ? (
         <p className="border-t border-border pt-4 text-sm text-muted-foreground">{contactLine}</p>
       ) : null}

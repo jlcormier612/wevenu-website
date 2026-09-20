@@ -13,6 +13,7 @@ import {
   normalizeBrochurePhotoUrls,
 } from "@/lib/brochures/photo-layout";
 import { brochurePhotoObjectPath, withoutBrochurePhoto } from "@/lib/brochures/photo-storage";
+import { publicAvailabilityPath } from "@/lib/availability/public-calendar-month";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getPackages } from "@/lib/packages/service";
 import { getLead } from "@/lib/leads/service";
@@ -89,6 +90,7 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
     faqs: faqsRaw
       .filter((f) => f.audience !== "vendors" && f.published !== false)
       .map((f) => ({ question: f.question, answer: f.answer })),
+    availabilityPath: publicAvailabilityPath(venue.embedKey),
   };
 }
 
@@ -98,6 +100,7 @@ type PublicBrochureRow = {
   venue_id: string; venue_name: string; venue_business_name: string | null; venue_logo_url: string | null; venue_story: string | null;
   venue_hero_image_url: string | null; venue_primary_color: string; venue_secondary_color: string; venue_accent_color: string;
   venue_email: string | null; venue_phone: string | null; venue_website: string | null;
+  venue_embed_key?: string | null;
   packages: { name: string; description: string | null; basePrice: number | null; category: string | null }[];
   faqs: { question: string; answer: string; audience?: string; published?: boolean }[];
 };
@@ -132,6 +135,7 @@ export async function getBrochureRenderDataByToken(token: string): Promise<Broch
           .filter((f) => f.audience !== "vendors" && f.published !== false)
           .map((f) => ({ question: f.question, answer: f.answer }))
       : [],
+    availabilityPath: publicAvailabilityPath(row.venue_embed_key),
   };
 }
 
