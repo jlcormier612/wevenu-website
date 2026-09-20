@@ -281,6 +281,8 @@ export function EventDetail({
   requests = [],
   readinessSummary,
   originatingLeadId = null,
+  relationshipContact = null,
+  leadNotes = [],
   bookingJourney = null,
   packagesWithItems = [],
   selectedPackage = null,
@@ -348,6 +350,14 @@ export function EventDetail({
   // Lead's own activity history (status changes, prior notes) had no
   // reachable path once converted, even though it was never deleted.
   originatingLeadId?: string | null;
+  relationshipContact?: {
+    phone: string | null;
+    email: string | null;
+    partnerEmail: string | null;
+    source: string | null;
+    inquiryMessage: string | null;
+  } | null;
+  leadNotes?: { id: string; body: string; createdAt: string }[];
   bookingJourney?: BookingJourneyModel | null;
   packagesWithItems?: PackageWithItems[];
   selectedPackage?: CommercialSelection | null;
@@ -612,6 +622,7 @@ export function EventDetail({
               vendorAssignments={event.vendorAssignments} vendorRecommendations={vendorRecommendations}
               conversationMessages={conversationMessages}
               documents={documents}
+              contact={relationshipContact}
             />
           )}
           {event.clientId && (
@@ -1009,7 +1020,7 @@ export function EventDetail({
               <CardDescription>Operational notes for this event. Not visible to clients.</CardDescription>
             </CardHeader>
             <CardContent>
-              <EventNotesSection eventId={event.id} initialNotes={event.notes} />
+              <EventNotesSection eventId={event.id} initialNotes={event.notes} leadNotes={leadNotes} />
             </CardContent>
           </Card>
         </TabsContent>

@@ -37,6 +37,7 @@ import {
   getEntryAttachmentsForEvent, getEntryLinksForEvent, getRelatedLinksForEvent, getSections, getTimelineEntries,
 } from "@/lib/timeline/service";
 import { getTemplatesForLibrary as getTimelineTemplatesForLibrary } from "@/lib/timeline-templates/service";
+import { LEAD_SOURCES } from "@/lib/leads/constants";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import {
@@ -161,9 +162,59 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // id directly (event.clientId doesn't carry these), for Messages and the
   // anniversary/final-details send-to-couple flows.
   const supabase = await createClient();
-  const { data: cl } = await supabase.from("clients").select("email, relationship_id").eq("id", id)
-    .maybeSingle<{ email: string | null; relationship_id: string | null }>();
-  const coupleEmail = cl?.email ?? null;
+  const { data: cl } = await supabase.from("clients").select("email, phone, partner_email, relationship_id").eq("id", id)
+    .maybeSingle<{ email: string | null; phone: string | null; partner_email: string | null; relationship_id: string | null }>();
+  const coupleEmail = cl?.email ?? client.email ?? null;
+
+  let relationshipContact: {
+    phone: string | null;
+    email: string | null;
+    partnerEmail: string | null;
+    source: string | null;
+    inquiryMessage: string | null;
+  } | null = null;
+  let leadNotes: { id: string; body: string; createdAt: string }[] = [];
+  if (client.leadId) {
+    const [{ data: leadRow }, { data: noteRows }] = await Promise.all([
+      supabase.from("leads")
+        .select("phone, email, partner_email, source, inquiry_message")
+        .eq("id", client.leadId)
+        .maybeSingle<{
+          phone: string | null;
+          email: string | null;
+          partner_email: string | null;
+          source: string | null;
+          inquiry_message: string | null;
+        }>(),
+      supabase.from("lead_notes")
+        .select("id, body, created_at")
+        .eq("lead_id", client.leadId)
+        .order("created_at", { ascending: false }),
+    ]);
+    const sourceLabel = leadRow?.source
+      ? (LEAD_SOURCES.find((s) => s.value === leadRow.source)?.label ?? leadRow.source)
+      : null;
+    relationshipContact = {
+      phone: cl?.phone || client.phone || leadRow?.phone || null,
+      email: cl?.email || client.email || leadRow?.email || null,
+      partnerEmail: cl?.partner_email || client.partnerEmail || leadRow?.partner_email || null,
+      source: sourceLabel,
+      inquiryMessage: leadRow?.inquiry_message ?? null,
+    };
+    leadNotes = ((noteRows ?? []) as { id: string; body: string; created_at: string }[]).map((n) => ({
+      id: n.id,
+      body: n.body,
+      createdAt: n.created_at,
+    }));
+  } else if (cl?.phone || cl?.email || client.phone || client.email) {
+    relationshipContact = {
+      phone: cl?.phone || client.phone || null,
+      email: cl?.email || client.email || null,
+      partnerEmail: cl?.partner_email || client.partnerEmail || null,
+      source: null,
+      inquiryMessage: null,
+    };
+  }
 
   let linkableConversationMessages: LinkableConversationMessage[] = [];
   let conversationMessages: ConversationMessage[] = [];
@@ -242,6 +293,8 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       pinnedDocumentKeys={pinnedDocumentKeys}
       recentDocumentEntries={recentDocumentEntries}
       originatingLeadId={client.leadId}
+      relationshipContact={relationshipContact}
+      leadNotes={leadNotes}
       questionnaire={questionnaire} questionnaires={questionnaires} questionnaireTemplates={questionnaireTemplates} questionnaireActivities={questionnaireActivities} questionnaireActivitiesById={questionnaireActivitiesById}
       coupleEmail={coupleEmail} eventTasks={eventTasks}
       playbookTemplates={playbookTemplates} playbookApplications={playbookApplications}

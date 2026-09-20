@@ -166,9 +166,10 @@ export function LeadList({
       const stage = l.salesStage ?? l.status;
       if (statusFilter !== "all") {
         if (scope === "closed") {
+          const stageKey = String(stage);
           if (statusFilter === "booked") {
-            if (stage !== "booked" && stage !== "won") return false;
-          } else if (stage !== statusFilter) {
+            if (stageKey !== "booked" && stageKey !== "won") return false;
+          } else if (stageKey !== statusFilter) {
             return false;
           }
         } else if (usingWorkingVenueStages) {
@@ -223,8 +224,8 @@ export function LeadList({
         ["cancelled", 0],
       ]);
       for (const l of queue) {
-        const stage = l.salesStage ?? l.status;
-        const key = stage === "won" ? "booked" : stage;
+        const stageKey = String(l.salesStage ?? l.status);
+        const key = stageKey === "won" ? "booked" : stageKey;
         if (key !== "all" && map.has(key)) map.set(key, (map.get(key) ?? 0) + 1);
       }
       return map;

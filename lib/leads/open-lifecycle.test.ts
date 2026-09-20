@@ -45,10 +45,10 @@ describe("isOpenReportingCategory", () => {
 });
 
 describe("isOpenLeadOpportunity", () => {
-  it("prefers canonical reporting category over sales_stage", () => {
+  it("terminal sales_stage leaves the funnel even if the venue stage is still open", () => {
     assert.equal(
       isOpenLeadOpportunity({ salesStage: "booked", canonicalStage: "decision" }),
-      true,
+      false,
     );
     assert.equal(
       isOpenLeadOpportunity({ salesStage: "new_inquiry", canonicalStage: "booked" }),

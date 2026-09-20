@@ -27,7 +27,16 @@ function relativeTime(iso: string): string {
   return d < 7 ? `${d}d ago` : new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export function EventNotesSection({ eventId, initialNotes }: { eventId: string; initialNotes: EventNote[] }) {
+export function EventNotesSection({
+  eventId,
+  initialNotes,
+  leadNotes = [],
+}: {
+  eventId: string;
+  initialNotes: EventNote[];
+  /** Inquiry notes stored on the linked lead. Shown here; not copied onto the event. */
+  leadNotes?: { id: string; body: string; createdAt: string }[];
+}) {
   const router = useRouter();
   // See lib/hooks/use-synced-state.ts.
   const [notes, setNotes] = useSyncedState(initialNotes);
@@ -79,7 +88,18 @@ export function EventNotesSection({ eventId, initialNotes }: { eventId: string; 
           </Button>
         </div>
       </div>
-      {notes.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No notes yet.</p>}
+      {leadNotes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">From the original inquiry</p>
+          {leadNotes.map((note) => (
+            <div key={note.id} className="rounded-lg border border-border bg-muted/30 p-4">
+              <p className="whitespace-pre-wrap text-sm text-foreground">{note.body}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{relativeTime(note.createdAt)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {notes.length === 0 && leadNotes.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No notes yet.</p>}
       <div className="space-y-3">
         {notes.map((note) =>
           editingId === note.id ? (

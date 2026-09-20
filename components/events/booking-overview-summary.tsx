@@ -61,6 +61,7 @@ export function BookingOverviewSummary({
   vendorAssignments, vendorRecommendations,
   conversationMessages,
   documents,
+  contact = null,
 }: {
   clientName: string | null;
   eventType: string | null;
@@ -77,6 +78,14 @@ export function BookingOverviewSummary({
   vendorRecommendations: EventVendorRecommendation[];
   conversationMessages: ConversationMessage[];
   documents: Document[];
+  /** Contact and original inquiry already stored on the client and linked lead. Not a copy. */
+  contact?: {
+    phone: string | null;
+    email: string | null;
+    partnerEmail: string | null;
+    source: string | null;
+    inquiryMessage: string | null;
+  } | null;
 }) {
   // ---- Payments: simple sums/finds over already-fetched invoices, nothing new invented ----
   const balanceDue = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
@@ -127,6 +136,22 @@ export function BookingOverviewSummary({
           <ClientStatusBadge status={clientStatus} />
         </CardContent>
       </Card>
+      {(contact?.phone || contact?.email || contact?.partnerEmail || contact?.source || contact?.inquiryMessage) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Contact</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 text-sm">
+            {contact.phone && <p><span className="text-muted-foreground">Phone · </span>{contact.phone}</p>}
+            {contact.email && <p><span className="text-muted-foreground">Email · </span>{contact.email}</p>}
+            {contact.partnerEmail && <p><span className="text-muted-foreground">Partner email · </span>{contact.partnerEmail}</p>}
+            {contact.source && <p><span className="text-muted-foreground">Source · </span>{contact.source}</p>}
+            {contact.inquiryMessage && (
+              <p className="whitespace-pre-wrap pt-1 text-foreground">{contact.inquiryMessage}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Summary tiles ────────────────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

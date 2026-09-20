@@ -51,7 +51,8 @@ export type OpenLeadRow = {
 };
 
 /**
- * Pure: open leads = non-terminal pipeline reporting category (or sales_stage).
+ * Pure: open leads = sales_stage still in the funnel, and reporting category not terminal.
+ * A booked/lost/cancelled sales_stage is not an open lead even if a venue stage id remains.
  * Does not use exclude_from_business_reporting or client_id.
  */
 export function computeOpenLeadFlow(

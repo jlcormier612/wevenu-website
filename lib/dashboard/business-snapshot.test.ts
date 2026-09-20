@@ -46,10 +46,10 @@ describe("computeOpenLeadFlow / open lifecycle", () => {
     assert.equal(result.newThisMonth, 3);
   });
 
-  it("uses pipeline reporting category over sales_stage when both present", () => {
+  it("excludes booked sales_stage even when the venue reporting category is still open", () => {
     const result = computeOpenLeadFlow(
       [
-        // sales_stage says booked but reporting category is still proposal → open
+        // sales_stage booked has left the funnel even if the venue stage is still proposal
         {
           sales_stage: "booked",
           canonical_stage: "proposal",
@@ -84,8 +84,8 @@ describe("computeOpenLeadFlow / open lifecycle", () => {
       ],
       "2026-09-01",
     );
-    assert.equal(result.count, 2);
-    assert.equal(result.value, 5_000);
+    assert.equal(result.count, 1);
+    assert.equal(result.value, 1_000);
   });
 
   it("treats custom pipeline stage slugs as open when not terminal", () => {
@@ -102,7 +102,7 @@ describe("computeOpenLeadFlow / open lifecycle", () => {
     assert.equal(isOpenReportingCategory("unmapped"), true);
     assert.equal(
       isOpenLeadOpportunity({ salesStage: "booked", canonicalStage: "tour" }),
-      true,
+      false,
     );
     assert.equal(
       isOpenLeadOpportunity({ salesStage: "new_inquiry", canonicalStage: "booked" }),

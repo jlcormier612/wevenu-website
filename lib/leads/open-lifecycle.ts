@@ -43,17 +43,21 @@ export function isOpenReportingCategory(
 }
 
 /**
- * Prefer pipeline reporting category when known; otherwise sales_stage.
+ * Active sales opportunity.
+ * A terminal sales_stage (booked, lost, won, cancelled) has left the funnel
+ * even if a leftover venue pipeline stage still looks open.
+ * Otherwise prefer the pipeline reporting category when known.
  * Shared by Dashboard Lead Flow and Leads `attention=open`.
  */
 export function isOpenLeadOpportunity(opts: {
   salesStage?: string | null;
   canonicalStage?: CanonicalStage | string | null;
 }): boolean {
+  if (!isOpenLeadLifecycle(opts.salesStage)) return false;
   if (opts.canonicalStage != null && opts.canonicalStage !== "") {
     return isOpenReportingCategory(opts.canonicalStage);
   }
-  return isOpenLeadLifecycle(opts.salesStage);
+  return true;
 }
 
 type LeadStageCarrier = {
