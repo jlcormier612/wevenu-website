@@ -965,7 +965,7 @@ export function EventDetail({
                   ) : (
                     <>
                       <p className="text-xs text-muted-foreground max-w-sm">
-                        Select a package on the Booking Journey first for the guided payment setup, or use an advanced option below.
+                        Select a package under Commercial first for the guided payment setup, or use an advanced option below.
                       </p>
                       <div className="flex flex-wrap items-center justify-center gap-2">
                         {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}

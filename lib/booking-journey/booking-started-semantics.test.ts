@@ -24,12 +24,20 @@ describe("Pipeline terminology — Booking Started vs commercial Booked", () => 
     );
   });
 
-  it("Booking Journey keeps the venue booking rule as the automatic trigger", () => {
+  it("Booking rule stays the automatic trigger, and the five-step strip is gone", () => {
     const model = read("lib/booking-journey/model.ts");
-    assert.match(model, /key: "booked", label: "Booked"/);
-    const strip = read("components/booking-journey/booking-journey-strip.tsx");
-    assert.match(strip, /automatic booking follows your venue booking rule/);
-    assert.doesNotMatch(strip, /Booking Started/);
+    assert.match(model, /isCommerciallyBooked/);
+    const facts = read("components/booking-journey/commercial-facts.tsx");
+    assert.match(facts, /automatic booking still follows your venue booking rule/i);
+    assert.match(facts, /not a required sequence/i);
+    const panel = read("components/booking-journey/booking-journey-panel.tsx");
+    assert.doesNotMatch(panel, /BookingJourneyStrip|Booking Journey/);
+    assert.doesNotMatch(panel, /Send proposal/);
+    const lead = read("components/leads/lead-detail.tsx");
+    const event = read("components/events/event-detail.tsx");
+    assert.match(lead, /Pipeline stage/);
+    assert.doesNotMatch(lead, /Booking Journey/);
+    assert.doesNotMatch(event, />\s*Booking Journey/);
   });
 
   it("Lead confirm does not call the result a planning workspace", () => {

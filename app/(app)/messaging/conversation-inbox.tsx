@@ -510,7 +510,7 @@ export function ConversationInbox({
       {filtersOpen && (
         <div className="max-h-[min(40vh,22rem)] shrink-0 space-y-4 overflow-y-auto rounded-lg border border-border/60 bg-muted/20 p-4">
           {/* Top row: compact peer filters — equal weight, no empty cells */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <fieldset className="space-y-2">
               <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Attention</legend>
               <div className="flex flex-col gap-1.5 text-xs">
@@ -531,27 +531,6 @@ export function ConversationInbox({
                   </label>
                 ))}
               </div>
-            </fieldset>
-
-            <fieldset className="space-y-2">
-              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Booking stage</legend>
-              <select
-                aria-label="Filter by booking stage"
-                value={filters.bookingStage}
-                onChange={(e) => setFilters((f) => ({ ...f, bookingStage: e.target.value }))}
-                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-                disabled={category !== "clients"}
-              >
-                <option value={INBOX_FILTER_ALL}>Any stage</option>
-                <option value="package">Package</option>
-                <option value="agreement">Agreement</option>
-                <option value="deposit">Deposit</option>
-                <option value="booked">Booked</option>
-                <option value="planning">Planning</option>
-              </select>
-              <p className="text-[10px] text-muted-foreground">
-                Category is controlled above ({category === "leads" ? "Leads" : category === "clients" ? "Clients" : "Vendors"}).
-              </p>
             </fieldset>
 
             <fieldset className="space-y-2">

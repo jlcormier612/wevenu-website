@@ -33,11 +33,17 @@ async function venuePrefs() {
 
 function bestContract(clientId: string | null | undefined, contracts: Awaited<ReturnType<typeof getContracts>>): JourneyContract | null {
   if (!clientId) return null;
-  const list = contracts
-    .filter((c) => c.clientId === clientId)
-    .map((c) => ({ id: c.id, status: c.status }));
-  const picked = pickContract(list);
-  return picked ? { id: picked.id, status: picked.status } : null;
+  const owned = contracts.filter((c) => c.clientId === clientId);
+  const picked = pickContract(owned.map((c) => ({ id: c.id, status: c.status, executionOrigin: c.executionOrigin })));
+  if (!picked) return null;
+  const full = owned.find((c) => c.id === picked.id);
+  return {
+    id: picked.id,
+    status: picked.status,
+    venueSigned: full?.venueSigned ?? false,
+    requiredClientTotal: full?.requiredClientTotal ?? 0,
+    requiredClientSigned: full?.requiredClientSigned ?? 0,
+  };
 }
 
 export async function loadBookingJourneyForLead(input: {

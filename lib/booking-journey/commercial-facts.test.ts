@@ -1,0 +1,163 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, it } from "node:test";
+
+import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
+import { isCommerciallyBooked } from "@/lib/booking-journey/model";
+import type { CommercialSelection } from "@/lib/commercial-selections/types";
+
+function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
+  return {
+    id: "sel-1",
+    venueId: "v1",
+    leadId: "lead-1",
+    clientId: null,
+    eventId: null,
+    sourcePackageId: "pkg-1",
+    name: "Essential Wedding",
+    totalAmount: 15000,
+    depositAmount: 3750,
+    includedItems: [],
+    status: "draft",
+    version: 1,
+    supersededById: null,
+    offeredAt: null,
+    acceptedAt: null,
+    acceptToken: null,
+    offerMessage: null,
+    invoiceId: null,
+    contractId: null,
+    createdAt: "2026-09-19T00:00:00Z",
+    updatedAt: "2026-09-19T00:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("commercial artifact states", () => {
+  it("a selected package is not a sent proposal", () => {
+    const facts = describeCommercialFacts({
+      selection: selection(),
+      contract: null,
+      paymentLines: [],
+    });
+    const pkg = facts.find((row) => row.key === "package");
+    const proposal = facts.find((row) => row.key === "proposal");
+    assert.equal(pkg?.state, "Selected internally");
+    assert.match(pkg?.detail ?? "", /Not sent/);
+    assert.equal(proposal?.state, "Draft");
+    assert.match(proposal?.detail ?? "", /Not shared/);
+    assert.equal(
+      isCommerciallyBooked({ selection: selection(), contract: null, paymentLines: [] }),
+      false,
+    );
+  });
+
+  it("a share link is not an email", () => {
+    const proposal = describeCommercialFacts({
+      selection: selection({
+        status: "offered",
+        acceptToken: "tok",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+      }),
+      contract: null,
+      paymentLines: [],
+    }).find((row) => row.key === "proposal");
+    assert.equal(proposal?.state, "Share link created");
+    assert.match(proposal?.detail ?? "", /Not emailed/);
+    assert.doesNotMatch(proposal?.state ?? "", /sent/i);
+  });
+
+  it("proposal acceptance is not contract execution", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ status: "accepted", acceptedAt: "2026-09-19T19:42:00.000Z" }),
+      contract: null,
+      paymentLines: [],
+    });
+    assert.equal(facts.find((row) => row.key === "proposal")?.state, "Accepted");
+    assert.match(facts.find((row) => row.key === "proposal")?.detail ?? "", /not a signed contract/);
+    assert.equal(facts.find((row) => row.key === "contract")?.state, "Not created");
+  });
+
+  it("keeps the client-first contract labels", () => {
+    const sent = describeCommercialFacts({
+      selection: null,
+      contract: {
+        id: "c1",
+        status: "sent",
+        venueSigned: false,
+        requiredClientTotal: 1,
+        requiredClientSigned: 1,
+      },
+      paymentLines: [],
+    }).find((row) => row.key === "contract");
+    assert.equal(sent?.state, "Awaiting Venue Signature");
+
+    const executed = describeCommercialFacts({
+      selection: null,
+      contract: { id: "c1", status: "signed", venueSigned: true, requiredClientTotal: 1, requiredClientSigned: 1 },
+      paymentLines: [],
+    }).find((row) => row.key === "contract");
+    assert.equal(executed?.state, "Fully Executed");
+  });
+
+  it("does not treat an invoice or an unpaid deposit as paid", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ invoiceId: "inv-1" }),
+      contract: null,
+      paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 3750 }],
+    });
+    assert.equal(facts.find((row) => row.key === "invoice")?.state, "On file");
+    assert.match(facts.find((row) => row.key === "invoice")?.detail ?? "", /does not call it sent/);
+    assert.notEqual(facts.find((row) => row.key === "deposit")?.state, "Paid");
+    assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /Not paid/);
+    assert.equal(
+      isCommerciallyBooked({
+        selection: selection({ status: "accepted", invoiceId: "inv-1" }),
+        contract: null,
+        paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 3750 }],
+      }),
+      false,
+    );
+  });
+
+  it("a paid deposit is distinct from a configured amount", () => {
+    const unpaid = describeCommercialFacts({
+      selection: selection(),
+      contract: null,
+      paymentLines: [],
+    }).find((row) => row.key === "deposit");
+    assert.equal(unpaid?.state, "Not set up");
+    const paid = describeCommercialFacts({
+      selection: selection({ status: "accepted" }),
+      contract: { id: "c1", status: "signed" },
+      paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 3750 }],
+    }).find((row) => row.key === "deposit");
+    assert.equal(paid?.state, "Paid");
+  });
+});
+
+describe("workspaces do not render the old Booking Journey", () => {
+  it("Lead and Client use commercial facts, not the five-step strip", () => {
+    const panel = readFileSync(resolve("components/booking-journey/booking-journey-panel.tsx"), "utf8");
+    const lead = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
+    const event = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
+    const inbox = readFileSync(resolve("app/(app)/messaging/conversation-inbox.tsx"), "utf8");
+    assert.match(panel, /CommercialFacts/);
+    assert.doesNotMatch(panel, /BookingJourneyStrip/);
+    assert.match(panel, /Create share link/);
+    assert.doesNotMatch(panel, /Send proposal/);
+    assert.match(panel, /ArtifactReviewOverlay/);
+    assert.match(lead, /Pipeline stage/);
+    assert.match(lead, /BookingJourneyPanel/);
+    assert.match(event, /EventReadinessCard/);
+    assert.match(event, /BookingJourneyPanel/);
+    assert.doesNotMatch(inbox, /Filter by booking stage/);
+    assert.doesNotMatch(inbox, /value="agreement"/);
+    const invoice = readFileSync(resolve("components/invoices/invoice-detail.tsx"), "utf8");
+    assert.match(invoice, /ArtifactReviewOverlay/);
+    assert.match(invoice, /Send by email/);
+    assert.match(invoice, /InvoicePrintDocument/);
+    assert.doesNotMatch(invoice, /Mark as Sent/);
+  });
+});

@@ -58,7 +58,7 @@ describe("Booking Journey derivation", () => {
     });
     assert.equal(j.currentKey, "agreement");
     assert.equal(j.primaryAction, "send_offer");
-    assert.equal(j.primaryLabel, "Send proposal");
+    assert.equal(j.primaryLabel, "Create share link");
     assert.equal(j.secondaryLabel, "Create contract");
     assert.equal(j.secondaryAction, "create_contract");
     assert.match(j.secondaryHref ?? "", /selectionId=sel-1/);

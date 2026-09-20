@@ -34,6 +34,7 @@ export type BookingJourneyModel = {
   secondaryHref?: string | null;
   secondaryAction?: string | null;
   selection: CommercialSelection | null;
+  contract: JourneyContract | null;
   isCommerciallyBooked: boolean;
   packageSummary: string | null;
   depositSummary: string | null;
@@ -45,6 +46,10 @@ export type BookingJourneyModel = {
 export type JourneyContract = {
   id: string;
   status: ContractStatus;
+  /** Signer progress for display only. Booking still keys off status === "signed". */
+  venueSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 };
 
 export type JourneyPaymentLine = {
@@ -295,7 +300,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     }
   } else if (currentKey === "agreement" && !agreementDone) {
     if (input.contract?.status === "sent") {
-      direction = "Contract sent — waiting for their signature.";
+      direction = "Contract sent to the client — waiting for their signature. The venue signs after the client.";
       if (prefs.initialPaymentRequired && !paymentDone) {
         direction += " Collect the deposit after they sign to confirm the booking.";
       }
@@ -303,25 +308,25 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
     } else if (input.contract?.status === "draft") {
-      direction = "Create and send the contract. Sign as the venue, then release it to the couple.";
+      direction = "Contract is a draft. It has not been sent. Open it to preview, then send to the client.";
       primaryLabel = "Open contract";
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
     } else if (selection!.status === "offered") {
-      direction = "Proposal sent — waiting for them to accept.";
+      direction = "Share link created — not emailed. Waiting for them to accept.";
       if (prefs.initialPaymentRequired && !paymentDone) {
         direction += " After they accept, collect the deposit to confirm the booking.";
       }
-      primaryLabel = "Remind couple";
-      primaryAction = "remind_offer";
+      primaryLabel = "Copy share link";
+      primaryAction = "copy_share_link";
       secondaryLabel = "Mark accepted";
       secondaryAction = "mark_accepted";
     } else {
       if (allowOffer && allowContract) {
         direction = depositFirst && paymentDone
-          ? "Deposit is in. Send a proposal or create a contract to finish the agreement."
-          : "Send a proposal so they can accept this package, or create a contract from this package.";
-        primaryLabel = "Send proposal";
+          ? "Deposit is in. Create a share link or a contract. A share link is not an email."
+          : "Create a share link so they can accept this package, or create a contract from this package. A share link is not an email.";
+        primaryLabel = "Create share link";
         primaryAction = "send_offer";
         secondaryLabel = "Create contract";
         secondaryAction = "create_contract";
@@ -335,9 +340,9 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
         primaryHref = contractNewHref(input, selection!);
       } else {
         direction = depositFirst && paymentDone
-          ? "Deposit is in. Send a proposal so they can accept this package."
-          : "Send a proposal so they can accept this package.";
-        primaryLabel = "Send proposal";
+          ? "Deposit is in. Create a share link so they can accept this package. The link is not an email."
+          : "Create a share link so they can accept this package. Creating the link does not email it.";
+        primaryLabel = "Create share link";
         primaryAction = "send_offer";
       }
       if (!prefs.initialPaymentRequired) {
@@ -379,6 +384,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     secondaryHref,
     secondaryAction,
     selection,
+    contract: input.contract,
     isCommerciallyBooked: commerciallyBooked,
     packageSummary: selection
       ? `${selection.name} · ${formatCurrency(selection.totalAmount)}`

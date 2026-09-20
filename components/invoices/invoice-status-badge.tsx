@@ -6,7 +6,7 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
     draft: "muted", sent: "warning", paid: "success", void: "destructive",
   };
   const label: Record<InvoiceStatus, string> = {
-    draft: "Draft", sent: "Sent", paid: "Paid", void: "Void",
+    draft: "Draft", sent: "Issued", paid: "Paid", void: "Void",
   };
   return <Badge variant={map[status]}>{label[status]}</Badge>;
 }

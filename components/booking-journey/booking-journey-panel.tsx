@@ -12,7 +12,7 @@ import {
   sendOfferAction,
 } from "@/app/(app)/booking-journey/actions";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
-import { BookingJourneyStrip } from "@/components/booking-journey/booking-journey-strip";
+import { CommercialFacts } from "@/components/booking-journey/commercial-facts";
 import { ProposalArtifact } from "@/components/booking-journey/proposal-artifact";
 import { SelectPackageSheet } from "@/components/booking-journey/select-package-sheet";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
-import { selectionStatusLabel } from "@/lib/booking-journey/model";
 import { proposalViewFromSelection } from "@/lib/booking-journey/proposal-view";
+import { publicAppOrigin } from "@/lib/env";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { PackageWithItems } from "@/lib/packages/types";
@@ -87,23 +87,17 @@ export function BookingJourneyPanel({
     });
   }
 
-  function handlePrimary(action: string) {
-    if (action === "select_package") setSelectOpen(true);
-    else if (action === "send_offer" || action === "remind_offer") setOfferOpen(true);
-    else if (action === "mark_accepted") handleMarkAccepted();
-    else if (action === "setup_payments") {
-      if (selection) setPaymentsOpen(true);
-    } else if (action === "create_contract") handleCreateContract();
-    else if (action === "record_deposit") handleRecordDeposit();
-    else if (action === "invite_portal" || action === "start_planning") {
-      if (journey.primaryHref) router.push(journey.primaryHref);
+  function copyShareLink() {
+    const token = selection?.acceptToken;
+    if (!token) {
+      toast.error("Create a share link first. Nothing has been emailed.");
+      return;
     }
-  }
-
-  function handleSecondary(action: string) {
-    if (action === "mark_accepted") handleMarkAccepted();
-    else if (action === "create_contract") handleCreateContract();
-    else if (action === "record_deposit") handleRecordDeposit();
+    const url = `${publicAppOrigin()}/offer/${token}`;
+    void navigator.clipboard.writeText(url).then(
+      () => toast.success("Link copied. This was not emailed."),
+      () => toast.error("Could not copy the link."),
+    );
   }
 
   function handleRecordDeposit() {
@@ -161,20 +155,20 @@ export function BookingJourneyPanel({
           clientId,
         });
         if (!result.ok || !("acceptUrl" in result)) {
-          toast.error(("message" in result && result.message) || "Could not send proposal.");
+          toast.error(("message" in result && result.message) || "Could not create the share link.");
           return;
         }
         setAcceptUrl(result.acceptUrl);
-        toast.success("Proposal ready — share the link with the couple.");
+        toast.success("Share link created. This was not emailed.");
         setOfferReviewOpen(false);
         setOfferOpen(true);
         router.refresh();
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
         if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
-          toast.error("The app was updated — reload this page and try Send proposal again.");
+          toast.error("The app was updated — reload this page and try Create share link again.");
         } else {
-          toast.error("Could not send proposal. Reload and try again.");
+          toast.error("Could not create the share link. Reload and try again.");
         }
       }
     });
@@ -182,87 +176,19 @@ export function BookingJourneyPanel({
 
   return (
     <div className="space-y-4">
-      <BookingJourneyStrip
+      <CommercialFacts
         journey={journey}
-        onPrimaryAction={handlePrimary}
-        onSecondaryAction={handleSecondary}
+        contractPending={pending}
+        onSelectPackage={() => setSelectOpen(true)}
+        onPreviewProposal={() => setOfferReviewOpen(true)}
+        onCreateShareLink={() => setOfferOpen(true)}
+        onCopyShareLink={copyShareLink}
+        onCreateContract={handleCreateContract}
+        onSetupPayments={() => {
+          if (selection) setPaymentsOpen(true);
+        }}
+        onRecordDeposit={handleRecordDeposit}
       />
-
-      {selection && (
-        <div className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                Selected Package
-              </p>
-              <p className="mt-1 text-base font-medium text-heading">{selection.name}</p>
-              <p className="text-sm text-heading">{formatCurrency(selection.totalAmount)}</p>
-              {journey.prefs.initialPaymentRequired && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                Deposit {formatCurrency(selection.depositAmount)} · Remaining{" "}
-                {formatCurrency(remainingAmount(selection.totalAmount, selection.depositAmount))}
-              </p>
-              )}
-              <p className="mt-1 text-xs text-muted-foreground">
-                Status: {selectionStatusLabel(selection.status)}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {journey.currentKey === "agreement" && (
-                <>
-                  {(journey.prefs.agreementMethod === "offer" || journey.prefs.agreementMethod === "either") && (
-                  <Button type="button" size="sm" onClick={() => setOfferOpen(true)}>
-                    Send proposal
-                  </Button>
-                  )}
-                  {(journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either") && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={handleCreateContract}
-                  >
-                    {pending ? (
-                      <>
-                        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                        Preparing…
-                      </>
-                    ) : (
-                      "Create contract"
-                    )}
-                  </Button>
-                  )}
-                </>
-              )}
-              {(journey.primaryAction === "setup_payments" ||
-                (journey.currentKey === "deposit" && !selection.invoiceId)) && (
-                <Button type="button" size="sm" onClick={() => setPaymentsOpen(true)}>
-                  Set up payments
-                </Button>
-              )}
-              {journey.currentKey === "package" || journey.currentKey === "agreement" ? (
-                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectOpen(true)}>
-                  Change package
-                </Button>
-              ) : null}
-            </div>
-          </div>
-          {journey.currentKey === "agreement" && selection.status === "draft" && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {journey.prefs.initialPaymentRequired
-                ? `Sending a proposal lets them accept ${selection.name}. After they accept, you'll collect the ${formatCurrency(selection.depositAmount)} deposit. Or create a contract from this package — they sign, then you collect the deposit. You do not need to start a booking file first.`
-                : `Sending a proposal lets them accept ${selection.name}. After they accept — or after they sign a contract — they are Booked. No deposit is required. You do not need to start a booking file first.`}
-            </p>
-          )}
-          {journey.primaryAction === "setup_payments" && journey.prefs.initialPaymentRequired && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Next: set up payments for the {formatCurrency(selection.depositAmount)} deposit.
-              Planning stays optional until after they&apos;re Booked.
-            </p>
-          )}
-        </div>
-      )}
 
       <SelectPackageSheet
         open={selectOpen}
@@ -306,12 +232,10 @@ export function BookingJourneyPanel({
       >
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader className="mb-6">
-            <SheetTitle>Send proposal</SheetTitle>
+            <SheetTitle>Proposal message</SheetTitle>
             <p className="text-sm text-muted-foreground">
-              Share {selection?.name} — {selection ? formatCurrency(selection.totalAmount) : ""}
-              {journey.prefs.initialPaymentRequired && selection
-                ? ` with deposit ${formatCurrency(selection.depositAmount)}.`
-                : ". No deposit is required to book."}
+              Optional note on {selection?.name}. Preview the proposal before creating a share link.
+              Creating the link does not email it.
             </p>
           </SheetHeader>
           {selection && (
@@ -401,19 +325,20 @@ export function BookingJourneyPanel({
           title={selection.name}
           onBack={() => {
             setOfferReviewOpen(false);
-            setOfferOpen(true);
           }}
           primary={
+            selection.status === "accepted" ? undefined : (
             <Button type="button" size="sm" onClick={handleSendOffer} disabled={pending}>
               {pending ? (
                 <>
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                  Sending…
+                  Creating link…
                 </>
               ) : (
-                "Send proposal"
+                "Create share link"
               )}
             </Button>
+            )
           }
         >
           <ProposalArtifact

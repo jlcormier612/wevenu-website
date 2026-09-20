@@ -2,7 +2,7 @@ import type { InvoiceLineItemType, InvoiceStatus } from "@/lib/invoices/types";
 
 export const INVOICE_STATUSES: { value: InvoiceStatus; label: string; description: string }[] = [
   { value: "draft", label: "Draft",  description: "Not yet sent to client" },
-  { value: "sent",  label: "Sent",   description: "Delivered to client" },
+  { value: "sent",  label: "Issued", description: "Released on the client record. This status is not an email." },
   { value: "paid",  label: "Paid",   description: "Fully paid" },
   { value: "void",  label: "Void",   description: "Cancelled / superseded" },
 ];

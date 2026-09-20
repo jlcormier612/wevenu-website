@@ -755,7 +755,7 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
     if (!linked) {
       return {
         ok: false,
-        message: "There is no client linked to this inquiry yet. Create a contract or set up payments from the Booking Journey first, or start the booking file.",
+        message: "There is no client linked to this inquiry yet. Create a contract or set up payments from Commercial first, or start the booking file.",
       } as LeadActionResult;
     }
 

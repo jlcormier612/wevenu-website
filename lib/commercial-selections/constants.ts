@@ -54,7 +54,7 @@ export function formatPackageSection(
 
 export const SELECTION_STATUS_LABEL: Record<string, string> = {
   draft: "Not sent",
-  offered: "Proposal sent",
+  offered: "Share link created",
   accepted: "Proposal accepted",
   superseded: "Replaced",
 };

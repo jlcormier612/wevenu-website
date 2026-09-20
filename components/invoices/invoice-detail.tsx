@@ -8,8 +8,10 @@ import { Mail, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 import { sendInvoiceEmailAction, updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
+import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
+import { InvoicePrintDocument } from "@/components/invoices/invoice-print-document";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
@@ -24,10 +26,11 @@ import { formatCurrency, invoiceStatusLabel } from "@/lib/invoices/constants";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
+import type { Venue } from "@/lib/venue/types";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: string } | null> = {
-  draft: { next: "sent",  label: "Mark as Sent" },
+  draft: { next: "sent",  label: "Mark as issued" },
   sent:  { next: "paid",  label: "Mark as Paid" },
   paid:  null,
   void:  null,
@@ -48,6 +51,7 @@ export function InvoiceDetail({
   amountDueNow = null,
   paidToDate = null,
   cancelledPlanAmount = 0,
+  venue,
 }: {
   invoice: InvoiceWithLineItems;
   packages: Package[];
@@ -64,16 +68,32 @@ export function InvoiceDetail({
   paidToDate?: number | null;
   /** Sum of cancelled schedule commitments still shown on the plan history. */
   cancelledPlanAmount?: number;
+  venue: Venue;
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
   const [pending, startTransition] = React.useTransition();
   const [emailPending, startEmail] = React.useTransition();
+  const [previewOpen, setPreviewOpen] = React.useState(false);
   const transition = STATUS_TRANSITIONS[status];
   const continueToSchedule = safePaymentScheduleReturnPath(returnToPaymentSchedule);
   const displayPaidToDate = paidToDate != null
     ? paidToDate
     : Math.max(0, invoice.total - invoice.balanceDue);
+
+  function sendInvoiceEmail() {
+    startEmail(async () => {
+      const result = await sendInvoiceEmailAction(invoice.id);
+      if (!result.ok) { toast.error(result.message ?? "Could not send."); return; }
+      if ("method" in result && result.method === "mailto" && result.mailtoUrl) {
+        window.open(result.mailtoUrl, "_blank");
+        toast.success("Your email app opened. Hello to Cheers did not send this email.");
+      } else {
+        toast.success("Emailed to the client.");
+      }
+      setPreviewOpen(false);
+    });
+  }
 
   function handleStatusChange(next: InvoiceStatus) {
     startTransition(async () => {
@@ -131,21 +151,10 @@ export function InvoiceDetail({
       <BusinessAssetActionRow
         secondary={<>
           {invoice.clientId && status !== "void" && (
-            <Button type="button" variant="outline" size="sm" disabled={emailPending}
-              title={emailConfigured ? undefined : "No email provider is connected — this will open your own email client instead of sending in-app."}
-              onClick={() => startEmail(async () => {
-                const result = await sendInvoiceEmailAction(invoice.id);
-                if (!result.ok) { toast.error(result.message ?? "Could not send."); return; }
-                if ("method" in result && result.method === "mailto" && result.mailtoUrl) {
-                  window.open(result.mailtoUrl, "_blank");
-                  toast.success("Opening your email client…");
-                } else {
-                  toast.success("Invoice emailed successfully.");
-                }
-              })}>
-              {emailPending
-                ? <><span className="mr-1">⋯</span>Sending…</>
-                : <><Mail className="mr-1 h-3.5 w-3.5" /> {emailConfigured ? "Email" : "Email (opens your mail app)"}</>}
+            <Button type="button" variant="outline" size="sm"
+              title="Full-page preview of the invoice the client would receive. Preview does not send it."
+              onClick={() => setPreviewOpen(true)}>
+              <Mail className="mr-1 h-3.5 w-3.5" /> Preview
             </Button>
           )}
           {status !== "void" && status !== "paid" && (
@@ -353,6 +362,30 @@ export function InvoiceDetail({
           <CardContent><ActivityTimeline activities={invoice.activities} /></CardContent>
         </Card>
       )}
+
+      <ArtifactReviewOverlay
+        open={previewOpen}
+        eyebrow="Customer-facing invoice"
+        title={invoice.invoiceNumber}
+        onBack={() => setPreviewOpen(false)}
+        primary={invoice.clientId && status !== "void" ? (
+          <Button type="button" size="sm" disabled={emailPending} onClick={sendInvoiceEmail}>
+            {emailPending
+              ? "Sending…"
+              : emailConfigured ? "Send by email" : "Open in my email app"}
+          </Button>
+        ) : undefined}
+      >
+        <div className="bg-white py-8">
+          <InvoicePrintDocument
+            invoice={invoice}
+            venue={venue}
+            amountDueNow={amountDueNow}
+            paidToDateOverride={paidToDate}
+            cancelledPlanAmount={cancelledPlanAmount}
+          />
+        </div>
+      </ArtifactReviewOverlay>
     </div>
   );
 }

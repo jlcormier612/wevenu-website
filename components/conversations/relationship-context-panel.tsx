@@ -97,7 +97,6 @@ function ContextBody({
           </p>
           <p className="text-[11px] text-muted-foreground">
             {o?.relationshipType ?? "…"}
-            {o?.bookingStageLabel ? ` · ${o.bookingStageLabel}` : ""}
           </p>
         </div>
         {onClose && (

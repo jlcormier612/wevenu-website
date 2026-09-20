@@ -385,7 +385,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
         title="Start booking file?"
-        description="This opens their booking file (Client and Event when a date applies). The lead stays on the sales pipeline. They are not Booked until you confirm Mark as Booked or your booking rule is met. The event date is protected by existing availability rules when it applies. This does not invite them to the portal. Contracts and payments can still run from the Booking Journey without this step."
+        description="This opens their booking file (Client and Event when a date applies). The lead stays on the sales pipeline. They are not Booked until you confirm Mark as Booked or your booking rule is met. The event date is protected by existing availability rules when it applies. This does not invite them to the portal. Contracts and payments can still be prepared from Commercial without this step."
         confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}
@@ -506,7 +506,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             </div>
           )}
           <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
-          <LeadStatusBadge status={currentStage} />
+          <div className="text-right">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline stage</p>
+            {venueStages?.length && currentVenueStageId ? (
+              <p className="text-sm font-medium text-heading">
+                {venueStages.find((stage) => stage.id === currentVenueStageId)?.name ?? "Pipeline stage"}
+              </p>
+            ) : (
+              <LeadStatusBadge status={currentStage} />
+            )}
+          </div>
           {currentStage === "lost" && lead.lostReason && (
             <Badge variant="outline" className="max-w-[16rem] truncate" title={lead.lostReasonDetail ?? undefined}>
               {lostReasonLabel(lead.lostReason)}

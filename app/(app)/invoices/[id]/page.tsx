@@ -12,6 +12,7 @@ import {
 } from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> };
 
@@ -25,12 +26,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function InvoiceDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { returnTo: returnToRaw } = await searchParams;
-  const [invoice, packages, scheduleSummaries] = await Promise.all([
+  const [invoice, packages, scheduleSummaries, venue] = await Promise.all([
     getInvoice(id),
     getPackages(true),
     getPaymentSchedules(),
+    getCurrentVenue(),
   ]);
-  if (!invoice) notFound();
+  if (!invoice || !venue) notFound();
   const returnTo = safePaymentScheduleReturnPath(returnToRaw);
   const linkedSummary = scheduleSummaries.find((s) => s.invoiceId === invoice.id) ?? null;
   const linked = linkedSummary ? await getPaymentSchedule(linkedSummary.id) : null;
@@ -62,6 +64,7 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       amountDueNow={amountDueNow}
       paidToDate={paidToDate}
       cancelledPlanAmount={cancelledPlanAmount}
+      venue={venue}
     />
   );
 }
