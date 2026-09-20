@@ -20,4 +20,9 @@ describe("White Glove public token paths", () => {
     assert.equal(isPublicPath("/api/onboarding/other"), false);
     assert.equal(isPublicPath("/admin/onboarding/venue-1"), false);
   });
+
+  it("serves the shareable availability calendar without a session", () => {
+    assert.equal(isPublicPath("/availability/embed-key"), true);
+    assert.equal(isPublicPath("/calendar"), false);
+  });
 });

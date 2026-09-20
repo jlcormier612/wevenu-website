@@ -255,10 +255,12 @@ export function InquiryForm({
   embedKey,
   config,
   initialMode = null,
+  initialEventDate,
 }: {
   embedKey: string;
   config: PublicInquiryFormConfig;
   initialMode?: InquiryMode | null;
+  initialEventDate?: string;
 }) {
   const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm, tourProtectionRequired, tourProtectionKind, tourProtectionFeeCents } = config;
   const primary = venue.primaryColor || "#5D6F5D";
@@ -284,7 +286,10 @@ export function InquiryForm({
   const [partnerFirst, setPartnerFirst] = React.useState("");
   const [partnerLast, setPartnerLast] = React.useState("");
   const [eventType, setEventType] = React.useState("");
-  const [eventDate, setEventDate] = React.useState("");
+  const seededDate =
+    initialEventDate && /^\d{4}-\d{2}-\d{2}$/.test(initialEventDate) ? initialEventDate : "";
+  const seededParts = seededDate ? seededDate.split("-").map(Number) : null;
+  const [eventDate, setEventDate] = React.useState(seededDate);
   const [guestCount, setGuestCount] = React.useState("");
   const [budget, setBudget] = React.useState("");
   const [message, setMessage] = React.useState("");
@@ -295,8 +300,8 @@ export function InquiryForm({
   const [smsPermissionGranted, setSmsPermissionGranted] = React.useState(false);
 
   const today = new Date();
-  const [eventMonth, setEventMonth] = React.useState(today.getMonth());
-  const [eventYear, setEventYear] = React.useState(today.getFullYear());
+  const [eventMonth, setEventMonth] = React.useState(seededParts ? seededParts[1] - 1 : today.getMonth());
+  const [eventYear, setEventYear] = React.useState(seededParts ? seededParts[0] : today.getFullYear());
   const [availableEventDates, setAvailableEventDates] = React.useState<Set<string>>(new Set());
   const [loadingEventDates, setLoadingEventDates] = React.useState(false);
 
