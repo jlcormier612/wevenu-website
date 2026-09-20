@@ -28,6 +28,10 @@ import type { EventTask } from "@/lib/playbooks/types";
 import type {
   TimelineAudience, TimelineEntryAttachment, TimelineEntryInput, TimelineEntryLink, TimelineRelatedLink, TimelineSection,
 } from "@/lib/timeline/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 import { VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
 import { timelineDayOptions } from "@/lib/timeline/constants";
 import type { StaffMember } from "@/lib/team/types";
@@ -198,14 +202,13 @@ export function TimelineEntryForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="et-notes" className="text-xs">
-          Notes <span className="font-normal text-muted-foreground">(optional, internal only)</span>
-        </Label>
+        <Label htmlFor="et-notes" className="text-xs">{INTERNAL_NOTES_LABEL}</Label>
+        <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
         <Textarea
           id="et-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Internal notes — not shown to guests or clients…"
+          placeholder="Operational notes…"
           rows={2}
         />
       </div>

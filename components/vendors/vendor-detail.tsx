@@ -215,6 +215,7 @@ export function VendorDetail({
               {vendor.notes && (
                 <div>
                   <p className="text-xs text-muted-foreground">Internal notes</p>
+                  <p className="text-[11px] text-muted-foreground">Private to your venue team — never visible to the client.</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{vendor.notes}</p>
                 </div>
               )}

@@ -18,6 +18,10 @@ import {
 import { toast } from "sonner";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coordinatorCelebrationMessage } from "@/lib/luv/celebrations";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 
 import {
   addLineItemAction,
@@ -200,10 +204,11 @@ function MarkPaidForm({
           <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Check #, transaction ID…" />
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Any notes about this payment…" />
-      </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{INTERNAL_NOTES_LABEL}</Label>
+          <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Check number, wire confirmation, coordinator reminder…" />
+        </div>
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
         <Button type="button" size="sm" disabled={!paidAmount.trim() || !paidDate || pending}

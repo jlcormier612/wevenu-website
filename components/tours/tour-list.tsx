@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { TourAppointment, TourOutcome } from "@/lib/tours/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 
 const OUTCOME_LABELS: Record<TourOutcome, string> = {
   interested: "💚 Interested",
@@ -200,7 +204,11 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
                   <SelectItem value="unknown">Unknown</SelectItem>
                 </SelectContent>
               </Select>
-              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes from the tour…" className="text-xs" />
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium text-muted-foreground">{INTERNAL_NOTES_LABEL}</p>
+                <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
+                <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes from the tour…" className="text-xs" />
+              </div>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowOutcomeForm(false)}>Cancel</Button>
                 <Button type="button" size="sm" className="h-6 text-xs" disabled={savingOutcome} onClick={handleSaveOutcome}>Save</Button>

@@ -159,6 +159,7 @@ export function SupportSection({
         {/* Notes */}
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Internal notes</p>
+          <p className="text-[10px] text-muted-foreground mb-2">Private to your venue team — never visible to the client.</p>
           <ul className="space-y-2 mb-2 max-h-64 overflow-y-auto">
             {notes.map((n) => (
               <li key={n.id} className="rounded-lg border p-2 text-xs">

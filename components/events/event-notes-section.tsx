@@ -79,6 +79,9 @@ export function EventNotesSection({
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Private to your venue team — never visible to the client.
+      </p>
       <div className="space-y-2">
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Add a note…" rows={3}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAdd(); }} />

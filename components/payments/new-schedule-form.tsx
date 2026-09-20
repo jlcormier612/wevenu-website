@@ -625,7 +625,7 @@ export function NewScheduleForm({
             </ul>
           </div>
 
-          <Field label="Internal notes" htmlFor="ps-notes" hint="Optional — visible only to your team.">
+          <Field label="Notes from your venue" htmlFor="ps-notes" hint="Shown to the couple on their payment schedule.">
             <Textarea
               id="ps-notes"
               value={input.notes}

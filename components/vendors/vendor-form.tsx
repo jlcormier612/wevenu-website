@@ -24,6 +24,10 @@ import {
   createInitialVendorInput,
 } from "@/lib/vendors/constants";
 import type { VendorErrors, VendorInput } from "@/lib/vendors/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 // VendorInput["preferenceLevel"] is used inline for the Select onValueChange cast
 
 export function VendorFormFields({
@@ -191,8 +195,7 @@ export function VendorFormFields({
         <Input id="vspecial" value={input.specialPricingNote} onChange={(e) => set("specialPricingNote", e.target.value)}
           placeholder="10% off for repeat bookings…" />
       </Field>
-      <Field label="Internal notes" htmlFor="vnotes"
-        hint="Arrival preferences, setup requirements, past experiences. Not visible to vendors.">
+      <Field label={INTERNAL_NOTES_LABEL} htmlFor="vnotes" hint={INTERNAL_NOTES_PRIVACY_HINT}>
         <Textarea id="vnotes" value={input.notes} rows={3} onChange={(e) => set("notes", e.target.value)}
           placeholder="Delivers 2 hours before ceremony, requires a shaded prep area…" />
       </Field>

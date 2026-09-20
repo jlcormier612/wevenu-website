@@ -768,9 +768,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         <TabsContent value="notes">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Notes</CardTitle>
+              <CardTitle className="text-base">Internal notes</CardTitle>
               <CardDescription>
-                Internal notes. Not visible to the client.
+                Private to your venue team — never visible to the client.
               </CardDescription>
             </CardHeader>
             <CardContent>

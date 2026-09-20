@@ -93,6 +93,9 @@ export function NotesSection({
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Private to your venue team — never visible to the client.
+      </p>
       {/* Add note */}
       <div className="space-y-2">
         <Textarea

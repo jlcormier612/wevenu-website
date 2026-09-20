@@ -28,6 +28,10 @@ import type { Document } from "@/lib/documents/types";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
 import type { EventVendorRemovalRequest } from "@/lib/vendor-removal-requests/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 
 // ── Check-in badge ────────────────────────────────────────────────────────────
 
@@ -427,9 +431,8 @@ export function EventVendorsSection({
 
           {/* Internal notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="ev-notes" className="text-xs">
-              Internal notes <span className="font-normal text-muted-foreground">(optional, not shown to vendor)</span>
-            </Label>
+            <Label htmlFor="ev-notes" className="text-xs">{INTERNAL_NOTES_LABEL}</Label>
+            <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
             <Textarea id="ev-notes" value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="Coordinator reminders, special requirements…" rows={2} />
           </div>

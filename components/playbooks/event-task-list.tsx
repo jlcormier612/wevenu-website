@@ -38,6 +38,10 @@ import {
 } from "@/lib/playbooks/constants";
 import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 import type {
   EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplateWithStats, TaskContact,
 } from "@/lib/playbooks/types";
@@ -397,10 +401,11 @@ function TaskDetailPanel({
 
       {isVenue && (
         <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Internal Notes</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{INTERNAL_NOTES_LABEL}</p>
+          <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
           <Textarea
             value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-            placeholder="Notes for your team — never shown to the client."
+            placeholder="Operational notes…"
             className="text-xs"
           />
           {notes !== (task.notes ?? "") && (

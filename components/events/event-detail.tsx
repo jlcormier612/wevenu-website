@@ -1039,8 +1039,10 @@ export function EventDetail({
         <TabsContent value="notes">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Notes</CardTitle>
-              <CardDescription>Operational notes for this event. Not visible to clients.</CardDescription>
+              <CardTitle className="text-base">Internal notes</CardTitle>
+              <CardDescription>
+                Private to your venue team — never visible to the client.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <EventNotesSection eventId={event.id} initialNotes={event.notes} leadNotes={leadNotes} />
