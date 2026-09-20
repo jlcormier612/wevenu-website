@@ -82,6 +82,45 @@ export async function getSelectedPackage(
 }
 
 /**
+ * Resolve the frozen Selected Package for contract merge / New Contract.
+ *
+ * Prefer an explicit selectionId, but if that row was superseded (e.g. the
+ * venue re-saved Essential Wedding and the URL still carries the old id),
+ * follow superseded_by_id and/or fall back to the active selection for the
+ * event, client, or lead. Never treat a superseded row as the merge source.
+ */
+export async function resolveActiveCommercialSelection(opts: {
+  selectionId?: string | null;
+  eventId?: string | null;
+  clientId?: string | null;
+  leadId?: string | null;
+}): Promise<CommercialSelection | null> {
+  let selection = opts.selectionId ? await getSelectedPackage(opts.selectionId) : null;
+
+  // Follow replacement chain (bounded) when the URL/form still has a stale id.
+  for (let i = 0; i < 5 && selection?.status === "superseded"; i++) {
+    if (!selection.supersededById) {
+      selection = null;
+      break;
+    }
+    selection = await getSelectedPackage(selection.supersededById);
+  }
+  if (selection?.status === "superseded") selection = null;
+
+  if (!selection && opts.eventId) {
+    selection = await getActiveSelectedPackageForEvent(opts.eventId);
+  }
+  if (!selection && opts.clientId) {
+    selection = await getActiveSelectedPackageForClient(opts.clientId);
+  }
+  if (!selection && opts.leadId) {
+    selection = await getActiveSelectedPackageForLead(opts.leadId);
+  }
+  if (!selection || selection.status === "superseded") return null;
+  return selection;
+}
+
+/**
  * Create a frozen Selected Package from a Library package.
  * If an active selection already exists for this lead/client, it is superseded.
  */

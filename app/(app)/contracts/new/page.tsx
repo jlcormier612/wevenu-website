@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensure-commercial-customer";
 import { getClients } from "@/lib/clients/service";
-import { getSelectedPackage } from "@/lib/commercial-selections/service";
+import { resolveActiveCommercialSelection } from "@/lib/commercial-selections/service";
 import { getClientContacts } from "@/lib/contacts/service";
 import { getTemplates } from "@/lib/contracts/service";
 import { DEFAULT_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_DESCRIPTION } from "@/lib/contracts/constants";
@@ -29,6 +29,7 @@ export default async function NewContractPage({ searchParams }: Props) {
   let { templateId, selectionId, clientId, eventId, leadId } = sp;
 
   // From Lead-only Booking Journey: quietly attach commercial customer if needed.
+  // Also rewrites a superseded selectionId to the active replacement.
   if (selectionId && !clientId) {
     const ensured = await ensureCommercialCustomerForSelection({ selectionId, leadId });
     if (ensured.ok) {
@@ -42,7 +43,23 @@ export default async function NewContractPage({ searchParams }: Props) {
   }
 
   const [templates, clients] = await Promise.all([getTemplates(), getClients()]);
-  const selection = selectionId ? await getSelectedPackage(selectionId) : null;
+  const selection = await resolveActiveCommercialSelection({
+    selectionId,
+    clientId,
+    eventId,
+    leadId,
+  });
+
+  // Stale superseded selectionId in the URL → canonicalize to the active row.
+  if (selection && selectionId && selection.id !== selectionId) {
+    const params = new URLSearchParams();
+    params.set("selectionId", selection.id);
+    if (clientId || selection.clientId) params.set("clientId", clientId || selection.clientId!);
+    if (eventId || selection.eventId) params.set("eventId", (eventId || selection.eventId)!);
+    if (templateId) params.set("templateId", templateId);
+    if (leadId) params.set("leadId", leadId);
+    redirect(`/contracts/new?${params.toString()}`);
+  }
 
   const contactsByClientId: Record<string, ClientContact[]> = {};
   await Promise.all(clients.map(async (c) => {

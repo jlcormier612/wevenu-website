@@ -8,7 +8,7 @@ import { convertLeadToClient } from "@/lib/clients/service";
 import {
   attachSelectionToBookingFile,
   getActiveSelectedPackageForLead,
-  getSelectedPackage,
+  resolveActiveCommercialSelection,
 } from "@/lib/commercial-selections/service";
 import { getLead } from "@/lib/leads/service";
 
@@ -22,9 +22,11 @@ export async function ensureCommercialCustomerForSelection(input: {
   /** Optional Event Space — used when creating a dated Event on multi-space venues. */
   spaceId?: string;
 }): Promise<EnsureCommercialCustomerResult> {
-  let selection = input.selectionId
-    ? await getSelectedPackage(input.selectionId)
-    : null;
+  let selection = await resolveActiveCommercialSelection({
+    selectionId: input.selectionId,
+    leadId: input.leadId,
+  });
+  // Prefer leadId from the resolved selection when the caller omitted it.
   const leadId = input.leadId ?? selection?.leadId ?? undefined;
 
   if (!selection && leadId) {

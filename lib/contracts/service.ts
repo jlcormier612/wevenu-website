@@ -322,9 +322,17 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
     const signerSeeds = await resolveClientSignerSeeds(resolvedInput.clientId, resolvedInput.clientSignerContactIds);
     if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message } as CreateContractResult;
 
+    const { resolveActiveCommercialSelection } = await import("@/lib/commercial-selections/service");
+    const activeSelection = await resolveActiveCommercialSelection({
+      selectionId: resolvedInput.selectionId,
+      eventId: resolvedInput.eventId,
+      clientId: resolvedInput.clientId,
+    });
+    const mergeSelectionId = activeSelection?.id ?? resolvedInput.selectionId;
+
     const mergeData = await buildContractMergeData({
       clientId: resolvedInput.clientId, eventId: resolvedInput.eventId, contractTitle: resolvedInput.title,
-      selectionId: resolvedInput.selectionId,
+      selectionId: mergeSelectionId,
     });
     const resolvedContent = applyRequiredSignerSignatureBlocks(
       mergeContent(resolvedInput.content, mergeData),
@@ -346,9 +354,9 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
       supabase, venueId, contractId, "contract_created", "Contract created",
       undefined, actor.userId, actor.label,
     );
-    if (resolvedInput.selectionId) {
+    if (mergeSelectionId) {
       const { linkSelectionContract } = await import("@/lib/commercial-selections/service");
-      await linkSelectionContract(resolvedInput.selectionId, contractId);
+      await linkSelectionContract(mergeSelectionId, contractId);
     }
     return { ok: true, contractId } as CreateContractResult;
   });
@@ -482,13 +490,15 @@ export async function buildContractMergeData(opts: {
 
   // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
   try {
-    const { getSelectedPackage, getActiveSelectedPackageForClient, getActiveSelectedPackageForEvent } =
+    const { resolveActiveCommercialSelection } =
       await import("@/lib/commercial-selections/service");
     const { formatPackageSection } = await import("@/lib/commercial-selections/constants");
-    let selection = opts.selectionId ? await getSelectedPackage(opts.selectionId) : null;
-    if (!selection && opts.eventId) selection = await getActiveSelectedPackageForEvent(opts.eventId);
-    if (!selection && opts.clientId) selection = await getActiveSelectedPackageForClient(opts.clientId);
-    if (selection && selection.status !== "superseded") {
+    const selection = await resolveActiveCommercialSelection({
+      selectionId: opts.selectionId,
+      eventId: opts.eventId,
+      clientId: opts.clientId,
+    });
+    if (selection) {
       packageFromSelection = true;
       packageSection = formatPackageSection(selection.name, selection.totalAmount, selection.includedItems, {
         depositAmount: selection.depositAmount,
@@ -575,9 +585,12 @@ export async function buildContractMergeData(opts: {
               return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
             })
             .join("\n");
-          contractTotal = fmt(detail.totalAmount);
-          const paid = computeTotalPaid(detail.lineItems);
-          balanceRemaining = fmt(Math.max(0, detail.totalAmount - paid));
+          // Frozen Selected Package owns contract_total / balance_remaining when present.
+          if (!packageFromSelection) {
+            contractTotal = fmt(detail.totalAmount);
+            const paid = computeTotalPaid(detail.lineItems);
+            balanceRemaining = fmt(Math.max(0, detail.totalAmount - paid));
+          }
         }
       }
     } catch { /* optional */ }
