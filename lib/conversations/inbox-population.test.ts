@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { inboxWorkingCategory } from "@/lib/conversations/inbox-working-population";
+import { inboxListKindLabel, inboxWorkingCategory } from "@/lib/conversations/inbox-working-population";
 import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
 
 const migration = readFileSync(
@@ -143,5 +143,23 @@ describe("inbox working category", () => {
       }),
       "clients",
     );
+  });
+
+  it("row label follows the active tab, not a leftover client record", () => {
+    assert.equal(inboxListKindLabel("leads"), "Lead");
+    assert.equal(inboxListKindLabel("clients"), "Client");
+    assert.equal(inboxListKindLabel("vendors"), "Vendor");
+  });
+
+  it("header ignores couple-vendor inquiries that no Inbox tab lists", () => {
+    const header = readFileSync(
+      resolve("supabase/migrations/20261402800000_inbox_header_matches_visible_tabs.sql"),
+      "utf8",
+    );
+    assert.match(header, /conversation_kind = 'venue_vendor'/);
+    assert.match(header, /conversation_kind = 'venue_couple'/);
+    assert.match(header, /conversation_messages cm/);
+    const body = header.slice(header.indexOf("as $$"));
+    assert.doesNotMatch(body, /couple_vendor_inquiry/);
   });
 });

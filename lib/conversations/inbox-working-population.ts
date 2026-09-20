@@ -1,6 +1,10 @@
 import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
 
-export type InboxWorkingCategory = "leads" | "clients" | "vendors" | "historical";
+export function inboxListKindLabel(category: "leads" | "clients" | "vendors"): string {
+  if (category === "clients") return "Client";
+  if (category === "vendors") return "Vendor";
+  return "Lead";
+}
 
 const VENDOR_KINDS = new Set(["venue_vendor", "couple_vendor", "couple_vendor_inquiry"]);
 

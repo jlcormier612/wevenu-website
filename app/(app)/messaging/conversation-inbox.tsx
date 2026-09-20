@@ -22,6 +22,7 @@ import {
   conversationNeedsResponseFromSummary,
   isMeaningfulCommunication,
 } from "@/lib/conversations/inbox-attention";
+import { inboxListKindLabel } from "@/lib/conversations/inbox-working-population";
 import {
   clearInboxChip,
   defaultInboxFilters,
@@ -80,12 +81,13 @@ function needsResponseForRow(
 }
 
 function ConversationRow({
-  conversation, isActive, needsResponse, timeLabel, onClick, onNoResponseNeeded,
+  conversation, isActive, needsResponse, timeLabel, kindLabel, onClick, onNoResponseNeeded,
 }: {
   conversation: ConversationSummary;
   isActive: boolean;
   needsResponse: boolean;
   timeLabel: string;
+  kindLabel: string;
   onClick: () => void;
   onNoResponseNeeded?: () => void;
 }) {
@@ -120,11 +122,7 @@ function ConversationRow({
         )}
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="rounded-full bg-muted px-1.5 py-0.5 font-medium">
-            {conversation.conversationKind === "venue_vendor"
-              || conversation.conversationKind === "couple_vendor"
-              || conversation.conversationKind === "couple_vendor_inquiry"
-              ? "Vendor"
-              : conversation.clientId ? "Client" : "Lead"}
+            {kindLabel}
           </span>
           {ChannelIcon && <ChannelIcon className="h-3 w-3" aria-hidden />}
           {conversation.hasAttachments && (
@@ -838,6 +836,7 @@ export function ConversationInbox({
                   isActive={c.id === activeId}
                   needsResponse={needsResponseForRow(c, needsResponseOverrides)}
                   timeLabel={formatListTime(c.lastMessageAt, nowMs)}
+                  kindLabel={inboxListKindLabel(category)}
                   onClick={() => setActiveId(c.id)}
                   onNoResponseNeeded={() => void markNoResponseNeeded(c.id)}
                 />
