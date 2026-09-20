@@ -6,17 +6,35 @@ import { toast } from "sonner";
 
 import { Switch } from "@/components/ui/switch";
 
+function useFinePointerHover(): boolean {
+  const [fine, setFine] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const sync = () => setFine(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return fine;
+}
+
 /**
  * Couple photo overlay for the portal hero top-left.
  * Renders nothing when there is no photo — venue hero stays full-bleed.
+ * Controls are transient: hover (desktop) or tap (touch), dismissed on leave / outside.
  */
 export function CouplePhotoHeroControl({ token }: { token: string }) {
   const [photoUrl, setPhotoUrl] = React.useState<string | null>(null);
   const [shared, setShared] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
-  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [hovered, setHovered] = React.useState(false);
+  const [touchOpen, setTouchOpen] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const fineHover = useFinePointerHover();
+
+  const controlsVisible = fineHover ? hovered : touchOpen;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -36,6 +54,19 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
     };
   }, [token]);
 
+  React.useEffect(() => {
+    if (!controlsVisible) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setHovered(false);
+      setTouchOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [controlsVisible]);
+
   async function uploadFile(file: File) {
     setBusy(true);
     try {
@@ -49,7 +80,8 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
         return;
       }
       setPhotoUrl(data.photoUrl ?? null);
-      setMenuOpen(true);
+      if (!fineHover) setTouchOpen(true);
+      else setHovered(true);
       toast.success("Photo added.");
     } catch {
       toast.error("Could not upload your photo.");
@@ -96,7 +128,8 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
       }
       setPhotoUrl(null);
       setShared(false);
-      setMenuOpen(false);
+      setHovered(false);
+      setTouchOpen(false);
       toast.success("Photo removed.");
     } catch {
       toast.error("Could not remove your photo.");
@@ -121,28 +154,41 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
       />
 
       {photoUrl ? (
-        <div className="relative">
+        <div
+          ref={rootRef}
+          className="relative"
+          onPointerEnter={() => {
+            if (fineHover) setHovered(true);
+          }}
+          onPointerLeave={() => {
+            if (fineHover) setHovered(false);
+          }}
+        >
           <button
             type="button"
-            onClick={() => setMenuOpen((o) => !o)}
-            className="group relative h-16 w-16 sm:h-20 sm:w-20 overflow-hidden rounded-full border-2 border-white/90 shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            onClick={() => {
+              if (!fineHover) setTouchOpen((o) => !o);
+            }}
+            className="relative h-28 w-28 overflow-hidden rounded-full border-2 border-white/90 shadow-lg sm:h-36 sm:w-36 lg:h-40 lg:w-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             aria-label="Manage your photo"
+            aria-expanded={controlsVisible}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoUrl} alt="" className="h-full w-full object-cover" />
-            <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/35">
-              <Camera className="h-5 w-5 text-white opacity-0 transition group-hover:opacity-100" />
-            </span>
+            {controlsVisible ? (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                <Camera className="h-6 w-6 text-white sm:h-7 sm:w-7" />
+              </span>
+            ) : null}
           </button>
 
-          {menuOpen ? (
+          {controlsVisible ? (
             <div
               className="absolute left-0 top-[calc(100%+0.5rem)] w-64 rounded-2xl border border-white/20 bg-black/80 p-3 text-white shadow-xl backdrop-blur-md"
               role="dialog"
               aria-label="Photo options"
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Your photo</p>
-              <div className="mt-3 flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
                 <button
                   type="button"
                   disabled={busy}
@@ -166,7 +212,7 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
                   <div className="min-w-0">
                     <p className="text-sm font-medium">Share with your venue</p>
                     <p className="mt-0.5 text-[11px] leading-snug text-white/65">
-                      Your venue can use this photo on your client profile.
+                      Your venue can use this photo on your internal client record.
                     </p>
                   </div>
                   <Switch

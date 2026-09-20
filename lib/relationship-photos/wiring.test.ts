@@ -101,7 +101,7 @@ describe("relationship couple photos app wiring", () => {
     const control = readFileSync(join(root, "components/portal/couple-photo-hero-control.tsx"), "utf8");
     assert.match(shell, /CouplePhotoHeroControl/);
     assert.match(control, /Share with your venue/);
-    assert.match(control, /Your venue can use this photo on your client profile/);
+    assert.match(control, /Your venue can use this photo on your internal client record/);
     assert.match(control, /\/api\/portal\/relationship-photo/);
   });
 
