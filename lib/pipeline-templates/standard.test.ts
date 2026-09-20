@@ -68,6 +68,12 @@ describe("Standard pipeline baseline", () => {
     ]);
   });
 
+  it("makes New Inquiry the initial stage", () => {
+    assert.equal(STANDARD_PIPELINE_STAGES[0].name, "New Inquiry");
+    assert.equal(STANDARD_PIPELINE_STAGES[0].probability, 10);
+    assert.equal(STANDARD_PIPELINE_STAGES[0].canonicalStage, "inquiry");
+  });
+
   it("labels Leads Customize Pipeline (not Pipeline Templates)", () => {
     const leads = readFileSync(resolve("app/(app)/leads/page.tsx"), "utf8");
     const board = readFileSync(resolve("app/(app)/leads/pipeline/page.tsx"), "utf8");
@@ -75,6 +81,23 @@ describe("Standard pipeline baseline", () => {
     assert.match(board, /Customize Pipeline/);
     assert.doesNotMatch(leads, />Pipeline Templates</);
     assert.doesNotMatch(board, />Pipeline Templates</);
+  });
+
+  it("Leads List and Board load the active Standard template", () => {
+    const leads = readFileSync(resolve("app/(app)/leads/page.tsx"), "utf8");
+    const board = readFileSync(resolve("app/(app)/leads/pipeline/page.tsx"), "utf8");
+    assert.match(leads, /getActiveTemplate/);
+    assert.match(board, /getActiveTemplate/);
+    assert.match(leads, /activeTemplate\?\.stages/);
+    assert.match(board, /activeTemplate\?\.stages/);
+  });
+
+  it("Customize Pipeline stays venue-scoped (no cross-venue overwrite)", () => {
+    const repo = readFileSync(resolve("lib/pipeline-templates/repository.ts"), "utf8");
+    assert.match(repo, /\.eq\("venue_id", venueId\)/);
+    assert.match(repo, /is_active/);
+    const form = readFileSync(resolve("components/settings/pipeline-template-form.tsx"), "utf8");
+    assert.match(form, /PIPELINE_STAGE_COLORS/);
   });
 
   it("SQL seed uses the locked probabilities and colors (no older seed)", () => {
@@ -94,6 +117,14 @@ describe("Standard pipeline baseline", () => {
     assert.doesNotMatch(migration, /'#D8A7AA', 5, 'decision', 90\)/);
     assert.doesNotMatch(migration, /'#6F6A61', 6, 'booked',\s+100\)/);
     assert.match(migration, /_standard_pipeline_is_prior_product_seed/);
+    const priorFingerprints = readFileSync(
+      resolve("supabase/migrations/20261403700000_standard_pipeline_prior_seed_fingerprints.sql"),
+      "utf8",
+    );
+    assert.match(priorFingerprints, /name = 'New Inquiry' and probability = 20/);
+    assert.match(priorFingerprints, /name = 'Tour Scheduled' and probability = 40/);
+    assert.match(priorFingerprints, /name = 'Booked' and probability = 90/);
+    assert.match(priorFingerprints, /name = 'In Workflow' and probability = 25/);
     assert.match(starters, /key: "standard_pipeline"/);
     assert.match(starters, /ensure_standard_sales_pipeline/);
   });
@@ -111,5 +142,8 @@ describe("Standard pipeline baseline", () => {
     assert.match(baseline, /after insert on public\.venues/);
     assert.match(locked, /reset_venue_to_standard_pipeline/);
     assert.match(locked, /perform public\.reset_venue_to_standard_pipeline/);
+    // ensure leaves intentional customs alone (only upgrades prior product seeds)
+    assert.match(locked, /_standard_pipeline_is_canonical/);
+    assert.match(locked, /_standard_pipeline_is_prior_product_seed/);
   });
 });
