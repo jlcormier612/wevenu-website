@@ -30,14 +30,14 @@ import {
  * break permission filtering or React keys.
  */
 export type NavItemId =
-  | "dashboard" | "reports" | "guidance"
+  | "dashboard" | "reports"
   | "leads" | "clients" | "vendors"
   | "calendar" | "tours"
   | "inbox" | "automations"
   | "templates" | "documents"
   | "contracts" | "invoices" | "payments"
   | "task-center" | "requests"
-  | "setup" | "settings" | "venue-guide" | "feedback";
+  | "setup" | "settings" | "guidance" | "venue-guide" | "feedback";
 
 export type NavSectionId =
   | "overview"
@@ -76,9 +76,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: "dashboard", title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { id: "reports", title: "Reports", href: "/reporting", icon: BarChart3 },
-      // "Guidance" is how to use Hello to Cheers. Distinct from Venue Guide
-      // under Your Venue, which is the venue's own operational content.
-      { id: "guidance", title: "Guidance", href: "/help", icon: GraduationCap },
     ],
   },
   {
@@ -137,11 +134,14 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: "setup", title: "Setup", href: "/setup-hub", icon: SquareCheckBig },
       { id: "settings", title: "Settings", href: "/settings", icon: Settings },
+      // "Guidance" is how to use Hello to Cheers. Distinct from Venue Guide,
+      // which is the venue's own operational content for couples.
+      { id: "guidance", title: "Guidance", href: "/help", icon: GraduationCap },
       { id: "venue-guide", title: "Venue Guide", href: "/guide", icon: Info },
-      // "Give feedback", not "Feedback": the venue is giving it to us, and this
-      // is the only entry point for that — the sidebar footer used to carry a
-      // second one that skipped this page and opened the form directly.
-      { id: "feedback", title: "Give feedback", href: "/feedback", icon: MessageSquareDot },
+      // "Help & Feedback" is the only nav entry for venue-facing help requests
+      // and product feedback. The sidebar footer used to carry a second trigger
+      // that skipped this page and opened the form directly.
+      { id: "feedback", title: "Help & Feedback", href: "/feedback", icon: MessageSquareDot },
     ],
   },
 ];

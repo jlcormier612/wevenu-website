@@ -36,33 +36,35 @@ const CHOICES = [
 ] as const;
 
 describe("Give feedback — navigation", () => {
-  it("offers exactly one destination, labelled Give feedback", () => {
+  it("offers exactly one destination, labelled Help & Feedback", () => {
     const entries = NAV_ITEMS.filter((i) => i.href === "/feedback");
     assert.equal(entries.length, 1);
-    assert.equal(entries[0].title, "Give feedback");
+    assert.equal(entries[0].title, "Help & Feedback");
   });
 
-  it("puts it last under Your Venue, after Setup, Settings and Venue Guide", () => {
+  it("puts it last under Your Venue, after Settings, Guidance and Venue Guide", () => {
     const section = NAV_SECTIONS.find((s) => s.id === "your-venue");
     assert.ok(section);
     assert.deepEqual(section.items.map((i) => i.title), [
       "Setup",
       "Settings",
+      "Guidance",
       "Venue Guide",
-      "Give feedback",
+      "Help & Feedback",
     ]);
   });
 
-  it("says Give feedback rather than Feedback", () => {
-    // "Feedback" alone reads like a place where feedback is kept. The venue is
-    // giving it to us, so the label is the verb.
+  it("says Help & Feedback rather than Feedback alone", () => {
+    // "Feedback" alone reads like a place where feedback is kept.
     assert.ok(!NAV_ITEMS.some((i) => i.title === "Feedback"));
+    assert.ok(!NAV_ITEMS.some((i) => i.title === "Give feedback"));
   });
 
   it("no longer pins a second trigger to the bottom of the sidebar", () => {
     const shell = read(SHELL);
     assert.doesNotMatch(shell, /FeedbackSheet/);
     assert.doesNotMatch(shell, /Give feedback</);
+    assert.doesNotMatch(shell, /Help & Feedback</);
     // The nav is the only thing left in the sidebar column.
     assert.match(shell, /<SidebarNav staffRole=\{staffRole\} \/>/);
   });

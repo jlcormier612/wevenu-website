@@ -85,7 +85,7 @@ export default function FeedbackPage() {
 
       <p className="text-xs text-muted-foreground">
         Looking for your venue&rsquo;s own reference material instead? That lives under{" "}
-        Your Venue &rarr; Venue Guide. For how to use Hello to Cheers, see Overview &rarr; Guidance.
+        Your Venue &rarr; Venue Guide. For how to use Hello to Cheers, see Your Venue &rarr; Guidance.
       </p>
     </div>
   );

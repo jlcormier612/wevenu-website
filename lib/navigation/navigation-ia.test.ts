@@ -46,14 +46,14 @@ describe("venue navigation IA", () => {
       NAV_SECTIONS.map((s) => [s.id, s.items.map((i) => i.title)]),
     );
     assert.deepEqual(shape, {
-      overview: ["Dashboard", "Reports", "Guidance"],
+      overview: ["Dashboard", "Reports"],
       relationships: ["Leads", "Clients", "Vendors"],
       scheduling: ["Calendar", "Tours"],
       communication: ["Inbox", "Automations"],
       library: ["Templates", "Documents"],
       financials: ["Contracts", "Invoices", "Payments"],
       "to-dos": ["Task Center", "Requests"],
-      "your-venue": ["Setup", "Settings", "Venue Guide", "Give feedback"],
+      "your-venue": ["Setup", "Settings", "Guidance", "Venue Guide", "Help & Feedback"],
     });
   });
 
@@ -81,18 +81,26 @@ describe("venue navigation IA", () => {
     assert.equal(NAV_ITEMS.filter((i) => i.href === "/requests").length, 1);
   });
 
-  it("shows Give feedback exactly once, as the last Your Venue item", () => {
+  it("shows Help & Feedback exactly once, as the last Your Venue item", () => {
     const owners = NAV_SECTIONS.filter((s) => s.items.some((i) => i.id === "feedback"));
     assert.equal(owners.length, 1);
     assert.equal(owners[0].id, "your-venue");
     assert.equal(owners[0].items.at(-1)?.id, "feedback");
-    // The venue is giving feedback to us, so say so.
-    assert.equal(NAV_ITEMS.find((i) => i.id === "feedback")?.title, "Give feedback");
+    assert.equal(NAV_ITEMS.find((i) => i.id === "feedback")?.title, "Help & Feedback");
     // Venue-facing, not the HQ triage console.
     assert.equal(NAV_ITEMS.find((i) => i.id === "feedback")?.href, "/feedback");
   });
 
-  it("keeps Guidance and Venue Guide as separate destinations", () => {
+  it("keeps Guidance and Venue Guide as separate destinations under Your Venue", () => {
+    const yourVenue = NAV_SECTIONS.find((s) => s.id === "your-venue");
+    assert.ok(yourVenue);
+    const titles = yourVenue.items.map((i) => i.title);
+    const settingsAt = titles.indexOf("Settings");
+    const guidanceAt = titles.indexOf("Guidance");
+    const venueGuideAt = titles.indexOf("Venue Guide");
+    assert.ok(settingsAt >= 0);
+    assert.equal(guidanceAt, settingsAt + 1);
+    assert.equal(venueGuideAt, guidanceAt + 1);
     const guidance = NAV_ITEMS.find((i) => i.id === "guidance");
     const venueGuide = NAV_ITEMS.find((i) => i.id === "venue-guide");
     assert.equal(guidance?.title, "Guidance");
@@ -100,6 +108,7 @@ describe("venue navigation IA", () => {
     assert.equal(venueGuide?.title, "Venue Guide");
     assert.equal(venueGuide?.href, "/guide");
     assert.notEqual(guidance?.href, venueGuide?.href);
+    assert.equal(NAV_SECTIONS.find((s) => s.id === "overview")?.items.some((i) => i.id === "guidance"), false);
   });
 
   it("uses none of the retired navigation labels", () => {
@@ -124,8 +133,8 @@ describe("venue navigation IA", () => {
     assert.match(sidebar, /key=\{section\.id\}/);
     assert.match(sidebar, /key=\{item\.id\}/);
     assert.doesNotMatch(sidebar, /key=\{section\.label\}/);
-    // Inbox's unread badge keys off the id now, not a hardcoded href.
-    assert.match(sidebar, /item\.id === "inbox"/);
+    // Attention badges key off the stable id, not a hardcoded href or label.
+    assert.match(sidebar, /badgeCountForNavItem\(item\.id,/);
   });
 
   it("keeps Templates and Documents from both lighting up at once", () => {
