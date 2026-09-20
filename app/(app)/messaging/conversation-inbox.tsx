@@ -46,6 +46,11 @@ import {
   type InboxCategory,
 } from "@/lib/navigation/attention";
 import type { StaffMember } from "@/lib/team/types";
+import {
+  IDLE_SEGMENTED,
+  SELECTED_SEGMENTED,
+} from "@/lib/ui/selected-state";
+import { cn } from "@/lib/utils";
 
 type InboxEventOption = {
   id: string;
@@ -105,7 +110,7 @@ function ConversationRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 ${isActive ? "border-l-2 border-l-primary bg-primary/5" : ""}`}
+      className={`flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 ${isActive ? "border-l-2 border-l-primary bg-selected" : ""}`}
     >
       <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <span className="text-xs font-semibold text-primary">{initials(conversation.displayName)}</span>
@@ -441,11 +446,10 @@ export function ConversationInbox({
                 role="tab"
                 aria-selected={selected}
                 onClick={() => selectCategory(opt.value)}
-                className={`min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
-                  selected
-                    ? "bg-background text-heading shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={cn(
+                  "min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                  selected ? SELECTED_SEGMENTED : IDLE_SEGMENTED,
+                )}
               >
                 {opt.label}
               </button>

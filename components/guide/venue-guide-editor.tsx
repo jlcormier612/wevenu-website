@@ -230,9 +230,9 @@ function AudienceControl({
               type="button"
               disabled={disabled}
               onClick={() => onChange(opt.value)}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 active
-                  ? "bg-background text-heading shadow-sm"
+                  ? "bg-selected text-selected-foreground shadow-sm ring-1 ring-inset ring-selected-border"
                   : "text-muted-foreground hover:text-heading"
               }`}
             >

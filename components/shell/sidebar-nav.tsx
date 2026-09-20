@@ -10,6 +10,7 @@ import {
   emptyNavAttentionCounts,
   formatAttentionBadge,
   NAV_ATTENTION_BADGE_CLASS,
+  navAttentionHref,
   type NavAttentionCounts,
 } from "@/lib/navigation/attention";
 import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
@@ -60,19 +61,22 @@ export function SidebarNav({
                 (pathname.startsWith(`${item.href}/`) && !pathname.startsWith("/library/documents"))
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
-            const badgeLabel = formatAttentionBadge(badgeCountForNavItem(item.id, counts));
+            const badgeCount = badgeCountForNavItem(item.id, counts);
+            const badgeLabel = formatAttentionBadge(badgeCount);
+            const href = navAttentionHref(item.id, item.href, badgeCount);
 
             return (
               <Link
                 key={item.id}
-                href={item.href}
+                href={href}
                 onClick={onNavigate}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "group/nav flex items-center gap-3 rounded-sm px-3 py-2.5 text-base tracking-wide transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     : "text-sidebar-foreground",
                 )}
               >

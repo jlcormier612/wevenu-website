@@ -43,6 +43,10 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  /* Selected / active interactive surfaces (tabs, buckets, segmented controls) */
+  --color-selected: var(--selected);
+  --color-selected-foreground: var(--selected-foreground);
+  --color-selected-border: var(--selected-border);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -116,6 +120,14 @@
   --border: var(--taupe-light);
   --input: var(--taupe-light);
   --ring: var(--heritage-sage);
+  /*
+   * Selected / active surface — primary-tinted light green wash (tracks
+   * venue-brand --primary). Used for segmented controls, filter chips, and
+   * other “what is selected?” states. Stronger than bg-background-on-muted.
+   */
+  --selected: color-mix(in oklch, var(--primary) 22%, var(--background));
+  --selected-foreground: var(--primary);
+  --selected-border: color-mix(in oklch, var(--primary) 48%, var(--border));
 
   --chart-1: var(--heritage-sage);
   --chart-2: var(--forest-sage);
@@ -132,7 +144,8 @@
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: var(--linen);
+  /* Active nav: primary-tinted wash (same family as --selected), not plain linen */
+  --sidebar-accent: color-mix(in oklch, var(--sidebar-primary) 20%, var(--sidebar));
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
   --sidebar-ring: var(--heritage-sage);
@@ -215,10 +228,14 @@ html:has(.htc-staff) {
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: var(--linen);
+  --sidebar-accent: color-mix(in oklch, var(--sidebar-primary) 20%, var(--sidebar));
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
   --sidebar-ring: var(--heritage-sage);
+
+  --selected: color-mix(in oklch, var(--primary) 20%, var(--background));
+  --selected-foreground: var(--primary);
+  --selected-border: color-mix(in oklch, var(--primary) 45%, var(--border));
 }
 
 /* CRM dark remap under staff scope (html.dark from next-themes) */
@@ -245,14 +262,22 @@ html.dark:has(.htc-staff) {
   --primary-foreground: var(--forest-sage);
   --ring: var(--soft-sage);
 
+  --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
+  --selected-foreground: var(--primary);
+  --selected-border: color-mix(in oklch, var(--primary) 55%, transparent);
+
   --sidebar: color-mix(in oklch, var(--taupe-dark) 70%, white);
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--true-white) 38%, transparent);
+  --sidebar-accent: color-mix(in oklch, var(--soft-sage) 32%, var(--sidebar));
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
   --sidebar-ring: var(--heritage-sage);
+
+  --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
+  --selected-foreground: var(--primary);
+  --selected-border: color-mix(in oklch, var(--primary) 55%, transparent);
 }
 
 /*
@@ -446,6 +471,10 @@ html:has(.htc-staff) [data-slot="table"] {
   --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --ring: var(--soft-sage);
 
+  --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
+  --selected-foreground: var(--primary);
+  --selected-border: color-mix(in oklch, var(--primary) 55%, transparent);
+
   --chart-1: var(--soft-sage);
   --chart-2: var(--true-white);
   --chart-3: var(--taupe-dark);
@@ -458,7 +487,7 @@ html:has(.htc-staff) [data-slot="table"] {
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--true-white) 38%, transparent);
+  --sidebar-accent: color-mix(in oklch, var(--soft-sage) 32%, var(--sidebar));
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
   --sidebar-ring: var(--heritage-sage);

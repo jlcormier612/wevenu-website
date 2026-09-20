@@ -33,6 +33,13 @@ import {
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
 import type { Client } from "@/lib/clients/types";
+import {
+  IDLE_CHIP,
+  IDLE_CHIP_COUNT,
+  SELECTED_CHIP,
+  SELECTED_CHIP_COUNT,
+} from "@/lib/ui/selected-state";
+import { cn } from "@/lib/utils";
 
 // Operational buckets: All Bookings is the working list. Coming up and
 // Needs Attention are subsets of it. Cancelled and Past are historical.
@@ -161,9 +168,13 @@ export function ClientList({
           const active = filter === key;
           return (
             <button key={key} type="button" onClick={() => setFilter(key)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+              aria-pressed={active}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                active ? SELECTED_CHIP : IDLE_CHIP,
+              )}>
               {label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
+              <span className={cn("rounded-full px-1.5 py-px text-[10px] font-semibold", active ? SELECTED_CHIP_COUNT : IDLE_CHIP_COUNT)}>{count}</span>
             </button>
           );
         })}

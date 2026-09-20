@@ -49,6 +49,13 @@ import { transitionKindForCanonical } from "@/lib/leads/pipeline-stage-transitio
 import type { PipelineStage } from "@/lib/pipeline-templates/types";
 import type { SalesStage } from "@/lib/leads/sales-stages";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
+import {
+  IDLE_CHIP,
+  IDLE_CHIP_COUNT,
+  SELECTED_CHIP,
+  SELECTED_CHIP_COUNT,
+} from "@/lib/ui/selected-state";
+import { cn } from "@/lib/utils";
 
 type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
@@ -347,13 +354,15 @@ export function LeadList({
         {stageChips.map((chip) => {
           const count = statusCounts.get(chip.key) ?? 0;
           const chipClass = (active: boolean) =>
-            `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              active
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-            }`;
+            cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              active ? SELECTED_CHIP : IDLE_CHIP,
+            );
           const countClass = (active: boolean) =>
-            `rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`;
+            cn(
+              "rounded-full px-1.5 py-px text-[10px] font-semibold",
+              active ? SELECTED_CHIP_COUNT : IDLE_CHIP_COUNT,
+            );
           if (chip.kind === "booked") {
             return (
               <Link key={chip.key} href="/clients?filter=all" className={chipClass(false)}>
