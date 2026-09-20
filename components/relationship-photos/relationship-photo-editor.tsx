@@ -43,52 +43,52 @@ export function RelationshipPhotoEditor({
       <div>
         <p className="text-sm font-medium text-heading">Photo</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          The photo shown on this Lead and Client record. A hold is not a booking — and a couple photo is only available here when they share it.
+          Add a photo to this Lead and Client record. You can upload one here or use a photo the couple has shared with you. The photo stays with the relationship if this lead becomes a client.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-start gap-4">
-        {state.displayedPhotoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={state.displayedPhotoUrl}
-            alt=""
-            className="h-24 w-24 rounded-full object-cover border border-border"
-          />
-        ) : null}
-        <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {state.effectiveDisplaySource === "client" ? "Showing client photo" : "Venue photo"}
-          </p>
-          <ImageUpload
-            currentUrl={state.venuePhotoUrl}
-            bucket="uploads"
-            path={path}
-            label="Venue photo"
-            hint="JPG, PNG, or WEBP up to 5 MB. Uploading a venue photo makes it the one on the record."
-            aspectRatio="aspect-square"
-            objectFit="cover"
-            className="max-w-[10rem]"
-            onUpload={async (url) => {
-              const result = await setVenuePhotoAction(relationshipId, url, opts);
-              if (!result.ok) {
-                toast.error(result.message ?? "Could not save the photo.");
-                throw new Error(result.message);
-              }
-              toast.success("Venue photo saved.");
-              router.refresh();
-            }}
-            onRemove={state.venuePhotoUrl ? async () => {
-              const result = await removeVenuePhotoAction(relationshipId, opts);
-              if (!result.ok) {
-                toast.error(result.message ?? "Could not remove the photo.");
-                throw new Error(result.message);
-              }
-              toast.success("Venue photo removed.");
-              router.refresh();
-            } : undefined}
-          />
-        </div>
+      {state.displayedPhotoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={state.displayedPhotoUrl}
+          alt=""
+          className="h-24 w-24 rounded-full object-cover border border-border"
+        />
+      ) : null}
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-heading">Venue Photo</p>
+        <p className="text-sm text-muted-foreground">
+          Upload a photo from your venue to use on this record.
+        </p>
+        <ImageUpload
+          currentUrl={state.venuePhotoUrl}
+          bucket="uploads"
+          path={path}
+          label="Venue Photo"
+          hint="JPG, PNG, or WEBP up to 5 MB. Uploading a venue photo makes it the one on the record."
+          aspectRatio="aspect-square"
+          objectFit="cover"
+          className="max-w-[10rem]"
+          onUpload={async (url) => {
+            const result = await setVenuePhotoAction(relationshipId, url, opts);
+            if (!result.ok) {
+              toast.error(result.message ?? "Could not save the photo.");
+              throw new Error(result.message);
+            }
+            toast.success("Venue photo saved.");
+            router.refresh();
+          }}
+          onRemove={state.venuePhotoUrl ? async () => {
+            const result = await removeVenuePhotoAction(relationshipId, opts);
+            if (!result.ok) {
+              toast.error(result.message ?? "Could not remove the photo.");
+              throw new Error(result.message);
+            }
+            toast.success("Venue photo removed.");
+            router.refresh();
+          } : undefined}
+        />
       </div>
 
       {state.effectiveDisplaySource === "client" ? (

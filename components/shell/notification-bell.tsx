@@ -35,6 +35,7 @@ const NOTIFICATION_CTA: Record<string, string> = {
   feedback_received:      "Review feedback",
   referral_received:      "View referral",
   message_received:       "Reply to message",
+  client_photo_shared:    "View photo",
 };
 
 function getCta(type: string): string {

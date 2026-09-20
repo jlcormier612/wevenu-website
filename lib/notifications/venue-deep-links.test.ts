@@ -102,6 +102,16 @@ describe("normalizeVenueNotificationHref", () => {
       "/events/e1#documents",
     );
   });
+  it("preserves client photo share edit deep link (not Inbox, not #messages)", () => {
+    assert.equal(
+      normalizeVenueNotificationHref("/clients/abc/edit", "client_photo_shared"),
+      "/clients/abc/edit",
+    );
+    assert.equal(
+      normalizeVenueNotificationHref("/clients/abc", "client_photo_shared"),
+      "/clients/abc",
+    );
+  });
 });
 
 describe("RSVP notification CTA vs destination", () => {

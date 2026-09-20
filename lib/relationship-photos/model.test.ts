@@ -149,4 +149,33 @@ describe("relationship photo precedence", () => {
     assert.equal(shouldNotifyClientPhotoShared(false, true, null), false);
     assert.equal(shouldNotifyClientPhotoShared(true, false, "https://cdn/x.jpg"), false);
   });
+
+  it("M. OFF → ON again after revoke may notify again", () => {
+    assert.equal(shouldNotifyClientPhotoShared(false, true, "https://cdn/x.jpg"), true);
+  });
+
+  it("N. venue photo available without couple sharing", () => {
+    const next = afterVenuePhotoUpload(empty, "https://cdn/venue.jpg");
+    const v = resolveVenueFacingPhoto(next);
+    assert.equal(v.displayedPhotoUrl, "https://cdn/venue.jpg");
+    assert.equal(v.clientPhotoShared, false);
+    assert.equal(v.clientPhotoAvailable, false);
+  });
+
+  it("O. venue replace keeps source venue", () => {
+    let state = afterVenuePhotoUpload(empty, "https://cdn/a.jpg");
+    state = afterVenuePhotoUpload(state, "https://cdn/b.jpg");
+    assert.equal(state.venuePhotoUrl, "https://cdn/b.jpg");
+    assert.equal(state.venueDisplaySource, "venue");
+    assert.equal(resolveVenueFacingPhoto(state).displayedPhotoUrl, "https://cdn/b.jpg");
+  });
+
+  it("P. revoke does not clear underlying client_photo_url in state helpers", () => {
+    let state = afterClientSharesPhoto(afterClientPhotoUpload(empty, "https://cdn/client.jpg"));
+    assert.equal(state.clientPhotoUrl, "https://cdn/client.jpg");
+    state = afterClientRevokesShare(state);
+    assert.equal(state.clientPhotoShared, false);
+    assert.equal(state.clientPhotoUrl, "https://cdn/client.jpg");
+    assert.equal(resolveVenueFacingPhoto(state).clientPhotoUrl, null);
+  });
 });
