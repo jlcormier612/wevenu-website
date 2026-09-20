@@ -27,7 +27,7 @@ export default async function PipelinePage() {
         actions={
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
-              <GitBranch className="mr-1.5 h-3.5 w-3.5" />Pipeline Templates
+              <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
             </Button>
             <Button variant="outline" size="sm" render={<Link href="/leads" />}>List view</Button>
           </div>

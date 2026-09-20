@@ -52,7 +52,8 @@ export function isCancelledRelationshipStage(stage: string | null | undefined): 
   return stage === CANCELLED_RELATIONSHIP_STAGE;
 }
 
-export const STANDARD_SALES_PIPELINE_NAME = "Standard Sales Pipeline";
+/** @deprecated Prefer STANDARD_PIPELINE_NAME from lib/pipeline-templates/standard. */
+export const STANDARD_SALES_PIPELINE_NAME = "Standard";
 
 export function salesStageLabel(stage: string | null | undefined): string {
   if (!stage) return "";

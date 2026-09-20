@@ -20,6 +20,7 @@ describe("provisioning starters module", () => {
       "packages",
       "brochures",
       "saved_reports",
+      "standard_pipeline",
     ]) {
       assert.match(src, new RegExp(`key: "${key}"`));
     }

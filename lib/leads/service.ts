@@ -850,8 +850,8 @@ export async function wouldEnrollOnPipelineStageMove(
 }
 
 /**
- * Ensure Standard Sales Pipeline library record exists (idempotent).
- * Does not control live Board stages.
+ * Ensure the Standard pipeline exists, is active, and matches the product baseline.
+ * Idempotent — safe on every Leads / Board load and on venue provisioning.
  */
 export async function ensureStandardSalesPipelineForCurrentVenue(): Promise<void> {
   if (!isSupabaseConfigured) return;

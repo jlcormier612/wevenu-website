@@ -116,6 +116,15 @@ const STEPS: SeedStep[] = [
       await seedVenueScheduleItemTypes(client as Awaited<ReturnType<typeof createClient>>, venueId);
     },
   },
+  {
+    key: "standard_pipeline",
+    run: async (venueId, client) => {
+      const { error } = await client.rpc("ensure_standard_sales_pipeline", {
+        p_venue_id: venueId,
+      });
+      if (error) throw error;
+    },
+  },
 ];
 
 /**
