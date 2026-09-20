@@ -13,6 +13,7 @@ import { resolvePrintBrandColors } from "@/lib/collateral/print-brand";
 import type { Venue } from "@/lib/venue/types";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { Questionnaire } from "@/lib/events/questionnaire";
+import { INTERNAL_NOTES_LABEL } from "@/lib/notes/internal-notes-copy";
 
 function formatVendorTime(hhmm: string): string {
   const [h, m] = hhmm.split(":");
@@ -269,11 +270,11 @@ export function DaySheetDocument({
         </div>
       )}
 
-      {/* ── Notes ───────────────────────────────────────────────────────── */}
+      {/* ── Internal notes ───────────────────────────────────────────────── */}
       {event.notes.length > 0 && (
         <div className="px-10 py-2">
           <Rule />
-          <SectionLabel>Notes</SectionLabel>
+          <SectionLabel>{INTERNAL_NOTES_LABEL}</SectionLabel>
           <div className="space-y-3">
             {event.notes.map((note) => (
               <p

@@ -121,7 +121,7 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "teardownTime", label: "Teardown time (HH:MM)", required: false },
     { key: "spaceName", label: "Event space name", required: false },
     { key: "spaceId", label: "Event space id (if you have it)", required: false },
-    { key: "internalNotes", label: "Notes", required: false },
+    { key: "internalNotes", label: "Internal notes", required: false },
     { key: "sourceId", label: "Their own record ID (if the export has one)", required: false },
   ],
   lead: [

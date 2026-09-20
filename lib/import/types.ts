@@ -22,7 +22,7 @@ export const COUPLE_FIELDS: ImportFieldDef[] = [
   { key: "setupTime",        label: "Setup Time (HH:MM)",      required: false },
   { key: "teardownTime",     label: "Teardown Time (HH:MM)",   required: false },
   { key: "spaceName",        label: "Event Space Name",        required: false },
-  { key: "internalNotes",    label: "Notes",                   required: false },
+  { key: "internalNotes",    label: "Internal notes",          required: false },
 ];
 
 export const LEAD_FIELDS: ImportFieldDef[] = [

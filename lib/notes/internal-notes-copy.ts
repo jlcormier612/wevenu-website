@@ -47,8 +47,8 @@ export function internalNotesLabel(scope: InternalNotesScope = "default"): strin
   }
 }
 
-/** Customer-facing payment schedule notes — never labeled Internal. */
+/** Customer-facing payment schedule / invoice notes — never labeled Internal. */
 export const NOTES_FROM_YOUR_VENUE_LABEL = "Notes from your venue";
 
 export const NOTES_FROM_YOUR_VENUE_HINT =
-  "Shown to the couple on their payment schedule.";
+  "Shown to the couple on their payment schedule and invoices.";

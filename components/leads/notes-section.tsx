@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatRelative } from "@/lib/leads/constants";
 import type { LeadNote } from "@/lib/leads/types";
+import { INTERNAL_NOTES_PRIVACY_HINT } from "@/lib/notes/internal-notes-copy";
 
 export function NotesSection({
   leadId,
@@ -94,7 +95,7 @@ export function NotesSection({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Private to your venue team — never visible to the client.
+        {INTERNAL_NOTES_PRIVACY_HINT}
       </p>
       {/* Add note */}
       <div className="space-y-2">

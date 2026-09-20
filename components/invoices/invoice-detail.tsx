@@ -27,6 +27,7 @@ import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
 import type { Venue } from "@/lib/venue/types";
+import { NOTES_FROM_YOUR_VENUE_LABEL } from "@/lib/notes/internal-notes-copy";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: string } | null> = {
@@ -297,10 +298,10 @@ export function InvoiceDetail({
         </CardContent>
       </Card>
 
-      {/* Notes */}
+      {/* Notes from your venue */}
       {invoice.notes && (
         <Card>
-          <CardHeader><CardTitle className="text-base text-sm">Notes from your venue</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base text-sm">{NOTES_FROM_YOUR_VENUE_LABEL}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground whitespace-pre-line">{invoice.notes}</p></CardContent>
         </Card>
       )}

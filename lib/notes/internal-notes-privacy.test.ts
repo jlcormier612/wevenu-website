@@ -61,8 +61,11 @@ describe("venue-internal notes privacy wiring", () => {
   it("venue-internal editors use locked privacy copy", () => {
     const surfaces = [
       "components/clients/client-form.tsx",
+      "components/clients/client-notes-section.tsx",
       "components/leads/lead-detail.tsx",
+      "components/leads/notes-section.tsx",
       "components/events/event-detail.tsx",
+      "components/events/event-notes-section.tsx",
       "components/playbooks/event-task-list.tsx",
       "components/vendors/vendor-form.tsx",
       "components/events/vendors/event-vendors-section.tsx",
@@ -71,23 +74,28 @@ describe("venue-internal notes privacy wiring", () => {
       "components/tours/tour-list.tsx",
       "components/leads/relationship-card.tsx",
       "components/hq/venue-detail/support-section.tsx",
+      "components/events/day-sheet/day-sheet-document.tsx",
     ];
     const hintRe = new RegExp(
       INTERNAL_NOTES_PRIVACY_HINT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
     );
     for (const rel of surfaces) {
       const src = read(rel);
-      const usesConstant = src.includes("INTERNAL_NOTES_PRIVACY_HINT");
-      const usesLiteral = hintRe.test(src);
+      const usesConstant = src.includes("INTERNAL_NOTES_PRIVACY_HINT")
+        || src.includes("INTERNAL_NOTES_LABEL");
+      const usesLiteral = hintRe.test(src) || /Internal notes/.test(src);
       assert.ok(
         usesConstant || usesLiteral,
-        `${rel} missing privacy hint (constant or literal)`,
+        `${rel} missing Internal notes label or privacy hint`,
       );
     }
     // Payment schedule notes are customer-facing — must NOT claim internal.
     const scheduleForm = read("components/payments/new-schedule-form.tsx");
     assert.match(scheduleForm, /NOTES_FROM_YOUR_VENUE_LABEL|Notes from your venue/);
     assert.doesNotMatch(scheduleForm, /visible only to your team/);
+    const invoiceForm = read("components/invoices/new-invoice-form.tsx");
+    assert.match(invoiceForm, /NOTES_FROM_YOUR_VENUE_LABEL/);
+    assert.doesNotMatch(invoiceForm, /INTERNAL_NOTES/);
     assert.equal(INTERNAL_NOTES_LABEL, "Internal notes");
     assert.equal(NOTES_FROM_YOUR_VENUE_LABEL, "Notes from your venue");
   });

@@ -17,6 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { Client } from "@/lib/clients/types";
 import type { InvoiceErrors, InvoiceInput } from "@/lib/invoices/types";
+import {
+  NOTES_FROM_YOUR_VENUE_HINT,
+  NOTES_FROM_YOUR_VENUE_LABEL,
+} from "@/lib/notes/internal-notes-copy";
 import { defaultInvoiceNotes, safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
 export function NewInvoiceForm({
@@ -83,7 +87,7 @@ export function NewInvoiceForm({
         </Field>
       </div>
 
-      <Field label="Notes from your venue" htmlFor="inv-notes" hint="Shown on the printed invoice. Safe starter copy — customize anytime.">
+      <Field label={NOTES_FROM_YOUR_VENUE_LABEL} htmlFor="inv-notes" hint={NOTES_FROM_YOUR_VENUE_HINT}>
         <Textarea id="inv-notes" value={input.notes} onChange={(e) => setInput((p) => ({ ...p, notes: e.target.value }))}
           placeholder="Thank you for choosing us…" rows={3} />
       </Field>
