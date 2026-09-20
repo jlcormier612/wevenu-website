@@ -11,6 +11,7 @@ import type {
   ClientStatus,
   ClientWithDetails,
 } from "@/lib/clients/types";
+import { relationshipContactPatch } from "@/lib/clients/contact-edit";
 import { identityRpcFields } from "@/lib/identity/decision";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
@@ -326,6 +327,12 @@ export async function insertClientWithDatedEvent(
 export async function updateClientInfo(client: DbClient, venueId: string, clientId: string, input: ClientInput): Promise<void> {
   const row = toClientRow(venueId, input);
 
+  const { data: existing } = await client.from("clients")
+    .select("relationship_id")
+    .eq("id", clientId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ relationship_id: string | null }>();
+
   // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
   // §9, Booking Financial item C) — once an Event exists, it becomes the
   // sole canonical writer for guest_count/event_type/event_date. The edit
@@ -337,6 +344,16 @@ export async function updateClientInfo(client: DbClient, venueId: string, client
     delete row.event_type;
     delete row.event_date;
     delete row.guest_count;
+  }
+
+  // Same relationship row. Do not insert a second one, and do not write
+  // inquiry or source — those stay on the historical lead.
+  if (existing?.relationship_id) {
+    const { error: relError } = await client.from("venue_customer_relationships")
+      .update(relationshipContactPatch(input))
+      .eq("id", existing.relationship_id)
+      .eq("venue_id", venueId);
+    if (relError) throw relError;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

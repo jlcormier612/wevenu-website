@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/events/constants";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import type { ClientStatus } from "@/lib/clients/types";
@@ -78,8 +78,13 @@ export function BookingOverviewSummary({
   vendorRecommendations: EventVendorRecommendation[];
   conversationMessages: ConversationMessage[];
   documents: Document[];
-  /** Contact and original inquiry already stored on the client and linked lead. Not a copy. */
+  /** Current contact on the client, plus historical source and inquiry from the lead. */
   contact?: {
+    clientId: string;
+    firstName: string | null;
+    lastName: string | null;
+    partnerFirstName: string | null;
+    partnerLastName: string | null;
     phone: string | null;
     email: string | null;
     partnerEmail: string | null;
@@ -136,18 +141,38 @@ export function BookingOverviewSummary({
           <ClientStatusBadge status={clientStatus} />
         </CardContent>
       </Card>
-      {(contact?.phone || contact?.email || contact?.partnerEmail || contact?.source || contact?.inquiryMessage) && (
+      {(contact) && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Contact</CardTitle>
+            <CardTitle className="text-sm">Contact Information</CardTitle>
+            <CardAction>
+              <Link
+                href={`/clients/${contact.clientId}/edit`}
+                className="text-xs font-medium text-primary hover:underline"
+                aria-label="Edit contact information"
+              >
+                Edit
+              </Link>
+            </CardAction>
           </CardHeader>
           <CardContent className="space-y-1.5 text-sm">
-            {contact.phone && <p><span className="text-muted-foreground">Phone · </span>{contact.phone}</p>}
-            {contact.email && <p><span className="text-muted-foreground">Email · </span>{contact.email}</p>}
-            {contact.partnerEmail && <p><span className="text-muted-foreground">Partner email · </span>{contact.partnerEmail}</p>}
+            <p>
+              <span className="text-muted-foreground">Name · </span>
+              {[contact.firstName, contact.lastName].filter(Boolean).join(" ") || "—"}
+            </p>
+            <p><span className="text-muted-foreground">Phone · </span>{contact.phone || "—"}</p>
+            <p><span className="text-muted-foreground">Email · </span>{contact.email || "—"}</p>
+            <p>
+              <span className="text-muted-foreground">Partner · </span>
+              {[contact.partnerFirstName, contact.partnerLastName].filter(Boolean).join(" ") || "—"}
+            </p>
+            <p><span className="text-muted-foreground">Partner email · </span>{contact.partnerEmail || "—"}</p>
             {contact.source && <p><span className="text-muted-foreground">Source · </span>{contact.source}</p>}
             {contact.inquiryMessage && (
-              <p className="whitespace-pre-wrap pt-1 text-foreground">{contact.inquiryMessage}</p>
+              <p className="whitespace-pre-wrap pt-1 text-foreground">
+                <span className="text-muted-foreground">Original inquiry · </span>
+                {contact.inquiryMessage}
+              </p>
             )}
           </CardContent>
         </Card>

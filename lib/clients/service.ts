@@ -646,23 +646,34 @@ export async function convertLeadToClient(
 
 // ---- update -----------------------------------------------------------------
 
+function isUniqueViolation(err: unknown): boolean {
+  return Boolean(err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505");
+}
+
 export async function updateClientInfo(clientId: string, input: ClientInput): Promise<ClientActionResult> {
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateClientInfo(supabase, venueId, clientId, input);
-    await repo.insertClientActivity(supabase, venueId, clientId, "lead_updated", "Client information updated");
-    // A client's name/email changing after their QBO Customer was already
-    // created should re-sync — the queue's payload_hash dedup handles
-    // this safely (a no-op if nothing sync-relevant actually changed).
-    void enqueueQuickBooksSync(venueId, "customer", clientId, {
-      firstName: input.firstName, lastName: input.lastName,
-      partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
-      email: input.email, phone: input.phone,
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      await repo.updateClientInfo(supabase, venueId, clientId, input);
+      await repo.insertClientActivity(supabase, venueId, clientId, "lead_updated", "Client information updated");
+      // A client's name/email changing after their QBO Customer was already
+      // created should re-sync — the queue's payload_hash dedup handles
+      // this safely (a no-op if nothing sync-relevant actually changed).
+      void enqueueQuickBooksSync(venueId, "customer", clientId, {
+        firstName: input.firstName, lastName: input.lastName,
+        partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
+        email: input.email, phone: input.phone,
+      });
+      return { ok: true } as ClientActionResult;
     });
-    return { ok: true } as ClientActionResult;
-  });
-  return result as ClientActionResult;
+    return result as ClientActionResult;
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { ok: false, message: "That email is already used by another relationship." };
+    }
+    throw err;
+  }
 }
 
 export async function updateClientStatus_(clientId: string, status: string): Promise<ClientActionResult> {

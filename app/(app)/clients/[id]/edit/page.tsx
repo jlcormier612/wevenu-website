@@ -24,12 +24,18 @@ export default async function EditClientPage({ params }: Props) {
     <div className="space-y-6">
       <PageHeader
         title={`Edit · ${clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}`}
-        description="Update client information and event details."
+        description={client.linkedEventId
+          ? "Update this client's contact information. Event details are edited on the event."
+          : "Update client information and event details."}
       />
       <Card>
         <CardHeader>
-          <CardTitle>Client details</CardTitle>
-          <CardDescription>Changes are logged to the activity timeline.</CardDescription>
+          <CardTitle>{client.linkedEventId ? "Contact information" : "Client details"}</CardTitle>
+          <CardDescription>
+            {client.linkedEventId
+              ? "Names, email, phone, and partner. Original inquiry and source stay as they were."
+              : "Changes are logged to the activity timeline."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ClientEditForm client={client} />

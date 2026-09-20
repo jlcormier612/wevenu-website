@@ -41,6 +41,7 @@ export function ClientEditForm({ client }: { client: ClientWithDetails }) {
       onSubmit={handleSubmit} pending={pending}
       submitLabel="Save changes"
       linkedEventId={client.linkedEventId}
+      contactOnly={Boolean(client.linkedEventId)}
     />
   );
 }

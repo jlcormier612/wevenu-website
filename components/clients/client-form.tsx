@@ -119,6 +119,7 @@ export function ClientForm({
 
 export function ClientFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Save client", linkedEventId = null,
+  contactOnly = false,
   spaces = [], maxSimultaneousEvents = 1,
 }: {
   input: ClientInput;
@@ -128,6 +129,8 @@ export function ClientFormFields({
   pending: boolean;
   submitLabel?: string;
   linkedEventId?: string | null;
+  /** Booked clients edit contact here. Event fields stay on the event editor. */
+  contactOnly?: boolean;
   spaces?: VenueSpace[];
   maxSimultaneousEvents?: number;
 }) {
@@ -172,6 +175,8 @@ export function ClientFormFields({
           <Input id="pem" type="email" value={input.partnerEmail} onChange={(e) => set("partnerEmail", e.target.value)} />
         </Field>
       </div>
+      {!contactOnly && (
+      <>
       <Separator />
       {/* Event */}
       <div className="space-y-4">
@@ -237,6 +242,8 @@ export function ClientFormFields({
           </Field>
         </div>
       </div>
+      </>
+      )}
       <Separator />
       <Field label="Internal notes" htmlFor="notes" hint="Not visible to the client.">
         <Textarea id="notes" value={input.internalNotes} rows={3} onChange={(e) => set("internalNotes", e.target.value)} placeholder="Operational notes…" />

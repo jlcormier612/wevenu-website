@@ -61,7 +61,7 @@ import type { ConversationMessage } from "@/lib/conversations/types";
 import type { ClientStatus } from "@/lib/clients/types";
 import { Button } from "@/components/ui/button";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/invoices/constants";
@@ -351,6 +351,11 @@ export function EventDetail({
   // reachable path once converted, even though it was never deleted.
   originatingLeadId?: string | null;
   relationshipContact?: {
+    clientId: string;
+    firstName: string | null;
+    lastName: string | null;
+    partnerFirstName: string | null;
+    partnerLastName: string | null;
     phone: string | null;
     email: string | null;
     partnerEmail: string | null;
@@ -476,7 +481,7 @@ export function EventDetail({
             </Button>
           )}
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/edit`} />}>
-            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit event
           </Button>
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/day-sheet`} />}>
             <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
@@ -653,7 +658,14 @@ export function EventDetail({
             onApplied={() => router.refresh()}
           />
           <Card>
-            <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Event information</CardTitle>
+              <CardAction>
+                <Link href={`/events/${event.id}/edit`} className="text-xs font-medium text-primary hover:underline">
+                  Edit
+                </Link>
+              </CardAction>
+            </CardHeader>
             <CardContent className="space-y-3">
                 {[
                   { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },

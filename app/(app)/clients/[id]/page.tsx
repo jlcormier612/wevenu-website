@@ -167,6 +167,11 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const coupleEmail = cl?.email ?? client.email ?? null;
 
   let relationshipContact: {
+    clientId: string;
+    firstName: string | null;
+    lastName: string | null;
+    partnerFirstName: string | null;
+    partnerLastName: string | null;
     phone: string | null;
     email: string | null;
     partnerEmail: string | null;
@@ -177,12 +182,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   if (client.leadId) {
     const [{ data: leadRow }, { data: noteRows }] = await Promise.all([
       supabase.from("leads")
-        .select("phone, email, partner_email, source, inquiry_message")
+        .select("source, inquiry_message")
         .eq("id", client.leadId)
         .maybeSingle<{
-          phone: string | null;
-          email: string | null;
-          partner_email: string | null;
           source: string | null;
           inquiry_message: string | null;
         }>(),
@@ -195,9 +197,14 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       ? (LEAD_SOURCES.find((s) => s.value === leadRow.source)?.label ?? leadRow.source)
       : null;
     relationshipContact = {
-      phone: cl?.phone || client.phone || leadRow?.phone || null,
-      email: cl?.email || client.email || leadRow?.email || null,
-      partnerEmail: cl?.partner_email || client.partnerEmail || leadRow?.partner_email || null,
+      clientId: client.id,
+      firstName: client.firstName,
+      lastName: client.lastName,
+      partnerFirstName: client.partnerFirstName,
+      partnerLastName: client.partnerLastName,
+      phone: cl?.phone || client.phone || null,
+      email: cl?.email || client.email || null,
+      partnerEmail: cl?.partner_email || client.partnerEmail || null,
       source: sourceLabel,
       inquiryMessage: leadRow?.inquiry_message ?? null,
     };
@@ -206,8 +213,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       body: n.body,
       createdAt: n.created_at,
     }));
-  } else if (cl?.phone || cl?.email || client.phone || client.email) {
+  } else {
     relationshipContact = {
+      clientId: client.id,
+      firstName: client.firstName,
+      lastName: client.lastName,
+      partnerFirstName: client.partnerFirstName,
+      partnerLastName: client.partnerLastName,
       phone: cl?.phone || client.phone || null,
       email: cl?.email || client.email || null,
       partnerEmail: cl?.partner_email || client.partnerEmail || null,
