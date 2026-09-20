@@ -1,5 +1,6 @@
 import { createClient } from "@/integrations/supabase/server";
-import { withVenue } from "@/lib/venue/service";
+import { isSupabaseConfigured } from "@/lib/env";
+import { getCurrentVenue } from "@/lib/venue/service";
 import {
   afterVenueChoosesClientPhoto,
   afterVenueChoosesVenuePhoto,
@@ -13,6 +14,20 @@ import {
   getVenueRelationshipPhoto,
   updateRelationshipPhotoFields,
 } from "@/lib/relationship-photos/repository";
+
+type PhotoActionResult = { ok: true } | { ok: false; message: string };
+
+async function withVenue<T>(
+  fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
+): Promise<T | PhotoActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired." };
+  return fn(supabase, venue.id);
+}
 
 function rowToState(row: {
   venue_photo_url: string | null;
@@ -32,18 +47,20 @@ export async function getRelationshipPhotoForVenue(
   relationshipId: string | null | undefined,
 ): Promise<VenueFacingPhotoState | null> {
   if (!relationshipId) return null;
-  return withVenue(async (supabase) => {
-    const row = await getVenueRelationshipPhoto(supabase, relationshipId);
-    if (!row) return null;
-    return resolveVenueFacingPhoto(rowToState(row));
-  });
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const row = await getVenueRelationshipPhoto(supabase, relationshipId);
+  if (!row) return null;
+  return resolveVenueFacingPhoto(rowToState(row));
 }
 
 export async function setVenueRelationshipPhoto(
   relationshipId: string,
   url: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  return withVenue(async (supabase, venueId) => {
+): Promise<PhotoActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
     const row = await getVenueRelationshipPhoto(supabase, relationshipId);
     const next = afterVenuePhotoUpload(
       row
@@ -56,12 +73,13 @@ export async function setVenueRelationshipPhoto(
       venue_display_source: next.venueDisplaySource,
     });
   });
+  return result as PhotoActionResult;
 }
 
 export async function removeVenueRelationshipPhoto(
   relationshipId: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  return withVenue(async (supabase, venueId) => {
+): Promise<PhotoActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
     const row = await getVenueRelationshipPhoto(supabase, relationshipId);
     if (!row) return { ok: false, message: "Relationship not found." };
     const next = afterVenuePhotoRemove(rowToState(row));
@@ -70,12 +88,13 @@ export async function removeVenueRelationshipPhoto(
       venue_display_source: next.venueDisplaySource,
     });
   });
+  return result as PhotoActionResult;
 }
 
 export async function useClientRelationshipPhoto(
   relationshipId: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  return withVenue(async (supabase, venueId) => {
+): Promise<PhotoActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
     const row = await getVenueRelationshipPhoto(supabase, relationshipId);
     if (!row) return { ok: false, message: "Relationship not found." };
     const next = afterVenueChoosesClientPhoto(rowToState(row));
@@ -84,12 +103,13 @@ export async function useClientRelationshipPhoto(
       venue_display_source: next.venueDisplaySource,
     });
   });
+  return result as PhotoActionResult;
 }
 
 export async function useVenueRelationshipPhoto(
   relationshipId: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  return withVenue(async (supabase, venueId) => {
+): Promise<PhotoActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
     const row = await getVenueRelationshipPhoto(supabase, relationshipId);
     if (!row) return { ok: false, message: "Relationship not found." };
     const next = afterVenueChoosesVenuePhoto(rowToState(row));
@@ -98,6 +118,7 @@ export async function useVenueRelationshipPhoto(
       venue_display_source: next.venueDisplaySource,
     });
   });
+  return result as PhotoActionResult;
 }
 
 /** Direct read for tests / service-role scripts — uses authenticated venue client. */

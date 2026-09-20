@@ -40,12 +40,15 @@ comment on column public.venue_customer_relationships.client_photo_share_notifie
   'When the venue was last notified that sharing turned on. Used to avoid duplicate bells on repeated saves.';
 
 -- ── 2. client_media: profile category + shared-only venue read ──────────────
+-- Preserve existing inspiration categories (incl. photography) and add profile.
 
 alter table public.client_media drop constraint if exists client_media_category_check;
 alter table public.client_media
   add constraint client_media_category_check check (category in (
     'engagement', 'inspiration', 'memory', 'gallery', 'venue_visit',
-    'dress', 'profile', 'other'
+    'dress', 'other',
+    'florals', 'fashion', 'cake', 'decor', 'photography', 'colors', 'stationery',
+    'profile'
   ));
 
 drop policy if exists "venue owner sees shared media" on public.client_media;
