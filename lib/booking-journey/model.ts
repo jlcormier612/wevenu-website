@@ -78,10 +78,21 @@ export type JourneyInputs = {
   prefs?: VenueCommercialBookingPrefs | null;
 };
 
-function agreementComplete(selection: CommercialSelection | null, contract: JourneyContract | null): boolean {
+/**
+ * Agreement is complete when the venue's method is satisfied.
+ * "contract" requires a signed contract — an accepted proposal is not enough.
+ * "offer" and "either" still treat an accepted proposal or a signed contract as agreement.
+ */
+function agreementComplete(
+  selection: CommercialSelection | null,
+  contract: JourneyContract | null,
+  prefs?: VenueCommercialBookingPrefs | null,
+): boolean {
+  const method = (prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS).agreementMethod;
+  const contractSigned = contract?.status === "signed";
+  if (method === "contract") return contractSigned;
   if (selection?.status === "accepted") return true;
-  if (contract?.status === "signed") return true;
-  return false;
+  return contractSigned;
 }
 
 function depositPaid(lines: JourneyPaymentLine[]): boolean {
@@ -190,7 +201,7 @@ export function isCommerciallyBooked(input: {
   prefs?: VenueCommercialBookingPrefs | null;
 }): boolean {
   return (
-    agreementComplete(input.selection, input.contract)
+    agreementComplete(input.selection, input.contract, input.prefs)
     && initialPaymentSatisfied({
       selection: input.selection,
       paymentLines: input.paymentLines,
@@ -203,7 +214,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
   const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
   const selection = input.selection && input.selection.status !== "superseded" ? input.selection : null;
   const hasPackage = !!selection;
-  const agreementDone = agreementComplete(selection, input.contract);
+  const agreementDone = agreementComplete(selection, input.contract, prefs);
   const paymentDone = initialPaymentSatisfied({
     selection,
     paymentLines: input.paymentLines,
@@ -312,6 +323,17 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryLabel = "Open contract";
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
+    } else if (selection!.status === "accepted" && prefs.agreementMethod === "contract") {
+      direction = "They accepted the proposal. This venue still requires a signed contract. The proposal is not a contract, and they are not booked.";
+      if (input.contract) {
+        primaryLabel = "Open contract";
+        primaryHref = `/contracts/${input.contract.id}`;
+        primaryAction = null;
+      } else {
+        primaryLabel = "Create contract";
+        primaryAction = "create_contract";
+        primaryHref = contractNewHref(input, selection!);
+      }
     } else if (selection!.status === "offered") {
       direction = "Share link created — not emailed. Waiting for them to accept.";
       if (prefs.initialPaymentRequired && !paymentDone) {

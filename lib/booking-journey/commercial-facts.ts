@@ -10,6 +10,7 @@ import { deriveContractSigningUiState } from "@/lib/contracts/signers";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { STATUS_LABEL } from "@/lib/payments/constants";
 
+import { isCommerciallyBooked } from "@/lib/booking-journey/model";
 import type { JourneyContract, JourneyPaymentLine } from "@/lib/booking-journey/model";
 import type { VenueCommercialBookingPrefs } from "@/lib/booking-journey/venue-prefs";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
@@ -20,7 +21,8 @@ export type CommercialFactKey =
   | "contract"
   | "invoice"
   | "payment_plan"
-  | "deposit";
+  | "deposit"
+  | "booked";
 
 export type CommercialFact = {
   key: CommercialFactKey;
@@ -52,11 +54,13 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
       detail: "Choosing a package freezes it for this opportunity. It does not send anything.",
     };
   }
+  const price = `${selection.name} · ${formatCurrency(selection.totalAmount)}`;
+  const shared = selection.status === "offered" || selection.status === "accepted" || Boolean(selection.acceptToken);
   return {
     key: "package",
     title: "Selected Package",
-    state: "Selected internally",
-    detail: `${selection.name} · ${formatCurrency(selection.totalAmount)}. Not sent to the client.`,
+    state: price,
+    detail: shared ? "Selected internally" : "Selected internally · Not yet shared",
   };
 }
 
@@ -84,8 +88,8 @@ export function proposalFact(selection: CommercialSelection | null): CommercialF
       title: "Proposal",
       state: "Share link created",
       detail: when
-        ? `Link created ${when}. Not emailed.`
-        : "A share link exists. Not emailed.",
+        ? `Link created ${when}. Link exists · Not emailed.`
+        : "Link exists · Not emailed.",
     };
   }
   if (selection.status === "accepted") {
@@ -213,6 +217,54 @@ export function depositFact(input: {
   };
 }
 
+export function bookedFact(input: {
+  selection: CommercialSelection | null;
+  contract: JourneyContract | null;
+  lines: JourneyPaymentLine[];
+  prefs?: VenueCommercialBookingPrefs | null;
+}): CommercialFact {
+  const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
+  if (isCommerciallyBooked({
+    selection: input.selection,
+    contract: input.contract,
+    paymentLines: input.lines,
+    prefs,
+  })) {
+    return {
+      key: "booked",
+      title: "Booked",
+      state: "Booked",
+      detail: "The venue booking rule is satisfied. This is not the event date.",
+    };
+  }
+  if (prefs.agreementMethod === "contract" && input.selection?.status === "accepted" && input.contract?.status !== "signed") {
+    return {
+      key: "booked",
+      title: "Booked",
+      state: "Not booked",
+      detail: "The proposal is accepted. A signed contract is still required.",
+    };
+  }
+  if (prefs.initialPaymentRequired && input.selection?.status === "accepted") {
+    const line = input.lines.find((item) => item.obligationKind === "deposit" && item.status !== "cancelled");
+    if (!line || line.status !== "paid") {
+      const amount = input.selection.depositAmount > 0 ? formatCurrency(input.selection.depositAmount) : "The deposit";
+      return {
+        key: "booked",
+        title: "Booked",
+        state: "Not booked",
+        detail: `${amount} is still required. Accepting the proposal did not book this.`,
+      };
+    }
+  }
+  return {
+    key: "booked",
+    title: "Booked",
+    state: "Not booked",
+    detail: "Booking follows the venue booking rule. A selected package or a share link is not a booking.",
+  };
+}
+
 export function describeCommercialFacts(input: {
   selection: CommercialSelection | null;
   contract: JourneyContract | null;
@@ -227,6 +279,12 @@ export function describeCommercialFacts(input: {
     paymentPlanFact(input.paymentLines),
     depositFact({
       selection: input.selection,
+      lines: input.paymentLines,
+      prefs: input.prefs,
+    }),
+    bookedFact({
+      selection: input.selection,
+      contract: input.contract,
       lines: input.paymentLines,
       prefs: input.prefs,
     }),

@@ -26,6 +26,7 @@ type NotificationsResponse = {
 const NOTIFICATION_CTA: Record<string, string> = {
   new_lead:               "Review inquiry",
   possible_duplicate_inquiry: "Review possible duplicate",
+  proposal_accepted:      "Open the relationship",
   // Destination is Booking Documents (#documents) — there is no venue Guest List tab.
   rsvp_received:          "Open documents",
   task_completed_couple:  "Open playbook",

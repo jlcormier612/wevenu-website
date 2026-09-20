@@ -43,8 +43,8 @@ describe("commercial artifact states", () => {
     });
     const pkg = facts.find((row) => row.key === "package");
     const proposal = facts.find((row) => row.key === "proposal");
-    assert.equal(pkg?.state, "Selected internally");
-    assert.match(pkg?.detail ?? "", /Not sent/);
+    assert.equal(pkg?.state, "Essential Wedding · $15,000.00");
+    assert.equal(pkg?.detail, "Selected internally · Not yet shared");
     assert.equal(proposal?.state, "Draft");
     assert.match(proposal?.detail ?? "", /Not shared/);
     assert.equal(
@@ -64,8 +64,9 @@ describe("commercial artifact states", () => {
       paymentLines: [],
     }).find((row) => row.key === "proposal");
     assert.equal(proposal?.state, "Share link created");
+    assert.match(proposal?.detail ?? "", /Link exists/);
     assert.match(proposal?.detail ?? "", /Not emailed/);
-    assert.doesNotMatch(proposal?.state ?? "", /sent/i);
+    assert.doesNotMatch(`${proposal?.state} ${proposal?.detail}`, /\bsent\b/i);
   });
 
   it("proposal acceptance is not contract execution", () => {
@@ -134,6 +135,35 @@ describe("commercial artifact states", () => {
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 3750 }],
     }).find((row) => row.key === "deposit");
     assert.equal(paid?.state, "Paid");
+  });
+
+  it("an accepted proposal with an unpaid deposit is not booked", () => {
+    const booked = describeCommercialFacts({
+      selection: selection({ status: "accepted", acceptedAt: "2026-09-20T15:00:00.000Z" }),
+      contract: null,
+      paymentLines: [],
+    }).find((row) => row.key === "booked");
+    assert.equal(booked?.state, "Not booked");
+    assert.match(booked?.detail ?? "", /did not book/i);
+  });
+
+  it("a contract-only venue stays unbooked after proposal acceptance", () => {
+    const booked = describeCommercialFacts({
+      selection: selection({ status: "accepted" }),
+      contract: null,
+      paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 3750 }],
+      prefs: {
+        agreementMethod: "contract",
+        processOrder: "agreement_first",
+        initialPaymentRequired: true,
+        paymentCollection: "either",
+        defaultDepositPercent: 25,
+        remainingBalanceMode: "varies",
+        defaultSchedulePresetId: null,
+      },
+    }).find((row) => row.key === "booked");
+    assert.equal(booked?.state, "Not booked");
+    assert.match(booked?.detail ?? "", /signed contract/i);
   });
 });
 

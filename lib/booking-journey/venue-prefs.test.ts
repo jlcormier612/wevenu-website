@@ -58,6 +58,28 @@ describe("Venue commercial booking prefs", () => {
 });
 
 describe("Configurable commercial Booked conditions", () => {
+  it("contract-only acceptance does not book even when the deposit is paid", () => {
+    const prefs = { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "contract" as const };
+    assert.equal(
+      isCommerciallyBooked({
+        selection: selection({ status: "accepted" }),
+        contract: null,
+        paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
+        prefs,
+      }),
+      false,
+    );
+    assert.equal(
+      isCommerciallyBooked({
+        selection: selection({ status: "accepted" }),
+        contract: { id: "c1", status: "signed" },
+        paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
+        prefs,
+      }),
+      true,
+    );
+  });
+
   it("F — agreement alone books when initial payment not required", () => {
     const prefs = { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, initialPaymentRequired: false };
     assert.equal(

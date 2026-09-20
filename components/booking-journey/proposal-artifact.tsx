@@ -25,6 +25,9 @@ export function ProposalArtifact({
       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
         Your proposal
       </p>
+      {proposal.venueName ? (
+        <p className="mt-2 text-sm text-muted-foreground">{proposal.venueName}</p>
+      ) : null}
       <h1 className="mt-2 font-heading text-3xl text-heading">{proposal.name}</h1>
       <p className="mt-2 text-2xl font-semibold text-heading">
         {formatCurrency(proposal.totalAmount)}
@@ -58,8 +61,8 @@ export function ProposalArtifact({
         {accepted ? (
           <p className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-heading">
             {showDeposit
-              ? "You've accepted this package. Your venue will collect the deposit next."
-              : "You've accepted this package. Your venue will confirm the booking next."}
+              ? "You've accepted this package. Your venue will collect the deposit next. This acceptance is not itself a booking."
+              : "You've accepted this package. Your venue will follow up on what comes next."}
           </p>
         ) : acceptSlot ? (
           acceptSlot

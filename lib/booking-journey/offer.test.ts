@@ -80,6 +80,25 @@ describe("Public offer security model (service_role + SECURITY DEFINER)", () => 
     assert.doesNotMatch(actionSrc, /requireVenue|getVenueSession|createClient\(/);
     assert.match(actionSrc, /acceptOfferByToken/);
   });
+
+  it("acceptance writes one venue notice and one activity, and skips both when already accepted", () => {
+    const notice = readFileSync(
+      resolve("supabase/migrations/20261403100000_proposal_acceptance_notice.sql"),
+      "utf8",
+    );
+    const transition = notice.slice(
+      notice.indexOf("if v_row.status = 'accepted'"),
+      notice.indexOf("return jsonb_build_object('ok', true, 'id', v_row.id, 'alreadyAccepted', false)"),
+    );
+    assert.match(transition, /alreadyAccepted', true/);
+    const writes = transition.slice(transition.indexOf("update public.commercial_selections"));
+    assert.match(writes, /lead_activities/);
+    assert.match(writes, /client_activities/);
+    assert.match(writes, /create_venue_notification/);
+    assert.match(writes, /proposal_accepted/);
+    assert.doesNotMatch(writes, /booked_at|insert into public\.events|insert into public\.leads|insert into public\.clients/);
+    assert.doesNotMatch(writes, /\bemail\b|\bphone\b/);
+  });
 });
 
 describe("Public offer retrieve + accept (logged-out / no venue session)", () => {
@@ -94,6 +113,7 @@ describe("Public offer retrieve + accept (logged-out / no venue session)", () =>
     assert.deepEqual(offer, {
       id: "sel-1",
       name: "Garden Package",
+      venueName: null,
       totalAmount: 3200,
       depositAmount: 800,
       remainingAmount: 2400,

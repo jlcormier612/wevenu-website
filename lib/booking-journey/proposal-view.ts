@@ -7,6 +7,7 @@ import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
 export type ProposalView = {
   name: string;
+  venueName?: string | null;
   totalAmount: number;
   depositAmount: number;
   remainingAmount: number;

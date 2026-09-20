@@ -4,6 +4,7 @@ import { publicAppOrigin } from "@/lib/env";
 type OfferView = {
   id: string;
   name: string;
+  venueName: string | null;
   totalAmount: number;
   depositAmount: number;
   remainingAmount: number;
@@ -31,6 +32,7 @@ export function mapOfferRpcData(data: unknown): OfferView | null {
   return {
     id: String(row.id),
     name: String(row.name),
+    venueName: row.venueName ? String(row.venueName) : null,
     totalAmount: Number(row.totalAmount),
     depositAmount: Number(row.depositAmount),
     remainingAmount: Number(row.remainingAmount),

@@ -222,6 +222,19 @@ export async function markSelectionAccepted(
     }
     const updated = await repo.markAcceptedVenue(supabase, venueId, selectionId);
     if (!updated) return { ok: false, message: "Could not mark as accepted." };
+    const title = `The venue marked the ${existing.name} proposal accepted.`;
+    const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(existing.totalAmount);
+    try {
+      if (existing.leadId) {
+        const { insertActivity } = await import("@/lib/leads/repository");
+        await insertActivity(supabase, venueId, existing.leadId, "proposal_accepted", title, amount);
+      } else if (existing.clientId) {
+        const { insertClientActivity } = await import("@/lib/clients/repository");
+        await insertClientActivity(supabase, venueId, existing.clientId, "proposal_accepted", title, amount);
+      }
+    } catch {
+      // The selection is already accepted. A failed history row must not report that acceptance failed.
+    }
     if (existing.clientId) {
       const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
       await maybeStampCommercialBookedAt(supabase, venueId, {
