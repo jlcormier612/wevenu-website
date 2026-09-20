@@ -20,12 +20,11 @@ export default async function ClientsPage() {
     getCanonicallyBookedClientIds(),
   ]);
   const today = venueToday(venue?.timezone ?? null);
-  const bookedBusinessClientIds = bookedIds;
   return (
     <div className="space-y-6">
       <PageHeader
         title="Clients"
-        description="Booked clients and their events."
+        description="All Bookings is the active book. Coming up is event dates from today through the next 30 days. Needs Attention is an active booking with a past-due payment, a past-due required task, or a message that needs a response. Cancelled and Past are history."
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" render={<Link href="/settings/import?type=couples" />}>Import Clients</Button>
@@ -37,7 +36,7 @@ export default async function ClientsPage() {
         <ClientList
           clients={clients}
           attentionClientIds={attentionClientIds}
-          bookedBusinessClientIds={bookedBusinessClientIds}
+          bookedClientIds={bookedIds}
           today={today}
         />
       </Suspense>

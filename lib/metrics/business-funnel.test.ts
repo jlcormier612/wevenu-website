@@ -116,10 +116,10 @@ describe("Business Funnel Reporting surfaces", () => {
   });
 
   it("Sales separates period activity from cohort conversion", () => {
-    assert.match(salesPage, /Inquiries from this period/);
+    assert.match(salesPage, /Leads from this period/);
     assert.match(salesPage, /During this period/);
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
-    assert.match(salesPage, /lost inquiries stay in this group/);
+    assert.match(salesPage, /lost leads stay in this group/);
     assert.doesNotMatch(salesPage, /Financially Committed/);
     assert.doesNotMatch(salesPage, /Bookings by origin/);
   });

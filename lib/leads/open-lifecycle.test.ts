@@ -108,15 +108,20 @@ describe("Leads surfaces", () => {
     const brochure = readFileSync(path.join(root, "app/(app)/library/brochures/[id]/page.tsx"), "utf8");
     const palette = readFileSync(path.join(root, "components/shell/command-palette.tsx"), "utf8");
 
-    assert.match(leadsPage, /view === "closed"/);
-    assert.match(leadsPage, /scope=\{scope\}/);
+    assert.match(leadsPage, /view === "lost"/);
+    assert.match(leadsPage, /initialOutcome=\{initialOutcome\}/);
     assert.match(leadsPage, /getLeads\(\)/);
     assert.doesNotMatch(leadsPage, /activeSalesLeads\(/);
+    assert.doesNotMatch(leadsPage, /view === "closed"/);
 
-    assert.match(pipelinePage, /activeSalesLeads\(inventory\)/);
+    assert.match(pipelinePage, /PipelineBoard leads=\{inventory\}/);
+    assert.doesNotMatch(pipelinePage, /activeSalesLeads\(inventory\)/);
     assert.match(list, /isOpenLeadLifecycle/);
-    assert.match(list, /scope === "closed"/);
+    assert.match(list, /kind: "booked"/);
+    assert.match(list, /href="\/clients\?filter=all"/);
+    assert.match(list, /view=lost/);
     assert.match(list, /transitionKindForCanonical/);
+    assert.doesNotMatch(list, /scope === "closed"/);
 
     const getLeadsFn = repo.slice(repo.indexOf("export async function getLeads"), repo.indexOf("export async function getLead"));
     assert.doesNotMatch(getLeadsFn, /isOpenLeadLifecycle|activeSalesLeads|booked,lost/);

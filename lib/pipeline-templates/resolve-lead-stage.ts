@@ -13,14 +13,19 @@ export function resolveVenuePipelineStageId(
   },
 ): string | null {
   if (stages.length === 0) return null;
-  // Cancelled relationships are not on the active sales board.
+  // Cancelled relationships are not a pipeline column.
   if (opts.salesStage === ("cancelled" as SalesStage)) return null;
-  if (opts.pipelineStageId && stages.some((s) => s.id === opts.pipelineStageId)) {
+  const canonical = canonicalForSalesStage(opts.salesStage);
+  const terminal = canonical === "booked" || canonical === "lost";
+  // A leftover open stage id must not keep a Booked or Lost relationship
+  // in an active column.
+  if (!terminal && opts.pipelineStageId && stages.some((s) => s.id === opts.pipelineStageId)) {
     return opts.pipelineStageId;
   }
-  const canonical = canonicalForSalesStage(opts.salesStage);
   const match = stages.find((s) => s.canonicalStage === canonical);
-  return match?.id ?? stages[0]?.id ?? null;
+  if (match) return match.id;
+  if (terminal) return null;
+  return stages[0]?.id ?? null;
 }
 
 export function groupLeadsByVenueStage<T extends {

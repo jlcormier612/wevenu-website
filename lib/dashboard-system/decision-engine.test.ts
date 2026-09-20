@@ -122,7 +122,7 @@ describe("Today's Focus and Upcoming partition the same data", () => {
 });
 
 describe("Coming up is events only", () => {
-  it("includes a legitimate event inside the 60-day window", () => {
+  it("includes a legitimate event inside the 30-day window", () => {
     const data = dashboard({ upcomingEvents: [event("e2", LATER)] as never });
     const upcoming = classifyUpcomingItems(data);
     assert.deepEqual(upcoming.map((i) => i.id), ["up-event-e2"]);
@@ -151,7 +151,7 @@ describe("Coming up is events only", () => {
     assert.equal(upcoming.some((i) => i.sortDate === "2027-12-04"), false);
   });
 
-  it("does not treat a payment due date outside the 60-day event window as Coming up", () => {
+  it("does not treat a payment due date outside the 30-day event window as Coming up", () => {
     const data = dashboard({
       upcomingEvents: [],
       upcomingPayments: [payment("far", "2027-12-04")] as never,
@@ -159,7 +159,7 @@ describe("Coming up is events only", () => {
     assert.deepEqual(classifyUpcomingItems(data), []);
   });
 
-  it("drops an event beyond the 60-day horizon even if it leaked into upcomingEvents", () => {
+  it("drops an event beyond the 30-day horizon even if it leaked into upcomingEvents", () => {
     const data = dashboard({
       upcomingEvents: [event("far-event", "2027-12-04")] as never,
     });

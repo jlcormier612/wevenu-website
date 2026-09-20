@@ -147,7 +147,7 @@ export function buildBusinessSnapshotCards(input: {
         ? "Your first booked event will appear here."
         : `${formatUsd(input.bookedValue)} contracted`,
       tertiary: bookedEmpty ? "" : "Relationships that met your booking rule",
-      href: clientListFilterHref("booked_business"),
+      href: clientListFilterHref("all"),
       actionLabel: "View booked business",
       empty: bookedEmpty,
     },

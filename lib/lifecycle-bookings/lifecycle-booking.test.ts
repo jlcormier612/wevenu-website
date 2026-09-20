@@ -126,7 +126,7 @@ describe("Customer-facing Lead → Booking cohort alignment", () => {
   });
 
   it("Overview Lead → Booking and Business Funnel share the approved population", () => {
-    assert.match(overview, /Lost inquiries stay in this rate|Lost leads stay in this rate|later marked Lost/);
+    assert.match(overview, /Lost leads stay in this rate|later marked Lost/);
     assert.match(overview, /getLeadCohortLifecycleBookingStats/);
     assert.match(overview, /getBusinessFunnel/);
     const funnelSrc = readFileSync(resolve("lib/metrics/business-funnel.ts"), "utf8");
@@ -136,7 +136,7 @@ describe("Customer-facing Lead → Booking cohort alignment", () => {
 
   it("Sales cohort Lead → Booking uses the same helper (not a second population)", () => {
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
-    assert.match(salesPage, /lost inquiries stay in this group/);
+    assert.match(salesPage, /lost leads stay in this group/);
   });
 });
 
@@ -162,7 +162,7 @@ describe("Reporting distinctions", () => {
   });
 
   it("Sales separates cohort vs period activity and shows attribution coverage", () => {
-    assert.match(salesPage, /Inquiries from this period/);
+    assert.match(salesPage, /Leads from this period/);
     assert.match(salesPage, /During this period/);
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
     assert.match(salesPage, /known source/);

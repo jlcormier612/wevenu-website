@@ -137,6 +137,8 @@ describe("Pipeline stage transition service contracts", () => {
     assert.match(board, /LostReasonDialog/);
     assert.match(board, /confirmPipelineBookedMoveAction/);
     assert.match(board, /markLeadLostAction/);
+    assert.match(board, /href="\/clients\?filter=all"/);
+    assert.match(board, /href="\/leads\?view=lost"/);
     assert.match(board, /newlyBooked/);
     assert.match(detail, /PipelineBookedConfirmDialog/);
     assert.match(detail, /LostReasonDialog/);

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
@@ -87,22 +88,20 @@ export function LeadList({
   leads,
   initialAttention,
   venueStages = null,
-  scope = "active",
+  initialOutcome = "active",
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
   initialAttention?: "stale_contact" | "open" | "active" | "unseen" | null;
   /** Active Pipeline Template stages — when present, Stage chips use venue names. */
   venueStages?: PipelineStage[] | null;
-  /**
-   * active = sales opportunities still being worked.
-   * closed = Booked, Lost, and Cancelled history. Not the working queue.
-   */
-  scope?: "active" | "closed";
+  /** lost = the Lost outcome list. Booked is a link to Clients, not a lead filter. */
+  initialOutcome?: "active" | "lost";
 }) {
+  const router = useRouter();
   const usingVenueStages = (venueStages?.length ?? 0) > 0;
   const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [statusFilter, setStatusFilter] = React.useState<string>(initialOutcome === "lost" ? "lost" : "all");
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [sort, setSort] = React.useState<SortKey>(
     initialAttention === "stale_contact" ? "last_contacted" : "newest",
@@ -114,17 +113,25 @@ export function LeadList({
       : "all",
   );
 
-  const queue = React.useMemo(() => {
-    if (scope === "closed") {
-      return leads.filter((l) => !isOpenLeadLifecycle(l.salesStage ?? l.status));
-    }
-    return leads.filter((l) => isOpenLeadLifecycle(l.salesStage ?? l.status));
-  }, [leads, scope]);
+  const queue = React.useMemo(
+    () => leads.filter((l) => isOpenLeadLifecycle(l.salesStage ?? l.status)),
+    [leads],
+  );
 
-  const workingVenueStages = scope === "active" && venueStages?.length
+  const workingVenueStages = venueStages?.length
     ? venueStages.filter((s) => transitionKindForCanonical(s.canonicalStage) === "normal")
     : null;
   const usingWorkingVenueStages = (workingVenueStages?.length ?? 0) > 0;
+  const bookedStageName = venueStages?.find((s) => s.canonicalStage === "booked")?.name ?? "Booked";
+  const lostStageName = venueStages?.find((s) => s.canonicalStage === "lost")?.name ?? "Lost";
+
+  function isLostLead(lead: Lead): boolean {
+    return String(lead.salesStage ?? lead.status) === "lost";
+  }
+  function isBookedLead(lead: Lead): boolean {
+    const stage = String(lead.salesStage ?? lead.status);
+    return stage === "booked" || stage === "won";
+  }
 
   function venueStageIdFor(lead: Lead): string | null {
     if (!workingVenueStages?.length) return null;
@@ -150,10 +157,9 @@ export function LeadList({
   }
 
   function stageDisplayName(lead: Lead): string {
-    if (scope === "active" && venueStages?.length) {
+    if (venueStages?.length) {
       const id = venueStageIdFor(lead);
-      const named = workingVenueStages?.find((s) => s.id === id)?.name
-        ?? venueStages.find((s) => s.id === id)?.name;
+      const named = venueStages.find((s) => s.id === id)?.name;
       if (named) return named;
     }
     return salesStageLabel(lead.salesStage ?? lead.status) || statusLabel(lead.salesStage ?? lead.status);
@@ -162,17 +168,10 @@ export function LeadList({
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
     const nowMs = Date.now();
-    const base = queue.filter((l) => {
+    const base = (statusFilter === "lost" ? leads.filter(isLostLead) : queue).filter((l) => {
       const stage = l.salesStage ?? l.status;
-      if (statusFilter !== "all") {
-        if (scope === "closed") {
-          const stageKey = String(stage);
-          if (statusFilter === "booked") {
-            if (stageKey !== "booked" && stageKey !== "won") return false;
-          } else if (stageKey !== statusFilter) {
-            return false;
-          }
-        } else if (usingWorkingVenueStages) {
+      if (statusFilter !== "all" && statusFilter !== "lost") {
+        if (usingWorkingVenueStages) {
           if (venueStageIdFor(l) !== statusFilter) return false;
         } else if (stage !== statusFilter) {
           return false;
@@ -213,25 +212,9 @@ export function LeadList({
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [queue, query, statusFilter, eventTypeFilter, sort, attentionFilter, usingWorkingVenueStages, scope]);
+  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, usingWorkingVenueStages]);
 
   const statusCounts = React.useMemo(() => {
-    if (scope === "closed") {
-      const map = new Map<string, number>([
-        ["all", queue.length],
-        ["booked", 0],
-        ["lost", 0],
-        ["cancelled", 0],
-      ]);
-      for (const l of queue) {
-        const stageKey = String(l.salesStage ?? l.status);
-        const key = stageKey === "won" ? "booked" : stageKey;
-        if (key !== "all" && map.has(key)) map.set(key, (map.get(key) ?? 0) + 1);
-      }
-      return map;
-    }
-    // When "open" attention is active, chip counts must match the open population
-    // (same terminal set as Dashboard Lead Flow) — not the full lead inventory.
     const population = attentionFilter === "open" || attentionFilter === "unseen"
       ? queue.filter((l) => {
         if (!leadIsOpenOpportunity(l)) return false;
@@ -239,8 +222,8 @@ export function LeadList({
         return true;
       })
       : queue;
+    const map = new Map<string, number>([["all", population.length]]);
     if (usingWorkingVenueStages && workingVenueStages) {
-      const map = new Map<string, number>([["all", population.length]]);
       for (const s of workingVenueStages) map.set(s.id, 0);
       for (const l of population) {
         const id = resolveVenuePipelineStageId(workingVenueStages, {
@@ -249,27 +232,27 @@ export function LeadList({
         });
         if (id && map.has(id)) map.set(id, (map.get(id) ?? 0) + 1);
       }
-      return map;
+    } else {
+      ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
+      population.forEach((l) => {
+        const stage = l.salesStage ?? l.status;
+        map.set(stage, (map.get(stage) ?? 0) + 1);
+      });
     }
-    const map = new Map<string, number>([["all", population.length]]);
-    ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
-    population.forEach((l) => {
-      const stage = l.salesStage ?? l.status;
-      map.set(stage, (map.get(stage) ?? 0) + 1);
-    });
+    map.set("booked", leads.filter(isBookedLead).length);
+    map.set("lost", leads.filter(isLostLead).length);
     return map;
-  }, [queue, usingWorkingVenueStages, workingVenueStages, attentionFilter, scope]);
+  }, [queue, leads, usingWorkingVenueStages, workingVenueStages, attentionFilter]);
 
-  const stageChips: { key: string; label: string }[] = scope === "closed"
-    ? [
-      { key: "all", label: "All" },
-      { key: "booked", label: "Booked" },
-      { key: "lost", label: "Lost" },
-      { key: "cancelled", label: "Cancelled" },
-    ]
-    : usingWorkingVenueStages && workingVenueStages
-      ? [{ key: "all", label: "All" }, ...workingVenueStages.map((s) => ({ key: s.id, label: s.name }))]
-      : [{ key: "all", label: "All" }, ...LEAD_STATUSES.filter((s) => (ACTIVE_STATUSES as readonly string[]).includes(s.value)).map((s) => ({ key: s.value, label: s.label }))];
+  type StageChip = { key: string; label: string; kind: "active" | "booked" | "lost" };
+  const activeChips: StageChip[] = usingWorkingVenueStages && workingVenueStages
+    ? [{ key: "all", label: "All", kind: "active" }, ...workingVenueStages.map((s) => ({ key: s.id, label: s.name, kind: "active" as const }))]
+    : [{ key: "all", label: "All", kind: "active" }, ...LEAD_STATUSES.filter((s) => (ACTIVE_STATUSES as readonly string[]).includes(s.value)).map((s) => ({ key: s.value, label: s.label, kind: "active" as const }))];
+  const stageChips: StageChip[] = [
+    ...activeChips,
+    { key: "booked", label: bookedStageName, kind: "booked" },
+    { key: "lost", label: lostStageName, kind: "lost" },
+  ];
 
   const activeEventTypes = React.useMemo(() => {
     const population = attentionFilter === "open" || attentionFilter === "unseen"
@@ -363,26 +346,43 @@ export function LeadList({
         <span className="text-xs text-muted-foreground font-medium mr-0.5">Stage:</span>
         {stageChips.map((chip) => {
           const count = statusCounts.get(chip.key) ?? 0;
+          const chipClass = (active: boolean) =>
+            `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              active
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            }`;
+          const countClass = (active: boolean) =>
+            `rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`;
+          if (chip.kind === "booked") {
+            return (
+              <Link key={chip.key} href="/clients?filter=all" className={chipClass(false)}>
+                {chip.label}
+                <span className={countClass(false)}>{count}</span>
+              </Link>
+            );
+          }
           const active = statusFilter === chip.key;
           return (
             <button
               key={chip.key}
               type="button"
-              onClick={() => setStatusFilter(chip.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
+              onClick={() => {
+                setStatusFilter(chip.key);
+                if (chip.kind === "lost") router.replace("/leads?view=lost");
+                else if (initialOutcome === "lost") router.replace("/leads");
+              }}
+              className={chipClass(active)}
             >
               {chip.label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                {count}
-              </span>
+              <span className={countClass(active)}>{count}</span>
             </button>
           );
         })}
       </div>
+      <p className="text-xs text-muted-foreground">
+        All is active sales work. {bookedStageName} and {lostStageName} are outcomes and are not included in All.
+      </p>
 
       {activeEventTypes.length > 1 && (
         <div className="flex flex-wrap gap-1.5 items-center">
@@ -410,7 +410,7 @@ export function LeadList({
         </button>
       )}
 
-      {queue.length === 0 && scope === "active" && leads.length === 0 && (
+      {leads.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No leads yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
@@ -422,28 +422,31 @@ export function LeadList({
         </div>
       )}
 
-      {queue.length === 0 && scope === "active" && leads.length > 0 && (
+      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) === 0 && leads.length > 0 && (
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+          <p className="font-heading text-lg font-medium text-heading">No lost opportunities</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Lost stays here as history. It is not part of All.
+          </p>
+        </div>
+      )}
+
+      {statusFilter !== "lost" && queue.length === 0 && leads.length > 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No active leads</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            Booked, lost, and cancelled relationships are not in this queue.
-          </p>
-          <Button variant="outline" render={<Link href="/leads?view=closed" />}>
-            Closed relationships
-          </Button>
-        </div>
-      )}
-
-      {queue.length === 0 && scope === "closed" && (
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No closed relationships</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Booked, lost, and cancelled relationships appear here. The active queue does not include them.
+            Booked and Lost are outcomes. They are not in All.
           </p>
         </div>
       )}
 
-      {queue.length > 0 && filtered.length === 0 && (
+      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) > 0 && (
+        <div className="rounded-sm border border-dashed border-border py-10 text-center">
+          <p className="text-sm text-muted-foreground">No lost opportunities match your filters.</p>
+        </div>
+      )}
+
+      {statusFilter !== "lost" && queue.length > 0 && filtered.length === 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No leads match your filters.</p>
           <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}>

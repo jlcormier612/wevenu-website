@@ -41,12 +41,19 @@ function fixedColumns(): BoardColumn[] {
 }
 
 function venueColumns(stages: PipelineStage[]): BoardColumn[] {
-  return stages.map((s) => ({
+  const columns: BoardColumn[] = stages.map((s) => ({
     key: s.id,
     label: s.name,
     salesStage: salesStageForCanonical(s.canonicalStage),
     color: s.color,
   }));
+  if (!columns.some((c) => c.salesStage === "booked")) {
+    columns.push({ key: "booked", label: "Booked", salesStage: "booked" });
+  }
+  if (!columns.some((c) => c.salesStage === "lost")) {
+    columns.push({ key: "lost", label: "Lost", salesStage: "lost" });
+  }
+  return columns;
 }
 
 /**
@@ -82,12 +89,19 @@ export function PipelineBoard({
     if (usingVenue && venueStages) {
       const cols = new Map<string, Lead[]>();
       for (const stage of venueStages) cols.set(stage.id, []);
+      if (!venueStages.some((s) => s.canonicalStage === "booked")) cols.set("booked", []);
+      if (!venueStages.some((s) => s.canonicalStage === "lost")) cols.set("lost", []);
       for (const lead of leads) {
-        const key = overrides[lead.id]
+        let key = overrides[lead.id]
           ?? resolveVenuePipelineStageId(venueStages, {
             pipelineStageId: lead.pipelineStageId,
             salesStage: lead.salesStage ?? lead.status,
           });
+        if (!key) {
+          const stage = String(lead.salesStage ?? lead.status);
+          if (stage === "booked" || stage === "won") key = "booked";
+          else if (stage === "lost") key = "lost";
+        }
         if (key) {
           currentByLead[lead.id] = key;
           if (cols.has(key)) cols.get(key)!.push(lead);
@@ -245,7 +259,17 @@ export function PipelineBoard({
                       aria-hidden
                     />
                   )}
-                  <p className="truncate text-sm font-semibold text-heading">{stage.label}</p>
+                  {stage.salesStage === "booked" ? (
+                    <a href="/clients?filter=all" className="truncate text-sm font-semibold text-heading hover:underline">
+                      {stage.label}
+                    </a>
+                  ) : stage.salesStage === "lost" ? (
+                    <a href="/leads?view=lost" className="truncate text-sm font-semibold text-heading hover:underline">
+                      {stage.label}
+                    </a>
+                  ) : (
+                    <p className="truncate text-sm font-semibold text-heading">{stage.label}</p>
+                  )}
                 </div>
                 <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                   {stageLeads.length}
@@ -256,7 +280,11 @@ export function PipelineBoard({
               <div className="min-h-24 flex-1 space-y-2 p-2.5">
                 {stageLeads.length === 0 && (
                   <p className="px-1 py-6 text-center text-xs leading-relaxed text-muted-foreground">
-                    No leads in {stage.label} yet. Leads move into this stage as you work through your sales process.
+                    {stage.salesStage === "booked"
+                      ? "No booked outcomes yet. Booked relationships are worked in Clients."
+                      : stage.salesStage === "lost"
+                        ? "No lost opportunities yet."
+                        : `No leads in ${stage.label} yet.`}
                   </p>
                 )}
                 {stageLeads.map((lead) => (

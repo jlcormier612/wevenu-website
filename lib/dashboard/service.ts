@@ -31,6 +31,7 @@ import type { Lead } from "@/lib/leads/types";
 import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/leads/repository";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
+import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
 import { getClientListFilterCounts } from "@/lib/clients/service";
 import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { leadDisplayName } from "@/lib/leads/constants";
@@ -146,7 +147,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const today = venueToday(venue.timezone);
   const twoDaysAgoMs = Date.now() - 48 * 60 * 60 * 1000;
   const twoWeeksOut = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
-  const sixtyDaysOut = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
+  const comingUpOut = comingUpHorizonEnd(today);
 
   // Auto-mark overdue payments for this venue before the dashboard loads
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
@@ -175,7 +176,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("created_at", { ascending: false })
       .limit(15),
 
-    // Coming up source: events table only — real event_date, next 60 days.
+    // Coming up source: events table only — real event_date, next 30 days.
     // Never join payment lines, invoices, or other dated facts into this query.
     supabase
       .from("events")
@@ -183,7 +184,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
       .gte("event_date", today)
-      .lte("event_date", sixtyDaysOut)
+      .lte("event_date", comingUpOut)
       .order("event_date", { ascending: true })
       .limit(8),
 
@@ -206,8 +207,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .maybeSingle<{ full_name: string }>(),
 
     // Same Clients operational-view counts the Clients page pills use.
-    // Upcoming is every future-or-today non-cancelled booked client — not
-    // a 60-day events-table window and not a confirmed-only subset.
+    // Coming up is today through the next 30 days — not every future booking.
     getClientListFilterCounts(),
 
   ]);

@@ -29,7 +29,6 @@ import {
 import { clientDisplayName } from "@/lib/clients/constants";
 import {
   countClientListFilters,
-  weddingWeekEnd,
   comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
@@ -164,31 +163,23 @@ export async function getClients(filters?: { q?: string; status?: string }): Pro
 }
 
 /**
- * Client Workspace list-page UX pass — "Needs Attention" filter/metric.
- * Reuses two signals already established elsewhere in this codebase
- * (overdue payments — the same definition the Dashboard's payments widget
- * uses; a contract sent 3+ days ago still unsigned — the same definition
- * Luv's own observation engine uses) rather than inventing a new one or a
- * full per-event readiness computation, which would mean an expensive
- * query per client just to render a filter count. Two single, venue-scoped
- * queries — not one per client.
+ * Needs Attention client ids: past-due payment, past-due required task,
+ * or a conversation that still needs a response. Not unread, and not an
+ * unsigned contract by itself.
  */
 export async function getClientAttentionFlags(): Promise<Set<string>> {
   if (!isSupabaseConfigured) return new Set();
   const venue = await getCurrentVenue();
   if (!venue) return new Set();
-  return repo.getClientAttentionFlags(await createClient(), venue.id);
+  return repo.getClientAttentionFlags(await createClient(), venue.id, venueToday(venue.timezone));
 }
 
 const EMPTY_CLIENT_LIST_COUNTS: Record<ClientListFilterKey, number> = {
   all: 0,
-  upcoming: 0,
   coming_up: 0,
-  wedding_week: 0,
   needs_attention: 0,
-  past: 0,
   cancelled: 0,
-  booked_business: 0,
+  past: 0,
 };
 
 /**
@@ -200,18 +191,17 @@ export async function getClientListFilterCounts(): Promise<Record<ClientListFilt
   const venue = await getCurrentVenue();
   if (!venue) return EMPTY_CLIENT_LIST_COUNTS;
   const supabase = await createClient();
+  const today = venueToday(venue.timezone);
   const [clients, attentionClientIds, bookedIds] = await Promise.all([
     repo.getClients(supabase, venue.id),
-    repo.getClientAttentionFlags(supabase, venue.id),
+    repo.getClientAttentionFlags(supabase, venue.id, today),
     getCanonicallyBookedClientIds(),
   ]);
-  const today = venueToday(venue.timezone);
   return countClientListFilters(clients, {
     today,
-    weekOut: weddingWeekEnd(today),
     comingUpOut: comingUpHorizonEnd(today),
     attentionClientIds,
-    bookedBusinessClientIds: bookedIds,
+    bookedClientIds: bookedIds,
   });
 }
 

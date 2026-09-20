@@ -43,7 +43,7 @@ describe("Dashboard page information architecture", () => {
 
   it("defines Coming up as awareness, not a second task queue", () => {
     assert.match(page, /title="Coming up"/);
-    assert.match(page, /Events in the next 60 days/);
+    assert.match(page, /Events in the next 30 days/);
   });
 
   it("removes the Quick Actions section and does not add Bookings nav", () => {
@@ -117,7 +117,7 @@ describe("Dashboard page information architecture", () => {
   });
 });
 
-describe("Dashboard Coming up is the Clients Coming-up (60-day) population", () => {
+describe("Dashboard Coming up is the Clients Coming-up (30-day) population", () => {
   it("counts through getClientListFilterCounts.coming_up, not all-future Upcoming", () => {
     assert.match(service, /getClientListFilterCounts/);
     assert.match(service, /upcomingEventCount: clientListCounts\.coming_up/);
@@ -125,7 +125,7 @@ describe("Dashboard Coming up is the Clients Coming-up (60-day) population", () 
 
   it("loads Coming up events from the events table, not payment lines", () => {
     assert.match(service, /from\("events"\)/);
-    assert.match(service, /\.lte\("event_date", sixtyDaysOut\)/);
+    assert.match(service, /\.lte\("event_date", comingUpOut\)/);
     const eventsBlock = service.slice(service.indexOf("Coming up source"), service.indexOf("Payment line items"));
     assert.match(eventsBlock, /from\("events"\)/);
     assert.doesNotMatch(eventsBlock, /payment_line_items/);

@@ -65,6 +65,26 @@ describe("resolveVenuePipelineStageId", () => {
       salesStage: "proposal_sent",
     }), "s-quote");
   });
+
+  it("does not let a leftover open stage override Booked or Lost", () => {
+    const withOutcomes = [
+      ...stages,
+      stage({ id: "s-booked", name: "Booked", canonicalStage: "booked", sortOrder: 3 }),
+      stage({ id: "s-lost", name: "Lost", canonicalStage: "lost", sortOrder: 4 }),
+    ];
+    assert.equal(resolveVenuePipelineStageId(withOutcomes, {
+      pipelineStageId: "s-quote",
+      salesStage: "booked",
+    }), "s-booked");
+    assert.equal(resolveVenuePipelineStageId(withOutcomes, {
+      pipelineStageId: "s-inq",
+      salesStage: "lost",
+    }), "s-lost");
+    assert.equal(resolveVenuePipelineStageId(stages, {
+      pipelineStageId: "s-inq",
+      salesStage: "booked",
+    }), null);
+  });
 });
 
 describe("groupLeadsByVenueStage", () => {

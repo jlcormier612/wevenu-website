@@ -175,7 +175,7 @@ describe("buildBusinessSnapshotCards", () => {
       outstandingClientCount: 6,
     });
     assert.equal(cards[0]!.href, LEAD_FLOW_OPEN_HREF);
-    assert.equal(cards[1]!.href, "/clients?filter=booked_business");
+    assert.equal(cards[1]!.href, "/clients?filter=all");
     assert.equal(cards[2]!.href, "/payments");
     assert.equal(cards[3]!.href, "/payments");
     assert.match(cards[0]!.primary, /12 open leads/);

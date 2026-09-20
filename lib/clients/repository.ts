@@ -63,19 +63,39 @@ export async function getClients(client: DbClient, venueId: string, filters?: { 
   return (data as ClientRow[]).map(mapClient);
 }
 
-export async function getClientAttentionFlags(client: DbClient, venueId: string): Promise<Set<string>> {
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-  const today = new Date().toISOString().slice(0, 10);
-
-  const [overdue, unsignedContracts] = await Promise.all([
+/**
+ * Concrete unresolved actions for Needs Attention.
+ * Not unread, and not an unsigned contract by itself.
+ *
+ * - past-due payment
+ * - past-due required event task (incomplete)
+ * - inbound message that still needs a response (`conversations.needs_response`)
+ *
+ * Opening a message does not clear `needs_response`. A reply or an explicit
+ * "No response needed" does. A later qualifying inbound message sets it again.
+ */
+export async function getClientAttentionFlags(
+  client: DbClient,
+  venueId: string,
+  today: string,
+): Promise<Set<string>> {
+  const [overdue, overdueTasks, needsResponse] = await Promise.all([
     client.from("payment_line_items")
-      .select("due_date, status, payment_schedules!inner(client_id)")
+      .select("payment_schedules!inner(client_id)")
       .eq("venue_id", venueId)
       .or(`status.eq.overdue,and(status.eq.pending,due_date.lt.${today})`),
-    client.from("contracts")
-      .select("client_id")
-      .eq("venue_id", venueId).eq("status", "sent")
-      .not("sent_at", "is", null).lt("sent_at", threeDaysAgo),
+    client.from("event_tasks")
+      .select("event_id")
+      .eq("venue_id", venueId)
+      .eq("is_required", true)
+      .lt("due_date", today)
+      .is("completed_at", null)
+      .not("status", "in", "(complete,waived)"),
+    client.from("conversations")
+      .select("relationship_id")
+      .eq("venue_id", venueId)
+      .eq("needs_response", true)
+      .not("relationship_id", "is", null),
   ]);
 
   const flagged = new Set<string>();
@@ -84,9 +104,37 @@ export async function getClientAttentionFlags(client: DbClient, venueId: string)
     const schedule = Array.isArray(row.payment_schedules) ? row.payment_schedules[0] : row.payment_schedules;
     if (schedule?.client_id) flagged.add(schedule.client_id);
   }
-  for (const row of (unsignedContracts.data ?? []) as { client_id: string | null }[]) {
-    if (row.client_id) flagged.add(row.client_id);
+
+  const eventIds = [...new Set(
+    ((overdueTasks.data ?? []) as { event_id: string | null }[])
+      .map((row) => row.event_id)
+      .filter((id): id is string => !!id),
+  )];
+  if (eventIds.length > 0) {
+    const { data: events } = await client
+      .from("events")
+      .select("client_id")
+      .eq("venue_id", venueId)
+      .in("id", eventIds);
+    for (const row of (events ?? []) as { client_id: string | null }[]) {
+      if (row.client_id) flagged.add(row.client_id);
+    }
   }
+
+  const relationshipIds = [...new Set(
+    ((needsResponse.data ?? []) as { relationship_id: string | null }[])
+      .map((row) => row.relationship_id)
+      .filter((id): id is string => !!id),
+  )];
+  if (relationshipIds.length > 0) {
+    const { data: clients } = await client
+      .from("clients")
+      .select("id")
+      .eq("venue_id", venueId)
+      .in("relationship_id", relationshipIds);
+    for (const row of (clients ?? []) as { id: string }[]) flagged.add(row.id);
+  }
+
   return flagged;
 }
 

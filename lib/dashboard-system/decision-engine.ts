@@ -274,7 +274,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
 }
 
 /**
- * Coming up is events only — the events table, real event dates, next 60 days.
+ * Coming up is events only — the events table, real event dates, next 30 days.
  *
  * Payments, invoices, tours, tasks, and other dated facts are a different
  * domain. They must not be merged into this list (even when they belong to

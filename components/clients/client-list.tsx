@@ -29,19 +29,13 @@ import {
   clientMatchesListFilter,
   countClientListFilters,
   parseClientListFilter,
-  weddingWeekEnd,
   comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
 import type { Client } from "@/lib/clients/types";
 
-// Client Workspace list-page UX pass — the chips used to be the record's
-// raw lifecycle status (Planning/Confirmed/Complete/Cancelled), which
-// answers "what stage is this record in," not "what do I need to look at
-// this morning." These are operational views instead, computed from data
-// already on the Client object (plus one attention-flag set fetched once
-// for the whole page — see lib/clients/service.ts's getClientAttentionFlags)
-// — no new backend state, no new columns.
+// Operational buckets: All Bookings is the working list. Coming up and
+// Needs Attention are subsets of it. Cancelled and Past are historical.
 type SortKey = "event_asc" | "event_desc" | "az" | "za" | "newest";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -52,11 +46,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "newest",     label: "Most Recent" },
 ];
 
-// Sticky filter — same shape as components/calendar/use-calendar-filters.ts:
-// a browser preference, not a synced one. First-ever visit (no saved key
-// yet) defaults to "upcoming" — that's what almost everyone wants first —
-// after that, whatever the coordinator last picked, including "all" for an
-// owner who prefers the full list.
+// Sticky filter — a browser preference, not a synced one. First visit
+// opens All Bookings, the active working list.
 const FILTER_STORAGE_KEY = "wevenu-clients-filter";
 
 function loadSavedFilter(): ClientListFilterKey | null {
@@ -75,13 +66,13 @@ function persistFilter(next: ClientListFilterKey) {
 export function ClientList({
   clients,
   attentionClientIds = new Set(),
-  bookedBusinessClientIds = new Set(),
+  bookedClientIds = new Set(),
   today,
 }: {
   clients: Client[];
   attentionClientIds?: Set<string>;
-  /** Clients in canonical_bookings — Booked business Snapshot destination. */
-  bookedBusinessClientIds?: Set<string>;
+  /** Clients with events.booked_at set and the event not cancelled. */
+  bookedClientIds?: Set<string>;
   today: string;
 }) {
   const router = useRouter();
@@ -89,7 +80,7 @@ export function ClientList({
   const searchParams = useSearchParams();
   const urlFilter = parseClientListFilter(searchParams.get("filter"));
   const [query, setQuery] = React.useState("");
-  const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => loadSavedFilter() ?? "upcoming");
+  const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => loadSavedFilter() ?? "all");
   const [sort, setSort] = React.useState<SortKey>("event_asc");
   const filter = urlFilter ?? storedFilter;
 
@@ -110,11 +101,10 @@ export function ClientList({
   }, [pathname, router, searchParams]);
 
   // Venue-local today, passed from the server — same string the Dashboard count uses.
-  const weekOut = React.useMemo(() => weddingWeekEnd(today), [today]);
   const comingUpOut = React.useMemo(() => comingUpHorizonEnd(today), [today]);
   const filterCtx = React.useMemo(
-    () => ({ today, weekOut, comingUpOut, attentionClientIds, bookedBusinessClientIds }),
-    [today, weekOut, comingUpOut, attentionClientIds, bookedBusinessClientIds],
+    () => ({ today, comingUpOut, attentionClientIds, bookedClientIds }),
+    [today, comingUpOut, attentionClientIds, bookedClientIds],
   );
 
   const filtered = React.useMemo(() => {
@@ -138,13 +128,7 @@ export function ClientList({
 
   const counts = React.useMemo(() => countClientListFilters(clients, filterCtx), [clients, filterCtx]);
 
-  // "What kind of day am I walking into?" is now answered by the filter
-  // pills themselves — they already carry counts and already act as the
-  // click target, so a separate metric strip above them was showing the
-  // same three numbers twice under two different labels ("Active Weddings"
-  // vs. "All," "This Week" vs. "Wedding Week"). The one fact the pills
-  // don't already say out loud — a wedding is happening today — gets a
-  // single non-clickable line instead, only when it's actually true.
+  // A wedding happening today is the one fact the pills don't already say.
   const weddingDayToday = React.useMemo(
     () => clients.filter((c) => c.status !== "cancelled" && c.eventDate === today).length,
     [clients, today],

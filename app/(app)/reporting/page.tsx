@@ -63,7 +63,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           value={leads.total} previousValue={prevLeads.total}
           comparisonLabel={range.comparisonLabel} polarity="up-good"
           href={reportingHref("/reporting/sales", range, { detail: "stage:inquiry" })}
-          sub="New inquiries received in this period."
+          sub="New leads received in this period."
         />
         <ComparisonCard
           label="Tours" icon={MapPin}
@@ -84,7 +84,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           value={cohort.conversionRate} previousValue={prevCohort.conversionRate}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={(n) => `${n}%`}
           href={reportingHref("/reporting/sales", range, { detail: "stage:booked" })}
-          sub={`${cohort.eventuallyBooked} of ${cohort.leadsEntered} inquiries from this period later booked — even if the booking happened after these dates. Lost inquiries stay in this rate.`}
+          sub={`${cohort.eventuallyBooked} of ${cohort.leadsEntered} leads from this period later booked — even if the booking happened after these dates. Lost leads stay in this rate.`}
         />
         <ComparisonCard
           label="Contracted" icon={DollarSign}

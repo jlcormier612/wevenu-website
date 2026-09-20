@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
   CLIENT_LIST_FILTERS,
   clientListFilterHref,
   clientMatchesListFilter,
+  comingUpHorizonEnd,
   countClientListFilters,
   parseClientListFilter,
-  weddingWeekEnd,
-  comingUpHorizonEnd,
   type ClientListFilterRecord,
 } from "@/lib/clients/list-filters";
 
@@ -23,138 +23,141 @@ function client(
 }
 
 const TODAY = "2026-09-01";
-const WEEK_OUT = weddingWeekEnd(TODAY);
 const COMING_UP_OUT = comingUpHorizonEnd(TODAY);
 
-describe("weddingWeekEnd", () => {
-  it("is today plus 7 calendar days", () => {
-    assert.equal(WEEK_OUT, "2026-09-08");
-  });
-});
+function ctx(extra: Partial<Parameters<typeof clientMatchesListFilter>[2]> = {}) {
+  return {
+    today: TODAY,
+    comingUpOut: COMING_UP_OUT,
+    attentionClientIds: new Set<string>(),
+    ...extra,
+  };
+}
 
 describe("comingUpHorizonEnd", () => {
-  it("is today plus 60 calendar days", () => {
-    assert.equal(COMING_UP_OUT, "2026-10-31");
+  it("is today plus 30 calendar days", () => {
+    assert.equal(COMING_UP_OUT, "2026-10-01");
   });
 });
 
 describe("parseClientListFilter / href", () => {
-  it("accepts every canonical key and rejects anything else", () => {
+  it("accepts the five buckets and maps the removed ones", () => {
+    assert.deepEqual(CLIENT_LIST_FILTERS.map((f) => f.key), [
+      "all",
+      "coming_up",
+      "needs_attention",
+      "cancelled",
+      "past",
+    ]);
+    assert.deepEqual(CLIENT_LIST_FILTERS.map((f) => f.label), [
+      "All Bookings",
+      "Coming up",
+      "Needs Attention",
+      "Cancelled",
+      "Past",
+    ]);
     for (const { key } of CLIENT_LIST_FILTERS) {
       assert.equal(parseClientListFilter(key), key);
       assert.equal(clientListFilterHref(key), `/clients?filter=${key}`);
     }
+    assert.equal(parseClientListFilter("upcoming"), "all");
+    assert.equal(parseClientListFilter("booked_business"), "all");
+    assert.equal(parseClientListFilter("wedding_week"), "coming_up");
     assert.equal(parseClientListFilter("confirmed"), null);
     assert.equal(parseClientListFilter(""), null);
     assert.equal(parseClientListFilter(undefined), null);
   });
 });
 
-describe("Clients Upcoming — the Dashboard must use this same population", () => {
-  const ctx = { today: TODAY, weekOut: WEEK_OUT, comingUpOut: COMING_UP_OUT, attentionClientIds: new Set<string>() };
+describe("All Bookings", () => {
+  const filterCtx = ctx();
 
-  it("counts a future Planning booking (Sara Parker, Aug 12 2028)", () => {
-    const parker = client({ id: "parker", status: "planning", eventDate: "2028-08-12" });
-    assert.equal(clientMatchesListFilter(parker, "upcoming", ctx), true);
-    assert.equal(countClientListFilters([parker], ctx).upcoming, 1);
-  });
-
-  it("counts Confirmed and Complete future bookings, not only a special confirmed status", () => {
+  it("is the default active population: not cancelled and not past", () => {
     const rows = [
-      client({ id: "c1", status: "planning", eventDate: "2027-01-01" }),
-      client({ id: "c2", status: "confirmed", eventDate: "2027-06-01" }),
-      client({ id: "c3", status: "complete", eventDate: "2027-12-01" }),
-    ];
-    assert.equal(countClientListFilters(rows, ctx).upcoming, 3);
-  });
-
-  it("does not count cancelled, past, or undated bookings", () => {
-    const rows = [
+      client({ id: "future", eventDate: "2028-08-12" }),
+      client({ id: "today", eventDate: TODAY }),
+      client({ id: "undated", eventDate: null }),
+      client({ id: "past", eventDate: "2026-08-31" }),
       client({ id: "cancelled", status: "cancelled", eventDate: "2028-08-12" }),
-      client({ id: "past", status: "planning", eventDate: "2026-08-31" }),
-      client({ id: "undated", status: "planning", eventDate: null }),
     ];
-    assert.equal(countClientListFilters(rows, ctx).upcoming, 0);
-    assert.equal(countClientListFilters(rows, ctx).cancelled, 1);
-    assert.equal(countClientListFilters(rows, ctx).past, 1);
-    assert.equal(countClientListFilters(rows, ctx).all, 2);
+    assert.equal(countClientListFilters(rows, filterCtx).all, 3);
+    assert.equal(clientMatchesListFilter(rows[3], "all", filterCtx), false);
+    assert.equal(clientMatchesListFilter(rows[4], "all", filterCtx), false);
   });
 
-  it("includes today's event date (Clients uses >= today, not strictly after)", () => {
-    const todayEvent = client({ id: "today", status: "planning", eventDate: TODAY });
-    assert.equal(clientMatchesListFilter(todayEvent, "upcoming", ctx), true);
-  });
-});
-
-describe("Dashboard Coming up — 60-day horizon", () => {
-  const ctx = { today: TODAY, weekOut: WEEK_OUT, comingUpOut: COMING_UP_OUT, attentionClientIds: new Set<string>() };
-
-  it("includes events within 60 days and excludes farther future bookings", () => {
-    const near = client({ id: "near", status: "planning", eventDate: "2026-10-15" });
-    const far = client({ id: "far", status: "planning", eventDate: "2028-08-12" });
-    assert.equal(clientMatchesListFilter(near, "coming_up", ctx), true);
-    assert.equal(clientMatchesListFilter(far, "coming_up", ctx), false);
-    const fixture = client({ id: "e2e", status: "planning", eventDate: "2026-10-15", excludeFromBusinessReporting: true });
-    assert.equal(clientMatchesListFilter(fixture, "coming_up", ctx), false);
-    assert.equal(clientMatchesListFilter(fixture, "upcoming", ctx), true);
+  it("stays on the booked set when that set is provided", () => {
+    const booked = ctx({ bookedClientIds: new Set(["a"]) });
+    assert.equal(clientMatchesListFilter(client({ id: "a", eventDate: "2027-01-01" }), "all", booked), true);
+    assert.equal(clientMatchesListFilter(client({ id: "b", eventDate: "2027-01-01" }), "all", booked), false);
+    assert.equal(clientMatchesListFilter(client({ id: "a", eventDate: "2026-08-01" }), "all", booked), false);
   });
 });
 
-describe("the other Client list filters stay internally consistent", () => {
-  const attention = new Set(["flagged"]);
-  const ctx = { today: TODAY, weekOut: WEEK_OUT, comingUpOut: COMING_UP_OUT, attentionClientIds: attention };
+describe("Coming up", () => {
+  const filterCtx = ctx();
+
+  it("is today through the next 30 days, including reporting fixtures", () => {
+    const near = client({ id: "near", eventDate: "2026-09-20" });
+    const edge = client({ id: "edge", eventDate: "2026-10-01" });
+    const far = client({ id: "far", eventDate: "2026-10-15" });
+    const fixture = client({ id: "e2e", eventDate: "2026-09-20", excludeFromBusinessReporting: true });
+    assert.equal(clientMatchesListFilter(near, "coming_up", filterCtx), true);
+    assert.equal(clientMatchesListFilter(edge, "coming_up", filterCtx), true);
+    assert.equal(clientMatchesListFilter(far, "coming_up", filterCtx), false);
+    assert.equal(clientMatchesListFilter(far, "all", filterCtx), true);
+    assert.equal(clientMatchesListFilter(fixture, "coming_up", filterCtx), true);
+    assert.equal(clientMatchesListFilter(client({ id: "today", eventDate: TODAY }), "coming_up", filterCtx), true);
+  });
+});
+
+describe("Needs Attention, Past, and Cancelled", () => {
+  const attention = new Set(["flagged", "past-flagged", "cancelled-flagged"]);
+  const filterCtx = ctx({ attentionClientIds: attention });
   const rows: ClientListFilterRecord[] = [
-    client({ id: "parker", status: "planning", eventDate: "2028-08-12" }),
-    client({ id: "week", status: "confirmed", eventDate: "2026-09-05" }),
-    client({ id: "today", status: "planning", eventDate: TODAY }),
-    client({ id: "past", status: "planning", eventDate: "2026-08-01" }),
-    client({ id: "flagged", status: "planning", eventDate: "2028-01-01" }),
+    client({ id: "parker", eventDate: "2028-08-12" }),
+    client({ id: "soon", eventDate: "2026-09-05" }),
+    client({ id: "today", eventDate: TODAY }),
+    client({ id: "past", eventDate: "2026-08-01" }),
+    client({ id: "flagged", eventDate: "2028-01-01" }),
+    client({ id: "past-flagged", eventDate: "2026-08-01" }),
     client({ id: "cancelled", status: "cancelled", eventDate: "2028-08-12" }),
-    client({ id: "undated", status: "planning", eventDate: null }),
+    client({ id: "cancelled-flagged", status: "cancelled", eventDate: "2026-09-05" }),
+    client({ id: "undated", eventDate: null }),
   ];
-  const counts = countClientListFilters(rows, ctx);
+  const counts = countClientListFilters(rows, filterCtx);
 
-  it("All excludes cancelled only", () => {
-    assert.equal(counts.all, 6);
+  it("Coming up overlaps All Bookings and can also be Needs Attention", () => {
+    assert.equal(clientMatchesListFilter(rows[1], "all", filterCtx), true);
+    assert.equal(clientMatchesListFilter(rows[1], "coming_up", filterCtx), true);
+    assert.equal(counts.coming_up, 2);
   });
 
-  it("Wedding Week is upcoming within 7 days, including today", () => {
-    assert.equal(counts.wedding_week, 2);
-    assert.equal(clientMatchesListFilter(rows[1], "wedding_week", ctx), true);
-    assert.equal(clientMatchesListFilter(rows[0], "wedding_week", ctx), false);
-  });
-
-  it("Needs Attention is the attention-flag set, excluding cancelled", () => {
+  it("Needs Attention is an action subset of All Bookings, not Past or Cancelled", () => {
     assert.equal(counts.needs_attention, 1);
+    assert.equal(clientMatchesListFilter(rows[4], "needs_attention", filterCtx), true);
+    assert.equal(clientMatchesListFilter(rows[4], "all", filterCtx), true);
+    assert.equal(clientMatchesListFilter(rows[5], "needs_attention", filterCtx), false);
+    assert.equal(clientMatchesListFilter(rows[7], "needs_attention", filterCtx), false);
   });
 
-  it("Past is a non-cancelled event date before today", () => {
-    assert.equal(counts.past, 1);
-  });
-
-  it("Cancelled is status === cancelled, even with a future date", () => {
-    assert.equal(counts.cancelled, 1);
-  });
-
-  it("Upcoming is every future-or-today non-cancelled dated booking", () => {
-    assert.equal(counts.upcoming, 4);
+  it("Past and Cancelled are separate historical views", () => {
+    assert.equal(counts.past, 2);
+    assert.equal(counts.cancelled, 2);
+    assert.equal(clientMatchesListFilter(rows[3], "all", filterCtx), false);
+    assert.equal(clientMatchesListFilter(rows[6], "all", filterCtx), false);
+    assert.equal(clientMatchesListFilter(rows[6], "past", filterCtx), false);
+    assert.equal(clientMatchesListFilter(rows[6], "coming_up", filterCtx), false);
   });
 });
 
-describe("Booked business filter", () => {
-  it("matches only clients that completed the canonical booking transition", () => {
-    const ctx = {
-      today: TODAY,
-      weekOut: WEEK_OUT,
-      comingUpOut: COMING_UP_OUT,
-      attentionClientIds: new Set<string>(),
-      bookedBusinessClientIds: new Set(["a"]),
-    };
-    assert.equal(clientMatchesListFilter(client({ id: "a" }), "booked_business", ctx), true);
-    assert.equal(clientMatchesListFilter(client({ id: "b" }), "booked_business", ctx), false);
-    assert.equal(
-      countClientListFilters([client({ id: "a" }), client({ id: "b" })], ctx).booked_business,
-      1,
-    );
+describe("Needs Attention conditions", () => {
+  it("uses past-due payment, past-due required tasks, and needs_response — not unread or unsigned contracts", () => {
+    const src = readFileSync(new URL("./repository.ts", import.meta.url), "utf8");
+    const fn = src.slice(src.indexOf("export async function getClientAttentionFlags"));
+    assert.match(fn, /status\.eq\.overdue/);
+    assert.match(fn, /is_required/);
+    assert.match(fn, /needs_response/);
+    assert.doesNotMatch(fn, /venue_unread/);
+    assert.doesNotMatch(fn, /from\("contracts"\)/);
   });
 });
