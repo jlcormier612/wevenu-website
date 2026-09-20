@@ -25,6 +25,10 @@ import {
 } from "@/app/vendor/(workspace)/events/actions";
 import { applyVendorTaskTemplatesAction } from "@/app/vendor/(workspace)/task-templates/actions";
 import {
+  VENDOR_PRIVATE_NOTES_HINT,
+  VENDOR_PRIVATE_NOTES_LABEL,
+} from "@/lib/notes/vendor-private-notes-copy";
+import {
   getVendorConversationAction,
   getVendorConversationIdsForEventAction,
 } from "@/app/vendor/(workspace)/messages/actions";
@@ -139,7 +143,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "tasks",     label: "Tasks"             },
   { id: "documents", label: "Documents"         },
   { id: "venueinfo", label: "Venue Information" },
-  { id: "notes",     label: "Notes"             },
+  { id: "notes",     label: "Internal notes"    },
 ];
 
 function formatDate(iso: string | null): string {
@@ -1614,10 +1618,11 @@ function NotesTab({ detail }: { detail: VendorEventDetail }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">Private notes visible only to you, not the venue or the client.</p>
+      <p className="text-sm font-medium text-foreground">{VENDOR_PRIVATE_NOTES_LABEL}</p>
+      <p className="text-xs text-muted-foreground">{VENDOR_PRIVATE_NOTES_HINT}</p>
       <textarea
         className="w-full rounded-sm border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[200px] resize-none"
-        placeholder="Add your private notes for this event…"
+        placeholder="Add notes for your vendor team…"
         value={notes}
         onChange={(e) => { setNotes(e.target.value); setEdited(true); }}
       />

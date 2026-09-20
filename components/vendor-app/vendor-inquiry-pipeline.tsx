@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { INQUIRY_STATUSES, ACTIVE_INQUIRY_STATUSES, INQUIRY_STATUS_VARIANT } from "@/lib/vendors/constants";
 import { createVendorInquiryAction } from "@/app/vendor/(workspace)/inquiries/actions";
+import {
+  VENDOR_PRIVATE_NOTES_HINT,
+  VENDOR_PRIVATE_NOTES_LABEL,
+} from "@/lib/notes/vendor-private-notes-copy";
 import type { VendorInquiry, InquiryStatus } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {
@@ -132,7 +136,8 @@ export function VendorInquiryPipeline({
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Notes</label>
+              <label className="text-xs font-medium text-muted-foreground">{VENDOR_PRIVATE_NOTES_LABEL}</label>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{VENDOR_PRIVATE_NOTES_HINT}</p>
               <textarea
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[72px] resize-none"
                 placeholder="How they heard about you, special requests…"

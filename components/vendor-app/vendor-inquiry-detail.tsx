@@ -11,6 +11,10 @@ import { INQUIRY_STATUSES, INQUIRY_STATUS_VARIANT } from "@/lib/vendors/constant
 import { updateVendorInquiryAction, deleteVendorInquiryAction, createVendorInquiryAction } from "@/app/vendor/(workspace)/inquiries/actions";
 import { createVendorTaskAction, completeVendorTaskAction } from "@/app/vendor/(workspace)/tasks/actions";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
+import {
+  VENDOR_PRIVATE_NOTES_HINT,
+  VENDOR_PRIVATE_NOTES_LABEL,
+} from "@/lib/notes/vendor-private-notes-copy";
 import type { VendorInquiry, InquiryStatus, VendorPersonalTask } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {
@@ -164,9 +168,10 @@ export function VendorInquiryDetail({
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Internal notes — vendor-private CRM */}
           <div className="rounded-sm border border-border bg-card p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Notes</h2>
+            <h2 className="text-sm font-semibold text-foreground">{VENDOR_PRIVATE_NOTES_LABEL}</h2>
+            <p className="text-xs text-muted-foreground">{VENDOR_PRIVATE_NOTES_HINT}</p>
             <textarea
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[120px] resize-none"
               placeholder="Add notes about this inquiry…"

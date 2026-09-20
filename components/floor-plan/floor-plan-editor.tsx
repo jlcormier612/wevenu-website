@@ -72,6 +72,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { prepareFloorPlanSourceUpload } from "@/lib/floor-plans/client-background-upload";
 import { backgroundClearPatch } from "@/lib/floor-plans/background-document";
 import {
+  FLOOR_PLAN_NOTES_LABEL,
+  FLOOR_PLAN_NOTES_SHARE_HINT,
+} from "@/lib/notes/floor-plan-notes-copy";
+import {
   DISPLAY_SHAPES, DISPLAY_SHAPE_LABELS, DISPLAY_SHAPE_STYLE, FloorPlanShapeSvg,
 } from "@/components/floor-plan/floor-plan-shapes";
 import { OBJECT_STYLE, OBJECT_TYPES, nextObjectLabel } from "@/lib/floor-plans/constants";
@@ -472,14 +476,16 @@ function PropertiesPanel({
         </div>
       )}
 
-      {/* Notes */}
+      {/* Notes — part of the floor-plan artifact; may travel when shared */}
       <div className="space-y-1">
-        <Label className="text-xs">Notes</Label>
+        <Label className="text-xs">{FLOOR_PLAN_NOTES_LABEL}</Label>
+        <p className="text-[11px] text-muted-foreground">{FLOOR_PLAN_NOTES_SHARE_HINT}</p>
         <Textarea
           value={obj.notes ?? ""}
           onChange={(e) => onUpdate(obj.id, { notes: e.target.value || null })}
           className="text-xs min-h-14"
           disabled={obj.locked}
+          placeholder="Placement or setup note for this object…"
         />
       </div>
 
@@ -579,11 +585,12 @@ function RoomSettingsPanel({
       </div>
       {onChangeNotes && (
         <div className="space-y-1">
-          <Label className="text-xs">Notes</Label>
+          <Label className="text-xs">{FLOOR_PLAN_NOTES_LABEL}</Label>
+          <p className="text-[11px] text-muted-foreground">{FLOOR_PLAN_NOTES_SHARE_HINT}</p>
           <Textarea
             value={notesValue} onChange={(e) => setNotesValue(e.target.value)}
             onBlur={() => { if (notesValue !== (notes ?? "")) onChangeNotes(notesValue); }}
-            rows={3} placeholder="Setup notes for your team — appears on the printed plan."
+            rows={3} placeholder="Setup notes for this floor plan…"
             className="text-xs"
           />
         </div>

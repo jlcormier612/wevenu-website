@@ -527,12 +527,16 @@ export async function insertVendorReview(client: DbClient, venueId: string, vend
 
 // ── Event vendor assignments ──────────────────────────────────────────────────
 
+/** Venue-facing columns only — excludes vendor-private internal_notes. */
+const EVA_VENUE_SELECT =
+  "id, venue_id, event_id, vendor_id, arrival_time, setup_location, load_in_notes, notes, created_at, checked_in_at, setup_complete_at, agreed_fee, payment_status, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)";
+
 export async function getEventVendorAssignments(
   client: DbClient, venueId: string, eventId: string,
 ): Promise<EventVendorAssignment[]> {
   const { data, error } = await client
     .from("event_vendor_assignments")
-    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
+    .select(EVA_VENUE_SELECT)
     .eq("event_id", eventId)
     .eq("venue_id", venueId)
     .order("arrival_time", { ascending: true, nullsFirst: false })
@@ -555,7 +559,7 @@ export async function insertVendorAssignment(
       load_in_notes:  input.loadInNotes.trim() || null,
       notes:          input.notes.trim() || null,
     })
-    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
+    .select(EVA_VENUE_SELECT)
     .single<EVARow>();
 
   // Couple Submit may have already created the assignment — treat as success
@@ -563,7 +567,7 @@ export async function insertVendorAssignment(
   if (error?.code === "23505") {
     const { data: existing, error: readErr } = await client
       .from("event_vendor_assignments")
-      .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
+      .select(EVA_VENUE_SELECT)
       .eq("event_id", eventId)
       .eq("vendor_id", input.vendorId)
       .eq("venue_id", venueId)
