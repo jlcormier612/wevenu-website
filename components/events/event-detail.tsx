@@ -69,6 +69,10 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 import type { Questionnaire, QuestionnaireActivity } from "@/lib/events/questionnaire";
 import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/service";
 // QuestionnaireFamilyPanel replaces the single FinalDetailsForm surface.
@@ -594,7 +598,7 @@ export function EventDetail({
           <TabsTrigger value="messages">Conversation</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="notes">
-            Notes
+            {INTERNAL_NOTES_LABEL}
             {event.notes.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.notes.length}</span>
             )}
@@ -1035,13 +1039,13 @@ export function EventDetail({
           </Card>
         </TabsContent>
 
-        {/* ── Notes ──────────────────────────────────────────────────── */}
+        {/* ── Internal notes ─────────────────────────────────────────── */}
         <TabsContent value="notes">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Internal notes</CardTitle>
+              <CardTitle className="text-base">{INTERNAL_NOTES_LABEL}</CardTitle>
               <CardDescription>
-                Private to your venue team — never visible to the client.
+                {INTERNAL_NOTES_PRIVACY_HINT}
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -36,12 +36,12 @@ import {
   formatScheduledTime, isScheduledActivity, offsetForDirection,
   PLAYBOOK_KINDS, STATUS_CONFIG, TASK_VISIBILITY, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
-import {
-  INTERNAL_NOTES_LABEL,
-  INTERNAL_NOTES_PRIVACY_HINT,
-} from "@/lib/notes/internal-notes-copy";
 import type {
   EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplateWithStats, TaskContact,
 } from "@/lib/playbooks/types";
@@ -401,7 +401,7 @@ function TaskDetailPanel({
 
       {isVenue && (
         <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{INTERNAL_NOTES_LABEL}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{internalNotesLabel("task")}</p>
           <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
           <Textarea
             value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}

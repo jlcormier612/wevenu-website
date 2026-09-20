@@ -300,7 +300,7 @@ export function InvoiceDetail({
       {/* Notes */}
       {invoice.notes && (
         <Card>
-          <CardHeader><CardTitle className="text-base text-sm">Notes</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base text-sm">Notes from your venue</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground whitespace-pre-line">{invoice.notes}</p></CardContent>
         </Card>
       )}

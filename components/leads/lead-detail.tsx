@@ -93,6 +93,10 @@ import type { LuvDraft } from "@/lib/luv/drafts";
 import { salesStageForCanonical } from "@/lib/pipeline-templates/sales-stage-bridge";
 import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
 import type { PipelineStage } from "@/lib/pipeline-templates/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -619,7 +623,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="messages">Conversation</TabsTrigger>
           <TabsTrigger value="notes">
-            Notes
+            {INTERNAL_NOTES_LABEL}
             {lead.notes.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                 {lead.notes.length}
@@ -764,13 +768,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           />
         </TabsContent>
 
-        {/* ── Notes ─────────────────────────────────────────────────── */}
+        {/* ── Internal notes ────────────────────────────────────────── */}
         <TabsContent value="notes">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Internal notes</CardTitle>
+              <CardTitle className="text-base">{INTERNAL_NOTES_LABEL}</CardTitle>
               <CardDescription>
-                Private to your venue team — never visible to the client.
+                {INTERNAL_NOTES_PRIVACY_HINT}
               </CardDescription>
             </CardHeader>
             <CardContent>

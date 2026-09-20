@@ -13,3 +13,42 @@ export const INTERNAL_NOTES_LABEL = "Internal notes";
 
 export const INTERNAL_NOTES_PRIVACY_HINT =
   "Private to your venue team — never visible to the client.";
+
+/** Contextual labels — the word Internal must remain visible. */
+export type InternalNotesScope =
+  | "default"
+  | "tour"
+  | "vendor"
+  | "task"
+  | "payment"
+  | "timeline"
+  | "event"
+  | "lead"
+  | "client";
+
+export function internalNotesLabel(scope: InternalNotesScope = "default"): string {
+  switch (scope) {
+    case "tour":
+      return "Internal tour notes";
+    case "vendor":
+      return "Internal vendor notes";
+    case "task":
+      return "Internal task notes";
+    case "payment":
+      return "Internal payment notes";
+    case "timeline":
+      return "Internal timeline notes";
+    case "event":
+    case "lead":
+    case "client":
+    case "default":
+    default:
+      return INTERNAL_NOTES_LABEL;
+  }
+}
+
+/** Customer-facing payment schedule notes — never labeled Internal. */
+export const NOTES_FROM_YOUR_VENUE_LABEL = "Notes from your venue";
+
+export const NOTES_FROM_YOUR_VENUE_HINT =
+  "Shown to the couple on their payment schedule.";

@@ -21,6 +21,10 @@ import {
   formatDate,
 } from "@/lib/leads/constants";
 import type { Lead, RelationshipInput } from "@/lib/leads/types";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 
 // Common next steps, covering the inquiry -> tour -> booked lifecycle. Not
 // exhaustive on purpose — "Custom…" always drops back to free text, since
@@ -291,7 +295,8 @@ export function RelationshipCard({
                 />
                 <Label>Tour completed</Label>
               </div>
-              <EditRow label="Tour notes">
+              <EditRow label={internalNotesLabel("tour")}>
+                <p className="mb-1.5 text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
                 <Textarea
                   value={input.tourNotes}
                   onChange={(e) => set("tourNotes", e.target.value)}

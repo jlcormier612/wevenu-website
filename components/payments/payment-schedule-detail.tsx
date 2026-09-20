@@ -19,8 +19,8 @@ import { toast } from "sonner";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coordinatorCelebrationMessage } from "@/lib/luv/celebrations";
 import {
-  INTERNAL_NOTES_LABEL,
   INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
 
 import {
@@ -205,7 +205,7 @@ function MarkPaidForm({
         </div>
       </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">{INTERNAL_NOTES_LABEL}</Label>
+          <Label className="text-xs">{internalNotesLabel("payment")}</Label>
           <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Check number, wire confirmation, coordinator reminder…" />
         </div>

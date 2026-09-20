@@ -14,8 +14,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { TourAppointment, TourOutcome } from "@/lib/tours/types";
 import {
-  INTERNAL_NOTES_LABEL,
   INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
 
 const OUTCOME_LABELS: Record<TourOutcome, string> = {
@@ -205,7 +205,7 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
                 </SelectContent>
               </Select>
               <div className="space-y-1">
-                <p className="text-[11px] font-medium text-muted-foreground">{INTERNAL_NOTES_LABEL}</p>
+                <p className="text-[11px] font-medium text-muted-foreground">{internalNotesLabel("tour")}</p>
                 <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
                 <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes from the tour…" className="text-xs" />
               </div>

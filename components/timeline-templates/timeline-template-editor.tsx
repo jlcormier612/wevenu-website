@@ -27,11 +27,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  INTERNAL_NOTES_LABEL,
   INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
   TEMPLATE_DAY_OFFSET_OPTIONS,
@@ -335,7 +335,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{INTERNAL_NOTES_LABEL}</Label>
+              <Label className="text-xs">{internalNotesLabel("timeline")}</Label>
               <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
               <Textarea value={form.notes ?? ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} className="min-h-16 text-sm" placeholder="Operational notes…" />
             </div>

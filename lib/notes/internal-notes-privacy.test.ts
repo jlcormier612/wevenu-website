@@ -13,6 +13,7 @@ import { join } from "node:path";
 import {
   INTERNAL_NOTES_LABEL,
   INTERNAL_NOTES_PRIVACY_HINT,
+  NOTES_FROM_YOUR_VENUE_LABEL,
 } from "@/lib/notes/internal-notes-copy";
 
 const ROOT = join(process.cwd());
@@ -68,6 +69,8 @@ describe("venue-internal notes privacy wiring", () => {
       "components/events/timeline/timeline-entry-form.tsx",
       "components/payments/payment-schedule-detail.tsx",
       "components/tours/tour-list.tsx",
+      "components/leads/relationship-card.tsx",
+      "components/hq/venue-detail/support-section.tsx",
     ];
     const hintRe = new RegExp(
       INTERNAL_NOTES_PRIVACY_HINT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
@@ -83,8 +86,24 @@ describe("venue-internal notes privacy wiring", () => {
     }
     // Payment schedule notes are customer-facing — must NOT claim internal.
     const scheduleForm = read("components/payments/new-schedule-form.tsx");
-    assert.match(scheduleForm, /Notes from your venue/);
+    assert.match(scheduleForm, /NOTES_FROM_YOUR_VENUE_LABEL|Notes from your venue/);
     assert.doesNotMatch(scheduleForm, /visible only to your team/);
     assert.equal(INTERNAL_NOTES_LABEL, "Internal notes");
+    assert.equal(NOTES_FROM_YOUR_VENUE_LABEL, "Notes from your venue");
+  });
+
+  it("Lead and Event workspace tabs are labeled Internal notes, not Notes", () => {
+    for (const rel of [
+      "components/leads/lead-detail.tsx",
+      "components/events/event-detail.tsx",
+    ]) {
+      const src = read(rel);
+      assert.match(src, /INTERNAL_NOTES_LABEL|Internal notes/);
+      // Tab trigger must not be bare "Notes" as the only label text.
+      assert.doesNotMatch(
+        src,
+        /<TabsTrigger value="notes">\s*\n\s*Notes\s*\n/,
+      );
+    }
   });
 });

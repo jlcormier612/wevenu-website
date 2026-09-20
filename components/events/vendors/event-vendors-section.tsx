@@ -26,12 +26,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { Document } from "@/lib/documents/types";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
 import type { EventVendorRemovalRequest } from "@/lib/vendor-removal-requests/types";
-import {
-  INTERNAL_NOTES_LABEL,
-  INTERNAL_NOTES_PRIVACY_HINT,
-} from "@/lib/notes/internal-notes-copy";
 
 // ── Check-in badge ────────────────────────────────────────────────────────────
 
@@ -431,7 +431,7 @@ export function EventVendorsSection({
 
           {/* Internal notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="ev-notes" className="text-xs">{INTERNAL_NOTES_LABEL}</Label>
+            <Label htmlFor="ev-notes" className="text-xs">{internalNotesLabel("vendor")}</Label>
             <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
             <Textarea id="ev-notes" value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="Coordinator reminders, special requirements…" rows={2} />

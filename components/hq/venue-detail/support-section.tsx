@@ -12,6 +12,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { HqCrmState, HqNote, HqTask } from "@/lib/hq/venue-detail-types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 
 function fmt(iso: string | null): string {
   if (!iso) return "—";
@@ -158,8 +162,8 @@ export function SupportSection({
 
         {/* Notes */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Internal notes</p>
-          <p className="text-[10px] text-muted-foreground mb-2">Private to your venue team — never visible to the client.</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">{INTERNAL_NOTES_LABEL}</p>
+          <p className="text-[10px] text-muted-foreground mb-2">{INTERNAL_NOTES_PRIVACY_HINT}</p>
           <ul className="space-y-2 mb-2 max-h-64 overflow-y-auto">
             {notes.map((n) => (
               <li key={n.id} className="rounded-lg border p-2 text-xs">

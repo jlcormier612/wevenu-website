@@ -25,13 +25,13 @@ import type { Document } from "@/lib/documents/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { Invoice } from "@/lib/invoices/types";
 import type { EventTask } from "@/lib/playbooks/types";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 import type {
   TimelineAudience, TimelineEntryAttachment, TimelineEntryInput, TimelineEntryLink, TimelineRelatedLink, TimelineSection,
 } from "@/lib/timeline/types";
-import {
-  INTERNAL_NOTES_LABEL,
-  INTERNAL_NOTES_PRIVACY_HINT,
-} from "@/lib/notes/internal-notes-copy";
 import { VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
 import { timelineDayOptions } from "@/lib/timeline/constants";
 import type { StaffMember } from "@/lib/team/types";
@@ -202,7 +202,7 @@ export function TimelineEntryForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="et-notes" className="text-xs">{INTERNAL_NOTES_LABEL}</Label>
+        <Label htmlFor="et-notes" className="text-xs">{internalNotesLabel("timeline")}</Label>
         <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
         <Textarea
           id="et-notes"

@@ -20,6 +20,10 @@ import { formatTime } from "@/lib/vendors/constants";
 import type { VendorReview, VendorWithEvents } from "@/lib/vendors/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import type { VendorRollupConversation } from "@/lib/conversations/types";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 
 export function VendorDetail({
   vendor, workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], reviews = [], conversations = [],
@@ -214,8 +218,8 @@ export function VendorDetail({
               )}
               {vendor.notes && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Internal notes</p>
-                  <p className="text-[11px] text-muted-foreground">Private to your venue team — never visible to the client.</p>
+                  <p className="text-xs text-muted-foreground">{internalNotesLabel("vendor")}</p>
+                  <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{vendor.notes}</p>
                 </div>
               )}

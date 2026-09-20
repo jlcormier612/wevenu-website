@@ -39,6 +39,10 @@ import {
   formatTimingLabel,
 } from "@/lib/payments/starters";
 import type { PaymentErrors, PaymentObligationKind, ScheduleInput } from "@/lib/payments/types";
+import {
+  NOTES_FROM_YOUR_VENUE_HINT,
+  NOTES_FROM_YOUR_VENUE_LABEL,
+} from "@/lib/notes/internal-notes-copy";
 import { cn } from "@/lib/utils";
 
 type Step = "structure" | "build" | "review";
@@ -625,7 +629,7 @@ export function NewScheduleForm({
             </ul>
           </div>
 
-          <Field label="Notes from your venue" htmlFor="ps-notes" hint="Shown to the couple on their payment schedule.">
+          <Field label={NOTES_FROM_YOUR_VENUE_LABEL} htmlFor="ps-notes" hint={NOTES_FROM_YOUR_VENUE_HINT}>
             <Textarea
               id="ps-notes"
               value={input.notes}
