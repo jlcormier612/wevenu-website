@@ -114,7 +114,7 @@ describe("relationship couple photos app wiring", () => {
     assert.match(route, /resolveImageFile/);
   });
 
-  it("Photo section copy matches the locked venue-facing wording", () => {
+  it("Photo section is one relationship control (no separate Venue Photo section)", () => {
     const editor = readFileSync(
       join(root, "components/relationship-photos/relationship-photo-editor.tsx"),
       "utf8",
@@ -124,12 +124,24 @@ describe("relationship couple photos app wiring", () => {
       editor,
       /Add a photo to this Lead and Client record\. You can upload one here or use a photo the couple has shared with you\. The photo stays with the relationship if this lead becomes a client\./,
     );
-    assert.match(editor, />Venue Photo</);
-    assert.match(editor, /Upload a photo from your venue to use on this record\./);
-    assert.match(editor, /JPG, PNG, or WEBP up to 5 MB\./);
-    assert.match(editor, /Uploading a venue photo makes it the one on the record\./);
+    // Single preview bound to displayed photo (venue or shared client).
+    assert.match(editor, /currentUrl=\{state\.displayedPhotoUrl\}/);
+    assert.match(editor, /Use shared photo/);
+    assert.match(editor, /Couple shared a photo/);
+    assert.doesNotMatch(editor, />Venue Photo</);
+    assert.doesNotMatch(editor, /Upload a photo from your venue to use on this record\./);
     assert.doesNotMatch(editor, /hold is not a booking/i);
     assert.doesNotMatch(editor, /venue_display_source/);
+  });
+
+  it("share notification body uses locked internal client record copy", () => {
+    const mig = readFileSync(
+      join(root, "supabase/migrations/20261403800000_client_photo_share_notification_copy.sql"),
+      "utf8",
+    );
+    assert.match(mig, /You can use it on their internal client record\./);
+    assert.doesNotMatch(mig, /client profile/);
+    assert.match(mig, /\/clients\/' \|\| v_session\.client_id::text \|\| '\/edit'/);
   });
 
   it("notification bell treats photo share as a View photo business CTA", () => {

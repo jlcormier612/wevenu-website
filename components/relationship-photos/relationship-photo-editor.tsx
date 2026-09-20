@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/ui/image-upload";
 import type { VenueFacingPhotoState } from "@/lib/relationship-photos/model";
 
+/**
+ * Single relationship photo control for Lead/Client edit.
+ * Upload writes the venue photo; a shared couple photo can be selected
+ * into the same preview — no second uploader section.
+ */
 export function RelationshipPhotoEditor({
   relationshipId,
   venueId,
@@ -37,6 +42,8 @@ export function RelationshipPhotoEditor({
   }, [initial]);
 
   const path = `${venueId}/relationships/${relationshipId}/venue-photo`;
+  const showingClient = state.effectiveDisplaySource === "client";
+  const showingVenue = state.effectiveDisplaySource === "venue";
 
   return (
     <div className="space-y-4">
@@ -47,108 +54,98 @@ export function RelationshipPhotoEditor({
         </p>
       </div>
 
-      {state.displayedPhotoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={state.displayedPhotoUrl}
-          alt=""
-          className="h-24 w-24 rounded-full object-cover border border-border"
-        />
-      ) : null}
+      <ImageUpload
+        currentUrl={state.displayedPhotoUrl}
+        bucket="uploads"
+        path={path}
+        label="Photo"
+        hint="JPG, PNG, or WEBP up to 5 MB. Uploading sets the photo on this record."
+        aspectRatio="aspect-square"
+        objectFit="cover"
+        className="max-w-[10rem]"
+        onUpload={async (url) => {
+          const result = await setVenuePhotoAction(relationshipId, url, opts);
+          if (!result.ok) {
+            toast.error(result.message ?? "Could not save the photo.");
+            throw new Error(result.message);
+          }
+          toast.success("Photo saved.");
+          router.refresh();
+        }}
+        onRemove={
+          showingVenue && state.venuePhotoUrl
+            ? async () => {
+                const result = await removeVenuePhotoAction(relationshipId, opts);
+                if (!result.ok) {
+                  toast.error(result.message ?? "Could not remove the photo.");
+                  throw new Error(result.message);
+                }
+                toast.success("Photo removed.");
+                router.refresh();
+              }
+            : undefined
+        }
+      />
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-heading">Venue Photo</p>
+      {showingClient ? (
         <p className="text-sm text-muted-foreground">
-          Upload a photo from your venue to use on this record.
-        </p>
-        <ImageUpload
-          currentUrl={state.venuePhotoUrl}
-          bucket="uploads"
-          path={path}
-          label="Venue Photo"
-          hint="JPG, PNG, or WEBP up to 5 MB. Uploading a venue photo makes it the one on the record."
-          aspectRatio="aspect-square"
-          objectFit="cover"
-          className="max-w-[10rem]"
-          onUpload={async (url) => {
-            const result = await setVenuePhotoAction(relationshipId, url, opts);
-            if (!result.ok) {
-              toast.error(result.message ?? "Could not save the photo.");
-              throw new Error(result.message);
-            }
-            toast.success("Venue photo saved.");
-            router.refresh();
-          }}
-          onRemove={state.venuePhotoUrl ? async () => {
-            const result = await removeVenuePhotoAction(relationshipId, opts);
-            if (!result.ok) {
-              toast.error(result.message ?? "Could not remove the photo.");
-              throw new Error(result.message);
-            }
-            toast.success("Venue photo removed.");
-            router.refresh();
-          } : undefined}
-        />
-      </div>
-
-      {state.effectiveDisplaySource === "client" ? (
-        <div className="rounded-lg border border-border px-3 py-3 space-y-2">
-          <p className="text-sm font-medium text-heading">Showing client photo</p>
-          <p className="text-sm text-muted-foreground">
-            This couple shared a photo and you chose to use it on their record.
-          </p>
+          Showing the photo this couple shared. Upload above to put a venue photo on this record instead.
           {state.venuePhotoUrl ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => startTransition(async () => {
-                const result = await useVenuePhotoAction(relationshipId, opts);
-                if (!result.ok) toast.error(result.message ?? "Could not switch photo.");
-                else {
-                  toast.success("Now showing your venue photo.");
-                  router.refresh();
+            <>
+              {" "}
+              <button
+                type="button"
+                className="font-medium text-heading underline underline-offset-2 disabled:opacity-50"
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await useVenuePhotoAction(relationshipId, opts);
+                    if (!result.ok) toast.error(result.message ?? "Could not switch photo.");
+                    else {
+                      toast.success("Now showing your venue photo.");
+                      router.refresh();
+                    }
+                  })
                 }
-              })}
-            >
-              Use venue photo
-            </Button>
+              >
+                Use your venue photo
+              </button>
+            </>
           ) : null}
-        </div>
+        </p>
       ) : null}
 
-      {state.clientPhotoAvailable ? (
-        <div className="rounded-lg border border-border px-3 py-3 space-y-2">
-          <p className="text-sm font-medium text-heading">Client shared a photo</p>
-          <p className="text-sm text-muted-foreground">
-            Your venue photo stays on the record until you choose otherwise.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {state.clientPhotoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={state.clientPhotoUrl}
-                alt=""
-                className="h-12 w-12 rounded-full object-cover border border-border"
-              />
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending}
-              onClick={() => startTransition(async () => {
+      {state.clientPhotoAvailable && state.clientPhotoUrl ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={state.clientPhotoUrl}
+            alt=""
+            className="h-12 w-12 rounded-full object-cover border border-border"
+          />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-sm font-medium text-heading">Couple shared a photo</p>
+            <p className="text-sm text-muted-foreground">
+              Use it on this Lead and Client record, or keep your uploaded photo.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
                 const result = await useClientPhotoAction(relationshipId, opts);
-                if (!result.ok) toast.error(result.message ?? "Could not use the client photo.");
+                if (!result.ok) toast.error(result.message ?? "Could not use the shared photo.");
                 else {
-                  toast.success("Now showing the client photo.");
+                  toast.success("Now showing the couple’s shared photo.");
                   router.refresh();
                 }
-              })}
-            >
-              Use client photo
-            </Button>
-          </div>
+              })
+            }
+          >
+            Use shared photo
+          </Button>
         </div>
       ) : null}
     </div>
