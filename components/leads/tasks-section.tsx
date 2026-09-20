@@ -283,8 +283,11 @@ export function TasksSection({
 
   return (
     <div className="space-y-4">
+      {/* gap, not space-y: Select renders a fixed hidden input after the
+          trigger, and space-y would margin the trigger as if that input
+          were another stacked field. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <Label htmlFor={`venue-task-title-${leadId}`} className="text-xs">Task title</Label>
           <Input
             id={`venue-task-title-${leadId}`}
@@ -294,7 +297,7 @@ export function TasksSection({
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
         </div>
-        <div className="space-y-1.5 sm:w-40">
+        <div className="flex flex-col gap-1.5 sm:w-40">
           <Label htmlFor={`venue-task-due-${leadId}`} className="text-xs">Due date</Label>
           <Input
             id={`venue-task-due-${leadId}`}
@@ -303,7 +306,7 @@ export function TasksSection({
             onChange={(e) => setDueDateInput(e.target.value)}
           />
         </div>
-        <div className="space-y-1.5 sm:w-44">
+        <div className="flex flex-col gap-1.5 sm:w-44">
           <Label className="text-xs">Assignee</Label>
           <Select
             value={assigneeInput || "__unassigned__"}
@@ -326,7 +329,7 @@ export function TasksSection({
         </div>
         <Button
           type="button"
-          className="sm:mb-0.5"
+          size="lg"
           disabled={!titleInput.trim() || addPending}
           onClick={handleAdd}
         >

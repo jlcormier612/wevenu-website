@@ -22,6 +22,9 @@ describe("venue task coherence", () => {
     assert.match(section, /Due date/);
     assert.match(section, /Assignee/);
     assert.match(section, /assignedToStaffId/);
+    assert.match(section, /flex flex-col gap-1\.5 sm:w-44/);
+    assert.match(section, /size="lg"/);
+    assert.doesNotMatch(section, /sm:mb-0\.5/);
   });
 
   it("Task Center loads incomplete lead_tasks into the DO lane", () => {
