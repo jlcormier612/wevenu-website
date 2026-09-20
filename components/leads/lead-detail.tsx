@@ -21,6 +21,7 @@ import { startBookingFileAction } from "@/app/(app)/booking-journey/actions";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
+import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import type { PackageWithItems } from "@/lib/packages/types";
 import {
@@ -120,7 +121,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -434,9 +435,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
             Leads
           </Button>
-          <h1 className="font-heading text-2xl font-medium text-heading">
-            {displayName}
-          </h1>
+          <div className="flex items-center gap-3">
+            <RelationshipPhotoAvatar photoUrl={photoUrl} name={displayName} />
+            <h1 className="font-heading text-2xl font-medium text-heading">
+              {displayName}
+            </h1>
+          </div>
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
             {lead.eventDate && (

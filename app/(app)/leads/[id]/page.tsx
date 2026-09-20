@@ -19,6 +19,7 @@ import { getConversationIdForRelationship } from "@/lib/conversations/service";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
 import { markLeadVenueSeen } from "@/lib/navigation/attention-service";
+import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
@@ -116,6 +117,11 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
   // Acknowledge unseen lead for the Leads nav attention badge (idempotent).
   void markLeadVenueSeen(page.lead.id);
 
+  const photo =
+    page.lead.relationshipId != null
+      ? await getRelationshipPhotoForVenue(page.lead.relationshipId)
+      : null;
+
   // Computed server-side, not inside the client component — React Compiler
   // treats Date.now() as impure during render; see the identical pattern in
   // app/(app)/leads/page.tsx and app/(app)/clients/page.tsx.
@@ -142,6 +148,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       venueStages={page.venueStages}
       staffOptions={page.staffOptions}
       currentStaffId={page.currentStaffId}
+      photoUrl={photo?.displayedPhotoUrl ?? null}
     />
   );
 }

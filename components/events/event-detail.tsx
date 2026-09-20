@@ -31,6 +31,7 @@ import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
+import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
@@ -287,6 +288,7 @@ export function EventDetail({
   packagesWithItems = [],
   selectedPackage = null,
   openSetupPayments = false,
+  photoUrl = null,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -367,6 +369,7 @@ export function EventDetail({
   packagesWithItems?: PackageWithItems[];
   selectedPackage?: CommercialSelection | null;
   openSetupPayments?: boolean;
+  photoUrl?: string | null;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -433,7 +436,15 @@ export function EventDetail({
           <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" render={<Link href="/clients" />}>
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Bookings
           </Button>
-          <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
+          <div className="flex items-center gap-3">
+            <RelationshipPhotoAvatar
+              photoUrl={photoUrl}
+              name={relationshipContact
+                ? [relationshipContact.firstName, relationshipContact.partnerFirstName].filter(Boolean).join(" & ") || event.name
+                : (event.clientName ?? event.name)}
+            />
+            <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
+          </div>
           {originatingLeadId && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <Link href={`/leads/${originatingLeadId}`} className="hover:text-foreground hover:underline">

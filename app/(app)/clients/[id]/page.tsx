@@ -55,6 +55,8 @@ import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
 import { getActiveSelectedPackageForClient } from "@/lib/commercial-selections/service";
 import { getItems as getInventoryItems } from "@/lib/inventory/service";
 import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
+import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
+import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -85,10 +87,16 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     // booking time). Reuses the exact "create event" affordance the old
     // Client page offered, rather than a new workflow.
     const displayName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
+    const photo = client.relationshipId
+      ? await getRelationshipPhotoForVenue(client.relationshipId)
+      : null;
     return (
       <div className="space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <PageHeader title={displayName} description="This booking doesn't have an event workspace yet." />
+          <div className="flex items-center gap-3">
+            <RelationshipPhotoAvatar photoUrl={photo?.displayedPhotoUrl ?? null} name={displayName} size="lg" />
+            <PageHeader title={displayName} description="This booking doesn't have an event workspace yet." />
+          </div>
           <DeleteClientRecordButton clientId={client.id} fallbackName={displayName} />
         </div>
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
@@ -293,6 +301,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   });
 
   const workspaceName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
+  const photo = client.relationshipId
+    ? await getRelationshipPhotoForVenue(client.relationshipId)
+    : null;
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -340,6 +351,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       bookingJourney={bookingJourney}
       selectedPackage={selectedPackage}
       openSetupPayments={sp.setupPayments === "1"}
+      photoUrl={photo?.displayedPhotoUrl ?? null}
     />
     </div>
   );

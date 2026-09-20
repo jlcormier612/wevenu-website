@@ -45,6 +45,7 @@ import {
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
 import { PortalLegalHistorySection } from "@/components/legal/legal-history-section";
+import { CouplePhotoHeroControl } from "@/components/portal/couple-photo-hero-control";
 import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
@@ -1760,6 +1761,7 @@ function OverviewSection({
           ? `url(${venueHeroPhotoUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
       }}>
+        <CouplePhotoHeroControl token={token} />
         {venueHeroPhotoUrl ? (
           <div className="absolute inset-0" style={{
             background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.58) 32%, rgba(0,0,0,0.18) 62%, rgba(0,0,0,0.05) 100%)",
