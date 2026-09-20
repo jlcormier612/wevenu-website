@@ -103,7 +103,9 @@ export function SelectPackageSheet({
         router.refresh();
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
-        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+        // The browser error is "Server Action … was not found on the server."
+        // The server log says "Failed to find Server Action". Match both.
+        if (/Failed to find Server Action|was not found on the server|Server action not found|older or newer deployment/i.test(message)) {
           toast.error("The app was updated — reload this page and select the package again.");
         } else {
           toast.error("Could not save selected package. Reload and try again.");
