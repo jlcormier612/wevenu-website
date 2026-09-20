@@ -10,8 +10,8 @@
  * - Inbox conversation ownership
  * - exclude_from_business_reporting (Reporting metrics only — not Lead Flow)
  *
- * Inbox Leads vs Clients does NOT use this module — see
- * lib/conversations/inbox-ownership.ts (conversation owner/source).
+ * Inbox Leads uses this same open sales_stage rule
+ * (lib/conversations/inbox-working-population.ts). Owner stamps are not the tab.
  */
 
 import { transitionKindForCanonical } from "@/lib/leads/pipeline-stage-transition";

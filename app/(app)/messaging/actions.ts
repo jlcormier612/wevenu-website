@@ -20,6 +20,7 @@ import { getRelationshipContext } from "@/lib/conversations/context";
 import type { RelationshipContext } from "@/lib/conversations/context";
 import { getActivityTimelineForLeadOrClient } from "@/lib/activity-timeline/service";
 import type { ActivityTimelineEvent } from "@/lib/activity-timeline/types";
+import { inboxWorkingCategory } from "@/lib/conversations/inbox-working-population";
 
 // ---- Conversation actions ----------------------------------------------------
 
@@ -70,34 +71,62 @@ export async function getConversationComposeContextAction(
 export async function resolveInboxCategoryAction(
   conversationId: string,
 ): Promise<"leads" | "clients" | "vendors"> {
-  const { inboxCategoryFromConversation } = await import("@/lib/navigation/attention");
   const { createClient } = await import("@/integrations/supabase/server");
   const supabase = await createClient();
   const { data } = await supabase
     .from("conversations")
-    .select("conversation_kind, relationship_id, inbox_owner_kind, inbox_owner_lead_id, inbox_owner_client_id")
+    .select("conversation_kind, relationship_id")
     .eq("id", conversationId)
     .maybeSingle<{
       conversation_kind: string | null;
       relationship_id: string | null;
-      inbox_owner_kind: string | null;
-      inbox_owner_lead_id: string | null;
-      inbox_owner_client_id: string | null;
     }>();
   if (!data) return "leads";
-  if (
-    data.conversation_kind === "venue_vendor"
-    || data.conversation_kind === "couple_vendor"
-    || data.conversation_kind === "couple_vendor_inquiry"
-  ) {
-    return "vendors";
+  if (!data.relationship_id) {
+    const category = inboxWorkingCategory({
+      conversationKind: data.conversation_kind,
+      hasLead: false,
+    });
+    return category === "vendors" ? "vendors" : "leads";
   }
-  return inboxCategoryFromConversation({
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("sales_stage")
+    .eq("relationship_id", data.relationship_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ sales_stage: string | null }>();
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id, status, lifecycle_booked_at")
+    .eq("relationship_id", data.relationship_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string; status: string | null; lifecycle_booked_at: string | null }>();
+  let hasBookedEvent = false;
+  if (client && client.status !== "cancelled" && !client.lifecycle_booked_at) {
+    const { data: event } = await supabase
+      .from("events")
+      .select("id")
+      .eq("client_id", client.id)
+      .not("booked_at", "is", null)
+      .neq("status", "cancelled")
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    hasBookedEvent = Boolean(event);
+  }
+  const category = inboxWorkingCategory({
     conversationKind: data.conversation_kind,
-    inboxOwnerKind: data.inbox_owner_kind,
-    leadId: data.inbox_owner_lead_id,
-    clientId: data.inbox_owner_client_id,
+    salesStage: lead?.sales_stage,
+    hasLead: Boolean(lead),
+    clientStatus: client?.status,
+    lifecycleBookedAt: client?.lifecycle_booked_at,
+    hasBookedEvent,
   });
+  if (category === "vendors" || category === "leads" || category === "clients") return category;
+  // Lost, cancelled, and incomplete threads stay on the relationship record.
+  // They are not an active Inbox tab.
+  return "leads";
 }
 
 export async function previewConversationSendAction(
