@@ -26,7 +26,10 @@ async function rolesForUser(
   supabase: any,
   userId: string,
 ): Promise<PortalRoles> {
-  const [vendorRes, clientRes, venueIdRes] = await Promise.all([
+  // Wave 2: "is venue staff" means any active accepted membership — not whether
+  // an active venue context is already selected (multi-venue users may need
+  // /select-venue before current_user_venue_id() is non-null).
+  const [vendorRes, clientRes, membershipRes] = await Promise.all([
     supabase
       .from("vendor_users")
       .select("vendor_id")
@@ -41,15 +44,23 @@ async function rolesForUser(
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle(),
-    supabase.rpc("current_user_venue_id"),
+    supabase.rpc("list_my_venue_memberships"),
   ]);
+
+  const membershipPayload = membershipRes.data as
+    | { ok?: boolean; memberships?: unknown[] }
+    | null;
+  const hasVenueMembership =
+    Boolean(membershipPayload?.ok)
+    && Array.isArray(membershipPayload?.memberships)
+    && membershipPayload!.memberships!.length > 0;
 
   return {
     isVendor: Boolean(vendorRes.data?.vendor_id),
     clientPortalPath: clientRes.data?.access_token
       ? `/p/${clientRes.data.access_token}`
       : null,
-    isVenueStaff: Boolean(venueIdRes.data),
+    isVenueStaff: hasVenueMembership,
   };
 }
 

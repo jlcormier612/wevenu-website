@@ -1,0 +1,677 @@
+{
+  "rule": "After ownership migration begins, owner_user_id is never an ownership authorization signal. Ownership = venue_staff.is_owner only.",
+  "classes": {
+    "a_account_contact": 8,
+    "c_review_specific_actor_or_contact": 14,
+    "b_all_owners_or_single_assumption": 1,
+    "a_account_contact_or_historical": 10,
+    "d_obsolete_ownership_auth_signal": 62
+  },
+  "entries": [
+    {
+      "file": "app/api/internal/enrollment/activate/route.ts",
+      "lines": "108",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": "p_owner_user_id: userId,",
+      "wave": 4
+    },
+    {
+      "file": "lib/availability/assert-event-availability.db.sql",
+      "lines": "31",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name)",
+      "wave": 9
+    },
+    {
+      "file": "lib/availability/calendar-block-recurrence.db.sql",
+      "lines": "27",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name, timezone)",
+      "wave": 9
+    },
+    {
+      "file": "lib/availability/direct-add-transactional.db.sql",
+      "lines": "30",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name)",
+      "wave": 9
+    },
+    {
+      "file": "lib/availability/event-availability-write.db.sql",
+      "lines": "28",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name)",
+      "wave": 9
+    },
+    {
+      "file": "lib/availability/inquiry-event-date.db.sql",
+      "lines": "27",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name)",
+      "wave": 9
+    },
+    {
+      "file": "lib/calendar/venue-schedule-catalog-2a1.db.sql",
+      "lines": "37",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name)",
+      "wave": 4
+    },
+    {
+      "file": "lib/calendar/venue-schedule-catalog-2a23.db.sql",
+      "lines": "24",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name)",
+      "wave": 4
+    },
+    {
+      "file": "lib/calendar/venue-schedule-catalog-2a24.db.sql",
+      "lines": "34",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name) values",
+      "wave": 4
+    },
+    {
+      "file": "lib/floor-plans/staff-write-gates.db.sql",
+      "lines": "46",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name)",
+      "wave": 7
+    },
+    {
+      "file": "lib/migration/active-commitment-e2e.db.sql",
+      "lines": "48",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name, timezone)",
+      "wave": 4
+    },
+    {
+      "file": "lib/migration/cutover-e2e.db.sql",
+      "lines": "65",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name, timezone, tour_duration_minutes, tour_buffer_minutes, tour_scheduling_enabled)",
+      "wave": 4
+    },
+    {
+      "file": "lib/onboarding/white-glove-handoff.ts",
+      "lines": "58,125",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": ".select(\"id, name, owner_user_id\")",
+      "wave": 4
+    },
+    {
+      "file": "lib/provisioning/workspace.ts",
+      "lines": "100,110,124",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": ".eq(\"owner_user_id\", ownerUserId)",
+      "wave": 4
+    },
+    {
+      "file": "lib/team/service.ts",
+      "lines": "72",
+      "owner_user_id_class": "b_all_owners_or_single_assumption",
+      "snippet": "* (role='owner', is_owner=true, user_id = venues.owner_user_id \u2014 confirmed",
+      "wave": 6
+    },
+    {
+      "file": "lib/tours/tour-booking-atomicity.db.sql",
+      "lines": "32",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "id, owner_user_id, name, timezone,",
+      "wave": 4
+    },
+    {
+      "file": "lib/tours/tour-capacity-write.db.sql",
+      "lines": "32",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "insert into public.venues (id, owner_user_id, name, tour_duration_minutes, tour_buffer_minutes, timezone)",
+      "wave": 4
+    },
+    {
+      "file": "lib/venue/repository.ts",
+      "lines": "26,85",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": "owner_user_id: string;",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626090000_venue_foundation.sql",
+      "lines": "25,69,112,114,116,118,123,124,128,129,156",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "owner_user_id            uuid not null references auth.users (id) on delete cascade,",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626150000_leads_foundation.sql",
+      "lines": "97,98,102,103,107,108",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626180000_lead_relationships.sql",
+      "lines": "45,46",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626220000_clients_foundation.sql",
+      "lines": "113,114,118,119,123,124,128,129",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626240000_events_foundation.sql",
+      "lines": "95,96,100,101,105,106,110,111",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626260000_timeline.sql",
+      "lines": "42,43",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626280000_vendors_foundation.sql",
+      "lines": "71,72,76,77",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626300000_contracts_foundation.sql",
+      "lines": "94,95,99,100,104,105,162",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 6
+    },
+    {
+      "file": "supabase/migrations/20260626320000_payments_foundation.sql",
+      "lines": "90,91,95,96,100,101",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260626360000_floor_plans.sql",
+      "lines": "103,104,108,109",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 7
+    },
+    {
+      "file": "supabase/migrations/20260627060000_availability_foundation.sql",
+      "lines": "125,126,130,131,135,136,140,141",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 9
+    },
+    {
+      "file": "supabase/migrations/20260627080000_packages_invoices.sql",
+      "lines": "122,123,127,128,132,133,137,138",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627100000_package_items_discounts.sql",
+      "lines": "41,42",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627120000_documents.sql",
+      "lines": "69,70",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627140000_luv_drafts.sql",
+      "lines": "51,52",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627160000_luv_settings.sql",
+      "lines": "30,31",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627180000_messaging.sql",
+      "lines": "135,136,140,141,145,146",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627200000_message_events.sql",
+      "lines": "31,32",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627260000_final_details.sql",
+      "lines": "67,68",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260627320000_relationship_intelligence.sql",
+      "lines": "66,67",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260628040000_event_playbooks.sql",
+      "lines": "161,162,166,167,171,172",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using      (exists (select 1 from public.venues v where v.id = venue_id and v.owner_user_id = auth.uid()))",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260628100000_client_portal.sql",
+      "lines": "54",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260628120000_notification_foundation.sql",
+      "lines": "102,150",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260628140000_notification_delivery.sql",
+      "lines": "74,123",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260628160000_tour_scheduling.sql",
+      "lines": "69",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629000000_multi_actor_foundation.sql",
+      "lines": "78",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629040000_couple_owned_data.sql",
+      "lines": "68,113",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629060000_couple_engagement.sql",
+      "lines": "43",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629100000_couple_website.sql",
+      "lines": "66",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629140000_website_analytics.sql",
+      "lines": "38",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629160000_invitations.sql",
+      "lines": "52",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629200000_vendor_portal.sql",
+      "lines": "46",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629240000_couple_portal_collaboration.sql",
+      "lines": "83,125",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260629260000_client_media.sql",
+      "lines": "67",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260702950000_sprint95_couple_messaging.sql",
+      "lines": "69,77,86,119,174,251,287,438",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "WHERE v.id = venue_id AND v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260702960000_sprint955_message_polish.sql",
+      "lines": "58",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "WHERE v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260703150000_sprint76_brand_colors.sql",
+      "lines": "31,68",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "owner_user_id, name, business_name, email, phone, website,",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260706110000_sprint104_5_vendor_foundation.sql",
+      "lines": "203,216,236,237,287,327,328,360,413,464,465,556",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260707200000_sprint83_keepsake.sql",
+      "lines": "33,56",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260708000000_sprint84_feedback.sql",
+      "lines": "65,125,160,511,593,635,675,710",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260708110000_sprint85_notifications_center.sql",
+      "lines": "56,64,125,178",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260708115000_sprint86_notification_preferences.sql",
+      "lines": "47,55,126,188",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260708120000_sprint107_team_collaboration.sql",
+      "lines": "39,51,128,134,135,143",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "-- Security definer so the owner subquery (indexed on owner_user_id) runs with",
+      "wave": 6
+    },
+    {
+      "file": "supabase/migrations/20260710010000_sprint108_digest_eligible_venues.sql",
+      "lines": "33",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "join auth.users u on u.id = v.owner_user_id",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260710100000_sprint86_global_search.sql",
+      "lines": "65",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where owner_user_id = auth.uid();",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260711000002_sprint87_venue_analytics.sql",
+      "lines": "24,227",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where owner_user_id = auth.uid();",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260712100000_sprint88_luv_rollup.sql",
+      "lines": "43,65",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "select id into v_venue_id from public.venues where owner_user_id = auth.uid();",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260713400000_fix_vendor_rls_infinite_recursion.sql",
+      "lines": "60",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260716000000_tr_g1_permissions_enforcement.sql",
+      "lines": "33,120,131,138",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "(select 'owner' from public.venues where owner_user_id = auth.uid() limit 1),",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260717300000_tr_m7_messaging_venue_resolution_and_webhooks.sql",
+      "lines": "7",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "--    `venues.owner_user_id = auth.uid()` only \u2014 never updated to",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260723000000_vendor_relationship_lifecycle.sql",
+      "lines": "63,72,84,96,254,262",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where vvr.vendor_id = vendors.id and vvr.status <> 'inactive' and v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260829000000_luv_infrastructure_repair.sql",
+      "lines": "17",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "--      existed (`venues` uses `owner_user_id`) \u2014 this alone throws on",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260920000000_communication_diagnostics_hq_access.sql",
+      "lines": "7",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "-- \"your own venue\" (owner_user_id = auth.uid() / current_user_venue_id()),",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260922000000_coordinator_tour_scheduling.sql",
+      "lines": "27",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "-- \u2014 \"owner_user_id = auth.uid()\" means any coordinator who is not literally",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20260927000000_fix_venue_setup_rls_self_reference.sql",
+      "lines": "4,71,76",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "-- Bug: `insert into public.venues (...) on conflict (owner_user_id) do update",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261101020000_engineering_cleanup_rls_luv_rollups_vendor_health.sql",
+      "lines": "19,52",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "-- still use the older owner_user_id-only check; that's a separate,",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261112000000_rc2_conversation_attachments.sql",
+      "lines": "51",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "-- the older owner_user_id lookup the couple-messages version predates.",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261116000000_rc2_search_conversations_requests.sql",
+      "lines": "48",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where owner_user_id = auth.uid();",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261137000000_guided_setup_resumability.sql",
+      "lines": "62,67",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "select id into v_id from public.venues where owner_user_id = uid;",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261159000000_vendor_faqs.sql",
+      "lines": "44",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261221000000_canonical_metrics_foundation.sql",
+      "lines": "298",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where owner_user_id = auth.uid();",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261253000000_questionnaire_working_experience.sql",
+      "lines": "15",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "--    and was never migrated \u2014 it still checks `owner_user_id = auth.uid()`",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261257000000_reporting_funnel_date_window.sql",
+      "lines": "131",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where owner_user_id = auth.uid();",
+      "wave": 9
+    },
+    {
+      "file": "supabase/migrations/20261290000000_vendor_relationship_venue_staff_rls.sql",
+      "lines": "6,24",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "-- venues.owner_user_id = auth.uid(), blocking Manager/Staff who share the",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261292000000_vendor_venue_staff_rls.sql",
+      "lines": "6",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "-- Three policies still checked venues.owner_user_id = auth.uid(), blocking",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261293000000_venue_enrollments.sql",
+      "lines": "68,98,99",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": "p_owner_user_id uuid",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261297000000_notification_preferences_email_correction.sql",
+      "lines": "124,206",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "from public.venues where owner_user_id = auth.uid();",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261298000000_reminder_cadence_and_venue_email.sql",
+      "lines": "80,85,99,137",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "using (exists (select 1 from public.venues where id = venue_reminder_cadence.venue_id and owner_user_id = auth.uid()));",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261304000000_activate_enrollment_owner_staff.sql",
+      "lines": "8,35,59,60,72",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": "p_owner_user_id uuid",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261310100000_sales_pipeline_reporting_remap.sql",
+      "lines": "107",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where owner_user_id = auth.uid();",
+      "wave": 9
+    },
+    {
+      "file": "supabase/migrations/20261339000000_reporting_frozen_acquisition_source.sql",
+      "lines": "201,399",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "where owner_user_id = auth.uid();",
+      "wave": 9
+    },
+    {
+      "file": "supabase/migrations/20261364000000_vendor_inactive_filter_and_checkin_notification.sql",
+      "lines": "420",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "and v.owner_user_id = auth.uid()",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261378000000_workspace_provisioning_white_glove.sql",
+      "lines": "160,187,216,220,227,260,261,269",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": "p_owner_user_id uuid",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261381000000_fix_activate_venue_enrollment_ambiguous_venue_id.sql",
+      "lines": "12,40,69,73,80,113,114,122",
+      "owner_user_id_class": "a_account_contact",
+      "snippet": "p_owner_user_id uuid",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261390000000_analytics_venue_staff_resolution.sql",
+      "lines": "5,32,40,48",
+      "owner_user_id_class": "a_account_contact_or_historical",
+      "snippet": "-- get_luv_rollups() still resolved the venue via venues.owner_user_id =",
+      "wave": 4
+    },
+    {
+      "file": "supabase/migrations/20261404800000_reminder_before_due_offsets.sql",
+      "lines": "86,126",
+      "owner_user_id_class": "d_obsolete_ownership_auth_signal",
+      "snippet": "select id into v_venue_id from public.venues where owner_user_id = auth.uid();",
+      "wave": 4
+    },
+    {
+      "file": "supabase/seed.sql",
+      "lines": "69",
+      "owner_user_id_class": "c_review_specific_actor_or_contact",
+      "snippet": "id, owner_user_id, name, business_name, email, phone, website,",
+      "wave": 4
+    }
+  ]
+}

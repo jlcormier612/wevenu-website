@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
+import { bootstrapActiveVenueContext } from "@/lib/venue/active-context";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
 
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Protected layout for the venue workspace.
+ * Wave 2: bootstraps DB-backed active venue context before any venue-scoped work.
  * Graduation gate: ready_to_invite_couples only (not venues.setup_completed).
  * White Glove customers without completed handoff/activation stay out of the
  * product workspace (waiting / intake is token-scoped outside this layout).
@@ -37,11 +39,27 @@ export default async function WorkspaceLayout({
     redirect("/login");
   }
 
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const boot = await bootstrapActiveVenueContext();
+
+  if (boot.status === "unauthenticated") {
+    redirect("/login");
+  }
+  if (boot.status === "no_memberships") {
+    redirect("/onboarding/intake");
+  }
+  if (boot.status === "needs_selection") {
+    // Case C/E — fail closed; no arbitrary venue. Minimal picker only.
+    if (!pathname.startsWith("/select-venue")) {
+      redirect("/select-venue");
+    }
+    return <>{children}</>;
+  }
+
   const venue = await getCurrentVenue();
   if (!venue) {
-    // No venue — enrollment activate should have provisioned one. Keep a thin
-    // handoff, never the legacy wizard.
-    redirect("/onboarding/intake");
+    // Context claimed ready but venue row missing — fail closed to picker/intake.
+    redirect("/select-venue");
   }
 
   // White Glove: block full product until enrollment is activated (handoff done).
@@ -86,7 +104,6 @@ export default async function WorkspaceLayout({
     }
   }
 
-  const pathname = (await headers()).get("x-pathname") ?? "";
   const intake = await getIntakeForVenue(venue.id);
   if (
     enrollment?.onboarding_type !== "white_glove" &&
