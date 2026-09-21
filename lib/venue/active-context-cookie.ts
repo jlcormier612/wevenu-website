@@ -4,6 +4,8 @@
  */
 import { cookies } from "next/headers";
 
+import { resolveCookieAfterDbSync } from "@/lib/venue/active-context-logic";
+
 export const ACTIVE_VENUE_COOKIE = "htc_active_venue_id";
 
 const COOKIE_OPTS = {
@@ -11,7 +13,6 @@ const COOKIE_OPTS = {
   secure: true,
   sameSite: "lax" as const,
   path: "/",
-  // Session cookie — cleared on logout / invalid context.
 };
 
 export async function readActiveVenueCookie(): Promise<string | null> {
@@ -35,12 +36,8 @@ export async function clearActiveVenueCookie(): Promise<void> {
  * DB null → clear cookie. Cookie forged/mismatched → rewrite to DB.
  */
 export async function syncActiveVenueCookieFromDb(dbVenueId: string | null): Promise<void> {
-  if (!dbVenueId) {
-    await clearActiveVenueCookie();
-    return;
-  }
   const cookie = await readActiveVenueCookie();
-  if (cookie !== dbVenueId) {
-    await writeActiveVenueCookie(dbVenueId);
-  }
+  const next = resolveCookieAfterDbSync({ dbVenueId, cookieVenueId: cookie });
+  if (next.action === "clear") await clearActiveVenueCookie();
+  else if (next.action === "write" && next.cookieVenueId) await writeActiveVenueCookie(next.cookieVenueId);
 }
