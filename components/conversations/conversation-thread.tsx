@@ -35,6 +35,7 @@ import {
   latestMeaningfulFromMessages,
 } from "@/lib/conversations/inbox-attention";
 import { conversationHeaderOrientation } from "@/lib/conversations/inbox-header";
+import { linkifyMessageBody } from "@/lib/conversations/message-body-links";
 import { SENDABLE_CHANNEL_LABEL } from "@/lib/conversations/channels";
 import {
   mergeSentAckIntoMessages,
@@ -278,7 +279,16 @@ function Bubble({
         {msg.senderType === "system" && (
           <div className="mb-1"><AutomatedBadge isVenue={isVenue} /></div>
         )}
-        {msg.body && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.body}</p>}
+        {msg.body && (
+          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+            {linkifyMessageBody(
+              msg.body,
+              isVenue
+                ? "underline underline-offset-2 break-all text-primary-foreground"
+                : "underline underline-offset-2 break-all text-primary",
+            )}
+          </p>
+        )}
         {!msg.body && msg.attachments.length > 0 && (
           <p className="italic opacity-80">{msg.channel === "sms" ? "Photo or file" : "Attachment"}</p>
         )}

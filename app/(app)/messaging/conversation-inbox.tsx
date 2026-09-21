@@ -27,9 +27,9 @@ import {
   clearInboxChip,
   defaultInboxFilters,
   INBOX_EVENT_DATE_PRESET_OPTIONS,
-  INBOX_EVENT_TYPE_OPTIONS,
   INBOX_FILTER_ALL,
   INBOX_SORT_OPTIONS,
+  buildInboxEventTypeFilterOptions,
   inboxActiveChips,
   inboxFiltersAreDefault,
   inboxFiltersToQuery,
@@ -181,10 +181,17 @@ function ConversationRow({
 export function ConversationInbox({
   teamMembers = [],
   currentStaffId = null,
+  acceptedInquiryEventTypes = null,
 }: {
   teamMembers?: StaffMember[];
   currentStaffId?: string | null;
+  /** venues.accepted_inquiry_event_types — Setup source of truth for Event type filter. */
+  acceptedInquiryEventTypes?: unknown;
 }) {
+  const eventTypeFilterOptions = React.useMemo(
+    () => buildInboxEventTypeFilterOptions(acceptedInquiryEventTypes),
+    [acceptedInquiryEventTypes],
+  );
   const searchParams = useSearchParams();
   const [items, setItems] = React.useState<ConversationSummary[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -561,7 +568,7 @@ export function ConversationInbox({
               <div className="space-y-1 min-w-0">
                 <p className="text-[10px] text-muted-foreground">Event type</p>
                 <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border bg-background px-2 py-1.5 sm:max-h-52">
-                  {INBOX_EVENT_TYPE_OPTIONS.map((t) => {
+                  {eventTypeFilterOptions.map((t) => {
                     const checked = filters.eventTypes.includes(t.value);
                     return (
                       <label key={t.value} className="flex items-center gap-2 text-xs text-foreground">

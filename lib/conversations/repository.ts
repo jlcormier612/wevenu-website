@@ -15,6 +15,11 @@ import {
   NON_MEANINGFUL_CHANNELS,
   pickLatestMeaningfulPerConversation,
 } from "@/lib/conversations/inbox-attention";
+import {
+  expandInboxEventTypeFilterValues,
+  INBOX_EVENT_TYPE_LEGACY,
+} from "@/lib/conversations/inbox-event-type-options";
+import { parseAcceptedEventTypes } from "@/lib/event-types/canonical";
 import { findVenueCoupleConversationId } from "@/lib/conversations/venue-couple-conversation";
 import type {
   ConversationDetail,
@@ -298,6 +303,44 @@ function inboxPageRpcArgs(query: InboxPageQuery) {
 }
 
 /**
+ * When the UI selects the legacy bucket, expand to concrete stored event_type
+ * values that sit outside venues.accepted_inquiry_event_types. Does not change
+ * stored types — only the RPC filter args.
+ */
+async function resolveInboxEventTypesForRpc(
+  client: DbClient,
+  eventTypes: string[] | null | undefined,
+): Promise<string[] | null> {
+  if (!eventTypes || eventTypes.length === 0) return null;
+  if (!eventTypes.includes(INBOX_EVENT_TYPE_LEGACY)) {
+    return eventTypes.filter((t) => t !== INBOX_EVENT_TYPE_LEGACY);
+  }
+
+  const { data: venueRow } = await client
+    .from("venues")
+    .select("id, accepted_inquiry_event_types")
+    .limit(1)
+    .maybeSingle<{ id: string; accepted_inquiry_event_types: unknown }>();
+
+  const accepted = parseAcceptedEventTypes(venueRow?.accepted_inquiry_event_types);
+  const venueId = venueRow?.id;
+  const legacyStored: string[] = [];
+
+  if (venueId) {
+    const [{ data: leadTypes }, { data: eventTypesRows }] = await Promise.all([
+      client.from("leads").select("event_type").eq("venue_id", venueId).not("event_type", "is", null),
+      client.from("events").select("event_type").eq("venue_id", venueId).not("event_type", "is", null),
+    ]);
+    for (const row of [...(leadTypes ?? []), ...(eventTypesRows ?? [])] as { event_type: string | null }[]) {
+      const value = row.event_type?.trim();
+      if (value) legacyStored.push(value);
+    }
+  }
+
+  return expandInboxEventTypeFilterValues(eventTypes, accepted, legacyStored);
+}
+
+/**
  * Venue↔vendor conversations for the Inbox Vendors category.
  * Distinct from venue_couple — never mixed into Leads/Clients.
  */
@@ -502,7 +545,8 @@ export async function getConversationInboxPage(
     return getVendorInboxPage(client, query);
   }
 
-  const rpcArgs = inboxPageRpcArgs(query);
+  const resolvedEventTypes = await resolveInboxEventTypesForRpc(client, query.eventTypes);
+  const rpcArgs = inboxPageRpcArgs({ ...query, eventTypes: resolvedEventTypes });
   const { data, error } = await client.rpc("get_conversation_inbox_page", rpcArgs);
   if (error) throw error;
   if (!data || "error" in data) {

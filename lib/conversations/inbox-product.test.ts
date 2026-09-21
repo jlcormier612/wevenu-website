@@ -38,7 +38,8 @@ describe("Inbox Product two-column workspace", () => {
     assert.match(inbox, /Filter by event date/);
     assert.match(inbox, /Specific event/);
     assert.match(inbox, /Search for a specific event/);
-    assert.match(inbox, /INBOX_EVENT_TYPE_OPTIONS/);
+    assert.match(inbox, /buildInboxEventTypeFilterOptions/);
+    assert.match(inbox, /eventTypeFilterOptions/);
     assert.match(inbox, /INBOX_EVENT_DATE_PRESET_OPTIONS/);
     assert.doesNotMatch(inbox, /Filter by event"/);
     assert.doesNotMatch(inbox, /Any event<\/option>/);

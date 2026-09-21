@@ -10,15 +10,20 @@ import { Suspense } from "react";
 
 import { getTeamMembers, getCurrentStaffMember } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { ConversationInbox } from "@/app/(app)/messaging/conversation-inbox";
 
 export const metadata: Metadata = { title: "Inbox" };
 
 export default async function MessagingPage() {
   const venue = await getCurrentVenue();
-  const [teamMembers, currentStaff] = venue
-    ? await Promise.all([getTeamMembers(venue.id), getCurrentStaffMember(venue.id)])
-    : [[], null];
+  const [teamMembers, currentStaff, inquirySettings] = venue
+    ? await Promise.all([
+      getTeamMembers(venue.id),
+      getCurrentStaffMember(venue.id),
+      getInquiryFormSettings(),
+    ])
+    : [[], null, null];
   // ConversationInbox reads ?conversation= (RC2, Milestone 4 — deep-linking
   // in from Search and Request cross-links) via useSearchParams, which
   // requires a Suspense boundary in the app router.
@@ -28,6 +33,7 @@ export default async function MessagingPage() {
         <ConversationInbox
           teamMembers={teamMembers}
           currentStaffId={currentStaff?.id ?? null}
+          acceptedInquiryEventTypes={inquirySettings?.acceptedEventTypes ?? null}
         />
       </div>
     </Suspense>

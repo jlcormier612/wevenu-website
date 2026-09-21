@@ -3,9 +3,19 @@
  * event-date presets. Event filter = attributes first; specific event is secondary.
  */
 
-import { EVENT_TYPES, eventTypeLabel } from "@/lib/event-types/canonical";
+import { EVENT_TYPES } from "@/lib/event-types/canonical";
+import {
+  INBOX_EVENT_TYPE_LEGACY,
+  inboxEventTypeOptionLabel,
+} from "@/lib/conversations/inbox-event-type-options";
 
 export const INBOX_FILTER_ALL = "__all__";
+export {
+  INBOX_EVENT_TYPE_LEGACY,
+  INBOX_EVENT_TYPE_LEGACY_LABEL,
+  buildInboxEventTypeFilterOptions,
+  shouldShowInboxLegacyEventTypeBucket,
+} from "@/lib/conversations/inbox-event-type-options";
 
 export type InboxAttention = "all" | "unread" | "needs_response";
 export type InboxRelationship = "all" | "leads" | "bookings" | "clients" | "vendors";
@@ -80,7 +90,10 @@ export const INBOX_SORT_OPTIONS: { value: InboxSort; label: string }[] = [
   { value: "client_name_desc", label: "Client name Z–A" },
 ];
 
-/** Canonical types for the Event type filter (existing vocabulary only). */
+/**
+ * @deprecated Prefer buildInboxEventTypeFilterOptions(acceptedInquiryEventTypes).
+ * Full catalog retained for tests that assert the vocabulary still exists.
+ */
 export const INBOX_EVENT_TYPE_OPTIONS = EVENT_TYPES;
 
 function pad2(n: number): string {
@@ -223,9 +236,14 @@ const SORT_CHIP_LABELS: Partial<Record<InboxSort, string>> = {
 };
 
 function eventTypesChipLabel(types: string[]): string {
-  if (types.length === 1) return eventTypeLabel(types[0]!) || types[0]!;
+  if (types.length === 1) return inboxEventTypeOptionLabel(types[0]!);
   if (types.length === 2) {
-    return `${eventTypeLabel(types[0]!) || types[0]}, ${eventTypeLabel(types[1]!) || types[1]}`;
+    return `${inboxEventTypeOptionLabel(types[0]!)}, ${inboxEventTypeOptionLabel(types[1]!)}`;
+  }
+  if (types.includes(INBOX_EVENT_TYPE_LEGACY)) {
+    const rest = types.filter((t) => t !== INBOX_EVENT_TYPE_LEGACY);
+    if (rest.length === 0) return inboxEventTypeOptionLabel(INBOX_EVENT_TYPE_LEGACY);
+    return `${rest.length + 1} event types`;
   }
   return `${types.length} event types`;
 }
