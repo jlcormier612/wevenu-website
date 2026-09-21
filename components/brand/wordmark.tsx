@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
+import { HTC_LOGO_PUBLIC_PATH } from "@/shared/brand/logo";
 
-const PLATFORM_LOGO_LIGHT = "/brand/hello-to-cheers-logo-primary-transparent.png";
-const PLATFORM_LOGO_DARK = "/brand/hello-to-cheers-logo-primary-transparent.png";
+const PLATFORM_LOGO_LIGHT = HTC_LOGO_PUBLIC_PATH;
+const PLATFORM_LOGO_DARK = HTC_LOGO_PUBLIC_PATH;
 
 /**
  * Renders the Hello to Cheers platform logo everywhere platform branding appears.

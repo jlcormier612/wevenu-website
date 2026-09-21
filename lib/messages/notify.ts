@@ -1,3 +1,5 @@
+import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
+
 const RESEND_URL = "https://api.resend.com/emails";
 
 const FROM = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
@@ -8,6 +10,7 @@ function html(senderName: string, preview: string, ctaUrl: string, ctaLabel: str
     ? `<p style="font-size:13px;color:#6B6560;margin:0 0 12px">Event: ${eventName.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`
     : "";
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:560px;margin:40px auto;color:#2D2B28">
+${htcEmailLogoHeaderHtml()}
 <p style="font-size:16px;font-weight:600;margin-bottom:8px">💬 New message from ${senderName}</p>
 ${eventLine}
 <div style="background:#F5F3EF;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:14px;color:#3D3A35;line-height:1.5">

@@ -8,6 +8,7 @@ import { NAV_ITEMS } from "@/lib/nav";
 import { NAV_PERMISSION } from "@/lib/program4/permissions";
 import type { Permission } from "@/lib/program4/types";
 import { cn } from "@/lib/utils";
+import { HTC_LOGO_PUBLIC_PATH } from "@shared/brand/logo";
 
 type SidebarProps = {
   unreadCount: number;
@@ -39,7 +40,7 @@ export function Sidebar({
       <div className="px-5 pt-7 pb-5">
         <Link href={homeHref} className="block" aria-label="Hello to Cheers Relationship Workspace">
           <Image
-            src="/brand/hello-to-cheers-logo-primary-transparent.png"
+            src={HTC_LOGO_PUBLIC_PATH}
             alt="Hello to Cheers"
             width={755}
             height={274}

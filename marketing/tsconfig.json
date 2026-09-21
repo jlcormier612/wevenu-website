@@ -55,6 +55,12 @@
       ],
       "@shared/analytics/*": [
         "../shared/analytics/*"
+      ],
+      "@shared/brand": [
+        "../shared/brand/logo.ts"
+      ],
+      "@shared/brand/*": [
+        "../shared/brand/*"
       ]
     }
   },

@@ -4,6 +4,8 @@
  * (lib/email/vendor-invite.ts).
  */
 
+import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -39,6 +41,7 @@ export function buildVendorAssignmentHtml({
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
     <tr>
       <td style="background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb">
+        ${htcEmailLogoHeaderHtml()}
         <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#6b7280">
           Assignment from ${escapeHtml(venueName)}
         </p>

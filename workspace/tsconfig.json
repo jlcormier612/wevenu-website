@@ -23,7 +23,9 @@
       "@shared/product-sync": ["../shared/product-sync/index.ts"],
       "@shared/product-sync/*": ["../shared/product-sync/*"],
       "@shared/product-account": ["../shared/product-account/index.ts"],
-      "@shared/product-account/*": ["../shared/product-account/*"]
+      "@shared/product-account/*": ["../shared/product-account/*"],
+      "@shared/brand": ["../shared/brand/logo.ts"],
+      "@shared/brand/*": ["../shared/brand/*"]
     }
   },
   "include": [

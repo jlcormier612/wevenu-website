@@ -30,6 +30,8 @@ describe("email brand signature", () => {
     assert.match(html, /See you soon/);
     assert.match(html, /hello@willow\.test/);
     assert.match(html, /Willow Estate/);
+    assert.doesNotMatch(html, /hello-to-cheers-logo-primary-transparent/);
+    assert.doesNotMatch(html, /alt="Hello to Cheers"/);
   });
 
   it("does not invent SMS branding fields", () => {

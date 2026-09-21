@@ -5,7 +5,10 @@ import {
   activationBaseUrl,
   activationUrlFromToken,
   productPostActivationLoginUrl,
+  wrapHelloHtml,
 } from "@/shared/email/templates/helpers";
+import { renderEmailTemplate } from "@/shared/email/templates/registry";
+import { HTC_LOGO_PUBLIC_PATH } from "@/shared/brand/logo";
 
 const ENV_KEYS = [
   "WORKSPACE_URL",
@@ -87,5 +90,41 @@ describe("activationBaseUrl / activationUrlFromToken — must resolve to the wor
       activationUrlFromToken(" tok with space "),
       "https://workspace.sandbox.hellotocheers.com/activate/tok%20with%20space",
     );
+  });
+});
+
+describe("wrapHelloHtml — shared HTC product-email shell", () => {
+  it("includes the official logo with alt text and an absolute HTTPS URL", () => {
+    const html = wrapHelloHtml("Welcome Back", "<p>Hi Sally,</p>");
+    assert.match(html, /alt="Hello to Cheers"/);
+    assert.match(html, new RegExp(`${HTC_LOGO_PUBLIC_PATH.replace(/\//g, "\\/")}`));
+    assert.match(html, /https:\/\/[^"]+\/brand\/hello-to-cheers-logo-primary-transparent\.png/);
+    assert.doesNotMatch(html, /file:|\/Users\/|C:\\/);
+    assert.match(html, /width="200"/);
+  });
+
+  it("keeps the Hello to Cheers eyebrow, title, and Jennifer sign-off", () => {
+    const html = wrapHelloHtml("Welcome Back", "<p>Hi Sally,</p>");
+    assert.match(html, /Hello to Cheers/);
+    assert.match(html, />Welcome Back</);
+    assert.match(html, /Hi Sally/);
+    assert.match(html, /Jennifer &amp; the Hello to Cheers team/);
+  });
+});
+
+describe("welcome_back — branding layer does not rewrite the message", () => {
+  it("keeps subject, greeting, and body copy unchanged", () => {
+    const rendered = renderEmailTemplate("welcome_back", {
+      firstName: "Sally",
+      venueName: "Sally Sunshine Events",
+    });
+    assert.equal(rendered.subject, "We received your Welcome Back note — Sally Sunshine Events");
+    assert.match(rendered.text, /^Hi Sally,/);
+    assert.match(rendered.text, /We received your Welcome Back request for Sally Sunshine Events/);
+    assert.match(rendered.html, /Hello to Cheers/);
+    assert.match(rendered.html, />Welcome Back</);
+    assert.match(rendered.html, /Hi Sally,/);
+    assert.match(rendered.html, /alt="Hello to Cheers"/);
+    assert.match(rendered.html, /hello-to-cheers-logo-primary-transparent\.png/);
   });
 });

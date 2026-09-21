@@ -1,4 +1,5 @@
 import type { NotificationRole } from "@/lib/notifications/types";
+import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
 
 const SAGE = "#5D6F5D";
 const LINEN = "#F7F5F1";
@@ -59,6 +60,7 @@ export function buildReminderEmail(ctx: ReminderEmailContext): { subject: string
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${LINEN};padding:32px 16px;">
     <tr><td>
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #DED6CA;">
+        ${isCoordinator ? `<tr><td style="background:#fff;padding:20px 28px 8px;">${htcEmailLogoHeaderHtml()}</td></tr>` : ""}
         <!-- Header -->
         <tr><td style="background:${headerColor};padding:20px 28px;">
           <p style="margin:0;color:#fff;font-size:13px;letter-spacing:0.05em;">${ctx.venueName}</p>

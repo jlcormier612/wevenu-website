@@ -1,3 +1,4 @@
+import { htcEmailLogoHeaderHtml } from "../../brand/logo";
 import type { EmailTemplateVars } from "../types";
 import { greetingFirstName } from "../../relationships/normalize";
 
@@ -105,6 +106,7 @@ export function ctaButtonHtml(label: string, href: string): string {
 }
 
 export function wrapHelloHtml(title: string, bodyHtml: string): string {
+  const logoHeader = htcEmailLogoHeaderHtml({ href: marketingUrl() });
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -112,6 +114,7 @@ export function wrapHelloHtml(title: string, bodyHtml: string): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
     <tr>
       <td style="background:#fffdf9;border-radius:4px;padding:40px 36px;border:1px solid #e5ddd0">
+        ${logoHeader}
         <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6b7a6b">Hello to Cheers</p>
         <h1 style="margin:0 0 24px;font-size:24px;line-height:1.3;color:#2f3d2f;font-weight:normal">${escapeHtml(title)}</h1>
         ${bodyHtml}

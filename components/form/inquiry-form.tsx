@@ -13,6 +13,7 @@ import {
   ScheduleTourConfirmation,
 } from "@/components/form/inquiry-confirmations";
 import { VenueFormAnalyticsConsent } from "@/components/form/venue-form-analytics-consent";
+import { HtcPlatformMark } from "@/components/brand/htc-platform-mark";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import {
   captureFirstTouchAttribution,
@@ -873,6 +874,7 @@ export function InquiryForm({
             />
           </form>
         )}
+        <HtcPlatformMark className="pt-2 pb-2" />
       </div>
     </div>
   );

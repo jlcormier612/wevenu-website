@@ -34,7 +34,9 @@
       "@shared/product-account": ["./shared/product-account/index.ts"],
       "@shared/product-account/*": ["./shared/product-account/*"],
       "@shared/analytics": ["./shared/analytics/index.ts"],
-      "@shared/analytics/*": ["./shared/analytics/*"]
+      "@shared/analytics/*": ["./shared/analytics/*"],
+      "@shared/brand": ["./shared/brand/logo.ts"],
+      "@shared/brand/*": ["./shared/brand/*"]
     }
   },
   "include": [

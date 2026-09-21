@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { HtcPlatformMark } from "@/components/brand/htc-platform-mark";
 import type { TourBookingConfirmation } from "@/lib/inquiry-form/types";
 import { publicFormSurfaceStyle, readableInk } from "@/lib/theme/public-form-surface";
 import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
@@ -78,6 +79,7 @@ export function RequestInformationConfirmation({
         <h2 className="text-xl font-semibold text-heading">{heading}</h2>
         <p className="text-foreground">We&apos;ve received your inquiry for {venueName}.</p>
         <p className="text-foreground">We&apos;ll be in touch soon.</p>
+        <HtcPlatformMark className="pt-2" />
       </div>
     </div>
   );
@@ -168,6 +170,7 @@ export function ScheduleTourConfirmation({
             Download .ics
           </a>
         </div>
+        <HtcPlatformMark className="pt-2" />
       </div>
     </div>
   );

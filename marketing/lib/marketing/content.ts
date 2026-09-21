@@ -3,6 +3,8 @@
  * Swap these strings when messaging is finalized — layout stays put.
  */
 
+import { HTC_LOGO_PUBLIC_PATH } from "@shared/brand/logo";
+
 export const PLACEHOLDER = {
   hero: {
     headline: "Headline placeholder — calm confidence for venue owners",
@@ -120,10 +122,10 @@ export const MARKETING_MEDIA = {
     "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1400&q=80",
   dashboard: "/marketing/homepage-dashboard-overview.png",
   /** Header/footer lockup — Hello to Cheers + WITH LUV. */
-  logo: "/brand/hello-to-cheers-logo-primary-transparent.png",
-  logoPng: "/brand/hello-to-cheers-logo-primary-transparent.png",
-  logoLockup: "/brand/hello-to-cheers-logo-primary-transparent.png",
+  logo: HTC_LOGO_PUBLIC_PATH,
+  logoPng: HTC_LOGO_PUBLIC_PATH,
+  logoLockup: HTC_LOGO_PUBLIC_PATH,
   /** Body-copy wordmark only */
   wordmark: "/brand/hello-to-cheers-wordmark-transparent.png",
-  mark: "/brand/hello-to-cheers-logo-primary-transparent.png",
+  mark: HTC_LOGO_PUBLIC_PATH,
 } as const;

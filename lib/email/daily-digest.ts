@@ -2,6 +2,8 @@
  * Daily digest email template.
  */
 
+import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
+
 export type DigestItem = {
   label: string;
   detail: string | null;
@@ -66,6 +68,7 @@ export function buildDigestHtml(ctx: DigestContext): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
     <tr>
       <td style="background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb">
+        ${htcEmailLogoHeaderHtml()}
         <p style="margin:0 0 4px;font-size:12px;color:#9ca3af">${escapeHtml(ctx.todayFormatted)}</p>
         <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;color:#111827">${escapeHtml(ctx.venueName)}</h1>
         <p style="margin:0 0 4px;font-size:15px;color:#374151">${escapeHtml(ctx.subjectLine)}</p>
