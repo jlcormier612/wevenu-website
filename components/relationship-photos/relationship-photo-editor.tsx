@@ -62,7 +62,7 @@ export function RelationshipPhotoEditor({
         hint="JPG, PNG, or WEBP up to 5 MB. Uploading sets the photo on this record."
         aspectRatio="aspect-square"
         objectFit="cover"
-        className="max-w-[10rem]"
+        className="max-w-[16rem]"
         onUpload={async (url) => {
           const result = await setVenuePhotoAction(relationshipId, url, opts);
           if (!result.ok) {
@@ -89,7 +89,7 @@ export function RelationshipPhotoEditor({
 
       {showingClient ? (
         <p className="text-sm text-muted-foreground">
-          Showing the photo this couple shared. Upload above to put a venue photo on this record instead.
+          Showing the photo this couple shared. Upload above to replace it with your own client photo version on this record instead.
           {state.venuePhotoUrl ? (
             <>
               {" "}
