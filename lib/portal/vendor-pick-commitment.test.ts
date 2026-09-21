@@ -89,4 +89,14 @@ describe("vendor pick Commitment Alignment — wiring", () => {
     assert.match(submit, /submit_vendor_list/);
     assert.match(togglePick, /set selected_at = case when picked_at is not null/);
   });
+
+  it("submit_vendor_list ON CONFLICT matches the partial eva_event_vendor index", () => {
+    const fix = readFileSync(
+      resolve("supabase/migrations/20261405000000_submit_vendor_list_partial_unique_conflict.sql"),
+      "utf8",
+    );
+    assert.match(fix, /on conflict \(event_id, vendor_id\) where event_id is not null do nothing/);
+    assert.match(fix, /client_id/);
+    assert.match(fix, /set selected_at = case when picked_at is not null/);
+  });
 });
