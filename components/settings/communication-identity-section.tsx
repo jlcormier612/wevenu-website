@@ -85,7 +85,24 @@ export function CommunicationIdentitySection({
             value={logoUrl ? "Uploaded" : "Not uploaded"}
             hint="Shown at the top of the email when present."
           />
-          <Row label="Brand color" value={primaryColor || "Default"} hint="Accent bar on the email." />
+          <Row
+            label="Brand color"
+            value={
+              primaryColor ? (
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="inline-block h-4 w-4 shrink-0 rounded-sm border border-border"
+                    style={{ backgroundColor: primaryColor }}
+                  />
+                  <span>{primaryColor}</span>
+                </span>
+              ) : (
+                "Default"
+              )
+            }
+            hint="Accent bar on the email."
+          />
           <Row
             label="From address"
             value={emailConfigured ? "Platform sender (Hello to Cheers delivery)" : "Email not connected"}
@@ -155,8 +172,8 @@ export function CommunicationIdentitySection({
           />
           <Row
             label="Message body"
-            value="The text you (or automation) write — no email-style footer"
-            hint="Keep SMS short; venue name can appear in the wording when helpful."
+            value="The message you write — exactly what the client receives"
+            hint="Keep SMS concise. Include your venue name when it helps the client know who’s messaging them."
           />
         </dl>
       </div>
@@ -177,14 +194,14 @@ function Row({
   hint,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   hint: string;
 }) {
   return (
     <div className="px-4 py-3.5 bg-card grid gap-1 sm:grid-cols-[11rem_1fr] sm:gap-4">
       <dt className="text-sm font-medium text-heading">{label}</dt>
       <dd>
-        <p className="text-sm text-foreground">{value}</p>
+        <div className="text-sm text-foreground">{value}</div>
         <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
       </dd>
     </div>

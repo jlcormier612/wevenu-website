@@ -45,8 +45,8 @@ function formatNextReminder(iso: string | null): string | null {
 
 /**
  * Automatic reminder queue health. task_reminders rows with status=pending
- * split into waiting (scheduled_for > now) vs due now (scheduled_for <= now).
- * A large waiting count is healthy — it is not "109 reminders supposed to be
+ * split into scheduled (scheduled_for > now) vs due now (scheduled_for <= now).
+ * A large scheduled count is healthy — it is not "109 reminders supposed to be
  * sending right now."
  */
 export function NotificationsSection({
@@ -120,7 +120,7 @@ export function NotificationsSection({
           <div>
             <p className="text-sm font-medium text-green-900">Email delivery is active</p>
             <p className="text-xs text-green-700 mt-0.5">
-              Nothing is due right now. Future reminders wait until their send time.
+              Scheduled reminders are sent automatically at their scheduled time.
             </p>
           </div>
         </div>
@@ -152,7 +152,7 @@ export function NotificationsSection({
 
       <div className="space-y-2">
         <div className="flex flex-wrap gap-3">
-          <StatCard label="waiting to send" count={stats.waitingFuture} tone="neutral" />
+          <StatCard label="scheduled" count={stats.waitingFuture} tone="neutral" />
           <StatCard
             label="due now"
             count={stats.dueNow}
@@ -165,9 +165,9 @@ export function NotificationsSection({
         </div>
         <p className="text-xs text-muted-foreground">
           {stats.waitingFuture === 0 && stats.dueNow === 0
-            ? "No reminders are waiting. New ones appear when tasks or client obligations need a follow-up."
+            ? "No reminders are scheduled. New ones appear when tasks or client obligations need a follow-up."
             : nextLabel
-              ? `Next reminder: ${nextLabel}. Waiting reminders are scheduled for the future — they are not overdue sends.`
+              ? `Next reminder: ${nextLabel}. Scheduled reminders send automatically at that time — they are not stuck or overdue.`
               : stats.dueNow > 0
                 ? `${stats.dueNow} reminder${stats.dueNow !== 1 ? "s are" : " is"} past their send time and ready to process.`
                 : `${stats.waitingFuture} reminder${stats.waitingFuture !== 1 ? "s" : ""} scheduled for later.`}
