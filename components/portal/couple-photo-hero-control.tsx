@@ -186,7 +186,7 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
               onClick={() => {
                 setPanelOpen((open) => !open);
               }}
-              className="relative h-40 w-40 overflow-hidden rounded-full border-2 border-white/90 shadow-lg sm:h-52 sm:w-52 lg:h-64 lg:w-64 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="relative h-40 w-40 overflow-hidden rounded-full border-2 border-white/90 shadow-lg sm:h-52 sm:w-52 lg:h-[13.5rem] lg:w-[13.5rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
               aria-label="Manage your photo"
               aria-expanded={controlsVisible}
             >

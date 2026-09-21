@@ -17,7 +17,10 @@ describe("couple photo hero control UX", () => {
   it("uses a substantially larger circular photo on desktop and mobile", () => {
     assert.match(control, /h-40 w-40/);
     assert.match(control, /sm:h-52 sm:w-52/);
-    assert.match(control, /lg:h-64 lg:w-64/);
+    // Desktop only: ~15–20% under the 16rem (272px at 17px root) size.
+    // 13.5rem resolves to 229.5px. Mobile and tablet sizes stay as they are.
+    assert.match(control, /lg:h-\[13\.5rem\] lg:w-\[13\.5rem\]/);
+    assert.doesNotMatch(control, /lg:h-64 lg:w-64/);
     assert.match(control, /rounded-full/);
     assert.match(control, /border-2 border-white\/90/);
     assert.match(control, /object-cover/);
