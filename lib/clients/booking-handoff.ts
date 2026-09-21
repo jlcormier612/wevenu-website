@@ -159,7 +159,7 @@ export function buildBookingHandoff(input: BookingHandoffInput): BookingHandoffM
       ? {
           key: "event",
           label: "Event created",
-          detail: "A draft Event exists for this booking.",
+          detail: "The booked Event exists because this relationship is Booked.",
           complete: true,
           href: `/events/${eventId}`,
           actionLabel: "Open Event",
@@ -167,7 +167,7 @@ export function buildBookingHandoff(input: BookingHandoffInput): BookingHandoffM
       : {
           key: "event",
           label: "Event created",
-          detail: "No event yet — add a date to create one.",
+          detail: "No Event yet — Book this relationship to create the booked occasion.",
           complete: false,
           href: `/clients/${clientId}/edit`,
           actionLabel: "Add event details",

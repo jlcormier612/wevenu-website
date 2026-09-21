@@ -99,6 +99,23 @@ describe("buildBookingHandoff", () => {
     assert.equal(model.items.find((i) => i.key === "event")?.complete, false);
     assert.equal(model.primaryHref, `/clients/${CLIENT_ID}/edit`);
     assert.equal(model.items.find((i) => i.key === "client_planning")?.href, `/clients/${CLIENT_ID}/edit`);
+    assert.doesNotMatch(JSON.stringify(model), /draft Event|tentative Event|pre-booking Event/i);
+    assert.match(model.items.find((i) => i.key === "event")?.detail ?? "", /Book this relationship/);
+  });
+
+  it("describes the booked Event as the booked occasion, not a Draft Event", () => {
+    const model = buildBookingHandoff(baseInput());
+    const event = model.items.find((i) => i.key === "event");
+    assert.equal(event?.complete, true);
+    assert.equal(event?.detail, "The booked Event exists because this relationship is Booked.");
+    assert.equal(event?.href, `/events/${EVENT_ID}`);
+    const blob = JSON.stringify(model);
+    assert.doesNotMatch(blob, /draft Event/i);
+    assert.doesNotMatch(blob, /A draft Event exists/);
+    assert.doesNotMatch(blob, /tentative Event/i);
+    assert.doesNotMatch(blob, /pre-booking Event/i);
+    assert.match(model.bookingLine, /are booked/);
+    assert.match(model.eyebrow, /Booking complete/);
   });
 
   it("does not invent a contract or deposit requirement", () => {
@@ -111,6 +128,19 @@ describe("buildBookingHandoff", () => {
 });
 
 describe("booked page — conversion and copy seams", () => {
+  it("does not call a booked Event a Draft Event, Tentative Event, or pre-booking Event", () => {
+    const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+    const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
+    const handoff = readFileSync(resolve("lib/clients/booking-handoff.ts"), "utf8");
+    for (const src of [celebration, page, handoff]) {
+      assert.doesNotMatch(src, /A draft Event exists/);
+      assert.doesNotMatch(src, /draft Event exists/i);
+      assert.doesNotMatch(src, /Draft Event/);
+      assert.doesNotMatch(src, /tentative Event/i);
+      assert.doesNotMatch(src, /pre-booking Event/i);
+    }
+  });
+
   it("does not render the old workspace-ready or wedding-website-ready assertions", () => {
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
     const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
