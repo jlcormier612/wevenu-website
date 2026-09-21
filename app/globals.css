@@ -530,9 +530,24 @@ html:has(.htc-staff) [data-slot="table"] {
 }
 
 /*
- * Always-light brand locks (login / welcome). Keep control ink readable when
- * html.dark is set from system preference.
+ * Always-light brand locks (login / welcome / public inquiry). Keep control
+ * ink readable when html.dark is set from system preference. The lock root
+ * re-pins light tokens; these rules stop native controls and inherited color
+ * from picking up the dark foreground.
  */
+[data-theme-lock="light"] {
+  color-scheme: light;
+  color: var(--foreground);
+}
+
+[data-theme-lock="light"] input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme-lock="light"] textarea:not([data-slot]),
+[data-theme-lock="light"] select:not([data-slot]) {
+  color: var(--foreground);
+  background-color: var(--true-white);
+  border-color: var(--border);
+}
+
 [data-theme-lock="light"] [data-slot="input"],
 [data-theme-lock="light"] [data-slot="textarea"],
 [data-theme-lock="light"] [data-slot="select-trigger"] {

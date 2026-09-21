@@ -46,6 +46,7 @@ import {
   buildInquirySmsConsentText,
 } from "@/lib/communication/sms-consent";
 import type { TourSlot } from "@/lib/tours/types";
+import { inkOn, publicFormSurfaceStyle } from "@/lib/theme/public-form-surface";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -70,8 +71,16 @@ function ModeSelector({
   if (!tourEnabled) return null;
   const tourActive = mode === "schedule_tour";
   const infoActive = mode === "request_information";
-  const inactiveBorder = "#DED6CA";
-  const inactiveBg = "#F5F4F2";
+  const inactive = {
+    borderColor: "var(--border)",
+    background: "var(--muted)",
+    color: "var(--foreground)",
+  };
+  const active = {
+    borderColor: primary,
+    background: `color-mix(in srgb, ${primary} 10%, var(--card))`,
+    color: "var(--foreground)",
+  };
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -79,33 +88,25 @@ function ModeSelector({
         type="button"
         onClick={() => onSelect("schedule_tour")}
         className="rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors"
-        style={
-          tourActive
-            ? { borderColor: primary, background: `${primary}08` }
-            : { borderColor: inactiveBorder, background: inactiveBg }
-        }
+        style={tourActive ? active : inactive}
       >
         <p className="text-2xl">📅</p>
-        <p className="text-sm font-semibold" style={{ color: tourActive ? primary : "#374151" }}>
+        <p className="text-sm font-semibold text-heading">
           Schedule a Tour
         </p>
-        <p className="text-xs text-gray-500">Pick a date and time to visit us.</p>
+        <p className="text-xs text-muted-foreground">Pick a date and time to visit us.</p>
       </button>
       <button
         type="button"
         onClick={() => onSelect("request_information")}
         className="rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors"
-        style={
-          infoActive
-            ? { borderColor: primary, background: `${primary}08` }
-            : { borderColor: inactiveBorder, background: inactiveBg }
-        }
+        style={infoActive ? active : inactive}
       >
         <p className="text-2xl">✉️</p>
-        <p className="text-sm font-semibold" style={{ color: infoActive ? primary : "#374151" }}>
+        <p className="text-sm font-semibold text-heading">
           Request Information
         </p>
-        <p className="text-xs text-gray-500">Tell us about your event.</p>
+        <p className="text-xs text-muted-foreground">Tell us about your event.</p>
       </button>
     </div>
   );
@@ -132,6 +133,7 @@ function AvailabilityCalendar({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const atPastFloor = year < today.getFullYear() || (year === today.getFullYear() && month <= today.getMonth());
   const cells: (number | null)[] = Array(firstDay).fill(null);
   for (let i = 1; i <= daysInMonth; i++) cells.push(i);
   while (cells.length % 7 !== 0) cells.push(null);
@@ -139,30 +141,48 @@ function AvailabilityCalendar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => (month === 0 ? onMonthChange(11, year - 1) : onMonthChange(month - 1, year))} aria-label="Previous month" className="p-2 rounded-lg hover:bg-gray-100">
+        <button
+          type="button"
+          disabled={atPastFloor}
+          onClick={() => (month === 0 ? onMonthChange(11, year - 1) : onMonthChange(month - 1, year))}
+          aria-label="Previous month"
+          className="rounded-lg p-2 text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-transparent"
+        >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <p className="font-semibold text-gray-900">{MONTHS[month]} {year}</p>
-        <button type="button" onClick={() => (month === 11 ? onMonthChange(0, year + 1) : onMonthChange(month + 1, year))} aria-label="Next month" className="p-2 rounded-lg hover:bg-gray-100">
+        <p className="font-semibold text-heading">{MONTHS[month]} {year}</p>
+        <button
+          type="button"
+          onClick={() => (month === 11 ? onMonthChange(0, year + 1) : onMonthChange(month + 1, year))}
+          aria-label="Next month"
+          className="rounded-lg p-2 text-foreground hover:bg-muted"
+        >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
       <div className="grid grid-cols-7 gap-0.5">
-        {DAYS.map((d) => <p key={d} className="text-center text-[11px] font-medium text-gray-500 py-1">{d}</p>)}
+        {DAYS.map((d) => <p key={d} className="text-center text-[11px] font-medium text-muted-foreground py-1">{d}</p>)}
         {cells.map((day, i) => {
           if (!day) return <div key={`e-${i}`} />;
           const iso = isoDate(year, month, day);
           const isAvail = availableDates.has(iso);
           const isPast = new Date(year, month, day) < today;
           const isSel = iso === selectedDate;
+          const open = isAvail && !isPast;
           return (
             <button
               key={iso}
               type="button"
-              disabled={!isAvail || isPast}
+              disabled={!open}
               onClick={() => onSelect(iso)}
-              className={`rounded-lg py-2 text-sm font-medium transition-colors ${isSel ? "text-white" : isAvail && !isPast ? "text-gray-900 hover:bg-gray-100" : "text-gray-300"}`}
-              style={isSel ? { background: primary } : isAvail && !isPast ? { background: `${primary}14` } : {}}
+              className={`rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-100 ${open && !isSel ? "hover:bg-muted" : ""}`}
+              style={
+                isSel
+                  ? { background: primary, color: inkOn(primary) }
+                  : open
+                    ? { background: `color-mix(in srgb, ${primary} 14%, var(--card))`, color: "var(--foreground)" }
+                    : { color: "var(--muted-foreground)" }
+              }
             >
               {day}
             </button>
@@ -188,12 +208,12 @@ function CustomQuestionField({
   if (q.questionType === "long_answer") {
     return (
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-medium text-foreground">{label}</label>
         <textarea
           rows={3}
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
+          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground resize-none"
         />
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
@@ -202,11 +222,11 @@ function CustomQuestionField({
   if (q.questionType === "single_select") {
     return (
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-medium text-foreground">{label}</label>
         <select
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
         >
           <option value="">Select…</option>
           {q.options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -219,10 +239,10 @@ function CustomQuestionField({
     const selected = Array.isArray(value) ? value : [];
     return (
       <div className="space-y-1.5">
-        <p className="block text-sm font-medium text-gray-700">{label}</p>
+        <p className="block text-sm font-medium text-foreground">{label}</p>
         <div className="space-y-2">
           {q.options.map((o) => (
-            <label key={o} className="flex items-center gap-2 text-sm text-gray-700">
+            <label key={o} className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={selected.includes(o)}
@@ -240,11 +260,11 @@ function CustomQuestionField({
   }
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label className="block text-sm font-medium text-foreground">{label}</label>
       <input
         value={typeof value === "string" ? value : ""}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
@@ -538,32 +558,36 @@ export function InquiryForm({
   }
 
   const showForm = mode !== null;
-  const inputClass = "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent";
+  const inputClass = "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:border-transparent";
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: `${primary}08` }}>
-      <div className="py-8 px-4 text-center" style={{ backgroundColor: primary }}>
+    <div
+      data-theme-lock="light"
+      className="min-h-screen"
+      style={publicFormSurfaceStyle(primary)}
+    >
+      <div className="py-8 px-4 text-center" style={{ backgroundColor: primary, color: inkOn(primary) }}>
         {venue.logoUrl && (
           <img src={venue.logoUrl} alt={venue.name} className="h-12 w-12 object-contain rounded-lg mx-auto mb-3" style={{ background: "rgba(255,255,255,0.15)" }} />
         )}
-        <h1 className="text-white text-xl font-semibold">{venue.name}</h1>
-        <p className="text-white/70 text-sm mt-1">Inquiry Form</p>
+        <h1 className="text-xl font-semibold">{venue.name}</h1>
+        <p className="text-sm mt-1">Inquiry Form</p>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
         <ModeSelector mode={mode} onSelect={setMode} primary={primary} tourEnabled={tourSchedulingEnabled} />
 
         {!showForm && tourSchedulingEnabled && (
-          <p className="text-center text-sm text-gray-500">Choose how you&apos;d like to connect with us.</p>
+          <p className="text-center text-sm text-muted-foreground">Choose how you&apos;d like to connect with us.</p>
         )}
 
         {showForm && (
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-5">
+          <form onSubmit={handleSubmit} className="bg-card text-card-foreground rounded-2xl shadow-sm border border-border p-6 md:p-8 space-y-5">
             <input type="text" name="website_url" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} className="sr-only" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
             {mode === "schedule_tour" && tourEmbedKey && (
               <div className="space-y-4 border-b border-gray-100 pb-5">
-                <p className="text-sm font-semibold text-gray-900">Select your tour</p>
+                <p className="text-sm font-semibold text-heading">Select your tour</p>
                 {tourProtectionRequired && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950 space-y-1">
                     {tourProtectionKind === "fee" ? (
@@ -586,7 +610,7 @@ export function InquiryForm({
                   </div>
                 )}
                 {loadingTourSlots ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
                 ) : (
                   <AvailabilityCalendar
                     availableDates={tourAvailableDates}
@@ -608,9 +632,13 @@ export function InquiryForm({
                           type="button"
                           onClick={() => setSelectedTourSlot(slot)}
                           className="rounded-lg border py-2.5 text-sm font-medium"
-                          style={isSel ? { background: primary, borderColor: primary, color: "white" } : { borderColor: "#DED6CA" }}
+                          style={
+                            isSel
+                              ? { background: primary, borderColor: primary, color: inkOn(primary) }
+                              : { borderColor: "var(--border)", background: "var(--card)", color: "var(--foreground)" }
+                          }
                         >
-                          <Clock className="h-3.5 w-3.5 inline mr-1 opacity-60" />
+                          <Clock className="h-3.5 w-3.5 inline mr-1" />
                           {slot.time}
                         </button>
                       );
@@ -623,12 +651,12 @@ export function InquiryForm({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">First name *</label>
+                <label className="block text-sm font-medium text-foreground">First name *</label>
                 <input required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} style={{ "--tw-ring-color": primary } as React.CSSProperties} />
                 {fieldErrors.firstName && <p className="text-xs text-red-600">{fieldErrors.firstName}</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Last name *</label>
+                <label className="block text-sm font-medium text-foreground">Last name *</label>
                 <input required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} />
                 {fieldErrors.lastName && <p className="text-xs text-red-600">{fieldErrors.lastName}</p>}
               </div>
@@ -636,13 +664,13 @@ export function InquiryForm({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Email *</label>
+                <label className="block text-sm font-medium text-foreground">Email *</label>
                 <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
                 {fieldErrors.email && <p className="text-xs text-red-600">{fieldErrors.email}</p>}
               </div>
               {fields.phone !== "hidden" && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">{fieldLabel("Phone", fields.phone)}</label>
+                  <label className="block text-sm font-medium text-foreground">{fieldLabel("Phone", fields.phone)}</label>
                   <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
                   {fieldErrors.phone && <p className="text-xs text-red-600">{fieldErrors.phone}</p>}
                 </div>
@@ -651,7 +679,7 @@ export function InquiryForm({
 
             {fields.partner !== "hidden" && (
               <div className="border-t border-gray-100 pt-4 space-y-1.5">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{fieldLabel("Partner / Co-host", fields.partner)}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{fieldLabel("Partner / Co-host", fields.partner)}</p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <input placeholder="Partner first name" value={partnerFirst} onChange={(e) => setPartnerFirst(e.target.value)} className={inputClass} />
                   <input placeholder="Partner last name" value={partnerLast} onChange={(e) => setPartnerLast(e.target.value)} className={inputClass} />
@@ -662,8 +690,8 @@ export function InquiryForm({
 
             <div className="border-t border-gray-100 pt-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Event type *</label>
-                <select required value={eventType} onChange={(e) => setEventType(e.target.value)} className={`${inputClass} bg-white`}>
+                <label className="block text-sm font-medium text-foreground">Event type *</label>
+                <select required value={eventType} onChange={(e) => setEventType(e.target.value)} className={inputClass}>
                   <option value="">Select event type</option>
                   {eventTypeOptions.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
@@ -672,7 +700,7 @@ export function InquiryForm({
 
               {fields.preferred_event_date !== "hidden" && (
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-foreground">
                     {fieldLabel("Preferred event date", fields.preferred_event_date)}
                   </label>
                   {inquiryEventDateMode === "choose_available" ? (
@@ -700,14 +728,14 @@ export function InquiryForm({
 
               {fields.guest_count !== "hidden" && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">{fieldLabel("Guest count", fields.guest_count)}</label>
+                  <label className="block text-sm font-medium text-foreground">{fieldLabel("Guest count", fields.guest_count)}</label>
                   <input type="number" min="1" value={guestCount} onChange={(e) => setGuestCount(e.target.value)} className={inputClass} />
                   {fieldErrors.guestCount && <p className="text-xs text-red-600">{fieldErrors.guestCount}</p>}
                 </div>
               )}
               {fields.estimated_budget !== "hidden" && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">{fieldLabel("Estimated budget", fields.estimated_budget)}</label>
+                  <label className="block text-sm font-medium text-foreground">{fieldLabel("Estimated budget", fields.estimated_budget)}</label>
                   <input value={budget} onChange={(e) => setBudget(e.target.value)} className={inputClass} />
                   {fieldErrors.budget && <p className="text-xs text-red-600">{fieldErrors.budget}</p>}
                 </div>
@@ -716,7 +744,7 @@ export function InquiryForm({
 
             {fields.event_details !== "hidden" && (
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">{fieldLabel("Tell us about your event", fields.event_details)}</label>
+                <label className="block text-sm font-medium text-foreground">{fieldLabel("Tell us about your event", fields.event_details)}</label>
                 <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className={`${inputClass} resize-none`} />
                 {fieldErrors.message && <p className="text-xs text-red-600">{fieldErrors.message}</p>}
               </div>
@@ -733,26 +761,26 @@ export function InquiryForm({
             ))}
 
             {comm.showPreferences && (
-              <fieldset className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/80 p-4">
-                <legend className="px-1 text-sm font-semibold text-gray-900">
+              <fieldset className="space-y-2 rounded-xl border border-border bg-muted p-4">
+                <legend className="px-1 text-sm font-semibold text-heading">
                   How would you like us to communicate with you?
                 </legend>
-                <p className="text-xs text-gray-500">Choose any that apply. This is separate from your phone number.</p>
+                <p className="text-xs text-muted-foreground">Choose any that apply. This is separate from your phone number.</p>
                 <div className="space-y-2">
                   {comm.offeredChannels.includes("email") && (
-                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                    <label className="flex items-start gap-2 text-sm text-foreground">
                       <input type="checkbox" checked={prefEmail} onChange={(e) => setPrefEmail(e.target.checked)} className="mt-0.5 h-4 w-4" />
                       Email
                     </label>
                   )}
                   {comm.offeredChannels.includes("sms") && (
-                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                    <label className="flex items-start gap-2 text-sm text-foreground">
                       <input type="checkbox" checked={prefSms} onChange={(e) => setPrefSms(e.target.checked)} className="mt-0.5 h-4 w-4" />
                       Text message
                     </label>
                   )}
                   {comm.offeredChannels.includes("phone_call") && (
-                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                    <label className="flex items-start gap-2 text-sm text-foreground">
                       <input type="checkbox" checked={prefPhoneCall} onChange={(e) => setPrefPhoneCall(e.target.checked)} className="mt-0.5 h-4 w-4" />
                       Phone call
                     </label>
@@ -763,11 +791,11 @@ export function InquiryForm({
 
             {comm.showSmsPermission && (
               <fieldset className="space-y-2 rounded-xl border border-gray-200 p-4">
-                <legend className="px-1 text-sm font-semibold text-gray-900">
-                  Text message permission <span className="font-normal text-gray-500">(optional)</span>
+                <legend className="px-1 text-sm font-semibold text-heading">
+                  Text message permission <span className="font-normal text-muted-foreground">(optional)</span>
                 </legend>
-                <p className="text-xs text-gray-500">{INQUIRY_SMS_CONSENT_OPTIONAL_HINT}</p>
-                <label className="flex items-start gap-2 text-sm text-gray-800">
+                <p className="text-xs text-muted-foreground">{INQUIRY_SMS_CONSENT_OPTIONAL_HINT}</p>
+                <label className="flex items-start gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={smsPermissionGranted}
@@ -780,7 +808,7 @@ export function InquiryForm({
                 {!phone.trim() && smsPermissionGranted && (
                   <p className="text-xs text-amber-700">Add a phone number above so we can text you.</p>
                 )}
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-muted-foreground">
                   See our{" "}
                   <a
                     href="https://hellotocheers.com/privacy"
@@ -813,8 +841,8 @@ export function InquiryForm({
             <button
               type="submit"
               disabled={state === "submitting"}
-              className="w-full rounded-lg py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ backgroundColor: primary }}
+              className="w-full rounded-lg py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-100 flex items-center justify-center gap-2"
+              style={{ backgroundColor: primary, color: inkOn(primary) }}
             >
               {state === "submitting"
                 ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</>
@@ -825,7 +853,7 @@ export function InquiryForm({
                   : "Send Inquiry"}
             </button>
 
-            <p className="text-center text-xs text-gray-400">Your information is used only to respond to your inquiry.</p>
+            <p className="text-center text-xs text-muted-foreground">Your information is used only to respond to your inquiry.</p>
             <VenueFormAnalyticsConsent
               venueId={venue.id}
               measurementId={config.ga4MeasurementId}

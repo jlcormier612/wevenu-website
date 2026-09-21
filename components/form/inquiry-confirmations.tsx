@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import type { TourBookingConfirmation } from "@/lib/inquiry-form/types";
+import { publicFormSurfaceStyle, readableInk } from "@/lib/theme/public-form-surface";
 
 function formatReadableDate(isoDate: string): string {
   return new Date(isoDate + "T12:00:00").toLocaleDateString("en-US", {
@@ -88,11 +89,11 @@ export function RequestInformationConfirmation({
 }) {
   const heading = firstName.trim() ? `Thank you, ${firstName.trim()}!` : "Thank you!";
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: `${primaryColor}10` }}>
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center space-y-4">
-        <h2 className="text-xl font-semibold text-gray-900">{heading}</h2>
-        <p className="text-gray-600">We&apos;ve received your inquiry for {venueName}.</p>
-        <p className="text-gray-600">We&apos;ll be in touch soon.</p>
+    <div data-theme-lock="light" className="min-h-screen flex items-center justify-center px-4" style={publicFormSurfaceStyle(primaryColor)}>
+      <div className="max-w-md w-full bg-card text-card-foreground rounded-2xl shadow-sm border border-border p-8 text-center space-y-4">
+        <h2 className="text-xl font-semibold text-heading">{heading}</h2>
+        <p className="text-foreground">We&apos;ve received your inquiry for {venueName}.</p>
+        <p className="text-foreground">We&apos;ll be in touch soon.</p>
       </div>
     </div>
   );
@@ -128,37 +129,37 @@ export function ScheduleTourConfirmation({
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: `${primaryColor}10` }}>
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
+    <div data-theme-lock="light" className="min-h-screen flex items-center justify-center px-4" style={publicFormSurfaceStyle(primaryColor)}>
+      <div className="max-w-md w-full bg-card text-card-foreground rounded-2xl shadow-sm border border-border p-8 space-y-6">
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold text-gray-900">{heading}</h2>
-          <p className="text-gray-600">We&apos;re looking forward to meeting you at {confirmation.venueName}.</p>
+          <h2 className="text-xl font-semibold text-heading">{heading}</h2>
+          <p className="text-foreground">We&apos;re looking forward to meeting you at {confirmation.venueName}.</p>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-5 space-y-3 text-left">
-          <p className="text-sm font-semibold text-gray-900">Your tour</p>
+        <div className="rounded-lg border border-border bg-muted p-5 space-y-3 text-left">
+          <p className="text-sm font-semibold text-heading">Your tour</p>
           <div>
-            <p className="text-xs font-medium text-gray-500">Date</p>
-            <p className="text-sm text-gray-900">{formatReadableDate(dateIso)}</p>
+            <p className="text-xs font-medium text-muted-foreground">Date</p>
+            <p className="text-sm text-heading">{formatReadableDate(dateIso)}</p>
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500">Time</p>
-            <p className="text-sm text-gray-900">{formatReadableTime(confirmation.scheduledAt)}</p>
+            <p className="text-xs font-medium text-muted-foreground">Time</p>
+            <p className="text-sm text-heading">{formatReadableTime(confirmation.scheduledAt)}</p>
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500">Location</p>
-            <p className="text-sm text-gray-900">{confirmation.venueName}</p>
-            {addressLine && <p className="text-sm text-gray-700">{addressLine}</p>}
+            <p className="text-xs font-medium text-muted-foreground">Location</p>
+            <p className="text-sm text-heading">{confirmation.venueName}</p>
+            {addressLine && <p className="text-sm text-foreground">{addressLine}</p>}
           </div>
           {confirmation.venuePhone && (
             <div>
-              <p className="text-xs font-medium text-gray-500">Questions?</p>
-              <p className="text-sm text-gray-900">{confirmation.venuePhone}</p>
+              <p className="text-xs font-medium text-muted-foreground">Questions?</p>
+              <p className="text-sm text-heading">{confirmation.venuePhone}</p>
             </div>
           )}
         </div>
 
-        <p className="text-sm text-gray-600 text-center">
+        <p className="text-sm text-foreground text-center">
           A confirmation email has been sent to {confirmation.email}.
         </p>
 
@@ -168,14 +169,14 @@ export function ScheduleTourConfirmation({
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2.5 rounded-lg border transition-opacity hover:opacity-90 w-full sm:w-auto"
-            style={{ borderColor: primaryColor, color: primaryColor }}
+            style={{ borderColor: primaryColor, color: readableInk(primaryColor, "#ffffff") }}
           >
             Add to Google Calendar
           </a>
           <a
             href={icsUrl}
             download="tour.ics"
-            className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-300 text-gray-800 bg-white transition-opacity hover:opacity-90 w-full sm:w-auto"
+            className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2.5 rounded-lg border border-border text-foreground bg-card transition-opacity hover:opacity-90 w-full sm:w-auto"
           >
             Download .ics
           </a>
