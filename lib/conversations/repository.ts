@@ -316,25 +316,31 @@ async function resolveInboxEventTypesForRpc(
     return eventTypes.filter((t) => t !== INBOX_EVENT_TYPE_LEGACY);
   }
 
-  const { data: venueRow } = await client
+  // Scope via current_user_venue_id() — bare venues select can PGRST116 or
+  // return the wrong row when the caller is also an HQ admin (venues_hq_select).
+  const { data: venueId, error: venueIdError } = await client.rpc("current_user_venue_id");
+  if (venueIdError) throw venueIdError;
+  if (!venueId || typeof venueId !== "string") {
+    return expandInboxEventTypeFilterValues(eventTypes, parseAcceptedEventTypes(null), []);
+  }
+
+  const { data: venueRow, error: venueError } = await client
     .from("venues")
     .select("id, accepted_inquiry_event_types")
-    .limit(1)
+    .eq("id", venueId)
     .maybeSingle<{ id: string; accepted_inquiry_event_types: unknown }>();
+  if (venueError) throw venueError;
 
   const accepted = parseAcceptedEventTypes(venueRow?.accepted_inquiry_event_types);
-  const venueId = venueRow?.id;
   const legacyStored: string[] = [];
 
-  if (venueId) {
-    const [{ data: leadTypes }, { data: eventTypesRows }] = await Promise.all([
-      client.from("leads").select("event_type").eq("venue_id", venueId).not("event_type", "is", null),
-      client.from("events").select("event_type").eq("venue_id", venueId).not("event_type", "is", null),
-    ]);
-    for (const row of [...(leadTypes ?? []), ...(eventTypesRows ?? [])] as { event_type: string | null }[]) {
-      const value = row.event_type?.trim();
-      if (value) legacyStored.push(value);
-    }
+  const [{ data: leadTypes }, { data: eventTypesRows }] = await Promise.all([
+    client.from("leads").select("event_type").eq("venue_id", venueId).not("event_type", "is", null),
+    client.from("events").select("event_type").eq("venue_id", venueId).not("event_type", "is", null),
+  ]);
+  for (const row of [...(leadTypes ?? []), ...(eventTypesRows ?? [])] as { event_type: string | null }[]) {
+    const value = row.event_type?.trim();
+    if (value) legacyStored.push(value);
   }
 
   return expandInboxEventTypeFilterValues(eventTypes, accepted, legacyStored);

@@ -137,5 +137,7 @@ describe("Inbox UI wiring", () => {
     assert.match(repo, /resolveInboxEventTypesForRpc/);
     assert.match(repo, /expandInboxEventTypeFilterValues/);
     assert.match(repo, /accepted_inquiry_event_types/);
+    // HQ admins see every venue via venues_hq_select — must scope by current_user_venue_id.
+    assert.match(repo, /current_user_venue_id/);
   });
 });
