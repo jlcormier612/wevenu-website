@@ -44,21 +44,15 @@ alter table public.venue_reminder_cadence
   drop constraint if exists venue_reminder_cadence_payment_before_due_offsets_check;
 alter table public.venue_reminder_cadence
   add constraint venue_reminder_cadence_payment_before_due_offsets_check
-  check (
-    payment_before_due_offsets <@ array[-21, -14, -7, 0]
-    and cardinality(payment_before_due_offsets)
-      = cardinality(array(select distinct unnest(payment_before_due_offsets)))
-  );
+  -- Allowed offsets only. Uniqueness is enforced by update_reminder_cadence
+  -- (distinct unnest). CHECK cannot use subqueries in Postgres.
+  check (payment_before_due_offsets <@ array[-21, -14, -7, 0]::int[]);
 
 alter table public.venue_reminder_cadence
   drop constraint if exists venue_reminder_cadence_contract_before_due_offsets_check;
 alter table public.venue_reminder_cadence
   add constraint venue_reminder_cadence_contract_before_due_offsets_check
-  check (
-    contract_before_due_offsets <@ array[-21, -14, -7, 0]
-    and cardinality(contract_before_due_offsets)
-      = cardinality(array(select distinct unnest(contract_before_due_offsets)))
-  );
+  check (contract_before_due_offsets <@ array[-21, -14, -7, 0]::int[]);
 
 -- 4. Drop legacy preset columns + constraints
 alter table public.venue_reminder_cadence
@@ -132,19 +126,24 @@ begin
   select id into v_venue_id from public.venues where owner_user_id = auth.uid();
   if not found then return jsonb_build_object('ok', false); end if;
 
-  -- Normalize: keep only allowed unique offsets, descending (21→0)
+  -- Normalize: keep only allowed unique offsets, ascending. Empty input → [].
+  -- Must use a scalar subquery so empty arrays become [] (not NULL from SELECT INTO).
   if p_payment_before_due_offsets is not null then
-    select coalesce(array_agg(d order by d), array[]::int[])
-      into v_payment_offsets
-    from (select distinct unnest(p_payment_before_due_offsets) as d) s
-    where d = any (array[-21, -14, -7, 0]);
+    select coalesce(
+      (select array_agg(d order by d)
+       from (select distinct unnest(p_payment_before_due_offsets) as d) s
+       where d = any (array[-21, -14, -7, 0])),
+      array[]::int[]
+    ) into v_payment_offsets;
   end if;
 
   if p_contract_before_due_offsets is not null then
-    select coalesce(array_agg(d order by d), array[]::int[])
-      into v_contract_offsets
-    from (select distinct unnest(p_contract_before_due_offsets) as d) s
-    where d = any (array[-21, -14, -7, 0]);
+    select coalesce(
+      (select array_agg(d order by d)
+       from (select distinct unnest(p_contract_before_due_offsets) as d) s
+       where d = any (array[-21, -14, -7, 0])),
+      array[]::int[]
+    ) into v_contract_offsets;
   end if;
 
   insert into public.venue_reminder_cadence (
