@@ -77,12 +77,34 @@ export function isProtectedTextingVenueId(venueId: string | null | undefined): b
 export function assertNotProtectedTwilioSid(
   sid: string | null | undefined,
   context: string,
+  opts?: { owningAccountSid?: string | null },
 ): void {
-  if (isProtectedTwilioSid(sid)) {
+  if (!isProtectedTwilioSid(sid)) return;
+
+  const normalized = sid!.trim();
+  // Account SIDs are never allowed — those identify QuickCloud / Jen's Fancy.
+  if (normalized.startsWith("AC")) {
     throw new Error(
       `Refusing to use protected Twilio resource in ${context}.`,
     );
   }
+
+  const owner = opts?.owningAccountSid?.trim() || "";
+  // Twilio Mock A2P can recycle Brand/Campaign/Profile SID strings across
+  // subaccounts. Refuse collisions only when writing under a protected
+  // account (or with no owner), so disposable venues are not blocked.
+  if (owner && !isProtectedTwilioSid(owner)) {
+    console.warn("[twilio-protected] SID denylist string collision on non-protected account", {
+      sid: normalized,
+      owningAccountSid: owner,
+      context,
+    });
+    return;
+  }
+
+  throw new Error(
+    `Refusing to use protected Twilio resource in ${context}.`,
+  );
 }
 
 export function assertVenueAllowedForSelfServiceProvisioning(venueId: string): void {

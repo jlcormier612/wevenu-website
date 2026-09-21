@@ -740,11 +740,17 @@ export async function submitCampaign(input: {
   existingSid?: string | null;
 }): Promise<StepOutcome> {
   if (input.existingSid) {
-    assertNotProtectedTwilioSid(input.existingSid, "existing campaign");
+    assertNotProtectedTwilioSid(input.existingSid, "existing campaign", {
+      owningAccountSid: input.credentials.accountSid,
+    });
     return { ok: true, resourceSid: input.existingSid };
   }
-  assertNotProtectedTwilioSid(input.messagingServiceSid, "campaign ms");
-  assertNotProtectedTwilioSid(input.brandSid, "campaign brand");
+  assertNotProtectedTwilioSid(input.messagingServiceSid, "campaign ms", {
+    owningAccountSid: input.credentials.accountSid,
+  });
+  assertNotProtectedTwilioSid(input.brandSid, "campaign brand", {
+    owningAccountSid: input.credentials.accountSid,
+  });
 
   const fields = buildA2pCampaignCreateFields({
     brandRegistrationSid: input.brandSid,
@@ -783,6 +789,42 @@ export async function submitCampaign(input: {
       },
     };
   }
+
+  // Idempotent retry: Messaging Service already has a Campaign (common after
+  // persist failure). Reuse the existing Usa2p row for this Brand.
+  if (result.status === 409) {
+    const listed = await twilioRequest({
+      method: "GET",
+      url: `https://messaging.twilio.com/v1/Services/${input.messagingServiceSid}/Compliance/Usa2p?PageSize=20`,
+      credentials: input.credentials,
+    });
+    if (listed.status === 200) {
+      const rows = Array.isArray(listed.body.compliance)
+        ? listed.body.compliance
+        : Array.isArray(listed.body.results)
+          ? listed.body.results
+          : [];
+      const match = rows.find((row: Record<string, unknown>) => {
+        return str(row.brand_registration_sid) === input.brandSid;
+      }) as Record<string, unknown> | undefined;
+      const existing = match ?? (rows.length === 1 ? (rows[0] as Record<string, unknown>) : undefined);
+      const sid = existing ? str(existing.sid) : "";
+      if (sid) {
+        return {
+          ok: true,
+          resourceSid: sid,
+          detail: {
+            status: str(existing?.campaign_status || existing?.status),
+            account_sid: existing?.account_sid,
+            messaging_service_sid: existing?.messaging_service_sid,
+            mock: existing?.mock ?? false,
+            reused_existing: true,
+          },
+        };
+      }
+    }
+  }
+
   return {
     ok: false,
     retryable: result.status >= 500 || result.status === 429,

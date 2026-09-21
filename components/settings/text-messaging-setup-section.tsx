@@ -552,7 +552,7 @@ export function TextMessagingSetupSection({
                 <Textarea id="sampleMessage1" rows={2} value={form.sampleMessage1} onChange={(e) => setField("sampleMessage1", e.target.value)}
                   placeholder="Hi Sarah — this is Maple Hall confirming your tour on Saturday at 2pm." />
               </Field>
-              <Field id="sampleMessage2" label="Second sample (optional)">
+              <Field id="sampleMessage2" label="Second sample message">
                 <Textarea id="sampleMessage2" rows={2} value={form.sampleMessage2} onChange={(e) => setField("sampleMessage2", e.target.value)} />
               </Field>
               <Field id="optInDescription" label="How people opt in" error={errors.optInDescription}

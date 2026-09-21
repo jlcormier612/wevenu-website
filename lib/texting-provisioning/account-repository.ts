@@ -93,7 +93,7 @@ function mapRow(row: Row): VenueTwilioAccountExtended {
   };
 }
 
-function guardSids(patch: VenueTwilioAccountWrite): void {
+function guardSids(patch: VenueTwilioAccountWrite, owningAccountSid: string): void {
   for (const sid of [
     patch.twilioAccountSid,
     patch.messagingServiceSid,
@@ -103,7 +103,9 @@ function guardSids(patch: VenueTwilioAccountWrite): void {
     patch.a2pBrandSid,
     patch.a2pCampaignSid,
   ]) {
-    assertNotProtectedTwilioSid(sid, "venue_twilio_accounts write");
+    assertNotProtectedTwilioSid(sid, "venue_twilio_accounts write", {
+      owningAccountSid,
+    });
   }
 }
 
@@ -127,7 +129,6 @@ export async function getVenueTwilioAccountExtended(
 export async function upsertVenueTwilioAccount(
   patch: VenueTwilioAccountWrite,
 ): Promise<VenueTwilioAccountExtended> {
-  guardSids(patch);
   if (!patch.twilioAccountSid?.trim() && !patch.venueId) {
     throw new Error("venue Twilio account upsert requires venueId.");
   }
@@ -144,6 +145,7 @@ export async function upsertVenueTwilioAccount(
     throw new Error("twilio_account_sid is required to persist venue Twilio account.");
   }
   assertNotProtectedTwilioSid(accountSid, "upsertVenueTwilioAccount");
+  guardSids(patch, accountSid);
   row.twilio_account_sid = accountSid;
 
   if (patch.messagingServiceSid !== undefined) {

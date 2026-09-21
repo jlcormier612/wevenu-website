@@ -125,6 +125,7 @@ export function validateTextingRegistration(
 
   requireField("messagingPurpose", "what you’ll text about", input.messagingPurpose);
   requireField("sampleMessage1", "a sample text message", input.sampleMessage1);
+  requireField("sampleMessage2", "a second sample text message", input.sampleMessage2);
   requireField("optInDescription", "how people opt in to texts", input.optInDescription);
   requireField("privacyPolicyUrl", "privacy policy URL", input.privacyPolicyUrl);
   requireField("termsUrl", "terms of service URL", input.termsUrl);
@@ -146,7 +147,7 @@ export function validateTextingRegistration(
     "repFirstName", "repLastName", "repEmail", "repPhone", "repBusinessTitle", "repJobPosition",
   ];
   const messagingKeys: TextingFieldKey[] = [
-    "messagingPurpose", "sampleMessage1", "optInDescription", "privacyPolicyUrl", "termsUrl",
+    "messagingPurpose", "sampleMessage1", "sampleMessage2", "optInDescription", "privacyPolicyUrl", "termsUrl",
   ];
   if (missing.some((k) => businessKeys.includes(k)) || errors.websiteUrl || errors.contactEmail) {
     missingGroups.push("business");
