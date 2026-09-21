@@ -35,6 +35,33 @@ export function venueToday(timezone: string | null, now: Date = new Date()): str
   return utcToVenueLocalParts(now.toISOString(), timezone).date;
 }
 
+/**
+ * Customer-facing date and time for a stored tour instant.
+ * Always uses the venue IANA zone — never the visitor or server clock.
+ */
+export function formatVenueLocalTourDisplay(
+  scheduledAt: string,
+  timezone: string | null,
+): { dateLabel: string; timeLabel: string } {
+  const timeZone = timezone || DEFAULT_TIMEZONE;
+  const instant = new Date(scheduledAt);
+  return {
+    dateLabel: instant.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone,
+    }),
+    timeLabel: instant.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone,
+    }),
+  };
+}
+
 /** A stored UTC instant, resolved to the venue's own local date/time for display. */
 export function utcToVenueLocalParts(isoTimestamp: string, timezone: string | null): { date: string; time: string } {
   const tz = timezone || DEFAULT_TIMEZONE;

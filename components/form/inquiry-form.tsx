@@ -535,6 +535,7 @@ export function InquiryForm({
             addressLine1: data.addressLine1 ?? venue.addressLine1,
             city: data.city ?? venue.city,
             stateRegion: data.stateRegion ?? venue.stateRegion,
+            timezone: venue.timezone ?? null,
           });
           setState("success_tour");
         } else if (data.ok) {

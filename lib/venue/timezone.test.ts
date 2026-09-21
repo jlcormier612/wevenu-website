@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { utcToVenueLocalParts, venueLocalToUtcIso, venueToday } from "@/lib/venue/timezone";
+import {
+  formatVenueLocalTourDisplay,
+  utcToVenueLocalParts,
+  venueLocalToUtcIso,
+  venueToday,
+} from "@/lib/venue/timezone";
 
 describe("venue-local rendering of stored timestamps", () => {
   // The exact row behind the reported Dashboard defect: one tour appointment,
@@ -30,6 +35,38 @@ describe("venue-local rendering of stored timestamps", () => {
     const { date, time } = utcToVenueLocalParts("2026-09-01T01:30:00Z", "America/New_York");
     assert.equal(date, "2026-08-31");
     assert.equal(time, "21:30");
+  });
+});
+
+describe("public tour confirmation uses the venue clock, not the visitor clock", () => {
+  it("shows 10:45 AM Eastern for the Nov 4 2026 15:45Z fixture", () => {
+    const stored = "2026-11-04T15:45:00+00:00";
+    assert.equal(venueLocalToUtcIso("2026-11-04", "10:45", "America/New_York"), "2026-11-04T15:45:00.000Z");
+    const parts = utcToVenueLocalParts(stored, "America/New_York");
+    assert.equal(parts.date, "2026-11-04");
+    assert.equal(parts.time, "10:45");
+    const display = formatVenueLocalTourDisplay(stored, "America/New_York");
+    assert.equal(display.timeLabel, "10:45 AM");
+    assert.match(display.dateLabel, /November 4, 2026/);
+    const atlanticVisitor = new Date(stored).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Halifax",
+    });
+    assert.equal(atlanticVisitor, "11:45 AM");
+  });
+
+  it("still uses Eastern daylight time before the November fallback", () => {
+    const stored = "2026-10-28T14:45:00+00:00";
+    assert.equal(formatVenueLocalTourDisplay(stored, "America/New_York").timeLabel, "10:45 AM");
+    assert.equal(utcToVenueLocalParts(stored, "America/New_York").time, "10:45");
+  });
+
+  it("formats the confirmation page through the venue-timezone helper", () => {
+    const source = readFileSync(resolve("components/form/inquiry-confirmations.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalTourDisplay/);
+    assert.doesNotMatch(source, /toLocaleTimeString\("en-US", \{\s*hour:/);
   });
 });
 

@@ -75,6 +75,11 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
   }
   const venue = payload.venue as Record<string, unknown>;
   const venueId = String(venue.id);
+  const { data: timezoneRow } = await supabase
+    .from("venues")
+    .select("timezone")
+    .eq("id", venueId)
+    .maybeSingle<{ timezone: string | null }>();
   const communicationSettings = effectivePublicCommunicationSettings(
     parseInquiryCommunicationSettings(payload.inquiryCommunicationSettings),
   );
@@ -90,6 +95,7 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
       addressLine1: (venue.addressLine1 as string | null) ?? null,
       city: (venue.city as string | null) ?? null,
       stateRegion: (venue.stateRegion as string | null) ?? null,
+      timezone: timezoneRow?.timezone ?? null,
     },
     tourSchedulingEnabled: Boolean(payload.tourSchedulingEnabled),
     tourEmbedKey: (payload.tourEmbedKey as string | null) ?? null,
