@@ -126,6 +126,7 @@ describe("share control and public page", () => {
     assert.match(share, /Preview/);
     assert.match(share, /Availability link copied/);
     assert.match(share, /Public availability/);
+    assert.match(share, /Share your current available event selection dates with couples\./);
     assert.match(share, /always reflects your current availability/);
     assert.match(share, /href=\{url\}/);
     assert.match(share, /writeText\(url\)/);

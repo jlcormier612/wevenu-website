@@ -41,7 +41,7 @@ export function ShareTourAvailability({ url }: { url: string | null }) {
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Share this link in emails, texts, and other sales messages. Couples can choose from your available tour times.
+            Share this link in emails, texts, and other sales messages. Couples can choose from your available tour times. Your link always reflects your current availability.
           </p>
         </>
       ) : (

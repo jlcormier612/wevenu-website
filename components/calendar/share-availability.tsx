@@ -20,7 +20,7 @@ export function ShareAvailability({ url }: { url: string }) {
         Public availability
       </p>
       <p className="mt-1 text-sm text-foreground">
-        Share your current available dates with couples.
+        Share your current available event selection dates with couples.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button type="button" size="lg" onClick={copy}>

@@ -65,7 +65,7 @@ export default async function CalendarPage({ searchParams }: Props) {
         <ShareTourAvailability url={tourUrl} />
       </div>
       <p className="text-sm text-muted-foreground">
-        Availability is venue-controlled. Only Holds and Booked events protect dates. Inquiry dates and preferred dates do not reserve a date.{" "}
+        Availability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date.{" "}
         <Link href="/help/how-does-date-availability-work" className="font-medium text-foreground underline underline-offset-4">
           Learn how availability works
         </Link>

@@ -38,7 +38,7 @@ describe("Venue-controlled availability education copy", () => {
     assert.match(calendar, /Availability is venue-controlled\./);
     assert.match(
       calendar,
-      /Only Holds and Booked events protect dates\. Inquiry dates and preferred dates do not reserve a date\./,
+      /Only Holds, Booked Events and Blocked Time protect dates\. Inquiry dates and preferred dates do not reserve a date\./,
     );
     assert.match(calendar, /Learn how availability works/);
     assert.match(calendar, /href="\/help\/how-does-date-availability-work"/);

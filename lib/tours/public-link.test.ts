@@ -22,7 +22,7 @@ describe("public tour scheduling link", () => {
     assert.match(card, /Let couples choose an available time to schedule a tour\./);
     assert.match(card, /Copy tour link/);
     assert.match(card, /Preview tour scheduling/);
-    assert.match(card, /Share this link in emails, texts, and other sales messages\. Couples can choose from your available tour times\./);
+    assert.match(card, /Share this link in emails, texts, and other sales messages\. Couples can choose from your available tour times\. Your link always reflects your current availability\./);
     assert.match(card, /Tour link copied\./);
     assert.match(card, /Online tour booking is not offered\./);
     assert.match(card, /\/settings\/availability#tour-availability/);
