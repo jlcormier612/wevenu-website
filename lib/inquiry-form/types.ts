@@ -44,6 +44,8 @@ export type PublicInquiryVenue = {
   addressLine1: string | null;
   city: string | null;
   stateRegion: string | null;
+  /** IANA zone for tour confirmation display. */
+  timezone: string | null;
 };
 
 export type PublicInquiryFormConfig = {
@@ -97,4 +99,5 @@ export type TourBookingConfirmation = {
   addressLine1: string | null;
   city: string | null;
   stateRegion: string | null;
+  timezone: string | null;
 };
