@@ -157,7 +157,14 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
   if (!loaded) return null;
 
   return (
-    <div ref={anchorRef} className="absolute top-4 left-4 z-20 sm:top-6 sm:left-6">
+    <div
+      ref={anchorRef}
+      className={
+        photoUrl
+          ? "relative z-20 self-start"
+          : "absolute top-4 left-4 z-20 sm:top-6 sm:left-6"
+      }
+    >
       <input
         ref={inputRef}
         type="file"

@@ -1761,7 +1761,6 @@ function OverviewSection({
           ? `url(${venueHeroPhotoUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
       }}>
-        <CouplePhotoHeroControl token={token} />
         {venueHeroPhotoUrl ? (
           <div className="absolute inset-0" style={{
             background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.58) 32%, rgba(0,0,0,0.18) 62%, rgba(0,0,0,0.05) 100%)",
@@ -1784,7 +1783,9 @@ function OverviewSection({
           </>
         )}
 
-        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)] group-data-[couple-photo=shown]/hero:pt-[calc(1rem+10rem+1.25rem)]! sm:group-data-[couple-photo=shown]/hero:pt-[calc(1.5rem+13rem+1.25rem)]! lg:group-data-[couple-photo=shown]/hero:pt-[calc(1.5rem+228px+1.25rem)]!">
+        <div className="relative flex flex-col p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]">
+          <CouplePhotoHeroControl token={token} />
+          <div className="flex flex-1 flex-col justify-end gap-3 group-data-[couple-photo=shown]/hero:mt-4">
           <div className="flex items-center gap-2.5">
             <span className="h-px w-5" style={{ background: `${ROSE}60` }} />
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: "rgba(255,255,255,0.75)" }}>
@@ -1841,6 +1842,7 @@ function OverviewSection({
               style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
               View Timeline
             </button>
+          </div>
           </div>
         </div>
       </div>

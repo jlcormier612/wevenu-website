@@ -24,11 +24,14 @@ describe("couple photo hero control UX", () => {
     assert.doesNotMatch(control, /lg:h-64 lg:w-64/);
     assert.doesNotMatch(control, /13\.5rem/);
     assert.match(control, /dataset\.couplePhoto = "shown"/);
+    assert.match(control, /photoUrl\s*\?\s*"relative z-20 self-start"/);
+    assert.match(control, /absolute top-4 left-4 z-20 sm:top-6 sm:left-6/);
     assert.match(shell, /data-portal-hero/);
     assert.match(shell, /group\/hero/);
-    assert.match(shell, /group-data-\[couple-photo=shown\]\/hero:pt-\[calc\(1rem\+10rem\+1\.25rem\)\]!/);
-    assert.match(shell, /sm:group-data-\[couple-photo=shown\]\/hero:pt-\[calc\(1\.5rem\+13rem\+1\.25rem\)\]!/);
-    assert.match(shell, /lg:group-data-\[couple-photo=shown\]\/hero:pt-\[calc\(1\.5rem\+228px\+1\.25rem\)\]!/);
+    assert.match(shell, /<CouplePhotoHeroControl token=\{token\} \/>/);
+    assert.match(shell, /group-data-\[couple-photo=shown\]\/hero:mt-4/);
+    assert.doesNotMatch(shell, /pt-\[calc\(/);
+    assert.doesNotMatch(shell, /absolute top-4 left-4 z-20 sm:top-6 sm:left-6[\s\S]*<CouplePhotoHeroControl/);
     assert.match(control, /rounded-full/);
     assert.match(control, /border-2 border-white\/90/);
     assert.match(control, /object-cover/);
