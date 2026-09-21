@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SMS_PUBLIC_CONSENT_DISCLOSURES } from "../../../lib/communication/sms-consent";
+
 export const metadata: Metadata = {
   title: "SMS Opt-In · Hello to Cheers",
   description:
@@ -74,16 +76,9 @@ export default function SmsOptInEvidencePage() {
       </section>
 
       <ul className="mt-10 list-disc space-y-2 pl-5 text-sm leading-relaxed text-[#5c534c]">
-        <li>Phone number entry alone is not SMS consent.</li>
-        <li>Choosing “Text message” as a preferred contact method is not SMS consent.</li>
-        <li>Accepting Privacy Policy or End User Terms is not SMS consent.</li>
-        <li>SMS consent is not required to inquire, book a tour, or use Hello to Cheers.</li>
-        <li>
-          Message frequency varies with the inquiry, tour, and event planning —
-          occasional relationship messages, not a fixed daily volume.
-        </li>
-        <li>Message and data rates may apply.</li>
-        <li>Reply STOP to opt out; reply START to opt back in; reply HELP for help.</li>
+        {SMS_PUBLIC_CONSENT_DISCLOSURES.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
         <li>
           For help with these texts, contact{" "}
           <a href="mailto:privacy@hellotocheers.com" className="underline underline-offset-2">
