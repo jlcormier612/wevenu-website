@@ -100,7 +100,7 @@ describe("Help & Guides final IA", () => {
     assert.match(pay.body, /Stripe/);
   });
 
-  it("migration publishes all 31 final slugs and omits stale paths", () => {
+  it("historical seed published 31 slugs and omitted the later Date Availability article", () => {
     const sql = readFileSync(
       join(process.cwd(), "supabase/migrations/20261386000000_help_guides_final_content.sql"),
       "utf8",

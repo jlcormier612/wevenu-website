@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getIntegrationSetupGuide } from "@/lib/help-guides/integration-setup-guides";
 import { HELP_GUIDE_AREAS } from "@/lib/help-guides/areas";
 import { PUBLISHABLE_HELP_ARTICLES } from "@/lib/help-guides/final-articles";
+import { collectPublishedHelpArticlesByCategory } from "@/lib/help-guides/landing-index";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   RelatedFeatureLink,
@@ -73,20 +74,20 @@ const SELECT_COLUMNS = "id, slug, title, goal_category, why_it_matters, when_to_
  * Empty categories are omitted by the Help landing page.
  */
 export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]> {
-  const byCategory = new Map<string, { slug: string; title: string }[]>();
+  let dbRows: { slug: string; title: string; goal_category: string }[] = [];
 
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     const { data } = await supabase.from("success_library_articles")
       .select("slug, title, goal_category")
       .eq("status", "published");
-    const rows = (data ?? []) as { slug: string; title: string; goal_category: string }[];
-    for (const r of rows) {
-      const list = byCategory.get(r.goal_category) ?? [];
-      list.push({ slug: r.slug, title: r.title });
-      byCategory.set(r.goal_category, list);
-    }
+    dbRows = (data ?? []) as { slug: string; title: string; goal_category: string }[];
   }
+
+  const byCategory = collectPublishedHelpArticlesByCategory(
+    PUBLISHABLE_HELP_ARTICLES,
+    dbRows,
+  );
 
   const editorialOrder = new Map(
     PUBLISHABLE_HELP_ARTICLES.map((a, index) => [a.slug, index] as const),
