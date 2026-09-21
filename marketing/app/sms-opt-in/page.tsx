@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { SMS_PUBLIC_CONSENT_DISCLOSURES } from "../../../lib/communication/sms-consent";
+import { SMS_PUBLIC_CONSENT_DISCLOSURES } from "../../lib/sms-public-consent-copy";
 
 export const metadata: Metadata = {
   title: "SMS Opt-In · Hello to Cheers",

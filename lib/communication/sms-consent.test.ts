@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import {
@@ -31,6 +33,10 @@ describe("first-party SMS consent helpers", () => {
     assert.match(text, /I’d like to receive text messages/);
     assert.match(text, /Reply STOP to opt out/);
     assert.doesNotMatch(text, /Are you okay being texted/);
+    const marketing = readFileSync(resolve("marketing/lib/sms-public-consent-copy.ts"), "utf8");
+    for (const line of SMS_PUBLIC_CONSENT_DISCLOSURES) {
+      assert.ok(marketing.includes(line), line);
+    }
     assert.ok(SMS_PUBLIC_CONSENT_DISCLOSURES.some((line) => /START/.test(line)));
     assert.ok(SMS_PUBLIC_CONSENT_DISCLOSURES.some((line) => /not required to inquire/i.test(line)));
     assert.ok(SMS_PUBLIC_CONSENT_DISCLOSURES.some((line) => /preferred contact method is not SMS consent/i.test(line)));
