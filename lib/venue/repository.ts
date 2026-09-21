@@ -62,6 +62,7 @@ type VenueRow = {
   luv_intro_seen_at: string | null;
   embed_key: string;
   hold_blocks_availability?: boolean | null;
+  allow_tours_during_booked_events?: boolean | null;
   lead_email_key: string;
   tour_scheduling_enabled: boolean;
   conversation_experience_enabled: boolean;
@@ -122,6 +123,7 @@ function mapVenue(r: VenueRow): Venue {
     luvIntroSeenAt: r.luv_intro_seen_at,
     embedKey: r.embed_key ?? "",
     holdBlocksAvailability: r.hold_blocks_availability !== false,
+    allowToursDuringBookedEvents: r.allow_tours_during_booked_events === true,
     leadEmailKey: r.lead_email_key ?? "",
     tourSchedulingEnabled: r.tour_scheduling_enabled ?? false,
     conversationExperienceEnabled: r.conversation_experience_enabled ?? false,

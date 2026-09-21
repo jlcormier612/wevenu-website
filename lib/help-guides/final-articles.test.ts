@@ -30,9 +30,9 @@ describe("Help & Guides final IA", () => {
     assert.match(HELP_GUIDES_TAGLINE, /start with Getting Started if you're new here/);
   });
 
-  it("publishes all 31 editorial articles with none blocked", () => {
-    assert.equal(FINAL_HELP_ARTICLES.length, 31);
-    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 31);
+  it("publishes all 32 editorial articles with none blocked", () => {
+    assert.equal(FINAL_HELP_ARTICLES.length, 32);
+    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 32);
     assert.equal(BLOCKED_HELP_ARTICLES.length, 0);
     assert.ok(FINAL_HELP_ARTICLES.every((a) => !a.blocked));
   });
@@ -42,8 +42,8 @@ describe("Help & Guides final IA", () => {
     assert.ok(titles.includes("Getting Started: Your First Morning"));
     assert.ok(titles.includes("How Should I Read My Reports?"));
     assert.ok(titles.includes("What Happens After an Event?"));
-    assert.equal(new Set(titles).size, 31);
-    assert.equal(new Set(FINAL_HELP_ARTICLES.map((a) => a.slug)).size, 31);
+    assert.equal(new Set(titles).size, 32);
+    assert.equal(new Set(FINAL_HELP_ARTICLES.map((a) => a.slug)).size, 32);
   });
 
   it("does not publish stale Reporting or Booking language in publishable bodies", () => {
@@ -67,7 +67,7 @@ describe("Help & Guides final IA", () => {
     const expected: Record<string, number> = {
       "Getting Started": 2,
       "Your Venue": 2,
-      "Finding & Booking Clients": 4,
+      "Finding & Booking Clients": 5,
       "Working With Clients": 2,
       "Contracts & Payments": 5,
       "Building the Event": 3,
@@ -106,7 +106,8 @@ describe("Help & Guides final IA", () => {
       "utf8",
     );
     assert.match(sql, /delete from public\.success_library_articles/);
-    for (const a of FINAL_HELP_ARTICLES) {
+    const historical = FINAL_HELP_ARTICLES.filter((a) => a.slug !== "how-does-date-availability-work");
+    for (const a of historical) {
       assert.match(sql, new RegExp(`'${a.slug.replace(/-/g, "\\-")}'`));
     }
     assert.doesNotMatch(sql, /Your Venue → Settings → Tour Scheduling/);

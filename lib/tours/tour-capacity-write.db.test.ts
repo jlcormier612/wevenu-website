@@ -15,6 +15,7 @@ const TURNAROUND = resolve("supabase/migrations/20261319000000_event_turnaround_
 const CORRECTION = resolve("supabase/migrations/20261320000000_availability_correction_pass.sql");
 const RECURRENCE = resolve("supabase/migrations/20261321000000_calendar_block_recurrence_coverage.sql");
 const ATOMICITY = resolve("supabase/migrations/20261322000000_tour_booking_atomicity.sql");
+const TOUR_EVENT_OVERLAP = resolve("supabase/migrations/20261404300000_allow_tours_during_booked_events.sql");
 const CASES = resolve("lib/tours/tour-capacity-write.db.sql");
 
 function psql(args: string[], extra?: { timeoutMs?: number }): { status: number | null; stdout: string; stderr: string } {
@@ -60,6 +61,7 @@ function applyTourMigrations(): void {
   applySql(CORRECTION);
   applySql(RECURRENCE);
   applySql(ATOMICITY);
+  applySql(TOUR_EVENT_OVERLAP);
 }
 
 function runPsql(sql: string): Promise<{ status: number | null; stdout: string; stderr: string }> {

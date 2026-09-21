@@ -223,7 +223,7 @@ export function eventOccupancyOverlapsTour(
   event: OccupancyEvent,
   tour: { date: string; startTime: string; durationMinutes: number },
 ): boolean {
-  if (event.status === "cancelled") return false;
+  if (event.status === "cancelled" || event.status === "complete") return false;
   if (!datesInProtectedRange(event.eventDate, event.eventEndDate).includes(tour.date)) {
     return false;
   }

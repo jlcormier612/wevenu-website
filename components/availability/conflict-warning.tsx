@@ -36,7 +36,7 @@ function conflictFooter(kind: "event" | "tour", conflicts: ConflictItem[]): stri
     return "This event cannot be saved until the conflict is resolved.";
   }
   if (types.has("tour_event_overlap")) {
-    return "Choose a time that does not overlap the Event's setup-to-teardown window.";
+    return "Choose a time that does not overlap a booked event.";
   }
   if (types.has("tour_outside_window")) {
     return "Choose a time within the venue's tour hours.";

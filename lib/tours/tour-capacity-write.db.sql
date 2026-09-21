@@ -392,6 +392,74 @@ begin
     raise exception 'UTC 22:30 Tour must overlap 18:00 America/New_York Event';
   end if;
 
+  -- Venue setting: tours during a booked event. Default off keeps the overlap refusal.
+  update public.venues
+     set allow_tours_during_booked_events = false,
+         timezone = 'UTC',
+         tour_scheduling_enabled = true
+   where id = v_venue;
+  v_blocked := public._is_tour_slot_blocked(
+    v_venue, '2099-06-15 21:00:00+00'::timestamptz, '2099-06-15 22:00:00+00'::timestamptz
+  );
+  if not v_blocked then
+    raise exception 'setting off must block a tour that overlaps a booked event';
+  end if;
+
+  update public.venues set allow_tours_during_booked_events = true where id = v_venue;
+  v_blocked := public._is_tour_slot_blocked(
+    v_venue, '2099-06-15 21:00:00+00'::timestamptz, '2099-06-15 22:00:00+00'::timestamptz
+  );
+  if v_blocked then
+    raise exception 'setting on must allow a tour that overlaps a booked event';
+  end if;
+
+  -- The setting does not override windows, exceptions, or simultaneous tour capacity.
+  delete from public.tour_availability_windows where venue_id = v_venue;
+  insert into public.tour_availability_windows (venue_id, day_of_week, start_time, end_time)
+  values (v_venue, extract(dow from date '2099-06-15')::smallint, '09:00', '12:00');
+  v_blocked := public._is_tour_slot_blocked(
+    v_venue, '2099-06-15 21:00:00+00'::timestamptz, '2099-06-15 22:00:00+00'::timestamptz
+  );
+  if not v_blocked then
+    raise exception 'setting on must still refuse a tour outside the tour window';
+  end if;
+
+  delete from public.tour_availability_windows where venue_id = v_venue;
+  insert into public.tour_availability_windows (venue_id, day_of_week, start_time, end_time)
+  select v_venue, d, '00:00'::time, '23:59'::time
+  from generate_series(0, 6) as d;
+  insert into public.tour_availability_exceptions (venue_id, start_date, end_date, label)
+  values (v_venue, '2099-06-15', '2099-06-15', 'Closed');
+  v_blocked := public._is_tour_slot_blocked(
+    v_venue, '2099-06-15 21:00:00+00'::timestamptz, '2099-06-15 22:00:00+00'::timestamptz
+  );
+  if not v_blocked then
+    raise exception 'setting on must still refuse a tour on an exception date';
+  end if;
+  delete from public.tour_availability_exceptions where venue_id = v_venue;
+
+  delete from public.tour_appointments where venue_id = v_venue;
+  update public.venue_capacity_rules
+     set max_simultaneous_tours = 1
+   where venue_id = v_venue;
+  insert into public.tour_appointments (venue_id, scheduled_at, duration_minutes, status, contact_name)
+  values (v_venue, '2099-06-15 21:00:00+00', 60, 'scheduled', 'Capacity');
+  v_blocked := public._is_tour_slot_blocked(
+    v_venue, '2099-06-15 21:00:00+00'::timestamptz, '2099-06-15 22:00:00+00'::timestamptz
+  );
+  if not v_blocked then
+    raise exception 'setting on must still refuse a tour when simultaneous tour capacity is full';
+  end if;
+  delete from public.tour_appointments where venue_id = v_venue;
+
+  update public.venues set allow_tours_during_booked_events = false where id = v_venue;
+  v_blocked := public._is_tour_slot_blocked(
+    v_venue, '2099-06-15 21:00:00+00'::timestamptz, '2099-06-15 22:00:00+00'::timestamptz
+  );
+  if not v_blocked then
+    raise exception 'turning the setting off must block the overlapping tour again';
+  end if;
+
   delete from public.venues where id = v_venue;
   delete from auth.users where id = v_owner;
 end;

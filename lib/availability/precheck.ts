@@ -60,6 +60,8 @@ export type AvailabilityCheckTour = TourInterval & { leadId?: string | null };
 export type AvailabilityCheckSnapshot = {
   calendarBlocks: CalendarBlockCoverageInput[];
   holdCount: number;
+  /** When true, a tour may overlap a booked event. Default false. */
+  allowToursDuringBookedEvents?: boolean;
   rules: { maxSimultaneousEvents?: number | null; maxSimultaneousTours?: number | null; minTurnaroundHours?: number | null } | null;
   events: OccupancyEvent[];
   activeSpaceIds: string[];
@@ -181,10 +183,10 @@ export function buildAvailabilityConflicts(
         durationMinutes: duration,
       }),
     );
-    if (overlappingEvent) {
+    if (overlappingEvent && snapshot.allowToursDuringBookedEvents !== true) {
       conflicts.push({
         type: "tour_event_overlap",
-        message: "This tour time overlaps an Event. Choose a time outside the Event's setup-to-teardown window.",
+        message: "This tour time overlaps a booked event.",
         severity: "error",
       });
     }

@@ -310,9 +310,13 @@ export async function checkAvailability(
     : opts.date;
 
   const { data: venueRow } = await client.from("venues")
-    .select("timezone, tour_duration_minutes")
+    .select("timezone, tour_duration_minutes, allow_tours_during_booked_events")
     .eq("id", venueId)
-    .maybeSingle<{ timezone: string | null; tour_duration_minutes: number | null }>();
+    .maybeSingle<{
+      timezone: string | null;
+      tour_duration_minutes: number | null;
+      allow_tours_during_booked_events: boolean | null;
+    }>();
   const timezone = opts.timezone ?? venueRow?.timezone ?? null;
   const tourDurationMinutes = venueRow?.tour_duration_minutes && venueRow.tour_duration_minutes > 0
     ? venueRow.tour_duration_minutes
@@ -343,7 +347,8 @@ export async function checkAvailability(
   let eventsQuery = client.from("events")
     .select("id, name, status, event_date, event_end_date, space_id, setup_time, start_time, end_time, teardown_time")
     .eq("venue_id", venueId)
-    .not("status", "in", "(cancelled)")
+    .not("status", "in", "(cancelled)");
+  eventsQuery = eventsQuery
     .lte("event_date", eventLookEnd)
     .or(`event_end_date.gte.${eventLookStart},and(event_end_date.is.null,event_date.gte.${eventLookStart})`);
 
@@ -446,6 +451,7 @@ export async function checkAvailability(
         recurrence_ends_on?: string | null; recurrence_count?: number | null;
       }[]).map(mapCalendarBlockRow),
       holdCount: (holdsRes.data ?? []).length,
+      allowToursDuringBookedEvents: venueRow?.allow_tours_during_booked_events === true,
       rules,
       events,
       activeSpaceIds: spaces.filter((s) => s.is_active).map((s) => s.id),

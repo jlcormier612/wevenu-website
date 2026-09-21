@@ -65,7 +65,7 @@ describe("Phase 5 product integration seams", () => {
 
   it("ConflictWarning occupancy refusals are not described as advisory-only", () => {
     assert.match(conflict, /Allow the required turnaround after the previous event/);
-    assert.match(conflict, /does not overlap the Event's setup-to-teardown window/);
+    assert.match(conflict, /does not overlap a booked event/);
     assert.match(conflict, /if \(errors\.length === 0\) return "You can still proceed — this is advisory only\."/);
   });
 });

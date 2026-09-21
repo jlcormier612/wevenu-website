@@ -9,6 +9,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
 import { ToursOfferedControl } from "@/components/settings/tours-offered-control";
 import { HoldAvailabilityControl } from "@/components/settings/hold-availability-control";
+import { TourEventOverlapControl } from "@/components/settings/tour-event-overlap-control";
 import {
   Card,
   CardContent,
@@ -44,6 +45,26 @@ export default async function AvailabilityCapacitySettingsPage() {
         description="Tour hours, blocked dates, spaces, and operating limits."
       />
       <SettingsTabs />
+
+      <section className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5">
+        <h2 className="text-base font-semibold text-heading">How date availability works</h2>
+        <div className="mt-2 space-y-3 text-sm leading-relaxed text-muted-foreground">
+          <p>
+            You control when a date is protected.
+          </p>
+          <p>
+            A preferred date from an inquiry does not reserve the date. A date is protected only when you place a Hold or move a relationship to Booked. HTC does not decide that a contract, payment, or other milestone means a booking — your venue&apos;s workflow determines when a relationship is Booked.
+          </p>
+          <p>
+            <span className="font-medium text-heading">Holds. </span>
+            Choose whether venue-created Holds prevent other bookings. This setting applies wherever HTC checks availability.
+          </p>
+          <p>
+            <span className="font-medium text-heading">Tours. </span>
+            Choose whether tours can be scheduled when a booked event is occupying the date. This setting applies wherever HTC checks tour availability.
+          </p>
+        </div>
+      </section>
 
       <Card id="tour-availability" className="scroll-mt-20">
         <CardHeader>
@@ -88,6 +109,7 @@ export default async function AvailabilityCapacitySettingsPage() {
         </CardHeader>
         <CardContent>
           <HoldAvailabilityControl initialBlocks={venue?.holdBlocksAvailability !== false} />
+          <TourEventOverlapControl initialAllows={venue?.allowToursDuringBookedEvents === true} />
         </CardContent>
       </Card>
 
