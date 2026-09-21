@@ -43,6 +43,9 @@ export type BrochureInput = {
   includePackages: boolean;
   includeFaqs: boolean;
   closingText: string;
+  /** When set, Save writes photos in the same row update as content (atomic). */
+  photoUrls?: string[];
+  photoLayout?: BrochurePhotoLayout;
 };
 
 export type BrochureErrors = Record<string, string>;

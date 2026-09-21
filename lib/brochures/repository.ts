@@ -67,13 +67,23 @@ export async function insertBrochure(client: DbClient, venueId: string, input: B
 }
 
 export async function updateBrochure(client: DbClient, venueId: string, id: string, input: BrochureInput): Promise<void> {
+  const patch: Record<string, unknown> = {
+    name: input.name.trim(),
+    welcome_text: input.welcomeText.trim() || null,
+    include_packages: input.includePackages,
+    include_faqs: input.includeFaqs,
+    closing_text: input.closingText.trim() || null,
+  };
+  // One row update for content + photos when the editor Save path provides them.
+  if (input.photoUrls !== undefined) {
+    patch.photo_urls = normalizeBrochurePhotoUrls(input.photoUrls);
+  }
+  if (input.photoLayout !== undefined) {
+    patch.photo_layout = normalizeBrochurePhotoLayout(input.photoLayout);
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("brochures") as any)
-    .update({
-      name: input.name.trim(), welcome_text: input.welcomeText.trim() || null,
-      include_packages: input.includePackages, include_faqs: input.includeFaqs,
-      closing_text: input.closingText.trim() || null,
-    })
+    .update(patch)
     .eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
 }

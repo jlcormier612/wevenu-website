@@ -24,9 +24,20 @@ export async function createBrochureAction(input: BrochureInput): Promise<Create
 }
 
 export async function updateBrochureAction(id: string, input: BrochureInput): Promise<BrochureActionResult> {
-  const result = await updateBrochure_(id, input);
-  if (result.ok) revalidateLibrary(id);
-  return result;
+  try {
+    const result = await updateBrochure_(id, input);
+    if (result.ok) {
+      try {
+        revalidateLibrary(id);
+      } catch {
+        // Persistence already succeeded — do not turn a revalidation failure into a failed save.
+      }
+    }
+    return result;
+  } catch (err) {
+    const message = err instanceof Error && err.message ? err.message : "Could not save brochure.";
+    return { ok: false, message };
+  }
 }
 
 export async function updateBrochurePhotographyAction(

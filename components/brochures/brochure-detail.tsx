@@ -122,9 +122,35 @@ export function BrochureDetail({
 
   function handleSave() {
     startSave(async () => {
-      const result = await updateBrochureAction(brochure.id, { name, welcomeText, includePackages, includeFaqs, closingText });
-      if (result.ok) { toast.success(librarySavedToastMessage()); setDirty(false); }
-      else toast.error(result.message ?? "Could not save.");
+      try {
+        // Persist content + current photos in one server update so Save cannot
+        // leave photos saved and authored text lost (or the reverse).
+        const result = await updateBrochureAction(brochure.id, {
+          name,
+          welcomeText,
+          includePackages,
+          includeFaqs,
+          closingText,
+          photoUrls,
+          photoLayout,
+        });
+        if (result.ok) {
+          toast.success(librarySavedToastMessage());
+          setDirty(false);
+        } else {
+          toast.error(result.message ?? result.errors?.name ?? "Could not save brochure. Your previous saved version is unchanged.");
+        }
+      } catch (err) {
+        // Includes Next.js "Failed to find Server Action" after a deploy with a stale tab.
+        const message = err instanceof Error && err.message
+          ? err.message
+          : "Could not save brochure.";
+        toast.error(
+          /server action|older or newer deployment/i.test(message)
+            ? "This page is out of date after an update. Refresh, then Save again — your edits are still in the form."
+            : message,
+        );
+      }
     });
   }
 

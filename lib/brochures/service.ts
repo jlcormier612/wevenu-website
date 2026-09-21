@@ -155,12 +155,16 @@ export async function createBrochure(input: BrochureInput): Promise<CreateBrochu
 export async function updateBrochure_(id: string, input: BrochureInput): Promise<BrochureActionResult> {
   const errors = validateInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateBrochure(supabase, venueId, id, input);
-    await repo.insertActivity(supabase, venueId, id, "updated", "Brochure updated");
-    return { ok: true } as BrochureActionResult;
-  });
-  return result as BrochureActionResult;
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      await repo.updateBrochure(supabase, venueId, id, input);
+      await repo.insertActivity(supabase, venueId, id, "updated", "Brochure updated");
+      return { ok: true } as BrochureActionResult;
+    });
+    return result as BrochureActionResult;
+  } catch (err) {
+    return { ok: false, message: actionErrorMessage(err, "Could not save brochure.") };
+  }
 }
 
 function actionErrorMessage(err: unknown, fallback: string): string {
