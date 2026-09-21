@@ -11,7 +11,7 @@ import {
   type AfterDueCadenceLabel,
   type BeforeDueOffsetDays,
   type ReminderCadence,
-} from "@/lib/notifications/obligations";
+} from "@/lib/notifications/reminder-cadence";
 
 const AFTER_DUE_OPTIONS: { value: AfterDueCadenceLabel; label: string }[] = [
   { value: "daily", label: "Every day until resolved" },
