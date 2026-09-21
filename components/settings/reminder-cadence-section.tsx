@@ -6,10 +6,11 @@ import { toast } from "sonner";
 
 import { updateReminderCadenceAction } from "@/app/(app)/settings/reminder-cadence-actions";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
-import type {
-  AfterDueCadenceLabel,
-  BeforeDueCadenceLabel,
-  ReminderCadence,
+import {
+  BEFORE_DUE_OFFSET_OPTIONS,
+  type AfterDueCadenceLabel,
+  type BeforeDueOffsetDays,
+  type ReminderCadence,
 } from "@/lib/notifications/obligations";
 
 const AFTER_DUE_OPTIONS: { value: AfterDueCadenceLabel; label: string }[] = [
@@ -19,27 +20,24 @@ const AFTER_DUE_OPTIONS: { value: AfterDueCadenceLabel; label: string }[] = [
   { value: "none", label: "Don't send" },
 ];
 
-const BEFORE_DUE_OPTIONS: { value: BeforeDueCadenceLabel; label: string }[] = [
-  { value: "weekly", label: "3 weeks, 2 weeks, and 1 week before" },
-  { value: "once_two_weeks", label: "Once — 2 weeks before" },
-  { value: "once_week", label: "Once — 1 week before" },
-  { value: "on_due", label: "On the due date" },
-  { value: "none", label: "Don't send" },
-];
+const OFFSET_LABELS: Record<BeforeDueOffsetDays, string> = {
+  [-21]: "3 weeks before",
+  [-14]: "2 weeks before",
+  [-7]: "1 week before",
+  0: "On the due date",
+};
 
-function Field({
+function AfterDueField({
   label,
   description,
   value,
-  options,
   onChange,
   disabled,
 }: {
   label: string;
   description: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
+  value: AfterDueCadenceLabel;
+  onChange: (v: AfterDueCadenceLabel) => void;
   disabled?: boolean;
 }) {
   return (
@@ -51,16 +49,118 @@ function Field({
       <select
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value as AfterDueCadenceLabel)}
         className="shrink-0 max-w-[14rem] rounded-sm border border-border bg-background px-2.5 py-1.5 text-sm disabled:opacity-50"
       >
-        {options.map((o) => (
+        {AFTER_DUE_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
     </label>
+  );
+}
+
+function BeforeDueMultiSelect({
+  label,
+  description,
+  name,
+  offsets,
+  offsetLabels,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  description: string;
+  name: string;
+  offsets: number[];
+  offsetLabels: Record<BeforeDueOffsetDays, string>;
+  onChange: (next: number[]) => void;
+  disabled?: boolean;
+}) {
+  // Local "Send" intent so timing checkboxes can appear before the first box
+  // is checked. Don't-send remains mutually exclusive with any selection.
+  const [sendIntent, setSendIntent] = React.useState(false);
+  const sendEnabled = offsets.length > 0 || sendIntent;
+
+  React.useEffect(() => {
+    if (offsets.length > 0) setSendIntent(false);
+  }, [offsets]);
+
+  function setDontSend() {
+    setSendIntent(false);
+    if (offsets.length === 0) return;
+    onChange([]);
+  }
+
+  function setSendReminders() {
+    setSendIntent(true);
+  }
+
+  function toggleOffset(days: BeforeDueOffsetDays, checked: boolean) {
+    const set = new Set(offsets);
+    if (checked) set.add(days);
+    else set.delete(days);
+    const next = [...set].sort((a, b) => a - b);
+    // Unchecking the last point is Don't send — never leave zero boxes selected
+    // while Send reminders is on.
+    if (next.length === 0) {
+      setSendIntent(false);
+      onChange([]);
+      return;
+    }
+    setSendIntent(false);
+    onChange(next);
+  }
+
+  return (
+    <div className="px-4 py-3.5 bg-card space-y-3">
+      <div>
+        <p className="text-sm font-medium text-heading">{label}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
+
+      <fieldset disabled={disabled} className="space-y-2">
+        <legend className="sr-only">{label} reminder mode</legend>
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="radio"
+            name={name}
+            className="mt-0.5"
+            checked={!sendEnabled}
+            onChange={setDontSend}
+          />
+          <span className="text-sm text-heading">Don&apos;t send reminders</span>
+        </label>
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="radio"
+            name={name}
+            className="mt-0.5"
+            checked={sendEnabled}
+            onChange={setSendReminders}
+          />
+          <span className="text-sm text-heading">Send reminders</span>
+        </label>
+
+        {sendEnabled ? (
+          <div className="ml-6 space-y-2 pt-1" role="group" aria-label={`${label} reminder points`}>
+            {BEFORE_DUE_OFFSET_OPTIONS.map((days) => (
+              <label key={days} className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={offsets.includes(days)}
+                  onChange={(e) => toggleOffset(days, e.target.checked)}
+                />
+                <span className="text-sm text-heading">{offsetLabels[days]}</span>
+              </label>
+            ))}
+          </div>
+        ) : null}
+      </fieldset>
+    </div>
   );
 }
 
@@ -103,42 +203,36 @@ export function ReminderCadenceSection({
         . Reminder cadence never invents a booking date.
       </p>
       <div className="divide-y divide-border rounded-sm border border-border overflow-hidden">
-        <Field
+        <BeforeDueMultiSelect
           label="Payments — before due"
           description="Reminders leading up to a payment's due date."
-          value={cadence.paymentBeforeDueCadence}
-          options={BEFORE_DUE_OPTIONS}
-          onChange={(v) =>
-            void handleChange("paymentBeforeDueCadence", v as BeforeDueCadenceLabel)
-          }
-          disabled={saving === "paymentBeforeDueCadence"}
+          name="payment-before-due-mode"
+          offsets={cadence.paymentBeforeDueOffsets}
+          offsetLabels={OFFSET_LABELS}
+          onChange={(next) => void handleChange("paymentBeforeDueOffsets", next)}
+          disabled={saving === "paymentBeforeDueOffsets"}
         />
-        <Field
+        <AfterDueField
           label="Payments — overdue"
           description="Reminders after a payment's due date, until it's paid."
           value={cadence.paymentAfterDueCadence}
-          options={AFTER_DUE_OPTIONS}
-          onChange={(v) =>
-            void handleChange("paymentAfterDueCadence", v as AfterDueCadenceLabel)
-          }
+          onChange={(v) => void handleChange("paymentAfterDueCadence", v)}
           disabled={saving === "paymentAfterDueCadence"}
         />
-        <Field
+        <BeforeDueMultiSelect
           label="Contracts — awaiting signature"
           description="Reminders to sign before the contract expires."
-          value={cadence.contractBeforeDueCadence}
-          options={BEFORE_DUE_OPTIONS}
-          onChange={(v) =>
-            void handleChange("contractBeforeDueCadence", v as BeforeDueCadenceLabel)
-          }
-          disabled={saving === "contractBeforeDueCadence"}
+          name="contract-before-due-mode"
+          offsets={cadence.contractBeforeDueOffsets}
+          offsetLabels={OFFSET_LABELS}
+          onChange={(next) => void handleChange("contractBeforeDueOffsets", next)}
+          disabled={saving === "contractBeforeDueOffsets"}
         />
-        <Field
+        <AfterDueField
           label="Tasks — overdue"
           description="Reminders about a client's own overdue task, until complete."
           value={cadence.taskAfterDueCadence}
-          options={AFTER_DUE_OPTIONS}
-          onChange={(v) => void handleChange("taskAfterDueCadence", v as AfterDueCadenceLabel)}
+          onChange={(v) => void handleChange("taskAfterDueCadence", v)}
           disabled={saving === "taskAfterDueCadence"}
         />
       </div>

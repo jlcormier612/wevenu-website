@@ -40,7 +40,7 @@ import {
   buildContractInviteText,
 } from "@/lib/email/contract-invite";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
-import { createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
+import { cancelRemindersForContract, createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
 import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
 import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
@@ -1102,6 +1102,8 @@ export async function signContractByToken(
     }
 
     if (result.fully_executed && contractRow.venueId) {
+      const adminForReminders = createAdminClient();
+      await cancelRemindersForContract(adminForReminders as never, contractRow.venueId, contractRow.id);
       void recordEngagementEvent({
         venueId: contractRow.venueId,
         eventType: "contract.signed",
@@ -1138,6 +1140,8 @@ export async function signContractByToken(
   if (!result?.ok) return { ok: false, message: "This contract is not available for signing." };
 
   if (contractRow.venueId) {
+    const adminForReminders = createAdminClient();
+    await cancelRemindersForContract(adminForReminders as never, contractRow.venueId, contractRow.id);
     void recordEngagementEvent({
       venueId: contractRow.venueId,
       eventType: "contract.signed",

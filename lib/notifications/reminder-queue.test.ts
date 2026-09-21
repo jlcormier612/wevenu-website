@@ -21,10 +21,10 @@ describe("reminder queue classification", () => {
 });
 
 describe("before-due reminder cadence offsets", () => {
-  it("maps named presets to fixed day offsets relative to due date", () => {
-    assert.deepEqual(beforeDueOffsets("weekly"), [21, 14, 7]);
-    assert.deepEqual(beforeDueOffsets("once_two_weeks"), [14]);
-    assert.deepEqual(beforeDueOffsets("once_week"), [7]);
+  it("maps legacy named presets to fixed day offsets relative to due date", () => {
+    assert.deepEqual(beforeDueOffsets("weekly"), [-21, -14, -7]);
+    assert.deepEqual(beforeDueOffsets("once_two_weeks"), [-14]);
+    assert.deepEqual(beforeDueOffsets("once_week"), [-7]);
     assert.deepEqual(beforeDueOffsets("on_due"), [0]);
     assert.deepEqual(beforeDueOffsets("none"), []);
   });
