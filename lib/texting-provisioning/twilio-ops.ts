@@ -24,6 +24,7 @@ import {
   assertVenueAllowedForSelfServiceProvisioning,
 } from "@/lib/sms/twilio-protected-resources";
 import { venueTwilioSecretId } from "@/lib/sms/venue-twilio-secrets";
+import { toE164 } from "@/lib/sms/phone";
 import { isTwilioA2pMockEnabled } from "@/lib/texting-provisioning/feature";
 import {
   buildA2pCampaignCreateFields,
@@ -302,6 +303,37 @@ async function createEndUser(
   };
 }
 
+/** Fail closed when Trust Hub evaluation is noncompliant (HTTP 200 alone is not enough). */
+function evaluationComplianceOutcome(
+  body: Record<string, unknown>,
+  label: string,
+): StepOutcome | null {
+  const status = str(body.status).toLowerCase();
+  if (!status || status === "compliant") return null;
+  const results = Array.isArray(body.results) ? body.results : [];
+  const failures: string[] = [];
+  for (const req of results) {
+    if (!req || typeof req !== "object") continue;
+    const row = req as Record<string, unknown>;
+    if (row.passed === true) continue;
+    const fields = Array.isArray(row.fields) ? row.fields : [];
+    for (const field of fields) {
+      if (!field || typeof field !== "object") continue;
+      const f = field as Record<string, unknown>;
+      if (f.passed === true) continue;
+      const reason = str(f.failure_reason);
+      if (reason) failures.push(reason);
+    }
+  }
+  return {
+    ok: false,
+    retryable: false,
+    code: status || "noncompliant",
+    message: failures[0] || `${label} evaluation was not compliant.`,
+    detail: body,
+  };
+}
+
 async function assignEntity(
   credentials: TwilioCredentials,
   bundleUrl: string,
@@ -384,6 +416,16 @@ export async function submitSecondaryCustomerProfile(input: {
   );
   if (!businessEu.ok) return businessEu;
 
+  const repPhoneE164 = toE164(biz.repPhone);
+  if (!repPhoneE164) {
+    return {
+      ok: false,
+      retryable: false,
+      code: "invalid_rep_phone",
+      message: "Authorized representative phone must be a valid US/Canada number.",
+    };
+  }
+
   const repEu = await createEndUser(
     input.credentials,
     `Rep ${biz.repFirstName} ${biz.repLastName}`.slice(0, 64),
@@ -392,7 +434,7 @@ export async function submitSecondaryCustomerProfile(input: {
       first_name: biz.repFirstName,
       last_name: biz.repLastName,
       email: biz.repEmail,
-      phone_number: biz.repPhone,
+      phone_number: repPhoneE164,
       business_title: biz.repBusinessTitle,
       job_position: mapJobPosition(biz.repJobPosition),
     },
@@ -466,6 +508,11 @@ export async function submitSecondaryCustomerProfile(input: {
       detail: evaluation.body,
     };
   }
+  const evaluationFail = evaluationComplianceOutcome(
+    evaluation.body,
+    "Secondary customer profile",
+  );
+  if (evaluationFail) return evaluationFail;
 
   const submit = await twilioRequest({
     method: "POST",
@@ -554,6 +601,11 @@ export async function submitA2pTrustProduct(input: {
       detail: evaluation.body,
     };
   }
+  const evaluationFail = evaluationComplianceOutcome(
+    evaluation.body,
+    "A2P messaging profile",
+  );
+  if (evaluationFail) return evaluationFail;
 
   const submit = await twilioRequest({
     method: "POST",
