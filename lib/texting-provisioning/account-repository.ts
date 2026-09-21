@@ -121,7 +121,7 @@ export async function getVenueTwilioAccountExtended(
     if (/does not exist|schema cache|PGRST205|42P01/i.test(msg)) return null;
     throw new Error(error.message);
   }
-  return data ? mapRow(data as Row) : null;
+  return data ? mapRow(data as unknown as Row) : null;
 }
 
 export async function upsertVenueTwilioAccount(
@@ -177,5 +177,5 @@ export async function upsertVenueTwilioAccount(
     .select(SELECT_COLS)
     .single();
   if (error) throw new Error(error.message);
-  return mapRow(data as Row);
+  return mapRow(data as unknown as Row);
 }

@@ -948,23 +948,53 @@ export function VenueGuideEditor({
     setStory(initialStory);
   }, [initialStory]);
 
-  async function save(partial: Parameters<typeof saveGuideAction>[0], field: string) {
+  async function save(
+    partial: Parameters<typeof saveGuideAction>[0],
+    field: string,
+  ): Promise<boolean> {
     setSaving(field);
-    const result = await saveGuideAction(partial);
-    if (result.ok) {
-      toast.success(librarySavedToastMessage());
-    } else {
+    try {
+      const result = await saveGuideAction(partial);
+      if (result.ok) {
+        toast.success(librarySavedToastMessage());
+        return true;
+      }
       toast.error(result.error ?? "Could not save. Please try again.");
+      return false;
+    } catch (err) {
+      // Includes Next.js "Failed to find Server Action" after a deploy with a stale tab.
+      const message = err instanceof Error && err.message
+        ? err.message
+        : "Could not save.";
+      toast.error(
+        /server action|older or newer deployment/i.test(message)
+          ? "This page is out of date after an update. Refresh, then Save again — your edits are still in the form."
+          : message,
+      );
+      return false;
+    } finally {
+      setSaving(null);
     }
-    setSaving(null);
   }
 
   async function saveStory(v: string) {
     setSaving("story");
-    await updateStoryAction(v);
-    setStory(v);
-    toast.success(librarySavedToastMessage());
-    setSaving(null);
+    try {
+      await updateStoryAction(v);
+      setStory(v);
+      toast.success(librarySavedToastMessage());
+    } catch (err) {
+      const message = err instanceof Error && err.message
+        ? err.message
+        : "Could not save.";
+      toast.error(
+        /server action|older or newer deployment/i.test(message)
+          ? "This page is out of date after an update. Refresh, then Save again — your edits are still in the form."
+          : message,
+      );
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function setSectionAudience(key: GuideSectionKey, audience: GuideAudience) {
@@ -998,13 +1028,13 @@ export function VenueGuideEditor({
     if (cleaned.length === 0) {
       const { faqs: _removed, ...rest } = nextOverrides;
       void _removed;
-      setData((d) => ({ ...d, sectionOverrides: rest }));
-      await save({ section_overrides: rest }, "section_overrides");
+      const ok = await save({ section_overrides: rest }, "section_overrides");
+      if (ok) setData((d) => ({ ...d, sectionOverrides: rest }));
       return;
     }
     nextOverrides.faqs = { vendors: cleaned };
-    setData((d) => ({ ...d, sectionOverrides: nextOverrides }));
-    await save({ section_overrides: nextOverrides }, "section_overrides");
+    const ok = await save({ section_overrides: nextOverrides }, "section_overrides");
+    if (ok) setData((d) => ({ ...d, sectionOverrides: nextOverrides }));
   }
 
   function sectionProps(key: GuideSectionKey) {
@@ -1228,8 +1258,10 @@ export function VenueGuideEditor({
           savingVendor={saving === "section_overrides"}
           missingStarterKeys={missingStarterKeys}
           onSaveClient={async items => {
-            setData(d => ({ ...d, faqs: items }));
-            await save({ faqs: items }, "faqs");
+            // Commit parent state only after persistence succeeds so a failed /
+            // thrown Server Action cannot clear dirty and leave a phantom FAQ.
+            const ok = await save({ faqs: items }, "faqs");
+            if (ok) setData(d => ({ ...d, faqs: items }));
           }}
           onSaveVendor={async items => {
             await setVendorFaqs(items);
@@ -1243,8 +1275,8 @@ export function VenueGuideEditor({
           contacts={data.importantContacts}
           saving={saving === "important_contacts"}
           onSave={async items => {
-            setData(d => ({ ...d, importantContacts: items }));
-            await save({ important_contacts: items }, "important_contacts");
+            const ok = await save({ important_contacts: items }, "important_contacts");
+            if (ok) setData(d => ({ ...d, importantContacts: items }));
           }}
         />
       </SectionCard>

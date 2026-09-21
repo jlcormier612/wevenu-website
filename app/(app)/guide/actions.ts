@@ -76,12 +76,20 @@ type GuidePartial = {
 };
 
 export async function saveGuideAction(partial: GuidePartial): Promise<{ ok: boolean; error?: string }> {
-  const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, error: "No venue found." };
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("venue_operational_info")
-    .upsert({ venue_id: venue.id, ...partial }, { onConflict: "venue_id" });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  try {
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, error: "No venue found." };
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("venue_operational_info")
+      .upsert(
+        { venue_id: venue.id, updated_at: new Date().toISOString(), ...partial },
+        { onConflict: "venue_id" },
+      );
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error && err.message ? err.message : "Could not save guide.";
+    return { ok: false, error: message };
+  }
 }
