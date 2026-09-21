@@ -26,8 +26,10 @@ export type CalendarFilterState = {
 
 export const UNASSIGNED = "__unassigned__";
 
-/** Shared across Month/Week/Day/Agenda — do not per-view-key this. */
-export const CALENDAR_FILTER_STORAGE_KEY = "shared";
+/** Shared across Month/Week/Day/Agenda — do not per-view-key this.
+ *  Bumped to taxonomy-v1 so pre-retirement perspective presets in localStorage
+ *  cannot leave the Calendar stuck on a Sales/Planning/etc. filter set. */
+export const CALENDAR_FILTER_STORAGE_KEY = "shared-taxonomy-v1";
 
 const STORAGE_PREFIX = "wevenu-calendar-filters:";
 

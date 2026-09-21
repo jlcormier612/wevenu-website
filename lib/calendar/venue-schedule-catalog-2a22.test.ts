@@ -6,7 +6,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { getPerspectives, PERSPECTIVES } from "@/components/calendar/perspectives";
 import {
   LEGACY_MANUAL_SCHEDULE_TYPE_LABELS,
   isCreatableManualScheduleType,
@@ -28,6 +27,7 @@ import type { CalendarItemType } from "@/lib/calendar/types";
 const availServiceSrc = readFileSync(resolve("lib/availability/service.ts"), "utf8");
 const calendarViewSrc = readFileSync(resolve("components/calendar/calendar-view.tsx"), "utf8");
 const pageSrc = readFileSync(resolve("app/(app)/calendar/page.tsx"), "utf8");
+const perspectivesSrc = readFileSync(resolve("components/calendar/perspectives.ts"), "utf8");
 const catalogServiceSrc = readFileSync(resolve("lib/calendar/schedule-item-catalog-service.ts"), "utf8");
 const repoSrc = readFileSync(resolve("lib/calendar/schedule-item-catalog-repository.ts"), "utf8");
 
@@ -230,22 +230,11 @@ describe("Calendar Slice 2A.2.2 — create/edit resolve & snapshots", () => {
   });
 });
 
-describe("Calendar Slice 2A.2.2 — perspectives & filters", () => {
-  it("relevant perspectives include custom; tasting only when enabled", () => {
-    const sales = PERSPECTIVES.find((p) => p.id === "sales")!;
-    const planning = PERSPECTIVES.find((p) => p.id === "planning")!;
-    const operations = PERSPECTIVES.find((p) => p.id === "operations")!;
-    assert.equal(sales.filters.manualTypes?.includes("custom"), true);
-    assert.equal(sales.filters.manualTypes?.includes("tasting"), false);
-    assert.equal(planning.filters.manualTypes?.includes("custom"), true);
-    assert.equal(planning.filters.manualTypes?.includes("tasting"), false);
-    assert.equal(operations.filters.manualTypes?.includes("custom"), true);
-    assert.equal(operations.filters.manualTypes?.includes("personal_appointment"), true);
-    assert.equal(operations.filters.manualTypes?.includes("other"), true);
-    assert.equal((sales.filters.manualTypes ?? []).includes("tour"), false);
-    const withTaste = getPerspectives(true);
-    assert.equal(withTaste.find((p) => p.id === "sales")!.filters.manualTypes?.includes("tasting"), true);
-    assert.equal(withTaste.find((p) => p.id === "planning")!.filters.manualTypes?.includes("tasting"), true);
+describe("Calendar Slice 2A.2.2 — perspectives retired & filters", () => {
+  it("perspective presets are retired; custom remains an Appointment classification", () => {
+    assert.match(perspectivesSrc, /CALENDAR_PERSPECTIVES_RETIRED/);
+    assert.doesNotMatch(perspectivesSrc, /id: "sales"|getPerspectives/);
+    assert.doesNotMatch(calendarViewSrc, /PerspectiveSwitcher/);
   });
 
   it("sanitize keeps tasting filterable; still strips manual tour and excluded item types", () => {

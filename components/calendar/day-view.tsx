@@ -14,8 +14,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { FilterBar, ItemRow, PerspectiveSwitcher } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { FilterBar, ItemRow } from "@/components/calendar/calendar-shared";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 
@@ -33,7 +32,7 @@ export function DayView({
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
+  const displayItems = filteredItems;
   const [y, m, d] = date.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);
   const label = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
@@ -66,8 +65,7 @@ export function DayView({
         )}
       </div>
 
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
       {dayItems.length === 0 ? (
         <p className="text-sm text-muted-foreground py-12 text-center">Nothing scheduled.</p>

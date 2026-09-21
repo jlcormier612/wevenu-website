@@ -15,8 +15,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { FilterBar, ItemRow, MonthYearPicker, PerspectiveSwitcher } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { FilterBar, ItemRow, MonthYearPicker } from "@/components/calendar/calendar-shared";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
@@ -36,7 +35,7 @@ export function AgendaView({
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
+  const displayItems = filteredItems;
 
   // Same ±1-month semantics as the "ArrowLeft"/"ArrowRight" keyboard
   // shortcut already uses for this view (calendar-view.tsx) — the on-screen
@@ -86,8 +85,7 @@ export function AgendaView({
         )}
       </div>
 
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
       {byDate.length === 0 ? (
         <p className="text-sm text-muted-foreground py-12 text-center">Nothing upcoming in this window.</p>

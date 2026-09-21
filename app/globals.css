@@ -151,29 +151,27 @@
   --sidebar-ring: var(--heritage-sage);
 
   /* Calendar item dot colors (light mode — dark dots on light surface).
-     Manual Schedule Items (Calendar Manual Type Redesign): the five colors
-     a coordinator should recognize instantly at a glance — Tour (green),
-     Wedding/Event (purple), Meeting (orange, covers Consultation/Client
-     Meeting/Vendor Meeting alike — they're all "someone's talking to
-     someone"), Walkthrough (blue), Blocked Time (charcoal, no longer red —
-     a closed date isn't an alarm, it's just unavailable) — were chosen to
-     be clearly distinguishable from every other color already in this
-     palette, not just from each other. */
-  --cal-event:          #7B5EA0;                 /* purple — the wedding day itself, the single most important item on the calendar */
-  --cal-tour:           var(--soft-sage);        /* #B9D1C2 — light sage green — shared by real booked tours AND manual "Tour" schedule items, deliberately identical */
+     Locked taxonomy visual language:
+       Event        = purple (--cal-event)
+       Tour         = platform clear blue (--cal-tour, same hex as former walkthrough)
+       Appointment  = orange (--cal-meeting)
+       Hold         = bright yellow (--cal-date-hold)
+       Blocked Time = destructive/error red (--cal-blocked → --destructive) */
+  --cal-event:          #7B5EA0;                 /* purple — keep */
+  --cal-tour:           #4A7EA8;                 /* platform clear blue (former --cal-walkthrough) */
   --cal-follow-up:      var(--taupe-dark);       /* #B8AEA1 — taupe       */
   --cal-payment-due:    var(--dusty-rose);       /* #D8A7AA — rose        */
-  --cal-date-hold:      #C7A66A;                 /* amber (tint, same hue as taupe) */
-  --cal-blocked:        #5A5A5A;                 /* charcoal — Blocked Time is "unavailable," not an alarm; also reused by the manual "Blocked Time" schedule type */
+  --cal-date-hold:      #E8C200;                 /* bright yellow — clearly distinct from muted taupe */
+  --cal-blocked:        var(--destructive);      /* dusty-rose error red — unavailable at a glance */
   --cal-planning-activity: #7A8FA6;              /* muted slate blue — distinct from every other item type */
   --cal-request-due:       #B08D3E;              /* muted mustard gold — Due Date kind (§2a) */
   --cal-contract-expiration: #8E6B8E;            /* muted plum — Expiration kind (§2a), distinct from Due Date colors */
   --cal-document-expiration: #9C7A5B;            /* muted clay brown — Expiration kind (§2a) */
   --cal-planning-task:  #8A9A5B;                  /* muted olive — Due Date kind (legacy CalendarItemType meta) */
   --cal-timeline-entry: #B06A3A;                  /* muted copper — day-of run-of-show (legacy CalendarItemType meta) */
-  --cal-meeting:        #D68A3E;                  /* orange — manual Consultation/Client Meeting/Vendor Meeting, deliberately one color for the whole "meeting" family */
-  --cal-walkthrough:    #4A7EA8;                  /* clear blue — manual Walkthrough, distinct from Planning's own muted slate-blue above (a Walkthrough scheduled here is a Calendar-only entry, not a Planning-tracked task) */
-  --cal-other:          #9C9690;                  /* neutral warm gray — manual "Other," the catch-all */
+  --cal-meeting:        #D68A3E;                  /* orange — all Appointment classifications */
+  --cal-walkthrough:    var(--cal-meeting);       /* walkthrough is Appointment — shares orange */
+  --cal-other:          #9C9690;                  /* neutral warm gray — unused catch-all token */
 }
 
 /*
@@ -493,8 +491,11 @@ html:has(.htc-staff) [data-slot="table"] {
   --sidebar-ring: var(--heritage-sage);
 
   /* Calendar item dot colors (dark mode — light dots on dark surface) */
-  --cal-event:       #C4AEDA;               /* light lavender — keeps the purple identity legible on dark, rather than reverting to plain white */
-  --cal-blocked:     #9A9A9A;               /* lighter charcoal — the light-mode #5A5A5A would vanish against a dark surface */
+  --cal-event:       #C4AEDA;               /* light lavender — keeps the purple identity legible on dark */
+  --cal-tour:        #7EB0D8;               /* lighter clear blue for dark surfaces */
+  --cal-date-hold:   #F5D76E;               /* brighter yellow for dark surfaces */
+  --cal-blocked:     #E8B4B7;               /* lighter dusty-rose destructive red */
+  --cal-meeting:     #E5A85C;               /* lighter orange for Appointment on dark */
 }
 
 @layer base {

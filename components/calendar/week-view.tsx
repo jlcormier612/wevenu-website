@@ -15,8 +15,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { FilterBar, formatTime, ItemRow, PerspectiveSwitcher, resolveItemMeta } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { FilterBar, formatTime, ItemRow, resolveItemMeta } from "@/components/calendar/calendar-shared";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
@@ -42,7 +41,7 @@ export function WeekView({
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
+  const displayItems = filteredItems;
   const [y, m, d] = weekStart.split("-").map(Number);
   const start = new Date(y, m - 1, d);
 
@@ -83,8 +82,7 @@ export function WeekView({
         )}
       </div>
 
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
       <div className="grid gap-3 md:grid-cols-7">
         {days.map(({ date, dateStr, dayItems }) => (

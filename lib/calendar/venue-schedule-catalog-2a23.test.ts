@@ -6,7 +6,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { PERSPECTIVES } from "@/components/calendar/perspectives";
 import {
   APPOINTMENT_CATALOG_MAX_ACTIVE_CUSTOMS,
   buildScheduleItemPickerGroups,
@@ -272,11 +271,10 @@ describe("Calendar Slice 2A.2.3 — picker & perspectives", () => {
     assert.equal(edit.resolved.scheduleItemTypeId, "c-arch");
   });
 
-  it("custom types remain visible in relevant Calendar perspectives", () => {
-    for (const id of ["sales", "planning", "operations"] as const) {
-      const p = PERSPECTIVES.find((x) => x.id === id)!;
-      assert.equal(p.filters.manualTypes?.includes("custom"), true, id);
-    }
+  it("custom types remain Appointment classifications (perspectives retired)", () => {
+    const perspectivesSrc = readFileSync(resolve("components/calendar/perspectives.ts"), "utf8");
+    assert.match(perspectivesSrc, /CALENDAR_PERSPECTIVES_RETIRED/);
+    assert.doesNotMatch(perspectivesSrc, /id: "sales"|id: "planning"|id: "operations"/);
   });
 
   it("custom reserve-time snapshot is taken from catalog on create; same-type edit preserves", () => {

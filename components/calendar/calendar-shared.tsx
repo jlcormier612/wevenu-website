@@ -23,12 +23,13 @@ import { CALENDAR_MAX_YEAR, CALENDAR_MIN_YEAR } from "@/lib/calendar/types";
 import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
 import {
-  isVenueCalendarItemType,
+  filtersFromTaxonomySelection,
+  presentVenueCalendarTaxonomyKeys,
+  taxonomySelectionFromFilters,
   venueCalendarTaxonomyLabel,
   type VenueCalendarTaxonomyKey,
   VENUE_CALENDAR_TAXONOMY,
 } from "@/lib/calendar/venue-calendar-scope";
-import { activePerspectiveId, getPerspectives } from "@/components/calendar/perspectives";
 import { cn } from "@/lib/utils";
 
 type ItemMeta = {
@@ -42,16 +43,15 @@ type ItemMeta = {
 // overrides in .dark { } work automatically — no JS dark-mode detection needed.
 export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
   event:          { label: "Event",       icon: CalendarDays,  dotColor: "var(--cal-event)",       textClass: "text-primary" },
-  tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-muted-foreground" },
+  // Tour uses the platform clear blue (--cal-tour → same token family as the
+  // former walkthrough blue), not soft-sage green.
+  tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-heading" },
   follow_up:      { label: "Follow-up",   icon: Phone,         dotColor: "var(--cal-follow-up)",   textClass: "text-muted-foreground" },
   payment_due:    { label: "Payment Due", icon: DollarSign,    dotColor: "var(--cal-payment-due)", textClass: "text-destructive" },
   // One human-facing Hold concept — backend may still use date_holds table.
-  date_hold:      { label: "Hold",        icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
-  // "Blocked Time" — no longer the primary manual concept, just one of
-  // several a coordinator can pick from "+ Add Schedule Item" (Calendar
-  // Manual Type Redesign). Charcoal, not red — a closed date is a neutral
-  // fact, not an alarm.
-  calendar_block: { label: "Blocked Time", icon: Ban,           dotColor: "var(--cal-blocked)",     textClass: "text-muted-foreground" },
+  date_hold:      { label: "Hold",        icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-heading" },
+  // Blocked Time = intentionally unavailable — destructive/error red.
+  calendar_block: { label: "Blocked Time", icon: Ban,           dotColor: "var(--cal-blocked)",     textClass: "text-destructive" },
   planning_activity: { label: "Planning", icon: CalendarClock, dotColor: "var(--cal-planning-activity)", textClass: "text-heading" },
   request_due:          { label: "Request",           icon: ClipboardList, dotColor: "var(--cal-request-due)",          textClass: "text-heading" },
   contract_expiration:  { label: "Contract Expires",  icon: FileSignature, dotColor: "var(--cal-contract-expiration)",  textClass: "text-warning-foreground" },
@@ -60,28 +60,24 @@ export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
   timeline_entry: { label: "Timeline",      icon: GanttChart, dotColor: "var(--cal-timeline-entry)", textClass: "text-heading" },
 };
 
-// Calendar Manual Type Redesign — one visual identity per manual type, so a
-// coordinator recognizes "Tour," "Meeting," "Walkthrough," and "Blocked
-// Time" at a glance regardless of whether the item is system-generated or
-// manually scheduled. Tour and Blocked Time deliberately reuse TYPE_META's
-// own entries rather than duplicating them — a manually-scheduled "Tour" on
-// Calendar should look exactly like a real booked tour, not a lookalike.
+// Appointment classifications share one orange visual identity (Appointment).
+// Hold placeholders share Hold yellow. Blocked Time reuses TYPE_META.
 export const MANUAL_TYPE_META: Record<ManualScheduleType, ItemMeta> = {
-  // Legacy manual Tour rows — must not look identical to tour_appointments.
-  tour:                 { label: "Manual tour (not booked)", icon: Ban,      dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
+  // Legacy manual Tour rows — Appointment taxonomy, not a sixth legend peer.
+  tour:                 { label: "Manual tour (not booked)", icon: Ban,      dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   consultation:         { label: "Consultation",         icon: Phone,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   client_meeting:       { label: "Client Meeting",       icon: Users,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   vendor_meeting:       { label: "Vendor Meeting",       icon: Handshake, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
-  walkthrough:          { label: "Walkthrough",          icon: Footprints, dotColor: "var(--cal-walkthrough)", textClass: "text-heading" },
-  tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
-  personal_appointment: { label: "Personal Appointment", icon: User,      dotColor: "var(--cal-follow-up)", textClass: "text-muted-foreground" },
+  walkthrough:          { label: "Walkthrough",          icon: Footprints, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  personal_appointment: { label: "Personal Appointment", icon: User,      dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   blocked_time:         TYPE_META.calendar_block,
   // Holds — booking placeholders; must not reuse Event visual identity.
-  wedding_event_booking: { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
-  private_event:         { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
-  other:                { label: "Other",                icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
-  // Custom catalog offerings reuse Other visuals; label comes from catalogLabel.
-  custom:               { label: "Custom",               icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
+  wedding_event_booking: { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-heading" },
+  private_event:         { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-heading" },
+  other:                { label: "Other",                icon: MoreHorizontal, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  // Custom catalog offerings resolve as Appointment; label from catalogLabel.
+  custom:               { label: "Custom",               icon: MoreHorizontal, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
 };
 
 /** Resolves the correct visual identity for any item — manual schedule items
@@ -253,64 +249,80 @@ export function ItemRow({
   );
 }
 
-// ---- Filter bar (Calendar Integration Phase 4) -------------------------------
-// Multi-filtering by type + assignee + space, shared by Month/Week/Day/
-// Agenda. Selections persist via useCalendarFilters (localStorage), so this
-// is deliberately dumb/presentational — all state lives in the hook.
+// ---- Filter bar — taxonomy chips + staff/space -------------------------------
+// Filters by locked taxonomy (Event · Tour · Appointment · Hold · Blocked Time)
+// mapped onto the existing types + manualTypes axes. Perspective buckets are gone.
 
 export function FilterBar({
-  filters, onChange, presentTypes, staffOptions, spaceOptions,
+  filters, onChange, presentTypes, staffOptions, spaceOptions, items = [],
 }: {
   filters: import("@/components/calendar/use-calendar-filters").CalendarFilterState;
   onChange: (next: import("@/components/calendar/use-calendar-filters").CalendarFilterState) => void;
   presentTypes: CalendarItemType[];
   staffOptions: [string, string][];
   spaceOptions: [string, string][];
+  /** When provided, taxonomy chips reflect items actually on the calendar. */
+  items?: CalendarItem[];
 }) {
   const UNASSIGNED = "__unassigned__";
-  // Venue Calendar filter chips — never surface Booking-Schedule-only types
-  // even if a stale item or localStorage edge case leaks one in.
-  const venuePresentTypes = presentTypes.filter(isVenueCalendarItemType);
-  const activeTypes = filters.types ?? venuePresentTypes;
+  const presentTaxonomy = React.useMemo(() => {
+    if (items.length > 0) return presentVenueCalendarTaxonomyKeys(items);
+    // Fallback when callers pass only presentTypes (no item list): map raw types.
+    const synthetic = presentTypes.flatMap((type): CalendarItem[] => {
+      if (type === "calendar_block") {
+        return [
+          { type, manualType: "consultation" } as CalendarItem,
+          { type, manualType: "blocked_time" } as CalendarItem,
+          { type, manualType: "wedding_event_booking" } as CalendarItem,
+        ];
+      }
+      return [{ type } as CalendarItem];
+    });
+    return presentVenueCalendarTaxonomyKeys(synthetic);
+  }, [items, presentTypes]);
 
-  function toggleType(type: CalendarItemType) {
-    if (!isVenueCalendarItemType(type)) return;
-    const current = filters.types ?? venuePresentTypes;
-    const next = current.includes(type) ? current.filter((t) => t !== type) : [...current, type];
-    // Selecting everything is equivalent to "no filter" — collapses back to null
-    // so a newly-appearing type on a future navigation defaults to visible.
-    onChange({ ...filters, types: next.length === venuePresentTypes.length ? null : next });
+  const legend = venueCalendarLegendEntries();
+  const activeTaxonomy = taxonomySelectionFromFilters(filters, presentTaxonomy);
+
+  function toggleTaxonomy(key: VenueCalendarTaxonomyKey) {
+    const current = activeTaxonomy.length > 0 ? activeTaxonomy : presentTaxonomy;
+    const next = current.includes(key)
+      ? current.filter((k) => k !== key)
+      : [...current, key];
+    const mapped = filtersFromTaxonomySelection(next, presentTaxonomy);
+    onChange({ ...filters, types: mapped.types, manualTypes: mapped.manualTypes });
   }
 
-  const hasActiveFilter = filters.types !== null || filters.staffId !== null || filters.spaceId !== null;
+  const hasActiveFilter =
+    filters.types !== null ||
+    filters.manualTypes !== null ||
+    filters.staffId !== null ||
+    filters.spaceId !== null;
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        {venuePresentTypes.map((type) => {
-          const meta = TYPE_META[type];
-          const active = activeTypes.includes(type);
-          // calendar_block covers appointments and availability blocks — do not
-          // label the filter chip as only "Blocked Time".
-          const chipLabel = type === "calendar_block" ? "Appointments & blocks" : meta.label;
+        {presentTaxonomy.map((key) => {
+          const entry = legend.find((e) => e.key === key)!;
+          const active = activeTaxonomy.includes(key);
           return (
             <button
-              key={type}
+              key={key}
               type="button"
-              onClick={() => toggleType(type)}
+              onClick={() => toggleTaxonomy(key)}
               className={cn(
                 "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
                 active ? "border-transparent bg-muted text-foreground" : "border-border text-muted-foreground opacity-50",
               )}
             >
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: meta.dotColor }} />
-              {chipLabel}
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: entry.dotColor }} />
+              {entry.label}
             </button>
           );
         })}
       </div>
 
-      {(staffOptions.length > 0 || spaceOptions.length > 0) && (
+      {(staffOptions.length > 0 || spaceOptions.length > 0 || hasActiveFilter) && (
         <div className="flex flex-wrap items-center gap-2">
           {staffOptions.length > 0 && (
             <select
@@ -345,51 +357,6 @@ export function FilterBar({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-// ---- Perspective switcher (Calendar Release Completion) ---------------------
-// "What am I doing right now," not "what filter do I need." Every button
-// here does exactly one thing: call the same setFilters the manual chips
-// above already call, with a predefined preset — never a second filtering
-// mechanism, never a separate persisted "mode." The switcher's own
-// highlighted state is derived by comparing the live filters against each
-// preset (components/calendar/perspectives.ts's activePerspectiveId), so it
-// can never drift out of sync with what's actually being shown, and a
-// coordinator who further adjusts filters after picking one sees that
-// reflected honestly (nothing highlighted) rather than a stale label.
-
-export function PerspectiveSwitcher({
-  filters, onChange, tastingEnabled = false,
-}: {
-  filters: import("@/components/calendar/use-calendar-filters").CalendarFilterState;
-  onChange: (next: import("@/components/calendar/use-calendar-filters").CalendarFilterState) => void;
-  /** When true, Sales/Planning presets include Tasting. */
-  tastingEnabled?: boolean;
-}) {
-  const perspectives = getPerspectives(tastingEnabled);
-  const active = activePerspectiveId(filters, tastingEnabled);
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {perspectives.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          title={p.description}
-          onClick={() => onChange(p.filters)}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-            active === p.id
-              ? "border-transparent bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground hover:text-foreground hover:border-ring",
-          )}
-        >
-          <span>{p.emoji}</span>
-          {p.label}
-        </button>
-      ))}
     </div>
   );
 }

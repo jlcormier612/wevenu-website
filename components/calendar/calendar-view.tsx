@@ -41,11 +41,9 @@ import {
   ItemRow,
   MANUAL_TYPE_META,
   MonthYearPicker,
-  PerspectiveSwitcher,
   resolveItemMeta,
   venueCalendarLegendEntries,
 } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
 import { ScheduleRelationPicker } from "@/components/calendar/schedule-relation-picker";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
@@ -309,7 +307,7 @@ export function CalendarView({
   const tastingEnabled = scheduleCatalog.some(
     (r) => r.source === "builtin" && r.builtinKey === "tasting" && r.enabled && !r.archivedAt,
   );
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
+  const displayItems = filteredItems;
   const pickerGroups = React.useMemo(
     () => buildScheduleItemPickerGroups(scheduleCatalog),
     [scheduleCatalog],
@@ -1054,11 +1052,8 @@ export function CalendarView({
       {/* Legend */}
       <Legend tastingEnabled={tastingEnabled} />
 
-      {/* Perspectives (Calendar Release Completion) */}
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-
-      {/* Filters (Calendar Integration Phase 4) */}
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
+      {/* Filters — locked taxonomy + staff/space */}
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
       {/* Main grid + detail */}
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">

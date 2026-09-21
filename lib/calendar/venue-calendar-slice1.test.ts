@@ -13,7 +13,6 @@ import {
   manualScheduleTypeLabel,
 } from "@/lib/availability/constants";
 import { MANUAL_SCHEDULE_TYPE_GROUPS } from "@/lib/availability/types";
-import { getPerspectives, PERSPECTIVES } from "@/components/calendar/perspectives";
 import { CALENDAR_FILTER_STORAGE_KEY } from "@/components/calendar/use-calendar-filters";
 import {
   isVenueCalendarItemType,
@@ -126,26 +125,12 @@ describe("Calendar Slice 1 — Tour / Tasting manual types", () => {
   });
 });
 
-describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
-  it("perspectives do not reintroduce moved-off item types or planning_activity", () => {
-    for (const p of PERSPECTIVES) {
-      for (const t of p.filters.types ?? []) {
-        assert.equal(isVenueCalendarItemType(t), true, `${p.id} includes non-venue type ${t}`);
-        assert.notEqual(t, "planning_activity");
-      }
-      assert.equal((p.filters.manualTypes ?? []).includes("tour"), false, `${p.id} manual tour`);
-      assert.equal((p.filters.manualTypes ?? []).includes("tasting"), false, `${p.id} tasting default`);
-    }
-    assert.equal(PERSPECTIVES.some((p) => (p.id as string) === "finance"), false);
-  });
-
-  it("getPerspectives adds tasting only when enabled", () => {
-    const off = getPerspectives(false);
-    const on = getPerspectives(true);
-    assert.equal(off.find((p) => p.id === "sales")!.filters.manualTypes?.includes("tasting"), false);
-    assert.equal(on.find((p) => p.id === "sales")!.filters.manualTypes?.includes("tasting"), true);
-    assert.equal(on.find((p) => p.id === "planning")!.filters.manualTypes?.includes("tasting"), true);
-    assert.match(perspectivesSrc, /getPerspectives/);
+describe("Calendar Slice 1 — perspectives retired, copy, filters, help", () => {
+  it("operational perspective buckets are retired", () => {
+    assert.match(perspectivesSrc, /CALENDAR_PERSPECTIVES_RETIRED/);
+    assert.doesNotMatch(perspectivesSrc, /id: "everything"|id: "sales"|id: "finance"/);
+    assert.doesNotMatch(sharedSrc, /PerspectiveSwitcher/);
+    assert.doesNotMatch(calendarViewSrc, /PerspectiveSwitcher/);
   });
 
   it("Calendar page copy describes schedule, not every dated fact", () => {
@@ -162,8 +147,8 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
   });
 
   it("filters share one localStorage key across views", () => {
-    assert.equal(CALENDAR_FILTER_STORAGE_KEY, "shared");
-    assert.match(filtersSrc, /CALENDAR_FILTER_STORAGE_KEY = "shared"/);
+    assert.equal(CALENDAR_FILTER_STORAGE_KEY, "shared-taxonomy-v1");
+    assert.match(filtersSrc, /CALENDAR_FILTER_STORAGE_KEY = "shared-taxonomy-v1"/);
     assert.match(readFileSync(resolve("components/calendar/week-view.tsx"), "utf8"), /useCalendarFilters\(items\)/);
     assert.match(readFileSync(resolve("components/calendar/day-view.tsx"), "utf8"), /useCalendarFilters\(items\)/);
     assert.match(readFileSync(resolve("components/calendar/agenda-view.tsx"), "utf8"), /useCalendarFilters\(items\)/);
@@ -217,10 +202,11 @@ describe("Calendar Slice 1 — perspectives, copy, filters, help", () => {
     assert.match(sharedSrc, /date_hold:\s*\{\s*label:\s*"Hold"/);
   });
 
-  it("FilterBar uses Appointments & blocks for calendar_block chip", () => {
-    assert.match(sharedSrc, /Appointments & blocks/);
-    assert.match(sharedSrc, /type === "calendar_block"/);
-    assert.match(sharedSrc, /venuePresentTypes = presentTypes\.filter\(isVenueCalendarItemType\)/);
+  it("FilterBar uses locked taxonomy chips (not Appointments & blocks)", () => {
+    assert.doesNotMatch(sharedSrc, /Appointments & blocks/);
+    assert.match(sharedSrc, /filtersFromTaxonomySelection/);
+    assert.match(sharedSrc, /presentVenueCalendarTaxonomyKeys/);
+    assert.match(sharedSrc, /toggleTaxonomy/);
     assert.match(filtersSrc, /isVenueCalendarItemType/);
   });
 
