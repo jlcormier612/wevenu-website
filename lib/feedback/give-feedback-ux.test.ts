@@ -145,7 +145,7 @@ describe("Give feedback — landing page", () => {
   });
 
   it("keeps the header and the Venue Guide / Guidance explainer", () => {
-    assert.match(page, /title="Give feedback"/);
+    assert.match(page, /title="Get Help or Provide Feedback"/);
     assert.match(page, /Venue Guide/);
     assert.match(page, /Guidance/);
   });

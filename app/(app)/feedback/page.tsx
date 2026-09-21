@@ -58,7 +58,7 @@ export default function FeedbackPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Give feedback"
+        title="Get Help or Provide Feedback"
         description="Talk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next."
       />
 
