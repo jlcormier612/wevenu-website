@@ -173,9 +173,22 @@ export async function upsertVenueTwilioAccount(
   else if (!existing) row.status = "provisioning";
   if (patch.statusDetail !== undefined) row.status_detail = patch.statusDetail;
 
+  // Prefer update for existing rows. Supabase upsert defaults unspecified
+  // columns to null, which trips ready_requires_sender when only status flips.
+  if (existing) {
+    const { data, error } = await admin
+      .from("venue_twilio_accounts")
+      .update(row)
+      .eq("venue_id", patch.venueId)
+      .select(SELECT_COLS)
+      .single();
+    if (error) throw new Error(error.message);
+    return mapRow(data as unknown as Row);
+  }
+
   const { data, error } = await admin
     .from("venue_twilio_accounts")
-    .upsert(row, { onConflict: "venue_id" })
+    .insert(row)
     .select(SELECT_COLS)
     .single();
   if (error) throw new Error(error.message);
