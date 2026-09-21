@@ -15,7 +15,7 @@ export function ShareAvailability({ url }: { url: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3">
+    <div className="h-full rounded-lg border border-border bg-card px-4 py-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Public availability
       </p>
@@ -26,7 +26,7 @@ export function ShareAvailability({ url }: { url: string }) {
         <Button type="button" size="lg" onClick={copy}>
           Copy availability link
         </Button>
-        <Button type="button" size="lg" variant="outline" render={<a href={url} target="_blank" rel="noopener noreferrer" />}>
+        <Button type="button" size="lg" variant="outline" aria-label="Preview public availability" render={<a href={url} target="_blank" rel="noopener noreferrer" />}>
           Preview
         </Button>
       </div>

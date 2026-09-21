@@ -3,11 +3,14 @@ import Link from "next/link";
 import { Printer } from "lucide-react";
 
 import { ShareAvailability } from "@/components/calendar/share-availability";
+import { ShareTourAvailability } from "@/components/calendar/share-tour-availability";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getScheduleItemTypesForPicker } from "@/lib/calendar/schedule-item-catalog-service";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
 import { publicAppOrigin } from "@/lib/env";
+import { publicTourSchedulingPath } from "@/lib/tours/public-link";
+import { getTourSettings } from "@/lib/tours/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Calendar" };
@@ -24,16 +27,21 @@ type Props = { searchParams: Promise<CalendarViewParams> };
  */
 export default async function CalendarPage({ searchParams }: Props) {
   const params = await searchParams;
-  const [{ view, year, month, weekStart, dayDate, items, today }, scheduleCatalog, venue] = await Promise.all([
+  const [{ view, year, month, weekStart, dayDate, items, today }, scheduleCatalog, venue, tourSettings] = await Promise.all([
     resolveCalendarView(params),
     getScheduleItemTypesForPicker(),
     getCurrentVenue(),
+    getTourSettings(),
   ]);
 
   const printHref = `/calendar/print?view=${view}&year=${year}&month=${month}&weekStart=${weekStart}&date=${dayDate}`;
   const availabilityUrl = venue?.embedKey
     ? `${publicAppOrigin()}/availability/${venue.embedKey}`
     : null;
+  const tourPath = tourSettings?.tourSchedulingEnabled
+    ? publicTourSchedulingPath(tourSettings.tourEmbedKey)
+    : null;
+  const tourUrl = tourPath ? `${publicAppOrigin()}${tourPath}` : null;
 
   return (
     <div className="space-y-6">
@@ -52,7 +60,10 @@ export default async function CalendarPage({ searchParams }: Props) {
           </Link>
         </div>
       </div>
-      {availabilityUrl ? <ShareAvailability url={availabilityUrl} /> : null}
+      <div className="grid items-stretch gap-3 md:grid-cols-2">
+        {availabilityUrl ? <ShareAvailability url={availabilityUrl} /> : null}
+        <ShareTourAvailability url={tourUrl} />
+      </div>
       <CalendarView
         view={view}
         year={year}

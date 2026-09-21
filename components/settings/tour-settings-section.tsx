@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getTourSlotPreviewAction } from "@/app/(app)/settings/tour-actions";
+import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 import type { TourSettings } from "@/lib/tours/types";
 
 function localIsoDate(d: Date): string {
@@ -80,9 +81,10 @@ export function TourSettingsSection({ initialSettings }: Props) {
   const [saving, startSave] = React.useTransition();
   const [previewRefreshKey, setPreviewRefreshKey] = React.useState(0);
 
-  const bookingUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/book/${s.tourEmbedKey}`
-    : `/book/${s.tourEmbedKey}`;
+  const tourPath = publicTourSchedulingPath(s.tourEmbedKey);
+  const bookingUrl = tourPath
+    ? (typeof window !== "undefined" ? `${window.location.origin}${tourPath}` : tourPath)
+    : "";
 
   function set<K extends keyof TourSettings>(k: K, v: TourSettings[K]) {
     setS((p) => ({ ...p, [k]: v }));

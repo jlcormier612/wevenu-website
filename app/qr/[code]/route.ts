@@ -18,6 +18,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -46,8 +47,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (result.destinationType === "inquiry_form" && venue?.embed_key) {
       return NextResponse.redirect(new URL(`/form/${venue.embed_key}?qr=${result.campaignId}`, origin));
     }
-    if (result.destinationType === "tour_booking" && venue?.tour_embed_key) {
-      return NextResponse.redirect(new URL(`/book/${venue.tour_embed_key}?qr=${result.campaignId}`, origin));
+    const tourPath = publicTourSchedulingPath(venue?.tour_embed_key);
+    if (result.destinationType === "tour_booking" && tourPath) {
+      return NextResponse.redirect(new URL(`${tourPath}?qr=${result.campaignId}`, origin));
     }
     return NextResponse.redirect(new URL("/qr/inactive", origin));
   }

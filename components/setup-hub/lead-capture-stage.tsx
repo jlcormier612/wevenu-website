@@ -21,6 +21,7 @@ import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { QrCampaign, QrCampaignAnalytics } from "@/lib/qr-campaigns/types";
 import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
 import type { LeadCaptureChannelKey, LeadCaptureStageStatus } from "@/lib/setup-hub/types";
+import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 import type { TourAvailabilityException, TourAvailabilityWindow, TourSettings } from "@/lib/tours/types";
 
 function ChannelBadge({ configuredAt, verifiedAt, hasVerification }: { configuredAt: string | null; verifiedAt: string | null; hasVerification: boolean }) {
@@ -219,7 +220,10 @@ export function LeadCaptureStage({
                   <p className="text-xs text-muted-foreground">{tourWindows.length} availability window{tourWindows.length === 1 ? "" : "s"}, {tourExceptions.length} exception{tourExceptions.length === 1 ? "" : "s"} — manage full availability from Settings.</p>
                 )}
                 <ChannelActions channel="tour_booking" configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification
-                  testHref={tourSettings.tourEmbedKey ? `${appUrl}/book/${tourSettings.tourEmbedKey}` : undefined} onChanged={onChanged} />
+                  testHref={(() => {
+                    const path = publicTourSchedulingPath(tourSettings.tourEmbedKey);
+                    return path ? `${appUrl}${path}` : undefined;
+                  })()} onChanged={onChanged} />
               </CardContent>
             </Card>
           )}
