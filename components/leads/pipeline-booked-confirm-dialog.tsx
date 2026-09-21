@@ -49,12 +49,9 @@ export function PipelineBookedConfirmDialog({
         className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-lg"
       >
         <h2 id="pipeline-booked-title" className="text-base font-semibold text-heading">
-          Mark this client as booked?
+          You&apos;re booking this date.
         </h2>
         <div id="pipeline-booked-desc" className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground">
-          <p>
-            You&apos;re booking this date.
-          </p>
           <p>
             Moving this relationship to Booked will protect the event date from conflicting bookings.
           </p>

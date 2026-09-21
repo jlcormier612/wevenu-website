@@ -61,7 +61,7 @@ export default async function AvailabilityCapacitySettingsPage() {
           </p>
           <p>
             <span className="font-medium text-heading">Tours. </span>
-            Choose whether tours can be scheduled when a booked event is occupying the date. This setting applies wherever HTC checks tour availability.
+            Choose whether tours can be scheduled when an event is occupying the date. This setting applies wherever HTC checks availability.
           </p>
         </div>
       </section>

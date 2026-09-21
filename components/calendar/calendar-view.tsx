@@ -583,7 +583,7 @@ export function CalendarView({
       if (result.ok) {
         toast.success(
           editingBlockId ? "Schedule item updated."
-            : isBookingPlaceholder(blockType) ? "Date booked."
+            : isBookingPlaceholder(blockType) ? "Hold placed."
             : "Schedule item added.",
         );
         setShowBlockForm(false);
@@ -882,9 +882,12 @@ export function CalendarView({
             )}
           </div>
           {isBookingPlaceholder(blockType) && (
-            <p className="text-xs text-muted-foreground">
-              This reserves the date without creating a Lead yet — enough to say &quot;booked&quot; today. You can convert it to a real Lead whenever you&apos;re ready, with nothing to retype.
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-heading">You&apos;re placing a Hold on this date.</p>
+              <p className="text-xs text-muted-foreground">
+                Whether this Hold prevents booking is controlled by your availability settings. You can convert it to a real Lead whenever you&apos;re ready, with nothing to retype.
+              </p>
+            </div>
           )}
 
           {/* Recurrence — presets plus a Custom mode. The presets are the same
