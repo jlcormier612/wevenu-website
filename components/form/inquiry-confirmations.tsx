@@ -4,23 +4,7 @@ import * as React from "react";
 
 import type { TourBookingConfirmation } from "@/lib/inquiry-form/types";
 import { publicFormSurfaceStyle, readableInk } from "@/lib/theme/public-form-surface";
-
-function formatReadableDate(isoDate: string): string {
-  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatReadableTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
+import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 
 function buildAddressLine(
   addressLine1?: string | null,
@@ -109,7 +93,10 @@ export function ScheduleTourConfirmation({
   primaryColor: string;
 }) {
   const heading = firstName.trim() ? `You're booked, ${firstName.trim()}!` : "You're booked!";
-  const dateIso = confirmation.scheduledAt.slice(0, 10);
+  const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(
+    confirmation.scheduledAt,
+    confirmation.timezone,
+  );
   const addressLine = buildAddressLine(
     confirmation.addressLine1,
     confirmation.city,
@@ -140,11 +127,11 @@ export function ScheduleTourConfirmation({
           <p className="text-sm font-semibold text-heading">Your tour</p>
           <div>
             <p className="text-xs font-medium text-muted-foreground">Date</p>
-            <p className="text-sm text-heading">{formatReadableDate(dateIso)}</p>
+            <p className="text-sm text-heading">{dateLabel}</p>
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">Time</p>
-            <p className="text-sm text-heading">{formatReadableTime(confirmation.scheduledAt)}</p>
+            <p className="text-sm text-heading">{timeLabel}</p>
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">Location</p>

@@ -29,6 +29,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
 import { publicAppOrigin } from "@/lib/env";
+import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -48,12 +49,8 @@ export type TourConfirmationParams = {
 };
 
 function formatTourWhen(scheduledAt: string, timezone?: string | null): { dateStr: string; timeStr: string } {
-  const timeZone = timezone || "America/New_York";
-  const d = new Date(scheduledAt);
-  return {
-    dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone }),
-    timeStr: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }),
-  };
+  const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(scheduledAt, timezone ?? null);
+  return { dateStr: dateLabel, timeStr: timeLabel };
 }
 
 function buildConfirmationContent(params: TourConfirmationParams): { subject: string; text: string; html: string } {

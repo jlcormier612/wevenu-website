@@ -25,6 +25,7 @@ type StatusPayload = {
   stateRegion: string | null;
   contactEmail: string | null;
   contactName: string | null;
+  timezone: string | null;
 };
 
 export function ProtectedTourReturn({ embedKey, sessionId, venueName, primaryColor }: Props) {
@@ -58,6 +59,7 @@ export function ProtectedTourReturn({ embedKey, sessionId, venueName, primaryCol
             stateRegion: null,
             contactEmail: null,
             contactName: null,
+            timezone: null,
           });
         }
       }
@@ -90,6 +92,7 @@ export function ProtectedTourReturn({ embedKey, sessionId, venueName, primaryCol
       addressLine1: payload.addressLine1,
       city: payload.city,
       stateRegion: payload.stateRegion,
+      timezone: payload.timezone ?? null,
     };
     return <ScheduleTourConfirmation firstName={firstName} confirmation={confirmation} primaryColor={primaryColor} />;
   }

@@ -77,6 +77,11 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
   const venueId = String(venue.id);
   // Consent UI may appear while A2P is pending; outbound still requires send-ready + opt-in.
   const smsConsentOfferAvailable = await isSmsConsentOfferAvailable(venueId);
+  const { data: timezoneRow } = await supabase
+    .from("venues")
+    .select("timezone")
+    .eq("id", venueId)
+    .maybeSingle<{ timezone: string | null }>();
   const communicationSettings = effectivePublicCommunicationSettings(
     parseInquiryCommunicationSettings(payload.inquiryCommunicationSettings),
     smsConsentOfferAvailable,
@@ -93,6 +98,7 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
       addressLine1: (venue.addressLine1 as string | null) ?? null,
       city: (venue.city as string | null) ?? null,
       stateRegion: (venue.stateRegion as string | null) ?? null,
+      timezone: timezoneRow?.timezone ?? null,
     },
     tourSchedulingEnabled: Boolean(payload.tourSchedulingEnabled),
     tourEmbedKey: (payload.tourEmbedKey as string | null) ?? null,

@@ -73,6 +73,7 @@ export type PublicProtectionStatus = {
   stateRegion: string | null;
   contactEmail: string | null;
   contactName: string | null;
+  timezone: string | null;
   mode: "setup" | "fee" | null;
 };
 
@@ -480,6 +481,7 @@ export async function getPublicProtectionStatus(opts: {
     stateRegion: venue.state_region,
     contactEmail: row.contact_email,
     contactName: row.contact_name,
+    timezone: venue.timezone,
     mode: row.mode,
   };
 }
@@ -551,6 +553,7 @@ function emptyPublicStatus(): PublicProtectionStatus {
     stateRegion: null,
     contactEmail: null,
     contactName: null,
+    timezone: null,
     mode: null,
   };
 }
