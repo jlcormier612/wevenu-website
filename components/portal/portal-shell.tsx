@@ -1756,7 +1756,7 @@ function OverviewSection({
     <div className="space-y-6">
 
       {/* 1. Hero / Wedding Snapshot */}
-      <div className="rounded-3xl overflow-hidden relative min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]" style={{
+      <div data-portal-hero className="group/hero rounded-3xl overflow-hidden relative min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]" style={{
         background: venueHeroPhotoUrl
           ? `url(${venueHeroPhotoUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
@@ -1784,7 +1784,7 @@ function OverviewSection({
           </>
         )}
 
-        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]">
+        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)] group-data-[couple-photo=shown]/hero:pt-[calc(1rem+10rem+1.25rem)]! sm:group-data-[couple-photo=shown]/hero:pt-[calc(1.5rem+13rem+1.25rem)]! lg:group-data-[couple-photo=shown]/hero:pt-[calc(1.5rem+228px+1.25rem)]!">
           <div className="flex items-center gap-2.5">
             <span className="h-px w-5" style={{ background: `${ROSE}60` }} />
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: "rgba(255,255,255,0.75)" }}>

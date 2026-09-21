@@ -33,6 +33,7 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
   const [panelOpen, setPanelOpen] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const anchorRef = React.useRef<HTMLDivElement>(null);
   const fineHover = useFinePointerHover();
 
   const controlsVisible = panelOpen || (fineHover && hovered);
@@ -59,6 +60,16 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
       cancelled = true;
     };
   }, [token]);
+
+  React.useEffect(() => {
+    const hero = anchorRef.current?.closest("[data-portal-hero]");
+    if (!(hero instanceof HTMLElement)) return;
+    if (photoUrl) hero.dataset.couplePhoto = "shown";
+    else delete hero.dataset.couplePhoto;
+    return () => {
+      delete hero.dataset.couplePhoto;
+    };
+  }, [photoUrl, loaded]);
 
   React.useEffect(() => {
     if (!controlsVisible) return;
@@ -146,7 +157,7 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
   if (!loaded) return null;
 
   return (
-    <div className="absolute top-4 left-4 z-20 sm:top-6 sm:left-6">
+    <div ref={anchorRef} className="absolute top-4 left-4 z-20 sm:top-6 sm:left-6">
       <input
         ref={inputRef}
         type="file"
@@ -186,7 +197,7 @@ export function CouplePhotoHeroControl({ token }: { token: string }) {
               onClick={() => {
                 setPanelOpen((open) => !open);
               }}
-              className="relative h-40 w-40 overflow-hidden rounded-full border-2 border-white/90 shadow-lg sm:h-52 sm:w-52 lg:h-[13.5rem] lg:w-[13.5rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="relative h-40 w-40 overflow-hidden rounded-full border-2 border-white/90 shadow-lg sm:h-52 sm:w-52 lg:h-[228px] lg:w-[228px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
               aria-label="Manage your photo"
               aria-expanded={controlsVisible}
             >

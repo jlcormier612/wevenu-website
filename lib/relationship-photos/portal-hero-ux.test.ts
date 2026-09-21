@@ -8,6 +8,7 @@ import { describe, it } from "node:test";
 
 const root = process.cwd();
 const control = readFileSync(join(root, "components/portal/couple-photo-hero-control.tsx"), "utf8");
+const shell = readFileSync(join(root, "components/portal/portal-shell.tsx"), "utf8");
 const venueEditor = readFileSync(
   join(root, "components/relationship-photos/relationship-photo-editor.tsx"),
   "utf8",
@@ -17,10 +18,17 @@ describe("couple photo hero control UX", () => {
   it("uses a substantially larger circular photo on desktop and mobile", () => {
     assert.match(control, /h-40 w-40/);
     assert.match(control, /sm:h-52 sm:w-52/);
-    // Desktop only: ~15–20% under the 16rem (272px at 17px root) size.
-    // 13.5rem resolves to 229.5px. Mobile and tablet sizes stay as they are.
-    assert.match(control, /lg:h-\[13\.5rem\] lg:w-\[13\.5rem\]/);
+    // Desktop only: 228px, inside 220–235, down from 16rem (272px at a 17px root).
+    // Mobile (h-40) and tablet (h-52) stay on the same steps.
+    assert.match(control, /lg:h-\[228px\] lg:w-\[228px\]/);
     assert.doesNotMatch(control, /lg:h-64 lg:w-64/);
+    assert.doesNotMatch(control, /13\.5rem/);
+    assert.match(control, /dataset\.couplePhoto = "shown"/);
+    assert.match(shell, /data-portal-hero/);
+    assert.match(shell, /group\/hero/);
+    assert.match(shell, /group-data-\[couple-photo=shown\]\/hero:pt-\[calc\(1rem\+10rem\+1\.25rem\)\]!/);
+    assert.match(shell, /sm:group-data-\[couple-photo=shown\]\/hero:pt-\[calc\(1\.5rem\+13rem\+1\.25rem\)\]!/);
+    assert.match(shell, /lg:group-data-\[couple-photo=shown\]\/hero:pt-\[calc\(1\.5rem\+228px\+1\.25rem\)\]!/);
     assert.match(control, /rounded-full/);
     assert.match(control, /border-2 border-white\/90/);
     assert.match(control, /object-cover/);
