@@ -542,7 +542,7 @@ export async function getEventVendorAssignments(
     .order("arrival_time", { ascending: true, nullsFirst: false })
     .order("created_at",   { ascending: true });
   if (error) throw error;
-  return (data as EVARow[]).map(mapEVA);
+  return (data as unknown as EVARow[]).map(mapEVA);
 }
 
 export async function insertVendorAssignment(
