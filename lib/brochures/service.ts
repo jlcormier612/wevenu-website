@@ -20,6 +20,24 @@ import { getLead } from "@/lib/leads/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { sendEmail } from "@/lib/email/send";
 
+/** Client-facing brochure FAQ visibility — shared by authenticated preview and public token render. */
+export type VenueGuideFaq = {
+  question: string;
+  answer: string;
+  audience?: string;
+  published?: boolean;
+};
+
+/**
+ * Brochure FAQs come only from Venue Guide (`venue_operational_info.faqs`).
+ * Unpublished starters stay out. Vendor-only FAQs stay out of client brochures.
+ */
+export function faqsForClientBrochure(faqs: VenueGuideFaq[]): { question: string; answer: string }[] {
+  return faqs
+    .filter((f) => f.audience !== "vendors" && f.published !== false)
+    .map((f) => ({ question: f.question, answer: f.answer }));
+}
+
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
 ): Promise<T | BrochureActionResult> {
@@ -69,9 +87,7 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
       ? supabase.from("venue_operational_info").select("faqs").eq("venue_id", venue.id).maybeSingle<{ faqs: { question: string; answer: string; audience?: string }[] }>()
       : Promise.resolve({ data: null }),
   ]);
-  const faqsRaw = (guideRes.data?.faqs ?? []) as {
-    question: string; answer: string; audience?: string; published?: boolean;
-  }[];
+  const faqsRaw = (guideRes.data?.faqs ?? []) as VenueGuideFaq[];
 
   return {
     brochure: {
@@ -87,9 +103,7 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
       email: venue.email ?? null, phone: venue.phone ?? null, website: venue.website ?? null,
     },
     packages: packagesAll.map((p) => ({ name: p.name, description: p.description, basePrice: p.basePrice, category: p.category })),
-    faqs: faqsRaw
-      .filter((f) => f.audience !== "vendors" && f.published !== false)
-      .map((f) => ({ question: f.question, answer: f.answer })),
+    faqs: faqsForClientBrochure(faqsRaw),
     availabilityPath: publicAvailabilityPath(venue.embedKey),
   };
 }
@@ -129,12 +143,8 @@ export async function getBrochureRenderDataByToken(token: string): Promise<Broch
       email: row.venue_email, phone: row.venue_phone, website: row.venue_website,
     },
     packages: row.include_packages ? (row.packages ?? []).map((p) => ({ name: p.name, description: p.description, basePrice: p.basePrice, category: p.category })) : [],
-    // RPC already applies filter_published_venue_faqs; keep published!==false as defense-in-depth.
-    faqs: row.include_faqs
-      ? (row.faqs ?? [])
-          .filter((f) => f.audience !== "vendors" && f.published !== false)
-          .map((f) => ({ question: f.question, answer: f.answer }))
-      : [],
+    // RPC already applies filter_published_venue_faqs; keep the same client rule as defense-in-depth.
+    faqs: row.include_faqs ? faqsForClientBrochure(row.faqs ?? []) : [],
     availabilityPath: publicAvailabilityPath(row.venue_embed_key),
   };
 }

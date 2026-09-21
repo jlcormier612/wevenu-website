@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 
 import {
   brochurePhotoObjectPath,
+  buildBrochurePhotoLibrary,
   isDeletableBrochurePhoto,
   withoutBrochurePhoto,
 } from "@/lib/brochures/photo-storage";
@@ -39,6 +40,11 @@ describe("brochure photo deletion rules", () => {
     assert.deepEqual(next, ["https://cdn.example/b.jpg", "https://cdn.example/c.jpg"]);
     assert.equal(next[0], "https://cdn.example/b.jpg");
     assert.equal(withoutBrochurePhoto(["https://cdn.example/b.jpg"], file).length, 1);
+  });
+
+  it("library cards collapse venueHeroUrl query variants against selected photo_urls", () => {
+    const library = buildBrochurePhotoLibrary(`${hero}?t=1`, [`${hero}?v=9`, file], []);
+    assert.deepEqual(library, [`${hero}?v=9`, file]);
   });
 
   it("the editor distinguishes remove from delete, and a failed save is caught", () => {

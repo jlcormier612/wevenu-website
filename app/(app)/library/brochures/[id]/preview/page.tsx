@@ -36,7 +36,7 @@ export default async function BrochurePreviewPage({ params }: Props) {
         </Button>
       }
     >
-      <BrochurePreviewView data={data} showLiveDataCaptions />
+      <BrochurePreviewView data={data} />
     </LibraryPreviewChrome>
   );
 }

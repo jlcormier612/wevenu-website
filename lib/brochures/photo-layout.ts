@@ -4,6 +4,8 @@
  * and the ordered photo list (index 0 = primary/hero).
  */
 
+import { sameBrochurePhotoUrl } from "@/lib/brochures/photo-storage";
+
 export const BROCHURE_PHOTO_LAYOUTS = ["classic", "gallery", "story", "editorial"] as const;
 
 export type BrochurePhotoLayout = (typeof BROCHURE_PHOTO_LAYOUTS)[number];
@@ -34,12 +36,12 @@ export function normalizeBrochurePhotoLayout(
 
 export function normalizeBrochurePhotoUrls(urls: unknown): string[] {
   if (!Array.isArray(urls)) return [];
-  const seen = new Set<string>();
   const out: string[] = [];
   for (const item of urls) {
     const url = typeof item === "string" ? item.trim() : "";
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
+    if (!url) continue;
+    // Collapse query-string variants of the same object (e.g. hero.png?v=… vs ?t=…).
+    if (out.some((existing) => sameBrochurePhotoUrl(existing, url))) continue;
     out.push(url);
   }
   return out;
@@ -83,15 +85,17 @@ export function moveBrochurePhoto(
 
 export function setPrimaryBrochurePhoto(urls: string[], url: string): string[] {
   const next = normalizeBrochurePhotoUrls(urls);
-  const i = next.indexOf(url);
+  const i = next.findIndex((item) => sameBrochurePhotoUrl(item, url));
   if (i <= 0) return next;
   return moveBrochurePhoto(next, i, 0);
 }
 
 export function removeBrochurePhoto(urls: string[], url: string): string[] {
-  return normalizeBrochurePhotoUrls(urls).filter((u) => u !== url);
+  return normalizeBrochurePhotoUrls(urls).filter((u) => !sameBrochurePhotoUrl(u, url));
 }
 
 export function addBrochurePhoto(urls: string[], url: string): string[] {
-  return normalizeBrochurePhotoUrls([...normalizeBrochurePhotoUrls(urls), url]);
+  const next = normalizeBrochurePhotoUrls(urls);
+  if (!url.trim() || next.some((item) => sameBrochurePhotoUrl(item, url))) return next;
+  return normalizeBrochurePhotoUrls([...next, url.trim()]);
 }

@@ -5,14 +5,12 @@ import type { CSSProperties } from "react";
 
 /**
  * Customer-facing brochure presentation. Library preview and the public
- * /brochure/{token} page share this renderer.
+ * /brochure/{token} page share this renderer. No internal authoring captions.
  */
 export function BrochurePreviewView({
   data,
-  showLiveDataCaptions = false,
 }: {
   data: BrochureRenderData;
-  showLiveDataCaptions?: boolean;
 }) {
   const { brochure, venue, packages, faqs } = data;
   const venueDisplayName = venue.name || venue.businessName || "Your Venue";
@@ -56,11 +54,6 @@ export function BrochurePreviewView({
       {brochure.includePackages ? (
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Packages</h2>
-          {showLiveDataCaptions ? (
-            <p className="text-xs text-muted-foreground">
-              Pulled live from your current Packages — updates here when you change Packages.
-            </p>
-          ) : null}
           {packages.length === 0 ? (
             <p className="text-sm text-muted-foreground">No active packages yet.</p>
           ) : (
@@ -84,11 +77,6 @@ export function BrochurePreviewView({
       {brochure.includeFaqs ? (
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">FAQs</h2>
-          {showLiveDataCaptions ? (
-            <p className="text-xs text-muted-foreground">
-              Pulled live from your Venue Guide FAQs — updates here when those change.
-            </p>
-          ) : null}
           {faqs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No published client FAQs yet.</p>
           ) : (

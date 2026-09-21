@@ -20,7 +20,7 @@ import {
   setPrimaryBrochurePhoto,
   type BrochurePhotoLayout,
 } from "@/lib/brochures/photo-layout";
-import { isDeletableBrochurePhoto, sameBrochurePhotoUrl, withoutBrochurePhoto } from "@/lib/brochures/photo-storage";
+import { buildBrochurePhotoLibrary, isDeletableBrochurePhoto, sameBrochurePhotoUrl, withoutBrochurePhoto } from "@/lib/brochures/photo-storage";
 import { cn } from "@/lib/utils";
 
 export function BrochurePhotosEditor({
@@ -47,31 +47,24 @@ export function BrochurePhotosEditor({
   const [deleteUrl, setDeleteUrl] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
-  const [library, setLibrary] = React.useState<string[]>(() => {
-    const urls: string[] = [];
-    if (venueHeroUrl) urls.push(venueHeroUrl);
-    for (const url of photoUrls) if (!urls.includes(url)) urls.push(url);
-    return urls;
-  });
+  const [library, setLibrary] = React.useState<string[]>(() =>
+    buildBrochurePhotoLibrary(venueHeroUrl, photoUrls, []),
+  );
+
+  React.useEffect(() => {
+    setLibrary((prev) => buildBrochurePhotoLibrary(venueHeroUrl, photoUrls, prev));
+  }, [venueHeroUrl, photoUrls]);
 
   React.useEffect(() => {
     let cancelled = false;
     void listPublicUploadUrls(`${venueId}/brochure-photos`).then((listed) => {
       if (cancelled) return;
-      setLibrary((prev) => {
-        const next = [...prev];
-        for (const url of listed) {
-          if (!next.some((existing) => existing.split("?")[0] === url.split("?")[0])) {
-            next.push(url);
-          }
-        }
-        return next;
-      });
+      setLibrary((prev) => buildBrochurePhotoLibrary(venueHeroUrl, photoUrls, [...prev, ...listed]));
     });
     return () => {
       cancelled = true;
     };
-  }, [venueId]);
+  }, [venueId, venueHeroUrl, photoUrls]);
 
   function persist(urls: string[], layout: BrochurePhotoLayout) {
     onChange({ photoUrls: urls, photoLayout: layout });
@@ -99,11 +92,7 @@ export function BrochurePhotosEditor({
       }
       if (added.length > 0) {
         persist(nextUrls, photoLayout);
-        setLibrary((prev) => {
-          const next = [...prev];
-          for (const url of added) if (!next.includes(url)) next.push(url);
-          return next;
-        });
+        setLibrary((prev) => buildBrochurePhotoLibrary(venueHeroUrl, nextUrls, [...prev, ...added]));
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not add photo.");
@@ -170,7 +159,7 @@ export function BrochurePhotosEditor({
             const isVenuePhoto = Boolean(venueHeroUrl && sameBrochurePhotoUrl(venueHeroUrl, url));
             return (
               <div
-                key={url}
+                key={url.split("?")[0]}
                 className={cn(
                   "overflow-hidden rounded-md border bg-muted/20",
                   selected ? "border-heading" : "border-border",
