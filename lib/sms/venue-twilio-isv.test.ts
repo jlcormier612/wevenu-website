@@ -62,6 +62,11 @@ function installTwoVenueAccounts() {
       messaging_service_sid: MG_A,
       default_from_e164: "+15551110001",
       phone_number_sid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_brand_sid: "BNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_campaign_sid: "QEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_brand_status: "APPROVED",
+      a2p_campaign_status: "VERIFIED",
+      phone_a2p_status: "REGISTERED",
       status: "ready",
     },
     {
@@ -70,6 +75,11 @@ function installTwoVenueAccounts() {
       messaging_service_sid: MG_B,
       default_from_e164: "+15551110002",
       phone_number_sid: "PNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2p_brand_sid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2p_campaign_sid: "QEbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2p_brand_status: "APPROVED",
+      a2p_campaign_status: "VERIFIED",
+      phone_a2p_status: "REGISTERED",
       status: "ready",
     },
   ]);
@@ -93,7 +103,7 @@ captureEnv();
 afterEach(restoreEnv);
 
 describe("venue Twilio ISV config readiness", () => {
-  it("isVenueTwilioSendReady requires ready + account + messaging service + real sender", () => {
+  it("isVenueTwilioSendReady requires ready + account + messaging service + brand/campaign + real sender", () => {
     const base: VenueTwilioAccount = {
       venueId: VENUE_A,
       twilioAccountSid: AC_A,
@@ -101,8 +111,11 @@ describe("venue Twilio ISV config readiness", () => {
       defaultFromE164: "+15551110001",
       phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       secondaryProfileSid: null,
-      a2pBrandSid: null,
-      a2pCampaignSid: null,
+      a2pBrandSid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2pCampaignSid: "QEcccccccccccccccccccccccccccccccc",
+      a2pBrandStatus: "APPROVED",
+      a2pCampaignStatus: "VERIFIED",
+      phoneA2pStatus: "REGISTERED",
       status: "ready",
       statusDetail: null,
     };
@@ -112,6 +125,8 @@ describe("venue Twilio ISV config readiness", () => {
     assert.equal(isVenueTwilioSendReady({ ...base, messagingServiceSid: "" }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, defaultFromE164: null }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, phoneNumberSid: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, a2pBrandSid: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, a2pCampaignSid: null }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, defaultFromE164: "  ", phoneNumberSid: "PN" }), false);
     assert.equal(isVenueTwilioSendReady(null), false);
   });

@@ -60,11 +60,11 @@ function StatusPanelView({ panel }: { panel: TextingStatusPanel }) {
 
   const headline =
     panel.smsReady ? "Ready"
-      : panel.phase === "information_saved" ? "Information saved"
+      : panel.phase === "information_saved" ? "Setting up"
         : panel.phase === "under_review" ? "Under review"
           : panel.phase === "needs_attention" || panel.phase === "failed" ? "Needs attention"
             : panel.phase === "paused" ? "Paused"
-              : panel.phase === "setting_up_number" ? "Setting up"
+              : panel.phase === "setting_up_number" ? "Setting up your texting number"
                 : "Not ready";
 
   const nextStep =

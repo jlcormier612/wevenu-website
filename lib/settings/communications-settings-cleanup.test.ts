@@ -32,20 +32,18 @@ function account(partial: Partial<VenueTwilioAccount>): VenueTwilioAccount {
     a2pCampaignSid: null,
     status: "pending_compliance",
     statusDetail: null,
-    createdAt: "",
-    updatedAt: "",
     ...partial,
   };
 }
 
 describe("texting status reflects real readiness", () => {
-  it("keeps under_review when account is pending_compliance and not send-ready", () => {
+  it("does not claim under_review for bare pending_compliance without Twilio evidence", () => {
     const phase = resolveTextingDisplayPhase(
       "information_saved",
       account({ status: "pending_compliance", defaultFromE164: null, phoneNumberSid: null }),
       false,
     );
-    assert.equal(phase, "under_review");
+    assert.equal(phase, "information_saved");
     const panel = buildTextingStatusPanel({
       registration: null,
       phase,
@@ -53,7 +51,7 @@ describe("texting status reflects real readiness", () => {
       textingNumberE164: null,
     });
     assert.equal(panel.smsReady, false);
-    assert.equal(panel.phase, "under_review");
+    assert.notEqual(panel.phase, "under_review");
     assert.notEqual(panel.texting.label, "Ready");
   });
 
@@ -62,6 +60,10 @@ describe("texting status reflects real readiness", () => {
       status: "ready",
       defaultFromE164: "+15551234567",
       phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2pBrandSid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2pCampaignSid: "QEcccccccccccccccccccccccccccccccc",
+      a2pBrandStatus: "APPROVED",
+      a2pCampaignStatus: "VERIFIED",
     });
     const phase = resolveTextingDisplayPhase("under_review", readyAccount, true);
     assert.equal(phase, "ready");

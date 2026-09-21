@@ -1,14 +1,11 @@
 /**
  * Provider orchestration contract for texting enablement.
  *
- * Track B dogfood is ops-first: Trust Hub / A2P / sender provisioning happens
- * outside the app. This interface records HTC acceptance of venue details and
- * syncs display from venue_twilio_accounts — it does not call Twilio APIs.
- *
- * Flow:
- *   venue saves details → ops provisions subaccount / compliance / sender →
- *   venue_twilio_accounts updated → app reflects ready only when sendable
+ * When TEXTING_SELF_SERVICE_ENABLED (or sandbox default), uses the live
+ * Twilio ISV provisioning orchestrator. Otherwise ops-first deferred mode.
  */
+import { isTextingSelfServiceProvisioningEnabled } from "@/lib/texting-provisioning/feature";
+import { LiveTextingProviderOrchestrator } from "@/lib/texting-provisioning/live-orchestrator";
 
 export type TextingProviderSubmitResult =
   | { ok: true; accepted: true }
@@ -36,13 +33,7 @@ export type TextingProviderSyncResult =
   | { ok: false; message: string };
 
 export interface TextingProviderOrchestrator {
-  /**
-   * After HTC accepts a complete registration submit.
-   * Ops-first Track B: never claims the app completed Twilio compliance.
-   */
   submitRegistration(venueId: string): Promise<TextingProviderSubmitResult>;
-
-  /** Poll/map provider status into HTC-friendly fields. */
   syncRegistration(venueId: string): Promise<TextingProviderSyncResult>;
 }
 
@@ -77,14 +68,20 @@ export class OpsFirstTextingProviderOrchestrator
 /** @deprecated Alias — same ops-first behavior (no live Twilio API). */
 export const DeferredTextingProviderOrchestrator = OpsFirstTextingProviderOrchestrator;
 
-let orchestrator: TextingProviderOrchestrator =
-  new OpsFirstTextingProviderOrchestrator();
+function defaultOrchestrator(): TextingProviderOrchestrator {
+  if (isTextingSelfServiceProvisioningEnabled()) {
+    return new LiveTextingProviderOrchestrator();
+  }
+  return new OpsFirstTextingProviderOrchestrator();
+}
+
+let orchestrator: TextingProviderOrchestrator = defaultOrchestrator();
 
 export function getTextingProviderOrchestrator(): TextingProviderOrchestrator {
   return orchestrator;
 }
 
-/** Test / future wiring — swap in a live orchestrator without changing HTC UX. */
+/** Test / future wiring — swap orchestrator without changing HTC UX. */
 export function setTextingProviderOrchestrator(
   next: TextingProviderOrchestrator,
 ): void {

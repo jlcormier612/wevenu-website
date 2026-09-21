@@ -18,7 +18,7 @@ const baseAccount = (overrides: Partial<VenueTwilioAccount> = {}): VenueTwilioAc
   ...overrides,
 });
 
-describe("resolveTextingDisplayPhase (ops-first Track B)", () => {
+describe("resolveTextingDisplayPhase (self-service honesty)", () => {
   it("keeps information_saved when no venue Twilio account exists", () => {
     assert.equal(
       resolveTextingDisplayPhase("information_saved", null, false),
@@ -26,9 +26,29 @@ describe("resolveTextingDisplayPhase (ops-first Track B)", () => {
     );
   });
 
-  it("maps pending_compliance account to under_review when details are saved", () => {
+  it("does NOT map bare pending_compliance to under_review without Twilio evidence", () => {
     assert.equal(
       resolveTextingDisplayPhase("information_saved", baseAccount(), false),
+      "information_saved",
+    );
+  });
+
+  it("maps pending_compliance with Brand PENDING to under_review", () => {
+    assert.equal(
+      resolveTextingDisplayPhase(
+        "information_saved",
+        baseAccount({
+          a2pBrandSid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          a2pBrandStatus: "PENDING",
+          complianceSubmittedAt: "2026-09-21T20:00:00Z",
+        }),
+        false,
+        {
+          a2pBrandSid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          a2pBrandStatus: "PENDING",
+          complianceSubmittedAt: "2026-09-21T20:00:00Z",
+        },
+      ),
       "under_review",
     );
   });
@@ -52,6 +72,10 @@ describe("resolveTextingDisplayPhase (ops-first Track B)", () => {
           status: "ready",
           defaultFromE164: "+15551112222",
           phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          a2pBrandSid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          a2pCampaignSid: "QEcccccccccccccccccccccccccccccccc",
+          a2pBrandStatus: "APPROVED",
+          a2pCampaignStatus: "VERIFIED",
         }),
         true,
       ),
