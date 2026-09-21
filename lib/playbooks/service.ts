@@ -226,11 +226,25 @@ export async function getEventTasks(eventId: string): Promise<EventTask[]> {
   return repo.getEventTasks(await createClient(), venue.id, eventId);
 }
 
+export async function getClientTasks(clientId: string): Promise<EventTask[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientTasks(await createClient(), venue.id, clientId);
+}
+
 export async function getEventPlaybookApplications(eventId: string): Promise<EventPlaybookApplication[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
   return repo.getEventPlaybookApplications(await createClient(), venue.id, eventId);
+}
+
+export async function getClientPlaybookApplications(clientId: string): Promise<EventPlaybookApplication[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientPlaybookApplications(await createClient(), venue.id, clientId);
 }
 
 export async function applyPlaybookToEvent(eventId: string, templateId: string, eventDate: string): Promise<PlaybookActionResult> {
@@ -252,6 +266,28 @@ export async function applyPlaybookToEvent(eventId: string, templateId: string, 
       return {
         ok: false,
         message: `This event already has a ${kindLabel} checklist applied. ${startOver}`,
+      } as PlaybookActionResult;
+    }
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function applyPlaybookToClient(clientId: string, templateId: string, anchorDate: string): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const { data: venueRow } = await c.from("venues")
+      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .eq("id", venueId)
+      .maybeSingle();
+    const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
+    const caps = capabilitiesFromVenueRow(venueRow);
+    const applied = await repo.applyPlaybookToClient(c, venueId, clientId, templateId, anchorDate, caps);
+    if (!applied.ok) {
+      const template = await repo.getTemplate(c, venueId, templateId);
+      const kindLabel = template?.kind === "client" ? "Client Planning" : "Venue Planning";
+      return {
+        ok: false,
+        message: `This client already has a ${kindLabel} checklist applied. Booking keeps that checklist; it is not copied.`,
       } as PlaybookActionResult;
     }
     return { ok: true } as PlaybookActionResult;

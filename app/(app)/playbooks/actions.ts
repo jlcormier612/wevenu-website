@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, completeEventTask_,
+  addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, applyPlaybookToClient, completeEventTask_,
   createStandardClientPlanningTemplate, createStandardVenueWorkflowTemplate, createTemplate, createTemplateFromImport,
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   getMilestones, getTemplate, getTemplateTasks,
@@ -75,6 +75,12 @@ export async function applyPlaybookAction(eventId: string, templateId: string, e
   return result;
 }
 
+export async function applyPlaybookToClientAction(clientId: string, templateId: string, anchorDate: string): Promise<PlaybookActionResult> {
+  const result = await applyPlaybookToClient(clientId, templateId, anchorDate);
+  if (result.ok) revalidatePath(`/clients/${clientId}`);
+  return result;
+}
+
 /** Choose → Preview → Apply: load template contents for the apply preview sheet. */
 export async function getPlaybookApplyPreviewAction(templateId: string): Promise<{
   ok: true;
@@ -126,9 +132,12 @@ export async function unapplyPlaybookAction(eventId: string, kind: PlaybookKind)
   return result;
 }
 
-export async function completeTaskAction(taskId: string, eventId: string): Promise<PlaybookActionResult> {
+export async function completeTaskAction(taskId: string, eventId: string, clientId?: string | null): Promise<PlaybookActionResult> {
   const result = await completeEventTask_(taskId);
-  if (result.ok) revalidatePath(`/events/${eventId}`);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    if (clientId) revalidatePath(`/clients/${clientId}`);
+  }
   return result;
 }
 

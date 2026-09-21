@@ -27,12 +27,14 @@ import type { EventPlaybookApplication, PlaybookKind, PlaybookTemplate } from "@
 
 export function PreparePlanningPanel({
   eventId,
+  clientId,
   eventDate,
   eventType,
   templates,
   applications,
 }: {
   eventId: string | null;
+  clientId?: string | null;
   eventDate: string | null;
   eventType: string | null;
   templates: PlaybookTemplate[];
@@ -55,6 +57,7 @@ export function PreparePlanningPanel({
             key={k.value}
             kind={k.value}
             eventId={eventId}
+            clientId={clientId ?? null}
             eventDate={eventDate}
             eventType={eventType}
             templates={templates}
@@ -69,6 +72,7 @@ export function PreparePlanningPanel({
 function PreparePlanningKind({
   kind,
   eventId,
+  clientId,
   eventDate,
   eventType,
   templates,
@@ -76,6 +80,7 @@ function PreparePlanningKind({
 }: {
   kind: PlaybookKind;
   eventId: string | null;
+  clientId: string | null;
   eventDate: string | null;
   eventType: string | null;
   templates: PlaybookTemplate[];
@@ -128,14 +133,16 @@ function PreparePlanningKind({
       {application ? (
         <p className="text-sm" style={{ color: "#3D2F30" }}>
           {kind === "client" && !application.releasedAt
-            ? `Applied as a draft — ${application.templateName}. Not yet released to the client. Use Remove Planning / Start Over on the event Planning tab to change templates.`
+            ? `Applied as a draft — ${application.templateName}. Not yet released to the client.${eventId ? " Use Remove Planning / Start Over on the event Planning tab to change templates." : " Booking this relationship keeps this checklist."}`
             : kind === "client"
               ? `Released to the client — ${application.templateName}.`
               : `Configured — ${application.templateName}. Use Remove Planning / Start Over on the event Planning tab to change templates.`}
         </p>
-      ) : !eventId || !eventDate ? (
+      ) : (!eventId && !clientId) || !eventDate ? (
         <p className="text-sm text-muted-foreground">
-          Add event details before applying a Planning Template.
+          {clientId && !eventDate
+            ? "Add a preferred date before applying a checklist. A preferred date does not reserve the date."
+            : "Add event details before applying a Planning Template."}
         </p>
       ) : recommendation.choices.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -190,7 +197,7 @@ function PreparePlanningKind({
           {!loadingPreview && selected && groups.length > 0 && (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                {groups.length} milestone{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"} will be created for this event.
+                {groups.length} milestone{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"} will be created{eventId ? " for this event" : " for this client"}.
               </p>
               {groups.map((g) => (
                 <div key={g.milestoneId} className="space-y-1">
@@ -242,13 +249,14 @@ function PreparePlanningKind({
             </Button>
           </div>
 
-          {selectedId && eventId && eventDate ? (
+          {selectedId && eventDate && (eventId || clientId) ? (
             <PlaybookApplyPreviewSheet
               open={previewOpen}
               onOpenChange={setPreviewOpen}
               templateId={selectedId}
               kind={kind}
-              eventId={eventId}
+              eventId={eventId ?? undefined}
+              clientId={clientId ?? undefined}
               eventDate={eventDate}
               onApplied={() => router.refresh()}
             />

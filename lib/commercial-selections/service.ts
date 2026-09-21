@@ -274,13 +274,6 @@ export async function markSelectionAccepted(
     } catch {
       // The selection is already accepted. A failed history row must not report that acceptance failed.
     }
-    if (existing.clientId) {
-      const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-      await maybeStampCommercialBookedAt(supabase, venueId, {
-        clientId: existing.clientId,
-        eventId: existing.eventId,
-      });
-    }
     return { ok: true };
   });
   return result as CommercialSelectionActionResult;

@@ -21,10 +21,24 @@ import { Loader2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  applyTemplateAction, createFloorPlanAction, deleteFloorPlanAction, duplicateFloorPlanAction,
-  renameFloorPlanAction, setClientAccessAction, setCoupleShareAction, setOperationalFloorPlanAction,
-  setVendorAccessAction, upsertFloorPlanOfferAction, updateFloorPlanOfferAction, withdrawFloorPlanOfferAction,
+  applyTemplateAction,
+  createFloorPlanAction,
+  deleteFloorPlanAction,
+  duplicateFloorPlanAction,
+  renameFloorPlanAction,
+  setClientAccessAction,
+  setCoupleShareAction,
+  setOperationalFloorPlanAction,
+  setVendorAccessAction,
+  updateFloorPlanOfferAction,
+  upsertFloorPlanOfferAction,
+  withdrawFloorPlanOfferAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
+import {
+  applyClientFloorPlanTemplateAction,
+  createClientFloorPlanAction,
+  duplicateClientFloorPlanAction,
+} from "@/app/(app)/clients/planning-actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -205,16 +219,19 @@ function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: Floo
 }
 
 function FloorPlanCard({
-  eventId, plan, spaces, busy, isOperational, isCoupleSelected, canEdit, canDelete, onRename, onDelete,
+  eventId, planningClientId = null, plan, spaces, busy, isOperational, isCoupleSelected, canEdit, canDelete, onRename, onDelete,
 }: {
-  eventId: string; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean;
+  eventId: string; planningClientId?: string | null; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean;
   isOperational: boolean; isCoupleSelected: boolean;
   canEdit: boolean; canDelete: boolean;
   onRename: () => void; onDelete: () => void;
 }) {
+  const preBooking = Boolean(planningClientId) && !eventId;
   return (
     <Link
-      href={`/events/${eventId}/floor-plans/${plan.id}`}
+      href={preBooking
+        ? `/clients/${planningClientId}/floor-plans/${plan.id}`
+        : `/events/${eventId}/floor-plans/${plan.id}`}
       className="flex flex-col gap-1.5 rounded-sm border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20"
     >
       <div className="flex items-start justify-between gap-2">
@@ -253,7 +270,7 @@ function FloorPlanCard({
           )}
         </div>
       )}
-      {canEdit && (
+      {canEdit && !preBooking && (
         <div className="flex flex-wrap gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
           <ShareFloorPlanToggle eventId={eventId} plan={plan} />
           <ShareForSeatingToggle eventId={eventId} plan={plan} />
@@ -402,11 +419,12 @@ function OfferLayoutsPanel({
 }
 
 export function FloorPlanWorkspace({
-  eventId, floorPlans, templates, offers = [], spaces, eventSpaceId,
+  eventId, planningClientId = null, floorPlans, templates, offers = [], spaces, eventSpaceId,
   operationalFloorPlanId = null, coupleSelectedFloorPlanId = null, inventoryUsage = [],
   canEdit = true, canDelete = true,
 }: {
   eventId: string;
+  planningClientId?: string | null;
   floorPlans: FloorPlan[];
   templates: FloorPlanTemplate[];
   offers?: EventFloorPlanOfferWithTemplate[];
@@ -442,7 +460,7 @@ export function FloorPlanWorkspace({
     if (!next || !next.trim() || next.trim() === plan.name) return;
     setBusyPlanId(plan.id);
     startTransition(async () => {
-      const result = await renameFloorPlanAction(plan.id, eventId, next.trim());
+      const result = await renameFloorPlanAction(plan.id, eventId || planningClientId || "", next.trim());
       setBusyPlanId(null);
       if (result.ok) { toast.success("Floor plan renamed."); router.refresh(); }
       else toast.error(result.message ?? "Could not rename floor plan.");
@@ -453,7 +471,7 @@ export function FloorPlanWorkspace({
     if (!confirm(`Delete "${plan.name}"? This removes every object on it and can't be undone.`)) return;
     setBusyPlanId(plan.id);
     startTransition(async () => {
-      const result = await deleteFloorPlanAction(plan.id, eventId);
+      const result = await deleteFloorPlanAction(plan.id, eventId || planningClientId || "");
       setBusyPlanId(null);
       if (result.ok) { toast.success("Floor plan deleted."); router.refresh(); }
       else toast.error(result.message ?? "Could not delete floor plan.");
@@ -485,16 +503,25 @@ export function FloorPlanWorkspace({
     const resolvedSpaceId = spaceId === NO_SPACE ? null : spaceId;
 
     startTransition(async () => {
+      const preBooking = Boolean(planningClientId) && !eventId;
       const result = method === "apply"
-        ? await applyTemplateAction(eventId, templateId, name.trim(), resolvedSpaceId)
+        ? (preBooking
+          ? await applyClientFloorPlanTemplateAction(planningClientId!, templateId, name.trim(), resolvedSpaceId)
+          : await applyTemplateAction(eventId, templateId, name.trim(), resolvedSpaceId))
         : method === "duplicate"
-          ? await duplicateFloorPlanAction(eventId, sourcePlanId, name.trim(), resolvedSpaceId)
-          : await createFloorPlanAction(eventId, name.trim(), resolvedSpaceId);
+          ? (preBooking
+            ? await duplicateClientFloorPlanAction(planningClientId!, sourcePlanId, name.trim(), resolvedSpaceId)
+            : await duplicateFloorPlanAction(eventId, sourcePlanId, name.trim(), resolvedSpaceId))
+          : (preBooking
+            ? await createClientFloorPlanAction(planningClientId!, name.trim(), resolvedSpaceId)
+            : await createFloorPlanAction(eventId, name.trim(), resolvedSpaceId));
 
       if (result.ok) {
         setOpen(false);
         reset();
-        router.push(`/events/${eventId}/floor-plans/${result.floorPlanId}`);
+        router.push(preBooking
+          ? `/clients/${planningClientId}/floor-plans/${result.floorPlanId}`
+          : `/events/${eventId}/floor-plans/${result.floorPlanId}`);
       } else {
         toast.error(result.message ?? "Could not create floor plan.");
       }
@@ -503,6 +530,7 @@ export function FloorPlanWorkspace({
 
   const canSubmit = !!name.trim() && (method !== "apply" || !!templateId) && (method !== "duplicate" || !!sourcePlanId);
   const submitLabel = method === "apply" ? "Apply" : method === "duplicate" ? "Duplicate" : "Create Floor Plan";
+  const preBooking = Boolean(planningClientId) && !eventId;
 
   // Seating always resolves to exactly one shared plan (whichever was most
   // recently updated) — a coordinator who shares more than one at once has
@@ -512,10 +540,16 @@ export function FloorPlanWorkspace({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Build the venue&apos;s working layouts for this booking — Ceremony, Reception, rain backup, and more.
-        Mark one as <span className="font-medium text-foreground">Operational</span> for day-of setup;
-        the couple&apos;s chosen layout (if they pick from offered templates) stays separate and never
-        silently becomes operational.
+        {preBooking
+          ? "Sketch the room for this client. Sharing a plan, offering layouts to the couple, and choosing the plan for the day wait until this relationship is Booked."
+          : (
+            <>
+              Build the venue&apos;s working layouts for this booking — Ceremony, Reception, rain backup, and more.
+              Mark one as <span className="font-medium text-foreground">Operational</span> for day-of setup;
+              the couple&apos;s chosen layout (if they pick from offered templates) stays separate and never
+              silently becomes operational.
+            </>
+          )}
       </p>
 
       {canEdit ? (
@@ -528,7 +562,7 @@ export function FloorPlanWorkspace({
         </p>
       )}
 
-      {canEdit && <OfferLayoutsPanel eventId={eventId} templates={templates} offers={offers} />}
+      {canEdit && !preBooking && <OfferLayoutsPanel eventId={eventId} templates={templates} offers={offers} />}
 
       {sharedPlans.length > 1 && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
@@ -555,7 +589,7 @@ export function FloorPlanWorkspace({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {floorPlans.map((plan) => (
             <FloorPlanCard
-              key={plan.id} eventId={eventId} plan={plan} spaces={spaces}
+              key={plan.id} eventId={eventId} planningClientId={planningClientId} plan={plan} spaces={spaces}
               busy={busyPlanId === plan.id}
               isOperational={operationalFloorPlanId === plan.id}
               isCoupleSelected={coupleSelectedFloorPlanId === plan.id}

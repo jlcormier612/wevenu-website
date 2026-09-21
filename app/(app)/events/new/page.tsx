@@ -43,8 +43,11 @@ export default async function NewEventPage({ searchParams }: Props) {
     <div className="space-y-6">
       <PageHeader
         title="New Event"
-        description="Create an event workspace for a booked date."
+        description={clientId
+          ? "You're booking this date. Moving this relationship to Booked will protect the event date from conflicting bookings."
+          : "An event is the booked occasion. Open it from the relationship you are booking."}
       />
+      {clientId ? (
       <Card>
         <CardHeader>
           <CardTitle>Event details</CardTitle>
@@ -56,6 +59,16 @@ export default async function NewEventPage({ searchParams }: Props) {
           <EventForm initial={prefill} spaces={spaces} playbookTemplates={playbookTemplates} maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)} />
         </CardContent>
       </Card>
+      ) : (
+      <Card>
+        <CardHeader>
+          <CardTitle>Choose the relationship</CardTitle>
+          <CardDescription>
+            An event is the booked occasion. It is created when you move that relationship to Booked. A date by itself does not.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+      )}
     </div>
   );
 }

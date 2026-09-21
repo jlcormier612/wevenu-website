@@ -144,7 +144,8 @@ describe("commercial artifact states", () => {
       paymentLines: [],
     }).find((row) => row.key === "booked");
     assert.equal(booked?.state, "Not booked");
-    assert.match(booked?.detail ?? "", /did not book/i);
+    assert.match(booked?.detail ?? "", /does not book/i);
+    assert.match(booked?.detail ?? "", /booking workflow/i);
   });
 
   it("a contract-only venue stays unbooked after proposal acceptance", () => {
@@ -163,7 +164,8 @@ describe("commercial artifact states", () => {
       },
     }).find((row) => row.key === "booked");
     assert.equal(booked?.state, "Not booked");
-    assert.match(booked?.detail ?? "", /signed contract/i);
+    assert.match(booked?.detail ?? "", /contract is not signed yet/i);
+    assert.match(booked?.detail ?? "", /booking workflow/i);
   });
 });
 

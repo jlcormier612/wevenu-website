@@ -75,15 +75,14 @@ describe("Commercial Booked transition", () => {
     );
   });
 
-  it("stamp helper calls bookClient; bookClient confirms event and records pipeline Booked", () => {
+  it("stamp helper does not book; bookClient is the relationship transaction", () => {
     const stamp = read("lib/booking-journey/stamp-commercial-booked-at.ts");
     const book = read("lib/booking-journey/book-client.ts");
-    assert.match(stamp, /bookClient/);
-    assert.match(stamp, /markAcceptedVenue/);
-    assert.match(book, /ensureEventBookedAt/);
-    assert.match(book, /status: "confirmed"/);
-    assert.match(book, /updateLeadSalesStage/);
+    assert.doesNotMatch(stamp, /bookClient\(/);
+    assert.match(stamp, /return null/);
+    assert.match(book, /book_relationship/);
     assert.match(book, /recordLifecycleBooking/);
+    assert.doesNotMatch(book, /status: "cancelled"/);
   });
 });
 

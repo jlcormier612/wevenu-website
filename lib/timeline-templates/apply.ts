@@ -43,3 +43,26 @@ export async function applyTimelineTemplateToEvent(
 
   return { ok: true };
 }
+
+export async function applyTimelineTemplateToClient(
+  clientId: string, templateId: string, eventStartTime: string | null,
+): Promise<TimelineActionResult> {
+  const items = await getItems(templateId);
+  if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
+  const { addClientEntry } = await import("@/lib/timeline/service");
+  for (const item of items) {
+    const entryTime = item.timeOfDay
+      ?? resolveEntryTimeFromOffset(item.minutesOffset, eventStartTime)
+      ?? "";
+    const result = await addClientEntry(clientId, {
+      title: item.title,
+      description: item.description ?? "",
+      notes: item.notes ?? "",
+      entryTime,
+      dayOffset: item.dayOffset ?? 0,
+      audiences: item.audiences,
+    });
+    if (!result.ok) return { ok: false, message: result.message ?? `Could not add "${item.title}".` };
+  }
+  return { ok: true };
+}

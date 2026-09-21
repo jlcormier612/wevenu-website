@@ -10,21 +10,32 @@ const root = resolve(process.cwd());
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 
 describe("one canonical booking transition", () => {
-  it("bookClient is the only writer of the booked transition", () => {
+  it("bookClient is one database transaction, not a cleanup after several statements", () => {
     const book = read("lib/booking-journey/book-client.ts");
-    assert.match(book, /ensureEventBookedAt/);
-    assert.match(book, /status: "confirmed"/);
-    assert.match(book, /sales_stage !== "booked"/);
-    assert.match(book, /source: input\.source/);
+    const sql = read("supabase/migrations/20261404200000_atomic_book_relationship.sql");
+    assert.match(book, /rpc\("book_relationship"/);
+    assert.doesNotMatch(book, /ensureEventBookedAt/);
+    assert.doesNotMatch(book, /insertEvent/);
+    assert.doesNotMatch(book, /updateLeadSalesStage/);
+    assert.doesNotMatch(book, /status: "cancelled"/);
+    assert.match(sql, /for update/);
+    assert.match(sql, /insert into public\.events/);
+    assert.match(sql, /sales_stage = 'booked'/);
+    assert.match(sql, /booked_at = v_booked_on/);
+    assert.match(sql, /first_booked_at = coalesce\(first_booked_at, now\(\)\)/);
+    assert.match(sql, /set event_id = v_event_id/);
+    assert.doesNotMatch(sql, /set status = 'cancelled'/);
+    const availability = read("supabase/migrations/20261404100000_venue_controlled_availability.sql");
+    assert.match(availability, /pg_advisory_xact_lock/);
   });
 
-  it("automatic booking calls bookClient only after isCommerciallyBooked", () => {
+  it("commercial milestones do not call bookClient", () => {
     const stamp = read("lib/booking-journey/stamp-commercial-booked-at.ts");
-    const rule = stamp.indexOf("if (!commerciallyBooked) return null;");
-    const call = stamp.indexOf("bookClient(");
-    assert.ok(rule > 0 && call > rule);
-    assert.match(stamp, /source: "commercial_rule"/);
-    assert.doesNotMatch(stamp, /ensureEventBookedAt/);
+    assert.match(stamp, /do not move a relationship to Booked/);
+    assert.match(stamp, /return null/);
+    assert.doesNotMatch(stamp, /bookClient\(/);
+    assert.doesNotMatch(stamp, /book_relationship/);
+    assert.doesNotMatch(stamp, /source: "commercial_rule"/);
   });
 
   it("manual Mark as Booked calls the same bookClient", () => {
@@ -35,15 +46,14 @@ describe("one canonical booking transition", () => {
     assert.match(fn, /newlyBooked: booked\.newlyBooked/);
   });
 
-  it("a second call does not re-enter the sales stage or lifecycle record", () => {
+  it("a second call does not create another event or another celebration", () => {
+    const sql = read("supabase/migrations/20261404200000_atomic_book_relationship.sql");
+    assert.match(sql, /v_existing_booked_at is not null/);
+    assert.match(sql, /v_newly := false/);
+    assert.match(sql, /This relationship is already Booked/);
     const book = read("lib/booking-journey/book-client.ts");
-    assert.match(book, /lead\.sales_stage !== "booked"/);
-    assert.match(book, /else if \(newlyBooked\)/);
-    assert.match(book, /booking_celebration_pending: true/);
-    assert.match(book, /before\.booked_at == null/);
-    const stage = book.indexOf("updateLeadSalesStage");
-    const flag = book.lastIndexOf("booking_celebration_pending: true");
-    assert.ok(stage > 0 && flag > stage, "celebration flag is written after the lead stage update");
+    assert.match(book, /previous_sales_stage !== "booked"/);
+    assert.match(book, /recordLifecycleBooking/);
   });
 
   it("cancellation leaves the booked pipeline without clearing booked_at", () => {
@@ -72,5 +82,52 @@ describe("one canonical booking transition", () => {
     assert.match(page, /event\?\.bookedAt/);
     assert.doesNotMatch(page, /from === "booked"/);
     assert.match(gate, /booking_celebration_pending/);
+  });
+
+  it("booking attaches existing planning rows and does not insert a second copy", () => {
+    const sql = read("supabase/migrations/20261404200000_atomic_book_relationship.sql");
+    const start = sql.indexOf("create or replace function public.book_relationship");
+    const end = sql.indexOf("$$;", start);
+    const fn = sql.slice(start, end);
+    for (const table of [
+      "event_tasks",
+      "event_playbook_applications",
+      "timeline_sections",
+      "timeline_entries",
+      "floor_plans",
+      "event_orders",
+      "event_vendor_assignments",
+    ]) {
+      assert.match(fn, new RegExp(`update public\\.${table}`));
+    }
+    assert.doesNotMatch(fn, /insert into public\.event_tasks/);
+    assert.doesNotMatch(fn, /insert into public\.timeline_entries/);
+    assert.doesNotMatch(fn, /insert into public\.floor_plans/);
+    assert.doesNotMatch(fn, /insert into public\.event_orders/);
+    assert.doesNotMatch(fn, /insert into public\.event_vendor_assignments/);
+    assert.match(fn, /where venue_id = p_venue_id and client_id = p_client_id and event_id is null/);
+    assert.doesNotMatch(fn, /exception when/);
+  });
+
+  it("pre-booking editors write client_id and leave event_id null", () => {
+    const timeline = read("lib/timeline/repository.ts");
+    const floors = read("lib/floor-plans/repository.ts");
+    const orders = read("lib/event-orders/repository.ts");
+    const vendors = read("lib/vendors/repository.ts");
+    assert.match(timeline, /event_id: null, client_id: clientId/);
+    assert.match(floors, /event_id: null,\s*client_id: clientId/);
+    assert.match(orders, /event_id: null, client_id: clientId/);
+    assert.match(vendors, /event_id:\s+null/);
+    const vendorService = read("lib/vendors/service.ts");
+    const assign = vendorService.slice(vendorService.indexOf("export async function assignVendorToClient"));
+    assert.match(assign, /insertClientVendorAssignment/);
+    assert.doesNotMatch(assign, /markAssignmentBooked/);
+    assert.doesNotMatch(assign, /notifyVendorOfEventAssignment/);
+    const page = read("app/(app)/clients/[id]/page.tsx");
+    assert.match(page, /planningClientId=\{client\.id\}/);
+    assert.match(page, /Questionnaires stay unavailable until this relationship is Booked/);
+    const unbookedStart = page.indexOf("if (!client.linkedEventId)");
+    const unbooked = page.slice(unbookedStart, page.indexOf("if (await bookingCelebrationPending"));
+    assert.doesNotMatch(unbooked, /getQuestionnaires|QuestionnairePanel|questionnaireTemplates/);
   });
 });

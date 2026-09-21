@@ -60,7 +60,8 @@ describe("Phase 5 product integration seams", () => {
   it("occupancy errors surface on the space field including no_spaces", () => {
     assert.match(eventsService, /fail\.code === "no_spaces"/);
     assert.match(clientsService, /fail\.code === "no_spaces"/);
-    assert.match(clientsService, /spaceId: opts\?\.spaceId/);
+    assert.match(clientsService, /spaceId: input\.spaceId/);
+    assert.match(clientsService, /const spaceId = opts\?\.spaceId/);
   });
 
   it("ConflictWarning occupancy refusals are not described as advisory-only", () => {

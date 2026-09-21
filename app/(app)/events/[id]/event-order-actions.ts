@@ -18,6 +18,7 @@ import { getEventOrderPdfUrl, shareEventOrderWithClient } from "@/lib/event-orde
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/clients/${eventId}`);
 }
 
 export async function ensureEventOrderAction(

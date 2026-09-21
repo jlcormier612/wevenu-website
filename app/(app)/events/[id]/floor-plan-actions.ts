@@ -39,6 +39,7 @@ import type {
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/clients/${eventId}`);
 }
 
 // The workspace's card grid lives on the event's floor-plans index — revalidate

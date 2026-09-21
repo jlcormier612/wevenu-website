@@ -8,6 +8,10 @@ import { toast } from "sonner";
 
 import { applyTemplateAction } from "@/app/(app)/events/[id]/timeline-actions";
 import { applyTimelineTemplateAction } from "@/app/(app)/timeline-templates/booking-actions";
+import {
+  applyClientStarterTimelineAction,
+  applyClientTimelineTemplateAction,
+} from "@/app/(app)/clients/planning-actions";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -28,12 +32,14 @@ type Selection =
 
 export function TemplatePicker({
   eventId,
+  planningClientId = null,
   eventStartTime,
   templates = [],
   onApplied,
   existingEntryCount = 0,
 }: {
   eventId: string;
+  planningClientId?: string | null;
   eventStartTime: string | null;
   /** Venue Timeline Templates library (archived excluded by the loader). */
   templates?: LibraryTemplate[];
@@ -66,8 +72,12 @@ export function TemplatePicker({
     }
     startTransition(async () => {
       const result = selected.source === "library"
-        ? await applyTimelineTemplateAction(eventId, selected.id, eventStartTime)
-        : await applyTemplateAction(eventId, selected.id, eventStartTime);
+        ? (planningClientId && !eventId
+          ? await applyClientTimelineTemplateAction(planningClientId, selected.id, eventStartTime)
+          : await applyTimelineTemplateAction(eventId, selected.id, eventStartTime))
+        : (planningClientId && !eventId
+          ? await applyClientStarterTimelineAction(planningClientId, selected.id, eventStartTime)
+          : await applyTemplateAction(eventId, selected.id, eventStartTime));
       if (result.ok) {
         toast.success("Template applied.");
         setOpen(false);

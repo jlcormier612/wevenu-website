@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import {
   applyPlaybookAction,
+  applyPlaybookToClientAction,
   getPlaybookApplyPreviewAction,
 } from "@/app/(app)/playbooks/actions";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ export function PlaybookApplyPreviewSheet({
   kind,
   eventId,
   eventDate,
+  clientId,
   onApplied,
   /** When false, preview-only (e.g. event create form before an event exists). */
   canApply = true,
@@ -46,6 +48,8 @@ export function PlaybookApplyPreviewSheet({
   kind: PlaybookKind;
   eventId?: string;
   eventDate?: string;
+  /** Set when the checklist is applied to a client before an Event exists. */
+  clientId?: string;
   onApplied?: () => void;
   canApply?: boolean;
 }) {
@@ -82,9 +86,11 @@ export function PlaybookApplyPreviewSheet({
   }, [open, templateId]);
 
   function handleApply() {
-    if (!eventId || !eventDate) return;
+    if (!eventDate || (!eventId && !clientId)) return;
     startApply(async () => {
-      const result = await applyPlaybookAction(eventId, templateId, eventDate);
+      const result = eventId
+        ? await applyPlaybookAction(eventId, templateId, eventDate)
+        : await applyPlaybookToClientAction(clientId!, templateId, eventDate);
       if (result.ok) {
         toast.success(
           kind === "client"

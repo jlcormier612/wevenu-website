@@ -6,6 +6,7 @@ import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { applyTimelineTemplateAction } from "@/app/(app)/timeline-templates/booking-actions";
+import { applyClientTimelineTemplateAction } from "@/app/(app)/clients/planning-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,9 +31,10 @@ function resolveDefaultTimelineTemplateId(templates: TimelineTemplate[], eventTy
  * with no Timeline yet, or vice versa.
  */
 export function TimelineSetupCard({
-  eventId, eventType, spaceId, eventStartTime, templates, hasTimeline, onApplied,
+  eventId, planningClientId = null, eventType, spaceId, eventStartTime, templates, hasTimeline, onApplied,
 }: {
   eventId: string;
+  planningClientId?: string | null;
   eventType: string | null;
   spaceId: string | null;
   eventStartTime: string | null;
@@ -49,7 +51,9 @@ export function TimelineSetupCard({
   function handleApply() {
     if (!selectedTemplate) return;
     startApply(async () => {
-      const result = await applyTimelineTemplateAction(eventId, selectedTemplate, eventStartTime);
+      const result = planningClientId && !eventId
+        ? await applyClientTimelineTemplateAction(planningClientId, selectedTemplate, eventStartTime)
+        : await applyTimelineTemplateAction(eventId, selectedTemplate, eventStartTime);
       if (result.ok) { toast.success("Timeline applied."); onApplied(); }
       else toast.error(result.message ?? "Could not apply timeline template.");
     });

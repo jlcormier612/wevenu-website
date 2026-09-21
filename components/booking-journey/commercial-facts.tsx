@@ -47,8 +47,7 @@ export function CommercialFacts({
         Commercial
       </h2>
       <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-        These records are separate from the sales pipeline. Automatic booking still follows your venue booking rule
-        (Settings → Leads &amp; Booking). This is not a required sequence.
+        These records are separate from the sales pipeline. Your venue&apos;s booking workflow determines when a relationship becomes Booked. This is not a required sequence.
       </p>
       <p className="mt-3 text-sm text-heading">{journey.direction}</p>
       <ul className="mt-4 divide-y divide-border">

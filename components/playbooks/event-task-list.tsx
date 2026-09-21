@@ -440,7 +440,7 @@ function TaskRow({
 
   function handleComplete() {
     startAction(async () => {
-      const result = await completeTaskAction(task.id, eventId);
+      const result = await completeTaskAction(task.id, eventId, clientId);
       if (result.ok) { onUpdate(task.id, "complete"); celebrateCompletion(kind, task.title); }
       else toast.error(result.message ?? "Could not complete task.");
     });

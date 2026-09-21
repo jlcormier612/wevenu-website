@@ -39,6 +39,10 @@ import {
   setSectionClientCanAddAction,
   updateEntryAction,
 } from "@/app/(app)/events/[id]/timeline-actions";
+import {
+  addClientTimelineEntryAction,
+  addClientTimelineSectionAction,
+} from "@/app/(app)/clients/planning-actions";
 import { TemplatePicker } from "@/components/events/timeline/template-picker";
 import { TimelineEntryForm } from "@/components/events/timeline/timeline-entry-form";
 import { ALL_FILTER, TimelineFilterBar, type TimelineStatusFilter } from "@/components/events/timeline/timeline-filter-bar";
@@ -101,13 +105,14 @@ const DUE_STATUS_BADGE: Record<"upcoming" | "today", string> = {
 };
 
 function TimelineEntryRow({
-  entry, eventId, venueId, sections, links, attachments, availableDocuments,
+  entry, eventId, planningClientId = null, venueId, sections, links, attachments, availableDocuments,
   relatedLinks, relatedContext, onRelatedChanged,
   eventStartTime, eventDate, eventEndDate, teamMembers, editing, onStartEdit, onCancelEdit, onDelete, onUpdate,
   onLinksChanged, onAttachmentsChanged, onDragStart, onDragEnd, isDragOver,
 }: {
   entry: TimelineEntry;
   eventId: string;
+  planningClientId?: string | null;
   venueId: string;
   sections: TimelineSection[];
   links: TimelineEntryLink[];
@@ -139,7 +144,7 @@ function TimelineEntryRow({
 
   function handleUpdate(input: TimelineEntryInput) {
     startUpdate(async () => {
-      const result = await updateEntryAction(entry.id, eventId, input);
+      const result = await updateEntryAction(entry.id, eventId || planningClientId || "", input);
       if (result.ok) {
         onUpdate(entry.id, input);
       } else {
@@ -288,7 +293,7 @@ function TimelineEntryRow({
 // ---- One section (or the virtual Unsectioned bucket) -------------------------
 
 function TimelineSectionBlock({
-  sectionKey, name, entries, isUnsectioned, clientCanAdd, eventId, venueId, sections, eventStartTime, eventDate, eventEndDate, defaultDayOffset, teamMembers,
+  sectionKey, name, entries, isUnsectioned, clientCanAdd, eventId, planningClientId = null, venueId, sections, eventStartTime, eventDate, eventEndDate, defaultDayOffset, teamMembers,
   linksByEntry, attachmentsByEntry, availableDocuments, relatedLinksByEntry, relatedContext,
   editingEntryId, setEditingEntryId, onDeleteEntry, onUpdateEntry, onLinksChanged, onAttachmentsChanged, onRelatedChanged,
   addFormOpenFor, setAddFormOpenFor, onAddEntry, addPending, showAddButton = true,
@@ -302,6 +307,7 @@ function TimelineSectionBlock({
   isUnsectioned: boolean;
   clientCanAdd?: boolean;
   eventId: string;
+  planningClientId?: string | null;
   venueId: string;
   sections: TimelineSection[];
   eventStartTime: string | null;
@@ -433,7 +439,7 @@ function TimelineSectionBlock({
                 onDrop={() => onEntryDropRow(sectionKey, i)}
               >
                 <TimelineEntryRow
-                  entry={entry} eventId={eventId} venueId={venueId} sections={sections}
+                  entry={entry} eventId={eventId} planningClientId={planningClientId} venueId={venueId} sections={sections}
                   links={linksByEntry[entry.id] ?? []} attachments={attachmentsByEntry[entry.id] ?? []}
                   availableDocuments={availableDocuments} eventStartTime={eventStartTime}
                   eventDate={eventDate} eventEndDate={eventEndDate} teamMembers={teamMembers}
@@ -495,6 +501,7 @@ function TimelineSectionBlock({
 
 export function TimelineView({
   eventId,
+  planningClientId = null,
   venueId,
   eventStartTime,
   eventDate = null,
@@ -514,6 +521,8 @@ export function TimelineView({
   timelineTemplates = [],
 }: {
   eventId: string;
+  /** When set and eventId is empty, saves belong to the client, not an Event. */
+  planningClientId?: string | null;
   venueId: string;
   eventStartTime: string | null;
   eventDate?: string | null;
@@ -630,12 +639,19 @@ export function TimelineView({
       const { dayOffset, sectionId } = parseDaySectionKey(sectionKey);
       const targetSectionId = sectionId === UNSECTIONED ? null : sectionId;
       const sortOrder = (groups.get(sectionKey) ?? []).length;
-      const result = await addEntryAction(eventId, {
-        ...input,
-        sectionId: targetSectionId,
-        sortOrder,
-        dayOffset: input.dayOffset ?? dayOffset ?? 0,
-      });
+      const result = planningClientId && !eventId
+        ? await addClientTimelineEntryAction(planningClientId, {
+          ...input,
+          sectionId: targetSectionId,
+          sortOrder,
+          dayOffset: input.dayOffset ?? dayOffset ?? 0,
+        })
+        : await addEntryAction(eventId, {
+          ...input,
+          sectionId: targetSectionId,
+          sortOrder,
+          dayOffset: input.dayOffset ?? dayOffset ?? 0,
+        });
       if (result.ok) {
         setEntries((prev) => [...prev, result.entry]);
         setAddFormOpenFor(null);
@@ -647,7 +663,7 @@ export function TimelineView({
 
   async function handleDelete(entryId: string) {
     setEntries((prev) => prev.filter((e) => e.id !== entryId));
-    const result = await deleteEntryAction(entryId, eventId);
+    const result = await deleteEntryAction(entryId, eventId || planningClientId || "");
     if (!result.ok) {
       toast.error("Could not delete entry.");
       router.refresh();
@@ -702,7 +718,7 @@ export function TimelineView({
       });
     }
     setEntries(next);
-    reorderEntriesAction(eventId, updates).then((result) => {
+    reorderEntriesAction(eventId || planningClientId || "", updates).then((result) => {
       if (!result.ok) { toast.error("Could not save the new order."); router.refresh(); }
     });
   }
@@ -767,7 +783,7 @@ export function TimelineView({
       if (fromIdx === -1 || toIdx === -1) return prev;
       const [moved] = list.splice(fromIdx, 1);
       list.splice(toIdx, 0, moved);
-      reorderSectionsAction(eventId, list.map((s) => s.id)).then((result) => {
+      reorderSectionsAction(eventId || planningClientId || "", list.map((s) => s.id)).then((result) => {
         if (!result.ok) { toast.error("Could not save section order."); router.refresh(); }
       });
       return list;
@@ -777,7 +793,9 @@ export function TimelineView({
   function handleAddSection() {
     if (!newSectionName.trim()) return;
     startSectionAdd(async () => {
-      const result = await addSectionAction(eventId, newSectionName.trim(), sections.length);
+      const result = planningClientId && !eventId
+        ? await addClientTimelineSectionAction(planningClientId, newSectionName.trim(), sections.length)
+        : await addSectionAction(eventId, newSectionName.trim(), sections.length);
       if (result.ok) {
         setSections((p) => [...p, result.section]);
         setNewSectionName("");
@@ -791,14 +809,14 @@ export function TimelineView({
   }
 
   async function handleRenameSection(sectionId: string, name: string) {
-    const result = await renameSectionAction(sectionId, eventId, name);
+    const result = await renameSectionAction(sectionId, eventId || planningClientId || "", name);
     if (result.ok) setSections((p) => p.map((s) => (s.id === sectionId ? { ...s, name } : s)));
     else toast.error(result.message ?? "Could not rename section.");
   }
 
   async function handleDeleteSection(section: TimelineSection) {
     if (!confirm(`Delete "${section.name}"? Its items move to Unsectioned — nothing is deleted.`)) return;
-    const result = await deleteSectionAction(section.id, eventId);
+    const result = await deleteSectionAction(section.id, eventId || planningClientId || "");
     if (result.ok) {
       setSections((p) => p.filter((s) => s.id !== section.id));
       setEntries((p) => p.map((e) => (e.sectionId === section.id ? { ...e, sectionId: null } : e)));
@@ -809,7 +827,7 @@ export function TimelineView({
 
   async function handleToggleClientCanAdd(sectionId: string, value: boolean) {
     setSections((p) => p.map((s) => (s.id === sectionId ? { ...s, clientCanAdd: value } : s)));
-    const result = await setSectionClientCanAddAction(sectionId, eventId, value);
+    const result = await setSectionClientCanAddAction(sectionId, eventId || planningClientId || "", value);
     if (!result.ok) {
       toast.error(result.message ?? "Could not update this setting.");
       setSections((p) => p.map((s) => (s.id === sectionId ? { ...s, clientCanAdd: !value } : s)));
@@ -817,7 +835,7 @@ export function TimelineView({
   }
 
   async function handleDuplicateSection(section: TimelineSection) {
-    const result = await duplicateSectionAction(eventId, section.id, sections.length);
+    const result = await duplicateSectionAction(eventId || planningClientId || "", section.id, sections.length);
     if (result.ok) {
       setSections((p) => [...p, result.section]);
       setEntries((p) => [...p, ...result.entries]);
@@ -840,6 +858,7 @@ export function TimelineView({
         <div className="flex items-center justify-end">
           <TemplatePicker
             eventId={eventId}
+            planningClientId={planningClientId}
             eventStartTime={eventStartTime}
             templates={timelineTemplates}
             onApplied={() => router.refresh()}
@@ -862,6 +881,7 @@ export function TimelineView({
             </Button>
             <TemplatePicker
               eventId={eventId}
+              planningClientId={planningClientId}
               eventStartTime={eventStartTime}
               templates={timelineTemplates}
               onApplied={() => router.refresh()}
@@ -888,6 +908,7 @@ export function TimelineView({
         <div className="flex items-center gap-2">
           <TemplatePicker
             eventId={eventId}
+            planningClientId={planningClientId}
             eventStartTime={eventStartTime}
             templates={timelineTemplates}
             onApplied={() => router.refresh()}
@@ -963,6 +984,7 @@ export function TimelineView({
                     key={key}
                     sectionKey={key}
                     name={section.name}
+                    planningClientId={planningClientId}
                     entries={sectionEntries}
                     isUnsectioned={false}
                     clientCanAdd={section.clientCanAdd}
@@ -1006,6 +1028,7 @@ export function TimelineView({
                 <TimelineSectionBlock
                   sectionKey={unsectionedKey}
                   name="Unsectioned"
+                  planningClientId={planningClientId}
                   entries={unsectionedEntries}
                   isUnsectioned
                   showAddButton={false}

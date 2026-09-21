@@ -53,7 +53,10 @@ export function PipelineBookedConfirmDialog({
         </h2>
         <div id="pipeline-booked-desc" className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground">
           <p>
-            This will move the client into your booked workspace and begin event planning.
+            You&apos;re booking this date.
+          </p>
+          <p>
+            Moving this relationship to Booked will protect the event date from conflicting bookings.
           </p>
         </div>
         <div className="mt-5 flex flex-wrap justify-end gap-2">

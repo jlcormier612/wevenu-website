@@ -65,6 +65,13 @@ export async function getEventOrder(eventId: string): Promise<EventOrderWithDeta
   return repo.getEventOrderByEvent(supabase, venue.id, eventId);
 }
 
+export async function getEventOrderForClient(clientId: string): Promise<EventOrderWithDetails | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  return repo.getEventOrderByClient(await createClient(), venue.id, clientId);
+}
+
 async function copyTemplateSnapshotsIntoOrder(
   supabase: Awaited<ReturnType<typeof createClient>>,
   venueId: string,
@@ -134,6 +141,27 @@ export async function ensureEventOrder(
     if (existing) return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
     const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId, templateId);
 
+    const template = templateId ? await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId) : null;
+    if (template) {
+      await copyTemplateSnapshotsIntoOrder(supabase, venueId, eventOrderId, template, selections, null);
+      await repo.insertActivity(supabase, venueId, eventOrderId, "started", `Event Order started from template: ${template.name}`);
+    } else {
+      await repo.insertActivity(supabase, venueId, eventOrderId, "started", "Event Order started");
+    }
+    return { ok: true, eventOrderId } as EnsureEventOrderResult;
+  });
+  return result as EnsureEventOrderResult;
+}
+
+export async function ensureEventOrderForClient(
+  clientId: string,
+  templateId: string | null = null,
+  selections?: TemplateApplySelection[],
+): Promise<EnsureEventOrderResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getEventOrderByClient(supabase, venueId, clientId);
+    if (existing) return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
+    const eventOrderId = await repo.insertEventOrderForClient(supabase, venueId, clientId, templateId);
     const template = templateId ? await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId) : null;
     if (template) {
       await copyTemplateSnapshotsIntoOrder(supabase, venueId, eventOrderId, template, selections, null);

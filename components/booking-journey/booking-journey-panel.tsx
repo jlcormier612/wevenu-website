@@ -102,7 +102,7 @@ export function BookingJourneyPanel({
 
   function handleRecordDeposit() {
     if (!clientId) {
-      toast.error("Open the booking file before recording a deposit.");
+      toast.error("Create the client before recording a deposit.");
       return;
     }
     startTransition(async () => {

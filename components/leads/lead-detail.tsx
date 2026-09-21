@@ -184,7 +184,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       if (result.warning) toast.warning(result.warning);
       else {
         toast.success(
-          "Booking file started. They are not Booked until you mark them booked or your booking rule is met.",
+          "Workspace started. Preparing it does not reserve their date. You decide when they are Booked.",
         );
       }
       router.push(`/clients/${result.clientId}${result.eventId ? `?eventId=${result.eventId}` : ""}`);
@@ -390,7 +390,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
         title="Start booking file?"
-        description="This opens their booking file (Client and Event when a date applies). The lead stays on the sales pipeline. They are not Booked until you confirm Mark as Booked or your booking rule is met. The event date is protected by existing availability rules when it applies. This does not invite them to the portal. Contracts and payments can still be prepared from Commercial without this step."
+        description="This prepares their planning workspace. It does not book them, and it does not reserve their date. A preferred date stays a preference until you place a Hold or move the relationship to Booked."
         confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}

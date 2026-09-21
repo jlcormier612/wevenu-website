@@ -507,16 +507,6 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
         actor: { type: "staff", id: null, name: null },
         payload: { scheduleId, eventId: scheduleClient?.event_id ?? sch?.event_id ?? null },
       });
-      if (scheduleClient?.client_id) {
-        const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-        const stamped = await maybeStampCommercialBookedAt(supabase, venueId, {
-          clientId: scheduleClient.client_id,
-          eventId: scheduleClient.event_id ?? sch?.event_id ?? null,
-        });
-        if (stamped?.newlyBooked) {
-          bookingCelebration = { clientId: stamped.clientId, eventId: stamped.eventId };
-        }
-      }
     }
 
     void recordEngagementEvent({

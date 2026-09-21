@@ -39,6 +39,7 @@ import type {
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/clients/${eventId}`);
 }
 
 /**

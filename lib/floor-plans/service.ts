@@ -148,6 +148,54 @@ export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: str
   return result as CreateFloorPlanResult;
 }
 
+export async function getFloorPlansForClient(clientId: string): Promise<FloorPlan[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getFloorPlansByClient(await createClient(), venue.id, clientId);
+}
+
+export async function createFloorPlanForClient(clientId: string, name = "Floor Plan", spaceId: string | null = null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const floorPlanId = await repo.createFloorPlanForClient(supabase, venueId, clientId, name.trim(), spaceId);
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
+export async function applyTemplateForClient(clientId: string, templateId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const template = await templatesRepo.getTemplate(supabase, venueId, templateId);
+    if (!template) return { ok: false, message: "Template not found." } as CreateFloorPlanResult;
+    const objects = await templatesRepo.getObjects(supabase, venueId, templateId);
+    const floorPlanId = await repo.createFloorPlanForClient(supabase, venueId, clientId, name.trim(), spaceId, templateId);
+    if (template.backgroundImageUrl || template.backgroundDocumentId) {
+      await repo.updateFloorPlanBackground(
+        supabase, venueId, floorPlanId,
+        template.backgroundImageUrl, template.backgroundImageOpacity,
+        template.backgroundDocumentId,
+      );
+    }
+    await repo.updateFloorPlanRoomSettings(supabase, venueId, floorPlanId, {
+      roomWidthFt: template.roomWidthFt, roomDepthFt: template.roomDepthFt, measurementUnit: template.measurementUnit,
+    });
+    await repo.insertObjects(supabase, venueId, floorPlanId, objects);
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
+export async function duplicateFloorPlanForClient(clientId: string, sourceFloorPlanId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const floorPlanId = await repo.duplicateFloorPlanInto(supabase, venueId, clientId, sourceFloorPlanId, name, spaceId);
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
 export async function updateBackground(
   planId: string, url: string | null, opacity: number,
   backgroundDocumentId?: string | null,

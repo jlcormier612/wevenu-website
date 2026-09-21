@@ -1146,11 +1146,37 @@ async function commitOneRecord(
         clientId: clientRef.clientId,
         spaceId: space.ok ? (space.spaceId ?? "") : "",
       };
-      const eventId = await eventsRepo.insertEvent(
-        client, session.venueId, input,
-        asHistorical ? { status: "complete" } : undefined,
-      );
-      return { ok: true, entityId: eventId };
+      if (asHistorical) {
+        const eventId = await eventsRepo.insertEvent(
+          client, session.venueId, input,
+          { status: "complete", bookedAt: n.eventDate },
+        );
+        return { ok: true, entityId: eventId };
+      }
+      if (!clientRef.clientId) {
+        return { ok: false, error: "An event is created only when a relationship is booked. Import the client as already booked." };
+      }
+      const { bookClient } = await import("@/lib/booking-journey/book-client");
+      const booked = await bookClient(client, {
+        venueId: session.venueId,
+        clientId: clientRef.clientId,
+        source: "manual",
+        spaceId: input.spaceId,
+        lifecycleOrigin: "import",
+        event: {
+          name: input.name,
+          eventType: input.eventType,
+          eventDate: input.eventDate,
+          eventEndDate: input.eventEndDate,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          setupTime: input.setupTime,
+          teardownTime: input.teardownTime,
+          guestCount: input.guestCount,
+        },
+      });
+      if (!booked.ok) return { ok: false, error: booked.message };
+      return { ok: true, entityId: booked.eventId };
     }
     if (entityType === "key_date") {
       // Product retired: do not create new client_key_dates via Migration Center.

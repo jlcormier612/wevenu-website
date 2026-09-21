@@ -28,7 +28,7 @@ describe("Pipeline terminology — Booking Started vs commercial Booked", () => 
     const model = read("lib/booking-journey/model.ts");
     assert.match(model, /isCommerciallyBooked/);
     const facts = read("components/booking-journey/commercial-facts.tsx");
-    assert.match(facts, /automatic booking still follows your venue booking rule/i);
+    assert.match(facts, /booking workflow determines when a relationship becomes Booked/i);
     assert.match(facts, /not a required sequence/i);
     const panel = read("components/booking-journey/booking-journey-panel.tsx");
     assert.doesNotMatch(panel, /BookingJourneyStrip|Booking Journey/);
@@ -40,15 +40,11 @@ describe("Pipeline terminology — Booking Started vs commercial Booked", () => 
     assert.doesNotMatch(event, />\s*Booking Journey/);
   });
 
-  it("Lead confirm does not call the result a planning workspace", () => {
+  it("Start booking file prepares the workspace and does not reserve the date", () => {
     const detail = read("components/leads/lead-detail.tsx");
     assert.match(detail, /Start booking file\?/);
-    assert.match(detail, /not Booked until you confirm Mark as Booked/);
-    assert.match(detail, /booking file/);
-    assert.doesNotMatch(
-      detail.slice(detail.indexOf("title=\"Start booking file?\""), detail.indexOf("confirmLabel=\"Start booking file\"")),
-      /planning workspace/i,
-    );
+    assert.match(detail, /does not reserve their date/);
+    assert.match(detail, /planning workspace/);
   });
 });
 
@@ -64,14 +60,14 @@ describe("events.booked_at — commercial Booked only", () => {
     assert.doesNotMatch(core, /stampBookingDateIfNeeded|ensureEventBookedAt/);
   });
 
-  it("commercial stamp helper and payment/sign writers exist", () => {
+  it("commercial milestones do not book the relationship", () => {
     const stamp = read("lib/booking-journey/stamp-commercial-booked-at.ts");
     assert.match(stamp, /maybeStampCommercialBookedAt/);
-    assert.match(stamp, /isCommerciallyBooked/);
-    assert.match(stamp, /bookClient/);
-    assert.match(read("lib/payments/service.ts"), /maybeStampCommercialBookedAt/);
-    assert.match(read("lib/stripe/webhook-handlers.ts"), /maybeStampCommercialBookedAt/);
-    assert.match(read("lib/contracts/service.ts"), /maybeStampCommercialBookedAt/);
+    assert.match(stamp, /do not move a relationship to Booked/);
+    assert.doesNotMatch(stamp, /bookClient\(/);
+    assert.doesNotMatch(read("lib/payments/service.ts"), /maybeStampCommercialBookedAt/);
+    assert.doesNotMatch(read("lib/stripe/webhook-handlers.ts"), /maybeStampCommercialBookedAt/);
+    assert.doesNotMatch(read("lib/contracts/service.ts"), /maybeStampCommercialBookedAt/);
   });
 
   it("payment timing labels refer to commercial Booked", () => {
@@ -161,7 +157,7 @@ describe("Canonical Start booking file path", () => {
     const detail = read("components/leads/lead-detail.tsx");
     assert.doesNotMatch(detail, /wouldEnrollOnPipelineStageMoveAction\(lead\.id, "booked"\)/);
     assert.doesNotMatch(detail, /pendingBookAfterAutomation/);
-    assert.match(detail, /not Booked until you confirm Mark as Booked/i);
+    assert.match(detail, /does not reserve their date/i);
   });
 
   it("Lead detail surfaces ConflictWarning for the event date", () => {
@@ -171,11 +167,11 @@ describe("Canonical Start booking file path", () => {
     assert.match(detail, /That date is already protected/);
   });
 
-  it("convertLeadToClient hard-blocks calendar coverage and maps occupancy failures", () => {
+  it("convertLeadToClient prepares a client and does not occupy a date", () => {
     const clients = read("lib/clients/service.ts");
     const convert = clients.slice(clients.indexOf("export async function convertLeadToClient"));
-    assert.match(convert, /coveringClientEventBlockTitle/);
-    assert.match(convert, /occupancyClientFailure/);
+    assert.doesNotMatch(convert, /coveringClientEventBlockTitle/);
+    assert.doesNotMatch(convert, /insertClientWithDatedEvent\(/);
     assert.match(convert, /clients_lead_id_unique|23505/);
   });
 });

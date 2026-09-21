@@ -39,6 +39,8 @@ export type FloorPlan = {
   id: string;
   venueId: string;
   eventId: string;
+  /** Set when the plan is prepared on the client before Booked. */
+  clientId?: string | null;
   name: string;
   spaceId: string | null;
   clientAccess: FloorPlanClientAccess;

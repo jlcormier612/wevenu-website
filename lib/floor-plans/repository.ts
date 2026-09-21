@@ -24,7 +24,7 @@ import type {
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type PlanRow = {
-  id: string; venue_id: string; event_id: string; name: string; space_id: string | null;
+  id: string; venue_id: string; event_id: string | null; client_id?: string | null; name: string; space_id: string | null;
   client_access: FloorPlanClientAccess;
   shared_with_vendors: boolean;
   shared_with_couple: boolean;
@@ -47,7 +47,7 @@ type ObjRow = {
 };
 
 const mapPlan = (r: PlanRow): FloorPlan => ({
-  id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name,
+  id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "", clientId: r.client_id ?? null, name: r.name,
   spaceId: r.space_id, clientAccess: r.client_access,
   sharedWithVendors: r.shared_with_vendors,
   sharedWithCouple: Boolean(r.shared_with_couple),
@@ -80,6 +80,15 @@ export async function getFloorPlansByEvent(
 ): Promise<FloorPlan[]> {
   const { data, error } = await client.from("floor_plans").select("*")
     .eq("event_id", eventId).eq("venue_id", venueId).order("created_at");
+  if (error) throw error;
+  return (data as PlanRow[]).map(mapPlan);
+}
+
+export async function getFloorPlansByClient(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<FloorPlan[]> {
+  const { data, error } = await client.from("floor_plans").select("*")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null).order("created_at");
   if (error) throw error;
   return (data as PlanRow[]).map(mapPlan);
 }
@@ -133,6 +142,28 @@ export async function createFloorPlan(
   return data.id;
 }
 
+export async function createFloorPlanForClient(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+  name = "Floor Plan",
+  spaceId: string | null = null,
+  sourceTemplateId: string | null = null,
+): Promise<string> {
+  const { data, error } = await client.from("floor_plans")
+    .insert({
+      venue_id: venueId,
+      event_id: null,
+      client_id: clientId,
+      name,
+      space_id: spaceId,
+      source_template_id: sourceTemplateId,
+    })
+    .select("id").single<{ id: string }>();
+  if (error) throw error;
+  return data.id;
+}
+
 /** "Duplicate Existing Floor Plan" (Booking Floor Plan Workspace task) — clone another floor plan on this same booking into a new one, objects and background included. */
 export async function duplicateFloorPlanInto(
   client: DbClient, venueId: string, eventId: string, sourceId: string, name: string, spaceId: string | null,
@@ -141,7 +172,11 @@ export async function duplicateFloorPlanInto(
   if (!source) throw new Error("Floor plan not found.");
 
   const { data, error } = await client.from("floor_plans").insert({
-    venue_id: venueId, event_id: eventId, name: name.trim(), space_id: spaceId,
+    venue_id: venueId,
+    event_id: source.eventId || null,
+    client_id: source.eventId ? null : (source.clientId ?? null),
+    name: name.trim(),
+    space_id: spaceId,
     background_image_url: source.backgroundImageUrl, background_image_opacity: source.backgroundImageOpacity,
     background_document_id: source.backgroundDocumentId,
     room_width_ft: source.roomWidthFt, room_depth_ft: source.roomDepthFt, measurement_unit: source.measurementUnit,

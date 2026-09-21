@@ -10,6 +10,7 @@ import {
   removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanAction,
   shareEventOrderWithClientAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
+import { ensureClientEventOrderAction } from "@/app/(app)/clients/planning-actions";
 import { getEventOrderTemplateDetailAction } from "@/app/(app)/library/event-order-templates/actions";
 import { ApplyEventOrderTemplateSheet } from "@/components/event-order-templates/apply-event-order-template-sheet";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
@@ -174,11 +175,12 @@ function SectionFloorPlanLink({
 }
 
 export function EventOrderPanel({
-  eventId, clientId, clientName, clientEmail, venueName, eventOrder, packages, packagesWithItems = [],
+  eventId, planningClientId = null, clientId, clientName, clientEmail, venueName, eventOrder, packages, packagesWithItems = [],
   selectedPackageName = null, offerings = [], inventoryItems, invoices, floorPlans, overview,
   templates = [],
 }: {
   eventId: string;
+  planningClientId?: string | null;
   clientId: string | null;
   clientName?: string | null;
   clientEmail?: string | null;
@@ -195,6 +197,8 @@ export function EventOrderPanel({
   templates?: EventOrderTemplate[];
 }) {
   const router = useRouter();
+  const scopeId = eventId || planningClientId || "";
+  const preBooking = Boolean(planningClientId) && !eventId;
   const [starting, startStarting] = React.useTransition();
   const [applying, startApplying] = React.useTransition();
   const [templateId, setTemplateId] = React.useState("blank");
@@ -220,13 +224,13 @@ export function EventOrderPanel({
   const shareDefaultMessage = mergeContent("We've shared your Event Order for {{event_date}}. Please review it when you have a chance.", shareMergeData);
 
   async function runFinalize(eventOrderId: string) {
-    const result = await finalizeEventOrderAction(eventOrderId, eventId);
+    const result = await finalizeEventOrderAction(eventOrderId, scopeId);
     if (!result.ok) toast.error(result.message ?? "Could not finalize.");
     else toast.success("Event Order finalized.");
   }
 
   async function runShare(eventOrderId: string, message: string) {
-    const result = await shareEventOrderWithClientAction(eventOrderId, eventId, message);
+    const result = await shareEventOrderWithClientAction(eventOrderId, scopeId, message);
     if (result.ok) toast.success("Shared with client.");
     return result;
   }
@@ -299,7 +303,9 @@ export function EventOrderPanel({
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
                 onClick={() => startStarting(async () => {
-                  const result = await ensureEventOrderAction(eventId, null);
+                  const result = preBooking
+                    ? await ensureClientEventOrderAction(planningClientId!, null)
+                    : await ensureEventOrderAction(eventId, null);
                   if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
                   else refresh();
                 })}>
@@ -349,7 +355,9 @@ export function EventOrderPanel({
                 if (!applyTemplate) return;
                 await new Promise<void>((resolve) => {
                   startApplying(async () => {
-                    const result = await ensureEventOrderAction(eventId, applyTemplate.id, selections);
+                    const result = preBooking
+                      ? await ensureClientEventOrderAction(planningClientId!, applyTemplate.id, selections)
+                      : await ensureEventOrderAction(eventId, applyTemplate.id, selections);
                     if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
                     else {
                       setApplyOpen(false);
@@ -376,7 +384,7 @@ export function EventOrderPanel({
 
   async function handleRemoveLine(line: EventOrderLine) {
     setRemovingId(line.id);
-    const result = await removeLineAction(order.id, eventId, line.id, line.description);
+    const result = await removeLineAction(order.id, scopeId, line.id, line.description);
     setRemovingId(null);
     if (!result.ok) toast.error(result.message ?? "Could not remove line.");
   }
@@ -384,7 +392,7 @@ export function EventOrderPanel({
   async function handleRemoveSection(sectionId: string, name: string) {
     if (!confirm(`Remove "${name}"? Its lines will stay, unsectioned.`)) return;
     setRemovingSectionId(sectionId);
-    const result = await removeSectionAction(order.id, eventId, sectionId, name);
+    const result = await removeSectionAction(order.id, scopeId, sectionId, name);
     setRemovingSectionId(null);
     if (!result.ok) toast.error(result.message ?? "Could not remove section.");
   }
@@ -404,7 +412,7 @@ export function EventOrderPanel({
           }
           lastUpdated={new Date(eventOrder.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={
-            !isFinalized ? (
+            preBooking ? undefined : !isFinalized ? (
               <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
                 onClick={() => requestFinalize(eventOrder.id, eventOrder.total, eventOrder.lines.length)}>
                 {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
@@ -436,6 +444,11 @@ export function EventOrderPanel({
           <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
           {" "}— amount due is on Invoice / Payments.
         </p>
+        {preBooking && (
+          <p className="text-xs text-muted-foreground -mt-1">
+            Finalize, share with the client, and the invoice link wait until this relationship is Booked. They describe the booked occasion.
+          </p>
+        )}
         {selectedPackageName && (
           <p className="text-xs text-muted-foreground -mt-1">
             Package context: <span className="font-medium text-foreground">{selectedPackageName}</span> (commercial purchase — not this Event Order)
@@ -468,7 +481,7 @@ export function EventOrderPanel({
             )}
             <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={lifecyclePending}
               onClick={() => startLifecycle(async () => {
-                const result = await reopenEventOrderAction(eventOrder.id, eventId);
+                const result = await reopenEventOrderAction(eventOrder.id, scopeId);
                 if (!result.ok) toast.error(result.message ?? "Could not reopen.");
                 else refresh();
               })}>
@@ -484,7 +497,9 @@ export function EventOrderPanel({
         )}
         {clientId && (
           <div className="pt-3 mt-3 border-t border-border/60">
-            <EventOrderInvoiceLink eventOrderId={eventOrder.id} eventId={eventId} clientId={clientId} invoices={invoices} />
+            {!preBooking && (
+            <EventOrderInvoiceLink eventOrderId={eventOrder.id} eventId={scopeId} clientId={clientId} invoices={invoices} />
+            )}
           </div>
         )}
       </CardHeader>
@@ -520,13 +535,13 @@ export function EventOrderPanel({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1">
                   <p className="text-sm font-semibold text-heading">{section.name}</p>
-                  <SectionFloorPlanLink eventOrderId={eventOrder.id} eventId={eventId} section={section} floorPlans={floorPlans} disabled={isFinalized} />
+                  <SectionFloorPlanLink eventOrderId={eventOrder.id} eventId={scopeId} section={section} floorPlans={floorPlans} disabled={isFinalized} />
                 </div>
                 <div className="flex items-center gap-2">
                   {!isFinalized && (
                     <AddLineSheet
                       eventOrderId={eventOrder.id}
-                      eventId={eventId}
+                      eventId={scopeId}
                       sectionId={section.id}
                       offerings={offerings}
                       packages={packages}
@@ -553,7 +568,7 @@ export function EventOrderPanel({
                       line={line}
                       sections={eventOrder.sections}
                       eventOrderId={eventOrder.id}
-                      eventId={eventId}
+                      eventId={scopeId}
                       canEdit={!isFinalized}
                       removing={removingId === line.id}
                       onRemove={() => handleRemoveLine(line)}
@@ -577,7 +592,7 @@ export function EventOrderPanel({
                   line={line}
                   sections={eventOrder.sections}
                   eventOrderId={eventOrder.id}
-                  eventId={eventId}
+                  eventId={scopeId}
                   canEdit={!isFinalized}
                   removing={removingId === line.id}
                   onRemove={() => handleRemoveLine(line)}
@@ -628,10 +643,10 @@ export function EventOrderPanel({
 
         {!isFinalized && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
-            <AddSectionInline eventOrderId={eventOrder.id} eventId={eventId} disabled={lifecyclePending} />
+            <AddSectionInline eventOrderId={eventOrder.id} eventId={scopeId} disabled={lifecyclePending} />
             <AddLineSheet
               eventOrderId={eventOrder.id}
-              eventId={eventId}
+              eventId={scopeId}
               sectionId={null}
               offerings={offerings}
               packages={packages}
@@ -662,7 +677,7 @@ export function EventOrderPanel({
         if (!applyTemplate) return;
         await new Promise<void>((resolve) => {
           startApplying(async () => {
-            const result = await applyEventOrderTemplateAction(order.id, eventId, applyTemplate.id, selections);
+            const result = await applyEventOrderTemplateAction(order.id, scopeId, applyTemplate.id, selections);
             if (!result.ok) toast.error(result.message ?? "Could not apply this template.");
             else {
               setApplyOpen(false);

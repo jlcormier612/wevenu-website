@@ -141,8 +141,8 @@ describe("booked page — conversion and copy seams", () => {
     const fn = src.slice(fnStart, fnEnd);
     assert.doesNotMatch(fn, /inviteClient\(/);
     assert.match(fn, /insertClient\(/);
-    assert.match(fn, /autoCreateEvent\(/);
-    assert.match(fn, /startTime: input\.ceremonyTime/);
+    assert.doesNotMatch(fn, /autoCreateEvent\(/);
+    assert.doesNotMatch(fn, /insertClientWithDatedEvent\(/);
     assert.doesNotMatch(fn, /updateLeadSalesStage/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
     assert.doesNotMatch(fn, /releasePlaybookApplication/);

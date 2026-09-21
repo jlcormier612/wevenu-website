@@ -53,6 +53,22 @@ export async function addEntry(eventId: string, input: TimelineEntryInput): Prom
   return result as AddEntryResult;
 }
 
+export async function getClientTimelineEntries(clientId: string): Promise<TimelineEntry[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientTimelineEntries(await createClient(), venue.id, clientId);
+}
+
+export async function addClientEntry(clientId: string, input: TimelineEntryInput): Promise<AddEntryResult> {
+  if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
+  const result = await withVenue(async (supabase, venueId) => {
+    const entry = await repo.insertClientEntry(supabase, venueId, clientId, input);
+    return { ok: true, entry } as AddEntryResult;
+  });
+  return result as AddEntryResult;
+}
+
 export async function updateEntry(entryId: string, input: TimelineEntryInput): Promise<TimelineActionResult> {
   if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
   const result = await withVenue(async (supabase, venueId) => {
@@ -113,7 +129,17 @@ export async function applyTemplate(
   return result as TimelineActionResult;
 }
 
-// ---- Sections ------------------------------------------------------------------
+export async function applyClientStarterTemplate(
+  clientId: string, templateId: string, eventStartTime: string | null,
+): Promise<TimelineActionResult> {
+  const template = TIMELINE_TEMPLATES.find((t) => t.id === templateId);
+  if (!template) return { ok: false, message: "Template not found." };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.applyTemplateToClient(supabase, venueId, clientId, template, eventStartTime);
+    return { ok: true } as TimelineActionResult;
+  });
+  return result as TimelineActionResult;
+}
 
 export async function getSections(eventId: string): Promise<TimelineSection[]> {
   if (!isSupabaseConfigured) return [];
@@ -122,10 +148,26 @@ export async function getSections(eventId: string): Promise<TimelineSection[]> {
   return repo.getSections(await createClient(), venue.id, eventId);
 }
 
+export async function getClientSections(clientId: string): Promise<TimelineSection[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientSections(await createClient(), venue.id, clientId);
+}
+
 export async function addSection(eventId: string, name: string, sortOrder: number): Promise<AddSectionResult> {
   if (!name.trim()) return { ok: false, message: "Section name is required." };
   const result = await withVenue(async (supabase, venueId) => {
     const section = await repo.insertSection(supabase, venueId, eventId, name, sortOrder);
+    return { ok: true, section } as AddSectionResult;
+  });
+  return result as AddSectionResult;
+}
+
+export async function addClientSection(clientId: string, name: string, sortOrder: number): Promise<AddSectionResult> {
+  if (!name.trim()) return { ok: false, message: "Section name is required." };
+  const result = await withVenue(async (supabase, venueId) => {
+    const section = await repo.insertClientSection(supabase, venueId, clientId, name, sortOrder);
     return { ok: true, section } as AddSectionResult;
   });
   return result as AddSectionResult;

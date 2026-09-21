@@ -184,7 +184,7 @@ export function depositFact(input: {
       key: "deposit",
       title: "Deposit",
       state: "Not required",
-      detail: "This venue's booking rule does not require an initial payment.",
+      detail: "This venue does not require an initial payment.",
     };
   }
   const line = input.lines.find(
@@ -232,9 +232,9 @@ export function bookedFact(input: {
   })) {
     return {
       key: "booked",
-      title: "Booked",
-      state: "Booked",
-      detail: "The venue booking rule is satisfied. This is not the event date.",
+      title: "Commercial milestones",
+      state: "Recorded",
+      detail: "These are business facts. Your venue's booking workflow determines when the relationship becomes Booked.",
     };
   }
   if (prefs.agreementMethod === "contract" && input.selection?.status === "accepted" && input.contract?.status !== "signed") {
@@ -242,7 +242,7 @@ export function bookedFact(input: {
       key: "booked",
       title: "Booked",
       state: "Not booked",
-      detail: "The proposal is accepted. A signed contract is still required.",
+      detail: "The proposal is accepted and the contract is not signed yet. Your venue's booking workflow determines when the relationship becomes Booked.",
     };
   }
   if (prefs.initialPaymentRequired && input.selection?.status === "accepted") {
@@ -253,7 +253,7 @@ export function bookedFact(input: {
         key: "booked",
         title: "Booked",
         state: "Not booked",
-        detail: `${amount} is still required. Accepting the proposal did not book this.`,
+        detail: `${amount} has not been paid. A payment does not book this relationship. Your venue's booking workflow determines when it becomes Booked.`,
       };
     }
   }
@@ -261,7 +261,7 @@ export function bookedFact(input: {
     key: "booked",
     title: "Booked",
     state: "Not booked",
-    detail: "Booking follows the venue booking rule. A selected package or a share link is not a booking.",
+    detail: "Your venue's booking workflow determines when the relationship becomes Booked. A selected package or a share link is not a booking.",
   };
 }
 

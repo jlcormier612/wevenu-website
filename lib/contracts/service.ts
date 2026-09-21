@@ -806,20 +806,7 @@ export async function venueSignContract(
       const { triggerAutoComplete } = await import("@/lib/playbooks/service");
       await triggerAutoComplete(supabase, venueId, contract.eventId, "contract_signed");
     }
-    let newlyBooked = false;
-    let bookedClientId: string | null = null;
-    let bookedEventId: string | null = null;
     if (contract.clientId) {
-      const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-      const stamped = await maybeStampCommercialBookedAt(supabase, venueId, {
-        clientId: contract.clientId,
-        eventId: contract.eventId,
-      });
-      if (stamped?.newlyBooked) {
-        newlyBooked = true;
-        bookedClientId = stamped.clientId;
-        bookedEventId = stamped.eventId;
-      }
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from("luv_celebrations") as any).insert({
@@ -836,9 +823,9 @@ export async function venueSignContract(
 
     return {
       ok: true,
-      newlyBooked,
-      clientId: bookedClientId,
-      eventId: bookedEventId,
+      newlyBooked: false,
+      clientId: contract.clientId,
+      eventId: contract.eventId,
     } as ContractActionResult;
   });
   return result as ContractActionResult;
@@ -1128,15 +1115,6 @@ export async function signContractByToken(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
       }
-      if (contractRow.clientId) {
-        const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-        const admin = createAdminClient();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await maybeStampCommercialBookedAt(admin as any, contractRow.venueId, {
-          clientId: contractRow.clientId,
-          eventId: contractRow.eventId,
-        });
-      }
     }
 
     return {
@@ -1172,15 +1150,6 @@ export async function signContractByToken(
       const admin = createAdminClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
-    }
-    if (contractRow.clientId) {
-      const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-      const admin = createAdminClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await maybeStampCommercialBookedAt(admin as any, contractRow.venueId, {
-        clientId: contractRow.clientId,
-        eventId: contractRow.eventId,
-      });
     }
   }
 

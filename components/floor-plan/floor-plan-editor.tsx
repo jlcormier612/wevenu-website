@@ -62,6 +62,7 @@ import {
   updateObjectAction,
   updateRoomSettingsAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
+import { createClientFloorPlanAction } from "@/app/(app)/clients/planning-actions";
 import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -604,6 +605,7 @@ function RoomSettingsPanel({
 export function FloorPlanEditor({
   initialPlan,
   eventId,
+  planningClientId = null,
   eventName,
   venueId,
   actions,
@@ -618,6 +620,7 @@ export function FloorPlanEditor({
 }: {
   initialPlan: FloorPlanCanvasPlan | null;
   eventId?: string;
+  planningClientId?: string | null;
   eventName?: string;
   venueId: string;
   /**
@@ -651,20 +654,24 @@ export function FloorPlanEditor({
   /** Staff view-only — no canvas mutations. */
   readOnly?: boolean;
 }) {
+  const refreshId = eventId || planningClientId || "";
+  const preBooking = Boolean(planningClientId) && !eventId;
   const boundActions: FloorPlanEditorActions = actions ?? {
-    create: () => createFloorPlanAction(eventId!),
-    addObject: (planId, input) => addObjectAction(planId, eventId!, input),
+    create: () => preBooking
+      ? createClientFloorPlanAction(planningClientId!)
+      : createFloorPlanAction(refreshId),
+    addObject: (planId, input) => addObjectAction(planId, refreshId, input),
     updateObject: (objId, input) => updateObjectAction(objId, input),
-    deleteObject: (objId) => deleteObjectAction(objId, eventId!),
-    reorderObject: (planId, objId, direction) => reorderObjectAction(planId, objId, eventId!, direction),
+    deleteObject: (objId) => deleteObjectAction(objId, refreshId),
+    reorderObject: (planId, objId, direction) => reorderObjectAction(planId, objId, refreshId, direction),
     updateBackground: (planId, url, opacity, backgroundDocumentId) =>
-      updateBackgroundAction(planId, eventId!, url, opacity, backgroundDocumentId),
+      updateBackgroundAction(planId, refreshId, url, opacity, backgroundDocumentId),
     attachBackgroundDocument: (planId, payload) =>
-      attachFloorPlanBackgroundAction(planId, eventId!, payload),
-    setBackgroundLocked: (planId, locked) => setBackgroundLockedAction(planId, eventId!, locked),
-    updateRoomSettings: (planId, input) => updateRoomSettingsAction(planId, eventId!, input),
-    clear: (planId) => clearFloorPlanAction(planId, eventId!),
-    updateNotes: (planId, notes) => updateNotesAction(planId, eventId!, notes),
+      attachFloorPlanBackgroundAction(planId, refreshId, payload),
+    setBackgroundLocked: (planId, locked) => setBackgroundLockedAction(planId, refreshId, locked),
+    updateRoomSettings: (planId, input) => updateRoomSettingsAction(planId, refreshId, input),
+    clear: (planId) => clearFloorPlanAction(planId, refreshId),
+    updateNotes: (planId, notes) => updateNotesAction(planId, refreshId, notes),
   };
   const [plan, setPlan] = React.useState<FloorPlanCanvasPlan | null>(initialPlan);
   const [objects, setObjects] = React.useState<FloorPlanCanvasObject[]>(initialPlan?.objects ?? []);
@@ -1039,8 +1046,8 @@ export function FloorPlanEditor({
       let result: { ok: boolean; message?: string; documentId?: string };
       if (boundActions.attachBackgroundDocument) {
         result = await boundActions.attachBackgroundDocument(plan.id, payload);
-      } else if (eventId) {
-        result = await attachFloorPlanBackgroundAction(plan.id, eventId, payload);
+      } else if (eventId || planningClientId) {
+        result = await attachFloorPlanBackgroundAction(plan.id, (eventId || planningClientId)!, payload);
       } else {
         throw new Error("Missing floor plan context.");
       }

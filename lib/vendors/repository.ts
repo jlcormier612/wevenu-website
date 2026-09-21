@@ -53,7 +53,7 @@ type VendorReviewRow = {
 };
 
 type EVARow = {
-  id: string; venue_id: string; event_id: string; vendor_id: string;
+  id: string; venue_id: string; event_id: string | null; vendor_id: string;
   arrival_time: string | null; setup_location: string | null; load_in_notes: string | null;
   notes: string | null; created_at: string;
   checked_in_at: string | null; setup_complete_at: string | null;
@@ -147,7 +147,7 @@ function mapEVA(r: EVARow): EventVendorAssignment {
   return {
     id:              r.id,
     venueId:         r.venue_id,
-    eventId:         r.event_id,
+    eventId:         r.event_id ?? "",
     vendorId:        r.vendor_id,
     vendorName:      r.vendors?.business_name ?? "Unknown vendor",
     vendorCategory:  r.vendors?.category ?? null,
@@ -545,6 +545,21 @@ export async function getEventVendorAssignments(
   return (data as unknown as EVARow[]).map(mapEVA);
 }
 
+export async function getClientVendorAssignments(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<EventVendorAssignment[]> {
+  const { data, error } = await client
+    .from("event_vendor_assignments")
+    .select(EVA_VENUE_SELECT)
+    .eq("client_id", clientId)
+    .is("event_id", null)
+    .eq("venue_id", venueId)
+    .order("arrival_time", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as unknown as EVARow[]).map(mapEVA);
+}
+
 export async function insertVendorAssignment(
   client: DbClient, venueId: string, eventId: string, input: VendorAssignmentInput,
 ): Promise<{ assignment: EventVendorAssignment; created: boolean }> {
@@ -569,6 +584,40 @@ export async function insertVendorAssignment(
       .from("event_vendor_assignments")
       .select(EVA_VENUE_SELECT)
       .eq("event_id", eventId)
+      .eq("vendor_id", input.vendorId)
+      .eq("venue_id", venueId)
+      .single<EVARow>();
+    if (readErr || !existing) throw readErr ?? error;
+    return { assignment: mapEVA(existing), created: false };
+  }
+  if (error) throw error;
+  return { assignment: mapEVA(data), created: true };
+}
+
+export async function insertClientVendorAssignment(
+  client: DbClient, venueId: string, clientId: string, input: VendorAssignmentInput,
+): Promise<{ assignment: EventVendorAssignment; created: boolean }> {
+  const { data, error } = await client
+    .from("event_vendor_assignments")
+    .insert({
+      venue_id:       venueId,
+      event_id:       null,
+      client_id:      clientId,
+      vendor_id:      input.vendorId,
+      arrival_time:   input.arrivalTime || null,
+      setup_location: input.setupLocation.trim() || null,
+      load_in_notes:  input.loadInNotes.trim() || null,
+      notes:          input.notes.trim() || null,
+    })
+    .select(EVA_VENUE_SELECT)
+    .single<EVARow>();
+
+  if (error?.code === "23505") {
+    const { data: existing, error: readErr } = await client
+      .from("event_vendor_assignments")
+      .select(EVA_VENUE_SELECT)
+      .eq("client_id", clientId)
+      .is("event_id", null)
       .eq("vendor_id", input.vendorId)
       .eq("venue_id", venueId)
       .single<EVARow>();

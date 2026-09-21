@@ -80,8 +80,8 @@ describe("Payment timing — genuine commercial booking moment stamps", () => {
     const convert = src.slice(src.indexOf("export async function convertLeadToClient"));
     assert.doesNotMatch(convert, /stampBookingDateIfNeeded|ensureEventBookedAt/);
     const stamp = readFileSync(resolve("lib/booking-journey/stamp-commercial-booked-at.ts"), "utf8");
-    assert.match(stamp, /maybeStampCommercialBookedAt/);
-    assert.match(stamp, /isCommerciallyBooked/);
+    assert.match(stamp, /do not move a relationship to Booked/);
+    assert.doesNotMatch(stamp, /isCommerciallyBooked/);
   });
 
   it("Direct Add does not stamp booked_at for live dated bookings", () => {
@@ -91,12 +91,12 @@ describe("Payment timing — genuine commercial booking moment stamps", () => {
     assert.doesNotMatch(body, /stampBookingDateIfNeeded|ensureEventBookedAt/);
   });
 
-  it("markLineItemPaid and Stripe success call commercial stamp", () => {
-    assert.match(
+  it("markLineItemPaid and Stripe success do not book the relationship", () => {
+    assert.doesNotMatch(
       readFileSync(resolve("lib/payments/service.ts"), "utf8"),
       /maybeStampCommercialBookedAt/,
     );
-    assert.match(
+    assert.doesNotMatch(
       readFileSync(resolve("lib/stripe/webhook-handlers.ts"), "utf8"),
       /maybeStampCommercialBookedAt/,
     );
@@ -121,14 +121,12 @@ describe("Payment timing — migration booked_at", () => {
   });
 });
 
-describe("Payment timing — contract signing stamps booked_at only via commercial Booked helper", () => {
-  it("contract paths may call maybeStampCommercialBookedAt but not write booked_at directly", () => {
-    // Commercial Booked = agreement + deposit. Signing may complete that milestone
-    // when a deposit is already paid — via maybeStampCommercialBookedAt only.
+describe("Payment timing — contract signing does not book the relationship", () => {
+  it("contract paths do not call maybeStampCommercialBookedAt or write booked_at directly", () => {
     const service = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
     const external = readFileSync(resolve("lib/contracts/external-execution.ts"), "utf8");
-    assert.match(service, /maybeStampCommercialBookedAt/);
-    assert.match(external, /maybeStampCommercialBookedAt/);
+    assert.doesNotMatch(service, /maybeStampCommercialBookedAt/);
+    assert.doesNotMatch(external, /maybeStampCommercialBookedAt/);
     for (const file of [
       "lib/contracts/service.ts",
       "lib/contracts/finalize.ts",

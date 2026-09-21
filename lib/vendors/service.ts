@@ -83,6 +83,13 @@ export async function getEventVendorAssignments(eventId: string): Promise<EventV
   }));
 }
 
+export async function getClientVendorAssignments(clientId: string): Promise<EventVendorAssignment[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientVendorAssignments(await createClient(), venue.id, clientId);
+}
+
 // ---- vendor CRUD ------------------------------------------------------------
 
 /** Migration Center — mirrors lib/leads/service.ts's findActiveDuplicateLead(). */
@@ -228,6 +235,19 @@ export async function assignVendor(
       });
     }
   }
+  return result as { ok: true; assignment: EventVendorAssignment } | VendorActionResult;
+}
+
+/** Preparation only. Does not reserve the vendor's calendar or tell them an event is booked. */
+export async function assignVendorToClient(
+  clientId: string, input: VendorAssignmentInput,
+): Promise<{ ok: true; assignment: EventVendorAssignment } | VendorActionResult> {
+  const errors = validateAssignmentInput(input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.vendorId };
+  const result = await withVenue(async (supabase, venueId) => {
+    const inserted = await repo.insertClientVendorAssignment(supabase, venueId, clientId, input);
+    return { ok: true, assignment: inserted.assignment };
+  });
   return result as { ok: true; assignment: EventVendorAssignment } | VendorActionResult;
 }
 

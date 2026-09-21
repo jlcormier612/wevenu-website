@@ -9,7 +9,7 @@ import { sumLines } from "@/lib/event-orders/constants";
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type OrderRow = {
-  id: string; venue_id: string; event_id: string; status: "open" | "finalized";
+  id: string; venue_id: string; event_id: string | null; client_id?: string | null; status: "open" | "finalized";
   revision: number; finalized_at: string | null; shared_at: string | null; template_id: string | null;
   created_at: string; updated_at: string;
 };
@@ -32,7 +32,7 @@ type ActivityRow = {
 };
 
 const mapOrder = (r: OrderRow): EventOrder => ({
-  id: r.id, venueId: r.venue_id, eventId: r.event_id, status: r.status,
+  id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "", clientId: r.client_id ?? null, status: r.status,
   revision: r.revision, finalizedAt: r.finalized_at, sharedAt: r.shared_at, templateId: r.template_id,
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
@@ -106,6 +106,40 @@ export async function insertEventOrder(client: DbClient, venueId: string, eventI
     .insert({ venue_id: venueId, event_id: eventId, template_id: templateId }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
+}
+
+export async function insertEventOrderForClient(client: DbClient, venueId: string, clientId: string, templateId: string | null = null): Promise<string> {
+  const { data, error } = await client.from("event_orders")
+    .insert({ venue_id: venueId, event_id: null, client_id: clientId, template_id: templateId }).select("id").single<{ id: string }>();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function getEventOrderByClient(client: DbClient, venueId: string, clientId: string): Promise<EventOrderWithDetails | null> {
+  const { data: orderRow, error } = await client.from("event_orders")
+    .select("*").eq("client_id", clientId).is("event_id", null).eq("venue_id", venueId).maybeSingle<OrderRow>();
+  if (error) throw error;
+  if (!orderRow) return null;
+  return hydrateEventOrder(client, orderRow);
+}
+
+async function hydrateEventOrder(client: DbClient, orderRow: OrderRow): Promise<EventOrderWithDetails> {
+  const [sectionsRes, linesRes, activitiesRes] = await Promise.all([
+    client.from("event_order_sections").select("*").eq("event_order_id", orderRow.id).order("sort_order"),
+    client.from("event_order_lines").select("*").eq("event_order_id", orderRow.id).order("sort_order"),
+    client.from("event_order_activities").select("*").eq("event_order_id", orderRow.id).order("created_at", { ascending: false }),
+  ]);
+  if (sectionsRes.error) throw sectionsRes.error;
+  if (linesRes.error) throw linesRes.error;
+  if (activitiesRes.error) throw activitiesRes.error;
+  const lines = (linesRes.data as LineRow[]).map(mapLine);
+  return {
+    ...mapOrder(orderRow),
+    sections: (sectionsRes.data as SectionRow[]).map(mapSection),
+    lines,
+    activities: (activitiesRes.data as ActivityRow[]).map(mapActivity),
+    total: sumLines(lines),
+  };
 }
 
 export async function finalizeEventOrder(client: DbClient, venueId: string, eventOrderId: string, nextRevision: number): Promise<void> {

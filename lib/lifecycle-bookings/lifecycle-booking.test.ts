@@ -78,16 +78,17 @@ describe("Lifecycle booking writers", () => {
     assert.match(leadsSvc, /origin: "pipeline"/);
   });
 
-  it("convertLeadToClient does not set pipeline Booked; commercial stamp does", () => {
+  it("convertLeadToClient does not set pipeline Booked, and neither does a commercial stamp", () => {
     const convert = clientsSvc.slice(clientsSvc.indexOf("export async function convertLeadToClient"));
     assert.doesNotMatch(convert, /updateLeadSalesStage/);
     assert.doesNotMatch(convert, /recordLifecycleBooking/);
     assert.match(convert, /markConvertedClientAsBookingFile/);
     const book = readFileSync(resolve("lib/booking-journey/book-client.ts"), "utf8");
-    assert.match(book, /updateLeadSalesStage/);
-    assert.match(book, /allowBooked: true/);
+    assert.match(book, /book_relationship/);
+    assert.doesNotMatch(book, /updateLeadSalesStage/);
     const stamp = readFileSync(resolve("lib/booking-journey/stamp-commercial-booked-at.ts"), "utf8");
-    assert.match(stamp, /bookClient/);
+    assert.doesNotMatch(stamp, /bookClient\(/);
+    assert.match(stamp, /return null/);
   });
 
   it("Direct Add records origin=direct for live dated creates", () => {

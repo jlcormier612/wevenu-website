@@ -19,7 +19,7 @@ import type {
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type EntryRow = {
-  id: string; venue_id: string; event_id: string;
+  id: string; venue_id: string; event_id: string | null; client_id?: string | null;
   title: string; description: string | null; notes: string | null;
   entry_time: string | null; day_offset: number; sort_order: number;
   audiences: string[]; section_id: string | null;
@@ -29,13 +29,13 @@ type EntryRow = {
   created_at: string; updated_at: string;
 };
 
-type SectionRow = { id: string; venue_id: string; event_id: string; name: string; sort_order: number; client_can_add: boolean; created_at: string; updated_at: string; };
+type SectionRow = { id: string; venue_id: string; event_id: string | null; client_id?: string | null; name: string; sort_order: number; client_can_add: boolean; created_at: string; updated_at: string; };
 type LinkRow = { id: string; venue_id: string; timeline_entry_id: string; url: string; label: string | null; sort_order: number; created_at: string; };
 type AttachmentRow = { id: string; venue_id: string; timeline_entry_id: string; document_id: string; sort_order: number; created_at: string; };
 
 function mapEntry(r: EntryRow): TimelineEntry {
   return {
-    id: r.id, venueId: r.venue_id, eventId: r.event_id,
+    id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "",
     title: r.title, description: r.description, notes: r.notes,
     entryTime: r.entry_time?.slice(0, 5) ?? null,
     dayOffset: r.day_offset ?? 0,
@@ -51,17 +51,30 @@ function mapEntry(r: EntryRow): TimelineEntry {
 }
 
 async function resolveClampedDayOffset(
-  client: DbClient, eventId: string, dayOffset: number | null | undefined,
+  client: DbClient,
+  eventId: string | null,
+  dayOffset: number | null | undefined,
+  clientId?: string | null,
 ): Promise<number> {
-  const { data } = await client.from("events")
-    .select("event_date, event_end_date")
-    .eq("id", eventId)
-    .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
-  return clampDayOffset(dayOffset ?? 0, data?.event_date ?? null, data?.event_end_date);
+  if (eventId) {
+    const { data } = await client.from("events")
+      .select("event_date, event_end_date")
+      .eq("id", eventId)
+      .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
+    return clampDayOffset(dayOffset ?? 0, data?.event_date ?? null, data?.event_end_date);
+  }
+  if (clientId) {
+    const { data } = await client.from("clients")
+      .select("event_date")
+      .eq("id", clientId)
+      .maybeSingle<{ event_date: string | null }>();
+    return clampDayOffset(dayOffset ?? 0, data?.event_date ?? null, null);
+  }
+  return clampDayOffset(dayOffset ?? 0, null, null);
 }
 
 function mapSection(r: SectionRow): TimelineSection {
-  return { id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name, sortOrder: r.sort_order, clientCanAdd: r.client_can_add, createdAt: r.created_at, updatedAt: r.updated_at };
+  return { id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "", name: r.name, sortOrder: r.sort_order, clientCanAdd: r.client_can_add, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 
 /** Venue never owns guest publication — strip on write so legacy tags can't re-stick. */
@@ -142,6 +155,44 @@ export async function insertEntry(
   return mapEntry(data);
 }
 
+/** Venue-owned timeline prepared before Booked. Submissions stay on the Event. */
+export async function getClientTimelineEntries(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<TimelineEntry[]> {
+  const { data, error } = await client.from("timeline_entries").select("*")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null).eq("owner", "venue")
+    .order("day_offset").order("sort_order").order("created_at");
+  if (error) throw error;
+  const entries = (data as EntryRow[]).map(mapEntry);
+  entries.sort(compareTimelineEntries);
+  return entries;
+}
+
+export async function insertClientEntry(
+  client: DbClient, venueId: string, clientId: string, input: TimelineEntryInput,
+): Promise<TimelineEntry> {
+  const dayOffset = await resolveClampedDayOffset(client, null, input.dayOffset, clientId);
+  const { data, error } = await client.from("timeline_entries")
+    .insert({
+      venue_id: venueId, event_id: null, client_id: clientId,
+      title: input.title.trim(),
+      description: input.description.trim() || null,
+      notes: input.notes?.trim() || null,
+      entry_time: input.entryTime || null,
+      day_offset: dayOffset,
+      audiences: sanitizeVenueAudiences(input.audiences),
+      section_id: input.sectionId ?? null,
+      sort_order: input.sortOrder ?? 0,
+      owner: "venue",
+      lock_state: input.lockState ?? "locked",
+      status: input.status ?? "not_started",
+      assigned_to_staff_id: input.assignedToStaffId ?? null,
+    })
+    .select().single<EntryRow>();
+  if (error) throw error;
+  return mapEntry(data);
+}
+
 /**
  * Coordinator-side entry update, via the Timeline editor's own save form.
  * Refuses outright on anything that isn't owner='venue': the couple's own
@@ -159,13 +210,13 @@ export async function updateEntry(
   client: DbClient, venueId: string, entryId: string, input: TimelineEntryInput,
 ): Promise<void> {
   const { data: current } = await client.from("timeline_entries")
-    .select("owner, event_id, day_offset")
+    .select("owner, event_id, client_id, day_offset")
     .eq("id", entryId).eq("venue_id", venueId)
-    .maybeSingle<{ owner: TimelineOwner; event_id: string; day_offset: number }>();
+    .maybeSingle<{ owner: TimelineOwner; event_id: string | null; client_id: string | null; day_offset: number }>();
   if (current?.owner !== "venue") throw new Error("This item belongs to the couple's own planning timeline and can't be edited here.");
 
   const dayOffset = await resolveClampedDayOffset(
-    client, current.event_id, input.dayOffset !== undefined ? input.dayOffset : current.day_offset,
+    client, current.event_id, input.dayOffset !== undefined ? input.dayOffset : current.day_offset, current.client_id,
   );
   const patch: Record<string, unknown> = {
     title: input.title.trim(),
@@ -324,15 +375,18 @@ export async function reorderEntries(
   client: DbClient, venueId: string, updates: { id: string; sectionId: string | null; sortOrder: number; dayOffset?: number }[],
 ): Promise<void> {
   if (updates.length === 0) return;
-  const { data: owned } = await client.from("timeline_entries").select("id, event_id")
+  const { data: owned } = await client.from("timeline_entries").select("id, event_id, client_id")
     .eq("venue_id", venueId).eq("owner", "venue").in("id", updates.map((u) => u.id));
-  const ownedById = new Map((owned ?? []).map((r) => [(r as { id: string; event_id: string }).id, (r as { id: string; event_id: string }).event_id]));
+  const ownedById = new Map((owned ?? []).map((r) => {
+    const row = r as { id: string; event_id: string | null; client_id: string | null };
+    return [row.id, row] as const;
+  }));
   for (const u of updates) {
-    const eventId = ownedById.get(u.id);
-    if (!eventId) continue;
+    const row = ownedById.get(u.id);
+    if (!row) continue;
     const patch: Record<string, unknown> = { section_id: u.sectionId, sort_order: u.sortOrder };
     if (u.dayOffset !== undefined) {
-      patch.day_offset = await resolveClampedDayOffset(client, eventId, u.dayOffset);
+      patch.day_offset = await resolveClampedDayOffset(client, row.event_id, u.dayOffset, row.client_id);
     }
     const { error } = await client.from("timeline_entries")
       .update(patch)
@@ -365,6 +419,25 @@ export async function applyTemplate(
   if (error) throw error;
 }
 
+export async function applyTemplateToClient(
+  client: DbClient, venueId: string, clientId: string,
+  template: TimelineTemplate, startTime: string | null,
+): Promise<void> {
+  const rows = template.entries.map((te, i) => ({
+    venue_id: venueId,
+    event_id: null,
+    client_id: clientId,
+    title: te.title,
+    description: te.description ?? null,
+    entry_time: resolveEntryTimeFromOffset(te.minutesOffset, startTime),
+    day_offset: Math.max(0, Math.trunc(te.dayOffset ?? 0)),
+    sort_order: i,
+    owner: "venue" as const,
+  }));
+  const { error } = await client.from("timeline_entries").insert(rows);
+  if (error) throw error;
+}
+
 // ---- Sections ------------------------------------------------------------------
 
 export async function getSections(client: DbClient, venueId: string, eventId: string): Promise<TimelineSection[]> {
@@ -374,9 +447,24 @@ export async function getSections(client: DbClient, venueId: string, eventId: st
   return (data as SectionRow[]).map(mapSection);
 }
 
+export async function getClientSections(client: DbClient, venueId: string, clientId: string): Promise<TimelineSection[]> {
+  const { data, error } = await client.from("timeline_sections").select("*")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null).order("sort_order");
+  if (error) throw error;
+  return (data as SectionRow[]).map(mapSection);
+}
+
 export async function insertSection(client: DbClient, venueId: string, eventId: string, name: string, sortOrder: number): Promise<TimelineSection> {
   const { data, error } = await client.from("timeline_sections")
     .insert({ venue_id: venueId, event_id: eventId, name: name.trim(), sort_order: sortOrder })
+    .select().single<SectionRow>();
+  if (error) throw error;
+  return mapSection(data);
+}
+
+export async function insertClientSection(client: DbClient, venueId: string, clientId: string, name: string, sortOrder: number): Promise<TimelineSection> {
+  const { data, error } = await client.from("timeline_sections")
+    .insert({ venue_id: venueId, event_id: null, client_id: clientId, name: name.trim(), sort_order: sortOrder })
     .select().single<SectionRow>();
   if (error) throw error;
   return mapSection(data);
@@ -416,7 +504,9 @@ export async function duplicateSection(
   if (sourceError) throw sourceError;
   if (!sourceRow) throw new Error("Section not found.");
 
-  const newSection = await insertSection(client, venueId, eventId, `${sourceRow.name} (Copy)`, sortOrder);
+  const newSection = sourceRow.event_id
+    ? await insertSection(client, venueId, sourceRow.event_id, `${sourceRow.name} (Copy)`, sortOrder)
+    : await insertClientSection(client, venueId, sourceRow.client_id ?? eventId, `${sourceRow.name} (Copy)`, sortOrder);
 
   const { data: sourceEntryRows, error: entriesError } = await client.from("timeline_entries")
     .select("*").eq("section_id", sourceSectionId).eq("venue_id", venueId).eq("owner", "venue")
@@ -427,7 +517,10 @@ export async function duplicateSection(
   if (sourceEntries.length === 0) return { section: newSection, entries: [] };
 
   const rows = sourceEntries.map((e, i) => ({
-    venue_id: venueId, event_id: eventId, section_id: newSection.id,
+    venue_id: venueId,
+    event_id: sourceRow.event_id,
+    client_id: sourceRow.event_id ? null : (sourceRow.client_id ?? null),
+    section_id: newSection.id,
     title: e.title, description: e.description, notes: e.notes, entry_time: e.entryTime,
     day_offset: e.dayOffset ?? 0,
     audiences: sanitizeVenueAudiences(e.audiences), owner: "venue" as const, lock_state: e.lockState,

@@ -344,6 +344,16 @@ export async function getEventTasks(client: DbClient, venueId: string, eventId: 
   return (data as any[]).map((r) => mapEventTask({ ...r, assigned_to_name: r.assignee?.full_name ?? null }));
 }
 
+export async function getClientTasks(client: DbClient, venueId: string, clientId: string): Promise<EventTask[]> {
+  const { data, error } = await client.from("event_tasks")
+    .select("*, assignee:assigned_to_staff_id(full_name)")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null)
+    .order("sort_order").order("due_date");
+  if (error) throw error;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((r) => mapEventTask({ ...r, assigned_to_name: r.assignee?.full_name ?? null }));
+}
+
 export async function getEventPlaybookApplications(client: DbClient, venueId: string, eventId: string): Promise<EventPlaybookApplication[]> {
   const { data, error } = await client.from("event_playbook_applications")
     .select("event_id, kind, template_id, template_name, applied_at, released_at")
@@ -352,6 +362,23 @@ export async function getEventPlaybookApplications(client: DbClient, venueId: st
   return (data ?? []).map((r) => ({
     eventId: r.event_id, kind: r.kind as EventPlaybookApplication["kind"],
     templateId: r.template_id, templateName: r.template_name, appliedAt: r.applied_at,
+    releasedAt: r.released_at ?? null,
+  }));
+}
+
+export async function getClientPlaybookApplications(client: DbClient, venueId: string, clientId: string): Promise<EventPlaybookApplication[]> {
+  const { data, error } = await client.from("event_playbook_applications")
+    .select("event_id, kind, template_id, template_name, applied_at, released_at")
+    .eq("venue_id", venueId)
+    .eq("client_id", clientId)
+    .is("event_id", null);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    eventId: r.event_id ?? "",
+    kind: r.kind as EventPlaybookApplication["kind"],
+    templateId: r.template_id,
+    templateName: r.template_name,
+    appliedAt: r.applied_at,
     releasedAt: r.released_at ?? null,
   }));
 }
@@ -504,6 +531,76 @@ export async function applyPlaybookToEvent(
     // engine. Client Planning is the one exception: a couple should never get
     // a reminder for a checklist they can't see yet, so its reminders are
     // deferred to release time instead (releasePlaybookApplication, below).
+    if (template.kind !== "client") {
+      await createRemindersForTask(client, venueId, inserted.id, dueDate, t);
+    }
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Apply a checklist to a client before an Event exists.
+ * Due dates use the preferred date as a planning anchor. That date is not occupancy.
+ * book_relationship attaches these rows to the Event; it does not copy them.
+ */
+export async function applyPlaybookToClient(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+  templateId: string,
+  anchorDate: string,
+  capabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
+): Promise<ApplyPlaybookResult> {
+  const template = await getTemplate(client, venueId, templateId);
+  if (!template) throw new Error("Template not found.");
+
+  const { error: markerError } = await client.from("event_playbook_applications").insert({
+    client_id: clientId, venue_id: venueId, template_id: templateId, kind: template.kind,
+    template_name: template.name,
+    released_at: template.kind === "venue" ? new Date().toISOString() : null,
+  });
+  if (markerError) {
+    if (markerError.code === "23505") return { ok: false, reason: "already_applied" };
+    throw markerError;
+  }
+
+  const [tasksRaw, milestones] = await Promise.all([
+    getTemplateTasks(client, venueId, templateId),
+    getMilestones(client, venueId, templateId),
+  ]);
+  const { filterTasksForVenueCapabilities } = await import("@/lib/playbooks/capabilities");
+  const { DEFAULT_PLANNING_CAPABILITIES } = await import("@/lib/playbooks/capabilities");
+  const tasks = filterTasksForVenueCapabilities(tasksRaw, capabilities ?? DEFAULT_PLANNING_CAPABILITIES);
+  if (!tasks.length) return { ok: true };
+
+  const milestoneById = new Map(milestones.map((m) => [m.id, m]));
+  for (const t of tasks.sort((a, b) => a.sortOrder - b.sortOrder)) {
+    const dueDate = offsetDate(anchorDate, t.daysOffset);
+    const milestone = milestoneById.get(t.milestoneId);
+    const { data: inserted, error } = await client.from("event_tasks")
+      .insert({
+        venue_id: venueId, client_id: clientId, template_task_id: t.id,
+        title: t.title, description: t.description, owner_type: t.ownerType,
+        visibility: t.visibility, due_date: dueDate, days_offset: t.daysOffset,
+        due_date_rule_kind: t.dueDateRuleKind,
+        category: t.category,
+        milestone_name: milestone?.name ?? "Planning",
+        milestone_kind: milestone?.kind ?? null,
+        auto_complete_trigger: t.autoCompleteTrigger,
+        depends_on_event_task_id: null,
+        is_required: t.isRequired, sort_order: t.sortOrder,
+        status: "pending",
+        reminder_before_days: t.reminderBeforeDays,
+        escalation_after_days: t.escalationAfterDays,
+        notify_on_assign: t.notifyOnAssign,
+        notify_on_complete: t.notifyOnComplete,
+        action_type: t.actionType,
+        action_label: t.actionLabel,
+      })
+      .select("id").single<{ id: string }>();
+    if (error) throw error;
+    await copyAttachmentsToContextLinks(client, venueId, t.id, inserted.id);
     if (template.kind !== "client") {
       await createRemindersForTask(client, venueId, inserted.id, dueDate, t);
     }

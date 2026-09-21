@@ -13,6 +13,7 @@ export type EventOrder = {
   id: string;
   venueId: string;
   eventId: string;
+  clientId?: string | null;
   status: EventOrderStatus;
   revision: number;
   finalizedAt: string | null;

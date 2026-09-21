@@ -13,6 +13,7 @@ import {
   removeVendorAssignmentAction,
   setVendorAssignmentPaymentAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
+import { assignVendorToClientAction } from "@/app/(app)/clients/planning-actions";
 import { ConversationThread } from "@/components/conversations/conversation-thread";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,7 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
 
   function save(nextFee: number | null, nextStatus: "pending" | "paid") {
     startTransition(async () => {
-      const result = await setVendorAssignmentPaymentAction(assignment.id, eventId, nextFee, nextStatus);
+      const result = await setVendorAssignmentPaymentAction(assignment.id, eventId || "", nextFee, nextStatus);
       if (result.ok) { setFee(nextFee); setStatus(nextStatus); router.refresh(); }
       else toast.error(result.message ?? "Could not update payment.");
     });
@@ -114,11 +115,13 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
 
 export function EventVendorsSection({
   eventId,
+  planningClientId = null,
   initialAssignments,
   availableVendors,
   vendorDocuments = [],
 }: {
   eventId: string;
+  planningClientId?: string | null;
   initialAssignments: EventVendorAssignment[];
   availableVendors: Vendor[];
   vendorDocuments?: (Document & { vendorName: string | null })[];
@@ -157,9 +160,10 @@ export function EventVendorsSection({
   function handleAdd() {
     if (!vendorId) return;
     startAdd(async () => {
-      const result = await assignVendorAction(eventId, {
-        vendorId, arrivalTime, setupLocation, loadInNotes, notes,
-      });
+      const input = { vendorId, arrivalTime, setupLocation, loadInNotes, notes };
+      const result = planningClientId && !eventId
+        ? await assignVendorToClientAction(planningClientId, input)
+        : await assignVendorAction(eventId, input);
       if (result.ok && "assignment" in result) {
         setAssignments(prev => [...prev, result.assignment]);
         resetForm();
@@ -175,7 +179,7 @@ export function EventVendorsSection({
       return;
     }
     setAssignments(prev => prev.filter(a => a.id !== assignmentId));
-    const result = await removeVendorAssignmentAction(assignmentId, eventId);
+    const result = await removeVendorAssignmentAction(assignmentId, eventId || planningClientId || "");
     if (!result.ok) {
       toast.error("Could not remove vendor.");
       router.refresh();
@@ -308,12 +312,14 @@ export function EventVendorsSection({
                 </div>
               )}
 
-              {/* Row 2: Check-in status + payment */}
+              {/* Check-in and payment describe the booked occasion. */}
+              {eventId ? (
               <div className="flex flex-wrap items-center gap-3 pt-0.5 border-t border-border/50">
                 <CheckinBadge label="Arrived"       checked={!!a.checkedInAt} />
                 <CheckinBadge label="Setup done"    checked={!!a.setupCompleteAt} />
                 <VendorPaymentControl eventId={eventId} assignment={a} />
               </div>
+              ) : null}
 
               {/* From vendor — docs they shared onto this event */}
               {(() => {

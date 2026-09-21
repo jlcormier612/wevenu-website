@@ -73,15 +73,33 @@ export async function getEventIdForClient(clientId: string): Promise<string | nu
 export async function createEvent(input: EventInput): Promise<CreateEventResult> {
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
+  if (!input.clientId) {
+    return {
+      ok: false,
+      message: "An event is created when you book the relationship. Choose the client, then book.",
+    };
+  }
   const result = await withVenue(async (supabase, venueId) => {
-    try {
-      const eventId = await repo.insertEvent(supabase, venueId, input);
-      return { ok: true, eventId } as CreateEventResult;
-    } catch (err) {
-      const fail = occupancyActionFailure(err);
-      if (fail) return fail as CreateEventResult;
-      throw err;
-    }
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
+      clientId: input.clientId,
+      source: "manual",
+      spaceId: input.spaceId,
+      event: {
+        name: input.name,
+        eventType: input.eventType,
+        eventDate: input.eventDate,
+        eventEndDate: input.eventEndDate,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        setupTime: input.setupTime,
+        teardownTime: input.teardownTime,
+        guestCount: input.guestCount,
+      },
+    });
+    if (!booked.ok) return { ok: false, message: booked.message } as CreateEventResult;
+    return { ok: true, eventId: booked.eventId } as CreateEventResult;
   });
   return result as CreateEventResult;
 }

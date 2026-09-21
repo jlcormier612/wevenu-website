@@ -30,9 +30,9 @@ describe("Phase 3 invite-at-release seams", () => {
     assert.doesNotMatch(fn, /inviteClient\(/);
     assert.match(fn, /insertClient\(/);
     assert.match(fn, /convertLeadHolds\(/);
-    assert.match(fn, /exitEnrollmentsForBooking\(/);
-    assert.match(fn, /autoCreateEvent\(/);
-    assert.match(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
+    assert.doesNotMatch(fn, /exitEnrollmentsForBooking\(/);
+    assert.doesNotMatch(fn, /autoCreateEvent\(/);
+    assert.doesNotMatch(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
     assert.doesNotMatch(fn, /status:\s*"confirmed"/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
 
@@ -83,7 +83,8 @@ describe("Phase 3 invite-at-release seams", () => {
 
     const panel = readFileSync(resolve("components/clients/prepare-planning-panel.tsx"), "utf8");
     assert.doesNotMatch(panel, /releasePlaybookAction/);
-    assert.match(panel, /applyPlaybookAction/);
+    const sheet = readFileSync(resolve("components/playbooks/playbook-apply-preview-sheet.tsx"), "utf8");
+    assert.match(sheet, /applyPlaybookAction/);
   });
 
   it("Prepare Their Event invitation copy uses the live record and invite-at-release timing", () => {

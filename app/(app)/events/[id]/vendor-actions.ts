@@ -10,6 +10,7 @@ import type { RecommendationActionResult } from "@/lib/vendor-recommendations/ty
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/clients/${eventId}`);
 }
 
 // ── Recommendations — venue-side ("choose vendors from the Library to

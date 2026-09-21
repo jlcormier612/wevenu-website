@@ -632,6 +632,7 @@ export async function confirmPipelineBookedMove(
       leadId: lead.id,
       pipelineStageId,
       source: "manual",
+      spaceId: opts?.spaceId,
     });
     if (!booked.ok) {
       return { ok: false as const, message: booked.message };

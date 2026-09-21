@@ -358,9 +358,9 @@ describe("commercial continuity", () => {
     );
   });
 
-  it("signContractByToken still calls maybeStampCommercialBookedAt only via helper", () => {
+  it("signing a contract does not book the relationship", () => {
     const svc = read("lib/contracts/service.ts");
-    assert.match(svc, /maybeStampCommercialBookedAt/);
+    assert.doesNotMatch(svc, /maybeStampCommercialBookedAt/);
     assert.doesNotMatch(svc, /booked_at:\s*new Date/);
   });
 });

@@ -138,6 +138,9 @@ export function DateHoldsSection({
               <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
             </div>
           </div>
+          <p className="text-sm text-muted-foreground">
+            You&apos;re placing a Hold on this date. Whether this Hold prevents booking is controlled by your availability settings.
+          </p>
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)} disabled={addPending}>Cancel</Button>
             <Button type="button" size="sm" disabled={!holdDate || !holdTitle.trim() || addPending} onClick={handleAdd}>

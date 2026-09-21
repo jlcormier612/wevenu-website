@@ -1,13 +1,24 @@
 /**
- * The one Lead → Booked Client transition.
+ * The venue's Booked transition.
  *
- * Automatic booking calls this after `isCommerciallyBooked` is true.
- * Manual "Mark as Booked" calls this after the venue confirms.
- * Both produce the same persisted state. A second call is a no-op.
+ * One database transaction (book_relationship):
+ * lock the client, let the event trigger take the venue/date advisory
+ * lock and validate availability, create or restore the Booked Event,
+ * move the relationship to Booked, stamp booked timestamps, and attach
+ * pre-booking planning. Any failure rolls all of that back.
+ *
+ * Canonical callers: confirmPipelineBookedMove, returnLeadToBooked,
+ * returnClientToBooked, an import the venue marked already booked, and
+ * Create Event when a client is chosen. Commercial milestones do not
+ * call this. A second call does not create another event.
+ *
+ * Sequence exit, the lifecycle booking row, and the tour-converted
+ * signal run only after the transaction commits. They are not the
+ * booking. A failure there does not undo Booked and cannot leave an
+ * event without the relationship.
  */
 import type { createClient } from "@/integrations/supabase/server";
-import { ensureEventBookedAt } from "@/lib/events/repository";
-import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
+import { calendarBlockFailureFromUnknown, occupancyFailureFromUnknown } from "@/lib/availability/event-occupancy";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -17,20 +28,49 @@ export type BookClientInput = {
   eventId?: string | null;
   leadId?: string | null;
   pipelineStageId?: string | null;
-  /** Why this call happened. Does not change the resulting booked state. */
-  source: "commercial_rule" | "manual";
+  /** Why this call happened. Only a venue decision may book. */
+  source: "manual";
+  spaceId?: string | null;
+  /** Create Event / import may supply the occasion. Omitted fields use the client's preference. */
+  event?: {
+    name?: string;
+    eventType?: string;
+    eventDate?: string;
+    eventEndDate?: string;
+    startTime?: string;
+    endTime?: string;
+    setupTime?: string;
+    teardownTime?: string;
+    guestCount?: string;
+  };
+  lifecycleOrigin?: "pipeline" | "direct" | "import";
 };
 
 export type BookClientResult =
   | {
       ok: true;
       booked: true;
-      /** True only when events.booked_at changed from null to a timestamp. */
+      /** True only when events.booked_at was set by this transaction. */
       newlyBooked: boolean;
       eventId: string;
       clientId: string;
     }
   | { ok: false; message: string };
+
+type BookRelationshipRow = {
+  ok: boolean;
+  message?: string;
+  newly_booked?: boolean;
+  event_id?: string;
+  client_id?: string;
+  lead_id?: string | null;
+  previous_sales_stage?: string | null;
+};
+
+function emptyToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed ? trimmed : null;
+}
 
 export async function bookClient(
   supabase: DbClient,
@@ -39,120 +79,88 @@ export async function bookClient(
   const { venueId, clientId } = input;
   if (!clientId) return { ok: false, message: "A client is required to book." };
 
-  let eventId = input.eventId ?? null;
-  if (!eventId) {
-    const { data: ev } = await supabase
-      .from("events")
+  const guest = emptyToNull(input.event?.guestCount);
+  const parsedGuest = guest ? Number.parseInt(guest, 10) : Number.NaN;
+  const { data, error } = await supabase.rpc("book_relationship", {
+    p_venue_id: venueId,
+    p_client_id: clientId,
+    p_space_id: emptyToNull(input.spaceId),
+    p_pipeline_stage_id: emptyToNull(input.pipelineStageId),
+    p_name: emptyToNull(input.event?.name),
+    p_event_type: emptyToNull(input.event?.eventType),
+    p_event_date: emptyToNull(input.event?.eventDate),
+    p_event_end_date: emptyToNull(input.event?.eventEndDate),
+    p_start_time: emptyToNull(input.event?.startTime),
+    p_end_time: emptyToNull(input.event?.endTime),
+    p_setup_time: emptyToNull(input.event?.setupTime),
+    p_teardown_time: emptyToNull(input.event?.teardownTime),
+    p_guest_count: Number.isFinite(parsedGuest) ? parsedGuest : null,
+    p_lifecycle_origin: input.lifecycleOrigin ?? null,
+  });
+  if (error) {
+    const fail = occupancyFailureFromUnknown(error) ?? calendarBlockFailureFromUnknown(error);
+    return { ok: false, message: fail?.message ?? error.message ?? "This date is not available." };
+  }
+
+  const row = data as BookRelationshipRow | null;
+  if (!row?.ok || !row.event_id) {
+    return { ok: false, message: row?.message ?? "This relationship could not be booked." };
+  }
+
+  const newlyBooked = row.newly_booked === true;
+  const stageChanged = !!row.lead_id && row.previous_sales_stage !== "booked";
+
+  if (stageChanged || (!row.lead_id && newlyBooked)) {
+    try {
+      const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
+      const { data: { user } } = await supabase.auth.getUser();
+      await recordLifecycleBooking(supabase, {
+        venueId,
+        leadId: row.lead_id,
+        clientId,
+        origin: input.lifecycleOrigin ?? (row.lead_id ? "pipeline" : "direct"),
+        actorUserId: user?.id ?? null,
+        previousSalesStage: row.previous_sales_stage ?? null,
+        metadata: { source: input.source },
+      });
+    } catch (err) {
+      console.error("Lifecycle booking record failed:", err);
+    }
+  }
+
+  if (row.lead_id && stageChanged) {
+    const { data: tour } = await supabase
+      .from("tour_appointments")
       .select("id")
+      .eq("lead_id", row.lead_id)
       .eq("venue_id", venueId)
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle<{ id: string }>();
-    eventId = ev?.id ?? null;
-  }
-  if (!eventId) return { ok: false, message: "This relationship has no event to book." };
-
-  const { data: before } = await supabase
-    .from("events")
-    .select("booked_at, status")
-    .eq("id", eventId)
-    .eq("venue_id", venueId)
-    .maybeSingle<{ booked_at: string | null; status: string }>();
-  if (!before) return { ok: false, message: "Event not found." };
-
-  // Automatic booking must not undo an explicit cancellation.
-  // Manual Mark as Booked / Return to Booked is the reactivation path.
-  if (before.status === "cancelled" && input.source !== "manual") {
-    return { ok: true, booked: true, newlyBooked: false, eventId, clientId };
+    if (tour) {
+      void supabase.from("lead_signal_events").insert({
+        venue_id: venueId,
+        lead_id: row.lead_id,
+        signal_type: "tour_converted",
+        signal_strength: 3,
+        metadata: { appointment_id: tour.id },
+      }).then(null, () => {});
+    }
   }
 
-  // First booking is the only celebration: booked_at NULL → timestamp.
-  // A cancelled relationship keeps that historical timestamp, so restoring
-  // it is not a new Lead → Booked conversion.
-  const newlyBooked = before.booked_at == null;
-  const tz = await getVenueTimezone(supabase, venueId);
-  if (newlyBooked) {
-    await ensureEventBookedAt(supabase, venueId, eventId, venueToday(tz));
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: confirmError } = await (supabase.from("events") as any)
-    .update({ status: "confirmed" })
-    .eq("id", eventId)
-    .eq("venue_id", venueId);
-  if (confirmError) {
-    return { ok: false, message: confirmError.message ?? "Could not confirm the event." };
-  }
-
-  const { error: clientError } = await supabase
-    .from("clients")
-    .update({ status: "confirmed" })
-    .eq("id", clientId)
-    .eq("venue_id", venueId);
-  if (clientError) {
-    return { ok: false, message: clientError.message ?? "Could not confirm the client." };
-  }
-
-  let leadId = input.leadId ?? null;
-  if (!leadId) {
-    const { data: clientRow } = await supabase
+  if (newlyBooked || stageChanged) {
+    const { data: rel } = await supabase
       .from("clients")
-      .select("lead_id")
+      .select("relationship_id")
       .eq("id", clientId)
       .eq("venue_id", venueId)
-      .maybeSingle<{ lead_id: string | null }>();
-    leadId = clientRow?.lead_id ?? null;
-  }
-
-  if (leadId) {
-    const { data: lead } = await supabase
-      .from("leads")
-      .select("sales_stage")
-      .eq("id", leadId)
-      .eq("venue_id", venueId)
-      .maybeSingle<{ sales_stage: string | null }>();
-    if (lead && lead.sales_stage !== "booked") {
-      const { updateLeadSalesStage } = await import("@/lib/leads/service");
-      const stage = await updateLeadSalesStage(leadId, "booked", {
-        allowBooked: true,
-        clientId,
-        pipelineStageId: input.pipelineStageId ?? undefined,
-      });
-      if (!stage.ok) return { ok: false, message: stage.message ?? "Could not mark the lead booked." };
-    }
-  } else if (newlyBooked) {
-    const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
-    const { data: { user } } = await supabase.auth.getUser();
-    await recordLifecycleBooking(supabase, {
-      venueId,
-      clientId,
-      origin: "direct",
-      actorUserId: user?.id ?? null,
-      metadata: { source: input.source },
-    });
-  }
-
-  // Last write. Lead-stage work in this same request must not be able to
-  // land the caller on a booked workspace with the flag still false.
-  // Set only for a true NULL → booked_at transition, never for reactivation
-  // or a repeated call against an already active booking.
-  if (newlyBooked) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: celebrateError, data: celebrated } = await (supabase.from("events") as any)
-      .update({ booking_celebration_pending: true })
-      .eq("id", eventId)
-      .eq("venue_id", venueId)
-      .not("booked_at", "is", null)
-      .select("booking_celebration_pending");
-    if (celebrateError) {
-      return { ok: false, message: celebrateError.message ?? "Could not start the booking celebration." };
-    }
-    const row = Array.isArray(celebrated) ? celebrated[0] : celebrated;
-    if (!row?.booking_celebration_pending) {
-      return { ok: false, message: "The booking was saved, but the celebration could not be started." };
+      .maybeSingle<{ relationship_id: string | null }>();
+    if (rel?.relationship_id) {
+      const { exitEnrollmentsForBooking } = await import("@/lib/message-sequences/service");
+      void exitEnrollmentsForBooking(supabase, venueId, rel.relationship_id).catch((e) =>
+        console.error("Series exit-on-booking failed:", e),
+      );
     }
   }
 
-  return { ok: true, booked: true, newlyBooked, eventId, clientId };
+  return { ok: true, booked: true, newlyBooked, eventId: row.event_id, clientId };
 }

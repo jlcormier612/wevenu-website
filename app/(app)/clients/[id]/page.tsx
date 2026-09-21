@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
+import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
+import { PreparePlanningPanel } from "@/components/clients/prepare-planning-panel";
+import { EventTaskList } from "@/components/playbooks/event-task-list";
+import { TimelineView } from "@/components/events/timeline/timeline-view";
+import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
+import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
+import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
+import { getClientTasks } from "@/lib/playbooks/service";
+import { getClientTimelineEntries, getClientSections } from "@/lib/timeline/service";
+import { getFloorPlansForClient } from "@/lib/floor-plans/service";
+import { getEventOrderForClient } from "@/lib/event-orders/service";
+import { getClientVendorAssignments } from "@/lib/vendors/service";
 import { EventDetail } from "@/components/events/event-detail";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { Button } from "@/components/ui/button";
 import { getSpaces } from "@/lib/availability/service";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
@@ -24,7 +34,7 @@ import { getGuestReadinessSummary } from "@/lib/guests/service";
 import { getUsageForEvent } from "@/lib/inventory/service";
 import { getInvoices } from "@/lib/invoices/service";
 import {
-  getEventPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
+  getEventPlaybookApplications, getClientPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
   getEventTasks, getTaskContactsByStaffIds, getTemplatesForLibrary,
 } from "@/lib/playbooks/service";
 import { getPortalSessions } from "@/lib/portal/service";
@@ -83,27 +93,165 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   if (!client) notFound();
 
   if (!client.linkedEventId) {
-    // Rare: a booked client with no event yet (no event date set at
-    // booking time). Reuses the exact "create event" affordance the old
-    // Client page offered, rather than a new workflow.
     const displayName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
     const photo = client.relationshipId
       ? await getRelationshipPhotoForVenue(client.relationshipId)
       : null;
+    const [
+      journey, packagesWithItems, packageList, templates, applications, tasks,
+      timelineEntries, timelineSections, timelineTemplates, venue, spaces,
+      floorPlans, floorPlanTemplates, vendors, vendorAssignments, eventOrder, eventOrderTemplates,
+      offerings, inventoryItems, staffRole,
+    ] = await Promise.all([
+      loadBookingJourneyForClient({
+        clientId: client.id,
+        eventId: null,
+        leadId: client.leadId,
+      }),
+      getPackagesWithItems(true),
+      getPackages(true),
+      getTemplatesForLibrary(),
+      getClientPlaybookApplications(client.id),
+      getClientTasks(client.id),
+      getClientTimelineEntries(client.id),
+      getClientSections(client.id),
+      getTimelineTemplatesForLibrary(),
+      getCurrentVenue(),
+      getSpaces(),
+      getFloorPlansForClient(client.id),
+      getFloorPlanTemplates(),
+      getVendors(),
+      getClientVendorAssignments(client.id),
+      getEventOrderForClient(client.id),
+      getEventOrderTemplates(),
+      listActiveOfferings(),
+      getInventoryItems(),
+      getCurrentUserRole(),
+    ]);
+    const activeTimelineTemplates = timelineTemplates.filter((t) => !t.isArchived);
+    const activePlaybookTemplates = templates.filter((t) => !t.isArchived);
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <RelationshipPhotoAvatar photoUrl={photo?.displayedPhotoUrl ?? null} name={displayName} size="lg" />
-            <PageHeader title={displayName} description="This booking doesn't have an event workspace yet." />
+            <PageHeader
+              title={displayName}
+              description="You are preparing this client's planning workspace. Preparing the workspace does not reserve their date."
+            />
           </div>
           <DeleteClientRecordButton clientId={client.id} fallbackName={displayName} />
         </div>
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No event yet</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">Add an event date to open the full workspace.</p>
-          <Button render={<Link href={`/events/new?clientId=${client.id}`} />}>+ Create Event</Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          {client.eventDate
+            ? `Preferred date: ${client.eventDate}. This is a preference, not a reservation.`
+            : "No preferred date yet. A preferred date does not reserve a date."}
+        </p>
+        <BookingJourneyPanel
+          journey={journey}
+          packages={packagesWithItems}
+          leadId={client.leadId ?? undefined}
+          clientId={client.id}
+          eventDate={client.eventDate}
+        />
+        <PreparePlanningPanel
+          eventId={null}
+          clientId={client.id}
+          eventDate={client.eventDate}
+          eventType={client.eventType}
+          templates={activePlaybookTemplates}
+          applications={applications}
+        />
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Checklists</h2>
+          <EventTaskList
+            eventId=""
+            clientId={client.id}
+            eventDate={client.eventDate ?? ""}
+            eventName={displayName}
+            clientName={displayName}
+            eventType={client.eventType}
+            initialTasks={tasks}
+            readinessByKind={{ client: null, venue: null }}
+            templates={activePlaybookTemplates}
+            applications={applications}
+            contextLinksByTask={{}}
+            taskContacts={{}}
+            linkableDocuments={[]}
+            linkableTimelineEntries={timelineEntries}
+            linkableConversationMessages={[]}
+            staffOptions={[]}
+          />
+        </section>
+        <section id="timeline" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Timeline</h2>
+          <p className="text-sm text-muted-foreground">
+            Draft the day before you book. This does not reserve the preferred date.
+          </p>
+          <TimelineView
+            eventId=""
+            planningClientId={client.id}
+            venueId={venue?.id ?? ""}
+            eventStartTime={null}
+            eventDate={client.eventDate}
+            initialEntries={timelineEntries}
+            initialSections={timelineSections}
+            timelineTemplates={activeTimelineTemplates}
+          />
+        </section>
+        <section id="floorplan" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Floor plans</h2>
+          <p className="text-sm text-muted-foreground">
+            Sketch the room before you book. Sharing a plan with the couple, and choosing the plan for the day, wait until this relationship is Booked.
+          </p>
+          <FloorPlanWorkspace
+            eventId=""
+            planningClientId={client.id}
+            floorPlans={floorPlans}
+            templates={floorPlanTemplates}
+            spaces={spaces}
+            eventSpaceId={null}
+            canEdit={canEditFloorPlans(staffRole)}
+            canDelete={canDeleteFloorPlanRows(staffRole)}
+          />
+        </section>
+        <section id="event-order" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Event order</h2>
+          <p className="text-sm text-muted-foreground">
+            Prepare what this event would include. Starting an event order does not book the date.
+          </p>
+          <EventOrderPanel
+            eventId=""
+            planningClientId={client.id}
+            clientId={client.id}
+            clientName={displayName}
+            clientEmail={client.email}
+            venueName={venue?.name}
+            eventOrder={eventOrder}
+            packages={packageList}
+            packagesWithItems={packagesWithItems}
+            offerings={offerings}
+            inventoryItems={inventoryItems}
+            invoices={[]}
+            floorPlans={floorPlans}
+            templates={eventOrderTemplates}
+          />
+        </section>
+        <section id="vendors" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Vendors</h2>
+          <p className="text-sm text-muted-foreground">
+            Note who you expect to work this event. Assigning a vendor now does not reserve the date or tell them the event is booked.
+          </p>
+          <EventVendorsSection
+            eventId=""
+            planningClientId={client.id}
+            initialAssignments={vendorAssignments}
+            availableVendors={vendors}
+          />
+        </section>
+        <p className="text-sm text-muted-foreground">
+          Questionnaires stay unavailable until this relationship is Booked. They describe the booked occasion, not the preparation.
+        </p>
       </div>
     );
   }
