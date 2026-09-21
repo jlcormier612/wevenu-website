@@ -25,12 +25,13 @@ import {
   SCHEDULE_APPOINTMENT_SETTINGS_GROUPS,
   countActiveCustomTypes,
   groupKeyToCustomKind,
-  scheduleItemTypeSettingsDisplayLabel,
   type AppointmentCatalogBuiltinKey,
   type CustomScheduleItemKind,
   type VenueScheduleItemType,
 } from "@/lib/calendar/schedule-item-catalog";
 import { cn } from "@/lib/utils";
+
+const BLOCKS_EVENT_BOOKINGS_LABEL = "Blocks event bookings";
 
 type BuiltinRow = {
   id: string;
@@ -43,6 +44,7 @@ type BuiltinRow = {
 type CustomRow = {
   id: string;
   label: string;
+  enabled: boolean;
   blocksAvailability: boolean;
   groupKey: VenueScheduleItemType["groupKey"];
   archivedAt: string | null;
@@ -69,6 +71,7 @@ function toCustomRows(types: VenueScheduleItemType[]): CustomRow[] {
     .map((t) => ({
       id: t.id,
       label: t.label,
+      enabled: t.enabled,
       blocksAvailability: t.blocksAvailability,
       groupKey: t.groupKey,
       archivedAt: t.archivedAt,
@@ -90,6 +93,7 @@ export function ScheduledAppointmentTypesSection({
   const [adding, setAdding] = React.useState(false);
   const [newLabel, setNewLabel] = React.useState("");
   const [newKind, setNewKind] = React.useState<CustomScheduleItemKind>("appointment");
+  const [newEnabled, setNewEnabled] = React.useState(true);
   const [newReserves, setNewReserves] = React.useState(true);
   const [renamingId, setRenamingId] = React.useState<string | null>(null);
   const [renameValue, setRenameValue] = React.useState("");
@@ -111,7 +115,7 @@ export function ScheduledAppointmentTypesSection({
       builtinKey: null,
       customKey: null,
       label: c.label,
-      enabled: true,
+      enabled: c.enabled,
       blocksAvailability: c.blocksAvailability,
       groupKey: c.groupKey,
       sortOrder: 0,
@@ -185,6 +189,7 @@ export function ScheduledAppointmentTypesSection({
       const result = await createCustomScheduleItemTypeAction({
         label: newLabel,
         kind: newKind,
+        enabled: newEnabled,
         blocksAvailability: newReserves,
       });
       if (!result.ok) {
@@ -195,9 +200,32 @@ export function ScheduledAppointmentTypesSection({
       setAdding(false);
       setNewLabel("");
       setNewKind("appointment");
+      setNewEnabled(true);
       setNewReserves(true);
       refreshCatalog();
     } catch {
+      toast.error("Could not save.");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function onCustomEnabled(row: CustomRow, enabled: boolean) {
+    if (!canEdit || row.archivedAt) return;
+    if (row.enabled === enabled) return;
+    const rollback = customs;
+    setCustoms((prev) =>
+      prev.map((c) => (c.id === row.id ? { ...c, enabled } : c)),
+    );
+    setSavingKey(row.id);
+    try {
+      const result = await updateCustomScheduleItemTypeAction({ id: row.id, enabled });
+      if (!result.ok) {
+        setCustoms(rollback);
+        toast.error(result.message);
+      }
+    } catch {
+      setCustoms(rollback);
       toast.error("Could not save.");
     } finally {
       setSavingKey(null);
@@ -351,13 +379,13 @@ export function ScheduledAppointmentTypesSection({
                     </label>
                     <label className="flex items-center justify-between gap-3 sm:justify-end">
                       <span className="text-xs text-muted-foreground max-w-[14rem] text-right leading-snug">
-                        Reserves venue time for events
+                        {BLOCKS_EVENT_BOOKINGS_LABEL}
                       </span>
                       <Switch
                         checked={row.blocksAvailability}
                         disabled={!canEdit || locked || busy}
                         onCheckedChange={(v) => onBuiltinReserves(key, v)}
-                        aria-label={`${row.label} reserves venue time for events`}
+                        aria-label={`${row.label} ${BLOCKS_EVENT_BOOKINGS_LABEL}`}
                       />
                     </label>
                   </div>
@@ -406,7 +434,7 @@ export function ScheduledAppointmentTypesSection({
                     ) : (
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-medium text-heading">
-                          {scheduleItemTypeSettingsDisplayLabel(row.label)}
+                          {row.label}
                         </p>
                         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Your type
@@ -438,14 +466,25 @@ export function ScheduledAppointmentTypesSection({
                   </div>
                   <div className="flex flex-col gap-2 sm:items-end">
                     <label className="flex items-center justify-between gap-3 sm:justify-end">
+                      <span className="text-xs text-muted-foreground">
+                        {row.enabled ? "On" : "Off"}
+                      </span>
+                      <Switch
+                        checked={row.enabled}
+                        disabled={!canEdit || busy}
+                        onCheckedChange={(v) => void onCustomEnabled(row, v)}
+                        aria-label={`${row.label} enabled`}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 sm:justify-end">
                       <span className="text-xs text-muted-foreground max-w-[14rem] text-right leading-snug">
-                        Reserves venue time for events
+                        {BLOCKS_EVENT_BOOKINGS_LABEL}
                       </span>
                       <Switch
                         checked={row.blocksAvailability}
                         disabled={!canEdit || busy}
                         onCheckedChange={(v) => void onCustomReserves(row, v)}
-                        aria-label={`${scheduleItemTypeSettingsDisplayLabel(row.label)} reserves venue time for events`}
+                        aria-label={`${row.label} ${BLOCKS_EVENT_BOOKINGS_LABEL}`}
                       />
                     </label>
                   </div>
@@ -510,12 +549,23 @@ export function ScheduledAppointmentTypesSection({
                 </div>
               </div>
               <label className="flex items-center justify-between gap-3">
-                <span className="text-xs text-muted-foreground">Reserves venue time for events</span>
+                <span className="text-xs text-muted-foreground">
+                  {newEnabled ? "On" : "Off"}
+                </span>
+                <Switch
+                  checked={newEnabled}
+                  disabled={savingKey === "create"}
+                  onCheckedChange={setNewEnabled}
+                  aria-label="Enabled"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">{BLOCKS_EVENT_BOOKINGS_LABEL}</span>
                 <Switch
                   checked={newReserves}
                   disabled={savingKey === "create"}
                   onCheckedChange={setNewReserves}
-                  aria-label="Reserves venue time for events"
+                  aria-label={BLOCKS_EVENT_BOOKINGS_LABEL}
                 />
               </label>
               <div className="flex flex-wrap gap-2">
@@ -536,6 +586,7 @@ export function ScheduledAppointmentTypesSection({
                     setAdding(false);
                     setNewLabel("");
                     setNewKind("appointment");
+                    setNewEnabled(true);
                     setNewReserves(true);
                   }}
                 >
@@ -562,7 +613,7 @@ export function ScheduledAppointmentTypesSection({
                 className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5"
               >
                 <p className="text-sm text-muted-foreground">
-                  {scheduleItemTypeSettingsDisplayLabel(row.label)}
+                  {row.label}
                 </p>
                 {canEdit && (
                   <Button

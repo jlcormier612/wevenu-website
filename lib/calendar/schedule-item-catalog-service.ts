@@ -183,6 +183,7 @@ function uniqueCustomKey(base: string, catalog: VenueScheduleItemType[]): string
 export async function createCustomScheduleItemType(input: {
   label: string;
   kind: CustomScheduleItemKind;
+  enabled?: boolean;
   blocksAvailability?: boolean;
 }): Promise<CatalogSettingsActionResult & { id?: string }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
@@ -208,6 +209,7 @@ export async function createCustomScheduleItemType(input: {
     const row = await insertCustomScheduleItemTypeRow(supabase, venue.id, {
       customKey,
       label: named.label,
+      enabled: input.enabled !== false,
       blocksAvailability: input.blocksAvailability !== false,
       groupKey,
       sortOrder: nextCustomSortOrder(catalog, groupKey),
@@ -218,10 +220,11 @@ export async function createCustomScheduleItemType(input: {
   }
 }
 
-/** Rename and/or change reserve setting. Never rewrites calendar_blocks. */
+/** Rename and/or change enabled / reserve setting. Never rewrites calendar_blocks. */
 export async function updateCustomScheduleItemType(input: {
   id: string;
   label?: string;
+  enabled?: boolean;
   blocksAvailability?: boolean;
 }): Promise<CatalogSettingsActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
@@ -250,7 +253,11 @@ export async function updateCustomScheduleItemType(input: {
     label = named.label;
   }
 
-  if (input.label === undefined && input.blocksAvailability === undefined) {
+  if (
+    input.label === undefined
+    && input.enabled === undefined
+    && input.blocksAvailability === undefined
+  ) {
     return { ok: true };
   }
 
@@ -258,6 +265,7 @@ export async function updateCustomScheduleItemType(input: {
   try {
     await updateCustomScheduleItemTypeRow(supabase, venue.id, existing.id, {
       label: input.label !== undefined ? label : undefined,
+      enabled: input.enabled,
       blocksAvailability: input.blocksAvailability,
     });
   } catch (err) {

@@ -322,11 +322,13 @@ describe("Calendar Slice 2A.2.3 — service/UI seams", () => {
     assert.match(repoSrc, /Never rewrites calendar_blocks/);
   });
 
-  it("Settings UI exposes Add your own type with Name, Kind, and reserve control", () => {
+  it("Settings UI exposes Add your own type with Name, Kind, Enabled, and Blocks event bookings", () => {
     assert.match(sectionSrc, /Add your own type/);
     assert.match(sectionSrc, /Name/);
     assert.match(sectionSrc, /Kind/);
-    assert.match(sectionSrc, /Reserves venue time for events/);
+    assert.match(sectionSrc, /aria-label="Enabled"/);
+    assert.match(sectionSrc, /Blocks event bookings/);
+    assert.match(sectionSrc, /onCustomEnabled/);
     assert.match(sectionSrc, /Archive/);
     assert.match(sectionSrc, /Restore/);
     assert.match(sectionSrc, /Rename/);

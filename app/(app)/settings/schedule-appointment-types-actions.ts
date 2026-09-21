@@ -29,6 +29,7 @@ export async function updateBuiltinScheduleItemTypeAction(input: {
 export async function createCustomScheduleItemTypeAction(input: {
   label: string;
   kind: CustomScheduleItemKind;
+  enabled?: boolean;
   blocksAvailability?: boolean;
 }): Promise<{ ok: true; id?: string } | { ok: false; message: string }> {
   const result = await createCustomScheduleItemType(input);
@@ -39,6 +40,7 @@ export async function createCustomScheduleItemTypeAction(input: {
 export async function updateCustomScheduleItemTypeAction(input: {
   id: string;
   label?: string;
+  enabled?: boolean;
   blocksAvailability?: boolean;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   const result = await updateCustomScheduleItemType(input);

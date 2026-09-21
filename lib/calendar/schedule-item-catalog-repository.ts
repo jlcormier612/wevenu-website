@@ -121,6 +121,7 @@ export async function insertCustomScheduleItemTypeRow(
   input: {
     customKey: string;
     label: string;
+    enabled?: boolean;
     blocksAvailability: boolean;
     groupKey: "meetings" | "availability" | "other";
     sortOrder: number;
@@ -134,7 +135,7 @@ export async function insertCustomScheduleItemTypeRow(
       builtin_key: null,
       custom_key: input.customKey,
       label: input.label,
-      enabled: true,
+      enabled: input.enabled !== false,
       blocks_availability: input.blocksAvailability,
       group_key: input.groupKey,
       sort_order: input.sortOrder,
@@ -147,8 +148,9 @@ export async function insertCustomScheduleItemTypeRow(
 }
 
 /**
- * Update custom label / blocks_availability / group_key.
+ * Update custom label / enabled / blocks_availability / group_key.
  * Never rewrites calendar_blocks titles or snapshots.
+ * enabled and blocks_availability are independent; archive is separate.
  */
 export async function updateCustomScheduleItemTypeRow(
   client: DbClient,
@@ -156,12 +158,14 @@ export async function updateCustomScheduleItemTypeRow(
   id: string,
   patch: {
     label?: string;
+    enabled?: boolean;
     blocksAvailability?: boolean;
     groupKey?: "meetings" | "availability" | "other";
   },
 ): Promise<void> {
   const update: Record<string, unknown> = {};
   if (patch.label !== undefined) update.label = patch.label;
+  if (patch.enabled !== undefined) update.enabled = patch.enabled;
   if (patch.blocksAvailability !== undefined) update.blocks_availability = patch.blocksAvailability;
   if (patch.groupKey !== undefined) update.group_key = patch.groupKey;
   if (Object.keys(update).length === 0) return;
