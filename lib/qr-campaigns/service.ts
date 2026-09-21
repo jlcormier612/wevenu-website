@@ -1,5 +1,6 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { interpretQrCampaignUpdate } from "@/lib/qr-campaigns/archive-ui-state";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { QrCampaign, QrCampaignActionResult, QrCampaignAnalytics, QrCampaignInput } from "@/lib/qr-campaigns/types";
 
@@ -59,8 +60,13 @@ export async function archiveQrCampaign(id: string): Promise<QrCampaignActionRes
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
   const supabase = await createClient();
-  const { error } = await supabase.from("qr_campaigns").update({ status: "archived" }).eq("id", id).eq("venue_id", venue.id);
-  return { ok: !error };
+  const { data, error } = await supabase
+    .from("qr_campaigns")
+    .update({ status: "archived" })
+    .eq("id", id)
+    .eq("venue_id", venue.id)
+    .select("id");
+  return interpretQrCampaignUpdate(error, data as { id: string }[] | null);
 }
 
 export async function reactivateQrCampaign(id: string): Promise<QrCampaignActionResult> {
@@ -68,6 +74,11 @@ export async function reactivateQrCampaign(id: string): Promise<QrCampaignAction
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
   const supabase = await createClient();
-  const { error } = await supabase.from("qr_campaigns").update({ status: "active" }).eq("id", id).eq("venue_id", venue.id);
-  return { ok: !error };
+  const { data, error } = await supabase
+    .from("qr_campaigns")
+    .update({ status: "active" })
+    .eq("id", id)
+    .eq("venue_id", venue.id)
+    .select("id");
+  return interpretQrCampaignUpdate(error, data as { id: string }[] | null);
 }

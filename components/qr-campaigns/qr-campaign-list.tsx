@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resolveArchiveToggle } from "@/lib/qr-campaigns/archive-ui-state";
 import type { QrCampaign, QrCampaignAnalytics, QrDestinationType } from "@/lib/qr-campaigns/types";
 
 const DESTINATION_LABELS: Record<QrDestinationType, string> = {
@@ -24,11 +25,12 @@ const DESTINATION_LABELS: Record<QrDestinationType, string> = {
 };
 
 function CampaignRow({
-  campaign, appUrl, analytics,
+  campaign, appUrl, analytics, onStatusChange,
 }: {
   campaign: QrCampaign;
   appUrl: string;
   analytics: QrCampaignAnalytics | undefined;
+  onStatusChange: (id: string, status: QrCampaign["status"]) => void;
 }) {
   const [pending, startTransition] = React.useTransition();
   const scanUrl = `${appUrl}/qr/${campaign.code}`;
@@ -36,10 +38,17 @@ function CampaignRow({
 
   function toggleArchive() {
     startTransition(async () => {
-      const result = campaign.status === "active"
+      const nextStatus = campaign.status === "active" ? "archived" : "active";
+      const result = nextStatus === "archived"
         ? await archiveQrCampaignAction(campaign.id)
         : await reactivateQrCampaignAction(campaign.id);
-      if (!result.ok) toast.error(result.message ?? "Could not update campaign.");
+      const outcome = resolveArchiveToggle([campaign], campaign.id, nextStatus, result);
+      if (outcome.kind === "error") {
+        toast.error(outcome.message);
+        return;
+      }
+      onStatusChange(campaign.id, nextStatus);
+      toast.success(outcome.message);
     });
   }
 
@@ -89,6 +98,10 @@ export function QrCampaignList({
   const analyticsById = new Map(analytics.map((a) => [a.id, a]));
   const active = campaigns.filter((c) => c.status === "active");
   const archived = campaigns.filter((c) => c.status === "archived");
+
+  function handleStatusChange(id: string, status: QrCampaign["status"]) {
+    setCampaigns((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));
+  }
 
   function handleCreate() {
     startTransition(async () => {
@@ -157,12 +170,28 @@ export function QrCampaignList({
         </div>
       ) : (
         <div className="space-y-3">
-          {active.map((c) => <CampaignRow key={c.id} campaign={c} appUrl={appUrl} analytics={analyticsById.get(c.id)} />)}
+          {active.map((c) => (
+            <CampaignRow
+              key={c.id}
+              campaign={c}
+              appUrl={appUrl}
+              analytics={analyticsById.get(c.id)}
+              onStatusChange={handleStatusChange}
+            />
+          ))}
           {archived.length > 0 && (
             <details className="pt-2">
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Archived ({archived.length})</summary>
               <div className="mt-2 space-y-3">
-                {archived.map((c) => <CampaignRow key={c.id} campaign={c} appUrl={appUrl} analytics={analyticsById.get(c.id)} />)}
+                {archived.map((c) => (
+                  <CampaignRow
+                    key={c.id}
+                    campaign={c}
+                    appUrl={appUrl}
+                    analytics={analyticsById.get(c.id)}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))}
               </div>
             </details>
           )}
