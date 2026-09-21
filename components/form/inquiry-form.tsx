@@ -43,6 +43,7 @@ import {
 } from "@/lib/inquiry-form/validation";
 import {
   INQUIRY_SMS_CONSENT_OPTIONAL_HINT,
+  SMS_PUBLIC_CONSENT_DISCLOSURES,
   buildInquirySmsConsentText,
 } from "@/lib/communication/sms-consent";
 import type { TourSlot } from "@/lib/tours/types";
@@ -766,6 +767,11 @@ export function InquiryForm({
                   How would you like us to communicate with you?
                 </legend>
                 <p className="text-xs text-muted-foreground">Choose any that apply. This is separate from your phone number.</p>
+                {comm.offeredChannels.includes("sms") && (
+                  <p className="text-xs text-muted-foreground">
+                    Choosing “Text message” as a preferred contact method is not SMS consent.
+                  </p>
+                )}
                 <div className="space-y-2">
                   {comm.offeredChannels.includes("email") && (
                     <label className="flex items-start gap-2 text-sm text-foreground">
@@ -789,8 +795,8 @@ export function InquiryForm({
               </fieldset>
             )}
 
-            {comm.showSmsPermission && (
-              <fieldset className="space-y-2 rounded-xl border border-gray-200 p-4">
+            {comm.showSmsPermission && fields.phone !== "hidden" && (
+              <fieldset className="space-y-2 rounded-xl border border-border bg-muted p-4">
                 <legend className="px-1 text-sm font-semibold text-heading">
                   Text message permission <span className="font-normal text-muted-foreground">(optional)</span>
                 </legend>
@@ -806,8 +812,13 @@ export function InquiryForm({
                   <span>{smsConsentText}</span>
                 </label>
                 {!phone.trim() && smsPermissionGranted && (
-                  <p className="text-xs text-amber-700">Add a phone number above so we can text you.</p>
+                  <p className="text-xs text-foreground">Add a phone number above so we can text you. Without a phone number, this box does not record text permission.</p>
                 )}
+                <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                  {SMS_PUBLIC_CONSENT_DISCLOSURES.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
                 <p className="text-[11px] text-muted-foreground">
                   See our{" "}
                   <a

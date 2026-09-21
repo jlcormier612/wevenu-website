@@ -58,6 +58,20 @@ export function buildInquirySmsConsentText(venueName: string): string {
 export const INQUIRY_SMS_CONSENT_OPTIONAL_HINT =
   "Optional — you can submit your inquiry or book your tour without agreeing to text messages. Providing a phone number alone does not authorize texts." as const;
 
+/**
+ * Public disclosure already published on the SMS opt-in evidence page.
+ * The inquiry and tour forms use these sentences; do not paraphrase them.
+ */
+export const SMS_PUBLIC_CONSENT_DISCLOSURES = [
+  "Phone number entry alone is not SMS consent.",
+  "Choosing “Text message” as a preferred contact method is not SMS consent.",
+  "Accepting Privacy Policy or End User Terms is not SMS consent.",
+  "SMS consent is not required to inquire, book a tour, or use Hello to Cheers.",
+  "Message frequency varies with the inquiry, tour, and event planning — occasional relationship messages, not a fixed daily volume.",
+  "Message and data rates may apply.",
+  "Reply STOP to opt out; reply START to opt back in; reply HELP for help.",
+] as const;
+
 export type InquiryCommunicationSettings = {
   askPreferences: boolean;
   offerEmail: boolean;
@@ -114,19 +128,19 @@ export function preferredChannelLabel(channel: PreferredCommunicationChannel): s
 }
 
 /**
- * Effective public-form settings: SMS preference option and SMS permission
- * request are unavailable when the venue cannot yet offer SMS (no sender /
- * not in pending_compliance or ready). Outbound send readiness is separate.
+ * Effective public-form settings. Text and the optional SMS permission
+ * checkbox follow the venue's form settings. A missing sending number does
+ * not hide them: outbound SMS stays blocked until the venue is send-ready
+ * and the person is opted_in.
  */
 export function effectivePublicCommunicationSettings(
   settings: InquiryCommunicationSettings,
-  smsConsentOfferAvailable: boolean,
 ): InquiryCommunicationSettings & {
   showPreferences: boolean;
   showSmsPermission: boolean;
   offeredChannels: PreferredCommunicationChannel[];
 } {
-  const offerSms = settings.offerSms && smsConsentOfferAvailable;
+  const offerSms = settings.offerSms;
   const offerEmail = settings.offerEmail;
   const offerPhoneCall = settings.offerPhoneCall;
   const offeredChannels: PreferredCommunicationChannel[] = [];
@@ -135,7 +149,7 @@ export function effectivePublicCommunicationSettings(
   if (offerPhoneCall) offeredChannels.push("phone_call");
 
   const askPreferences = settings.askPreferences && offeredChannels.length > 0;
-  const showSmsPermission = settings.requestSmsPermission && smsConsentOfferAvailable;
+  const showSmsPermission = settings.requestSmsPermission;
 
   return {
     ...settings,

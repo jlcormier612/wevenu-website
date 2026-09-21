@@ -168,8 +168,6 @@ export function InquiryFormConfigSection({
         acceptedEventTypes,
         inquiryCommunicationSettings: {
           ...communication,
-          offerSms: smsConsentOfferAvailable ? communication.offerSms : false,
-          requestSmsPermission: smsConsentOfferAvailable ? communication.requestSmsPermission : false,
         },
       });
       if (!settingsResult.ok) {
@@ -205,8 +203,6 @@ export function InquiryFormConfigSection({
 
       setBaseline(serializeState(eventDateMode, fields, acceptedEventTypes, questions, {
         ...communication,
-        offerSms: smsConsentOfferAvailable ? communication.offerSms : false,
-        requestSmsPermission: smsConsentOfferAvailable ? communication.requestSmsPermission : false,
       }));
       setJustSaved(true);
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -361,20 +357,21 @@ export function InquiryFormConfigSection({
               />
               Email
             </label>
-            <label className={`flex items-center gap-2 text-sm ${canEdit && smsConsentOfferAvailable ? "cursor-pointer" : "opacity-80"}`}>
+            <label className={`flex items-center gap-2 text-sm ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
               <input
                 type="checkbox"
-                checked={smsConsentOfferAvailable && communication.offerSms}
-                disabled={!canEdit || !smsConsentOfferAvailable}
-                onChange={(e) => canEdit && smsConsentOfferAvailable && setCommunication((c) => ({ ...c, offerSms: e.target.checked }))}
+                checked={communication.offerSms}
+                disabled={!canEdit}
+                onChange={(e) => canEdit && setCommunication((c) => ({ ...c, offerSms: e.target.checked }))}
               />
               Text message
               {!smsConsentOfferAvailable && (
                 <span className="text-xs text-muted-foreground">
-                  — enable texting in{" "}
+                  — the public form can offer this before a sending number is assigned. Texts are not sent until texting is set up in{" "}
                   <Link href="/settings/communications" className="underline hover:text-foreground">
                     Settings → Communications
                   </Link>
+                  .
                 </span>
               )}
             </label>
@@ -389,12 +386,12 @@ export function InquiryFormConfigSection({
             </label>
           </div>
         )}
-        <label className={`flex items-start gap-3 rounded-lg border border-border p-3 ${canEdit && smsConsentOfferAvailable ? "cursor-pointer" : "opacity-80"}`}>
+        <label className={`flex items-start gap-3 rounded-lg border border-border p-3 ${canEdit ? "cursor-pointer" : "opacity-80"}`}>
           <input
             type="checkbox"
-            checked={smsConsentOfferAvailable && communication.requestSmsPermission}
-            disabled={!canEdit || !smsConsentOfferAvailable}
-            onChange={(e) => canEdit && smsConsentOfferAvailable && setCommunication((c) => ({ ...c, requestSmsPermission: e.target.checked }))}
+            checked={communication.requestSmsPermission}
+            disabled={!canEdit}
+            onChange={(e) => canEdit && setCommunication((c) => ({ ...c, requestSmsPermission: e.target.checked }))}
             className="mt-1"
           />
           <span>
@@ -404,7 +401,7 @@ export function InquiryFormConfigSection({
               {!smsConsentOfferAvailable && (
                 <>
                   {" "}
-                  Available after texting is set up in{" "}
+                  The public form can collect this before a sending number is assigned. Sending waits until texting is set up in{" "}
                   <Link href="/settings/communications" className="underline hover:text-foreground">
                     Settings → Communications
                   </Link>

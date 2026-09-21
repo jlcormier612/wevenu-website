@@ -7,6 +7,7 @@ import {
 } from "@/lib/communication/permissions";
 import {
   SMS_INQUIRY_CONSENT_LANGUAGE_VERSION,
+  SMS_PUBLIC_CONSENT_DISCLOSURES,
   buildInquirySmsConsentText,
   effectivePublicCommunicationSettings,
   parseInquiryCommunicationSettings,
@@ -30,9 +31,12 @@ describe("first-party SMS consent helpers", () => {
     assert.match(text, /I’d like to receive text messages/);
     assert.match(text, /Reply STOP to opt out/);
     assert.doesNotMatch(text, /Are you okay being texted/);
+    assert.ok(SMS_PUBLIC_CONSENT_DISCLOSURES.some((line) => /START/.test(line)));
+    assert.ok(SMS_PUBLIC_CONSENT_DISCLOSURES.some((line) => /not required to inquire/i.test(line)));
+    assert.ok(SMS_PUBLIC_CONSENT_DISCLOSURES.some((line) => /preferred contact method is not SMS consent/i.test(line)));
   });
 
-  it("gates SMS preference and permission when texting is not configured", () => {
+  it("shows Text and the optional SMS permission when the venue left them on", () => {
     const raw = parseInquiryCommunicationSettings({
       askPreferences: true,
       offerEmail: true,
@@ -40,15 +44,24 @@ describe("first-party SMS consent helpers", () => {
       offerPhoneCall: true,
       requestSmsPermission: true,
     });
-    const off = effectivePublicCommunicationSettings(raw, false);
+    const on = effectivePublicCommunicationSettings(raw);
+    assert.equal(on.offerSms, true);
+    assert.equal(on.showSmsPermission, true);
+    assert.deepEqual(on.offeredChannels, ["email", "sms", "phone_call"]);
+    assert.equal(on.showPreferences, true);
+  });
+
+  it("hides Text and the permission checkbox only when the venue turned them off", () => {
+    const off = effectivePublicCommunicationSettings(parseInquiryCommunicationSettings({
+      askPreferences: true,
+      offerEmail: true,
+      offerSms: false,
+      offerPhoneCall: true,
+      requestSmsPermission: false,
+    }));
     assert.equal(off.offerSms, false);
     assert.equal(off.showSmsPermission, false);
     assert.deepEqual(off.offeredChannels, ["email", "phone_call"]);
-
-    const on = effectivePublicCommunicationSettings(raw, true);
-    assert.equal(on.offerSms, true);
-    assert.equal(on.showSmsPermission, true);
-    assert.ok(on.offeredChannels.includes("sms"));
   });
 
   it("defaults the SMS permission request on unless a venue turned it off", () => {

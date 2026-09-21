@@ -75,11 +75,8 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
   }
   const venue = payload.venue as Record<string, unknown>;
   const venueId = String(venue.id);
-  // Consent UI may appear while A2P is pending; outbound still requires send-ready + opt-in.
-  const smsConsentOfferAvailable = await isSmsConsentOfferAvailable(venueId);
   const communicationSettings = effectivePublicCommunicationSettings(
     parseInquiryCommunicationSettings(payload.inquiryCommunicationSettings),
-    smsConsentOfferAvailable,
   );
   return {
     venue: {
@@ -170,8 +167,7 @@ export async function updateInquiryFormSettings(
     update.accepted_inquiry_event_types = valid;
   }
   if (patch.inquiryCommunicationSettings) {
-    // Persist venue intent. Public forms still hide SMS when the venue
-    // has no sender (effectivePublicCommunicationSettings).
+    // Persist venue intent. A missing sending number does not turn these off.
     update.inquiry_communication_settings = {
       askPreferences: patch.inquiryCommunicationSettings.askPreferences === true,
       offerEmail: patch.inquiryCommunicationSettings.offerEmail !== false,
