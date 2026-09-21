@@ -61,6 +61,21 @@ export function normalizeCatalogLabel(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * Settings Availability display only — disposable gate/test custom labels
+ * must not surface as customer-facing names. Stored `label` / custom_key /
+ * IDs / occupancy are unchanged.
+ */
+const SETTINGS_CUSTOM_TYPE_DISPLAY_ALIASES: Readonly<Record<string, string>> = {
+  "Gate Appt 032692": "Custom Type",
+  "Gate Reserved 032692": "Custom Type",
+};
+
+export function scheduleItemTypeSettingsDisplayLabel(storedLabel: string): string {
+  const key = normalizeCatalogLabel(storedLabel);
+  return SETTINGS_CUSTOM_TYPE_DISPLAY_ALIASES[key] ?? storedLabel;
+}
+
 export function catalogLabelsEqual(a: string, b: string): boolean {
   return normalizeCatalogLabel(a).toLocaleLowerCase() === normalizeCatalogLabel(b).toLocaleLowerCase();
 }

@@ -25,6 +25,7 @@ import {
   SCHEDULE_APPOINTMENT_SETTINGS_GROUPS,
   countActiveCustomTypes,
   groupKeyToCustomKind,
+  scheduleItemTypeSettingsDisplayLabel,
   type AppointmentCatalogBuiltinKey,
   type CustomScheduleItemKind,
   type VenueScheduleItemType,
@@ -404,7 +405,9 @@ export function ScheduledAppointmentTypesSection({
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-medium text-heading">{row.label}</p>
+                        <p className="text-sm font-medium text-heading">
+                          {scheduleItemTypeSettingsDisplayLabel(row.label)}
+                        </p>
                         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Your type
                         </span>
@@ -442,7 +445,7 @@ export function ScheduledAppointmentTypesSection({
                         checked={row.blocksAvailability}
                         disabled={!canEdit || busy}
                         onCheckedChange={(v) => void onCustomReserves(row, v)}
-                        aria-label={`${row.label} reserves venue time for events`}
+                        aria-label={`${scheduleItemTypeSettingsDisplayLabel(row.label)} reserves venue time for events`}
                       />
                     </label>
                   </div>
@@ -558,7 +561,9 @@ export function ScheduledAppointmentTypesSection({
                 key={row.id}
                 className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5"
               >
-                <p className="text-sm text-muted-foreground">{row.label}</p>
+                <p className="text-sm text-muted-foreground">
+                  {scheduleItemTypeSettingsDisplayLabel(row.label)}
+                </p>
                 {canEdit && (
                   <Button
                     type="button"
