@@ -65,7 +65,7 @@ describe("Sales → Booking lifecycle product rules", () => {
 
   it("UI confirms Start booking file before mutation", () => {
     assert.match(detail, /Start booking file\?/);
-    assert.match(detail, /not Booked until you confirm Mark as Booked/i);
+    assert.match(detail, /It does not book them, and it does not reserve their date/);
     assert.match(detail, /setConfirmBookOpen\(true\)/);
     assert.match(detail, /confirmBookThisLead/);
     // Mutation runs only after confirm (and optional automation disclose), not on request.

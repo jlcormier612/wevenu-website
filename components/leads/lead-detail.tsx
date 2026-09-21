@@ -159,14 +159,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [lostMove, setLostMove] = React.useState<{ targetKey: string; label: string } | null>(null);
   const [bookedMove, setBookedMove] = React.useState<{ targetKey: string; label: string } | null>(null);
   const [eventDateBlocked, setEventDateBlocked] = React.useState(false);
-  const spacesRequired = maxSimultaneousEvents >= 2 && !!lead.eventDate && !lead.linkedClientId;
+  const spaceNeededForBooked = maxSimultaneousEvents >= 2 && !!lead.eventDate;
+  const spacesRequired = spaceNeededForBooked;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
 
   function requestBookThisLead() {
-    if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
-      toast.error("Assign an Event Space before starting the booking file.");
-      return;
-    }
     if (lead.eventDate && eventDateBlocked) {
       toast.error("That date is already protected. Resolve the conflict before starting the booking file.");
       return;
