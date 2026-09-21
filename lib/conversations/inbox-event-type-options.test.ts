@@ -140,4 +140,14 @@ describe("Inbox UI wiring", () => {
     // HQ admins see every venue via venues_hq_select — must scope by current_user_venue_id.
     assert.match(repo, /current_user_venue_id/);
   });
+
+  it("RPC event-type filter matches lead.event_type on Leads even when a client row exists", () => {
+    const sql = readFileSync(
+      resolve("supabase/migrations/20261404700000_inbox_event_type_lead_filter.sql"),
+      "utf8",
+    );
+    assert.match(sql, /inbox_owner_kind = 'lead'/);
+    assert.match(sql, /p_relationship in \('leads', 'lead'\)/);
+    assert.match(sql, /lead_event_type = any \(v_event_types\)/);
+  });
 });
