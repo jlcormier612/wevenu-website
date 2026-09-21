@@ -5,7 +5,6 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
 import { FacebookConnectSection } from "@/components/settings/facebook-connect-section";
-import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { buildFacebookOAuthUrl } from "@/lib/facebook/config";
 import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
 import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
@@ -31,21 +30,19 @@ export default async function FinancialsIntegrationsSettingsPage() {
       <SettingsTabs />
 
       {venue && (
-        <div id="stripe" className="scroll-mt-20 space-y-2">
+        <div id="stripe" className="scroll-mt-20">
           <StripeConnectSection venue={venue} connectUrl={buildStripeConnectUrl(venue.id)} />
-          <div className="px-1"><SetupGuideLink href="/help/can-couples-pay-online" label="Can Couples Pay Online?" /></div>
         </div>
       )}
 
       {venue && (
-        <div id="quickbooks" className="scroll-mt-20 space-y-2">
+        <div id="quickbooks" className="scroll-mt-20">
           <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} connectUrl={buildQuickBooksConnectUrl(venue.id)} />
-          <div className="px-1"><SetupGuideLink href="/help/can-couples-pay-online" label="Can Couples Pay Online?" /></div>
         </div>
       )}
 
       {venue && (
-        <div id="facebook" className="scroll-mt-20 space-y-2">
+        <div id="facebook" className="scroll-mt-20">
           <FacebookConnectSection
             venueId={venue.id}
             connection={facebookConnection}
@@ -53,7 +50,6 @@ export default async function FinancialsIntegrationsSettingsPage() {
             recentLog={facebookLog}
             connectUrl={buildFacebookOAuthUrl(venue.id)}
           />
-          <div className="px-1"><SetupGuideLink href="/help/whats-the-difference-between-a-lead-and-a-client" label="What's the Difference Between a Lead and a Client?" /></div>
         </div>
       )}
     </div>

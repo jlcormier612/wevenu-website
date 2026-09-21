@@ -4,11 +4,17 @@
  * until Jennifer resolves the UI path mismatch.
  */
 
+import { INTEGRATION_SETUP_ARTICLES } from "@/lib/help-guides/integration-setup-articles";
+
+export type FinalHelpRelatedFeature = { href: string; label: string };
+
 export type FinalHelpArticle = {
   slug: string;
   title: string;
   category: string;
   body: string;
+  /** Optional “Go do it” links on the Help article page. */
+  relatedFeatures?: readonly FinalHelpRelatedFeature[];
   /** When set, article must not be published until product/content resolves it. */
   blocked?: {
     referencedCopy: string;
@@ -746,6 +752,7 @@ Do not treat completion as deletion.
 
 The event has moved into its next stage; its history still matters.`,
   },
+  ...INTEGRATION_SETUP_ARTICLES,
 ];
 
 export const PUBLISHABLE_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter((a) => !a.blocked);

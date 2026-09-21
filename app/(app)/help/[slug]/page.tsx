@@ -21,13 +21,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: article ? `${article.title} — ${HELP_GUIDES_TITLE}` : HELP_GUIDES_TITLE };
 }
 
-/** Render editorial Help copy: paragraphs + **bold** + ### headings + * / - bullets. */
+/** Render editorial Help copy: paragraphs, **bold**, ### headings, bullets, numbered lists, > callouts, [links](url). */
 function HelpProse({ body }: { body: string }) {
   const blocks = body.trim().split(/\n\n+/);
   return (
     <div className="space-y-4 text-sm text-foreground leading-relaxed">
       {blocks.map((block, i) => {
-        const lines = block.split("\n");
+        const lines = block.split("\n").filter((l) => l.trim() !== "");
         const heading = block.trim().match(/^###\s+(.+)$/);
         if (heading && lines.length === 1) {
           return (
@@ -36,10 +36,39 @@ function HelpProse({ body }: { body: string }) {
             </h2>
           );
         }
+
+        const isCallout = lines.every((l) => /^>\s?/.test(l.trim()) || l.trim() === ">");
+        if (isCallout && lines.length > 0) {
+          return (
+            <div
+              key={i}
+              className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-2"
+            >
+              {lines.map((l, j) => (
+                <p key={j} className="text-sm leading-6 text-foreground whitespace-pre-wrap">
+                  {renderInline(l.trim().replace(/^>\s?/, ""))}
+                </p>
+              ))}
+            </div>
+          );
+        }
+
+        const orderedLines = lines.filter((l) => /^\d+\.\s/.test(l.trim()));
         const bulletLines = lines.filter((l) => /^[-*]\s/.test(l.trim()));
         const proseLines = lines.filter(
-          (l) => l.trim() !== "" && !/^[-*]\s/.test(l.trim()),
+          (l) => l.trim() !== "" && !/^[-*]\s/.test(l.trim()) && !/^\d+\.\s/.test(l.trim()),
         );
+
+        if (orderedLines.length > 0 && orderedLines.length === lines.length) {
+          return (
+            <ol key={i} className="list-decimal pl-5 space-y-1.5 text-muted-foreground">
+              {orderedLines.map((l, j) => (
+                <li key={j}>{renderInline(l.trim().replace(/^\d+\.\s/, ""))}</li>
+              ))}
+            </ol>
+          );
+        }
+
         if (bulletLines.length > 0) {
           return (
             <div key={i} className="space-y-2">
@@ -56,6 +85,7 @@ function HelpProse({ body }: { body: string }) {
             </div>
           );
         }
+
         return (
           <p key={i} className="text-muted-foreground whitespace-pre-wrap">
             {renderInline(block)}
@@ -68,13 +98,28 @@ function HelpProse({ body }: { body: string }) {
 
 function renderInline(text: string): ReactNode {
   const parts: ReactNode[] = [];
-  const re = /\*\*([^*]+)\*\*/g;
+  // Links first, then bold inside remaining segments
+  const tokenRe = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*]+)\*\*/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let key = 0;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = tokenRe.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
-    parts.push(<strong key={key++} className="font-semibold text-foreground">{m[1]}</strong>);
+    if (m[1] && m[2]) {
+      parts.push(
+        <a
+          key={key++}
+          href={m[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary underline underline-offset-2"
+        >
+          {m[1]}
+        </a>,
+      );
+    } else if (m[3]) {
+      parts.push(<strong key={key++} className="font-semibold text-foreground">{m[3]}</strong>);
+    }
     last = m.index + m[0].length;
   }
   if (last < text.length) parts.push(text.slice(last));

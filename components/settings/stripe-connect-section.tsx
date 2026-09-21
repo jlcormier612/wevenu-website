@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle2, CreditCard, ExternalLink, Loader2 } from "
 import { toast } from "sonner";
 
 import { disconnectStripeAction, updateAcceptedPaymentMethodsAction } from "@/app/(app)/settings/actions";
+import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -91,6 +92,12 @@ export function StripeConnectSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Before you start: </span>
+            Have your Stripe account and business verification information ready.
+          </p>
+        </div>
         {isConnected ? (
           <div className="space-y-4">
             {chargesEnabled ? (
@@ -179,10 +186,24 @@ export function StripeConnectSection({
                   <ExternalLink className="h-3.5 w-3.5" />
                   Connect with Stripe
                 </a>
+                <div>
+                  <SetupGuideLink
+                    href="/help/how-to-connect-stripe-for-online-payments"
+                    label="Need help? Follow the step-by-step Stripe setup guide"
+                  />
+                </div>
               </>
             )}
           </div>
         )}
+        {isConnected ? (
+          <div>
+            <SetupGuideLink
+              href="/help/how-to-connect-stripe-for-online-payments"
+              label="Need help? Follow the step-by-step Stripe setup guide"
+            />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

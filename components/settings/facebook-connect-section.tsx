@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
 import { facebookUiState } from "@/lib/facebook/ui-state";
 import { cn } from "@/lib/utils";
@@ -529,6 +530,12 @@ export function FacebookConnectSection({
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Connect with Facebook
               </a>
+              <div>
+                <SetupGuideLink
+                  href="/help/how-to-connect-facebook-instagram-lead-ads"
+                  label="Need help? Follow the step-by-step Facebook & Instagram Lead Ads guide"
+                />
+              </div>
             </>
           )}
         </div>
@@ -652,7 +659,23 @@ export function FacebookConnectSection({
           Every lead submitted through your connected Lead Ads forms becomes a Lead in Hello to Cheers automatically.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">{renderBody()}</CardContent>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Before you start: </span>
+            Make sure you have access to the correct Facebook Page and know which Lead Ads forms should send leads into Hello to Cheers.
+          </p>
+        </div>
+        {renderBody()}
+        {!isDisconnected ? (
+          <div>
+            <SetupGuideLink
+              href="/help/how-to-connect-facebook-instagram-lead-ads"
+              label="Need help? Follow the step-by-step Facebook & Instagram Lead Ads guide"
+            />
+          </div>
+        ) : null}
+      </CardContent>
     </Card>
   );
 }

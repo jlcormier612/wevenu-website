@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "l
 import { toast } from "sonner";
 
 import { disconnectQuickBooksAction, retryQuickBooksSyncAction } from "@/app/(app)/settings/actions";
+import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -136,6 +137,12 @@ export function QuickBooksConnectSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Before you start: </span>
+            Make sure you&apos;re a QuickBooks Primary Admin or Company Admin and know which QuickBooks company you want to connect.
+          </p>
+        </div>
         {isConnected ? (
           <div className="space-y-3">
             <div className="flex items-start gap-3 rounded-lg border border-success/25 bg-success/5 p-4">
@@ -223,10 +230,24 @@ export function QuickBooksConnectSection({
                   <ExternalLink className="h-3.5 w-3.5" />
                   Connect with QuickBooks
                 </a>
+                <div>
+                  <SetupGuideLink
+                    href="/help/how-to-connect-quickbooks-online"
+                    label="Need help? Follow the step-by-step QuickBooks setup guide"
+                  />
+                </div>
               </>
             )}
           </div>
         )}
+        {(isConnected || isError) ? (
+          <div>
+            <SetupGuideLink
+              href="/help/how-to-connect-quickbooks-online"
+              label="Need help? Follow the step-by-step QuickBooks setup guide"
+            />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

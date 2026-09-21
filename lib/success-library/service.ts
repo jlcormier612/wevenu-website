@@ -128,7 +128,7 @@ function mapEditorialArticle(slug: string): SuccessLibraryArticle | null {
     whenToUse: "",
     bestPractices: "",
     commonMistakes: "",
-    relatedFeatures: [],
+    relatedFeatures: [...(article.relatedFeatures ?? [])],
     linkedGapKeys: [],
     status: "published",
     version: 1,

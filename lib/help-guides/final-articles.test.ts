@@ -30,9 +30,9 @@ describe("Help & Guides final IA", () => {
     assert.match(HELP_GUIDES_TAGLINE, /start with Getting Started if you're new here/);
   });
 
-  it("publishes all 32 editorial articles with none blocked", () => {
-    assert.equal(FINAL_HELP_ARTICLES.length, 32);
-    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 32);
+  it("publishes all 35 editorial articles with none blocked", () => {
+    assert.equal(FINAL_HELP_ARTICLES.length, 35);
+    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 35);
     assert.equal(BLOCKED_HELP_ARTICLES.length, 0);
     assert.ok(FINAL_HELP_ARTICLES.every((a) => !a.blocked));
   });
@@ -42,8 +42,11 @@ describe("Help & Guides final IA", () => {
     assert.ok(titles.includes("Getting Started: Your First Morning"));
     assert.ok(titles.includes("How Should I Read My Reports?"));
     assert.ok(titles.includes("What Happens After an Event?"));
-    assert.equal(new Set(titles).size, 32);
-    assert.equal(new Set(FINAL_HELP_ARTICLES.map((a) => a.slug)).size, 32);
+    assert.ok(titles.includes("How to Connect Stripe for Online Payments"));
+    assert.ok(titles.includes("How to Connect QuickBooks Online"));
+    assert.ok(titles.includes("How to Connect Facebook & Instagram Lead Ads"));
+    assert.equal(new Set(titles).size, 35);
+    assert.equal(new Set(FINAL_HELP_ARTICLES.map((a) => a.slug)).size, 35);
   });
 
   it("does not publish stale Reporting or Booking language in publishable bodies", () => {
@@ -67,9 +70,9 @@ describe("Help & Guides final IA", () => {
     const expected: Record<string, number> = {
       "Getting Started": 2,
       "Your Venue": 2,
-      "Finding & Booking Clients": 5,
+      "Finding & Booking Clients": 6,
       "Working With Clients": 2,
-      "Contracts & Payments": 5,
+      "Contracts & Payments": 7,
       "Building the Event": 3,
       "Planning the Event": 7,
       Vendors: 1,
@@ -106,7 +109,13 @@ describe("Help & Guides final IA", () => {
       "utf8",
     );
     assert.match(sql, /delete from public\.success_library_articles/);
-    const historical = FINAL_HELP_ARTICLES.filter((a) => a.slug !== "how-does-date-availability-work");
+    const laterEditorialSlugs = new Set([
+      "how-does-date-availability-work",
+      "how-to-connect-stripe-for-online-payments",
+      "how-to-connect-quickbooks-online",
+      "how-to-connect-facebook-instagram-lead-ads",
+    ]);
+    const historical = FINAL_HELP_ARTICLES.filter((a) => !laterEditorialSlugs.has(a.slug));
     for (const a of historical) {
       assert.match(sql, new RegExp(`'${a.slug.replace(/-/g, "\\-")}'`));
     }
