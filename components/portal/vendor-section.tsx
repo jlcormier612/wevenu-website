@@ -27,6 +27,10 @@ import { Button } from "@/components/ui/button";
 import { PortalCoupleVendorThread } from "@/components/portal/couple-vendor-thread";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import {
+  canToggleVendorPick,
+  vendorPickSaveErrorMessage,
+} from "@/lib/portal/vendor-pick-errors";
 import { formatCivilDateLabel } from "@/lib/vendor-availability/dates";
 import type { CoupleAvailabilityStatus } from "@/lib/vendor-availability/query";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
@@ -769,16 +773,16 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, clientId, recommendationId, picked }),
       });
-      const data = await res.json() as { ok?: boolean };
+      const data = await res.json() as { ok?: boolean; error?: string };
       if (data.ok) {
         const pickedAt = picked ? new Date().toISOString() : null;
         setRecommendations((prev) => prev.map((r) => r.id === recommendationId ? { ...r, pickedAt } : r));
         setDirectory((prev) => prev.map((v) => v.vendorId === vendorId ? { ...v, pickedAt, recommendationId } : v));
       } else {
-        toast.error("Couldn't save your pick. Please try again.");
+        toast.error(vendorPickSaveErrorMessage(data.error));
       }
     } catch {
-      toast.error("Couldn't save your pick. Please try again.");
+      toast.error(vendorPickSaveErrorMessage(null));
     } finally {
       setTogglingKey(null);
     }
@@ -792,7 +796,12 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, clientId, vendorId, picked }),
       });
-      const data = await res.json() as { ok?: boolean; recommendationId?: string | null; pickedAt?: string | null };
+      const data = await res.json() as {
+        ok?: boolean;
+        error?: string;
+        recommendationId?: string | null;
+        pickedAt?: string | null;
+      };
       if (data.ok) {
         const pickedAt = picked ? (data.pickedAt ?? new Date().toISOString()) : null;
         setDirectory((prev) => prev.map((v) =>
@@ -809,10 +818,10 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           return prev;
         });
       } else {
-        toast.error("Couldn't save your pick. Please try again.");
+        toast.error(vendorPickSaveErrorMessage(data.error));
       }
     } catch {
-      toast.error("Couldn't save your pick. Please try again.");
+      toast.error(vendorPickSaveErrorMessage(null));
     } finally {
       setTogglingKey(null);
     }
@@ -996,14 +1005,17 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
     const toggleKey = viewing.source === "recommended" && viewing.recommendationId
       ? viewing.recommendationId
       : `dir:${viewing.vendorId}`;
+    const canPick = canToggleVendorPick(eventDate);
     return (
       <VendorDetail
         rec={viewingRec}
         onBack={closeVendor}
         onToggle={
-          viewing.source === "recommended" && viewing.recommendationId
-            ? (picked) => handleToggleRecommendation(viewing.recommendationId!, viewing.vendorId, picked)
-            : (picked) => handleToggleDirectory(viewing.vendorId, picked)
+          !canPick
+            ? undefined
+            : viewing.source === "recommended" && viewing.recommendationId
+              ? (picked) => handleToggleRecommendation(viewing.recommendationId!, viewing.vendorId, picked)
+              : (picked) => handleToggleDirectory(viewing.vendorId, picked)
         }
         toggling={togglingKey === toggleKey}
         contacting={contacting}
@@ -1034,7 +1046,11 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           <p className="text-sm text-foreground mt-2">
             Your event date: <span className="font-medium">{formatCivilDateLabel(eventDate)}</span>
           </p>
-        ) : null}
+        ) : (
+          <p className="text-sm text-muted-foreground mt-2">
+            Your venue still needs to set up your event before you can save vendor picks.
+          </p>
+        )}
         {requiredCategories.length > 0 && (
           <p className="text-xs text-muted-foreground mt-2">
             Required categories:{" "}
@@ -1126,7 +1142,11 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
                     <VendorListRow
                       key={r.id}
                       rec={r}
-                      onToggle={(picked) => handleToggleRecommendation(r.id, r.vendorId, picked)}
+                      onToggle={
+                        canToggleVendorPick(eventDate)
+                          ? (picked) => handleToggleRecommendation(r.id, r.vendorId, picked)
+                          : undefined
+                      }
                       toggling={togglingKey === r.id}
                       onView={() => openVendor({
                         vendorId: r.vendorId,
@@ -1166,7 +1186,11 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
                     <VendorListRow
                       key={v.id}
                       rec={{ ...v, note: null }}
-                      onToggle={(picked) => handleToggleDirectory(v.vendorId, picked)}
+                      onToggle={
+                        canToggleVendorPick(eventDate)
+                          ? (picked) => handleToggleDirectory(v.vendorId, picked)
+                          : undefined
+                      }
                       toggling={togglingKey === `dir:${v.vendorId}`}
                       onView={() => openVendor({ vendorId: v.vendorId, source: "directory" })}
                     />

@@ -46,21 +46,23 @@ export async function POST(request: Request) {
 
   // Directory tab: pick by vendorId (upserts recommendation if needed).
   if (vendorId && !recommendationId) {
-    const { data } = await supabase.rpc("toggle_directory_vendor_pick", {
+    const { data, error } = await supabase.rpc("toggle_directory_vendor_pick", {
       p_access_token: token,
       p_client_id: clientId,
       p_vendor_id: vendorId,
       p_picked: picked,
     });
-    return NextResponse.json(data ?? { ok: false });
+    if (error) return NextResponse.json({ ok: false, error: error.message });
+    return NextResponse.json(data ?? { ok: false, error: "empty_rpc_response" });
   }
 
   if (!recommendationId) {
     return NextResponse.json({ ok: false, error: "Missing fields." }, { status: 400 });
   }
 
-  const { data } = await supabase.rpc("toggle_vendor_pick", {
+  const { data, error } = await supabase.rpc("toggle_vendor_pick", {
     p_access_token: token, p_client_id: clientId, p_recommendation_id: recommendationId, p_picked: picked,
   });
-  return NextResponse.json(data ?? { ok: false });
+  if (error) return NextResponse.json({ ok: false, error: error.message });
+  return NextResponse.json(data ?? { ok: false, error: "empty_rpc_response" });
 }
