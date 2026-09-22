@@ -19,6 +19,84 @@
 
 begin;
 
+-- Repair last-owner guard RAISE (string message + USING message is invalid in PG).
+-- Without this, deletes of the last Owner fail with 42601 instead of last_owner_protected,
+-- which also blocks proof cleanup below.
+create or replace function public.enforce_last_owner_invariant()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_remaining integer;
+  v_bypass text;
+begin
+  v_bypass := current_setting('htc.allow_last_owner_change', true);
+  if v_bypass = '1' then
+    if tg_op = 'DELETE' then return old; end if;
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    if old.is_owner and old.is_active and old.accepted_at is not null then
+      select count(*)::integer into v_remaining
+      from public.venue_staff
+      where venue_id = old.venue_id
+        and is_owner = true
+        and is_active = true
+        and accepted_at is not null
+        and id is distinct from old.id;
+      if v_remaining < 1 then
+        raise exception 'last_owner_protected: Cannot remove the last Owner of a venue.'
+          using errcode = 'P0001';
+      end if;
+    end if;
+    return old;
+  end if;
+
+  if old.is_owner
+     and old.is_active
+     and old.accepted_at is not null
+     and (
+       new.is_owner = false
+       or new.is_active = false
+       or new.accepted_at is null
+     )
+  then
+    select count(*)::integer into v_remaining
+    from public.venue_staff
+    where venue_id = old.venue_id
+      and is_owner = true
+      and is_active = true
+      and accepted_at is not null
+      and id is distinct from old.id;
+    if v_remaining < 1 then
+      raise exception 'last_owner_protected: Cannot remove or deactivate the last Owner of a venue.'
+        using errcode = 'P0001';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Remove leftover coalesce-gap probe venue from diagnosis (if still present).
+do $$
+begin
+  perform set_config('htc.allow_last_owner_change', '1', true);
+  delete from public.venue_staff
+    where venue_id = 'bcce6279-fd1e-4b82-abc9-7125cb23321f';
+  delete from public.venues
+    where id = 'bcce6279-fd1e-4b82-abc9-7125cb23321f';
+  delete from public.venue_enrollments
+    where venue_id = 'bcce6279-fd1e-4b82-abc9-7125cb23321f'
+       or venue_name like 'Postfail Coalesce Check%'
+       or venue_name like 'Coalesce Gap Probe%'
+       or venue_name like 'Ownership Proof%';
+end;
+$$;
+
 drop function if exists public.activate_venue_enrollment(text, uuid, boolean, text, text);
 drop function if exists public.activate_venue_enrollment(text, uuid);
 
@@ -391,7 +469,8 @@ begin
     raise exception 'purchaser_ownership_fail_closed_proof_failed: on-behalf missing pending Owner invite row';
   end if;
 
-  -- Cleanup proof rows (transaction still commits the function defs).
+  -- Cleanup proof rows (bypass last-owner guard; transaction still commits defs).
+  perform set_config('htc.allow_last_owner_change', '1', true);
   delete from public.venue_staff where venue_id in (v_venue_true, v_venue_false);
   delete from public.venues where id in (v_venue_true, v_venue_false);
   delete from public.venue_enrollments where id in (v_enroll_null, v_enroll_true, v_enroll_false);
