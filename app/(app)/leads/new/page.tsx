@@ -10,6 +10,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getBlock } from "@/lib/availability/service";
+import { normalizeEventType } from "@/lib/event-types/canonical";
+import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import type { LeadInput } from "@/lib/leads/types";
 
 export const metadata: Metadata = { title: "New Lead" };
@@ -37,14 +40,29 @@ export default async function NewLeadPage({
   searchParams: Promise<{ fromBlockId?: string }>;
 }) {
   const { fromBlockId } = await searchParams;
-  const block = fromBlockId ? await getBlock(fromBlockId) : null;
+  const [block, inquirySettings] = await Promise.all([
+    fromBlockId ? getBlock(fromBlockId) : Promise.resolve(null),
+    getInquiryFormSettings(),
+  ]);
 
   // Calendar Booking Placeholder — "Convert to Booking." Pre-filled, not
   // auto-created: a coordinator still reviews and submits, so nothing about
   // a real Lead is ever fabricated silently from a placeholder's guesses.
+  const eventTypeOptions = buildVenueEventTypeOptions({
+    acceptedRaw: inquirySettings?.acceptedEventTypes ?? null,
+  });
+  const acceptedSet = new Set(eventTypeOptions.map((o) => o.value));
+
   const initial: Partial<LeadInput> | undefined = block ? {
     ...(block.clientName ? parseClientName(block.clientName) : {}),
-    eventType: block.eventType ?? "wedding",
+    // New Lead is inquiry creation — only accepted types. A Hold with a
+    // legacy event type clears so the coordinator picks an accepted one.
+    eventType: (() => {
+      const fromHold = block.eventType
+        ? (normalizeEventType(block.eventType) ?? block.eventType)
+        : "";
+      return fromHold && acceptedSet.has(fromHold) ? fromHold : "";
+    })(),
     eventDate: block.startDate,
     guestCount: block.guestCount != null ? String(block.guestCount) : "",
     estimatedBudget: block.estimatedRevenue != null ? String(block.estimatedRevenue) : "",
@@ -68,7 +86,11 @@ export default async function NewLeadPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NewInquiryForm initial={initial} fromBlockId={block ? fromBlockId : undefined} />
+          <NewInquiryForm
+            initial={initial}
+            fromBlockId={block ? fromBlockId : undefined}
+            eventTypeOptions={eventTypeOptions}
+          />
         </CardContent>
       </Card>
     </div>

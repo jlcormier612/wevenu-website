@@ -12,6 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
 import { resolveVenueFacingPhoto } from "@/lib/relationship-photos/model";
@@ -31,7 +33,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EditLeadPage({ params }: Props) {
   const { id } = await params;
-  const [lead, venue] = await Promise.all([getLead(id), getCurrentVenue()]);
+  const [lead, venue, inquirySettings] = await Promise.all([
+    getLead(id),
+    getCurrentVenue(),
+    getInquiryFormSettings(),
+  ]);
   if (!lead) notFound();
 
   const photo = lead.relationshipId
@@ -42,6 +48,11 @@ export default async function EditLeadPage({ params }: Props) {
         clientPhotoShared: false,
         venueDisplaySource: "none",
       });
+
+  const eventTypeOptions = buildVenueEventTypeOptions({
+    acceptedRaw: inquirySettings?.acceptedEventTypes ?? null,
+    currentValue: lead.eventType,
+  });
 
   return (
     <div className="space-y-6">
@@ -68,7 +79,7 @@ export default async function EditLeadPage({ params }: Props) {
               <Separator />
             </>
           ) : null}
-          <LeadEditForm lead={lead} />
+          <LeadEditForm lead={lead} eventTypeOptions={eventTypeOptions} />
         </CardContent>
       </Card>
     </div>

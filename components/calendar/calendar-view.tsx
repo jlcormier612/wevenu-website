@@ -30,7 +30,8 @@ import {
   type ScheduleItemPickerOption,
   type VenueScheduleItemType,
 } from "@/lib/calendar/schedule-item-catalog";
-import { EVENT_TYPES } from "@/lib/leads/constants";
+import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
+import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
 import { toast } from "sonner";
 import { describeRecurrence } from "@/lib/calendar/recurrence";
 import type { CalendarItem, ScheduleRelationOption } from "@/lib/calendar/types";
@@ -291,6 +292,7 @@ export function CalendarView({
   items,
   today,
   scheduleCatalog = [],
+  bookingEventTypeOptions = [],
 }: {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
@@ -301,6 +303,11 @@ export function CalendarView({
   today: string;
   /** Enabled venue catalog rows for the Schedule Item type picker (2A.2.2). */
   scheduleCatalog?: VenueScheduleItemType[];
+  /**
+   * Accepted inquiry event types for Hold (booking placeholder) forms.
+   * Holds convert to New Lead — same accepted set as Add New Lead.
+   */
+  bookingEventTypeOptions?: VenueEventTypeOption[];
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
@@ -364,7 +371,8 @@ export function CalendarView({
   // Calendar Booking Placeholder — only read/sent when blockType is a
   // Bookings type (isBookingPlaceholder); every other Schedule Item leaves
   // these untouched and unsent.
-  const [blockEventType, setBlockEventType] = React.useState("wedding");
+  const defaultHoldEventType = bookingEventTypeOptions[0]?.value ?? "wedding";
+  const [blockEventType, setBlockEventType] = React.useState(defaultHoldEventType);
   const [blockClientName, setBlockClientName] = React.useState("");
   const [blockGuestCount, setBlockGuestCount] = React.useState("");
   const [blockEstimatedRevenue, setBlockEstimatedRevenue] = React.useState("");
@@ -372,6 +380,20 @@ export function CalendarView({
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [deletePending, startDelete] = React.useTransition();
   const formRef = React.useRef<HTMLDivElement>(null);
+
+  const holdEventTypeOptions = React.useMemo(
+    () =>
+      buildVenueEventTypeOptions({
+        acceptedRaw: bookingEventTypeOptions.map((o) => o.value),
+        currentValue: editingBlockId ? blockEventType : null,
+      }),
+    [bookingEventTypeOptions, editingBlockId, blockEventType],
+  );
+
+  const selectedHoldEventType = holdEventTypeOptions.find((o) => o.value === blockEventType);
+  const holdEventTypeHint = selectedHoldEventType?.isLegacyCurrent
+    ? selectedHoldEventType.description
+    : undefined;
 
   function defaultFormDate() {
     if (view === "day") return dayDate || today;
@@ -432,7 +454,7 @@ export function CalendarView({
     setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
     setBlockRelatedTo(null);
     setBlockNotes("");
-    setBlockEventType("wedding"); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
+    setBlockEventType(defaultHoldEventType); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
     setEditingBlockId(null);
   }
 
@@ -565,7 +587,7 @@ export function CalendarView({
         setBlockRelatedTo(null);
       }
       setBlockNotes(block.notes ?? "");
-      setBlockEventType(block.eventType ?? "wedding");
+      setBlockEventType(block.eventType ?? defaultHoldEventType);
       setBlockClientName(block.clientName ?? "");
       setBlockGuestCount(block.guestCount != null ? String(block.guestCount) : "");
       setBlockEstimatedRevenue(block.estimatedRevenue != null ? String(block.estimatedRevenue) : "");
@@ -788,10 +810,13 @@ export function CalendarView({
             {isBookingPlaceholder(blockType) && blockPickerValue !== OPTIONAL_TYPE_NONE && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Event type</Label>
-                <Select value={blockEventType} onValueChange={setBlockEventType} items={EVENT_TYPES}>
+                <Select value={blockEventType} onValueChange={setBlockEventType} items={holdEventTypeOptions}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{EVENT_TYPES.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{holdEventTypeOptions.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
                 </Select>
+                {holdEventTypeHint ? (
+                  <p className="text-[11px] text-muted-foreground">{holdEventTypeHint}</p>
+                ) : null}
               </div>
             )}
             <div className="space-y-1.5">

@@ -1,13 +1,19 @@
 "use client";
 
 /**
- * TourScheduler — public tour booking experience.
+ * LEGACY / UNREACHABLE — do not use for live public tour booking.
+ *
+ * Live public `/book/[key]` uses `InquiryForm` with venue
+ * `accepted_inquiry_event_types` via `getPublicInquiryFormConfig`.
+ * This component is not imported by any app route; it retains a hardcoded
+ * event-type label list that is NOT the canonical venue-aware builder.
+ *
+ * If this surface is ever revived, replace the local EVENT_TYPES array with
+ * `buildVenueEventTypeOptions` + the venue's accepted inquiry types.
+ *
+ * TourScheduler — historical public tour booking experience.
  *
  * Flow: Date picker → Time slot grid → Contact form → Confirmation
- *
- * This is the "front door" for venue tours.
- * Design: clean, mobile-first, warm. Heritage Sage palette.
- * Every booking creates a lead in Hello to Cheers automatically.
  */
 
 import * as React from "react";

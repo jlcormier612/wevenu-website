@@ -143,6 +143,30 @@ async function createLeadCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: LeadInput, trustTier: TrustTier,
   historicalImport = false,
 ): Promise<CreateLeadResult> {
+  // Manual / ordinary new Lead: venue accepted inquiry types are required.
+  // Historical import (Migration Center / White-Glove) may carry legacy types.
+  if (!historicalImport) {
+    const { data: venueRow } = await supabase
+      .from("venues")
+      .select("accepted_inquiry_event_types")
+      .eq("id", venueId)
+      .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
+    const { assertEventTypeAcceptedForNewRecord } = await import(
+      "@/lib/event-types/assert-accepted"
+    );
+    const accepted = assertEventTypeAcceptedForNewRecord(
+      input.eventType,
+      venueRow?.accepted_inquiry_event_types,
+    );
+    if (!accepted.ok) {
+      return {
+        ok: false,
+        errors: { eventType: accepted.error },
+        message: accepted.error,
+      };
+    }
+  }
+
   if (trustTier === "manual" && !historicalImport) {
     const { findPossibleDuplicateMatches } = await import("@/lib/leads/duplicate-detection");
     const matches = await findPossibleDuplicateMatches(supabase, venueId, {
@@ -963,6 +987,35 @@ export async function updateLeadInfo(
   const errors = validateLeadInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    const [{ data: existing }, { data: venueRow }] = await Promise.all([
+      supabase
+        .from("leads")
+        .select("event_type")
+        .eq("id", leadId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ event_type: string | null }>(),
+      supabase
+        .from("venues")
+        .select("accepted_inquiry_event_types")
+        .eq("id", venueId)
+        .maybeSingle<{ accepted_inquiry_event_types: unknown }>(),
+    ]);
+    const { assertEventTypeChangeAllowed } = await import(
+      "@/lib/event-types/assert-accepted"
+    );
+    const change = assertEventTypeChangeAllowed({
+      previousEventType: existing?.event_type,
+      nextEventType: input.eventType,
+      acceptedRaw: venueRow?.accepted_inquiry_event_types,
+    });
+    if (!change.ok) {
+      return {
+        ok: false,
+        errors: { eventType: change.error },
+        message: change.error,
+      } as LeadActionResult;
+    }
+
     await repo.updateLeadInfo(supabase, venueId, leadId, input);
     await repo.insertActivity(supabase, venueId, leadId, "lead_updated", "Lead information updated");
     return { ok: true } as LeadActionResult;

@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { EVENT_TYPES, LEAD_SOURCES, eventTypeLabel, formatDate } from "@/lib/leads/constants";
+import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
+import { LEAD_SOURCES, eventTypeLabel, formatDate } from "@/lib/leads/constants";
 import type { Lead, LeadErrors, LeadInput, LeadWithDetails } from "@/lib/leads/types";
 
 /**
@@ -63,7 +64,13 @@ function leadToInput(lead: Lead): LeadInput {
   };
 }
 
-export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
+export function LeadEditForm({
+  lead,
+  eventTypeOptions,
+}: {
+  lead: LeadWithDetails;
+  eventTypeOptions: VenueEventTypeOption[];
+}) {
   const router = useRouter();
   const [input, setInput] = React.useState<LeadInput>(() => leadToInput(lead));
   const [errors, setErrors] = React.useState<LeadErrors>({});
@@ -73,6 +80,11 @@ export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
     setInput((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
   };
+
+  const selectedEventTypeOption = eventTypeOptions.find((o) => o.value === input.eventType);
+  const eventTypeHint = selectedEventTypeOption?.isLegacyCurrent
+    ? selectedEventTypeOption.description
+    : undefined;
 
   function handleSubmit() {
     startTransition(async () => {
@@ -137,11 +149,11 @@ export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
           {lead.linkedEventId ? (
             <ManagedOnEventField label="Event type" value={eventTypeLabel(input.eventType)} eventId={lead.linkedEventId} />
           ) : (
-            <Field label="Event type" htmlFor="et">
-              <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
+            <Field label="Event type" htmlFor="et" error={errors.eventType} hint={eventTypeHint}>
+              <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={eventTypeOptions}>
                 <SelectTrigger id="et"><SelectValue placeholder="Select a type" /></SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {eventTypeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>

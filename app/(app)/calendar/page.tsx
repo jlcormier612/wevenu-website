@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { getScheduleItemTypesForPicker } from "@/lib/calendar/schedule-item-catalog-service";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
 import { publicAppOrigin } from "@/lib/env";
+import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 import { getTourSettings } from "@/lib/tours/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -27,11 +29,12 @@ type Props = { searchParams: Promise<CalendarViewParams> };
  */
 export default async function CalendarPage({ searchParams }: Props) {
   const params = await searchParams;
-  const [{ view, year, month, weekStart, dayDate, items, today }, scheduleCatalog, venue, tourSettings] = await Promise.all([
+  const [{ view, year, month, weekStart, dayDate, items, today }, scheduleCatalog, venue, tourSettings, inquirySettings] = await Promise.all([
     resolveCalendarView(params),
     getScheduleItemTypesForPicker(),
     getCurrentVenue(),
     getTourSettings(),
+    getInquiryFormSettings(),
   ]);
 
   const printHref = `/calendar/print?view=${view}&year=${year}&month=${month}&weekStart=${weekStart}&date=${dayDate}`;
@@ -42,6 +45,11 @@ export default async function CalendarPage({ searchParams }: Props) {
     ? publicTourSchedulingPath(tourSettings.tourEmbedKey)
     : null;
   const tourUrl = tourPath ? `${publicAppOrigin()}${tourPath}` : null;
+
+  // Holds (booking placeholders) feed Convert-to-Lead — same accepted inquiry set.
+  const bookingEventTypeOptions = buildVenueEventTypeOptions({
+    acceptedRaw: inquirySettings?.acceptedEventTypes ?? null,
+  });
 
   return (
     <div className="space-y-6">
@@ -79,6 +87,7 @@ export default async function CalendarPage({ searchParams }: Props) {
         items={items}
         today={today}
         scheduleCatalog={scheduleCatalog}
+        bookingEventTypeOptions={bookingEventTypeOptions}
       />
     </div>
   );

@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
 import {
-  EVENT_TYPES,
   LEAD_SOURCES,
   createInitialLeadInput,
 } from "@/lib/leads/constants";
@@ -51,11 +51,19 @@ function SelectField({
   id, label, value, onValueChange, options, placeholder, error, hint,
 }: {
   id: string; label: string; value: string; onValueChange: (v: string) => void;
-  options: { value: string; label: string }[]; placeholder?: string;
+  options: VenueEventTypeOption[] | { value: string; label: string }[];
+  placeholder?: string;
   error?: string; hint?: string;
 }) {
+  const legacyHint =
+    hint ??
+    options.find(
+      (o): o is VenueEventTypeOption =>
+        "isLegacyCurrent" in o && o.isLegacyCurrent === true && o.value === value,
+    )?.description;
+
   return (
-    <Field label={label} htmlFor={id} error={error} hint={hint}>
+    <Field label={label} htmlFor={id} error={error} hint={legacyHint}>
       {/* `items` makes Select.Value show the matched option's label
           instead of the raw stored value (Base UI doesn't derive this
           automatically the way Radix does). */}
@@ -74,12 +82,14 @@ function SelectField({
 }
 
 export function NewInquiryForm({
-  initial, fromBlockId,
+  initial, fromBlockId, eventTypeOptions,
 }: {
   /** Calendar Booking Placeholder — "Convert to Booking" pre-fill. Merged over the usual blank defaults; every field stays editable. */
   initial?: Partial<LeadInput>;
   /** Set only when arriving via "Convert to Booking" — marks the originating placeholder converted once this Lead is actually created. */
   fromBlockId?: string;
+  /** Venue accepted inquiry types (plus convert-from-hold legacy current when needed). */
+  eventTypeOptions: VenueEventTypeOption[];
 }) {
   const router = useRouter();
   const [input, setInput] = React.useState<LeadInput>(() => ({ ...createInitialLeadInput(), ...initial }));
@@ -188,8 +198,8 @@ export function NewInquiryForm({
         <p className="text-sm font-medium text-heading">Event details</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField id="eventType" label="Event type" value={input.eventType}
-            onValueChange={(v) => set("eventType", v)} options={EVENT_TYPES}
-            placeholder="Select a type" />
+            onValueChange={(v) => set("eventType", v)} options={eventTypeOptions}
+            placeholder="Select a type" error={errors.eventType} />
           <TextField id="eventDate" label="Event date" type="date" value={input.eventDate}
             onChange={(v) => set("eventDate", v)} error={errors.eventDate} />
         </div>
