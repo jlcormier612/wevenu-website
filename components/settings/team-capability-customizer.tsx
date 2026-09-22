@@ -6,6 +6,7 @@ import {
   presetHas,
   type AccessTitle,
   type BasisTitle,
+  type CapabilityDefinition,
   type CapabilityKey,
   type CapabilityOverrides,
 } from "@/lib/authorization";
