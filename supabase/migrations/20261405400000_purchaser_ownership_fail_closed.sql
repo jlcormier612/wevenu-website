@@ -194,7 +194,7 @@ begin
     'public.activate_venue_enrollment(text, uuid)'::regprocedure
   ) into def_2arg;
 
-  if def_5arg ~* 'coalesce\([^;]*,\s*true\s*\)' then
+  if def_5arg ~* 'coalesce\(\s*p_purchaser_is_owner\s*,\s*v_enrollment\.purchaser_is_owner\s*,\s*true\s*\)' then
     raise exception 'purchaser_ownership_fail_closed_proof_failed: 5-arg still coalesce-defaults to true';
   end if;
   if position('purchaser_ownership_choice_required' in def_5arg) = 0 then
