@@ -42,9 +42,8 @@ begin
   -- Never invent Owner when neither is set.
   v_purchaser_is_owner := coalesce(p_purchaser_is_owner, v_enrollment.purchaser_is_owner);
   if v_purchaser_is_owner is null then
-    raise exception 'purchaser_ownership_choice_required'
-      using errcode = 'P0001',
-        message = 'Purchaser ownership choice is required. Explicit p_purchaser_is_owner must be true or false.';
+    raise exception 'purchaser_ownership_choice_required: Purchaser ownership choice is required. Explicit p_purchaser_is_owner must be true or false.'
+      using errcode = 'P0001';
   end if;
 
   v_staff_name := coalesce(
