@@ -624,8 +624,10 @@ export async function confirmPipelineBookedMove(
     const lead = await repo.getLead(supabase, venueId, leadId);
     if (!lead) return { ok: false as const, message: "Lead not found." };
 
+    const spaceId = opts?.spaceId?.trim() || lead.plannedEventSpaceId || undefined;
+
     const { convertLeadToClient } = await import("@/lib/clients/service");
-    const converted = await convertLeadToClient(lead, { spaceId: opts?.spaceId });
+    const converted = await convertLeadToClient(lead, { spaceId });
     if (!converted.ok) return converted;
 
     let warning: string | undefined;
@@ -656,7 +658,7 @@ export async function confirmPipelineBookedMove(
       leadId: lead.id,
       pipelineStageId,
       source: "manual",
-      spaceId: opts?.spaceId,
+      spaceId,
     });
     if (!booked.ok) {
       return { ok: false as const, message: booked.message };
@@ -979,6 +981,42 @@ export async function deleteTask(taskId: string): Promise<LeadActionResult> {
 }
 
 // ---- Sprint 6: lead info + relationship -------------------------------------
+
+/**
+ * Autosave the Lead's planned Event Space. Planning only: no Event row,
+ * no sales-stage change, no booked_at stamp.
+ */
+export async function setLeadPlannedEventSpace(
+  leadId: string,
+  spaceId: string | null,
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const trimmed = spaceId?.trim() || null;
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", leadId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ id: string }>();
+    if (!lead) return { ok: false, message: "Lead not found." } as LeadActionResult;
+
+    if (trimmed) {
+      const { data: space } = await supabase
+        .from("venue_spaces")
+        .select("id")
+        .eq("id", trimmed)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string }>();
+      if (!space) {
+        return { ok: false, message: "That event space is not on this venue." } as LeadActionResult;
+      }
+    }
+
+    await repo.setPlannedEventSpace(supabase, venueId, leadId, trimmed);
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
 
 export async function updateLeadInfo(
   leadId: string,

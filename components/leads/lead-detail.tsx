@@ -27,6 +27,7 @@ import type { PackageWithItems } from "@/lib/packages/types";
 import {
   deleteLeadRecordAction,
   confirmPipelineBookedMoveAction,
+  setLeadPlannedEventSpaceAction,
   markLeadLostAction,
   moveLeadBackToSalesPipelineAction,
   previewDeleteLeadAction,
@@ -152,7 +153,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [confirmStageId, setConfirmStageId] = React.useState<string | null>(null);
   const [confirmPreview, setConfirmPreview] = React.useState<AutomationMessagePreview | null>(null);
-  const [bookingSpaceId, setBookingSpaceId] = React.useState("");
+  const [bookingSpaceId, setBookingSpaceId] = React.useState(lead.plannedEventSpaceId ?? "");
   const [confirmBookOpen, setConfirmBookOpen] = React.useState(false);
   const [confirmMoveBackOpen, setConfirmMoveBackOpen] = React.useState(false);
   const [confirmReturnBookedOpen, setConfirmReturnBookedOpen] = React.useState(false);
@@ -162,6 +163,18 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const spaceNeededForBooked = maxSimultaneousEvents >= 2 && !!lead.eventDate;
   const spacesRequired = spaceNeededForBooked;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
+
+  async function handlePlannedSpaceChange(next: string) {
+    const previous = bookingSpaceId;
+    setBookingSpaceId(next);
+    const result = await setLeadPlannedEventSpaceAction(lead.id, next || null);
+    if (!result.ok) {
+      setBookingSpaceId(previous);
+      toast.error(result.message ?? "Could not save the event space.");
+      return;
+    }
+    toast.success(next ? "Event space saved." : "Event space cleared.");
+  }
 
   function requestBookThisLead() {
     if (lead.eventDate && eventDateBlocked) {
@@ -493,7 +506,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <div className="w-full min-w-56">
               <EventSpaceField
                 value={bookingSpaceId}
-                onChange={setBookingSpaceId}
+                onChange={(v) => { void handlePlannedSpaceChange(v); }}
                 spaces={spaces}
                 spacesRequired
               />

@@ -50,6 +50,11 @@ export type Lead = {
   partnerEmail: string | null;
   eventType: string | null;
   eventDate: string | null; // ISO "YYYY-MM-DD"
+  /**
+   * Venue's planned Event Space for this inquiry before a real Event exists.
+   * Not occupancy. Null when unset. Optional so existing fixtures stay valid.
+   */
+  plannedEventSpaceId?: string | null;
   endDate: string | null;
   guestCount: number | null;
   estimatedBudget: number | null;

@@ -13,6 +13,7 @@ import {
   moveLeadBackToSalesPipeline,
   returnLeadToBooked,
   setTaskCompleted,
+  setLeadPlannedEventSpace,
   updateLeadInfo,
   updateLeadPipelineStage,
   updateLeadStatus,
@@ -77,6 +78,15 @@ export async function markLeadLostAction(
     revalidateLead(leadId);
     void refreshLeadScore(leadId).catch(() => {});
   }
+  return result;
+}
+
+export async function setLeadPlannedEventSpaceAction(
+  leadId: string,
+  spaceId: string | null,
+): Promise<LeadActionResult> {
+  const result = await setLeadPlannedEventSpace(leadId, spaceId);
+  if (result.ok) revalidateLead(leadId);
   return result;
 }
 

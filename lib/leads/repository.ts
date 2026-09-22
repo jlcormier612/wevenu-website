@@ -174,6 +174,7 @@ type LeadRow = {
   partner_email: string | null;
   event_type: string | null;
   event_date: string | null;
+  planned_event_space_id?: string | null;
   end_date: string | null;
   guest_count: number | null;
   estimated_budget: number | null;
@@ -240,6 +241,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     preferredCommunicationChannels: prefs,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
+    plannedEventSpaceId: r.planned_event_space_id ?? null,
     endDate: r.end_date, guestCount: r.guest_count, estimatedBudget: r.estimated_budget,
     inquiryMessage: r.inquiry_message, inquiryDate: r.inquiry_date,
     nextActionText: r.next_action_text, nextActionDue: r.next_action_due,
@@ -629,6 +631,21 @@ export async function updateLeadInfo(
   const { error } = await client
     .from("leads")
     .update(row)
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Persist the inquiry's planned Event Space. Does not create an Event. */
+export async function setPlannedEventSpace(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  spaceId: string | null,
+): Promise<void> {
+  const { error } = await client
+    .from("leads")
+    .update({ planned_event_space_id: spaceId })
     .eq("id", leadId)
     .eq("venue_id", venueId);
   if (error) throw error;

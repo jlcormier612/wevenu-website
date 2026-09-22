@@ -55,7 +55,8 @@ export async function startBookingFileAction(
   spaceId?: string,
   selectionId?: string,
 ): Promise<CreateClientResult> {
-  const result = await convertLeadToClient(lead, { spaceId });
+  const resolvedSpace = spaceId?.trim() || lead.plannedEventSpaceId || undefined;
+  const result = await convertLeadToClient(lead, { spaceId: resolvedSpace });
   if (!result.ok) return result;
 
   let warning: string | undefined;
