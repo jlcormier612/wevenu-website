@@ -148,7 +148,21 @@ export type CoordinatorTourResult =
       contactEmail: string | null;
       contactPhone: string | null;
       oldScheduledAt?: string; // present on reschedule
+      /** Outcome of the confirmation email. The tour save still succeeds when this is not ok. */
+      confirmationEmail: { ok: true } | { ok: false; message: string };
     }
   | { ok: false; error: string };
 
 export type SimpleTourResult = { ok: true } | { ok: false; error: string };
+
+/** Customer-facing preview of a tour email. `body` and `html` come from the send builder. */
+export type TourCustomerSendPreview = {
+  who: string | null;
+  channel: "Email";
+  subject: string;
+  body: string;
+  html: string;
+  why: string;
+  recipientAction: string;
+  htcAfterward: string;
+};

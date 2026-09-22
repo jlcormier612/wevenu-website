@@ -30,6 +30,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
 import { publicAppOrigin } from "@/lib/env";
 import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
+import type { TourCustomerSendPreview } from "@/lib/tours/types";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -94,6 +95,25 @@ function buildConfirmationContent(params: TourConfirmationParams): { subject: st
   return { subject: `Tour confirmed — ${dateStr} at ${params.venueName}`, text, html };
 }
 
+export function previewTourConfirmation(
+  params: TourConfirmationParams,
+  kind: "schedule" | "reschedule" = "schedule",
+): TourCustomerSendPreview {
+  const content = buildConfirmationContent(params);
+  return {
+    who: params.contactEmail,
+    channel: "Email",
+    subject: content.subject,
+    body: content.text,
+    html: content.html,
+    why: kind === "reschedule" ? "This confirms the new tour time." : "This confirms the tour time.",
+    recipientAction: "The client can add the tour to their calendar, or reply to this email to reschedule.",
+    htcAfterward: kind === "reschedule"
+      ? "The tour time changes and this updated confirmation email is added to the conversation. The tour stays Scheduled until the client confirms it or you mark it confirmed."
+      : "The tour is saved on this lead and this email is added to the conversation. The tour stays Scheduled until the client confirms it or you mark it confirmed.",
+  };
+}
+
 export type TourConfirmationRequestParams = {
   venueId: string;
   relationshipId: string | null;
@@ -144,6 +164,21 @@ function buildConfirmationRequestContent(params: TourConfirmationRequestParams):
   return { subject: `Please confirm your tour — ${dateStr} at ${params.venueName}`, text, html };
 }
 
+/** Same content builder the confirmation-request send uses. */
+export function previewTourConfirmationRequest(params: TourConfirmationRequestParams): TourCustomerSendPreview {
+  const content = buildConfirmationRequestContent(params);
+  return {
+    who: params.contactEmail,
+    channel: "Email",
+    subject: content.subject,
+    body: content.text,
+    html: content.html,
+    why: "This asks the client to confirm the upcoming tour.",
+    recipientAction: "The client can confirm from the secure link in the email.",
+    htcAfterward: "Sending this does not change the tour status. When the client confirms, the tour becomes Confirmed, and this email is added to the conversation.",
+  };
+}
+
 async function findOrCreateConversation(client: AdminClient, venueId: string, relationshipId: string): Promise<string | null> {
   const { data: existing } = await client.from("conversations")
     .select("id").eq("relationship_id", relationshipId).maybeSingle<{ id: string }>();
@@ -160,8 +195,12 @@ async function findOrCreateConversation(client: AdminClient, venueId: string, re
  * must never fail the scheduling action itself, exactly like every other
  * post-booking side effect in this codebase (notifications, reminders).
  */
-export async function sendTourConfirmation(params: TourConfirmationParams): Promise<void> {
-  if (!params.contactEmail) return;
+export type TourEmailSendResult = { ok: true } | { ok: false; message: string };
+
+export async function sendTourConfirmation(params: TourConfirmationParams): Promise<TourEmailSendResult> {
+  if (!params.contactEmail) {
+    return { ok: false, message: "This lead has no email address, so no confirmation email was sent." };
+  }
 
   const supabase = createAdminClient();
   const { subject, text, html } = buildConfirmationContent(params);
@@ -178,23 +217,28 @@ export async function sendTourConfirmation(params: TourConfirmationParams): Prom
     : emailResult.method === "mailto" ? "Email isn't fully configured for this venue yet."
     : null;
 
-  if (!params.relationshipId) return; // no Relationship to attach a Conversation record to
+  if (params.relationshipId) {
+    const conversationId = await findOrCreateConversation(supabase, params.venueId, params.relationshipId);
+    if (conversationId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("conversation_messages") as any).insert({
+        conversation_id: conversationId,
+        venue_id: params.venueId,
+        sender_type: "system",
+        channel: "email",
+        body: text,
+        body_html: html,
+        provider_id: providerId ?? null,
+        status,
+        failure_reason: failureReason,
+      });
+    }
+  }
 
-  const conversationId = await findOrCreateConversation(supabase, params.venueId, params.relationshipId);
-  if (!conversationId) return;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("conversation_messages") as any).insert({
-    conversation_id: conversationId,
-    venue_id: params.venueId,
-    sender_type: "system",
-    channel: "email",
-    body: text,
-    body_html: html,
-    provider_id: providerId ?? null,
-    status,
-    failure_reason: failureReason,
-  });
+  if (status !== "accepted") {
+    return { ok: false, message: failureReason ?? "The confirmation email was not sent." };
+  }
+  return { ok: true };
 }
 
 /**

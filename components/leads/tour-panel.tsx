@@ -16,13 +16,14 @@ import { CalendarClock, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide
 import { toast } from "sonner";
 
 import {
-  getCoordinatorTourSlotsAction, requestTourConfirmationAction, rescheduleTourAction, scheduleTourAction, updateTourStatusAction,
+  getCoordinatorTourSlotsAction, previewRescheduleTourEmailAction, previewScheduleTourEmailAction, previewTourConfirmationRequestAction, requestTourConfirmationAction, rescheduleTourAction, scheduleTourAction, updateTourStatusAction,
 } from "@/app/(app)/leads/[id]/actions";
+import { TourSendPreview } from "@/components/leads/tour-send-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { TourAppointment, TourSlot } from "@/lib/tours/types";
+import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -117,6 +118,8 @@ function SlotPickerBody({
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = React.useState<TourSlot | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [preview, setPreview] = React.useState<TourCustomerSendPreview | null>(null);
+  const [previewing, setPreviewing] = React.useState(false);
 
   const load = React.useCallback(async (m: number, y: number) => {
     setLoading(true);
@@ -132,6 +135,17 @@ function SlotPickerBody({
   const availableDates = new Set(slots.map((s) => s.date));
   const slotsForDate = selectedDate ? slots.filter((s) => s.date === selectedDate) : [];
 
+  async function review() {
+    if (!selectedSlot) return;
+    setPreviewing(true);
+    const result = rescheduleAppointmentId
+      ? await previewRescheduleTourEmailAction(rescheduleAppointmentId, selectedSlot.start)
+      : await previewScheduleTourEmailAction(leadId, selectedSlot.start);
+    setPreviewing(false);
+    if (result.ok) setPreview(result.preview);
+    else toast.error(result.error);
+  }
+
   async function confirm() {
     if (!selectedSlot) return;
     setSaving(true);
@@ -140,7 +154,9 @@ function SlotPickerBody({
       : await scheduleTourAction(leadId, selectedSlot.start);
     setSaving(false);
     if (result.ok) {
-      toast.success(rescheduleAppointmentId ? "Tour rescheduled." : "Tour scheduled — confirmation sent.");
+      toast.success(rescheduleAppointmentId ? "Tour rescheduled." : "Tour scheduled.");
+      if (result.confirmationEmail.ok) toast.success("Confirmation email sent.");
+      else toast.error(result.confirmationEmail.message);
       onClose();
       onDone();
     } else {
@@ -162,19 +178,29 @@ function SlotPickerBody({
             month={month} year={year}
             onMonthChange={(m, y) => { setMonth(m); setYear(y); }} />
         )}
-        {selectedDate && !loading && (
+        {selectedDate && !loading && !preview && (
           <div className="space-y-2 border-t border-border/60 pt-4">
             <p className="text-xs font-medium text-muted-foreground">
               {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
-            <TimeSlotGrid slots={slotsForDate} selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
+            <TimeSlotGrid slots={slotsForDate} selectedSlot={selectedSlot} onSelect={(slot) => { setSelectedSlot(slot); setPreview(null); }} />
           </div>
         )}
+        {preview && <TourSendPreview preview={preview} />}
       </div>
       <SheetFooter className="px-5 pb-5 pt-3 border-t">
-        <Button className="w-full" disabled={!selectedSlot || saving} onClick={() => void confirm()}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-        </Button>
+        {preview ? (
+          <div className="flex w-full gap-2">
+            <Button variant="outline" className="flex-1" disabled={saving} onClick={() => setPreview(null)}>Back</Button>
+            <Button className="flex-1" disabled={saving} onClick={() => void confirm()}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : rescheduleAppointmentId ? "Reschedule tour" : "Schedule tour"}
+            </Button>
+          </div>
+        ) : (
+          <Button className="w-full" disabled={!selectedSlot || previewing} onClick={() => void review()}>
+            {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Review email"}
+          </Button>
+        )}
       </SheetFooter>
     </>
   );
@@ -221,6 +247,7 @@ function CancelDialog({ open, onOpenChange, onConfirm }: { open: boolean; onOpen
 function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: TourAppointment; leadId: string; now: string; onReschedule: (id: string) => void; onChanged: () => void }) {
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
+  const [requestPreview, setRequestPreview] = React.useState<TourCustomerSendPreview | null>(null);
   const meta = STATUS_META[appt.status];
   const d = new Date(appt.scheduledAt);
   const isActive = appt.status === "scheduled" || appt.status === "confirmed";
@@ -234,12 +261,23 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
     else toast.error(result.error);
   }
 
+  async function reviewConfirmationRequest() {
+    setPending(true);
+    const result = await previewTourConfirmationRequestAction(appt.id);
+    setPending(false);
+    if (result.ok) setRequestPreview(result.preview);
+    else toast.error(result.error);
+  }
+
   async function sendConfirmationRequest() {
     setPending(true);
     const result = await requestTourConfirmationAction(appt.id, leadId);
     setPending(false);
-    if (result.ok) { toast.success("Confirmation request sent."); onChanged(); }
-    else toast.error(result.error);
+    if (result.ok) {
+      toast.success("Confirmation request sent.");
+      setRequestPreview(null);
+      onChanged();
+    } else toast.error(result.error);
   }
 
   return (
@@ -267,7 +305,7 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
             <Button variant="ghost" size="sm" disabled={pending} onClick={() => onReschedule(appt.id)}>Reschedule</Button>
             {appt.status === "scheduled" && (
               <>
-                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void sendConfirmationRequest()}>Send Confirmation Request</Button>
+                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void reviewConfirmationRequest()}>Send Confirmation Request</Button>
                 <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("confirmed")}>Mark as Confirmed</Button>
               </>
             )}
@@ -282,6 +320,20 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
         )}
       </div>
       <CancelDialog open={cancelOpen} onOpenChange={setCancelOpen} onConfirm={(reason) => void setStatus("cancelled", reason)} />
+      {requestPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setRequestPreview(null)}>
+          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-heading">Send confirmation request</p>
+            <TourSendPreview preview={requestPreview} />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" disabled={pending} onClick={() => setRequestPreview(null)}>Back</Button>
+              <Button size="sm" disabled={pending || !requestPreview.who} onClick={() => void sendConfirmationRequest()}>
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send email"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

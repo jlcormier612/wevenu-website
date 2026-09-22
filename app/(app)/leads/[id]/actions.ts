@@ -31,11 +31,15 @@ import type {
 } from "@/lib/leads/types";
 import {
   getCoordinatorTourSlots,
+  previewRescheduleTourEmail,
+  previewScheduleTourEmail,
+  previewTourConfirmationRequestEmail,
   requestTourConfirmation,
   rescheduleTour,
   scheduleTourForLead,
   updateTourStatus,
 } from "@/lib/tours/service";
+import type { TourSendPreviewResult } from "@/lib/tours/service";
 import type { CoordinatorTourResult, SimpleTourResult, TourSlot } from "@/lib/tours/types";
 
 function revalidateLead(leadId: string) {
@@ -282,6 +286,18 @@ export async function requestTourConfirmationAction(appointmentId: string, leadI
   const result = await requestTourConfirmation(appointmentId);
   if (result.ok) revalidateLead(leadId);
   return result;
+}
+
+export async function previewScheduleTourEmailAction(leadId: string, slotStart: string): Promise<TourSendPreviewResult> {
+  return previewScheduleTourEmail(leadId, slotStart);
+}
+
+export async function previewRescheduleTourEmailAction(appointmentId: string, slotStart: string): Promise<TourSendPreviewResult> {
+  return previewRescheduleTourEmail(appointmentId, slotStart);
+}
+
+export async function previewTourConfirmationRequestAction(appointmentId: string): Promise<TourSendPreviewResult> {
+  return previewTourConfirmationRequestEmail(appointmentId);
 }
 
 export async function previewDeleteLeadAction(leadId: string) {

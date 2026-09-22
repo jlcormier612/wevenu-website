@@ -5,10 +5,10 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import { parseCoordinatorTourAvailability, type TourAvailabilityLoad } from "@/lib/tours/availability-read";
 import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
-import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
+import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourCustomerSendPreview, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
-import { sendTourConfirmation, sendTourConfirmationRequest } from "@/lib/tours/communication";
+import { previewTourConfirmation, previewTourConfirmationRequest, sendTourConfirmation, sendTourConfirmationRequest } from "@/lib/tours/communication";
 import { advanceLeadSalesStageIfForward } from "@/lib/leads/service";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
@@ -243,7 +243,7 @@ export async function bookTour(
     venueName, primaryColor: apptRow?.venues?.primary_color ?? null, scheduledAt, durationMinutes: duration,
     timezone: venueRow.timezone,
   }).then(
-    () => recordNotificationStatus(admin, outcome.attemptId, "sent"),
+    (send) => recordNotificationStatus(admin, outcome.attemptId, send.ok ? "sent" : "failed"),
     (err) => { console.error("sendTourConfirmation failed:", err); void recordNotificationStatus(admin, outcome.attemptId, "failed"); },
   );
 
@@ -466,10 +466,110 @@ const TOUR_RPC_ERRORS: Record<string, string> = {
   invalid_status: "That's not a valid tour status.",
 };
 
-async function sendConfirmationForResult(supabase: DbClient, appointmentId: string, leadId: string, relationshipId: string | null, venueId: string, venueName: string, primaryColor: string | null, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null, timezone?: string | null) {
-  void sendTourConfirmation({
-    venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor, scheduledAt, durationMinutes: duration, timezone,
-  }).catch((err) => console.error("sendTourConfirmation failed:", err));
+async function sendConfirmationForResult(leadId: string, relationshipId: string | null, venueId: string, venueName: string, primaryColor: string | null, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null, timezone?: string | null) {
+  try {
+    return await sendTourConfirmation({
+      venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor, scheduledAt, durationMinutes: duration, timezone,
+    });
+  } catch (err) {
+    console.error("sendTourConfirmation failed:", err);
+    return { ok: false as const, message: "The confirmation email was not sent." };
+  }
+}
+
+export type TourSendPreviewResult =
+  | { ok: true; preview: TourCustomerSendPreview }
+  | { ok: false; error: string };
+
+export async function previewScheduleTourEmail(leadId: string, slotStart: string): Promise<TourSendPreviewResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Session expired." };
+  const supabase = await createClient();
+  const { data: lead } = await supabase.from("leads")
+    .select("first_name, last_name, email")
+    .eq("id", leadId).eq("venue_id", venue.id)
+    .maybeSingle<{ first_name: string; last_name: string; email: string | null }>();
+  if (!lead) return { ok: false, error: "This lead could not be found." };
+  const { data: settings } = await supabase.from("venues")
+    .select("tour_duration_minutes")
+    .eq("id", venue.id)
+    .maybeSingle<{ tour_duration_minutes: number }>();
+  const duration = settings?.tour_duration_minutes ?? 60;
+  const contactName = `${lead.first_name} ${lead.last_name}`.trim();
+  return {
+    ok: true,
+    preview: previewTourConfirmation({
+      venueId: venue.id,
+      leadId,
+      relationshipId: null,
+      contactEmail: lead.email,
+      contactName,
+      venueName: venue.name,
+      primaryColor: venue.primaryColor,
+      scheduledAt: slotStart,
+      durationMinutes: duration,
+      timezone: venue.timezone,
+    }, "schedule"),
+  };
+}
+
+export async function previewRescheduleTourEmail(appointmentId: string, slotStart: string): Promise<TourSendPreviewResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Session expired." };
+  const supabase = await createClient();
+  const { data: appt } = await supabase.from("tour_appointments")
+    .select("lead_id, contact_name, contact_email, duration_minutes, status")
+    .eq("id", appointmentId).eq("venue_id", venue.id)
+    .maybeSingle<{ lead_id: string | null; contact_name: string | null; contact_email: string | null; duration_minutes: number; status: string }>();
+  if (!appt) return { ok: false, error: "This tour could not be found." };
+  if (appt.status === "cancelled" || appt.status === "completed" || appt.status === "no_show") {
+    return { ok: false, error: "This tour can't be rescheduled — it's already cancelled, completed, or marked no-show." };
+  }
+  return {
+    ok: true,
+    preview: previewTourConfirmation({
+      venueId: venue.id,
+      leadId: appt.lead_id ?? "",
+      relationshipId: null,
+      contactEmail: appt.contact_email,
+      contactName: appt.contact_name,
+      venueName: venue.name,
+      primaryColor: venue.primaryColor,
+      scheduledAt: slotStart,
+      durationMinutes: appt.duration_minutes,
+      timezone: venue.timezone,
+    }, "reschedule"),
+  };
+}
+
+export async function previewTourConfirmationRequestEmail(appointmentId: string): Promise<TourSendPreviewResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Session expired." };
+  const supabase = await createClient();
+  const { data: appt } = await supabase.from("tour_appointments")
+    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes, confirm_token")
+    .eq("id", appointmentId).eq("venue_id", venue.id)
+    .maybeSingle<{ status: string; lead_id: string | null; contact_name: string | null; contact_email: string | null; scheduled_at: string; duration_minutes: number; confirm_token: string }>();
+  if (!appt) return { ok: false, error: "This tour could not be found." };
+  if (appt.status !== "scheduled") return { ok: false, error: "Only a Scheduled tour can have a confirmation request sent." };
+  return {
+    ok: true,
+    preview: previewTourConfirmationRequest({
+      venueId: venue.id,
+      relationshipId: null,
+      contactEmail: appt.contact_email,
+      contactName: appt.contact_name,
+      venueName: venue.name,
+      primaryColor: venue.primaryColor,
+      scheduledAt: appt.scheduled_at,
+      durationMinutes: appt.duration_minutes,
+      confirmToken: appt.confirm_token,
+      timezone: venue.timezone,
+    }),
+  };
 }
 
 export async function scheduleTourForLead(leadId: string, slotStart: string, notes?: string): Promise<CoordinatorTourResult> {
@@ -485,8 +585,8 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: TOUR_RPC_ERRORS[d?.error as string] ?? "Could not schedule this tour." };
 
-  const result: CoordinatorTourResult = {
-    ok: true,
+  const result = {
+    ok: true as const,
     appointmentId: d.appointmentId as string,
     leadId: d.leadId as string,
     relationshipId: (d.relationshipId as string | null) ?? null,
@@ -499,17 +599,14 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
     contactPhone: (d.contactPhone as string | null) ?? null,
   };
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
+  const confirmationEmail = await sendConfirmationForResult(result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
 
   // Tour Scheduled is a real Sales Pipeline stage. Forward-only — never
   // regresses Booked/Lost or stages already past tour_scheduled.
   await advanceLeadSalesStageIfForward(leadId, "tour_scheduled")
     .catch((err) => console.error("Lead stage advance on tour scheduling failed:", err));
 
-  return result;
-}
-
-export async function rescheduleTour(appointmentId: string, newSlotStart: string): Promise<CoordinatorTourResult> {
+  return { ...result, confirmationEmail };
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, error: "Session expired." };
@@ -522,11 +619,11 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: TOUR_RPC_ERRORS[d?.error as string] ?? "Could not reschedule this tour." };
 
-  const result: CoordinatorTourResult = {
-    ok: true,
+  const result = {
+    ok: true as const,
     appointmentId,
     leadId: d.leadId as string,
-    relationshipId: null,
+    relationshipId: null as string | null,
     scheduledAt: d.scheduledAt as string,
     oldScheduledAt: d.oldScheduledAt as string,
     venueName: d.venueName as string,
@@ -544,9 +641,9 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
     result.relationshipId = leadRow?.relationship_id ?? null;
   }
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
+  const confirmationEmail = await sendConfirmationForResult(result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
 
-  return result;
+  return { ...result, confirmationEmail };
 }
 
 const STATUS_TO_SIGNAL: Record<string, string> = {
