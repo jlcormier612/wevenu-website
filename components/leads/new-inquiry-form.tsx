@@ -47,6 +47,20 @@ function TextField({
   );
 }
 
+function legacyCurrentDescription(
+  options: VenueEventTypeOption[] | { value: string; label: string }[],
+  value: string,
+): string | undefined {
+  for (const option of options) {
+    if (!("isLegacyCurrent" in option) || option.isLegacyCurrent !== true) continue;
+    if (option.value !== value) continue;
+    if ("description" in option && typeof option.description === "string") {
+      return option.description;
+    }
+  }
+  return undefined;
+}
+
 function SelectField({
   id, label, value, onValueChange, options, placeholder, error, hint,
 }: {
@@ -55,13 +69,7 @@ function SelectField({
   placeholder?: string;
   error?: string; hint?: string;
 }) {
-  const legacyOption = options.find(
-    (o) =>
-      "isLegacyCurrent" in o
-      && (o as VenueEventTypeOption).isLegacyCurrent === true
-      && o.value === value,
-  ) as VenueEventTypeOption | undefined;
-  const legacyHint = hint ?? legacyOption?.description;
+  const legacyHint = hint ?? legacyCurrentDescription(options, value);
 
   return (
     <Field label={label} htmlFor={id} error={error} hint={legacyHint}>
