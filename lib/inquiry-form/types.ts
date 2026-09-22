@@ -39,6 +39,8 @@ export type PublicInquiryVenue = {
   logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  accentColor: string;
+  neutralColor: string;
   email: string | null;
   phone: string | null;
   addressLine1: string | null;

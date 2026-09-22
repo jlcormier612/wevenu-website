@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { publicAppOrigin } from "@/lib/env";
+import type { ProposalBrand } from "@/lib/booking-journey/proposal-view";
 
 type OfferView = {
   id: string;
@@ -11,6 +12,7 @@ type OfferView = {
   includedItems: { description: string; quantity: number; unit: string | null }[];
   status: string;
   offerMessage: string | null;
+  brand?: ProposalBrand | null;
 };
 
 /** Minimal RPC surface so tests can exercise get/accept without venue auth. */
@@ -73,7 +75,39 @@ export async function getOfferByToken(
     p_token: token,
   });
   if (error) return null;
-  return mapOfferRpcData(data);
+  const offer = mapOfferRpcData(data);
+  if (!offer) return null;
+
+  // Production RPC returns venueId; test fixtures omit it (no admin enrich).
+  const row = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+  const venueId = row && typeof row.venueId === "string" ? row.venueId : null;
+  if (!venueId) return offer;
+
+  try {
+    const admin = createAdminClient();
+    const { data: venue } = await admin
+      .from("venues")
+      .select("primary_color, secondary_color, accent_color, neutral_color")
+      .eq("id", venueId)
+      .maybeSingle<{
+        primary_color: string | null;
+        secondary_color: string | null;
+        accent_color: string | null;
+        neutral_color: string | null;
+      }>();
+    if (venue) {
+      offer.brand = {
+        primaryColor: venue.primary_color || "#5D6F5D",
+        secondaryColor: venue.secondary_color || "#4F5F4F",
+        accentColor: venue.accent_color || "#B8AEA1",
+        neutralColor: venue.neutral_color || "#F7F5F1",
+      };
+    }
+  } catch {
+    // Offer still renders with ProposalArtifact defaults when enrich fails.
+  }
+
+  return offer;
 }
 
 /**

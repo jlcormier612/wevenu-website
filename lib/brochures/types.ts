@@ -84,6 +84,8 @@ export type BrochureRenderData = {
     primaryColor: string;
     secondaryColor: string;
     accentColor: string;
+    /** Soft venue-branded surface; not the HTC app background. */
+    neutralColor: string;
     email: string | null;
     phone: string | null;
     website: string | null;

@@ -63,11 +63,13 @@ function ModeSelector({
   mode,
   onSelect,
   primary,
+  accent,
   tourEnabled,
 }: {
   mode: InquiryMode | null;
   onSelect: (m: InquiryMode) => void;
   primary: string;
+  accent: string;
   tourEnabled: boolean;
 }) {
   if (!tourEnabled) return null;
@@ -79,7 +81,7 @@ function ModeSelector({
     color: "var(--foreground)",
   };
   const active = {
-    borderColor: primary,
+    borderColor: accent,
     background: `color-mix(in srgb, ${primary} 10%, var(--card))`,
     color: "var(--foreground)",
   };
@@ -286,6 +288,10 @@ export function InquiryForm({
 }) {
   const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm, tourProtectionRequired, tourProtectionKind, tourProtectionFeeCents } = config;
   const primary = venue.primaryColor || "#5D6F5D";
+  const secondary = venue.secondaryColor || "#4F5F4F";
+  const accent = venue.accentColor || "#B8AEA1";
+  const neutral = venue.neutralColor || "#F7F5F1";
+  const formBrand = { primary, secondary, accent, neutral };
   const eventTypeOptions = EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
   const smsConsentText = buildInquirySmsConsentText(venue.name);
 
@@ -554,10 +560,10 @@ export function InquiryForm({
   }
 
   if (state === "success_info") {
-    return <RequestInformationConfirmation firstName={firstName} venueName={venue.name} primaryColor={primary} />;
+    return <RequestInformationConfirmation firstName={firstName} venueName={venue.name} brand={formBrand} />;
   }
   if (state === "success_tour" && tourConfirmation) {
-    return <ScheduleTourConfirmation firstName={firstName} confirmation={tourConfirmation} primaryColor={primary} />;
+    return <ScheduleTourConfirmation firstName={firstName} confirmation={tourConfirmation} brand={formBrand} />;
   }
 
   const showForm = mode !== null;
@@ -566,8 +572,9 @@ export function InquiryForm({
   return (
     <div
       data-theme-lock="light"
+      data-venue-brand="public-book"
       className="min-h-screen"
-      style={publicFormSurfaceStyle(primary)}
+      style={publicFormSurfaceStyle(formBrand)}
     >
       <div className="py-8 px-4 text-center" style={{ backgroundColor: primary, color: inkOn(primary) }}>
         {venue.logoUrl && (
@@ -578,7 +585,7 @@ export function InquiryForm({
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
-        <ModeSelector mode={mode} onSelect={setMode} primary={primary} tourEnabled={tourSchedulingEnabled} />
+        <ModeSelector mode={mode} onSelect={setMode} primary={primary} accent={accent} tourEnabled={tourSchedulingEnabled} />
 
         {!showForm && tourSchedulingEnabled && (
           <p className="text-center text-sm text-muted-foreground">Choose how you&apos;d like to connect with us.</p>

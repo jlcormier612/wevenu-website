@@ -1,6 +1,7 @@
 /**
  * Brochures application service. Server-only.
  */
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/brochures/repository";
@@ -100,6 +101,7 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
       logoUrl: venue.logoUrl ?? null, story: venue.story ?? null, heroImageUrl: venue.heroImageUrl ?? null,
       primaryColor: venue.primaryColor || "#5D6F5D", secondaryColor: venue.secondaryColor || "#4F5F4F",
       accentColor: venue.accentColor || "#B8AEA1",
+      neutralColor: venue.neutralColor || "#F7F5F1",
       email: venue.email ?? null, phone: venue.phone ?? null, website: venue.website ?? null,
     },
     packages: packagesAll.map((p) => ({ name: p.name, description: p.description, basePrice: p.basePrice, category: p.category })),
@@ -128,6 +130,20 @@ export async function getBrochureRenderDataByToken(token: string): Promise<Broch
   const row = (Array.isArray(data) ? data[0] : data) as PublicBrochureRow;
   if (!row?.id) return null;
 
+  // Public RPC historically omitted neutral; load from venues without a second branding system.
+  let neutralColor = "#F7F5F1";
+  try {
+    const admin = createAdminClient();
+    const { data: colorRow } = await admin
+      .from("venues")
+      .select("neutral_color")
+      .eq("id", row.venue_id)
+      .maybeSingle<{ neutral_color: string | null }>();
+    if (colorRow?.neutral_color) neutralColor = colorRow.neutral_color;
+  } catch {
+    // Keep default when admin lookup is unavailable.
+  }
+
   return {
     brochure: {
       id: row.id, name: row.name, welcomeText: row.welcome_text,
@@ -140,6 +156,7 @@ export async function getBrochureRenderDataByToken(token: string): Promise<Broch
       logoUrl: row.venue_logo_url, story: row.venue_story, heroImageUrl: row.venue_hero_image_url,
       primaryColor: row.venue_primary_color || "#5D6F5D", secondaryColor: row.venue_secondary_color || "#4F5F4F",
       accentColor: row.venue_accent_color || "#B8AEA1",
+      neutralColor,
       email: row.venue_email, phone: row.venue_phone, website: row.venue_website,
     },
     packages: row.include_packages ? (row.packages ?? []).map((p) => ({ name: p.name, description: p.description, basePrice: p.basePrice, category: p.category })) : [],

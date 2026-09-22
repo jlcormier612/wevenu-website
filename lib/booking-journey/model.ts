@@ -41,6 +41,13 @@ export type BookingJourneyModel = {
   remainingSummary: string | null;
   prefs: VenueCommercialBookingPrefs;
   paymentLines: JourneyPaymentLine[];
+  /** Venue Brand Colors for couple-facing proposal preview. */
+  brand: {
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    neutralColor: string;
+  };
 };
 
 export type JourneyContract = {
@@ -76,6 +83,13 @@ export type JourneyInputs = {
   planningStarted: boolean;
   /** Venue commercial booking preferences (defaults applied when omitted). */
   prefs?: VenueCommercialBookingPrefs | null;
+  /** Venue Brand Colors for proposal preview (defaults applied when omitted). */
+  brand?: {
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    neutralColor: string;
+  } | null;
 };
 
 /**
@@ -212,6 +226,12 @@ export function isCommerciallyBooked(input: {
 
 export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
   const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
+  const brand = input.brand ?? {
+    primaryColor: "#5D6F5D",
+    secondaryColor: "#4F5F4F",
+    accentColor: "#B8AEA1",
+    neutralColor: "#F7F5F1",
+  };
   const selection = input.selection && input.selection.status !== "superseded" ? input.selection : null;
   const hasPackage = !!selection;
   const agreementDone = agreementComplete(selection, input.contract, prefs);
@@ -419,6 +439,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       : null,
     prefs,
     paymentLines: input.paymentLines,
+    brand,
   };
 }
 

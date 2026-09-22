@@ -77,9 +77,9 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
   const venueId = String(venue.id);
   const { data: timezoneRow } = await supabase
     .from("venues")
-    .select("timezone")
+    .select("timezone, accent_color, neutral_color")
     .eq("id", venueId)
-    .maybeSingle<{ timezone: string | null }>();
+    .maybeSingle<{ timezone: string | null; accent_color: string | null; neutral_color: string | null }>();
   const communicationSettings = effectivePublicCommunicationSettings(
     parseInquiryCommunicationSettings(payload.inquiryCommunicationSettings),
   );
@@ -90,6 +90,8 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
       logoUrl: (venue.logoUrl as string | null) ?? null,
       primaryColor: String(venue.primaryColor ?? "#5D6F5D"),
       secondaryColor: String(venue.secondaryColor ?? "#4F5F4F"),
+      accentColor: String(timezoneRow?.accent_color ?? "#B8AEA1"),
+      neutralColor: String(timezoneRow?.neutral_color ?? "#F7F5F1"),
       email: (venue.email as string | null) ?? null,
       phone: (venue.phone as string | null) ?? null,
       addressLine1: (venue.addressLine1 as string | null) ?? null,

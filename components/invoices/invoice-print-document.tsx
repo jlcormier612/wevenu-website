@@ -47,6 +47,7 @@ export function InvoicePrintDocument({
     : venue;
   const brand = resolvePrintBrandColors(brandSource);
   const primaryColor = brand.primary;
+  const secondaryColor = brand.secondary;
   const accentColor = brand.accent;
   const neutralColor = brand.neutral;
   const hasDiscount = invoice.discountAmount > 0;
@@ -170,7 +171,7 @@ export function InvoicePrintDocument({
 
       {/* ── Line items ─────────────────────────────────────────────────── */}
       <div className="px-12 py-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Charges</p>
+        <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: secondaryColor }}>Charges</p>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-gray-300">

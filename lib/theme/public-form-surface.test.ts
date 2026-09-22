@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-import { contrastRatio, inkOn, readableInk } from "@/lib/theme/public-form-surface";
+import { contrastRatio, inkOn, publicFormSurfaceStyle, readableInk } from "@/lib/theme/public-form-surface";
 
 const ROOT = join(__dirname, "../..");
 
@@ -37,5 +37,15 @@ describe("public form contrast", () => {
     assert.match(slots, /color: inkOn\(primary\)/);
     assert.match(slots, /color: "var\(--foreground\)"/);
     assert.doesNotMatch(slots, /opacity-60/);
+  });
+
+  it("uses configured venue Neutral for the branded page surface when provided", () => {
+    const style = publicFormSurfaceStyle({
+      primary: "#FF1493",
+      secondary: "#00BFFF",
+      accent: "#FF00FF",
+      neutral: "#FFF0F5",
+    });
+    assert.equal(style.backgroundColor, "#FFF0F5");
   });
 });

@@ -7,6 +7,13 @@ import type { TourBookingConfirmation } from "@/lib/inquiry-form/types";
 import { publicFormSurfaceStyle, readableInk } from "@/lib/theme/public-form-surface";
 import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 
+type FormBrand = {
+  primary: string;
+  secondary?: string;
+  accent?: string;
+  neutral?: string;
+};
+
 function buildAddressLine(
   addressLine1?: string | null,
   city?: string | null,
@@ -66,15 +73,19 @@ function buildIcsDataUrl(
 export function RequestInformationConfirmation({
   firstName,
   venueName,
+  brand,
+  /** @deprecated Prefer `brand.primary` — kept for callers mid-migration. */
   primaryColor,
 }: {
   firstName: string;
   venueName: string;
-  primaryColor: string;
+  brand?: FormBrand;
+  primaryColor?: string;
 }) {
+  const surface = brand ?? { primary: primaryColor || "#5D6F5D" };
   const heading = firstName.trim() ? `Thank you, ${firstName.trim()}!` : "Thank you!";
   return (
-    <div data-theme-lock="light" className="min-h-screen flex items-center justify-center px-4" style={publicFormSurfaceStyle(primaryColor)}>
+    <div data-theme-lock="light" className="min-h-screen flex items-center justify-center px-4" style={publicFormSurfaceStyle(surface)}>
       <div className="max-w-md w-full bg-card text-card-foreground rounded-2xl shadow-sm border border-border p-8 text-center space-y-4">
         <h2 className="text-xl font-semibold text-heading">{heading}</h2>
         <p className="text-foreground">We&apos;ve received your inquiry for {venueName}.</p>
@@ -88,12 +99,16 @@ export function RequestInformationConfirmation({
 export function ScheduleTourConfirmation({
   firstName,
   confirmation,
+  brand,
   primaryColor,
 }: {
   firstName: string;
   confirmation: TourBookingConfirmation;
-  primaryColor: string;
+  brand?: FormBrand;
+  primaryColor?: string;
 }) {
+  const surface = brand ?? { primary: primaryColor || "#5D6F5D" };
+  const primary = surface.primary;
   const heading = firstName.trim() ? `You're booked, ${firstName.trim()}!` : "You're booked!";
   const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(
     confirmation.scheduledAt,
@@ -118,7 +133,7 @@ export function ScheduleTourConfirmation({
   );
 
   return (
-    <div data-theme-lock="light" className="min-h-screen flex items-center justify-center px-4" style={publicFormSurfaceStyle(primaryColor)}>
+    <div data-theme-lock="light" className="min-h-screen flex items-center justify-center px-4" style={publicFormSurfaceStyle(surface)}>
       <div className="max-w-md w-full bg-card text-card-foreground rounded-2xl shadow-sm border border-border p-8 space-y-6">
         <div className="text-center space-y-2">
           <h2 className="text-xl font-semibold text-heading">{heading}</h2>
@@ -158,7 +173,7 @@ export function ScheduleTourConfirmation({
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2.5 rounded-lg border transition-opacity hover:opacity-90 w-full sm:w-auto"
-            style={{ borderColor: primaryColor, color: readableInk(primaryColor, "#ffffff") }}
+            style={{ borderColor: primary, color: readableInk(primary, "#ffffff") }}
           >
             Add to Google Calendar
           </a>

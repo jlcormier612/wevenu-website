@@ -31,6 +31,16 @@ async function venuePrefs() {
   return venue?.commercialBookingPrefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
 }
 
+async function venueBrand() {
+  const venue = await getCurrentVenue();
+  return {
+    primaryColor: venue?.primaryColor || "#5D6F5D",
+    secondaryColor: venue?.secondaryColor || "#4F5F4F",
+    accentColor: venue?.accentColor || "#B8AEA1",
+    neutralColor: venue?.neutralColor || "#F7F5F1",
+  };
+}
+
 function bestContract(clientId: string | null | undefined, contracts: Awaited<ReturnType<typeof getContracts>>): JourneyContract | null {
   if (!clientId) return null;
   const owned = contracts.filter((c) => c.clientId === clientId);
@@ -61,11 +71,12 @@ export async function loadBookingJourneyForLead(input: {
   }
   const clientId = input.linkedClientId ?? clientSelection?.clientId ?? null;
   const eventId = input.linkedEventId ?? clientSelection?.eventId ?? null;
-  const [paymentLines, invitation, applications, prefs] = await Promise.all([
+  const [paymentLines, invitation, applications, prefs, brand] = await Promise.all([
     clientId ? paymentLinesForClient(clientId) : Promise.resolve([]),
     clientId ? getClientInvitation(clientId) : Promise.resolve(null),
     eventId ? getEventPlaybookApplications(eventId) : Promise.resolve([]),
     venuePrefs(),
+    venueBrand(),
   ]);
   return buildBookingJourney({
     leadId: input.leadId,
@@ -77,6 +88,7 @@ export async function loadBookingJourneyForLead(input: {
     portalInvited: Boolean(invitation && invitation.status !== "revoked"),
     planningStarted: applications.some((a) => !!a.releasedAt),
     prefs,
+    brand,
   });
 }
 
@@ -85,13 +97,14 @@ export async function loadBookingJourneyForClient(input: {
   eventId?: string | null;
   leadId?: string | null;
 }): Promise<BookingJourneyModel> {
-  const [selection, contracts, paymentLines, invitation, applications, prefs] = await Promise.all([
+  const [selection, contracts, paymentLines, invitation, applications, prefs, brand] = await Promise.all([
     getActiveSelectedPackageForClient(input.clientId),
     getContracts(),
     paymentLinesForClient(input.clientId),
     getClientInvitation(input.clientId),
     input.eventId ? getEventPlaybookApplications(input.eventId) : Promise.resolve([]),
     venuePrefs(),
+    venueBrand(),
   ]);
   let resolved = selection;
   if (!resolved && input.leadId) {
@@ -107,5 +120,6 @@ export async function loadBookingJourneyForClient(input: {
     portalInvited: Boolean(invitation && invitation.status !== "revoked"),
     planningStarted: applications.some((a) => !!a.releasedAt),
     prefs,
+    brand,
   });
 }

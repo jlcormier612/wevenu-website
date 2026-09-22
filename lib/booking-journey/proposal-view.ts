@@ -5,6 +5,14 @@
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
+/** Venue Brand Colors snapshot for the proposal renderer (existing venue columns). */
+export type ProposalBrand = {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  neutralColor: string;
+};
+
 export type ProposalView = {
   name: string;
   venueName?: string | null;
@@ -14,6 +22,7 @@ export type ProposalView = {
   includedItems: { description: string; quantity: number; unit: string | null }[];
   status: string;
   offerMessage: string | null;
+  brand?: ProposalBrand | null;
 };
 
 export function proposalViewFromSelection(
@@ -22,6 +31,7 @@ export function proposalViewFromSelection(
     "name" | "totalAmount" | "depositAmount" | "includedItems" | "status" | "offerMessage"
   >,
   draftMessage?: string,
+  brand?: ProposalBrand | null,
 ): ProposalView {
   const fromDraft = draftMessage !== undefined ? draftMessage.trim() || null : undefined;
   return {
@@ -32,5 +42,6 @@ export function proposalViewFromSelection(
     includedItems: selection.includedItems,
     status: selection.status,
     offerMessage: fromDraft !== undefined ? fromDraft : selection.offerMessage,
+    brand: brand ?? null,
   };
 }

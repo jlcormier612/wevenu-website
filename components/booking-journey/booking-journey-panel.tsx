@@ -344,7 +344,7 @@ export function BookingJourneyPanel({
           }
         >
           <ProposalArtifact
-            proposal={proposalViewFromSelection(selection, offerMessage)}
+            proposal={proposalViewFromSelection(selection, offerMessage, journey.brand)}
             context="venue-preview"
           />
         </ArtifactReviewOverlay>

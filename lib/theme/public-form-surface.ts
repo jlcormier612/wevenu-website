@@ -83,11 +83,34 @@ export function readableInk(preferred: string, background: string): string {
   return inkOn(background);
 }
 
-export function publicFormSurfaceStyle(primary: string): CSSProperties {
+export function publicFormSurfaceStyle(
+  brand:
+    | string
+    | {
+        primary: string;
+        secondary?: string;
+        accent?: string;
+        /** Soft venue-branded page surface — not HTC #F7F5F1 unless that is the venue's Neutral. */
+        neutral?: string;
+      },
+): CSSProperties {
+  const primary = typeof brand === "string" ? brand : brand.primary;
+  const secondary = typeof brand === "string" ? undefined : brand.secondary;
+  const accent = typeof brand === "string" ? undefined : brand.accent;
+  const neutral = typeof brand === "string" ? undefined : brand.neutral;
+
   return {
     ...PUBLIC_FORM_LIGHT_VARS,
     color: "var(--foreground)",
     colorScheme: "light",
-    backgroundColor: `color-mix(in srgb, ${primary} 8%, var(--background))`,
-  };
+    // Prefer configured venue Neutral for the branded page surface.
+    backgroundColor: neutral
+      ? neutral
+      : `color-mix(in srgb, ${primary} 8%, var(--background))`,
+    ...(secondary ? ({ "--heading": secondary } as CSSProperties) : {}),
+    ...(accent
+      ? ({ "--ring": accent, "--accent": accent } as CSSProperties)
+      : ({ "--ring": primary } as CSSProperties)),
+    "--primary": primary,
+  } as CSSProperties;
 }
