@@ -168,9 +168,8 @@ security definer
 set search_path = public
 as $$
 begin
-  raise exception 'purchaser_ownership_choice_required'
-    using errcode = 'P0001',
-      message = 'Purchaser ownership choice is required. Call activate_venue_enrollment(text, uuid, boolean, text, text) with an explicit p_purchaser_is_owner.';
+  raise exception 'purchaser_ownership_choice_required: Purchaser ownership choice is required. Call activate_venue_enrollment(text, uuid, boolean, text, text) with an explicit p_purchaser_is_owner.'
+    using errcode = 'P0001';
 end;
 $$;
 
