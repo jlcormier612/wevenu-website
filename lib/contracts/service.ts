@@ -7,6 +7,10 @@ import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
 import * as documentIntegration from "@/lib/contracts/document-integration";
 import { buildMergeData, mergeContent, extractTokens, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
+import {
+  EMPTY_EVENT_SPACES_LABEL,
+  resolveEventSpacesLabel,
+} from "@/lib/contracts/event-spaces-merge";
 import { getSpaces } from "@/lib/availability/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service";
@@ -474,7 +478,7 @@ export async function buildContractMergeData(opts: {
   ].filter((p) => p && String(p).trim());
   const venueAddress = addressParts.length > 0 ? addressParts.join("\n") : null;
 
-  let eventSpaces = "No event spaces are listed on this booking yet.";
+  let eventSpaces = EMPTY_EVENT_SPACES_LABEL;
   let venueAccessHours = "Event hours will follow your booking and Timeline.";
   let ceremonySummary = "No separate ceremony details are listed on this booking yet.";
   let receptionSummary = "No separate reception details are listed on this booking yet.";
@@ -520,6 +524,27 @@ export async function buildContractMergeData(opts: {
     } catch { /* optional */ }
   }
 
+  // Event Spaces: Event.space_id (booked) wins; else lead planned_event_space_id.
+  // Same venue_spaces catalog — no second source of truth.
+  try {
+    let plannedEventSpaceId: string | null = null;
+    if (client?.leadId) {
+      const supabase = await createClient();
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("planned_event_space_id")
+        .eq("id", client.leadId)
+        .maybeSingle<{ planned_event_space_id: string | null }>();
+      plannedEventSpaceId = lead?.planned_event_space_id ?? null;
+    }
+    const spaces = await getSpaces();
+    eventSpaces = resolveEventSpacesLabel({
+      spaces,
+      eventSpaceId: event?.spaceId ?? null,
+      plannedEventSpaceId,
+    });
+  } catch { /* optional */ }
+
   if (event) {
     const fmtTime = (t: string | null) => {
       if (!t) return null;
@@ -544,12 +569,6 @@ export async function buildContractMergeData(opts: {
           : extra;
       }
     }
-
-    try {
-      const spaces = await getSpaces();
-      const space = event.spaceId ? spaces.find((s) => s.id === event.spaceId) : null;
-      if (space?.name) eventSpaces = space.name;
-    } catch { /* optional */ }
 
     try {
       const order = await getEventOrder(event.id);
