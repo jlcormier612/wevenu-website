@@ -116,3 +116,25 @@ describe("dashboard today is the venue's calendar day", () => {
     );
   });
 });
+
+describe("lead TourPanel and Tours list render venue-local times", () => {
+  it("formats Lead Overview appointment rows through formatVenueLocalTourDisplay", () => {
+    const source = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalTourDisplay/);
+    assert.doesNotMatch(
+      source,
+      /d\.toLocaleTimeString\("en-US", \{\s*hour:/,
+      "Lead Overview tour times must not use the browser clock",
+    );
+  });
+
+  it("formats Tours list rows through formatVenueLocalTourDisplay", () => {
+    const source = readFileSync(resolve("components/tours/tour-list.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalTourDisplay/);
+    assert.doesNotMatch(
+      source,
+      /d\.toLocaleTimeString\("en-US", \{\s*hour:/,
+      "Tours list times must not use the browser clock",
+    );
+  });
+});

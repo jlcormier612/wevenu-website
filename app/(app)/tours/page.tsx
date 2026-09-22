@@ -9,18 +9,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { markVenueToursSeen } from "@/lib/navigation/attention-service";
 import { getTourAppointments, getTourSettings } from "@/lib/tours/service";
 import { listUnresolvedProtectionRequests } from "@/lib/tours/protection";
-import { getCurrentUserRole } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { PaidUnbookedProtectionList } from "@/components/tours/paid-unbooked-protection-list";
 import { canRefundTourFee } from "@/lib/tours/protection-rules";
 
 export const metadata: Metadata = { title: "Tours" };
 
 export default async function ToursPage() {
-  const [appointments, tourSettings, unresolvedProtection, role] = await Promise.all([
+  const [appointments, tourSettings, unresolvedProtection, role, venue] = await Promise.all([
     getTourAppointments(),
     getTourSettings(),
     listUnresolvedProtectionRequests(),
     getCurrentUserRole(),
+    getCurrentVenue(),
   ]);
 
   // Staff opened Tours — clear unseen tour appointment attention (protection
@@ -79,7 +80,7 @@ export default async function ToursPage() {
                 <CardDescription>Scheduled tours awaiting confirmation or completion.</CardDescription>
               </CardHeader>
               <CardContent>
-                <TourList appointments={upcoming} />
+                <TourList appointments={upcoming} venueTimezone={venue?.timezone ?? null} />
               </CardContent>
             </Card>
           )}
@@ -89,7 +90,7 @@ export default async function ToursPage() {
                 <CardTitle className="text-base">Past</CardTitle>
               </CardHeader>
               <CardContent>
-                <TourList appointments={past} />
+                <TourList appointments={past} venueTimezone={venue?.timezone ?? null} />
               </CardContent>
             </Card>
           )}

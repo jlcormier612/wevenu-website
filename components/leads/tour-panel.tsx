@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
+import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -244,12 +245,13 @@ function CancelDialog({ open, onOpenChange, onConfirm }: { open: boolean; onOpen
   );
 }
 
-function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: TourAppointment; leadId: string; now: string; onReschedule: (id: string) => void; onChanged: () => void }) {
+function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChanged }: { appt: TourAppointment; leadId: string; now: string; venueTimezone: string | null; onReschedule: (id: string) => void; onChanged: () => void }) {
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [requestPreview, setRequestPreview] = React.useState<TourCustomerSendPreview | null>(null);
   const meta = STATUS_META[appt.status];
   const d = new Date(appt.scheduledAt);
+  const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone);
   const isActive = appt.status === "scheduled" || appt.status === "confirmed";
   const isPast = d.getTime() < new Date(now).getTime();
 
@@ -284,10 +286,10 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
     <div className="py-3 flex items-center justify-between gap-3 flex-wrap">
       <div>
         <p className="text-sm font-medium text-heading">
-          {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+          {dateLabel}
         </p>
         <p className="text-xs text-muted-foreground">
-          {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} · {appt.durationMinutes} min
+          {timeLabel} · {appt.durationMinutes} min
         </p>
         {appt.status === "cancelled" && appt.cancellationReason && (
           <p className="text-xs text-muted-foreground mt-0.5">Reason: {appt.cancellationReason}</p>
@@ -338,7 +340,7 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
   );
 }
 
-export function TourPanel({ leadId, tourAppointments, now }: { leadId: string; tourAppointments: TourAppointment[]; now: string }) {
+export function TourPanel({ leadId, tourAppointments, now, venueTimezone = null }: { leadId: string; tourAppointments: TourAppointment[]; now: string; venueTimezone?: string | null }) {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [rescheduleId, setRescheduleId] = React.useState<string | null>(null);
   const [instanceKey, setInstanceKey] = React.useState(0);
@@ -364,7 +366,7 @@ export function TourPanel({ leadId, tourAppointments, now }: { leadId: string; t
         {sorted.length > 0 && (
           <CardContent className="divide-y divide-border/50 pt-0">
             {sorted.map((appt) => (
-              <AppointmentRow key={appt.id} appt={appt} leadId={leadId} now={now} onReschedule={openReschedule} onChanged={router.refresh} />
+              <AppointmentRow key={appt.id} appt={appt} leadId={leadId} now={now} venueTimezone={venueTimezone} onReschedule={openReschedule} onChanged={router.refresh} />
             ))}
           </CardContent>
         )}

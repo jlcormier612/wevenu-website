@@ -106,6 +106,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
         staffOptions: teamMembers.map((m) => ({ id: m.id, name: m.name })),
         currentStaffId: currentStaff?.id ?? null,
+        venueTimezone: venue?.timezone ?? null,
       };
     })(),
     LEAD_DETAIL_LOAD_TIMEOUT_MS,
@@ -149,6 +150,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       staffOptions={page.staffOptions}
       currentStaffId={page.currentStaffId}
       photoUrl={photo?.displayedPhotoUrl ?? null}
+      venueTimezone={page.venueTimezone}
     />
   );
 }

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { TourAppointment, TourOutcome } from "@/lib/tours/types";
+import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 import {
   INTERNAL_NOTES_PRIVACY_HINT,
   internalNotesLabel,
@@ -42,13 +43,16 @@ const STATUS_COLORS: Record<TourAppointment["status"], string> = {
   no_show:   "red",
 };
 
-function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChange: (id: string, status: TourAppointment["status"]) => void }) {
+function TourRow({ appt, venueTimezone, onStatusChange }: { appt: TourAppointment; venueTimezone: string | null; onStatusChange: (id: string, status: TourAppointment["status"]) => void }) {
   const [updating, setUpdating] = React.useState(false);
   const [showOutcomeForm, setShowOutcomeForm] = React.useState(false);
   const [outcome, setOutcome] = React.useState<string>(appt.outcome ?? "");
   const [notes, setNotes] = React.useState(appt.notes ?? "");
   const [savingOutcome, setSavingOutcome] = React.useState(false);
-  const d = new Date(appt.scheduledAt);
+  const { timeLabel } = formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone);
+  const venueParts = utcToVenueLocalParts(appt.scheduledAt, venueTimezone);
+  const dayNum = Number(venueParts.date.slice(8, 10));
+  const monthShort = new Date(`${venueParts.date}T12:00:00`).toLocaleDateString("en-US", { month: "short" });
 
   async function handleSaveOutcome() {
     setSavingOutcome(true);
@@ -117,8 +121,8 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
     <div className="flex items-start gap-3 py-4 border-b border-border/50 last:border-0">
       {/* Date block */}
       <div className="shrink-0 w-12 text-center">
-        <p className="text-lg font-bold text-heading leading-none">{d.getDate()}</p>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{d.toLocaleDateString("en-US", { month: "short" })}</p>
+        <p className="text-lg font-bold text-heading leading-none">{dayNum}</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{monthShort}</p>
       </div>
 
       {/* Content */}
@@ -130,7 +134,7 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} · {appt.durationMinutes} min
+          {timeLabel} · {appt.durationMinutes} min
           {appt.eventType && ` · ${appt.eventType}`}
         </p>
         {appt.contactEmail && <p className="text-xs text-muted-foreground">{appt.contactEmail}</p>}
@@ -221,7 +225,7 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
   );
 }
 
-export function TourList({ appointments }: { appointments: TourAppointment[] }) {
+export function TourList({ appointments, venueTimezone = null }: { appointments: TourAppointment[]; venueTimezone?: string | null }) {
   const router = useRouter();
   const [appts, setAppts] = React.useState(appointments);
 
@@ -233,7 +237,7 @@ export function TourList({ appointments }: { appointments: TourAppointment[] }) 
   return (
     <div className="divide-y divide-border/50">
       {appts.map((appt) => (
-        <TourRow key={appt.id} appt={appt} onStatusChange={handleStatusChange} />
+        <TourRow key={appt.id} appt={appt} venueTimezone={venueTimezone} onStatusChange={handleStatusChange} />
       ))}
     </div>
   );
