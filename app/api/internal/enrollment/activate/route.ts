@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import {
+  parseExplicitPurchaserIsOwner,
+  PURCHASER_OWNERSHIP_REQUIRED_ERROR,
+  PURCHASER_OWNERSHIP_REQUIRED_MESSAGE,
+} from "@/lib/activation/purchaser-ownership";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveUserIdForEmail } from "@/lib/legal/service";
 
@@ -11,32 +16,16 @@ export const runtime = "nodejs";
  *
  * Auth: Bearer PRODUCT_SYNC_API_KEY
  *
- * Replaces the previous local-file "simulated" credential recording
- * (workspace/app/activate/actions.ts's recordOwnerActivationCredential).
- * Creates the real, loggable-into product account:
+ * Body: { token, password, purchaserIsOwner (required boolean),
+ *         invitedOwnerName?, invitedOwnerEmail? }
  *
- *   1. Look up the enrollment by activation token.
- *   2. Get-or-create the auth.users row for the owner's email — reuses
- *      resolveUserIdForEmail, the same helper the legal-acceptance step
- *      (which runs immediately before this call, per the existing
- *      activation flow) already uses to create a passwordless auth.users
- *      row for the FK. That row is expected to already exist by the time
- *      this runs; this call is what actually gives it a real, usable
- *      password.
- *   3. Set the real password via the Admin API (never touches product
- *      tables — auth.users remains the only place a credential lives).
- *   4. Call the atomic activate_venue_enrollment() Postgres function,
- *      which creates the venues row, upserts the owner venue_staff row,
- *      and marks the enrollment activated in one transaction. Idempotent
- *      on retry (already-activated returns the existing venueId and
- *      repairs a missing owner staff row).
- *
- * Body: { token, password }
+ * Purchaser ≠ Owner unless purchaserIsOwner is explicitly true.
+ * Missing/invalid ownership choice is rejected (fail closed).
  */
 type ActivateBody = {
   token?: string;
   password?: string;
-  purchaserIsOwner?: boolean;
+  purchaserIsOwner?: unknown;
   invitedOwnerName?: string | null;
   invitedOwnerEmail?: string | null;
 };
@@ -69,7 +58,18 @@ export async function POST(request: Request) {
 
   const token = body.token?.trim();
   const password = body.password ?? "";
-  const purchaserIsOwner = body.purchaserIsOwner !== false;
+  const ownership = parseExplicitPurchaserIsOwner(body.purchaserIsOwner);
+  if (!ownership.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: ownership.error,
+        message: PURCHASER_OWNERSHIP_REQUIRED_MESSAGE,
+      },
+      { status: 400 },
+    );
+  }
+  const purchaserIsOwner = ownership.purchaserIsOwner;
   const invitedOwnerName = body.invitedOwnerName?.trim() || null;
   const invitedOwnerEmail = body.invitedOwnerEmail?.trim().toLowerCase() || null;
   if (!token) {
@@ -124,11 +124,22 @@ export async function POST(request: Request) {
       })
       .single();
     if (activateErr) {
-      if (activateErr.message.toLowerCase().includes("invalid_or_expired_token")) {
+      const activateMsg = activateErr.message.toLowerCase();
+      if (activateMsg.includes("invalid_or_expired_token")) {
         return NextResponse.json({ ok: false, error: "invalid_or_expired_token" }, { status: 404 });
       }
-      if (activateErr.message.toLowerCase().includes("token_expired")) {
+      if (activateMsg.includes("token_expired")) {
         return NextResponse.json({ ok: false, error: "token_expired" }, { status: 410 });
+      }
+      if (activateMsg.includes("purchaser_ownership_choice_required")) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: PURCHASER_OWNERSHIP_REQUIRED_ERROR,
+            message: PURCHASER_OWNERSHIP_REQUIRED_MESSAGE,
+          },
+          { status: 400 },
+        );
       }
       throw activateErr;
     }

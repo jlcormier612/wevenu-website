@@ -9,6 +9,7 @@ import { describe, it } from "node:test";
 
 import {
   ACTIVATE_LEGAL_ERROR,
+  ACTIVATE_OWNERSHIP_REQUIRED_ERROR,
   ACTIVATE_PASSWORD_LENGTH_ERROR,
   ACTIVATE_PASSWORD_MIN_LENGTH,
   ACTIVATE_PASSWORD_MISMATCH_ERROR,
@@ -128,6 +129,28 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
       invitedOwnerEmail: "pat@example.com",
     });
     assert.equal(ok.ok, true);
+  });
+
+  it("missing ownership choice is rejected — does not default to Owner", () => {
+    const missing = validateActivateAccountFields({
+      password: VALID_PASSWORD,
+      confirm: VALID_PASSWORD,
+      legalAccepted: true,
+      ownershipChoice: "",
+    });
+    assert.equal(missing.ok, false);
+    if (!missing.ok) {
+      assert.equal(missing.error, ACTIVATE_OWNERSHIP_REQUIRED_ERROR);
+    }
+    const gated = gateActivateAccountSubmission(
+      formDataFrom({
+        token: "tok_1",
+        password: VALID_PASSWORD,
+        confirm: VALID_PASSWORD,
+        legalAccepted: "true",
+      }),
+    );
+    assert.equal(gated.ok, false);
   });
 });
 

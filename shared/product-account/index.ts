@@ -130,7 +130,8 @@ export async function provisionVenueEnrollment(
 export async function activateVenueAccount(input: {
   token: string;
   password: string;
-  purchaserIsOwner?: boolean;
+  /** Required. Never omit — missing ownership choice must fail closed. */
+  purchaserIsOwner: boolean;
   invitedOwnerName?: string | null;
   invitedOwnerEmail?: string | null;
 }): Promise<ActivateAccountResult> {
