@@ -27,6 +27,10 @@ import { venueTwilioSecretId } from "@/lib/sms/venue-twilio-secrets";
 import { toE164 } from "@/lib/sms/phone";
 import { isTwilioA2pMockEnabled } from "@/lib/texting-provisioning/feature";
 import {
+  selectReusableTrustHubBundle,
+  type TrustHubBundleSummary,
+} from "@/lib/texting-provisioning/compliance-retry-policy";
+import {
   buildA2pCampaignCreateFields,
   HELLO_TO_CHEERS_PRIVACY_POLICY_URL,
   HELLO_TO_CHEERS_TERMS_AND_CONDITIONS_URL,
@@ -366,12 +370,64 @@ export async function submitSecondaryCustomerProfile(input: {
   credentials: TwilioCredentials;
   business: VenueBusinessForCompliance;
   existingSid?: string | null;
+  /** Explicit resubmit after Needs attention — allows a new bundle when only rejected exist. */
+  forceNewAfterRejection?: boolean;
 }): Promise<StepOutcome> {
   assertVenueAllowedForSelfServiceProvisioning(input.venueId);
   assertNotProtectedTwilioSid(input.credentials.accountSid, "submitSecondaryCustomerProfile");
   if (input.existingSid) {
     assertNotProtectedTwilioSid(input.existingSid, "existing secondary");
-    return { ok: true, resourceSid: input.existingSid };
+    const existing = await twilioRequest({
+      method: "GET",
+      url: `https://trusthub.twilio.com/v1/CustomerProfiles/${input.existingSid}`,
+      credentials: input.credentials,
+    });
+    if (existing.status === 200) {
+      const status = str(existing.body.status).toLowerCase();
+      if (/reject/i.test(status)) {
+        return {
+          ok: false,
+          retryable: false,
+          code: "secondary_rejected",
+          message:
+            "The previous business profile was rejected by Twilio. Update your business details and submit again.",
+          detail: existing.body,
+        };
+      }
+      return { ok: true, resourceSid: input.existingSid, detail: { status } };
+    }
+  }
+
+  const listed = await twilioRequest({
+    method: "GET",
+    url: "https://trusthub.twilio.com/v1/CustomerProfiles?PageSize=50",
+    credentials: input.credentials,
+  });
+  if (listed.status === 200) {
+    const rows = (Array.isArray(listed.body.results) ? listed.body.results : []) as Record<
+      string,
+      unknown
+    >[];
+    const summaries: TrustHubBundleSummary[] = rows.map((r) => ({
+      sid: str(r.sid),
+      status: str(r.status),
+      friendlyName: str(r.friendly_name) || null,
+    })).filter((r) => r.sid);
+    const pick = selectReusableTrustHubBundle(summaries);
+    if (pick.kind === "reuse") {
+      assertNotProtectedTwilioSid(pick.sid, "reuse secondary");
+      return { ok: true, resourceSid: pick.sid, detail: { status: pick.status, reused: true } };
+    }
+    if (pick.kind === "rejected_only" && !input.forceNewAfterRejection) {
+      return {
+        ok: false,
+        retryable: false,
+        code: "secondary_rejected_only",
+        message:
+          "A previous business profile for this venue was rejected. Correct the business details and explicitly resubmit — Hello to Cheers will not retry automatically.",
+        detail: { rejectedSids: pick.rejectedSids },
+      };
+    }
   }
 
   const biz = input.business;
@@ -543,11 +599,62 @@ export async function submitA2pTrustProduct(input: {
   secondaryProfileSid: string;
   business: VenueBusinessForCompliance;
   existingSid?: string | null;
+  forceNewAfterRejection?: boolean;
 }): Promise<StepOutcome> {
   assertNotProtectedTwilioSid(input.secondaryProfileSid, "submitA2pTrustProduct secondary");
   if (input.existingSid) {
     assertNotProtectedTwilioSid(input.existingSid, "existing trust");
-    return { ok: true, resourceSid: input.existingSid };
+    const existing = await twilioRequest({
+      method: "GET",
+      url: `https://trusthub.twilio.com/v1/TrustProducts/${input.existingSid}`,
+      credentials: input.credentials,
+    });
+    if (existing.status === 200) {
+      const status = str(existing.body.status).toLowerCase();
+      if (/reject/i.test(status)) {
+        return {
+          ok: false,
+          retryable: false,
+          code: "trust_product_rejected",
+          message:
+            "The previous A2P trust product was rejected by Twilio. Update your details and submit again.",
+          detail: existing.body,
+        };
+      }
+      return { ok: true, resourceSid: input.existingSid, detail: { status } };
+    }
+  }
+
+  const listed = await twilioRequest({
+    method: "GET",
+    url: "https://trusthub.twilio.com/v1/TrustProducts?PageSize=50",
+    credentials: input.credentials,
+  });
+  if (listed.status === 200) {
+    const rows = (Array.isArray(listed.body.results) ? listed.body.results : []) as Record<
+      string,
+      unknown
+    >[];
+    const summaries: TrustHubBundleSummary[] = rows.map((r) => ({
+      sid: str(r.sid),
+      status: str(r.status),
+      friendlyName: str(r.friendly_name) || null,
+    })).filter((r) => r.sid);
+    const pick = selectReusableTrustHubBundle(summaries);
+    if (pick.kind === "reuse") {
+      assertNotProtectedTwilioSid(pick.sid, "reuse trust");
+      return { ok: true, resourceSid: pick.sid, detail: { status: pick.status, reused: true } };
+    }
+    if (pick.kind === "rejected_only" && !input.forceNewAfterRejection) {
+      return {
+        ok: false,
+        retryable: false,
+        code: "trust_product_rejected",
+        message:
+          "A previous A2P trust product was rejected. Correct details and explicitly resubmit — Hello to Cheers will not retry automatically.",
+        detail: { rejectedSids: pick.rejectedSids },
+      };
+    }
   }
 
   const create = await twilioRequest({
@@ -632,13 +739,66 @@ export async function submitBrandRegistration(input: {
   secondaryProfileSid: string;
   trustProductSid: string;
   existingSid?: string | null;
+  forceNewAfterRejection?: boolean;
 }): Promise<StepOutcome> {
   if (input.existingSid) {
     assertNotProtectedTwilioSid(input.existingSid, "existing brand");
-    return { ok: true, resourceSid: input.existingSid };
+    const existing = await twilioRequest({
+      method: "GET",
+      url: `https://messaging.twilio.com/v1/a2p/BrandRegistrations/${input.existingSid}`,
+      credentials: input.credentials,
+    });
+    if (existing.status === 200) {
+      const status = str(existing.body.status).toUpperCase();
+      if (status === "FAILED" || status === "SUSPENDED") {
+        return {
+          ok: false,
+          retryable: false,
+          code: status,
+          message: str(existing.body.failure_reason) || `Brand ${status}`,
+          detail: existing.body,
+        };
+      }
+      return { ok: true, resourceSid: input.existingSid, detail: { status } };
+    }
   }
   assertNotProtectedTwilioSid(input.secondaryProfileSid, "brand secondary");
   assertNotProtectedTwilioSid(input.trustProductSid, "brand trust");
+
+  const listedBrands = await twilioRequest({
+    method: "GET",
+    url: "https://messaging.twilio.com/v1/a2p/BrandRegistrations?PageSize=20",
+    credentials: input.credentials,
+  });
+  if (listedBrands.status === 200) {
+    const rows = (Array.isArray(listedBrands.body.data) ? listedBrands.body.data : []) as Record<
+      string,
+      unknown
+    >[];
+    const approved = rows.find((r) => str(r.status).toUpperCase() === "APPROVED");
+    if (approved) {
+      const sid = str(approved.sid);
+      assertNotProtectedTwilioSid(sid, "reuse brand");
+      return {
+        ok: true,
+        resourceSid: sid,
+        detail: { status: "APPROVED", reused: true },
+      };
+    }
+    const pending = rows.find((r) => {
+      const s = str(r.status).toUpperCase();
+      return s === "PENDING" || s === "IN_REVIEW" || s === "IN_PROGRESS";
+    });
+    if (pending && !input.forceNewAfterRejection) {
+      const sid = str(pending.sid);
+      assertNotProtectedTwilioSid(sid, "reuse pending brand");
+      return {
+        ok: true,
+        resourceSid: sid,
+        detail: { status: str(pending.status), reused: true },
+      };
+    }
+  }
 
   const form: Record<string, string> = {
     CustomerProfileBundleSid: input.secondaryProfileSid,

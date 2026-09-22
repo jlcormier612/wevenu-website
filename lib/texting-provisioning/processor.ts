@@ -19,6 +19,10 @@ import {
 } from "@/lib/texting-provisioning/step-repository";
 import { TEXTING_PROVISIONING_STEPS, type TextingProvisioningStep } from "@/lib/texting-provisioning/steps";
 import {
+  isTerminalProvisioningErrorCode,
+  provisioningRetryAt,
+} from "@/lib/texting-provisioning/compliance-retry-policy";
+import {
   assertVenueAllowedForSelfServiceProvisioning,
   isProtectedTextingVenueId,
 } from "@/lib/sms/twilio-protected-resources";
@@ -56,9 +60,14 @@ function appBaseUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
-function backoffMs(attempt: number): number {
-  const base = Math.min(30 * 60_000, 15_000 * 2 ** Math.max(0, attempt - 1));
-  return base;
+async function loadRegistrationPhase(venueId: string): Promise<TextingPhase | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("venue_texting_registrations")
+    .select("phase")
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  return (data?.phase as TextingPhase | undefined) ?? null;
 }
 
 async function loadBusiness(venueId: string): Promise<VenueBusinessForCompliance | null> {
@@ -194,7 +203,10 @@ export async function enqueueVenueTextingProvisioning(venueId: string): Promise<
   await ensureProvisioningSteps(venueId, 1);
 }
 
-export async function processVenueTextingProvisioning(venueId: string): Promise<{
+export async function processVenueTextingProvisioning(
+  venueId: string,
+  opts?: { explicitResume?: boolean },
+): Promise<{
   advanced: boolean;
   step: TextingProvisioningStep | null;
   waiting?: boolean;
@@ -203,6 +215,25 @@ export async function processVenueTextingProvisioning(venueId: string): Promise<
   if (isProtectedTextingVenueId(venueId)) {
     return { advanced: false, step: null, error: "protected_venue" };
   }
+
+  let account = await getVenueTwilioAccountExtended(venueId);
+  if (account?.status === "ready") {
+    return { advanced: false, step: null };
+  }
+
+  const explicitResume = opts?.explicitResume === true;
+  const registrationPhase = await loadRegistrationPhase(venueId);
+  // Scheduler/sync must stop after Needs attention. Only an explicit
+  // submitRegistration resume may reopen terminal compliance steps.
+  if (
+    !explicitResume
+    && (registrationPhase === "needs_attention" || registrationPhase === "failed")
+  ) {
+    return { advanced: false, step: null, error: "needs_attention_wait_for_explicit_resume" };
+  }
+
+  const forceNewAfterRejection = explicitResume
+    && (registrationPhase === "needs_attention" || registrationPhase === "failed");
 
   await ensureProvisioningSteps(venueId, 1);
   const steps = await listProvisioningSteps(venueId, 1);
@@ -215,9 +246,32 @@ export async function processVenueTextingProvisioning(venueId: string): Promise<
   if (stepRow?.status === "succeeded") {
     return { advanced: false, step };
   }
+  if (
+    stepRow?.status === "failed"
+    && isTerminalProvisioningErrorCode(stepRow.lastErrorCode)
+    && !explicitResume
+  ) {
+    return { advanced: false, step, error: stepRow.lastErrorMessage ?? "terminal_failure" };
+  }
+
+  if (forceNewAfterRejection && stepRow?.status === "failed") {
+    const admin = createAdminClient();
+    await admin
+      .from("venue_texting_provisioning_steps")
+      .update({
+        status: "pending",
+        last_error_code: null,
+        last_error_message: null,
+        next_attempt_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("venue_id", venueId)
+      .eq("generation", 1)
+      .eq("step", step);
+  }
 
   await markStepRunning(venueId, step, 1);
-  let account = await getVenueTwilioAccountExtended(venueId);
+  account = account ?? (await getVenueTwilioAccountExtended(venueId));
   const business = await loadBusiness(venueId);
 
   try {
@@ -370,21 +424,34 @@ export async function processVenueTextingProvisioning(venueId: string): Promise<
         }
         account = account ?? (await getVenueTwilioAccountExtended(venueId));
         if (!account?.twilioAccountSid) throw new Error("Missing subaccount.");
-        if (account.secondaryProfileSid) {
-          await markStepSucceeded({
-            venueId,
-            step,
-            resourceSid: account.secondaryProfileSid,
-          });
-          break;
-        }
         const creds = await venueCredentials(venueId, account.twilioAccountSid);
         const outcome = await submitSecondaryCustomerProfile({
           venueId,
           credentials: creds,
           business,
+          existingSid: forceNewAfterRejection ? null : account.secondaryProfileSid,
+          forceNewAfterRejection,
         });
-        if (!outcome.ok) throw Object.assign(new Error(outcome.message), outcome);
+        if (!outcome.ok) {
+          if (outcome.code === "secondary_rejected" || outcome.code === "secondary_rejected_only") {
+            await setRegistrationPhase({
+              venueId,
+              toPhase: "needs_attention",
+              attentionCode: "secondary_rejected",
+              attentionMessage:
+                outcome.message
+                || "Twilio rejected the business profile. Update your business details and submit again.",
+              attentionFixHint: "Correct the rejected business information, then explicitly resubmit.",
+              supportDebug: outcome.detail,
+            });
+            await upsertVenueTwilioAccount({
+              venueId,
+              status: "error",
+              statusDetail: outcome.message,
+            });
+          }
+          throw Object.assign(new Error(outcome.message), outcome);
+        }
         await upsertVenueTwilioAccount({
           venueId,
           secondaryProfileSid: outcome.resourceSid!,
@@ -401,22 +468,33 @@ export async function processVenueTextingProvisioning(venueId: string): Promise<
         if (!account?.twilioAccountSid || !account.secondaryProfileSid || !business) {
           throw new Error("Missing secondary profile or business details.");
         }
-        if (account.a2pTrustProductSid) {
-          await markStepSucceeded({
-            venueId,
-            step,
-            resourceSid: account.a2pTrustProductSid,
-          });
-          break;
-        }
         const creds = await venueCredentials(venueId, account.twilioAccountSid);
         const outcome = await submitA2pTrustProduct({
           venueId,
           credentials: creds,
           secondaryProfileSid: account.secondaryProfileSid,
           business,
+          existingSid: forceNewAfterRejection ? null : account.a2pTrustProductSid,
+          forceNewAfterRejection,
         });
-        if (!outcome.ok) throw Object.assign(new Error(outcome.message), outcome);
+        if (!outcome.ok) {
+          if (outcome.code === "trust_product_rejected") {
+            await setRegistrationPhase({
+              venueId,
+              toPhase: "needs_attention",
+              attentionCode: "trust_product_rejected",
+              attentionMessage: outcome.message,
+              attentionFixHint: "Correct your business details, then explicitly resubmit.",
+              supportDebug: outcome.detail,
+            });
+            await upsertVenueTwilioAccount({
+              venueId,
+              status: "error",
+              statusDetail: outcome.message,
+            });
+          }
+          throw Object.assign(new Error(outcome.message), outcome);
+        }
         await upsertVenueTwilioAccount({
           venueId,
           a2pTrustProductSid: outcome.resourceSid!,
@@ -431,18 +509,35 @@ export async function processVenueTextingProvisioning(venueId: string): Promise<
         if (!account?.twilioAccountSid || !account.secondaryProfileSid || !account.a2pTrustProductSid) {
           throw new Error("Missing profile/trust for Brand.");
         }
-        if (account.a2pBrandSid) {
-          await markStepSucceeded({ venueId, step, resourceSid: account.a2pBrandSid });
-          break;
-        }
         const creds = await venueCredentials(venueId, account.twilioAccountSid);
         const outcome = await submitBrandRegistration({
           venueId,
           credentials: creds,
           secondaryProfileSid: account.secondaryProfileSid,
           trustProductSid: account.a2pTrustProductSid,
+          existingSid: forceNewAfterRejection ? null : account.a2pBrandSid,
+          forceNewAfterRejection,
         });
-        if (!outcome.ok) throw Object.assign(new Error(outcome.message), outcome);
+        if (!outcome.ok) {
+          if (outcome.code === "FAILED" || outcome.code === "SUSPENDED") {
+            await setRegistrationPhase({
+              venueId,
+              toPhase: "needs_attention",
+              attentionCode: "brand_rejected",
+              attentionMessage:
+                "We couldn’t finish texting registration with the business details on file.",
+              attentionFixHint: "Review your business details and resubmit, or contact support.",
+              supportDebug: outcome.detail,
+            });
+            await upsertVenueTwilioAccount({
+              venueId,
+              a2pBrandStatus: outcome.code,
+              status: "error",
+              statusDetail: outcome.message,
+            });
+          }
+          throw Object.assign(new Error(outcome.message), outcome);
+        }
         await upsertVenueTwilioAccount({
           venueId,
           a2pBrandSid: outcome.resourceSid!,
@@ -696,7 +791,7 @@ export async function processVenueTextingProvisioning(venueId: string): Promise<
       step,
       errorCode: code,
       errorMessage: message,
-      retryAt: new Date(Date.now() + (retryable ? backoffMs(attempt) : 24 * 60 * 60_000)),
+      retryAt: provisioningRetryAt(retryable, attempt),
       supportDebug: err && typeof err === "object" && "detail" in err
         ? (err as { detail?: Record<string, unknown> }).detail
         : { message },
@@ -706,6 +801,7 @@ export async function processVenueTextingProvisioning(venueId: string): Promise<
       step,
       code,
       message,
+      retryable,
       timestamp: new Date().toISOString(),
     });
     return { advanced: false, step, error: message };

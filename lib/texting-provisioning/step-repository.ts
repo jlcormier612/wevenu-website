@@ -199,11 +199,64 @@ export async function claimDueProvisioningVenueIds(limit = 10): Promise<string[]
   const now = new Date().toISOString();
   const { data, error } = await admin
     .from("venue_texting_provisioning_steps")
-    .select("venue_id")
+    .select("venue_id, last_error_code")
     .in("status", ["pending", "failed"])
     .lte("next_attempt_at", now)
     .limit(limit * 4);
   if (error) throw new Error(error.message);
-  const ids = [...new Set((data ?? []).map((r: { venue_id: string }) => r.venue_id))];
-  return ids.slice(0, limit);
+
+  const candidateIds = [
+    ...new Set(
+      (data ?? [])
+        .filter((r: { venue_id: string; last_error_code: string | null }) => {
+          // Terminal compliance failures must not be reclaimed by the scheduler.
+          const code = r.last_error_code?.trim() ?? "";
+          if (
+            code === "FAILED"
+            || code === "SUSPENDED"
+            || code === "REJECTED"
+            || code === "twilio-rejected"
+            || code === "noncompliant"
+            || code === "brand_rejected"
+            || code === "campaign_rejected"
+            || code === "secondary_rejected"
+            || code === "secondary_rejected_only"
+            || code === "trust_product_rejected"
+            || code === "details_needed"
+          ) {
+            return false;
+          }
+          return true;
+        })
+        .map((r: { venue_id: string }) => r.venue_id),
+    ),
+  ];
+
+  if (candidateIds.length === 0) return [];
+
+  const { data: accounts } = await admin
+    .from("venue_twilio_accounts")
+    .select("venue_id, status")
+    .in("venue_id", candidateIds);
+  const ready = new Set(
+    (accounts ?? [])
+      .filter((a: { status: string }) => a.status === "ready")
+      .map((a: { venue_id: string }) => a.venue_id),
+  );
+
+  const { data: regs } = await admin
+    .from("venue_texting_registrations")
+    .select("venue_id, phase")
+    .in("venue_id", candidateIds);
+  const blockedPhase = new Set(
+    (regs ?? [])
+      .filter((r: { phase: string }) =>
+        r.phase === "needs_attention" || r.phase === "failed" || r.phase === "ready"
+      )
+      .map((r: { venue_id: string }) => r.venue_id),
+  );
+
+  return candidateIds
+    .filter((id) => !ready.has(id) && !blockedPhase.has(id))
+    .slice(0, limit);
 }

@@ -43,7 +43,8 @@ export class LiveTextingProviderOrchestrator implements TextingProviderOrchestra
       assertVenueAllowedForSelfServiceProvisioning(venueId);
       await enqueueVenueTextingProvisioning(venueId);
       // Kick one pass so infra can start immediately; review phase comes later.
-      await processVenueTextingProvisioning(venueId);
+      // explicitResume: true allows Needs attention → corrected details → new submit.
+      await processVenueTextingProvisioning(venueId, { explicitResume: true });
       return {
         ok: true,
         accepted: false,

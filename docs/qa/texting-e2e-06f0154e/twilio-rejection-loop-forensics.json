@@ -1,0 +1,53 @@
+{
+  "recorded_at": "2026-09-22T23:50:00Z",
+  "purpose": "Stop repeated Trust Hub rejection emails — identify source + quarantine orphans",
+  "source_of_emails": {
+    "htc_venue_id": "31ea4816-a5fb-4337-96c7-e2bd3d2c5c5a",
+    "htc_venue_name": "Texting E2E Disposable 1790024905116",
+    "twilio_subaccount_sid_suffix": "adc9331f8519b7380eb62c3e6868bcf1",
+    "orphan_secondary_profile_sid": "BU2d2ff3cb6502921f0a056489430d951f",
+    "orphan_secondary_status": "twilio-rejected",
+    "orphan_secondary_errors": [{"code": 18602}],
+    "orphan_secondary_date_updated": "2026-09-22T09:55:03Z",
+    "orphan_trust_product_sid": "BU41c4f7568c85c192c844ec9a9c15aec0",
+    "orphan_trust_product_status": "in-review",
+    "orphan_failed_brand_sid": "BN1d7b21fd2824b04cd93d0522017b3371",
+    "orphan_failed_brand_status": "FAILED",
+    "note": "First disposable attempt (2026-09-21T21:17Z) created this orphan chain. A second successful chain at 22:30Z became Ready. Twilio later finished reviewing the orphan Secondary (18602 email). Orphan Trust Product remains in-review and may still email when Twilio closes it. HTC step ledger for this venue is all succeeded — cron is NOT re-submitting."
+  },
+  "not_the_source": {
+    "jens_fancy": {
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "status": "pending_compliance",
+      "secondary_profile_sid": null,
+      "customer_profiles_on_subaccount": 0,
+      "action": "unchanged"
+    },
+    "quickcloud": {
+      "venue_id": "0149e0d4-3cd9-459a-a9a2-6c5e2b30869e",
+      "status": "ready",
+      "action": "unchanged_preserve"
+    }
+  },
+  "active_ready_chain_preserve": {
+    "secondary": "BU0641761b63f85361752b9b9a24f30759",
+    "trust_product": "BU6c0e0b1eadadf6a295c7442a0e353a4b",
+    "brand": "BNa69803a950017c1a165b58da73ceaed8",
+    "campaign": "QE2c6890da8086d771620e9b13fadeba0b",
+    "messaging_service": "MGf3705b877771fcc1128618672113d5bb",
+    "phone": "PNab20e8d263c7418b469336b7e46f9904"
+  },
+  "cleanup_attempts": {
+    "delete_failed_brand": "HTTP 405 method not supported",
+    "delete_orphan_trust_product": "HTTP 400 still registered as A2P brand",
+    "delete_orphan_secondary": "HTTP 422 active bundle item",
+    "set_trust_product_draft": "HTTP 400 user cannot perform this status update",
+    "classification": "quarantined_cannot_delete"
+  },
+  "htc_retry_root_cause": {
+    "historical": "First-attempt Brand FAILED; catch defaulted retryable=true when unset; non-retryable failures only delayed 24h; create paths did not list existing bundles so a later resume could create a second Secondary/Trust/Brand while orphans stayed in Twilio review.",
+    "current_scheduler": "No pending/failed steps due; venue status ready — claimDue would not process. Repeated emails are Twilio finishing orphan review, not live HTC resubmit.",
+    "code_fix": "Terminal failures → next_attempt_at 2099; claimDue skips ready/needs_attention/terminal codes; list-before-create refuses rejected_only without explicitResume; Ready early-exit."
+  },
+  "production_untouched": true
+}
