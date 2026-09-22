@@ -35,10 +35,12 @@ export function overridesAfterTitleChange(
   return {};
 }
 
+type EffectiveAccessFailReason = Extract<EffectiveAccess, { ok: false }>["reason"];
+
 function validateOverrides(
   basis: BasisTitle,
   overrides: CapabilityOverrides | null | undefined,
-): { ok: true; overrides: CapabilityOverrides } | { ok: false; reason: EffectiveAccess extends { ok: false } ? EffectiveAccess["reason"] : never; message: string } {
+): { ok: true; overrides: CapabilityOverrides } | { ok: false; reason: EffectiveAccessFailReason; message: string } {
   if (!overrides) return { ok: true, overrides: {} };
   const cleaned: Partial<Record<CapabilityKey, boolean>> = {};
   for (const [rawKey, rawVal] of Object.entries(overrides)) {
@@ -168,13 +170,13 @@ export function listOwnershipOnlyCapabilities(): readonly CapabilityKey[] {
  */
 export function displayAccessTitle(
   accessTitle: AccessTitle,
-  titleBasis: BasisTitle,
+  _titleBasis: BasisTitle,
   overrides: CapabilityOverrides | null | undefined,
 ): AccessTitle {
   if (accessTitle === "custom") return "custom";
   if (!overrides || Object.keys(overrides).length === 0) return accessTitle;
-  const basis = accessTitle === "custom" ? titleBasis : accessTitle;
-  const preset = presetCapabilities(basis);
+  // accessTitle is a basis title here (custom already returned).
+  const preset = presetCapabilities(accessTitle);
   for (const [key, value] of Object.entries(overrides) as [CapabilityKey, boolean][]) {
     const inPreset = preset.has(key);
     if (value !== inPreset) return "custom";
