@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/integrations/supabase/server";
-import { requireCapability } from "@/lib/authorization";
+import { requireCapability } from "@/lib/authorization/membership";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";

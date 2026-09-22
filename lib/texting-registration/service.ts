@@ -212,7 +212,7 @@ async function requireTextingConfigureAuthority(): Promise<
 > {
   const ctx = await requireVenueContext();
   if (!ctx.ok) return ctx;
-  const { getActiveVenueMembership } = await import("@/lib/authorization");
+  const { getActiveVenueMembership } = await import("@/lib/authorization/membership");
   const membership = await getActiveVenueMembership();
   if (!canConfigureVenueTextingFromAccess(membership)) {
     return { ok: false, message: TEXTING_SETUP_ROLE_DENIED };
@@ -247,7 +247,7 @@ export async function getTextingSetupBundle(): Promise<TextingSetupBundle | null
       smsReady,
       textingNumberE164,
     });
-    const { getActiveVenueMembership } = await import("@/lib/authorization");
+    const { getActiveVenueMembership } = await import("@/lib/authorization/membership");
     const membership = await getActiveVenueMembership();
     const canConfigure = canConfigureVenueTextingFromAccess(membership);
     return {

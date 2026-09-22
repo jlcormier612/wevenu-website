@@ -574,7 +574,7 @@ export async function refundLineItem_(
   reason?: string,
 ): Promise<PaymentActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    const { requireCapability } = await import("@/lib/authorization");
+    const { requireCapability } = await import("@/lib/authorization/membership");
     const gate = await requireCapability(
       "payments.refund",
       "You do not have permission to issue refunds.",

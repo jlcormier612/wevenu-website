@@ -3,10 +3,8 @@ import Link from "next/link";
 
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getTeamMembers } from "@/lib/team/service";
-import {
-  getActiveVenueMembership,
-  hasCapability,
-} from "@/lib/authorization";
+import { hasCapability } from "@/lib/authorization";
+import { getActiveVenueMembership } from "@/lib/authorization/membership";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { DataExportSection } from "@/components/settings/data-export-section";
 import { SettingsTabs } from "@/components/settings/settings-tabs";

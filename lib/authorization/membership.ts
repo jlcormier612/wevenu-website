@@ -1,5 +1,6 @@
 /**
  * Load active-venue membership for capability checks (Wave 2 context).
+ * Server-only — do not import from client components.
  */
 import { cache } from "react";
 
@@ -8,13 +9,15 @@ import {
   isAccessTitle,
   isBasisTitle,
   resolveEffectiveAccess,
-  type AccessTitle,
-  type BasisTitle,
-  type CapabilityKey,
-  type CapabilityOverrides,
-  type MembershipAccessInput,
-  type TeamActor,
-} from "@/lib/authorization";
+} from "@/lib/authorization/resolve";
+import type {
+  AccessTitle,
+  BasisTitle,
+  CapabilityKey,
+  CapabilityOverrides,
+  MembershipAccessInput,
+  TeamActor,
+} from "@/lib/authorization/types";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";

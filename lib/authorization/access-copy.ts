@@ -2,8 +2,8 @@
  * Customer-facing copy for access titles and capability summaries.
  * No authorization jargon.
  */
-import { hasCapability, type CapabilityKey, type MembershipAccessInput } from "@/lib/authorization";
-import type { AccessTitle, BasisTitle } from "@/lib/authorization/types";
+import { hasCapability } from "@/lib/authorization/resolve";
+import type { AccessTitle, BasisTitle, CapabilityKey, MembershipAccessInput } from "@/lib/authorization/types";
 
 export const ACCESS_TITLE_LABELS: Record<AccessTitle, string> = {
   administrator: "Administrator",

@@ -4,19 +4,21 @@
  */
 import {
   assertCanManageMember,
-  coerceAccessTitle,
-  coerceBasisTitle,
-  getActiveTeamActor,
-  getActiveVenueMembership,
   hasCapability,
   overridesAfterTitleChange,
-  requireCapability,
-  requireOwner,
-  rowToMembershipAccess,
   type AccessTitle,
   type BasisTitle,
   type CapabilityOverrides,
 } from "@/lib/authorization";
+import {
+  coerceAccessTitle,
+  coerceBasisTitle,
+  getActiveTeamActor,
+  getActiveVenueMembership,
+  requireCapability,
+  requireOwner,
+  rowToMembershipAccess,
+} from "@/lib/authorization/membership";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";

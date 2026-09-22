@@ -62,14 +62,6 @@ export {
   summarizeWhatPersonCan,
 } from "@/lib/authorization/access-copy";
 
-export {
-  coerceAccessTitle,
-  coerceBasisTitle,
-  getActiveTeamActor,
-  getActiveVenueMembership,
-  requireCapability,
-  requireOwner,
-  rowToMembershipAccess,
-  type RequireCapabilityResult,
-  type VenueMembershipRow,
-} from "@/lib/authorization/membership";
+// Server-only loaders (createClient / getCurrentVenue) live in
+// `@/lib/authorization/membership` — do not re-export from this barrel so
+// client components can safely import labels/presets/resolve.

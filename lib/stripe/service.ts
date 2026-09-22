@@ -24,7 +24,7 @@ import type { StripePaymentMethodType } from "@/lib/venue/types";
  */
 export async function connectStripeAccount(accountId: string): Promise<void> {
   if (!isSupabaseConfigured) return;
-  const { requireCapability } = await import("@/lib/authorization");
+  const { requireCapability } = await import("@/lib/authorization/membership");
   const gate = await requireCapability(
     "settings.integrations",
     "You do not have permission to manage integrations.",
@@ -61,7 +61,7 @@ export async function connectStripeAccount(accountId: string): Promise<void> {
  */
 export async function disconnectStripeAccount(): Promise<StripeActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  const { requireCapability } = await import("@/lib/authorization");
+  const { requireCapability } = await import("@/lib/authorization/membership");
   const gate = await requireCapability(
     "settings.integrations",
     "You do not have permission to manage integrations.",
