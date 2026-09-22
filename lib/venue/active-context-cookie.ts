@@ -1,6 +1,10 @@
 /**
  * Wave 2 — htc_active_venue_id cookie.
  * Convenience only. NEVER authorization. DB context always wins.
+ *
+ * Cookie mutation is only allowed in Server Actions / Route Handlers.
+ * Layout bootstrap still calls sync/clear; those writes must soft-fail so
+ * DB-authoritative initialization is never blocked by Next.js cookie rules.
  */
 import { cookies } from "next/headers";
 
@@ -15,6 +19,21 @@ const COOKIE_OPTS = {
   path: "/",
 };
 
+function isCookieMutationForbidden(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("Cookies can only be modified");
+}
+
+async function mutateCookie(write: (jar: Awaited<ReturnType<typeof cookies>>) => void): Promise<void> {
+  try {
+    const jar = await cookies();
+    write(jar);
+  } catch (err) {
+    if (isCookieMutationForbidden(err)) return;
+    throw err;
+  }
+}
+
 export async function readActiveVenueCookie(): Promise<string | null> {
   const jar = await cookies();
   const value = jar.get(ACTIVE_VENUE_COOKIE)?.value?.trim();
@@ -22,13 +41,15 @@ export async function readActiveVenueCookie(): Promise<string | null> {
 }
 
 export async function writeActiveVenueCookie(venueId: string): Promise<void> {
-  const jar = await cookies();
-  jar.set(ACTIVE_VENUE_COOKIE, venueId, COOKIE_OPTS);
+  await mutateCookie((jar) => {
+    jar.set(ACTIVE_VENUE_COOKIE, venueId, COOKIE_OPTS);
+  });
 }
 
 export async function clearActiveVenueCookie(): Promise<void> {
-  const jar = await cookies();
-  jar.delete(ACTIVE_VENUE_COOKIE);
+  await mutateCookie((jar) => {
+    jar.delete(ACTIVE_VENUE_COOKIE);
+  });
 }
 
 /**
