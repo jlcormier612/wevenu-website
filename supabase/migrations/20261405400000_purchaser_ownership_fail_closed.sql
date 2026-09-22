@@ -175,3 +175,45 @@ grant execute on function public.activate_venue_enrollment(text, uuid) to servic
 
 comment on function public.activate_venue_enrollment(text, uuid) is
   'Deprecated fail-closed stub. Use the 5-arg overload with explicit p_purchaser_is_owner.';
+
+-- Self-prove: live function defs never silently default purchaser to Owner.
+do $$
+declare
+  def_5arg text;
+  def_2arg text;
+begin
+  select pg_get_functiondef(
+    'public.activate_venue_enrollment(text, uuid, boolean, text, text)'::regprocedure
+  ) into def_5arg;
+  select pg_get_functiondef(
+    'public.activate_venue_enrollment(text, uuid)'::regprocedure
+  ) into def_2arg;
+
+  if def_5arg ~* 'coalesce\([^;]*,\s*true\s*\)' then
+    raise exception 'purchaser_ownership_fail_closed_proof_failed: 5-arg still coalesce-defaults to true';
+  end if;
+  if position('purchaser_ownership_choice_required' in def_5arg) = 0 then
+    raise exception 'purchaser_ownership_fail_closed_proof_failed: 5-arg missing choice_required raise';
+  end if;
+  if position('purchaser_ownership_choice_required' in def_2arg) = 0 then
+    raise exception 'purchaser_ownership_fail_closed_proof_failed: 2-arg missing choice_required raise';
+  end if;
+  if def_2arg ~* 'activate_venue_enrollment\(\s*p_activation_token\s*,\s*p_owner_user_id\s*,\s*true' then
+    raise exception 'purchaser_ownership_fail_closed_proof_failed: 2-arg still forwards true';
+  end if;
+
+  begin
+    perform * from public.activate_venue_enrollment(
+      'prove-fail-closed-token-never-exists',
+      '00000000-0000-4000-8000-000000000001'::uuid
+    );
+    raise exception 'purchaser_ownership_fail_closed_proof_failed: 2-arg overload did not raise';
+  exception
+    when sqlstate 'P0001' then
+      if position('purchaser_ownership_choice_required' in sqlerrm) = 0
+         and position('Purchaser ownership choice is required' in sqlerrm) = 0 then
+        raise;
+      end if;
+  end;
+end;
+$$;
