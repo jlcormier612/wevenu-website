@@ -157,11 +157,11 @@ export function SeriesView({
           <p className="text-sm text-muted-foreground">{summary.lines.stops}</p>
 
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link href={`/communication/series/${series.id}/edit`}>Edit</Link>
+            <Button variant="outline" render={<Link href={`/communication/series/${series.id}/edit`} />}>
+              Edit
             </Button>
-            <Button asChild variant="ghost">
-              <Link href="/communication/series">Back to Automations</Link>
+            <Button variant="ghost" render={<Link href="/communication/series" />}>
+              Back to Automations
             </Button>
           </div>
         </CardContent>
