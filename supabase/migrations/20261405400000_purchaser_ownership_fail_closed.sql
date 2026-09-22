@@ -3,9 +3,14 @@
 -- Never default a missing ownership choice to Owner.
 -- ============================================================================
 
+-- Must DROP before recreate: CREATE OR REPLACE cannot remove the
+-- `p_purchaser_is_owner boolean default true` from migration 053.
+drop function if exists public.activate_venue_enrollment(text, uuid, boolean, text, text);
+drop function if exists public.activate_venue_enrollment(text, uuid);
+
 -- 5-arg activation: require explicit p_purchaser_is_owner or a previously
 -- stored enrollment.purchaser_is_owner. Never coalesce to true.
-create or replace function public.activate_venue_enrollment(
+create function public.activate_venue_enrollment(
   p_activation_token text,
   p_owner_user_id uuid,
   p_purchaser_is_owner boolean,
@@ -154,7 +159,7 @@ revoke all on function public.activate_venue_enrollment(text, uuid, boolean, tex
 grant execute on function public.activate_venue_enrollment(text, uuid, boolean, text, text) to service_role;
 
 -- Legacy 2-arg overload: must NOT silently default purchaser to Owner.
-create or replace function public.activate_venue_enrollment(
+create function public.activate_venue_enrollment(
   p_activation_token text,
   p_owner_user_id uuid
 )
