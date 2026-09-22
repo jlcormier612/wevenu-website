@@ -9,6 +9,7 @@ import { describe, it } from "node:test";
 
 import {
   EMPTY_EVENT_SPACES_LABEL,
+  replaceEmptyEventSpacesLabel,
   resolveEventSpacesLabel,
 } from "@/lib/contracts/event-spaces-merge";
 
@@ -72,6 +73,18 @@ describe("resolveEventSpacesLabel", () => {
       EMPTY_EVENT_SPACES_LABEL,
     );
   });
+
+  it("replaces pre-baked empty copy once a real space is known", () => {
+    const body = `Event Spaces: ${EMPTY_EVENT_SPACES_LABEL}\n\nAlso: ${EMPTY_EVENT_SPACES_LABEL}`;
+    assert.equal(
+      replaceEmptyEventSpacesLabel(body, "Barn"),
+      "Event Spaces: Barn\n\nAlso: Barn",
+    );
+    assert.equal(
+      replaceEmptyEventSpacesLabel(body, EMPTY_EVENT_SPACES_LABEL),
+      body,
+    );
+  });
 });
 
 describe("buildContractMergeData uses planned lead space", () => {
@@ -80,7 +93,14 @@ describe("buildContractMergeData uses planned lead space", () => {
     assert.match(service, /resolveEventSpacesLabel/);
     assert.match(service, /planned_event_space_id/);
     assert.match(service, /from\("leads"\)/);
+    assert.match(service, /getEventIdForClient/);
+    assert.match(service, /replaceEmptyEventSpacesLabel/);
     // Must not hardcode a space name into merge.
     assert.doesNotMatch(service, /eventSpaces\s*=\s*["']Barn["']/);
+  });
+
+  it("ensureCommercialCustomer resolves client's Event when selection.eventId is null", () => {
+    const src = readFileSync(resolve("lib/booking-journey/ensure-commercial-customer.ts"), "utf8");
+    assert.match(src, /getEventIdForClient/);
   });
 });

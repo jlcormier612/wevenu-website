@@ -40,10 +40,19 @@ export async function ensureCommercialCustomerForSelection(input: {
   }
 
   if (selection.clientId) {
+    let eventId = selection.eventId;
+    if (!eventId) {
+      try {
+        const { getEventIdForClient } = await import("@/lib/events/service");
+        eventId = await getEventIdForClient(selection.clientId);
+      } catch {
+        eventId = null;
+      }
+    }
     return {
       ok: true,
       clientId: selection.clientId,
-      eventId: selection.eventId,
+      eventId,
       selectionId: selection.id,
       created: false,
     };

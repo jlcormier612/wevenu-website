@@ -9,9 +9,11 @@ import * as documentIntegration from "@/lib/contracts/document-integration";
 import { buildMergeData, mergeContent, extractTokens, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
 import {
   EMPTY_EVENT_SPACES_LABEL,
+  replaceEmptyEventSpacesLabel,
   resolveEventSpacesLabel,
 } from "@/lib/contracts/event-spaces-merge";
 import { getSpaces } from "@/lib/availability/service";
+import { getEventIdForClient } from "@/lib/events/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service";
 import { computeTotalPaid } from "@/lib/payments/constants";
@@ -338,8 +340,12 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
       clientId: resolvedInput.clientId, eventId: resolvedInput.eventId, contractTitle: resolvedInput.title,
       selectionId: mergeSelectionId,
     });
-    const resolvedContent = applyRequiredSignerSignatureBlocks(
+    const mergedBody = replaceEmptyEventSpacesLabel(
       mergeContent(resolvedInput.content, mergeData),
+      mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
+    );
+    const resolvedContent = applyRequiredSignerSignatureBlocks(
+      mergedBody,
       signerSeeds.seeds.map((s) => s.signerName),
     );
     // Drafts may still hold venue-policy placeholders (filled before send).
@@ -386,7 +392,10 @@ export async function previewContractContent(opts: {
       selectionId: opts.selectionId,
     });
     const content = applyRequiredSignerSignatureBlocks(
-      mergeContent(opts.templateContent, mergeData),
+      replaceEmptyEventSpacesLabel(
+        mergeContent(opts.templateContent, mergeData),
+        mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
+      ),
       signerSeeds.seeds.map((s) => s.signerName),
     );
     return { ok: true, content };
@@ -464,10 +473,19 @@ export async function buildContractMergeData(opts: {
   contractTitle?: string;
   selectionId?: string;
 }): Promise<Record<string, string>> {
+  // Prefer an explicit eventId; otherwise use the client's canonical dated Event
+  // so booked Event.space_id is visible even when the create URL omitted eventId.
+  let resolvedEventId = opts.eventId?.trim() || "";
+  if (!resolvedEventId && opts.clientId) {
+    try {
+      resolvedEventId = (await getEventIdForClient(opts.clientId)) ?? "";
+    } catch { /* optional */ }
+  }
+
   const [venue, client, event] = await Promise.all([
     getCurrentVenue(),
     opts.clientId ? getClient(opts.clientId) : Promise.resolve(null),
-    opts.eventId ? getEvent(opts.eventId) : Promise.resolve(null),
+    resolvedEventId ? getEvent(resolvedEventId) : Promise.resolve(null),
   ]);
 
   const addressParts = [

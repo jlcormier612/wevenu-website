@@ -24,6 +24,10 @@ import {
   buildContractMergeData,
 } from "@/lib/contracts/service";
 import { finalizeContract, getContractPdfUrl } from "@/lib/contracts/finalize";
+import {
+  EMPTY_EVENT_SPACES_LABEL,
+  replaceEmptyEventSpacesLabel,
+} from "@/lib/contracts/event-spaces-merge";
 import type {
   ContractActionResult,
   ContractErrors,
@@ -101,7 +105,13 @@ export async function previewMergedContentAction(opts: {
       contractTitle: opts.contractTitle,
       selectionId: opts.selectionId,
     });
-    return { ok: true, content: mergeContent(opts.templateContent, data) };
+    return {
+      ok: true,
+      content: replaceEmptyEventSpacesLabel(
+        mergeContent(opts.templateContent, data),
+        data.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
+      ),
+    };
   } catch {
     return { ok: false, message: "Could not preview contract." };
   }

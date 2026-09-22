@@ -29,3 +29,19 @@ export function resolveEventSpacesLabel(opts: {
   }
   return EMPTY_EVENT_SPACES_LABEL;
 }
+
+/**
+ * Preview can bake the empty-state copy into the form body before create
+ * resolves the client's Event. When we later know the real space label,
+ * replace that empty copy so the contract document matches the booking.
+ */
+export function replaceEmptyEventSpacesLabel(
+  content: string,
+  eventSpacesLabel: string,
+): string {
+  if (!eventSpacesLabel || eventSpacesLabel === EMPTY_EVENT_SPACES_LABEL) {
+    return content;
+  }
+  if (!content.includes(EMPTY_EVENT_SPACES_LABEL)) return content;
+  return content.split(EMPTY_EVENT_SPACES_LABEL).join(eventSpacesLabel);
+}
