@@ -453,17 +453,12 @@ begin
     raise exception 'purchaser_ownership_fail_closed_proof_failed: on-behalf missing pending Owner invite row';
   end if;
 
-  -- Cleanup proof membership + enroll rows. Do not delete venues: seeded
-  -- builtin schedule item types refuse deletion. Free the owner_user_id slot.
+  -- Cleanup proof membership + enrollment rows. Leave venues (builtin
+  -- schedule item types refuse venue deletion; owner_user_id is NOT NULL).
   perform set_config('htc.allow_last_owner_change', '1', true);
   delete from public.venue_staff where venue_id in (v_venue_true, v_venue_false);
   update public.venues
-    set name = left(name || ' [055-proof-cleaned]', 120),
-        email = 'cleaned-' || id::text || '@example.invalid'
-    where id in (v_venue_true, v_venue_false);
-  -- Release unique owner_user_id so proof users remain reusable.
-  update public.venues
-    set owner_user_id = null
+    set name = left(name || ' [055-proof-cleaned]', 120)
     where id in (v_venue_true, v_venue_false);
   delete from public.venue_enrollments where id in (v_enroll_null, v_enroll_true, v_enroll_false);
 end;
