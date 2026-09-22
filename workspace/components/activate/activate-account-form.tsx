@@ -25,14 +25,22 @@ function readActivateFormState(form: HTMLFormElement): {
   password: string;
   confirm: string;
   legalAccepted: boolean;
+  ownershipChoice: "" | "owner" | "on_behalf";
+  invitedOwnerName: string;
+  invitedOwnerEmail: string;
 } {
   const data = new FormData(form);
   const legal = form.elements.namedItem("legalAccepted");
+  const choice = String(data.get("ownershipChoice") || "");
   return {
     password: String(data.get("password") || ""),
     confirm: String(data.get("confirm") || ""),
     legalAccepted:
       legal instanceof HTMLInputElement ? legal.checked : false,
+    ownershipChoice:
+      choice === "owner" || choice === "on_behalf" ? choice : "",
+    invitedOwnerName: String(data.get("invitedOwnerName") || ""),
+    invitedOwnerEmail: String(data.get("invitedOwnerEmail") || ""),
   };
 }
 
@@ -69,6 +77,9 @@ export function ActivateAccountForm({
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
+  const [ownershipChoice, setOwnershipChoice] = useState<"" | "owner" | "on_behalf">("");
+  const [invitedOwnerName, setInvitedOwnerName] = useState("");
+  const [invitedOwnerEmail, setInvitedOwnerEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -78,6 +89,9 @@ export function ActivateAccountForm({
     setPassword(next.password);
     setConfirm(next.confirm);
     setLegalAccepted(next.legalAccepted);
+    setOwnershipChoice(next.ownershipChoice);
+    setInvitedOwnerName(next.invitedOwnerName);
+    setInvitedOwnerEmail(next.invitedOwnerEmail);
   };
 
   useEffect(() => {
@@ -88,6 +102,9 @@ export function ActivateAccountForm({
       setPassword(next.password);
       setConfirm(next.confirm);
       setLegalAccepted(next.legalAccepted);
+      setOwnershipChoice(next.ownershipChoice);
+      setInvitedOwnerName(next.invitedOwnerName);
+      setInvitedOwnerEmail(next.invitedOwnerEmail);
     }
   }, []);
 
@@ -95,6 +112,9 @@ export function ActivateAccountForm({
     password,
     confirm,
     legalAccepted,
+    ownershipChoice,
+    invitedOwnerName,
+    invitedOwnerEmail,
   });
 
   return (
@@ -121,6 +141,81 @@ export function ActivateAccountForm({
           {state.error}
         </p>
       ) : null}
+
+      <fieldset className="space-y-3 rounded-sm border border-border/60 px-4 py-3">
+        <legend className="ws-eyebrow px-1">Are you an owner of this venue?</legend>
+        <p className="text-sm text-muted-foreground">
+          Some people buy Hello to Cheers for their own venue. Others set it up for the owners.
+          This only affects ownership — not whether you can finish setup.
+        </p>
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <input
+            type="radio"
+            name="ownershipChoice"
+            value="owner"
+            required
+            disabled={pending}
+            className="mt-1"
+          />
+          <span>
+            <span className="font-medium text-foreground">I&apos;m an owner of this venue</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              You&apos;ll be able to manage ownership and invite other Owners.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <input
+            type="radio"
+            name="ownershipChoice"
+            value="on_behalf"
+            required
+            disabled={pending}
+            className="mt-1"
+          />
+          <span>
+            <span className="font-medium text-foreground">
+              I&apos;m setting this up on behalf of the venue
+            </span>
+            <span className="mt-0.5 block text-muted-foreground">
+              You&apos;ll get Administrator access to run the account, including billing.
+              We&apos;ll invite the Owner separately — they don&apos;t have to approve you first.
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
+      {ownershipChoice === "on_behalf" ? (
+        <div className="space-y-3 rounded-sm border border-border/60 px-4 py-3">
+          <p className="text-sm font-medium text-foreground">Invite the venue Owner</p>
+          <p className="text-sm text-muted-foreground">
+            We&apos;ll let them know you&apos;re administering the account and invite them as an Owner.
+          </p>
+          <label className="block">
+            <span className="ws-eyebrow">Owner name</span>
+            <input
+              name="invitedOwnerName"
+              type="text"
+              required
+              disabled={pending}
+              autoComplete="name"
+              className="ws-control mt-2 w-full rounded-sm px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            />
+          </label>
+          <label className="block">
+            <span className="ws-eyebrow">Owner email</span>
+            <input
+              name="invitedOwnerEmail"
+              type="email"
+              required
+              disabled={pending}
+              autoComplete="email"
+              className="ws-control mt-2 w-full rounded-sm px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            />
+          </label>
+        </div>
+      ) : null}
+
       <label className="block">
         <span className="ws-eyebrow">Email</span>
         <input

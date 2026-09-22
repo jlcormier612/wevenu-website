@@ -3,6 +3,10 @@ import Link from "next/link";
 
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getTeamMembers } from "@/lib/team/service";
+import {
+  getActiveVenueMembership,
+  hasCapability,
+} from "@/lib/authorization";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { DataExportSection } from "@/components/settings/data-export-section";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
@@ -17,18 +21,22 @@ import {
 
 export const metadata: Metadata = { title: "Team & Data — Settings" };
 
-/**
- * Settings > Team & Data. Team & Permissions is the existing, unchanged
- * TeamRoster (invite/remove/role-change, RLS-backed) — release-critical
- * per the Manager Permissions work, so nothing about its behavior,
- * actions, or underlying authorization is touched here. Import/Export
- * moved in from the old flat Settings page unchanged.
- */
 export default async function TeamDataSettingsPage() {
   const venue = await getCurrentVenue();
   if (!venue) return null;
 
-  const members = await getTeamMembers(venue.id);
+  const [members, membership] = await Promise.all([
+    getTeamMembers(venue.id),
+    getActiveVenueMembership(),
+  ]);
+
+  const actorIsOwner = membership?.isOwner === true;
+  const canInvite =
+    actorIsOwner || (membership ? hasCapability(membership, "team.invite") : false);
+  const canChangeAccess =
+    actorIsOwner || (membership ? hasCapability(membership, "team.change_access") : false);
+  const canRemove =
+    actorIsOwner || (membership ? hasCapability(membership, "team.remove") : false);
 
   return (
     <div className="space-y-6">
@@ -42,12 +50,19 @@ export default async function TeamDataSettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Team &amp; Permissions</CardTitle>
           <CardDescription>
-            Manage who has access to your venue and what they can see and do.
-            Owners and Managers can invite or remove members.
+            Access titles control what people can do. Ownership is separate — Owners control
+            ownership, while Administrators can run the venue day to day.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TeamRoster initialMembers={members} venueId={venue.id} />
+          <TeamRoster
+            initialMembers={members}
+            venueId={venue.id}
+            actorIsOwner={actorIsOwner}
+            canInvite={canInvite}
+            canChangeAccess={canChangeAccess}
+            canRemove={canRemove}
+          />
         </CardContent>
       </Card>
 

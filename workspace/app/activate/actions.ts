@@ -17,7 +17,15 @@ export async function activateAccountAction(
   if (!gated.ok) {
     return { error: gated.error };
   }
-  const { token, email, password, relationshipId } = gated;
+  const {
+    token,
+    email,
+    password,
+    relationshipId,
+    purchaserIsOwner,
+    invitedOwnerName,
+    invitedOwnerEmail,
+  } = gated;
 
   // Record legal acceptances immediately before completing CRM account activation.
   if (email) {
@@ -37,7 +45,13 @@ export async function activateAccountAction(
   // Relationship is marked activated below, so a failure here leaves both
   // sides consistently "not yet activated" and safely retryable — the
   // activation token is only consumed on real success.
-  const bridged = await activateVenueAccount({ token, password });
+  const bridged = await activateVenueAccount({
+    token,
+    password,
+    purchaserIsOwner,
+    invitedOwnerName,
+    invitedOwnerEmail,
+  });
   if (!bridged.ok) {
     console.error("[activate] product account bridge failed", bridged.error);
     return { error: "We couldn't set up your account just now. Please try again in a moment." };

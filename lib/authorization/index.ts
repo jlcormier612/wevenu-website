@@ -53,3 +53,23 @@ export {
   type TeamActor,
   type TeamTargetDraft,
 } from "@/lib/authorization/types";
+
+export {
+  ACCESS_TITLE_DESCRIPTIONS,
+  ACCESS_TITLE_LABELS,
+  BASIS_TITLE_LABELS,
+  formatAccessBadge,
+  summarizeWhatPersonCan,
+} from "@/lib/authorization/access-copy";
+
+export {
+  coerceAccessTitle,
+  coerceBasisTitle,
+  getActiveTeamActor,
+  getActiveVenueMembership,
+  requireCapability,
+  requireOwner,
+  rowToMembershipAccess,
+  type RequireCapabilityResult,
+  type VenueMembershipRow,
+} from "@/lib/authorization/membership";

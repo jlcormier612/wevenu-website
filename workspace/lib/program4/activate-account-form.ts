@@ -13,11 +13,20 @@ export const ACTIVATE_LEGAL_ERROR =
 export const ACTIVATE_PASSWORD_LENGTH_ERROR =
   "Password must be at least 8 characters.";
 export const ACTIVATE_PASSWORD_MISMATCH_ERROR = "Passwords do not match.";
+export const ACTIVATE_OWNERSHIP_REQUIRED_ERROR =
+  "Please tell us whether you are an owner of this venue.";
+export const ACTIVATE_INVITED_OWNER_REQUIRED_ERROR =
+  "Please enter the venue owner's name and email so we can invite them.";
+
+export type ActivateOwnershipChoice = "owner" | "on_behalf";
 
 export type ActivateAccountFieldState = {
   password: string;
   confirm: string;
   legalAccepted: boolean;
+  ownershipChoice?: ActivateOwnershipChoice | "";
+  invitedOwnerName?: string;
+  invitedOwnerEmail?: string;
   pending?: boolean;
 };
 
@@ -39,7 +48,13 @@ export function parseActivateAccountFormData(formData: FormData): {
   confirm: string;
   relationshipId: string;
   legalAccepted: boolean;
+  ownershipChoice: ActivateOwnershipChoice | "";
+  invitedOwnerName: string;
+  invitedOwnerEmail: string;
 } {
+  const rawChoice = String(formData.get("ownershipChoice") || "").trim();
+  const ownershipChoice: ActivateOwnershipChoice | "" =
+    rawChoice === "owner" || rawChoice === "on_behalf" ? rawChoice : "";
   return {
     token: String(formData.get("token") || "").trim(),
     email: String(formData.get("email") || "").trim(),
@@ -47,11 +62,22 @@ export function parseActivateAccountFormData(formData: FormData): {
     confirm: String(formData.get("confirm") || ""),
     relationshipId: String(formData.get("relationshipId") || "").trim(),
     legalAccepted: isActivateLegalAccepted(formData.get("legalAccepted")),
+    ownershipChoice,
+    invitedOwnerName: String(formData.get("invitedOwnerName") || "").trim(),
+    invitedOwnerEmail: String(formData.get("invitedOwnerEmail") || "").trim().toLowerCase(),
   };
 }
 
 export function validateActivateAccountFields(
-  input: Pick<ActivateAccountFieldState, "password" | "confirm" | "legalAccepted">,
+  input: Pick<
+    ActivateAccountFieldState,
+    | "password"
+    | "confirm"
+    | "legalAccepted"
+    | "ownershipChoice"
+    | "invitedOwnerName"
+    | "invitedOwnerEmail"
+  >,
 ): ActivateAccountFieldsResult {
   if (!input.legalAccepted) {
     return { ok: false, error: ACTIVATE_LEGAL_ERROR };
@@ -61,6 +87,16 @@ export function validateActivateAccountFields(
   }
   if (input.password !== input.confirm) {
     return { ok: false, error: ACTIVATE_PASSWORD_MISMATCH_ERROR };
+  }
+  if (input.ownershipChoice !== "owner" && input.ownershipChoice !== "on_behalf") {
+    return { ok: false, error: ACTIVATE_OWNERSHIP_REQUIRED_ERROR };
+  }
+  if (input.ownershipChoice === "on_behalf") {
+    const name = (input.invitedOwnerName ?? "").trim();
+    const email = (input.invitedOwnerEmail ?? "").trim();
+    if (!name || !email || !email.includes("@")) {
+      return { ok: false, error: ACTIVATE_INVITED_OWNER_REQUIRED_ERROR };
+    }
   }
   return { ok: true };
 }
@@ -84,6 +120,9 @@ export function gateActivateAccountSubmission(formData: FormData):
       email: string;
       password: string;
       relationshipId: string;
+      purchaserIsOwner: boolean;
+      invitedOwnerName: string | null;
+      invitedOwnerEmail: string | null;
     }
   | { ok: false; error: string } {
   const parsed = parseActivateAccountFormData(formData);
@@ -94,12 +133,16 @@ export function gateActivateAccountSubmission(formData: FormData):
   if (!fields.ok) {
     return { ok: false, error: fields.error };
   }
+  const purchaserIsOwner = parsed.ownershipChoice === "owner";
   return {
     ok: true,
     token: parsed.token,
     email: parsed.email,
     password: parsed.password,
     relationshipId: parsed.relationshipId,
+    purchaserIsOwner,
+    invitedOwnerName: purchaserIsOwner ? null : parsed.invitedOwnerName,
+    invitedOwnerEmail: purchaserIsOwner ? null : parsed.invitedOwnerEmail,
   };
 }
 

@@ -574,9 +574,13 @@ export async function refundLineItem_(
   reason?: string,
 ): Promise<PaymentActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    const role = await getCurrentUserRole();
-    if (role !== "owner") {
-      return { ok: false, message: "Only the venue Owner can issue a refund." } as PaymentActionResult;
+    const { requireCapability } = await import("@/lib/authorization");
+    const gate = await requireCapability(
+      "payments.refund",
+      "You do not have permission to issue refunds.",
+    );
+    if (!gate.ok) {
+      return { ok: false, message: gate.error } as PaymentActionResult;
     }
 
     // Stripe Connect (Sprint 4): a payment collected through Stripe must

@@ -194,7 +194,12 @@ export const CAPABILITY_CATALOG: readonly CapabilityDefinition[] = [
   def("ownership.add_owner", "Add Owners", "account_ownership", { ownershipOnly: true }),
   def("ownership.remove_owner", "Remove Owners", "account_ownership", { ownershipOnly: true }),
   def("ownership.transfer", "Transfer/change ownership", "account_ownership", { ownershipOnly: true }),
-  def("account.billing", "Manage billing/subscription", "account_ownership", { ownershipOnly: true }),
+  // Billing is sensitive but delegable — not ownership-only (locked product decision).
+  def("account.billing", "Manage billing/subscription", "account_ownership", {
+    sensitive: true,
+    customizable: true,
+    grantableTo: ["administrator"],
+  }),
   def("ownership.close_venue", "Close/delete venue", "account_ownership", { ownershipOnly: true }),
 ];
 
@@ -227,11 +232,10 @@ export function sensitiveCapabilityKeys(): readonly CapabilityKey[] {
   return CAPABILITY_CATALOG.filter((c) => c.sensitive).map((c) => c.key);
 }
 
-/** Denylist: never allowed in sparse overrides. */
+/** Denylist: never allowed in sparse overrides (ownership-only only). */
 export function isOverrideDenied(key: string): boolean {
   if (!isCapabilityKey(key)) return true;
-  const d = getCapabilityDefinition(key);
-  return d.ownershipOnly || key === "account.billing";
+  return getCapabilityDefinition(key).ownershipOnly;
 }
 
 export function assertCatalogComplete(): void {

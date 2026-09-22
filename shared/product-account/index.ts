@@ -130,6 +130,9 @@ export async function provisionVenueEnrollment(
 export async function activateVenueAccount(input: {
   token: string;
   password: string;
+  purchaserIsOwner?: boolean;
+  invitedOwnerName?: string | null;
+  invitedOwnerEmail?: string | null;
 }): Promise<ActivateAccountResult> {
   return postInternal<ActivateAccountResult>("/api/internal/enrollment/activate", input);
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/integrations/supabase/server";
+import { requireCapability } from "@/lib/authorization";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -9,8 +10,8 @@ export const runtime = "nodejs";
  * Open Stripe Customer Portal for SaaS subscription payment method update.
  * Used from /billing/suspended while the venue is hard-locked.
  *
- * Uses venues.saas_stripe_customer_id (HTC subscription Stripe account) via
- * the marketing app's portal API — never the venue-app Connect Stripe client.
+ * Authorization: account.billing (Owners always; others via delegated grant).
+ * Uses venues.saas_stripe_customer_id via marketing portal API — never Connect.
  */
 
 export async function POST() {
@@ -21,14 +22,15 @@ export async function POST() {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireCapability(
+    "account.billing",
+    "You do not have permission to manage billing for this venue.",
+  );
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
+  const supabase = await createClient();
   const { data: venue, error } = await supabase
     .from("venues")
     .select("id, saas_stripe_customer_id, access_disabled")
@@ -56,9 +58,6 @@ export async function POST() {
     );
   }
 
-  // Never fall through to the venue-app Stripe client: that process is wired to
-  // htc/*/stripe-connect (Connect platform), while saas_stripe_customer_id lives
-  // on the separate HTC SaaS Stripe account (htc/*/stripe-saas → marketing).
   const marketingUrl = (
     process.env.NEXT_PUBLIC_MARKETING_URL?.trim() ||
     process.env.MARKETING_SITE_URL?.trim() ||

@@ -65,11 +65,11 @@ describe("catalog integrity", () => {
     );
   });
 
-  it("marks ownership-only and billing as override-denied", () => {
+  it("marks ownership-only as override-denied; billing is delegable", () => {
     for (const key of ownershipOnlyCapabilityKeys()) {
       assert.equal(isOverrideDenied(key), true, key);
     }
-    assert.equal(isOverrideDenied("account.billing"), true);
+    assert.equal(isOverrideDenied("account.billing"), false);
     assert.equal(isOverrideDenied("payments.view"), false);
   });
 });
@@ -96,7 +96,23 @@ describe("title default matrices", () => {
       assert.equal(hasOwnershipOnlyCapability(true, true, key), true, key);
     }
     assert.equal(hasCapability(member({ accessTitle: "administrator", isOwner: true }), "account.billing"), true);
+    assert.equal(hasCapability(admin, "account.billing"), false);
     assert.equal(hasCapability(admin, "payments.refund"), true);
+  });
+
+  it("account.billing is delegable to Administrator via override; Owners always have it", () => {
+    const adminNoBilling = member({ accessTitle: "administrator", isOwner: false });
+    assert.equal(hasCapability(adminNoBilling, "account.billing"), false);
+
+    const adminWithBilling = member({
+      accessTitle: "administrator",
+      isOwner: false,
+      overrides: { "account.billing": true },
+    });
+    assert.equal(hasCapability(adminWithBilling, "account.billing"), true);
+
+    const ownerManager = member({ accessTitle: "manager", isOwner: true });
+    assert.equal(hasCapability(ownerManager, "account.billing"), true);
   });
 
   it("manager defaults: broad ops; refund/export/integrations/texting off", () => {
@@ -242,21 +258,25 @@ describe("custom + overrides", () => {
       }));
       assert.equal(result.ok, false, key);
       if (!result.ok) {
-        assert.ok(
-          result.reason === "ownership_only_override" || result.reason === "billing_override",
-          result.reason,
-        );
+        assert.equal(result.reason, "ownership_only_override", result.reason);
       }
     }
   });
 
-  it("account.billing cannot be granted through overrides", () => {
+  it("account.billing can be granted to Administrator through overrides", () => {
     const result = resolveEffectiveAccess(member({
       accessTitle: "administrator",
       overrides: { "account.billing": true },
     }));
-    assert.equal(result.ok, false);
-    if (!result.ok) assert.equal(result.reason, "billing_override");
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.capabilities.has("account.billing"), true);
+
+    const denyOnManager = resolveEffectiveAccess(member({
+      accessTitle: "manager",
+      overrides: { "account.billing": true },
+    }));
+    assert.equal(denyOnManager.ok, false);
+    if (!denyOnManager.ok) assert.equal(denyOnManager.reason, "ungrantable_override");
   });
 
   it("unknown capability keys fail closed", () => {
@@ -302,7 +322,7 @@ describe("inactive membership", () => {
       hasCapability(member({ accessTitle: "administrator", isActive: false }), "clients.view"),
       false,
     );
-    assert.equal(hasOwnershipOnlyCapability(false, true, "account.billing"), false);
+    assert.equal(hasOwnershipOnlyCapability(false, true, "ownership.add_owner"), false);
   });
 });
 

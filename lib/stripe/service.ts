@@ -24,6 +24,12 @@ import type { StripePaymentMethodType } from "@/lib/venue/types";
  */
 export async function connectStripeAccount(accountId: string): Promise<void> {
   if (!isSupabaseConfigured) return;
+  const { requireCapability } = await import("@/lib/authorization");
+  const gate = await requireCapability(
+    "settings.integrations",
+    "You do not have permission to manage integrations.",
+  );
+  if (!gate.ok) return;
   const supabase = await createClient();
   const venue = await getCurrentVenue();
   if (!venue) return;
@@ -55,6 +61,12 @@ export async function connectStripeAccount(accountId: string): Promise<void> {
  */
 export async function disconnectStripeAccount(): Promise<StripeActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const { requireCapability } = await import("@/lib/authorization");
+  const gate = await requireCapability(
+    "settings.integrations",
+    "You do not have permission to manage integrations.",
+  );
+  if (!gate.ok) return { ok: false, message: gate.error };
   const supabase = await createClient();
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };

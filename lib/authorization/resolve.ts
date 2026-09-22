@@ -51,13 +51,11 @@ function validateOverrides(
       return { ok: false, reason: "unknown_capability_override", message: `Unknown capability override: ${rawKey}.` };
     }
     if (isOverrideDenied(rawKey)) {
-      if (rawKey === "account.billing" || getCapabilityDefinition(rawKey).ownershipOnly) {
-        return {
-          ok: false,
-          reason: rawKey === "account.billing" ? "billing_override" : "ownership_only_override",
-          message: `Capability ${rawKey} cannot be granted through overrides.`,
-        };
-      }
+      return {
+        ok: false,
+        reason: "ownership_only_override",
+        message: `Capability ${rawKey} cannot be granted through overrides.`,
+      };
     }
     const def = getCapabilityDefinition(rawKey);
     if (!def.customizable) {
@@ -136,6 +134,7 @@ export function resolveEffectiveAccess(input: MembershipAccessInput): EffectiveA
 /**
  * True when the member may perform an operational capability.
  * Ownership-only keys require isOwner and are never satisfied by title/overrides alone.
+ * account.billing: Owners always have it; others via title/overrides (delegable).
  */
 export function hasCapability(
   input: MembershipAccessInput,
@@ -144,6 +143,9 @@ export function hasCapability(
   if (!isCapabilityKey(capability)) return false;
   if (getCapabilityDefinition(capability).ownershipOnly) {
     return input.isActive && input.isOwner === true;
+  }
+  if (capability === "account.billing" && input.isActive && input.isOwner === true) {
+    return true;
   }
   const resolved = resolveEffectiveAccess(input);
   if (!resolved.ok) return false;

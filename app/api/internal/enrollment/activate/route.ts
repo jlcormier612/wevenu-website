@@ -36,6 +36,9 @@ export const runtime = "nodejs";
 type ActivateBody = {
   token?: string;
   password?: string;
+  purchaserIsOwner?: boolean;
+  invitedOwnerName?: string | null;
+  invitedOwnerEmail?: string | null;
 };
 
 function authorize(request: Request): boolean {
@@ -66,11 +69,20 @@ export async function POST(request: Request) {
 
   const token = body.token?.trim();
   const password = body.password ?? "";
+  const purchaserIsOwner = body.purchaserIsOwner !== false;
+  const invitedOwnerName = body.invitedOwnerName?.trim() || null;
+  const invitedOwnerEmail = body.invitedOwnerEmail?.trim().toLowerCase() || null;
   if (!token) {
     return NextResponse.json({ error: "token is required" }, { status: 400 });
   }
   if (password.length < 8) {
     return NextResponse.json({ error: "password must be at least 8 characters" }, { status: 400 });
+  }
+  if (!purchaserIsOwner && (!invitedOwnerName || !invitedOwnerEmail)) {
+    return NextResponse.json(
+      { error: "invited Owner name and email are required when setting up on behalf of the venue" },
+      { status: 400 },
+    );
   }
 
   const admin = createAdminClient();
@@ -78,7 +90,7 @@ export async function POST(request: Request) {
   try {
     const { data: enrollment, error: lookupErr } = await admin
       .from("venue_enrollments")
-      .select("id, owner_email, status, venue_id, onboarding_type")
+      .select("id, owner_email, owner_first_name, owner_last_name, venue_name, status, venue_id, onboarding_type")
       .eq("activation_token", token)
       .maybeSingle();
     if (lookupErr) throw lookupErr;
@@ -106,6 +118,9 @@ export async function POST(request: Request) {
       .rpc("activate_venue_enrollment", {
         p_activation_token: token,
         p_owner_user_id: userId,
+        p_purchaser_is_owner: purchaserIsOwner,
+        p_invited_owner_name: invitedOwnerName,
+        p_invited_owner_email: invitedOwnerEmail,
       })
       .single();
     if (activateErr) {
@@ -151,6 +166,54 @@ export async function POST(request: Request) {
         });
       } catch (crmErr) {
         console.error("[enrollment/activate] CRM milestone sync failed", crmErr);
+      }
+
+      // Send pending Owner invitation when purchaser set up on behalf.
+      if (!purchaserIsOwner && invitedOwnerEmail && !row.already_activated) {
+        try {
+          const { data: pendingOwner } = await admin
+            .from("venue_staff")
+            .select("full_name, email, invite_token")
+            .eq("venue_id", row.venue_id)
+            .eq("owner_invite_pending", true)
+            .eq("is_active", true)
+            .maybeSingle<{
+              full_name: string;
+              email: string | null;
+              invite_token: string | null;
+            }>();
+          if (pendingOwner?.invite_token && pendingOwner.email) {
+            const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+            const acceptUrl = `${appUrl}/join?token=${pendingOwner.invite_token}`;
+            const venueName = enrollment.venue_name || "your venue";
+            const administratorName =
+              [enrollment.owner_first_name, enrollment.owner_last_name]
+                .filter(Boolean)
+                .join(" ")
+                .trim() || enrollment.owner_email || "Your Administrator";
+            const { sendEmail } = await import("@/lib/email/send");
+            const { buildOwnerInviteHtml, buildOwnerInviteText } =
+              await import("@/lib/email/team-invite");
+            await sendEmail({
+              to: pendingOwner.email,
+              subject: `You're invited as an Owner of ${venueName} on Hello to Cheers`,
+              text: buildOwnerInviteText({
+                memberName: pendingOwner.full_name,
+                venueName,
+                acceptUrl,
+                administratorName,
+              }),
+              html: buildOwnerInviteHtml({
+                memberName: pendingOwner.full_name,
+                venueName,
+                acceptUrl,
+                administratorName,
+              }),
+            });
+          }
+        } catch (inviteErr) {
+          console.error("[enrollment/activate] Owner invite email failed", inviteErr);
+        }
       }
     }
 

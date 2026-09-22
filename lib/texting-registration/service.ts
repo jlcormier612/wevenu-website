@@ -11,6 +11,7 @@ import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import type { Venue } from "@/lib/venue/types";
 import {
   canConfigureVenueTexting,
+  canConfigureVenueTextingFromAccess,
   TEXTING_SETUP_ROLE_DENIED,
 } from "@/lib/texting-registration/authority";
 import {
@@ -211,7 +212,9 @@ async function requireTextingConfigureAuthority(): Promise<
 > {
   const ctx = await requireVenueContext();
   if (!ctx.ok) return ctx;
-  if (!canConfigureVenueTexting(ctx.role)) {
+  const { getActiveVenueMembership } = await import("@/lib/authorization");
+  const membership = await getActiveVenueMembership();
+  if (!canConfigureVenueTextingFromAccess(membership)) {
     return { ok: false, message: TEXTING_SETUP_ROLE_DENIED };
   }
   return ctx;
@@ -244,7 +247,9 @@ export async function getTextingSetupBundle(): Promise<TextingSetupBundle | null
       smsReady,
       textingNumberE164,
     });
-    const canConfigure = canConfigureVenueTexting(role);
+    const { getActiveVenueMembership } = await import("@/lib/authorization");
+    const membership = await getActiveVenueMembership();
+    const canConfigure = canConfigureVenueTextingFromAccess(membership);
     return {
       registration,
       phase,

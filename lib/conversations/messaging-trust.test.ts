@@ -179,12 +179,50 @@ describe("texting lifecycle honesty", () => {
 });
 
 describe("texting setup role gate", () => {
-  it("only owner/manager may configure", () => {
+  it("legacy role helper still maps owner/manager", () => {
     assert.equal(canConfigureVenueTexting("owner"), true);
     assert.equal(canConfigureVenueTexting("manager"), true);
     assert.equal(canConfigureVenueTexting("coordinator"), false);
     assert.equal(canConfigureVenueTexting("staff"), false);
     assert.equal(canConfigureVenueTexting(null), false);
+  });
+
+  it("capability gate uses settings.texting", async () => {
+    const { canConfigureVenueTextingFromAccess } = await import(
+      "@/lib/texting-registration/authority"
+    );
+    const { hasCapability } = await import("@/lib/authorization");
+    assert.equal(
+      canConfigureVenueTextingFromAccess({
+        isActive: true,
+        isOwner: false,
+        accessTitle: "administrator",
+        overrides: null,
+      }),
+      true,
+    );
+    assert.equal(
+      canConfigureVenueTextingFromAccess({
+        isActive: true,
+        isOwner: false,
+        accessTitle: "manager",
+        overrides: null,
+      }),
+      false,
+    );
+    assert.equal(
+      hasCapability(
+        {
+          isActive: true,
+          isOwner: false,
+          accessTitle: "manager",
+          overrides: { "settings.texting": true },
+        },
+        "settings.texting",
+      ),
+      // Manager cannot be granted settings.texting per catalog grantableTo
+      false,
+    );
   });
 });
 
