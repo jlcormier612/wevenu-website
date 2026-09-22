@@ -3,9 +3,11 @@
  *
  * These are system-owned definitions — never stored as editable venue rows.
  * New venues receive independent copies via provisionStarterMessageTemplates.
- * Venue edits never write back here.
+ * Venue edits never write back here. Existing venue copies are never
+ * overwritten when masters change (provision skips by source_master_key).
  *
- * CONTENT IS PRODUCT-APPROVED. Do not rewrite.
+ * Opening greeting uses {{first_name}} so primary-only and couples both work
+ * without requiring partner data.
  */
 
 import type { MessageTemplateCategory } from "@/lib/message-templates/types";
@@ -45,7 +47,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "inquiry_follow_up",
     emailSubject: "Thank you for reaching out to {{venue_name}}",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "Thank you for reaching out to {{venue_name}}. We’re glad you’re considering us for your celebration.",
       "",
@@ -67,7 +69,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "tour",
     emailSubject: "Your tour at {{venue_name}} is confirmed",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "We’re looking forward to welcoming you to {{venue_name}} on {{tour_datetime}} for your tour.",
       "",
@@ -88,7 +90,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "tour",
     emailSubject: "A reminder about your tour at {{venue_name}}",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "We’re looking forward to seeing you at {{venue_name}} for your upcoming tour.",
       "",
@@ -108,7 +110,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "tour",
     emailSubject: "It was wonderful having you at {{venue_name}}",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "It was a pleasure meeting you and showing you around {{venue_name}}. We hope your visit gave you a better sense of the space and how your celebration could come together here.",
       "",
@@ -128,7 +130,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "inquiry_follow_up",
     emailSubject: "Checking in on your proposal from {{venue_name}}",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "I wanted to check in and see if you had any questions about the proposal we shared for your celebration at {{venue_name}}.",
       "",
@@ -148,7 +150,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "booking_confirmation",
     emailSubject: "Your agreement with {{venue_name}} is ready to review",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "Your agreement with {{venue_name}} is ready to review and sign.",
       "",
@@ -168,7 +170,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "planning_reminder",
     emailSubject: "A few final details for {{event_date}}",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "Your celebration at {{venue_name}} is {{days_until_event}} days away — {{event_date}} is getting close!",
       "",
@@ -190,7 +192,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "planning_reminder",
     emailSubject: "Final guest count for {{event_date}}",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "We’re getting ready for your celebration at {{venue_name}} and need your final guest count to make sure we can prepare the right seating, rentals, and staffing.",
       "",
@@ -210,7 +212,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "planning_reminder",
     emailSubject: "Your celebration at {{venue_name}} is almost here",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "Your celebration at {{venue_name}} is almost here — {{days_until_event}} days to go!",
       "",
@@ -230,7 +232,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "payment_reminder",
     emailSubject: "Payment reminder from {{venue_name}}",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "A payment of {{payment_amount}} for your celebration at {{venue_name}} is due on {{payment_due_date}}.",
       "",
@@ -252,7 +254,7 @@ export const STARTER_MESSAGE_MASTERS: readonly StarterMessageMaster[] = [
     category: "post_event",
     emailSubject: "Thank you for celebrating with us",
     emailBody: [
-      "Hi {{client_name}},",
+      "Hi {{first_name}},",
       "",
       "Thank you for celebrating with us at {{venue_name}}. It was a pleasure to be part of your day, and we hope you have many wonderful memories from your celebration.",
       "",

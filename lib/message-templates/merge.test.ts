@@ -114,6 +114,7 @@ describe("customer-safe merge gate", () => {
     const result = resolveForCustomerSend(master.emailBody, master.emailSubject, {
       venueName: "Willow Creek Estate",
       clientName: "Emily & James Carter",
+      clientFirstName: "Emily",
       coordinatorName: "Jordan Blake",
       eventDate: "2027-06-12",
       tourDatetime: "Saturday, May 9, 2027 at 2:00 PM",
@@ -121,6 +122,7 @@ describe("customer-safe merge gate", () => {
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.match(result.body, /Saturday, May 9, 2027 at 2:00 PM/);
+      assert.match(result.body, /^Hi Emily,/);
       assert.doesNotMatch(result.body, /\{\{/);
     }
   });

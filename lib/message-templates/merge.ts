@@ -30,6 +30,12 @@ export type MergeContext = {
    */
   clientFirstName?: string | null;
   clientLastName?: string | null;
+  /**
+   * Partner first/last when a partner is on the lead/client record.
+   * Omit when absent — never invent empty strings that look "resolved".
+   */
+  partnerFirstName?: string | null;
+  partnerLastName?: string | null;
   coordinatorName: string;
   eventDate: string | null;  // ISO "YYYY-MM-DD"
   /** Work Package D5E — share dialogs; optional on scheduled sends. */
@@ -90,6 +96,17 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   if (ctx.clientFirstName && ctx.clientLastName) {
     data.full_name = `${ctx.clientFirstName} ${ctx.clientLastName}`;
   }
+  if (ctx.partnerFirstName) {
+    data.partner_first_name = ctx.partnerFirstName;
+  }
+  if (ctx.partnerLastName) {
+    data.partner_last_name = ctx.partnerLastName;
+  }
+  if (ctx.partnerFirstName && ctx.partnerLastName) {
+    data.partner_full_name = `${ctx.partnerFirstName} ${ctx.partnerLastName}`;
+  } else if (ctx.partnerFirstName) {
+    data.partner_full_name = ctx.partnerFirstName;
+  }
   if (ctx.eventName != null && ctx.eventName !== "") {
     data.event_name = ctx.eventName;
   }
@@ -136,11 +153,15 @@ export function assertCustomerSafeMergedContent(
     t === "payment_label" || t === "payment_amount" || t === "payment_due_date",
   );
   const needsTask = unique.includes("task_name");
+  const needsPartner = unique.some((t) =>
+    t === "partner_first_name" || t === "partner_last_name" || t === "partner_full_name",
+  );
 
   const hints: string[] = [];
   if (needsTour) hints.push("a tour date/time");
   if (needsPayment) hints.push("a specific payment from their payment plan");
   if (needsTask) hints.push("a planning task");
+  if (needsPartner) hints.push("partner details on the client record");
   if (hints.length === 0) {
     hints.push("the missing client or event details");
   }

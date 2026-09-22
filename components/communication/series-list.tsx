@@ -33,9 +33,9 @@ function triggerSummary(triggerType: string | null, triggerStage: string | null)
 }
 
 function participantLabel(count: number): string {
-  if (count <= 0) return "No one active right now";
-  if (count === 1) return "1 person active";
-  return `${count} people active`;
+  if (count <= 0) return "No one is in this automation right now";
+  if (count === 1) return "1 person currently in this automation";
+  return `${count} people currently in this automation`;
 }
 
 const PAUSE_DESCRIPTION =
@@ -68,6 +68,7 @@ function AutomationRow({
         </Badge>
       }
       primaryActions={[
+        { id: "view", label: "View", href: `/communication/series/${s.id}`, emphasis: "preview" },
         { id: "edit", label: LIBRARY_LABELS.edit, href: `/communication/series/${s.id}/edit`, emphasis: "edit" },
       ]}
       overflowPending={pendingId === s.id}
