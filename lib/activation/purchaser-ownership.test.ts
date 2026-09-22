@@ -51,6 +51,12 @@ describe("activation API does not silently default purchaser to Owner", () => {
     ),
     "utf8",
   );
+  const explicitArgSql = readFileSync(
+    resolve(
+      "supabase/migrations/20261405500000_purchaser_ownership_explicit_arg_required.sql",
+    ),
+    "utf8",
+  );
   const formGateSrc = readFileSync(
     resolve("workspace/lib/program4/activate-account-form.ts"),
     "utf8",
@@ -87,28 +93,47 @@ describe("activation API does not silently default purchaser to Owner", () => {
     assert.match(actionSrc, /activateVenueAccount\(\{/);
   });
 
-  it("migration 054 never coalesce-defaults purchaser to Owner; 2-arg raises", () => {
-    assert.match(failClosedSql, /purchaser_ownership_choice_required/);
-    assert.match(
-      failClosedSql,
-      /Never invent Owner when neither is set|Never coalesce to true/i,
+  it("migration 054 drops default true; 2-arg raises (055 closes enrollment coalesce)", () => {
+    const bodyMatch = failClosedSql.match(
+      /create function public\.activate_venue_enrollment\(\s*p_activation_token text,\s*p_owner_user_id uuid,\s*p_purchaser_is_owner boolean[\s\S]*?\$\$;/,
     );
+    assert.ok(bodyMatch, "expected 054 5-arg body");
+    const body = bodyMatch[0];
+    assert.match(failClosedSql, /purchaser_ownership_choice_required/);
+    assert.doesNotMatch(body, /p_purchaser_is_owner boolean default true/);
     assert.doesNotMatch(
-      failClosedSql,
+      body,
       /coalesce\(\s*p_purchaser_is_owner\s*,\s*v_enrollment\.purchaser_is_owner\s*,\s*true\s*\)/,
     );
-    assert.doesNotMatch(
-      failClosedSql,
-      /p_purchaser_is_owner boolean default true/,
-    );
-    // Legacy 2-arg must raise, not forward true.
     assert.match(
       failClosedSql,
-      /raise exception 'purchaser_ownership_choice_required'/,
+      /raise exception 'purchaser_ownership_choice_required/,
     );
+    const stubMatch = failClosedSql.match(
+      /create function public\.activate_venue_enrollment\(\s*p_activation_token text,\s*p_owner_user_id uuid\s*\)[\s\S]*?\$\$;/,
+    );
+    assert.ok(stubMatch, "expected 054 2-arg stub");
     assert.doesNotMatch(
-      failClosedSql,
+      stubMatch[0],
       /activate_venue_enrollment\(\s*p_activation_token\s*,\s*p_owner_user_id\s*,\s*true/,
     );
+  });
+
+  it("migration 055 requires explicit RPC arg (no enrollment coalesce)", () => {
+    const bodyMatch = explicitArgSql.match(
+      /create function public\.activate_venue_enrollment\(\s*p_activation_token text,\s*p_owner_user_id uuid,\s*p_purchaser_is_owner boolean[\s\S]*?\$\$;/,
+    );
+    assert.ok(bodyMatch, "expected 5-arg activate_venue_enrollment body");
+    const body = bodyMatch[0];
+    assert.match(body, /if p_purchaser_is_owner is null then/);
+    assert.match(body, /v_purchaser_is_owner := p_purchaser_is_owner;/);
+    assert.doesNotMatch(body, /coalesce\s*\(\s*p_purchaser_is_owner\s*,/);
+    assert.doesNotMatch(body, /p_purchaser_is_owner boolean default true/);
+    assert.match(
+      explicitArgSql,
+      /null arg with enrollment\.true still activated/,
+    );
+    assert.match(explicitArgSql, /explicit true did not create Owner staff/);
+    assert.match(explicitArgSql, /explicit false created Owner staff/);
   });
 });
