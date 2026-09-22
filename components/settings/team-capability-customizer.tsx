@@ -60,7 +60,7 @@ export function TeamCapabilityCustomizer({
     }
   }
 
-  const byCategory = new Map<string, typeof CAPABILITY_CATALOG>();
+  const byCategory = new Map<string, CapabilityDefinition[]>();
   for (const cap of CAPABILITY_CATALOG) {
     if (cap.ownershipOnly) continue;
     if (cap.key === "account.billing" && !actorIsOwner) {
