@@ -55,12 +55,13 @@ function SelectField({
   placeholder?: string;
   error?: string; hint?: string;
 }) {
-  const legacyHint =
-    hint ??
-    options.find(
-      (o): o is VenueEventTypeOption =>
-        "isLegacyCurrent" in o && o.isLegacyCurrent === true && o.value === value,
-    )?.description;
+  const legacyOption = options.find(
+    (o) =>
+      "isLegacyCurrent" in o
+      && (o as VenueEventTypeOption).isLegacyCurrent === true
+      && o.value === value,
+  ) as VenueEventTypeOption | undefined;
+  const legacyHint = hint ?? legacyOption?.description;
 
   return (
     <Field label={label} htmlFor={id} error={error} hint={legacyHint}>
