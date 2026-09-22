@@ -51,7 +51,7 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
       key: "package",
       title: "Selected Package",
       state: "Not selected",
-      detail: "Choosing a package freezes it for this opportunity. It does not send anything.",
+      detail: "Choosing a package saves it for this opportunity. It does not send anything.",
     };
   }
   const price = `${selection.name} · ${formatCurrency(selection.totalAmount)}`;
@@ -117,7 +117,7 @@ export function contractFact(contract: JourneyContract | null): CommercialFact {
       key: "contract",
       title: "Contract",
       state: "Not created",
-      detail: "A proposal acceptance does not execute a contract.",
+      detail: "Accepting a proposal does not execute the contract.",
     };
   }
   const ui = deriveContractSigningUiState({

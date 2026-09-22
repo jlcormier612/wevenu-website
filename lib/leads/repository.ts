@@ -634,6 +634,29 @@ export async function updateLeadInfo(
     .eq("id", leadId)
     .eq("venue_id", venueId);
   if (error) throw error;
+
+  // Keep the enduring relationship contact in sync. Conversation email
+  // resolves from venue_customer_relationships; leaving it stale after a
+  // Lead edit makes a saved address look "invalid" on send.
+  const { data: leadRel } = await client
+    .from("leads")
+    .select("relationship_id")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ relationship_id: string | null }>();
+  if (leadRel?.relationship_id) {
+    const { relationshipContactPatch } = await import("@/lib/clients/contact-edit");
+    const { error: relError } = await client
+      .from("venue_customer_relationships")
+      .update(relationshipContactPatch({
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+      }))
+      .eq("id", leadRel.relationship_id)
+      .eq("venue_id", venueId);
+    if (relError) throw relError;
+  }
 }
 
 /** Persist the inquiry's planned Event Space. Does not create an Event. */

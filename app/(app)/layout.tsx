@@ -39,7 +39,22 @@ export default async function WorkspaceLayout({
     redirect("/login");
   }
 
-  const pathname = (await headers()).get("x-pathname") ?? "";
+  // Proxy sets x-pathname on document navigations. Server Action / RSC refreshes
+  // can omit it; fall back to Referer so graduation/venue gates do not see "" and
+  // fail closed into /setup-hub while the user is still on a Lead Workspace URL.
+  const headerList = await headers();
+  const pathname = (() => {
+    const direct = headerList.get("x-pathname")?.trim() ?? "";
+    if (direct.startsWith("/")) return direct.split("?", 1)[0].split("#", 1)[0] ?? direct;
+    const referer = headerList.get("referer");
+    if (!referer) return "";
+    try {
+      const path = new URL(referer).pathname;
+      return path.startsWith("/") ? path : "";
+    } catch {
+      return "";
+    }
+  })();
   const boot = await bootstrapActiveVenueContext();
 
   if (boot.status === "unauthenticated") {

@@ -44,9 +44,10 @@ export function CommercialFacts({
   return (
     <section className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5">
       <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        Commercial
+        Booking Details
       </h2>
-      <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+      <p className="mt-2 text-sm font-medium text-heading">What they booked</p>
+      <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
         These records are separate from the sales pipeline. Your venue&apos;s booking workflow determines when a relationship becomes Booked. This is not a required sequence.
       </p>
       <p className="mt-3 text-sm text-heading">{journey.direction}</p>

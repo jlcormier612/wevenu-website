@@ -607,6 +607,9 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
     .catch((err) => console.error("Lead stage advance on tour scheduling failed:", err));
 
   return { ...result, confirmationEmail };
+}
+
+export async function rescheduleTour(appointmentId: string, newSlotStart: string): Promise<CoordinatorTourResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, error: "Session expired." };

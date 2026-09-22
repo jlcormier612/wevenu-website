@@ -88,15 +88,25 @@ export function LeadEditForm({
 
   function handleSubmit() {
     startTransition(async () => {
-      const result = await updateLeadInfoAction(lead.id, input);
-      if (result.ok) {
-        toast.success("Lead updated.");
-        router.push(`/leads/${lead.id}`);
-        router.refresh();
-        return;
+      try {
+        const result = await updateLeadInfoAction(lead.id, input);
+        if (result.ok) {
+          toast.success("Lead updated.");
+          // Soft replace only — hard reload is not required and can drop Lead
+          // context if graduation/session gates re-run against a blank path.
+          router.replace(`/leads/${lead.id}`);
+          return;
+        }
+        if (result.errors) setErrors(result.errors);
+        toast.error(result.message ?? "Please fix the highlighted fields.");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+          toast.error("The app was updated. Stay on this page, reload once, then save again.");
+        } else {
+          toast.error(message.trim() || "Could not save. Stay on this Lead and try again.");
+        }
       }
-      if (result.errors) setErrors(result.errors);
-      toast.error(result.message ?? "Please fix the highlighted fields.");
     });
   }
 

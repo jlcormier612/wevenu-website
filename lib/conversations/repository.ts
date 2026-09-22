@@ -977,9 +977,30 @@ export async function getConversationRecipientEmail(
 
   if (!convo?.relationship_id) return null;
 
+  // Prefer the live Client, then the live Lead, then the relationship row.
+  // Display name already prefers client/lead; recipient email must match so a
+  // contact edit on the Lead Workspace is what Conversation actually sends to.
+  const { data: booked } = await client.from("clients")
+    .select("email")
+    .eq("relationship_id", convo.relationship_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ email: string | null }>();
+  const bookedEmail = booked?.email?.trim() || null;
+  if (bookedEmail) return bookedEmail;
+
+  const { data: lead } = await client.from("leads")
+    .select("email")
+    .eq("relationship_id", convo.relationship_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ email: string | null }>();
+  const leadEmail = lead?.email?.trim() || null;
+  if (leadEmail) return leadEmail;
+
   const { data: relationship } = await client.from("venue_customer_relationships")
     .select("email").eq("id", convo.relationship_id).maybeSingle<{ email: string | null }>();
-  return relationship?.email ?? null;
+  return relationship?.email?.trim() || null;
 }
 
 function coupleDisplayName(row: {
