@@ -75,3 +75,35 @@ export function assertEventTypeChangeAllowed(args: {
   if (!created.ok) return created;
   return { ok: true };
 }
+
+/**
+ * Holds and Convert-to-Lead placeholders are inquiry-equivalent.
+ * A new Hold may only store an accepted event type (blank is allowed).
+ * Editing a Hold may keep a legacy stored type, and may not switch to
+ * a type the venue does not currently accept.
+ * Non-booking schedule items do not persist event type.
+ */
+export function gateBookingPlaceholderEventType(args: {
+  isBooking: boolean;
+  mode: "create" | "update";
+  previousEventType?: string | null;
+  nextEventType: string | null | undefined;
+  acceptedRaw: unknown;
+}):
+  | { ok: true }
+  | { ok: false; code: typeof EVENT_TYPE_NOT_ACCEPTED_CODE; error: string } {
+  if (!args.isBooking) return { ok: true };
+  if (args.mode === "create") {
+    const created = assertEventTypeAcceptedForNewRecord(
+      args.nextEventType,
+      args.acceptedRaw,
+    );
+    if (!created.ok) return created;
+    return { ok: true };
+  }
+  return assertEventTypeChangeAllowed({
+    previousEventType: args.previousEventType,
+    nextEventType: args.nextEventType,
+    acceptedRaw: args.acceptedRaw,
+  });
+}

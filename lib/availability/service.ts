@@ -36,6 +36,36 @@ function isCatalogOrSystemWritableType(type: import("@/lib/availability/types").
     || isAppointmentCatalogBuiltinKey(type);
 }
 
+async function gateResolvedBookingEventType(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  args: {
+    isBooking: boolean;
+    mode: "create" | "update";
+    previousEventType?: string | null;
+    nextEventType: string | null | undefined;
+  },
+): Promise<AvailabilityActionResult> {
+  if (!args.isBooking) return { ok: true };
+  const { data: venueRow } = await supabase
+    .from("venues")
+    .select("accepted_inquiry_event_types")
+    .eq("id", venueId)
+    .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
+  const { gateBookingPlaceholderEventType } = await import(
+    "@/lib/event-types/assert-accepted"
+  );
+  const gated = gateBookingPlaceholderEventType({
+    isBooking: true,
+    mode: args.mode,
+    previousEventType: args.previousEventType,
+    nextEventType: args.nextEventType,
+    acceptedRaw: venueRow?.accepted_inquiry_event_types,
+  });
+  if (!gated.ok) return { ok: false, message: gated.error };
+  return { ok: true };
+}
+
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
 ): Promise<T | AvailabilityActionResult> {
@@ -186,6 +216,12 @@ export async function createBlock(input: CalendarBlockInput): Promise<{ ok: true
       scheduleItemTypeId: input.scheduleItemTypeId,
     });
     if (!resolved.ok) return resolved;
+    const eventTypeGate = await gateResolvedBookingEventType(supabase, venueId, {
+      isBooking: isBookingPlaceholder(resolved.resolved.type),
+      mode: "create",
+      nextEventType: input.eventType,
+    });
+    if (!eventTypeGate.ok) return eventTypeGate;
     const blockId = await repo.insertBlock(supabase, venueId, {
       ...input,
       type: resolved.resolved.type,
@@ -248,6 +284,14 @@ export async function updateBlock_(blockId: string, input: CalendarBlockInput): 
         : null,
     });
     if (!resolved.ok) return resolved;
+
+    const eventTypeGate = await gateResolvedBookingEventType(supabase, venueId, {
+      isBooking: isBookingPlaceholder(resolved.resolved.type),
+      mode: "update",
+      previousEventType: isBookingPlaceholder(existing.type) ? existing.eventType : null,
+      nextEventType: input.eventType,
+    });
+    if (!eventTypeGate.ok) return eventTypeGate;
 
     await repo.updateBlock(supabase, venueId, blockId, {
       ...input,

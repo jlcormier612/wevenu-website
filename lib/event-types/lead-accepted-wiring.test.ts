@@ -50,6 +50,14 @@ describe("manual Lead accepted event-type enforcement wiring", () => {
     assert.doesNotMatch(calendarView, /items=\{EVENT_TYPES\}/);
   });
 
+  it("create and update of a Hold reject unaccepted event types server-side", () => {
+    const availability = readFileSync(resolve("lib/availability/service.ts"), "utf8");
+    assert.match(availability, /gateResolvedBookingEventType/);
+    assert.match(availability, /gateBookingPlaceholderEventType/);
+    const assertSrc = readFileSync(resolve("lib/event-types/assert-accepted.ts"), "utf8");
+    assert.match(assertSrc, /export function gateBookingPlaceholderEventType/);
+  });
+
   it("Direct New Client remains on global EVENT_TYPES (audit-only, not gated)", () => {
     assert.match(clientForm, /EVENT_TYPES/);
   });
