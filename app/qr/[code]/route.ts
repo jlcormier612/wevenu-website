@@ -18,12 +18,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { qrInactiveRedirectUrl } from "@/lib/qr-campaigns/inactive-redirect";
 import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const { origin } = request.nextUrl;
   const admin = createAdminClient();
+  const inactive = () => NextResponse.redirect(qrInactiveRedirectUrl());
 
   const { data } = await admin.rpc("resolve_qr_scan", {
     p_code: code,
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   } | null;
 
   if (!result?.ok) {
-    return NextResponse.redirect(new URL("/qr/inactive", origin));
+    return inactive();
   }
 
   if (result.destinationType === "inquiry_form" || result.destinationType === "tour_booking") {
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (result.destinationType === "tour_booking" && tourPath) {
       return NextResponse.redirect(new URL(`${tourPath}?qr=${result.campaignId}`, origin));
     }
-    return NextResponse.redirect(new URL("/qr/inactive", origin));
+    return inactive();
   }
 
   if (result.destinationUrl) {
@@ -60,5 +62,5 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.redirect(dest);
   }
 
-  return NextResponse.redirect(new URL("/qr/inactive", origin));
+  return inactive();
 }
