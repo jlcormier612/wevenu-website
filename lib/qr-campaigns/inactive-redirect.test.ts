@@ -65,11 +65,12 @@ describe("qr inactive redirect construction", () => {
     assertPublicInactiveLocation(qrInactiveRedirectUrl(), PRODUCTION_APP_URL);
   });
 
-  it("route builds inactive Location via the public helper, not request.nextUrl.origin", () => {
+  it("route builds every public Location from the public app origin", () => {
     const route = readFileSync(resolve("app/qr/[code]/route.ts"), "utf8");
     assert.match(route, /qrInactiveRedirectUrl/);
+    assert.match(route, /publicAppOrigin\(\)/);
+    assert.doesNotMatch(route, /request\.nextUrl\.origin/);
     assert.doesNotMatch(route, /new URL\("\/qr\/inactive", origin\)/);
-    assert.doesNotMatch(route, /new URL\('\/qr\/inactive', origin\)/);
   });
 
   it("does not construct inactive Location for an active resolved scan", () => {

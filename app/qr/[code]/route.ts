@@ -18,12 +18,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { publicAppOrigin } from "@/lib/env";
 import { qrInactiveRedirectUrl } from "@/lib/qr-campaigns/inactive-redirect";
 import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const { origin } = request.nextUrl;
+  const origin = publicAppOrigin();
   const admin = createAdminClient();
   const inactive = () => NextResponse.redirect(qrInactiveRedirectUrl());
 
