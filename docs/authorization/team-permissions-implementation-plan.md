@@ -1,6 +1,6 @@
 # Team & Permissions — Implementation Plan (Locked Model)
 
-**Status:** Implementation in progress  
+**Status:** Source implementation complete on `feature/team-permissions-multi-owner` (`74dfbab9`). Sandbox migration + deploy dispatched; E2E GREEN gate pending runtime proof.  
 **Date:** 2026-09-22  
 **Scope:** Schema + multi-owner + Wave 1 persistence + billing delegation + purchaser/Owner onboarding + Team UI + cutover of sensitive consumers. Wave 2 untouched. Production untouched.
 
