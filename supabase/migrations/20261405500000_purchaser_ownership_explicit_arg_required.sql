@@ -81,22 +81,6 @@ begin
 end;
 $$;
 
--- Remove leftover coalesce-gap probe venue from diagnosis (if still present).
-do $$
-begin
-  perform set_config('htc.allow_last_owner_change', '1', true);
-  delete from public.venue_staff
-    where venue_id = 'bcce6279-fd1e-4b82-abc9-7125cb23321f';
-  delete from public.venues
-    where id = 'bcce6279-fd1e-4b82-abc9-7125cb23321f';
-  delete from public.venue_enrollments
-    where venue_id = 'bcce6279-fd1e-4b82-abc9-7125cb23321f'
-       or venue_name like 'Postfail Coalesce Check%'
-       or venue_name like 'Coalesce Gap Probe%'
-       or venue_name like 'Ownership Proof%';
-end;
-$$;
-
 drop function if exists public.activate_venue_enrollment(text, uuid, boolean, text, text);
 drop function if exists public.activate_venue_enrollment(text, uuid);
 
@@ -469,10 +453,18 @@ begin
     raise exception 'purchaser_ownership_fail_closed_proof_failed: on-behalf missing pending Owner invite row';
   end if;
 
-  -- Cleanup proof rows (bypass last-owner guard; transaction still commits defs).
+  -- Cleanup proof membership + enroll rows. Do not delete venues: seeded
+  -- builtin schedule item types refuse deletion. Free the owner_user_id slot.
   perform set_config('htc.allow_last_owner_change', '1', true);
   delete from public.venue_staff where venue_id in (v_venue_true, v_venue_false);
-  delete from public.venues where id in (v_venue_true, v_venue_false);
+  update public.venues
+    set name = left(name || ' [055-proof-cleaned]', 120),
+        email = 'cleaned-' || id::text || '@example.invalid'
+    where id in (v_venue_true, v_venue_false);
+  -- Release unique owner_user_id so proof users remain reusable.
+  update public.venues
+    set owner_user_id = null
+    where id in (v_venue_true, v_venue_false);
   delete from public.venue_enrollments where id in (v_enroll_null, v_enroll_true, v_enroll_false);
 end;
 $$;
