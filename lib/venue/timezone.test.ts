@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import {
+  formatVenueLocalClock,
+  formatVenueLocalShortDate,
   formatVenueLocalTourDisplay,
   utcToVenueLocalParts,
   venueLocalToUtcIso,
@@ -136,5 +138,36 @@ describe("lead TourPanel and Tours list render venue-local times", () => {
       /d\.toLocaleTimeString\("en-US", \{\s*hour:/,
       "Tours list times must not use the browser clock",
     );
+  });
+});
+
+describe("human-facing clock never exposes raw 16:30 in ordinary UI", () => {
+  it("formats venue-local 24h parts as 12h AM/PM", () => {
+    assert.equal(formatVenueLocalClock("16:30"), "4:30 PM");
+    assert.equal(formatVenueLocalClock("04:30"), "4:30 AM");
+    assert.equal(formatVenueLocalClock("00:00"), "12:00 AM");
+    assert.equal(formatVenueLocalClock("12:00"), "12:00 PM");
+  });
+
+  it("formats short dates without military time", () => {
+    assert.equal(formatVenueLocalShortDate("2026-09-27"), "Sep 27, 2026");
+  });
+
+  it("Lead Overview relationship card does not slice raw tourTime into the UI", () => {
+    const source = readFileSync(resolve("components/leads/relationship-card.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalClock/);
+    assert.doesNotMatch(source, /tourTime\.slice\(0,\s*5\)/);
+  });
+
+  it("Dashboard upcoming tours does not slice raw tourTime into the UI", () => {
+    const source = readFileSync(resolve("components/dashboard/upcoming-tours.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalClock/);
+    assert.doesNotMatch(source, /tourTime\.slice\(0,\s*5\)/);
+  });
+
+  it("decision-engine detail does not splice raw 24h tourTime", () => {
+    const source = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");
+    assert.match(source, /formatVenueLocalClock/);
+    assert.doesNotMatch(source, /tourTime\.slice\(0,\s*5\)/);
   });
 });

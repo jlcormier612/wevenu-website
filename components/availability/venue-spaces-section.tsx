@@ -3,13 +3,14 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   createSpaceAction,
   deleteSpaceAction,
   updateSpaceAction,
+  updateSpaceOperatingModeAction,
 } from "@/app/(app)/availability/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { SpaceInput, VenueSpace } from "@/lib/availability/types";
+import { SUGGESTED_SPACE_USES } from "@/lib/venue-spaces/uses";
 
 function SpaceForm({
   initial,
@@ -24,17 +26,27 @@ function SpaceForm({
   onCancel,
   pending,
   submitLabel,
+  showUses,
 }: {
   initial: SpaceInput;
   onSave: (input: SpaceInput) => void;
   onCancel: () => void;
   pending: boolean;
   submitLabel: string;
+  showUses: boolean;
 }) {
   const [name, setName] = React.useState(initial.name);
   const [description, setDescription] = React.useState(initial.description);
   const [capacity, setCapacity] = React.useState(initial.capacity);
   const [isActive, setIsActive] = React.useState(initial.isActive);
+  const [permittedUses, setPermittedUses] = React.useState<string[]>(initial.permittedUses ?? []);
+
+  function toggleUse(key: string) {
+    setPermittedUses((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  }
+
   return (
     <div className="space-y-3 rounded-xl border border-ring bg-card p-4">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -51,6 +63,28 @@ function SpaceForm({
         <Label className="text-xs">Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
         <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of this space…" />
       </div>
+      {showUses && (
+        <div className="space-y-2">
+          <Label className="text-xs">Permitted uses <span className="font-normal text-muted-foreground">(optional — leave empty for unrestricted)</span></Label>
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTED_SPACE_USES.map((u) => {
+              const on = permittedUses.includes(u.key);
+              return (
+                <button
+                  key={u.key}
+                  type="button"
+                  onClick={() => toggleUse(u.key)}
+                  className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                    on ? "border-ring bg-muted text-foreground" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {u.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <Switch checked={isActive} onCheckedChange={setIsActive} />
         <Label className="text-xs cursor-pointer">Active (available for booking)</Label>
@@ -58,7 +92,7 @@ function SpaceForm({
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
         <Button type="button" size="sm" disabled={!name.trim() || pending}
-          onClick={() => onSave({ name, description, capacity, isActive })}>
+          onClick={() => onSave({ name, description, capacity, isActive, permittedUses: showUses ? permittedUses : [] })}>
           {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : submitLabel}
         </Button>
       </div>
@@ -66,21 +100,50 @@ function SpaceForm({
   );
 }
 
-export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpace[] }) {
+export function VenueSpacesSection({
+  initialSpaces,
+  spaceOperatingMode = "single",
+}: {
+  initialSpaces: VenueSpace[];
+  spaceOperatingMode?: "single" | "multi";
+}) {
   const router = useRouter();
-  // See lib/hooks/use-synced-state.ts — TourSettingsSection is a sibling on
-  // this same flat Settings page and calls router.refresh() on save.
   const [spaces, setSpaces] = useSyncedState(initialSpaces);
+  const [mode, setMode] = useSyncedState(spaceOperatingMode);
   const [showAdd, setShowAdd] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [addPending, startAdd] = React.useTransition();
   const [editPending, startEdit] = React.useTransition();
+  const [modePending, startMode] = React.useTransition();
+  const showUses = mode === "multi";
+
+  function handleModeChange(next: "single" | "multi") {
+    startMode(async () => {
+      const result = await updateSpaceOperatingModeAction(next);
+      if (result.ok) {
+        setMode(next);
+        toast.success(next === "multi" ? "Multi-space mode enabled." : "Single-space mode enabled.");
+        router.refresh();
+      } else toast.error(result.message ?? "Could not update space mode.");
+    });
+  }
 
   function handleAdd(input: SpaceInput) {
     startAdd(async () => {
       const result = await createSpaceAction(input);
       if (result.ok) {
-        setSpaces((p) => [...p, { id: result.spaceId, venueId: "", name: input.name.trim(), description: input.description || null, capacity: input.capacity ? parseInt(input.capacity) : null, isActive: input.isActive, sortOrder: p.length, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }]);
+        setSpaces((p) => [...p, {
+          id: result.spaceId,
+          venueId: "",
+          name: input.name.trim(),
+          description: input.description || null,
+          capacity: input.capacity ? parseInt(input.capacity) : null,
+          permittedUses: input.permittedUses ?? [],
+          isActive: input.isActive,
+          sortOrder: p.length,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }]);
         setShowAdd(false);
         toast.success("Event space saved.");
         router.refresh();
@@ -92,7 +155,14 @@ export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpac
     startEdit(async () => {
       const result = await updateSpaceAction(spaceId, input);
       if (result.ok) {
-        setSpaces((p) => p.map((s) => s.id === spaceId ? { ...s, name: input.name.trim(), description: input.description || null, capacity: input.capacity ? parseInt(input.capacity) : null, isActive: input.isActive } : s));
+        setSpaces((p) => p.map((s) => s.id === spaceId ? {
+          ...s,
+          name: input.name.trim(),
+          description: input.description || null,
+          capacity: input.capacity ? parseInt(input.capacity) : null,
+          permittedUses: input.permittedUses ?? [],
+          isActive: input.isActive,
+        } : s));
         setEditingId(null);
         toast.success("Event space saved.");
         router.refresh();
@@ -108,20 +178,59 @@ export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpac
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-medium text-heading">How this venue uses spaces</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Choose whether you operate one primary event space or across multiple physical spaces.
+            Only multi-space venues see use-based assignment and calendar space filters.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "single" ? "default" : "outline"}
+            disabled={modePending}
+            onClick={() => handleModeChange("single")}
+          >
+            One primary space
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={mode === "multi" ? "default" : "outline"}
+            disabled={modePending}
+            onClick={() => handleModeChange("multi")}
+          >
+            Multiple physical spaces
+          </Button>
+        </div>
+      </div>
+
       {spaces.length === 0 && !showAdd && (
-        <p className="text-sm text-muted-foreground py-2">No Event Spaces yet. Venues that host more than one event at the same time must add at least one Event Space before overlapping events can be booked.</p>
+        <p className="text-sm text-muted-foreground py-2">
+          No Event Spaces yet. Venues that host more than one event at the same time must add at least one Event Space before overlapping events can be booked.
+        </p>
       )}
       <div className="space-y-2">
         {spaces.map((space) =>
           editingId === space.id ? (
             <SpaceForm
               key={space.id}
-              initial={{ name: space.name, description: space.description ?? "", capacity: space.capacity != null ? String(space.capacity) : "", isActive: space.isActive }}
+              initial={{
+                name: space.name,
+                description: space.description ?? "",
+                capacity: space.capacity != null ? String(space.capacity) : "",
+                isActive: space.isActive,
+                permittedUses: space.permittedUses ?? [],
+              }}
               onSave={(input) => handleEdit(space.id, input)}
               onCancel={() => setEditingId(null)}
               pending={editPending}
               submitLabel="Save"
+              showUses={showUses}
             />
           ) : (
             <div key={space.id} className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
@@ -130,6 +239,13 @@ export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpac
                 <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
                   {space.capacity != null && <span>{space.capacity.toLocaleString()} guests max</span>}
                   {space.description && <span>{space.description}</span>}
+                  {showUses && space.permittedUses.length > 0 && (
+                    <span>
+                      Uses: {space.permittedUses
+                        .map((k) => SUGGESTED_SPACE_USES.find((u) => u.key === k)?.label ?? k)
+                        .join(", ")}
+                    </span>
+                  )}
                   {!space.isActive && <span className="text-destructive font-medium">Inactive</span>}
                 </div>
               </div>
@@ -142,7 +258,14 @@ export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpac
         )}
       </div>
       {showAdd ? (
-        <SpaceForm initial={{ name: "", description: "", capacity: "", isActive: true }} onSave={handleAdd} onCancel={() => setShowAdd(false)} pending={addPending} submitLabel="Add Space" />
+        <SpaceForm
+          initial={{ name: "", description: "", capacity: "", isActive: true, permittedUses: [] }}
+          onSave={handleAdd}
+          onCancel={() => setShowAdd(false)}
+          pending={addPending}
+          submitLabel="Add Space"
+          showUses={showUses}
+        />
       ) : (
         <Button type="button" variant="outline" size="sm" onClick={() => setShowAdd(true)}>
           <Plus className="mr-1 h-3.5 w-3.5" /> Add Space

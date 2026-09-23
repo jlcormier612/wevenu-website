@@ -38,6 +38,7 @@ export function NewInvoiceForm({
     eventId: prefillEventId ?? "",
     notes: defaultInvoiceNotes(venueName),
     dueDate: "",
+    displayName: "Invoice",
   });
   const [errors, setErrors] = React.useState<InvoiceErrors>({});
   const [pending, startTransition] = React.useTransition();
@@ -86,6 +87,16 @@ export function NewInvoiceForm({
           <Input id="inv-due" type="date" value={input.dueDate} onChange={(e) => setInput((p) => ({ ...p, dueDate: e.target.value }))} />
         </Field>
       </div>
+
+      <Field label="Invoice name" htmlFor="inv-name" hint="Human-facing name clients see. System invoice number is assigned automatically.">
+        <Input
+          id="inv-name"
+          value={input.displayName ?? ""}
+          onChange={(e) => setInput((p) => ({ ...p, displayName: e.target.value }))}
+          placeholder="Wedding Deposit"
+          maxLength={120}
+        />
+      </Field>
 
       <Field label={NOTES_FROM_YOUR_VENUE_LABEL} htmlFor="inv-notes" hint={NOTES_FROM_YOUR_VENUE_HINT}>
         <Textarea id="inv-notes" value={input.notes} onChange={(e) => setInput((p) => ({ ...p, notes: e.target.value }))}

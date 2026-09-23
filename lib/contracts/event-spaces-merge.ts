@@ -1,24 +1,47 @@
 /**
- * Resolve the {{event_spaces}} merge label from canonical venue_spaces rows.
+ * Resolve the {{event_spaces}} merge label from canonical venue spaces.
  *
  * Priority:
- * 1. Booked Event.space_id (occupying assignment)
- * 2. Lead.planned_event_space_id (pre-booking planning on the linked lead)
- * 3. Empty-state copy when neither is set
+ * 1. event_space_assignments for the booked event (use → physical space)
+ * 2. Event.space_id (legacy single assignment)
+ * 3. Lead.planned_event_space_id (pre-booking planning)
+ * 4. Empty-state copy when none is set
  *
- * Does not invent a second space catalog — both IDs point at venue_spaces.
+ * Does not invent a second space catalog — all IDs point at venue_spaces.
  */
+
+import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
 
 export const EMPTY_EVENT_SPACES_LABEL =
   "No event spaces are listed on this booking yet.";
 
 export type EventSpaceNameRow = { id: string; name: string };
 
+export type EventSpaceAssignmentRow = {
+  useKey: string;
+  useLabel: string;
+  spaceId: string;
+  spaceName?: string | null;
+};
+
 export function resolveEventSpacesLabel(opts: {
   spaces: EventSpaceNameRow[];
   eventSpaceId?: string | null;
   plannedEventSpaceId?: string | null;
+  assignments?: EventSpaceAssignmentRow[] | null;
 }): string {
+  if (opts.assignments && opts.assignments.length > 0) {
+    const withNames = opts.assignments.map((a) => ({
+      useKey: a.useKey,
+      useLabel: a.useLabel,
+      spaceName:
+        a.spaceName?.trim() ||
+        opts.spaces.find((s) => s.id === a.spaceId)?.name?.trim() ||
+        "",
+    })).filter((a) => a.spaceName);
+    const formatted = formatEventSpaceAssignmentsDisplay(withNames);
+    if (formatted) return formatted;
+  }
   if (opts.eventSpaceId) {
     const space = opts.spaces.find((s) => s.id === opts.eventSpaceId);
     if (space?.name?.trim()) return space.name.trim();

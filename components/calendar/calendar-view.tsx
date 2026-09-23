@@ -293,6 +293,7 @@ export function CalendarView({
   today,
   scheduleCatalog = [],
   bookingEventTypeOptions = [],
+  spaceOperatingMode = "single",
 }: {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
@@ -308,9 +309,16 @@ export function CalendarView({
    * Holds convert to New Lead — same accepted set as Add New Lead.
    */
   bookingEventTypeOptions?: VenueEventTypeOption[];
+  /** multi = show calendar-by-space filter; single = hide (venue setup choice). */
+  spaceOperatingMode?: "single" | "multi";
 }) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
+  const showSpaceFilter = spaceOperatingMode === "multi";
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
+    items,
+    undefined,
+    { showSpaceFilter },
+  );
   const tastingEnabled = scheduleCatalog.some(
     (r) => r.source === "builtin" && r.builtinKey === "tasting" && r.enabled && !r.archivedAt,
   );
@@ -1034,6 +1042,7 @@ export function CalendarView({
           onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
+          showSpaceFilter={showSpaceFilter}
         />
       )}
       {view === "day" && (
@@ -1042,6 +1051,7 @@ export function CalendarView({
           onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
+          showSpaceFilter={showSpaceFilter}
         />
       )}
       {view === "agenda" && (
@@ -1050,6 +1060,7 @@ export function CalendarView({
           onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
+          showSpaceFilter={showSpaceFilter}
         />
       )}
 

@@ -88,6 +88,7 @@ export default async function CalendarPage({ searchParams }: Props) {
         today={today}
         scheduleCatalog={scheduleCatalog}
         bookingEventTypeOptions={bookingEventTypeOptions}
+        spaceOperatingMode={venue?.spaceOperatingMode ?? "single"}
       />
     </div>
   );

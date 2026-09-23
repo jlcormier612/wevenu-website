@@ -49,6 +49,24 @@ export async function deleteSpaceAction(spaceId: string): Promise<AvailabilityAc
   return result;
 }
 
+/** Venue setup choice: single vs multi physical-space operations. */
+export async function updateSpaceOperatingModeAction(
+  mode: "single" | "multi",
+): Promise<AvailabilityActionResult> {
+  const { createClient } = await import("@/integrations/supabase/server");
+  const { getCurrentVenue } = await import("@/lib/venue/service");
+  const { updateVenueFields } = await import("@/lib/venue/repository");
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  if (mode !== "single" && mode !== "multi") {
+    return { ok: false, message: "Invalid space operating mode." };
+  }
+  await updateVenueFields(await createClient(), venue.id, { space_operating_mode: mode });
+  revalidatePath("/settings/availability");
+  revalidatePath("/calendar");
+  return { ok: true };
+}
+
 export async function saveCapacityRulesAction(input: { maxSimultaneousEvents: number; maxSimultaneousTours: number; minTurnaroundHours: number }): Promise<AvailabilityActionResult> {
   const result = await saveCapacityRules(input);
   if (result.ok) revalidatePath("/settings/availability");

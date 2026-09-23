@@ -61,20 +61,35 @@ function loadSaved(key: string): CalendarFilterState | null {
  * @param storageKey Ignored for persistence (always CALENDAR_FILTER_STORAGE_KEY).
  * Kept optional so call sites can stay readable; pass-through values are
  * normalized to the shared key.
+ * @param options.showSpaceFilter When false (single-space venues), hide the
+ * space filter and clear any persisted spaceId. Availability engine is separate.
  */
-export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) {
+export function useCalendarFilters(
+  items: CalendarItem[],
+  _storageKey?: string,
+  options?: { showSpaceFilter?: boolean },
+) {
+  const showSpaceFilter = options?.showSpaceFilter === true;
   const storageKey = CALENDAR_FILTER_STORAGE_KEY;
   const [filters, setFiltersState] = React.useState<CalendarFilterState>(
     () => loadSaved(storageKey) ?? EMPTY_FILTERS,
   );
 
+  React.useEffect(() => {
+    if (!showSpaceFilter && filters.spaceId) {
+      setFiltersState((prev) => ({ ...prev, spaceId: null }));
+    }
+  }, [showSpaceFilter, filters.spaceId]);
+
   const setFilters = React.useCallback((next: CalendarFilterState) => {
-    const sanitized = sanitizeVenueCalendarFilters(next);
+    const sanitized = sanitizeVenueCalendarFilters(
+      showSpaceFilter ? next : { ...next, spaceId: null },
+    );
     setFiltersState(sanitized);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(sanitized));
     }
-  }, [storageKey]);
+  }, [storageKey, showSpaceFilter]);
 
   const presentTypes = React.useMemo(
     () => [...new Set(items.map((i) => i.type))].filter(isVenueCalendarItemType),
@@ -86,10 +101,11 @@ export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) 
     return [...map.entries()];
   }, [items]);
   const spaceOptions = React.useMemo(() => {
+    if (!showSpaceFilter) return [] as [string, string][];
     const map = new Map<string, string>();
     for (const i of items) if (i.spaceId) map.set(i.spaceId, i.spaceName ?? "Unnamed space");
     return [...map.entries()];
-  }, [items]);
+  }, [items, showSpaceFilter]);
 
   const filteredItems = React.useMemo(() => items.filter((i) => {
     if (filters.types && !filters.types.includes(i.type)) return false;
@@ -98,7 +114,7 @@ export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) 
         if (i.assignedToStaffId) return false;
       } else if (i.assignedToStaffId !== filters.staffId) return false;
     }
-    if (filters.spaceId) {
+    if (showSpaceFilter && filters.spaceId) {
       if (filters.spaceId === UNASSIGNED) {
         if (i.spaceId) return false;
       } else if (i.spaceId !== filters.spaceId) return false;
@@ -110,7 +126,7 @@ export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) 
       if (!i.manualType || !filters.manualTypes.includes(i.manualType)) return false;
     }
     return true;
-  }), [items, filters]);
+  }), [items, filters, showSpaceFilter]);
 
   return { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions };
 }

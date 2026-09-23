@@ -59,8 +59,6 @@ export function RelationshipCommunicationSummary({
   const sourceLine = sms ? smsPermissionSourceLabel(sms.source) : null;
   const consentRequested =
     smsStatus === "not_opted_in" && sms?.source === SMS_PERMISSION_SOURCE_CONSENT_REQUEST;
-  const canRequestConsent =
-    Boolean(leadId) && Boolean(hasPhone) && smsStatus === "not_opted_in";
 
   return (
     <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
@@ -93,8 +91,12 @@ export function RelationshipCommunicationSummary({
             Permission request sent. Ordinary texts stay blocked until they reply START.
           </p>
         )}
-        {canRequestConsent && leadId && (
-          <RequestSmsConsentButton leadId={leadId} alreadyRequested={consentRequested} />
+        {smsStatus === "not_opted_in" && leadId && (
+          <RequestSmsConsentButton
+            leadId={leadId}
+            alreadyRequested={consentRequested}
+            hasPhone={hasPhone}
+          />
         )}
       </div>
     </div>

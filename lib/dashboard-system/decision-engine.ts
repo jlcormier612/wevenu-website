@@ -28,6 +28,7 @@ import { isOverdue, formatDate as formatLeadDate, leadDisplayName } from "@/lib/
 import { formatDate as formatEventDate } from "@/lib/events/constants";
 import { formatDate as formatPaymentDate, formatMoney } from "@/lib/payments/constants";
 import type { DashboardData } from "@/lib/dashboard/types";
+import { formatVenueLocalClock } from "@/lib/venue/timezone";
 
 /** The certified 7-tier Priority Hierarchy (architecture doc §5) — only the 4 this Dashboard is allowed to surface are used here (Historical/Learning/Celebration are Reports/Luv territory, per the same doc's own routing table). */
 export type Priority = "critical" | "needs_attention_today" | "upcoming" | "informational";
@@ -166,7 +167,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       priority: "needs_attention_today",
       domain: "Calendar",
       label: `Tour: ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`,
-      detail: lead.tourTime ? `Today at ${lead.tourTime.slice(0, 5)}` : "Today",
+      detail: lead.tourTime ? `Today at ${formatVenueLocalClock(lead.tourTime)}` : "Today",
       href: `/tours`,
       rightLabel: "Today",
       rightSeverity: "warning",

@@ -136,7 +136,10 @@ export default async function AvailabilityCapacitySettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <VenueSpacesSection initialSpaces={spaces} />
+          <VenueSpacesSection
+            initialSpaces={spaces}
+            spaceOperatingMode={venue?.spaceOperatingMode ?? "single"}
+          />
           <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
         </CardContent>
       </Card>

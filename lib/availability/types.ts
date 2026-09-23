@@ -8,6 +8,8 @@ export type VenueSpace = {
   name: string;
   description: string | null;
   capacity: number | null;
+  /** Venue-configured uses this physical space may serve. Empty = unrestricted. */
+  permittedUses: string[];
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
@@ -161,6 +163,8 @@ export type SpaceInput = {
   description: string;
   capacity: string;
   isActive: boolean;
+  /** Venue-configured permitted uses (keys). Empty = unrestricted. */
+  permittedUses?: string[];
 };
 
 export type CapacityRulesInput = {

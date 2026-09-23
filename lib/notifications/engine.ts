@@ -136,16 +136,16 @@ export async function processReminders(): Promise<ProcessResult> {
 
         let emailContent: { subject: string; html: string; text: string };
         if (isTourReminder && tourAppt) {
-          // Tour reminder email
-          const tourDate = new Date(tourAppt.scheduled_at);
-          const dateStr = tourDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-          const timeStr = tourDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          // Tour reminder email — venue timezone, human 12h clock.
+          const { getVenueTimezone, formatVenueLocalTourDisplay } = await import("@/lib/venue/timezone");
+          const tz = await getVenueTimezone(supabase, reminder.venue_id);
+          const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(tourAppt.scheduled_at, tz);
           const subj = role === "coordinator"
-            ? `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateStr} at ${timeStr}`
-            : `Your tour at ${venueName} is tomorrow — ${dateStr} at ${timeStr}`;
+            ? `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateLabel} at ${timeLabel}`
+            : `Your tour at ${venueName} is tomorrow — ${dateLabel} at ${timeLabel}`;
           const body = role === "coordinator"
-            ? `You have a venue tour tomorrow at ${timeStr} with ${tourAppt.contact_name ?? "a prospective client"}. Duration: ${tourAppt.duration_minutes} minutes.`
-            : `Just a reminder that your tour at ${venueName} is tomorrow at ${timeStr}. We look forward to meeting you!`;
+            ? `You have a venue tour tomorrow at ${timeLabel} with ${tourAppt.contact_name ?? "a prospective client"}. Duration: ${tourAppt.duration_minutes} minutes.`
+            : `Just a reminder that your tour at ${venueName} is tomorrow at ${timeLabel}. We look forward to meeting you!`;
           emailContent = { subject: subj, html: `<p>${body}</p><p>— ${venueName}</p>`, text: body };
         } else {
           // Task reminder email

@@ -62,9 +62,12 @@ export default async function InvoicesPage({ searchParams }: Props) {
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-heading">{inv.invoiceNumber}</p>
+                    <p className="text-sm font-medium text-heading">
+                      {inv.displayName?.trim() || "Invoice"}
+                    </p>
                     <InvoiceStatusBadge status={inv.status} />
                   </div>
+                  <p className="text-xs text-muted-foreground">{inv.invoiceNumber}</p>
                   {inv.clientName && <p className="text-xs text-muted-foreground">{inv.clientName}</p>}
                   {inv.dueDate && <p className="text-xs text-muted-foreground">Due {new Date(inv.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>}
                 </div>

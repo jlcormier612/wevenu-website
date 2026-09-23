@@ -145,6 +145,20 @@ export async function createInvoice(input: InvoiceInput): Promise<CreateInvoiceR
   return result as CreateInvoiceResult;
 }
 
+/** Presentation-only rename — never touches invoice_number or payment identity. */
+export async function updateInvoiceDisplayName(
+  invoiceId: string,
+  displayName: string,
+): Promise<InvoiceActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const outcome = await repo.updateInvoiceDisplayName(c, venueId, invoiceId, displayName);
+    if (!outcome.ok) return outcome;
+    await repo.insertActivity(c, venueId, invoiceId, "updated", `Invoice name set to “${displayName.trim()}”`);
+    return { ok: true } as InvoiceActionResult;
+  });
+  return result as InvoiceActionResult;
+}
+
 /**
  * addLineItem/removeLineItem have no status guard at all (confirmed at
  * the repository level — a coordinator can edit an already-'sent'

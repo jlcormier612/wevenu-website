@@ -542,12 +542,12 @@ export async function buildContractMergeData(opts: {
     } catch { /* optional */ }
   }
 
-  // Event Spaces: Event.space_id (booked) wins; else lead planned_event_space_id.
+  // Event Spaces: assignments (use → physical) win; else Event.space_id; else lead planned.
   // Same venue_spaces catalog — no second source of truth.
   try {
     let plannedEventSpaceId: string | null = null;
+    const supabase = await createClient();
     if (client?.leadId) {
-      const supabase = await createClient();
       const { data: lead } = await supabase
         .from("leads")
         .select("planned_event_space_id")
@@ -556,11 +556,35 @@ export async function buildContractMergeData(opts: {
       plannedEventSpaceId = lead?.planned_event_space_id ?? null;
     }
     const spaces = await getSpaces();
+    let assignments: Array<{ useKey: string; useLabel: string; spaceId: string; spaceName: string | null }> = [];
+    if (event?.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rows } = await (supabase.from("event_space_assignments") as any)
+        .select("use_key, use_label, space_id, venue_spaces(name)")
+        .eq("event_id", event.id)
+        .order("sort_order");
+      assignments = ((rows ?? []) as Array<{
+        use_key: string;
+        use_label: string;
+        space_id: string;
+        venue_spaces?: { name: string } | null;
+      }>).map((r) => ({
+        useKey: r.use_key,
+        useLabel: r.use_label,
+        spaceId: r.space_id,
+        spaceName: r.venue_spaces?.name ?? null,
+      }));
+    }
     eventSpaces = resolveEventSpacesLabel({
       spaces,
       eventSpaceId: event?.spaceId ?? null,
       plannedEventSpaceId,
+      assignments,
     });
+    // Venue has no space concepts configured / assigned — omit empty chrome.
+    if (eventSpaces === EMPTY_EVENT_SPACES_LABEL) {
+      eventSpaces = "";
+    }
   } catch { /* optional */ }
 
   if (event) {

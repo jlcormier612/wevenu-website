@@ -75,6 +75,7 @@ type VenueRow = {
   account_status: "active" | "suspended" | null;
   saas_stripe_customer_id: string | null;
   commercial_booking_prefs?: VenueCommercialBookingPrefs | Record<string, unknown> | null;
+  space_operating_mode?: "single" | "multi" | null;
   created_at: string;
   updated_at: string;
 };
@@ -136,6 +137,7 @@ function mapVenue(r: VenueRow): Venue {
     accountStatus: r.account_status === "suspended" ? "suspended" : "active",
     saasStripeCustomerId: r.saas_stripe_customer_id ?? null,
     commercialBookingPrefs: normalizeCommercialBookingPrefs(r.commercial_booking_prefs),
+    spaceOperatingMode: r.space_operating_mode === "multi" ? "multi" : "single",
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

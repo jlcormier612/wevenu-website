@@ -275,11 +275,19 @@ export async function runSetupPaymentsFromSelection(
   let scheduleId: string | null = null;
 
   try {
+    const { defaultInvoiceDisplayName } = await import("@/lib/invoices/display-name");
+    const depositLine = scheduleLines.lines.find((l) => l.obligationKind === "deposit")
+      ?? scheduleLines.lines[0];
     const invoiceResult = await deps.createInvoice({
       clientId: input.clientId,
       eventId: input.eventId ?? "",
       notes: commitmentNotes(selection.name),
       dueDate: dueDates.depositDueDate,
+      displayName: defaultInvoiceDisplayName({
+        obligationKind: depositLine?.obligationKind ?? "deposit",
+        scheduleLabel: depositLine?.label,
+        packageName: selection.name,
+      }),
     });
     if (!invoiceResult.ok) {
       return { ok: false, message: invoiceResult.message ?? "Could not create the invoice." };

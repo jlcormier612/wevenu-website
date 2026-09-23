@@ -85,6 +85,20 @@ describe("resolveEventSpacesLabel", () => {
       body,
     );
   });
+
+  it("prefers event_space_assignments over single space_id", () => {
+    assert.equal(
+      resolveEventSpacesLabel({
+        spaces: SPACES,
+        eventSpaceId: "barn-id",
+        assignments: [
+          { useKey: "ceremony", useLabel: "Ceremony", spaceId: "garden-id", spaceName: "Garden Lawn" },
+          { useKey: "reception", useLabel: "Reception", spaceId: "barn-id", spaceName: "Barn" },
+        ],
+      }),
+      "Ceremony: Garden Lawn\nReception: Barn",
+    );
+  });
 });
 
 describe("buildContractMergeData uses planned lead space", () => {

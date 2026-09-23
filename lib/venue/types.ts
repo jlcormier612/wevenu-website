@@ -162,6 +162,11 @@ export type Venue = {
    * Per-booking amounts/schedules may still override.
    */
   commercialBookingPrefs: VenueCommercialBookingPrefs;
+  /**
+   * single = one primary event space UX; multi = expose multi-space assignment,
+   * calendar space filter, and use-based controls. Venue setup choices drive UI.
+   */
+  spaceOperatingMode: "single" | "multi";
   createdAt: string;
   updatedAt: string;
 };

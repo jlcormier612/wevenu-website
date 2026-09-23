@@ -11,6 +11,7 @@ import {
   getInvoice,
   removeLineItem,
   revertInvoiceToDraft,
+  updateInvoiceDisplayName,
   updateInvoiceStatus,
 } from "@/lib/invoices/service";
 import { formatCurrency } from "@/lib/invoices/constants";
@@ -46,6 +47,19 @@ export async function removeLineItemAction(invoiceId: string, itemId: string): P
 export async function updateInvoiceStatusAction(invoiceId: string, status: InvoiceStatus): Promise<InvoiceActionResult> {
   const result = await updateInvoiceStatus(invoiceId, status);
   if (result.ok) revalidatePath(`/invoices/${invoiceId}`);
+  return result;
+}
+
+/** Presentation-only — never changes invoice_number or payment references. */
+export async function updateInvoiceDisplayNameAction(
+  invoiceId: string,
+  displayName: string,
+): Promise<InvoiceActionResult> {
+  const result = await updateInvoiceDisplayName(invoiceId, displayName);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/invoices");
+  }
   return result;
 }
 
@@ -126,22 +140,36 @@ export async function sendInvoiceEmailAction(
     scheduleLines,
   });
 
-  // Portal pay link (create session if needed).
+  // Payment access ≠ portal access.
+  // Prefer an existing full (couple) workspace link when the client was already invited.
+  // Otherwise create/reuse a financial-only session so payers never land in an unclaimed workspace.
   const { publicAppOrigin } = await import("@/lib/env");
   const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
   let portalPayUrl: string | null = null;
   try {
-    let sessions = await getPortalSessions(clientId);
-    if (sessions.length === 0) {
-      const created = await createPortalSession(clientId, "Payment", "couple");
-      if (created) sessions = [created];
+    const sessions = await getPortalSessions(clientId);
+    const coupleSession = sessions.find((s) => s.accessLevel === "couple");
+    const financialSession = sessions.find((s) => s.accessLevel === "financial");
+    let paySession = coupleSession ?? financialSession ?? null;
+    if (!paySession) {
+      paySession = await createPortalSession(clientId, "Payment", "financial");
     }
-    if (sessions[0]?.accessToken) {
-      portalPayUrl = `${publicAppOrigin()}/p/${sessions[0].accessToken}#payments`;
+    if (paySession?.accessToken) {
+      // Financial sessions land on the payment-only experience (no #payments hash required).
+      portalPayUrl =
+        paySession.accessLevel === "financial"
+          ? `${publicAppOrigin()}/p/${paySession.accessToken}`
+          : `${publicAppOrigin()}/p/${paySession.accessToken}#payments`;
     }
   } catch {
     /* email still sends without link */
   }
+
+  const { invoiceHumanLabel } = await import("@/lib/invoices/display-name");
+  const invoiceLabel = invoiceHumanLabel({
+    displayName: invoiceToSend.displayName,
+    invoiceNumber: invoiceToSend.invoiceNumber,
+  });
 
   const amountDueLabel =
     dueNow.kind === "next_installment"
@@ -182,7 +210,7 @@ export async function sendInvoiceEmailAction(
   const textLines = [
     `Hi ${client.first_name},`,
     "",
-    `${venue.name} is requesting a payment for invoice ${invoiceToSend.invoiceNumber}.`,
+    `${venue.name} is requesting payment for your ${invoiceLabel}.`,
     "",
     `${amountDueLabel}: ${amountDueValue}`,
     dueDateStr ? `Due: ${dueDateStr}` : null,
@@ -197,8 +225,8 @@ export async function sendInvoiceEmailAction(
     "",
     portalPayUrl ? `Pay online: ${portalPayUrl}` : null,
     portalPayUrl ? "" : null,
-    invoiceToSend.notes ? `Notes: ${invoiceToSend.notes}` : null,
-    invoiceToSend.notes ? "" : null,
+    `Reference: ${invoiceToSend.invoiceNumber}`,
+    "",
     `Warm regards,`,
     venue.name,
     venue.email ?? "",
@@ -208,7 +236,7 @@ export async function sendInvoiceEmailAction(
 
   const html = [
     `<p>Hi ${escapeHtml(client.first_name)},</p>`,
-    `<p>${escapeHtml(venue.name)} is requesting a payment for invoice <strong>${escapeHtml(invoiceToSend.invoiceNumber)}</strong>.</p>`,
+    `<p>${escapeHtml(venue.name)} is requesting payment for your <strong>${escapeHtml(invoiceLabel)}</strong>.</p>`,
     `<p style="font-size:18px;margin:16px 0"><strong>${escapeHtml(amountDueLabel)}: ${escapeHtml(amountDueValue)}</strong></p>`,
     dueDateStr ? `<p>Due: ${escapeHtml(dueDateStr)}</p>` : "",
     `<p>Total contracted: ${escapeHtml(formatCurrency(invoiceToSend.total))}<br/>`,
@@ -221,7 +249,7 @@ export async function sendInvoiceEmailAction(
     portalPayUrl
       ? `<p><a href="${escapeHtml(portalPayUrl)}" style="display:inline-block;padding:12px 20px;background:#5D6F5D;color:#fff;text-decoration:none;border-radius:6px">Pay ${escapeHtml(amountDueValue)}</a></p><p style="font-size:12px;color:#666">${escapeHtml(portalPayUrl)}</p>`
       : "",
-    invoiceToSend.notes ? `<p>Notes: ${escapeHtml(invoiceToSend.notes)}</p>` : "",
+    `<p style="font-size:12px;color:#666">Reference: ${escapeHtml(invoiceToSend.invoiceNumber)}</p>`,
     `<p>Warm regards,<br/>${escapeHtml(venue.name)}</p>`,
   ]
     .filter(Boolean)
@@ -229,8 +257,8 @@ export async function sendInvoiceEmailAction(
 
   const subject =
     dueNow.kind === "next_installment" && dueNow.obligationKind === "deposit"
-      ? `Deposit request ${amountDueValue} — ${venue.name}`
-      : `Payment request ${amountDueValue} — ${venue.name}`;
+      ? `Your ${invoiceLabel} payment request — ${venue.name}`
+      : `Your ${invoiceLabel} payment request — ${venue.name}`;
 
   const result = await sendEmail({
     to: client.email,

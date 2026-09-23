@@ -17,7 +17,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type InvoiceRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
-  invoice_number: string; status: InvoiceStatus;
+  invoice_number: string; display_name: string | null; status: InvoiceStatus;
   subtotal: number; discount_amount: number; tax_amount: number; total: number; balance_due: number;
   notes: string | null; due_date: string | null; issued_at: string | null;
   event_order_id: string | null; event_order_dismissed_fingerprint: string | null;
@@ -40,7 +40,8 @@ type ActivityRow = { id: string; venue_id: string; invoice_id: string; type: str
 function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: string } | null): Invoice {
   const cn = r.clients ? [r.clients.first_name, r.clients.last_name, r.clients.partner_first_name, r.clients.partner_last_name].filter(Boolean).join(" / ") : null;
   return {
-    id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id, invoiceNumber: r.invoice_number, status: r.status,
+    id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id,
+    invoiceNumber: r.invoice_number, displayName: r.display_name ?? null, status: r.status,
     subtotal: Number(r.subtotal), discountAmount: Number(r.discount_amount), taxAmount: Number(r.tax_amount), total: Number(r.total), balanceDue: Number(r.balance_due),
     notes: r.notes, dueDate: r.due_date, issuedAt: r.issued_at,
     eventOrderId: r.event_order_id, eventOrderDismissedFingerprint: r.event_order_dismissed_fingerprint,
@@ -105,7 +106,9 @@ export async function insertInvoice(client: DbClient, venueId: string, input: In
   const { data, error } = await client.from("invoices")
     .insert({
       venue_id: venueId, client_id: input.clientId || null, event_id: input.eventId || null,
-      invoice_number: "PENDING", notes: input.notes.trim() || null, due_date: input.dueDate || null,
+      invoice_number: "PENDING",
+      display_name: (input.displayName?.trim() || "Invoice"),
+      notes: input.notes.trim() || null, due_date: input.dueDate || null,
       event_order_id: input.eventOrderId ?? null, amends_invoice_id: input.amendsInvoiceId ?? null,
     })
     .select("id").single<{ id: string }>();
@@ -114,6 +117,25 @@ export async function insertInvoice(client: DbClient, venueId: string, input: In
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("invoices") as any).update({ invoice_number: invoiceNumber }).eq("id", data.id);
   return data.id;
+}
+
+/** Presentation-only — never touches invoice_number or payment references. */
+export async function updateInvoiceDisplayName(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  displayName: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const name = displayName.trim();
+  if (!name) return { ok: false, message: "Invoice name is required." };
+  if (name.length > 120) return { ok: false, message: "Invoice name must be 120 characters or fewer." };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("invoices") as any)
+    .update({ display_name: name })
+    .eq("id", invoiceId)
+    .eq("venue_id", venueId);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
 }
 
 /**

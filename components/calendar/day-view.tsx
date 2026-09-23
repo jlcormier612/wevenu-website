@@ -20,6 +20,7 @@ import type { CalendarItem } from "@/lib/calendar/types";
 
 export function DayView({
   date, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  showSpaceFilter = false,
 }: {
   date: string;
   items: CalendarItem[];
@@ -29,9 +30,14 @@ export function DayView({
   deletingId?: string | null;
   deletePending?: boolean;
   tastingEnabled?: boolean;
+  showSpaceFilter?: boolean;
 }) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
+    items,
+    undefined,
+    { showSpaceFilter },
+  );
   const displayItems = filteredItems;
   const [y, m, d] = date.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);

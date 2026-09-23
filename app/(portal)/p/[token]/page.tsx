@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { PaymentAccessShell } from "@/components/portal/payment-access-shell";
 import { PortalShell } from "@/components/portal/portal-shell";
 import {
   getCouplePortalLegalGateStatus,
@@ -15,10 +16,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const ctx = await resolvePortalContext(token);
   if (!ctx) return { title: "Wedding Workspace" };
+  if (ctx.accessLevel === "financial") {
+    return {
+      title: { absolute: `Payment — ${ctx.venue.name}` },
+      description: `Secure payment for ${ctx.venue.name}`,
+    };
+  }
   const coupleName = [ctx.client.firstName, ctx.client.partnerFirstName].filter(Boolean).join(" & ");
   return {
-    // Venue Brand Experience Phase 1: `absolute` stops the root layout's
-    // "%s · Hello to Cheers" template from appending to this customer-facing tab title.
     title: { absolute: `${coupleName} — ${ctx.venue.name}` },
     description: `Your wedding planning workspace at ${ctx.venue.name}`,
   };
@@ -39,22 +44,31 @@ async function resolvePortalLegalGate(
 
 export default async function PortalPage({ params }: Props) {
   const { token } = await params;
-  const [context, tasks, vendorTasks, timeline, legalGate] = await Promise.all([
-    resolvePortalContext(token),
+  const context = await resolvePortalContext(token);
+  if (!context) notFound();
+
+  // Payment access before portal invitation — purpose-built pay experience.
+  if (context.accessLevel === "financial") {
+    return <PaymentAccessShell token={token} context={context} />;
+  }
+
+  const [tasks, vendorTasks, timeline, legalGate] = await Promise.all([
     resolvePortalTasks(token),
     resolvePortalVendorTasks(token),
     resolvePortalTimeline(token),
     resolvePortalLegalGate(token),
   ]);
-  // Log portal visit (non-blocking — get_portal_context already updates last_accessed_at)
-  // The SECURITY DEFINER log_couple_event fires the activity signal
-  if (!context) notFound();
 
   return (
     <PortalShell
-      token={token} context={context} initialTasks={tasks} initialVendorTasks={vendorTasks}
-      initialTimelineSections={timeline.sections} initialTimelineEntries={timeline.entries}
-      initialTimelineLastSubmittedAt={timeline.lastSubmittedAt} initialTimelineHasUnpublishedChanges={timeline.hasUnpublishedChanges}
+      token={token}
+      context={context}
+      initialTasks={tasks}
+      initialVendorTasks={vendorTasks}
+      initialTimelineSections={timeline.sections}
+      initialTimelineEntries={timeline.entries}
+      initialTimelineLastSubmittedAt={timeline.lastSubmittedAt}
+      initialTimelineHasUnpublishedChanges={timeline.hasUnpublishedChanges}
       initialLegalGate={legalGate}
     />
   );

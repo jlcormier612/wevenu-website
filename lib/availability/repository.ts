@@ -22,7 +22,10 @@ import type {
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-type SpaceRow = { id: string; venue_id: string; name: string; description: string | null; capacity: number | null; is_active: boolean; sort_order: number; created_at: string; updated_at: string; };
+type SpaceRow = {
+  id: string; venue_id: string; name: string; description: string | null; capacity: number | null;
+  permitted_uses?: string[] | null; is_active: boolean; sort_order: number; created_at: string; updated_at: string;
+};
 type RulesRow = { id: string; venue_id: string; max_simultaneous_events: number; max_simultaneous_tours: number; min_turnaround_hours: number; created_at: string; updated_at: string; };
 type HoldRow = { id: string; venue_id: string; lead_id: string | null; space_id: string | null; title: string; hold_date: string; start_time: string | null; end_time: string | null; status: DateHold["status"]; expires_at: string | null; notes: string | null; created_at: string; updated_at: string; leads?: { first_name: string; last_name: string } | null; venue_spaces?: { name: string } | null; };
 type BlockRow = {
@@ -35,7 +38,11 @@ type BlockRow = {
   schedule_item_type_id: string | null; blocks_availability: boolean | null;
 };
 
-const mapSpace = (r: SpaceRow): VenueSpace => ({ id: r.id, venueId: r.venue_id, name: r.name, description: r.description, capacity: r.capacity, isActive: r.is_active, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
+const mapSpace = (r: SpaceRow): VenueSpace => ({
+  id: r.id, venueId: r.venue_id, name: r.name, description: r.description, capacity: r.capacity,
+  permittedUses: Array.isArray(r.permitted_uses) ? r.permitted_uses : [],
+  isActive: r.is_active, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+});
 const mapRules = (r: RulesRow): VenueCapacityRules => ({ id: r.id, venueId: r.venue_id, maxSimultaneousEvents: r.max_simultaneous_events, maxSimultaneousTours: r.max_simultaneous_tours, minTurnaroundHours: Number(r.min_turnaround_hours), createdAt: r.created_at, updatedAt: r.updated_at });
 const mapHold = (r: HoldRow): DateHold => ({ id: r.id, venueId: r.venue_id, leadId: r.lead_id, spaceId: r.space_id, title: r.title, holdDate: r.hold_date, startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, status: r.status, expiresAt: r.expires_at, notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at, leadName: r.leads ? `${r.leads.first_name} ${r.leads.last_name}` : null, spaceName: r.venue_spaces?.name ?? null });
 const mapBlock = (r: BlockRow): CalendarBlock => ({
@@ -61,16 +68,31 @@ export async function getSpaces(client: DbClient, venueId: string): Promise<Venu
 }
 
 export async function insertSpace(client: DbClient, venueId: string, input: SpaceInput): Promise<string> {
+  const permittedUses = (input.permittedUses ?? []).map((u) => u.trim()).filter(Boolean);
   const { data, error } = await client.from("venue_spaces")
-    .insert({ venue_id: venueId, name: input.name.trim(), description: input.description.trim() || null, capacity: input.capacity.trim() ? parseInt(input.capacity, 10) : null, is_active: input.isActive })
+    .insert({
+      venue_id: venueId,
+      name: input.name.trim(),
+      description: input.description.trim() || null,
+      capacity: input.capacity.trim() ? parseInt(input.capacity, 10) : null,
+      is_active: input.isActive,
+      permitted_uses: permittedUses,
+    })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
 }
 
 export async function updateSpace(client: DbClient, venueId: string, spaceId: string, input: SpaceInput): Promise<void> {
+  const permittedUses = (input.permittedUses ?? []).map((u) => u.trim()).filter(Boolean);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("venue_spaces") as any).update({ name: input.name.trim(), description: input.description.trim() || null, capacity: input.capacity.trim() ? parseInt(input.capacity, 10) : null, is_active: input.isActive }).eq("id", spaceId).eq("venue_id", venueId);
+  const { error } = await (client.from("venue_spaces") as any).update({
+    name: input.name.trim(),
+    description: input.description.trim() || null,
+    capacity: input.capacity.trim() ? parseInt(input.capacity, 10) : null,
+    is_active: input.isActive,
+    permitted_uses: permittedUses,
+  }).eq("id", spaceId).eq("venue_id", venueId);
   if (error) throw error;
 }
 

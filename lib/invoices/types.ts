@@ -57,6 +57,8 @@ export type Invoice = {
   clientId: string | null;
   eventId: string | null;
   invoiceNumber: string;
+  /** Human-facing editable name. Never replaces invoiceNumber. */
+  displayName: string | null;
   status: InvoiceStatus;
   subtotal: number;
   discountAmount: number;
@@ -125,6 +127,8 @@ export type InvoiceInput = {
   eventId: string;
   notes: string;
   dueDate: string;
+  /** Human-facing name (editable). Defaults applied when omitted. */
+  displayName?: string;
   /** Booking Financial Architecture Phase 3a — set when creating an invoice directly from an Event Order. */
   eventOrderId?: string;
   /** Booking Financial Architecture Phase 3c — set only when this invoice is being created to amend another. */

@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 export function AgendaView({
   items, today, year, month, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  showSpaceFilter = false,
 }: {
   items: CalendarItem[];
   today: string;
@@ -32,9 +33,14 @@ export function AgendaView({
   deletingId?: string | null;
   deletePending?: boolean;
   tastingEnabled?: boolean;
+  showSpaceFilter?: boolean;
 }) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
+    items,
+    undefined,
+    { showSpaceFilter },
+  );
   const displayItems = filteredItems;
 
   // Same ±1-month semantics as the "ArrowLeft"/"ArrowRight" keyboard

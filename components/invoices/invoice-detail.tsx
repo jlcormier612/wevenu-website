@@ -7,7 +7,12 @@ import { useRouter } from "next/navigation";
 import { Mail, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
-import { sendInvoiceEmailAction, updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
+import {
+  sendInvoiceEmailAction,
+  updateInvoiceDisplayNameAction,
+  updateInvoiceStatusAction,
+} from "@/app/(app)/invoices/actions";
+import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
@@ -75,12 +80,32 @@ export function InvoiceDetail({
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
   const [pending, startTransition] = React.useTransition();
   const [emailPending, startEmail] = React.useTransition();
+  const [namePending, startName] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [editingName, setEditingName] = React.useState(false);
+  const humanTitle = invoiceHumanLabel({
+    displayName: invoice.displayName,
+    invoiceNumber: invoice.invoiceNumber,
+  });
+  const [nameDraft, setNameDraft] = React.useState(invoice.displayName?.trim() || humanTitle);
   const transition = STATUS_TRANSITIONS[status];
   const continueToSchedule = safePaymentScheduleReturnPath(returnToPaymentSchedule);
   const displayPaidToDate = paidToDate != null
     ? paidToDate
     : Math.max(0, invoice.total - invoice.balanceDue);
+
+  function saveDisplayName() {
+    startName(async () => {
+      const result = await updateInvoiceDisplayNameAction(invoice.id, nameDraft);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not save invoice name.");
+        return;
+      }
+      toast.success("Invoice name saved.");
+      setEditingName(false);
+      router.refresh();
+    });
+  }
 
   function sendInvoiceEmail() {
     startEmail(async () => {
@@ -110,7 +135,7 @@ export function InvoiceDetail({
         backHref="/invoices"
         backLabel="Invoices"
         whatIsThis="Invoice"
-        title={invoice.invoiceNumber}
+        title={humanTitle}
         status={<>
           <InvoiceStatusBadge status={status} />
           <QuickBooksSyncStatusBadge status={invoice.quickbooksSyncStatus} entityType="invoice" entityId={invoice.id} />
@@ -124,6 +149,34 @@ export function InvoiceDetail({
           </Button>
         )}
       />
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          System number <span className="font-medium text-foreground">{invoice.invoiceNumber}</span>
+          {" "}(immutable — for accounting and integrations)
+        </p>
+        {editingName ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="h-8 min-w-[12rem] flex-1 rounded-md border border-border bg-background px-2 text-sm"
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              maxLength={120}
+              aria-label="Invoice name"
+            />
+            <Button type="button" size="sm" onClick={saveDisplayName} disabled={namePending || !nameDraft.trim()}>
+              {namePending ? "Saving…" : "Save name"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setEditingName(false); setNameDraft(humanTitle); }} disabled={namePending}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button type="button" size="sm" variant="outline" onClick={() => setEditingName(true)}>
+            Edit invoice name
+          </Button>
+        )}
+      </div>
 
       {(invoice.eventDate || invoice.eventOrderRevisionAtFreeze != null || invoice.amendsInvoiceId || invoice.amendedByInvoiceId) && (
         <div className="space-y-1">
@@ -367,7 +420,7 @@ export function InvoiceDetail({
       <ArtifactReviewOverlay
         open={previewOpen}
         eyebrow="Customer-facing invoice"
-        title={invoice.invoiceNumber}
+        title={humanTitle}
         onBack={() => setPreviewOpen(false)}
         primary={invoice.clientId && status !== "void" ? (
           <Button type="button" size="sm" disabled={emailPending} onClick={sendInvoiceEmail}>

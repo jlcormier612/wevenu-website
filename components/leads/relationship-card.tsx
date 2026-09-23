@@ -25,6 +25,7 @@ import {
   INTERNAL_NOTES_PRIVACY_HINT,
   internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
+import { formatVenueLocalClock, formatVenueLocalShortDate } from "@/lib/venue/timezone";
 
 // Common next steps, covering the inquiry -> tour -> booked lifecycle. Not
 // exhaustive on purpose — "Custom…" always drops back to free text, since
@@ -187,7 +188,7 @@ export function RelationshipCard({
               label="Tour"
               value={
                 lead.tourDate
-                  ? `${formatDate(lead.tourDate)}${lead.tourTime ? ` at ${lead.tourTime.slice(0, 5)}` : ""}${lead.tourCompleted ? " (completed)" : ""}`
+                  ? `${formatVenueLocalShortDate(lead.tourDate)}${lead.tourTime ? ` at ${formatVenueLocalClock(lead.tourTime)}` : ""}${lead.tourCompleted ? " (completed)" : ""}`
                   : null
               }
             />
