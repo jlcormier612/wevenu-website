@@ -99,6 +99,16 @@ export async function createEvent(input: EventInput): Promise<CreateEventResult>
       },
     });
     if (!booked.ok) return { ok: false, message: booked.message } as CreateEventResult;
+    if (input.spaceAssignments && input.spaceAssignments.length > 0) {
+      const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
+      const venue = await getCurrentVenue();
+      if (venue?.spaceOperatingMode === "multi") {
+        const assigned = await replaceEventSpaceAssignments(booked.eventId, input.spaceAssignments);
+        if (!assigned.ok) {
+          return { ok: false, message: assigned.message } as CreateEventResult;
+        }
+      }
+    }
     return { ok: true, eventId: booked.eventId } as CreateEventResult;
   });
   return result as CreateEventResult;
@@ -117,6 +127,14 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       const fail = occupancyActionFailure(err);
       if (fail) return fail as EventActionResult;
       throw err;
+    }
+    if (input.spaceAssignments !== undefined) {
+      const venue = await getCurrentVenue();
+      if (venue?.spaceOperatingMode === "multi") {
+        const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
+        const assigned = await replaceEventSpaceAssignments(eventId, input.spaceAssignments);
+        if (!assigned.ok) return { ok: false, message: assigned.message };
+      }
     }
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
 

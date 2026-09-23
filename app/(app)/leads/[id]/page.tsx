@@ -20,6 +20,7 @@ import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
 import { markLeadVenueSeen } from "@/lib/navigation/attention-service";
 import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
+import { isSmsConfigured } from "@/lib/sms/send";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
@@ -73,7 +74,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getCurrentVenue(),
       ]);
       if (!lead) return null;
-      const [conversationId, smsPermission, duplicateReview, teamMembers, currentStaff] = await Promise.all([
+      const [conversationId, smsPermission, duplicateReview, teamMembers, currentStaff, textingConfigured] = await Promise.all([
         lead.relationshipId
           ? getConversationIdForRelationship(lead.relationshipId)
           : Promise.resolve(null),
@@ -81,6 +82,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getDuplicateReviewForLead(id),
         venue ? getTeamMembers(venue.id) : Promise.resolve([]),
         venue ? getCurrentStaffMember(venue.id) : Promise.resolve(null),
+        venue ? isSmsConfigured(venue.id) : Promise.resolve(false),
       ]);
       const bookingJourney = await loadBookingJourneyForLead({
         leadId: lead.id,
@@ -101,6 +103,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         packages,
         conversationId,
         smsPermission,
+        textingConfigured,
         duplicateReview,
         bookingJourney,
         venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
@@ -145,6 +148,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       bookingJourney={page.bookingJourney}
       packages={page.packages}
       smsPermission={page.smsPermission}
+      textingConfigured={page.textingConfigured}
       duplicateReview={page.duplicateReview}
       venueStages={page.venueStages}
       staffOptions={page.staffOptions}

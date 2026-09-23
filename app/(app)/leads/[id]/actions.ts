@@ -307,6 +307,14 @@ export async function requestSmsConsentAction(leadId: string) {
   return result;
 }
 
+/** Email-based SMS consent request — does not grant consent until they opt in on the token page. */
+export async function requestSmsConsentEmailAction(leadId: string) {
+  const { requestSmsConsentEmailForLead } = await import("@/lib/communication/sms-consent-email");
+  const result = await requestSmsConsentEmailForLead(leadId);
+  if (result.ok) revalidateLead(leadId);
+  return result;
+}
+
 export async function previewDeleteLeadAction(leadId: string) {
   const { previewDeleteLead } = await import("@/lib/records/delete-record");
   return previewDeleteLead(leadId);

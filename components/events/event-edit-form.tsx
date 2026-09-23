@@ -11,11 +11,28 @@ import { useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved
 import { eventInputFromVenueEvent } from "@/lib/events/constants";
 import type { EventErrors, EventInput, VenueEvent } from "@/lib/events/types";
 import type { VenueSpace } from "@/lib/availability/types";
+import type { EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
 
-export function EventEditForm({ event, spaces = [], maxSimultaneousEvents = 1 }: { event: VenueEvent; spaces?: VenueSpace[]; maxSimultaneousEvents?: number }) {
+export function EventEditForm({
+  event,
+  spaces = [],
+  maxSimultaneousEvents = 1,
+  spaceOperatingMode = "single",
+  initialAssignments = [],
+}: {
+  event: VenueEvent;
+  spaces?: VenueSpace[];
+  maxSimultaneousEvents?: number;
+  spaceOperatingMode?: "single" | "multi";
+  initialAssignments?: EventSpaceAssignmentInput[];
+}) {
   const router = useRouter();
-  const [baseline] = React.useState(() => JSON.stringify(eventInputFromVenueEvent(event)));
-  const [input, setInput] = React.useState<EventInput>(() => eventInputFromVenueEvent(event));
+  const buildInput = React.useCallback((): EventInput => ({
+    ...eventInputFromVenueEvent(event),
+    spaceAssignments: spaceOperatingMode === "multi" ? initialAssignments : undefined,
+  }), [event, initialAssignments, spaceOperatingMode]);
+  const [baseline] = React.useState(() => JSON.stringify(buildInput()));
+  const [input, setInput] = React.useState<EventInput>(buildInput);
   const [errors, setErrors] = React.useState<EventErrors>({});
   const [pending, startTransition] = React.useTransition();
   const dirty = JSON.stringify(input) !== baseline;
@@ -35,5 +52,18 @@ export function EventEditForm({ event, spaces = [], maxSimultaneousEvents = 1 }:
     });
   }
 
-  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" spaces={spaces} existingEventId={event.id} maxSimultaneousEvents={maxSimultaneousEvents} />;
+  return (
+    <EventFormFields
+      input={input}
+      errors={errors}
+      set={set}
+      onSubmit={handleSubmit}
+      pending={pending}
+      submitLabel="Save changes"
+      spaces={spaces}
+      existingEventId={event.id}
+      maxSimultaneousEvents={maxSimultaneousEvents}
+      spaceOperatingMode={spaceOperatingMode}
+    />
+  );
 }

@@ -9,6 +9,7 @@ import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { createInitialEventInput } from "@/lib/events/constants";
 import { getTemplatesForLibrary } from "@/lib/playbooks/service";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "New Event" };
 
@@ -16,7 +17,12 @@ type Props = { searchParams: Promise<{ clientId?: string }> };
 
 export default async function NewEventPage({ searchParams }: Props) {
   const { clientId } = await searchParams;
-  const [spaces, allTemplates, capacityRules] = await Promise.all([getSpaces(), getTemplatesForLibrary(), getCapacityRules()]);
+  const [spaces, allTemplates, capacityRules, venue] = await Promise.all([
+    getSpaces(),
+    getTemplatesForLibrary(),
+    getCapacityRules(),
+    getCurrentVenue(),
+  ]);
   // Archived templates aren't valid choices for a brand-new event — same
   // exclusion the old getTemplates() applied by default.
   const playbookTemplates = allTemplates.filter((t) => !t.isArchived);
@@ -56,7 +62,13 @@ export default async function NewEventPage({ searchParams }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EventForm initial={prefill} spaces={spaces} playbookTemplates={playbookTemplates} maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)} />
+          <EventForm
+            initial={prefill}
+            spaces={spaces}
+            playbookTemplates={playbookTemplates}
+            maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)}
+            spaceOperatingMode={venue?.spaceOperatingMode ?? "single"}
+          />
         </CardContent>
       </Card>
       ) : (

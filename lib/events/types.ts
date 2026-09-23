@@ -109,6 +109,11 @@ export type EventInput = {
   guestCount: string;
   clientId: string;
   spaceId: string;   // empty string = no space assigned
+  /**
+   * Multi-space use → physical space rows. Undefined = leave existing
+   * assignments untouched on update; [] clears. Single-space venues ignore.
+   */
+  spaceAssignments?: import("@/lib/venue-spaces/assignments").EventSpaceAssignmentInput[];
 };
 
 export type TeamMemberInput = {

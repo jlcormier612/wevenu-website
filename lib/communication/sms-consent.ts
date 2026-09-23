@@ -10,7 +10,12 @@ export const SMS_PERMISSION_SOURCE_INQUIRY_FORM = "inquiry_form" as const;
 export const SMS_PERMISSION_SOURCE_TOUR_FORM = "tour_form" as const;
 /** Venue asked the contact to reply START — status stays not_opted_in until they do. */
 export const SMS_PERMISSION_SOURCE_CONSENT_REQUEST = "sms_consent_request" as const;
+/** Affirmative opt-in completed via email consent request page (not by opening the email). */
+export const SMS_PERMISSION_SOURCE_EMAIL_CONSENT = "email_sms_consent" as const;
+/** Venue emailed an SMS permission request — status stays not_opted_in until they opt in on the page. */
+export const SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST = "email_sms_consent_request" as const;
 export const SMS_CONSENT_REQUEST_LANGUAGE_VERSION = "htc_sms_consent_request_v1" as const;
+export const SMS_EMAIL_CONSENT_LANGUAGE_VERSION = "htc_sms_email_consent_v1" as const;
 
 /** Venue-facing short labels for communication_permissions.status. */
 export function smsPermissionDisplayLabel(
@@ -37,6 +42,10 @@ export function smsPermissionSourceLabel(source: string | null | undefined): str
       return "Text permission provided through tour booking";
     case SMS_PERMISSION_SOURCE_CONSENT_REQUEST:
       return "Text permission requested — waiting for them to reply START";
+    case SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST:
+      return "Text permission requested by email — waiting for them to opt in";
+    case SMS_PERMISSION_SOURCE_EMAIL_CONSENT:
+      return "Text permission provided through email opt-in";
     case "twilio_stop":
     case "sms_keyword_stop":
       return "Customer opted out via text message";

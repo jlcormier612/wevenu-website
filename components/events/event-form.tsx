@@ -14,6 +14,7 @@ import { PLAYBOOK_KINDS } from "@/lib/playbooks/constants";
 import type { PlaybookKind, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
+import { EventSpaceAssignmentsEditor } from "@/components/events/event-space-assignments-editor";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +25,16 @@ import { Separator } from "@/components/ui/separator";
 import type { EventErrors, EventInput } from "@/lib/events/types";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import type { VenueSpace } from "@/lib/availability/types";
+import {
+  configuredUsesFromSpaces,
+  primarySpaceIdFromAssignments,
+  type EventSpaceAssignmentInput,
+} from "@/lib/venue-spaces/assignments";
 
 export function EventFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Create event",
   spaces = [], existingEventId, maxSimultaneousEvents = 1,
+  spaceOperatingMode = "single",
 }: {
   input: EventInput;
   errors: EventErrors;
@@ -38,10 +45,22 @@ export function EventFormFields({
   spaces?: VenueSpace[];
   existingEventId?: string; // exclude self when editing
   maxSimultaneousEvents?: number;
+  spaceOperatingMode?: "single" | "multi";
 }) {
   const router = useRouter();
   const [dateBlocked, setDateBlocked] = React.useState(false);
   const spacesRequired = maxSimultaneousEvents >= 2;
+  const multi = spaceOperatingMode === "multi";
+  const configuredUses = multi ? configuredUsesFromSpaces(spaces) : [];
+  const showAssignments = multi && configuredUses.length > 0;
+  const assignments = input.spaceAssignments ?? [];
+
+  function setAssignments(next: EventSpaceAssignmentInput[]) {
+    const primary = primarySpaceIdFromAssignments(next);
+    set("spaceAssignments", next);
+    set("spaceId", primary ?? "");
+  }
+
   return (
     <div className="space-y-6">
       <Field label="Event name" htmlFor="en" required error={errors.name}>
@@ -77,13 +96,28 @@ export function EventFormFields({
       </Field>
 
       {/* Space assignment + availability check */}
-      <EventSpaceField
-        value={input.spaceId}
-        onChange={(v) => set("spaceId", v)}
-        spaces={spaces}
-        spacesRequired={spacesRequired}
-        error={errors.spaceId}
-      />
+      {showAssignments ? (
+        <EventSpaceAssignmentsEditor
+          spaces={spaces}
+          value={assignments}
+          onChange={setAssignments}
+        />
+      ) : (
+        <EventSpaceField
+          value={input.spaceId}
+          onChange={(v) => set("spaceId", v)}
+          spaces={spaces}
+          spacesRequired={spacesRequired}
+          error={errors.spaceId}
+        />
+      )}
+      {multi && configuredUses.length === 0 && (
+        <p className="text-xs text-muted-foreground -mt-3">
+          Multi-space mode is on. Add permitted uses on spaces in Availability settings to assign
+          Ceremony, Reception, and other uses. Until then, the primary event space field above still
+          works.
+        </p>
+      )}
 
       {/* Availability conflict advisory — hard block disables save */}
       {input.eventDate && (
@@ -137,11 +171,13 @@ export function EventFormFields({
 
 export function EventForm({
   initial, spaces = [], playbookTemplates = [], maxSimultaneousEvents = 1,
+  spaceOperatingMode = "single",
 }: {
   initial: EventInput;
   spaces?: VenueSpace[];
   playbookTemplates?: PlaybookTemplateWithStats[];
   maxSimultaneousEvents?: number;
+  spaceOperatingMode?: "single" | "multi";
 }) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(initial);
@@ -191,7 +227,7 @@ export function EventForm({
 
   return (
     <div className="space-y-6">
-      <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} />
+      <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} spaceOperatingMode={spaceOperatingMode} />
       {playbookTemplates.length > 0 && (
         <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-sm font-medium text-heading">Starting checklists (optional)</p>

@@ -47,6 +47,21 @@ export async function returnClientToBookedAction(clientId: string): Promise<Even
   return result.ok ? { ok: true } : { ok: false, message: result.message };
 }
 
+export async function saveEventSpaceAssignmentsAction(
+  eventId: string,
+  assignments: import("@/lib/venue-spaces/assignments").EventSpaceAssignmentInput[],
+  clientId?: string | null,
+): Promise<EventActionResult> {
+  const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
+  const result = await replaceEventSpaceAssignments(eventId, assignments);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    if (clientId) revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/calendar");
+  }
+  return result;
+}
+
 export async function updateEventAction(eventId: string, input: EventInput): Promise<EventActionResult> {
   const result = await updateEvent_(eventId, input);
   if (result.ok) revalidateEvent(eventId);

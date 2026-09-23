@@ -21,7 +21,7 @@ describe("venue request SMS consent (manual Lead path)", () => {
       "utf8",
     );
     assert.doesNotMatch(button, /requestSmsConsentAction/);
-    assert.doesNotMatch(button, /Request text permission/);
+    assert.match(button, /Request permission by email/);
     assert.match(button, /unsolicited text/i);
     assert.match(button, /START/);
   });

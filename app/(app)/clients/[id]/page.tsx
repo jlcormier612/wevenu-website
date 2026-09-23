@@ -26,6 +26,8 @@ import { getContracts, getTemplates as getContractTemplates } from "@/lib/contra
 import { getDocuments, getEventDocumentsFromVendors } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getEvent } from "@/lib/events/service";
+import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
+import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
 import { getQuestionnaires, getQuestionnaireActivities } from "@/lib/events/questionnaire";
 import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-templates/service";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
@@ -299,6 +301,14 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const timelineTemplates = allTimelineTemplates.filter((t) => !t.isArchived);
   const eventInvoices = allInvoices.filter((inv) => inv.eventId === eventId || inv.clientId === id);
   const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
+  const spaceAssignments = await getEventSpaceAssignments(eventId);
+  const spaceAssignmentsDisplay = formatEventSpaceAssignmentsDisplay(
+    spaceAssignments.map((a) => ({
+      useKey: a.useKey,
+      useLabel: a.useLabel,
+      spaceName: a.spaceName ?? spaces.find((s) => s.id === a.spaceId)?.name ?? "—",
+    })),
+  );
   const contracts = allContracts.filter((c) => c.eventId === eventId || c.clientId === id);
 
   // Request Framework integration: tasks may optionally link to a Request.
@@ -477,7 +487,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       linkableConversationMessages={linkableConversationMessages} vendorRecommendations={vendorRecommendations}
       portalToken={portalToken}
       conversationId={conversationId}
-      conversationMessages={conversationMessages} spaceName={spaceName} venueName={venue?.name ?? "Your venue"} clientStatus={client.status}
+      conversationMessages={conversationMessages} spaceName={spaceName}
+      spaceAssignmentsDisplay={spaceAssignmentsDisplay}
+      venueName={venue?.name ?? "Your venue"} clientStatus={client.status}
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}
       floorPlanOffers={floorPlanOffers}

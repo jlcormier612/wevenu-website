@@ -53,7 +53,7 @@ function readinessLine(readiness: EventReadiness | null): ReactNode {
 // ---- Main ---------------------------------------------------------------------
 
 export function BookingOverviewSummary({
-  clientName, eventType, eventDate, spaceName, guestCount, guestCountSubmission, clientStatus,
+  clientName, eventType, eventDate, spaceName, spaceAssignmentsDisplay, guestCount, guestCountSubmission, clientStatus,
   readinessByKind,
   invoices,
   paymentScheduleLines = null,
@@ -67,6 +67,8 @@ export function BookingOverviewSummary({
   eventType: string | null;
   eventDate: string;
   spaceName: string | null;
+  /** Multi-use formatted lines (Ceremony: Garden…). Wins over spaceName when set. */
+  spaceAssignmentsDisplay?: string | null;
   guestCount: number | null;
   guestCountSubmission?: { count: number; submittedAt: string } | null;
   clientStatus: ClientStatus;
@@ -129,7 +131,9 @@ export function BookingOverviewSummary({
           <span className="font-medium text-heading">{clientName ?? "—"}</span>
           {eventType && <Badge variant="outline">{eventTypeLabel(eventType)}</Badge>}
           <span className="text-muted-foreground">{formatDate(eventDate)}</span>
-          <span className="text-muted-foreground">{spaceName ?? "No space assigned"}</span>
+          <span className="text-muted-foreground whitespace-pre-line">
+            {spaceAssignmentsDisplay ?? spaceName ?? "No space assigned"}
+          </span>
           <span className="text-muted-foreground">
             {guestCount != null ? `${guestCount.toLocaleString()} guests` : "Guest count TBD"}
             {guestCountSubmission && (

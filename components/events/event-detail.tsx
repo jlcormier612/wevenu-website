@@ -264,6 +264,7 @@ export function EventDetail({
   conversationId = null,
   conversationMessages = [],
   spaceName = null,
+  spaceAssignmentsDisplay = null,
   venueName = "Your venue",
   clientStatus = null,
   contractTemplates = [],
@@ -327,6 +328,7 @@ export function EventDetail({
   conversationId?: string | null;
   conversationMessages?: ConversationMessage[];
   spaceName?: string | null;
+  spaceAssignmentsDisplay?: string | null;
   venueName?: string;
   clientStatus?: ClientStatus | null;
   contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
@@ -634,7 +636,8 @@ export function EventDetail({
           {clientStatus && (
             <BookingOverviewSummary
               clientName={event.clientName} eventType={event.eventType} eventDate={event.eventDate}
-              spaceName={spaceName} guestCount={event.guestCount} guestCountSubmission={event.guestCountSubmission} clientStatus={clientStatus}
+              spaceName={spaceName} spaceAssignmentsDisplay={spaceAssignmentsDisplay}
+              guestCount={event.guestCount} guestCountSubmission={event.guestCountSubmission} clientStatus={clientStatus}
               readinessByKind={readinessByKind}
               invoices={invoices}
               paymentScheduleLines={bookingJourney?.paymentLines ?? null}

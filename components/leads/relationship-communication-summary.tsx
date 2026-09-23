@@ -9,6 +9,7 @@ import {
   smsPermissionDisplayLabel,
   smsPermissionSourceLabel,
   SMS_PERMISSION_SOURCE_CONSENT_REQUEST,
+  SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST,
   type PreferredCommunicationChannel,
 } from "@/lib/communication/sms-consent";
 import { RequestSmsConsentButton } from "@/components/leads/request-sms-consent-button";
@@ -38,12 +39,16 @@ export function RelationshipCommunicationSummary({
   sms,
   leadId,
   hasPhone,
+  hasEmail,
+  textingConfigured,
 }: {
   preferredChannels: PreferredCommunicationChannel[];
   sms: SmsPermissionEvidenceView | null;
-  /** When set with hasPhone and not_opted_in, shows Request text permission. */
+  /** When set with hasPhone and not_opted_in, shows consent request controls. */
   leadId?: string;
   hasPhone?: boolean;
+  hasEmail?: boolean;
+  textingConfigured?: boolean;
 }) {
   const preferredLabel = preferredChannels.length
     ? preferredChannels.map(preferredChannelLabel).join(", ")
@@ -58,7 +63,9 @@ export function RelationshipCommunicationSummary({
   const when = formatWhen(sms?.updatedAt ?? null);
   const sourceLine = sms ? smsPermissionSourceLabel(sms.source) : null;
   const consentRequested =
-    smsStatus === "not_opted_in" && sms?.source === SMS_PERMISSION_SOURCE_CONSENT_REQUEST;
+    smsStatus === "not_opted_in" &&
+    (sms?.source === SMS_PERMISSION_SOURCE_CONSENT_REQUEST ||
+      sms?.source === SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST);
 
   return (
     <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
@@ -86,7 +93,12 @@ export function RelationshipCommunicationSummary({
             No text permission on file. Texts cannot be sent until they opt in.
           </p>
         )}
-        {consentRequested && (
+        {consentRequested && sms?.source === SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST && (
+          <p className="text-xs text-muted-foreground">
+            Permission request emailed. Ordinary texts stay blocked until they opt in on the link.
+          </p>
+        )}
+        {consentRequested && sms?.source === SMS_PERMISSION_SOURCE_CONSENT_REQUEST && (
           <p className="text-xs text-muted-foreground">
             Permission request sent. Ordinary texts stay blocked until they reply START.
           </p>
@@ -96,6 +108,8 @@ export function RelationshipCommunicationSummary({
             leadId={leadId}
             alreadyRequested={consentRequested}
             hasPhone={hasPhone}
+            hasEmail={hasEmail}
+            textingConfigured={textingConfigured}
           />
         )}
       </div>

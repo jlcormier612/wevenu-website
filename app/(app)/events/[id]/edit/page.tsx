@@ -7,8 +7,9 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
+import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
 import { getEvent } from "@/lib/events/service";
-import { getCurrentUserRole } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -21,11 +22,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EditEventPage({ params }: Props) {
   const { id } = await params;
-  const [event, spaces, capacityRules, role] = await Promise.all([
-    getEvent(id), getSpaces(), getCapacityRules(), getCurrentUserRole(),
+  const [event, spaces, capacityRules, role, venue, assignments] = await Promise.all([
+    getEvent(id),
+    getSpaces(),
+    getCapacityRules(),
+    getCurrentUserRole(),
+    getCurrentVenue(),
+    getEventSpaceAssignments(id),
   ]);
   if (!event) notFound();
   const canEditBookingDate = role === "owner" || role === "manager";
+  const spaceOperatingMode = venue?.spaceOperatingMode ?? "single";
   return (
     <div className="space-y-6">
       <PageHeader title={`Edit · ${event.name}`} description="Update event details." />
@@ -50,7 +57,17 @@ export default async function EditEventPage({ params }: Props) {
           <CardDescription>Changes are logged to the event activity timeline.</CardDescription>
         </CardHeader>
         <CardContent>
-          <EventEditForm event={event} spaces={spaces} maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)} />
+          <EventEditForm
+            event={event}
+            spaces={spaces}
+            maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)}
+            spaceOperatingMode={spaceOperatingMode}
+            initialAssignments={assignments.map((a) => ({
+              useKey: a.useKey,
+              useLabel: a.useLabel,
+              spaceId: a.spaceId,
+            }))}
+          />
         </CardContent>
       </Card>
     </div>
