@@ -14,6 +14,7 @@ import { normalizeEventType } from "@/lib/event-types/canonical";
 import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
 import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import type { LeadInput } from "@/lib/leads/types";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "New Lead" };
 
@@ -40,9 +41,10 @@ export default async function NewLeadPage({
   searchParams: Promise<{ fromBlockId?: string }>;
 }) {
   const { fromBlockId } = await searchParams;
-  const [block, inquirySettings] = await Promise.all([
+  const [block, inquirySettings, venue] = await Promise.all([
     fromBlockId ? getBlock(fromBlockId) : Promise.resolve(null),
     getInquiryFormSettings(),
+    getCurrentVenue(),
   ]);
 
   // Calendar Booking Placeholder — "Convert to Booking." Pre-filled, not
@@ -90,6 +92,7 @@ export default async function NewLeadPage({
             initial={initial}
             fromBlockId={block ? fromBlockId : undefined}
             eventTypeOptions={eventTypeOptions}
+            venueTimezone={venue?.timezone ?? null}
           />
         </CardContent>
       </Card>

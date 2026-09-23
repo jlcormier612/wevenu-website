@@ -207,9 +207,9 @@ export function LeadEditForm({
             <Input id="iqd" type="date" value={input.inquiryDate} onChange={(e) => set("inquiryDate", e.target.value)} />
           </Field>
         </div>
-        <Field label="Message / notes" htmlFor="msg">
+        <Field label="Inquiry message" htmlFor="msg">
           <Textarea id="msg" value={input.inquiryMessage} rows={4}
-            placeholder="Notes from the initial inquiry…"
+            placeholder="Capture the message or details they shared when they first contacted you."
             onChange={(e) => set("inquiryMessage", e.target.value)} />
         </Field>
       </div>

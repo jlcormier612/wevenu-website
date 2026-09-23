@@ -91,7 +91,7 @@ function SelectField({
 }
 
 export function NewInquiryForm({
-  initial, fromBlockId, eventTypeOptions,
+  initial, fromBlockId, eventTypeOptions, venueTimezone,
 }: {
   /** Calendar Booking Placeholder — "Convert to Booking" pre-fill. Merged over the usual blank defaults; every field stays editable. */
   initial?: Partial<LeadInput>;
@@ -99,9 +99,14 @@ export function NewInquiryForm({
   fromBlockId?: string;
   /** Venue accepted inquiry types (plus convert-from-hold legacy current when needed). */
   eventTypeOptions: VenueEventTypeOption[];
+  /** Venue IANA timezone — Inquiry date defaults to this calendar's today. */
+  venueTimezone?: string | null;
 }) {
   const router = useRouter();
-  const [input, setInput] = React.useState<LeadInput>(() => ({ ...createInitialLeadInput(), ...initial }));
+  const [input, setInput] = React.useState<LeadInput>(() => ({
+    ...createInitialLeadInput(venueTimezone),
+    ...initial,
+  }));
   const [errors, setErrors] = React.useState<LeadErrors>({});
   const [pending, startTransition] = React.useTransition();
   const [matchOpen, setMatchOpen] = React.useState(false);
@@ -234,9 +239,9 @@ export function NewInquiryForm({
           <TextField id="inquiryDate" label="Inquiry date" type="date" value={input.inquiryDate}
             onChange={(v) => set("inquiryDate", v)} />
         </div>
-        <Field label="Message / notes" htmlFor="inquiryMessage">
+        <Field label="Inquiry message" htmlFor="inquiryMessage">
           <Textarea id="inquiryMessage" value={input.inquiryMessage} rows={4}
-            placeholder="Any details from the initial inquiry…"
+            placeholder="Capture the message or details they shared when they first contacted you."
             onChange={(e) => set("inquiryMessage", e.target.value)} />
         </Field>
       </div>

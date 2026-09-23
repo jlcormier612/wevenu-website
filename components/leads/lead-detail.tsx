@@ -735,7 +735,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                   <>
                     <Separator />
                     <div>
-                      <Label className="mb-1 text-xs text-muted-foreground">Message</Label>
+                      <Label className="mb-1 text-xs text-muted-foreground">Inquiry message</Label>
                       <p className="whitespace-pre-wrap text-sm text-foreground">
                         {lead.inquiryMessage}
                       </p>

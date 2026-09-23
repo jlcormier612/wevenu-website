@@ -8,6 +8,7 @@ import {
   EVENT_TYPES as CANONICAL_EVENT_TYPES,
   eventTypeLabel as labelFromCanonical,
 } from "@/lib/event-types/canonical";
+import { venueToday } from "@/lib/venue/timezone";
 
 export type StatusMeta = {
   value: SalesStage;
@@ -49,7 +50,15 @@ export const LEAD_SOURCES: Option[] = [
   { value: "other",        label: "Other" },
 ];
 
-export function createInitialLeadInput(): LeadInput {
+/**
+ * Blank New Lead defaults. Inquiry date must be the venue's local calendar
+ * day — never `toISOString().slice(0, 10)`, which is UTC and shows tomorrow
+ * for Eastern venues every evening.
+ */
+export function createInitialLeadInput(
+  venueTimezone?: string | null,
+  now: Date = new Date(),
+): LeadInput {
   return {
     firstName: "",
     lastName: "",
@@ -66,7 +75,7 @@ export function createInitialLeadInput(): LeadInput {
     estimatedBudget: "",
     source: "",
     inquiryMessage: "",
-    inquiryDate: new Date().toISOString().slice(0, 10),
+    inquiryDate: venueToday(venueTimezone ?? null, now),
   };
 }
 
