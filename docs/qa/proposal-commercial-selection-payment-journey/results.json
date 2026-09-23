@@ -1,0 +1,51 @@
+{
+  "workstream": "RCJ-PROPOSAL-COMMERCIAL-PAYMENT-JOURNEY",
+  "status": "NOT_GREEN",
+  "reason": "Implementation committed and Sandbox migration/deploy dispatched; browser E2E + Stripe Checkout + mailbox evidence not yet proven on the running image.",
+  "production_untouched": true,
+  "commit": "fb03501a178b379c2d278fb94fe971235523595c",
+  "branch": "feature/team-permissions-multi-owner",
+  "migration": {
+    "file": "20261405800000_commercial_proposals_l1.sql",
+    "apply_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35890842859"
+  },
+  "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35890845984",
+  "implemented": {
+    "L1_proposals": true,
+    "multi_option_offer": true,
+    "client_select_approve": true,
+    "selected_at_approved_at": true,
+    "L2_on_approve": true,
+    "direct_select_package_path": true,
+    "deposit_email_amount_due_now": true,
+    "deposit_email_portal_link": true,
+    "event_date_explicit_for_schedule": true,
+    "eligibility_min_model": true
+  },
+  "eligibility_supported": [
+    "is_active + priced",
+    "eligible_event_types[] (optional)",
+    "min_guest_count / max_guest_count (optional; only when guest count known)",
+    "eligible_space_ids[] (optional)"
+  ],
+  "eligibility_not_invented": [
+    "No separate pricing rules engine",
+    "No inventory-linked package gating"
+  ],
+  "green_gate": {
+    "implementation_complete": true,
+    "db_migrations_applied": "pending_verify",
+    "automated_tests": "unit_pass_local",
+    "sandbox_deploy": "dispatched",
+    "ecs_image_sha_verified": false,
+    "browser_e2e_path_a": false,
+    "browser_e2e_path_b": false,
+    "deposit_email_mailbox": false,
+    "stripe_checkout_e2e": false
+  },
+  "stripe_e2e_venue_candidate": {
+    "name": "Sweet Daisy Barn & Farm",
+    "venue_id": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+    "note": "charges_enabled previously true; verify disposable/test before live Checkout"
+  }
+}
