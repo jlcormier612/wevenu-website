@@ -23,8 +23,40 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const payload = (data ?? { schedules: [] }) as { schedules?: PortalPaymentScheduleLike[]; error?: string };
   if (payload.error) return NextResponse.json(payload);
+
+  // Same readiness rule as get_portal_checkout_context — surface before Pay is clickable.
+  let onlinePaymentsReady = false;
+  try {
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
+    const admin = createAdminClient();
+    const { data: session } = await admin
+      .from("client_portal_sessions")
+      .select("venue_id")
+      .eq("access_token", token)
+      .maybeSingle<{ venue_id: string }>();
+    if (session?.venue_id) {
+      const { data: venue } = await admin
+        .from("venues")
+        .select("stripe_account_id, stripe_onboarding_status, stripe_charges_enabled")
+        .eq("id", session.venue_id)
+        .maybeSingle<{
+          stripe_account_id: string | null;
+          stripe_onboarding_status: string | null;
+          stripe_charges_enabled: boolean | null;
+        }>();
+      onlinePaymentsReady = Boolean(
+        venue?.stripe_account_id &&
+          venue.stripe_onboarding_status === "connected" &&
+          venue.stripe_charges_enabled === true,
+      );
+    }
+  } catch {
+    onlinePaymentsReady = false;
+  }
+
   return NextResponse.json({
     ...payload,
     schedules: selectCanonicalPaymentSchedules(payload.schedules ?? []),
+    onlinePaymentsReady,
   });
 }

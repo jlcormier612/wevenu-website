@@ -38,6 +38,8 @@ type SchedulePayload = {
     total: number;
     balanceDue: number;
   }>;
+  /** False when venue Stripe Connect is missing/not chargeable — Pay must not look actionable. */
+  onlinePaymentsReady?: boolean;
 };
 
 export function PaymentAccessShell({
@@ -107,9 +109,11 @@ export function PaymentAccessShell({
     displayName: invoice?.displayName ?? schedule?.title ?? nextOpen?.label,
     invoiceNumber: invoice?.invoiceNumber ?? "Invoice",
   });
+  const onlinePaymentsReady = data?.onlinePaymentsReady === true;
+  const canPayOnline = Boolean(nextOpen) && onlinePaymentsReady;
 
   async function payNow() {
-    if (!nextOpen) return;
+    if (!nextOpen || !onlinePaymentsReady) return;
     setPaying(true);
     setError(null);
     try {
@@ -189,27 +193,46 @@ export function PaymentAccessShell({
               <p className="mt-1 text-sm text-muted-foreground">
                 {nextOpen?.label || "Amount due"} · due now
               </p>
+              {schedule && schedule.totalAmount > (nextOpen?.amount ?? 0) ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Total contracted {formatCurrency(schedule.totalAmount)}
+                  {paidTotal > 0 ? ` · Paid to date ${formatCurrency(paidTotal)}` : null}
+                  {" · "}
+                  Remaining after this payment{" "}
+                  {formatCurrency(Math.max(0, remaining - (nextOpen?.amount ?? 0)))}
+                </p>
+              ) : null}
             </div>
             <p className="text-sm text-muted-foreground">
               This payment is part of your agreement with {context.venue.name}.
             </p>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button
-              type="button"
-              className="w-full"
-              style={{ backgroundColor: brand }}
-              disabled={paying || !nextOpen}
-              onClick={() => void payNow()}
-            >
-              {paying ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Starting checkout…
-                </>
-              ) : (
-                `Pay ${formatCurrency(nextOpen?.amount ?? 0)}`
-              )}
-            </Button>
+            {!onlinePaymentsReady ? (
+              <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-sm font-medium text-heading">Online payments unavailable</p>
+                <p className="text-sm text-muted-foreground">
+                  Your venue hasn&apos;t connected online payments yet. Please contact{" "}
+                  {context.venue.name} to arrange payment.
+                </p>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                className="w-full"
+                style={{ backgroundColor: brand }}
+                disabled={paying || !canPayOnline}
+                onClick={() => void payNow()}
+              >
+                {paying ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Starting checkout…
+                  </>
+                ) : (
+                  `Pay ${formatCurrency(nextOpen?.amount ?? 0)}`
+                )}
+              </Button>
+            )}
             <p className="text-center text-xs text-muted-foreground">
               Reference: {invoice?.invoiceNumber ?? "—"}
             </p>
