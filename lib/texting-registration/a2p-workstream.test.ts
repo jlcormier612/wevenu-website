@@ -100,8 +100,10 @@ describe("A2P product invariants", () => {
     assert.match(legal, /optional box \(unchecked by default\)/);
     assert.match(legal, /You can submit an inquiry or book a tour without agreeing to text messages/);
     assert.match(legal, /Accepting these Terms is not SMS consent/);
-    const smsBlock = legal.slice(legal.indexOf("Text Messages (Hello to Cheers)"));
-    assert.doesNotMatch(smsBlock.slice(0, 2500), /operated by QuickCloud LLC/);
+    const smsBlock = legal.slice(legal.indexOf("Text Messaging and Communication Information"));
+    assert.doesNotMatch(smsBlock.slice(0, 3500), /operated by QuickCloud LLC/);
+    assert.match(smsBlock.slice(0, 3500), /required recipient permission has been recorded/);
+    assert.doesNotMatch(smsBlock.slice(0, 3500), /Twilio requires/);
 
     const flow = buildA2pCampaignMessageFlow({
       brandName: "QuickCloud LLC",

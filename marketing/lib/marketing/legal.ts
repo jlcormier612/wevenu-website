@@ -21,7 +21,7 @@ export type LegalDocument = {
 export const PRIVACY_POLICY: LegalDocument = {
   title: "Privacy Policy",
   slug: "privacy",
-  effectiveDate: "September 11, 2026",
+  effectiveDate: "September 23, 2026",
   notice:
     "This Privacy Policy explains how Hello to Cheers collects, uses, shares, and protects information when you use our websites, products, and related services. Please review it carefully. We will update this page when our practices change.",
   sections: [
@@ -47,6 +47,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       bullets: [
         "Account and profile information (name, email, phone, role, venue details).",
         "Business and operational data you enter into Hello to Cheers (events, clients, planning details, messages, documents, financial records related to venue operations).",
+        "Communication-related information where applicable (phone numbers, email addresses, communication preferences, text-messaging permission and opt-out status, consent timestamps and source or method, message history, delivery or status information, and related communication metadata).",
         "Billing and transaction metadata associated with your subscription (processed with our payment providers).",
         "Communications you send us (support requests, walkthrough requests, feedback).",
         "Usage and device information (IP address, browser type, approximate location derived from IP, pages viewed, feature usage, diagnostic logs).",
@@ -83,6 +84,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       bullets: [
         "Service providers who help us host, secure, support, analyze, or process payments (under contractual obligations to protect data).",
         "Payment processors such as Stripe for subscription billing and related payment operations.",
+        "Messaging and communications service providers that help us provide, deliver, monitor, or support email, text messaging, and related communications on behalf of Hello to Cheers and its customers.",
         "Professional advisors (legal, accounting) when reasonably necessary.",
         "Authorities when required by law or to protect rights, safety, and security.",
         "A successor entity in connection with a merger, acquisition, or asset transfer, subject to appropriate protections.",
@@ -93,6 +95,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       paragraphs: [
         "Venues control much of the content they store in Hello to Cheers. Clients, guests, and vendors interacting through a venue’s workspace are generally engaging with that venue’s configuration of the Services.",
         "Hello to Cheers may process that content to deliver the product features the venue enables (portals, messaging, planning, payments records, and related tools).",
+        "When a venue uses Hello to Cheers to communicate with its leads, clients, guests, or other recipients, Hello to Cheers may process communication-related information on behalf of that venue as described in this Privacy Policy. The venue remains responsible for the communications it sends or initiates and for obtaining and maintaining any permission required to contact those recipients.",
       ],
     },
     {
@@ -118,8 +121,12 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      heading: "Text Messages (Hello to Cheers)",
+      heading: "Text Messaging and Communication Information",
       paragraphs: [
+        "When a venue uses Hello to Cheers to communicate with you by text message, your phone number and related messaging information may be processed by Hello to Cheers and our messaging service providers to deliver those messages.",
+        "Hello to Cheers may maintain communication preference and consent records, including whether text messaging permission has been recorded, when that permission was recorded, how it was obtained, and whether it was subsequently withdrawn.",
+        "Text messaging is only enabled through Hello to Cheers where the required recipient permission has been recorded. Recording permission in Hello to Cheers means Hello to Cheers has a product record used to enforce its own text-messaging requirements; it does not mean Hello to Cheers has determined that a venue was legally entitled to obtain that permission or that a particular message is lawful.",
+        "Communication information may be processed by service providers that help us provide, deliver, monitor, or support communications on behalf of Hello to Cheers and its customers.",
         "Venues that use Hello to Cheers may communicate with leads and clients by text message about their inquiry, tour or appointment, event planning, and related booking logistics.",
         "How we collect mobile numbers: A mobile number may be collected when you submit a venue’s Hello to Cheers inquiry or tour-booking form, or when you otherwise provide it to the venue in connection with your event.",
         "Phone number is not SMS consent: Entering or providing a mobile number is not, by itself, permission to send SMS.",
@@ -162,7 +169,7 @@ export const PRIVACY_POLICY: LegalDocument = {
 export const TERMS_OF_SERVICE: LegalDocument = {
   title: "Venue Subscription Agreement",
   slug: "terms",
-  effectiveDate: "July 15, 2026",
+  effectiveDate: "September 23, 2026",
   notice:
     "These Terms of Service govern your access to and use of Hello to Cheers. By creating an account or using the Services, you agree to these Terms. If you are accepting on behalf of a venue or organization, you represent that you have authority to bind that entity.",
   sections: [
@@ -227,33 +234,45 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       ],
     },
     {
-      heading: "9. Third-Party Services",
+      heading: "9. Customer Communications and Messaging",
+      paragraphs: [
+        "Customers are responsible for the communications they send or initiate through the Service, including ensuring that they have any permissions, consents, authorizations, and other legal bases required to contact their recipients.",
+        "Hello to Cheers provides communication tools and does not determine whether a customer's particular communication is lawful or whether a recipient has provided legally sufficient consent.",
+        "Customers are solely responsible for the content, timing, recipients, frequency, and legal compliance of communications sent through the Service and for obtaining and maintaining any consent required for those communications.",
+        "If you use text messaging features, you are responsible for obtaining and maintaining all consent required to send text messages to your recipients. You must not use the Service to send text messages to recipients who have not provided the required permission.",
+        "Hello to Cheers will not send text messages through the Service where the required SMS permission has not been recorded. A permission record in Hello to Cheers is a product control for Hello to Cheers’ own messaging requirements; it is not a determination by Hello to Cheers that you were legally entitled to obtain that permission or that any particular message complies with applicable law.",
+        "You are responsible for maintaining appropriate records of consent and complying with applicable telecommunications, messaging, privacy, marketing, and consumer-protection laws and regulations.",
+        "Hello to Cheers may require evidence of consent, restrict messaging, suspend messaging functionality, or take other action where required by our messaging providers, carriers, applicable law, or our agreements with messaging providers.",
+      ],
+    },
+    {
+      heading: "10. Third-Party Services",
       paragraphs: [
         "The Services may integrate with third parties (including Stripe and communications providers). Your use of those services may be subject to their terms. Hello to Cheers is not responsible for third-party services we do not control.",
       ],
     },
     {
-      heading: "10. Intellectual Property",
+      heading: "11. Intellectual Property",
       paragraphs: [
         "Hello to Cheers and its licensors own the Services, software, branding, and related intellectual property. Except for the limited rights expressly granted, no rights are transferred to you.",
         "Feedback you provide may be used by Hello to Cheers to improve the Services without obligation to you.",
       ],
     },
     {
-      heading: "11. Confidentiality",
+      heading: "12. Confidentiality",
       paragraphs: [
         "Each party may receive confidential information from the other. The receiving party will protect that information with reasonable care and use it only as needed to perform under these Terms, except where disclosure is required by law.",
       ],
     },
     {
-      heading: "12. Disclaimers",
+      heading: "13. Disclaimers",
       paragraphs: [
         "The Services are provided “as is” and “as available.” To the maximum extent permitted by law, Hello to Cheers disclaims all warranties, whether express, implied, or statutory, including merchantability, fitness for a particular purpose, and non-infringement.",
         "We do not warrant that the Services will be uninterrupted, error-free, or free of harmful components, or that all content will be secure or not lost.",
       ],
     },
     {
-      heading: "13. Limitation of Liability",
+      heading: "14. Limitation of Liability",
       paragraphs: [
         "To the maximum extent permitted by law, Hello to Cheers will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or any loss of profits, revenue, data, or goodwill.",
         "To the maximum extent permitted by law, Hello to Cheers’ total liability arising out of or related to the Services will not exceed the amounts paid by you to Hello to Cheers for the Services in the twelve (12) months before the event giving rise to liability.",
@@ -261,31 +280,31 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       ],
     },
     {
-      heading: "14. Indemnification",
+      heading: "15. Indemnification",
       paragraphs: [
         "You will defend and indemnify Hello to Cheers against claims arising from your Customer Data, your use of the Services in violation of these Terms, or your violation of law or third-party rights.",
       ],
     },
     {
-      heading: "15. Suspension and Termination",
+      heading: "16. Suspension and Termination",
       paragraphs: [
         "We may suspend or terminate access if you breach these Terms, create risk or possible legal exposure, fail to pay fees, or if required by law. We will provide notice when reasonable and practical.",
       ],
     },
     {
-      heading: "16. Changes to the Services or Terms",
+      heading: "17. Changes to the Services or Terms",
       paragraphs: [
         "We may improve or modify the Services. We may also update these Terms. Material changes will be posted with an updated effective date. Continued use after changes become effective constitutes acceptance.",
       ],
     },
     {
-      heading: "17. Governing Law",
+      heading: "18. Governing Law",
       paragraphs: [
         "These Terms are governed by the laws of the State of Delaware, excluding conflict-of-law rules, unless mandatory local law provides otherwise for consumers where applicable. Venue and jurisdiction will lie in courts located in Delaware, except where prohibited.",
       ],
     },
     {
-      heading: "18. Contact",
+      heading: "19. Contact",
       paragraphs: [
         "Questions about these Terms: legal@hellotocheers.com",
         "Billing and account questions: through in-product support or the contact methods on our website.",
@@ -401,7 +420,7 @@ export const END_USER_TERMS: LegalDocument = {
       paragraphs: [
         "Customer and End User information is protected according to our Privacy Policy, which explains how we collect, use, share, and safeguard information.",
         "Where Hello to Cheers processes information on behalf of a venue, the venue’s instructions and privacy practices may also apply.",
-        "Text messaging for venues using Hello to Cheers is described in the “Text Messages (Hello to Cheers)” section of our Privacy Policy, including opt-out via STOP. Accepting these Terms is not SMS consent.",
+        "Text messaging for venues using Hello to Cheers is described in the “Text Messaging and Communication Information” section of our Privacy Policy, including opt-out via STOP. Accepting these Terms is not SMS consent.",
       ],
     },
     {
@@ -571,7 +590,7 @@ export const ACCEPTABLE_USE_POLICY: LegalDocument = {
     {
       heading: "3. Customer Communications",
       paragraphs: [
-        "Venues remain responsible for the content of messages and documents they send through Hello to Cheers to clients, guests, vendors, and staff, and for complying with applicable messaging and privacy laws.",
+        "Venues remain responsible for the content of messages and documents they send through Hello to Cheers to clients, guests, vendors, and staff, and for complying with applicable messaging and privacy laws. Additional customer-communications and text-messaging responsibilities are set out in the Venue Subscription Agreement.",
       ],
     },
     {
