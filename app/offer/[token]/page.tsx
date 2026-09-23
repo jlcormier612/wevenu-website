@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { OfferAcceptClient } from "@/components/booking-journey/offer-accept-client";
+import { OfferSelectClient } from "@/components/booking-journey/offer-select-client";
 import { getOfferByToken } from "@/lib/booking-journey/offer";
+import { proposalViewFromSelection } from "@/lib/booking-journey/proposal-view";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -17,5 +19,23 @@ export default async function OfferPage({ params }: Props) {
   const { token } = await params;
   const offer = await getOfferByToken(token);
   if (!offer) notFound();
-  return <OfferAcceptClient token={token} offer={offer} />;
+
+  if (offer.kind === "proposal" && offer.options && offer.options.length > 0) {
+    return <OfferSelectClient token={token} offer={offer} />;
+  }
+
+  // Legacy single-package accept flow
+  const legacy = proposalViewFromSelection(
+    {
+      name: offer.name,
+      totalAmount: offer.totalAmount,
+      depositAmount: offer.depositAmount,
+      includedItems: offer.includedItems,
+      status: offer.status === "accepted" || offer.status === "approved" ? "accepted" : offer.status,
+      offerMessage: offer.offerMessage,
+    },
+    undefined,
+    offer.brand,
+  );
+  return <OfferAcceptClient token={token} offer={{ ...legacy, venueName: offer.venueName }} />;
 }

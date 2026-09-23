@@ -146,8 +146,10 @@ export function NewScheduleForm({
 }) {
   const router = useRouter();
   const invoiceTotal = linkedInvoice.total;
+  const [explicitEventDate, setExplicitEventDate] = React.useState("");
+  const resolvedEventDate = linkedInvoice.eventDate || explicitEventDate.trim() || null;
   const timingCtx = {
-    eventDate: linkedInvoice.eventDate,
+    eventDate: resolvedEventDate,
     bookingDate: linkedInvoice.bookedAt,
   };
 
@@ -275,6 +277,23 @@ export function NewScheduleForm({
         <p className="text-xs text-muted-foreground">
           Choose how {formatCurrency(invoiceTotal)} should be collected. The schedule you save becomes this booking&apos;s payment commitment.
         </p>
+        {!linkedInvoice.eventDate && (
+          <div className="mt-3 space-y-1.5">
+            <label htmlFor="ps-event-date-for-calc" className="text-xs font-medium text-heading">
+              Event date for payment due dates
+            </label>
+            <Input
+              id="ps-event-date-for-calc"
+              type="date"
+              value={explicitEventDate}
+              onChange={(e) => setExplicitEventDate(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              No Event date is on file yet. Enter the date only to calculate &quot;days before event&quot;
+              due dates. This does not create an Event or reserve the date.
+            </p>
+          </div>
+        )}
       </div>
 
       <Field label="Schedule name *" htmlFor="ps-title" error={errors.title} hint="Shown to your team on this booking.">

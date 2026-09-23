@@ -39,7 +39,13 @@ export function formatPackageSection(
     for (const item of items) {
       const qty = item.quantity ? ` × ${item.quantity}` : "";
       const unit = item.unit ? ` ${item.unit}` : "";
-      lines.push(`• ${item.description}${qty}${unit}`);
+      const price =
+        item.lineTotal != null
+          ? ` — $${Number(item.lineTotal).toFixed(2)}`
+          : item.unitPrice != null
+            ? ` — $${Number(item.unitPrice).toFixed(2)}`
+            : "";
+      lines.push(`• ${item.description}${qty}${unit}${price}`);
     }
   }
   lines.push("");

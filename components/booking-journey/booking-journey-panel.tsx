@@ -14,6 +14,7 @@ import {
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { CommercialFacts } from "@/components/booking-journey/commercial-facts";
 import { ProposalArtifact } from "@/components/booking-journey/proposal-artifact";
+import { CreateProposalSheet } from "@/components/booking-journey/create-proposal-sheet";
 import { SelectPackageSheet } from "@/components/booking-journey/select-package-sheet";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ export function BookingJourneyPanel({
   eventId,
   eventDate,
   spaceId,
+  eventType,
+  guestCount,
 }: {
   journey: BookingJourneyModel;
   packages: PackageWithItems[];
@@ -49,9 +52,12 @@ export function BookingJourneyPanel({
   eventDate?: string | null;
   /** Event Space selected on the Lead — used when quietly creating a dated Event. */
   spaceId?: string;
+  eventType?: string | null;
+  guestCount?: number | null;
 }) {
   const router = useRouter();
   const [selectOpen, setSelectOpen] = React.useState(false);
+  const [proposalOpen, setProposalOpen] = React.useState(false);
   const [offerOpen, setOfferOpen] = React.useState(false);
   const [offerReviewOpen, setOfferReviewOpen] = React.useState(false);
   const [paymentsOpen, setPaymentsOpen] = React.useState(false);
@@ -182,6 +188,7 @@ export function BookingJourneyPanel({
         journey={journey}
         contractPending={pending}
         onSelectPackage={() => setSelectOpen(true)}
+        onCreateProposal={() => setProposalOpen(true)}
         onPreviewProposal={() => setOfferReviewOpen(true)}
         onCreateShareLink={() => setOfferOpen(true)}
         onCopyShareLink={copyShareLink}
@@ -190,6 +197,18 @@ export function BookingJourneyPanel({
           if (selection) setPaymentsOpen(true);
         }}
         onRecordDeposit={handleRecordDeposit}
+      />
+
+      <CreateProposalSheet
+        open={proposalOpen}
+        onOpenChange={setProposalOpen}
+        packages={packages}
+        leadId={leadId}
+        clientId={clientId}
+        eventId={eventId}
+        eventType={eventType}
+        guestCount={guestCount}
+        spaceId={spaceId}
       />
 
       <SelectPackageSheet

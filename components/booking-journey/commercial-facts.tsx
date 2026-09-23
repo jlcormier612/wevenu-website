@@ -10,6 +10,7 @@ export function CommercialFacts({
   journey,
   contractPending,
   onSelectPackage,
+  onCreateProposal,
   onPreviewProposal,
   onCreateShareLink,
   onCopyShareLink,
@@ -20,6 +21,7 @@ export function CommercialFacts({
   journey: BookingJourneyModel;
   contractPending?: boolean;
   onSelectPackage: () => void;
+  onCreateProposal?: () => void;
   onPreviewProposal: () => void;
   onCreateShareLink: () => void;
   onCopyShareLink: () => void;
@@ -61,10 +63,22 @@ export function CommercialFacts({
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               {row.key === "package" && (
-                <Button type="button" size="sm" variant={selection ? "outline" : "default"} onClick={onSelectPackage}>
-                  {selection ? "View / Change package" : "Select package"}
-                </Button>
+                <>
+                  <Button type="button" size="sm" variant={selection ? "outline" : "default"} onClick={onSelectPackage}>
+                    {selection ? "View / Change package" : "Select package"}
+                  </Button>
+                  {!selection && allowOffer && onCreateProposal ? (
+                    <Button type="button" size="sm" variant="outline" onClick={onCreateProposal}>
+                      Create proposal
+                    </Button>
+                  ) : null}
+                </>
               )}
+              {row.key === "proposal" && !selection && allowOffer && onCreateProposal ? (
+                <Button type="button" size="sm" onClick={onCreateProposal}>
+                  Create proposal
+                </Button>
+              ) : null}
               {row.key === "proposal" && selection && (
                 <Button type="button" size="sm" variant="outline" onClick={onPreviewProposal}>
                   Preview

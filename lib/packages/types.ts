@@ -9,6 +9,8 @@ export type PackageItem = {
   createdAt: string;
 };
 
+export type PackageOfferRole = "primary" | "addon";
+
 export type Package = {
   id: string;
   venueId: string;
@@ -20,6 +22,14 @@ export type Package = {
   isActive: boolean;
   sortOrder: number;
   sourceMasterKey: string | null;
+  /** primary = choose-one package; addon = optional addition. */
+  offerRole: PackageOfferRole;
+  /** Null = all event types. */
+  eligibleEventTypes: string[] | null;
+  minGuestCount: number | null;
+  maxGuestCount: number | null;
+  /** Null = all spaces. */
+  eligibleSpaceIds: string[] | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -154,6 +154,58 @@ export async function sendOfferAction(input: {
   return { ok: true, acceptUrl };
 }
 
+export async function createProposalAction(input: {
+  leadId?: string;
+  clientId?: string;
+  eventId?: string;
+  options: { packageId: string; offerRole: "primary" | "addon" }[];
+  depositAmount?: number;
+  message?: string;
+  eventType?: string | null;
+  guestCount?: number | null;
+  spaceId?: string | null;
+}): Promise<{ ok: true; proposalId: string } | { ok: false; message: string }> {
+  const { createCommercialProposal } = await import("@/lib/commercial-proposals/service");
+  const result = await createCommercialProposal({
+    leadId: input.leadId,
+    clientId: input.clientId,
+    eventId: input.eventId,
+    options: input.options,
+    depositAmount: input.depositAmount,
+    message: input.message,
+    eligibilityContext: {
+      eventType: input.eventType,
+      guestCount: input.guestCount,
+      spaceId: input.spaceId,
+    },
+  });
+  if (result.ok) {
+    if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+    if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  }
+  return result;
+}
+
+export async function sendProposalAction(input: {
+  proposalId: string;
+  message?: string;
+  leadId?: string;
+  clientId?: string;
+}): Promise<{ ok: true; acceptUrl: string } | { ok: false; message: string }> {
+  const { sendCommercialProposal } = await import("@/lib/commercial-proposals/service");
+  const result = await sendCommercialProposal({
+    proposalId: input.proposalId,
+    message: input.message,
+  });
+  if (!result.ok || !("acceptToken" in result)) {
+    return { ok: false, message: result.ok === false ? result.message : "Could not send proposal." };
+  }
+  const acceptUrl = `${publicAppOrigin()}/offer/${result.acceptToken}`;
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return { ok: true, acceptUrl };
+}
+
 export async function markOfferAcceptedAction(input: {
   selectionId: string;
   leadId?: string;

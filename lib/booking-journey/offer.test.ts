@@ -111,6 +111,7 @@ describe("Public offer retrieve + accept (logged-out / no venue session)", () =>
     });
     const offer = await getOfferByToken("valid-token", client);
     assert.deepEqual(offer, {
+      kind: "legacy_selection",
       id: "sel-1",
       name: "Garden Package",
       venueName: null,

@@ -9,6 +9,11 @@ export type CommercialSelectionItem = {
   description: string;
   quantity: number;
   unit: string | null;
+  /** Frozen line economics when present (proposal-approved selections). */
+  unitPrice?: number;
+  lineTotal?: number;
+  offerRole?: "primary" | "addon";
+  sourcePackageId?: string | null;
 };
 
 export type CommercialSelection = {

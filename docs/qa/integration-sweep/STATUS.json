@@ -4,11 +4,11 @@
   "runtime": {
     "cluster": "htc-sandbox",
     "service": "htc-sandbox-venue-app",
-    "taskDefinition": "htc-sandbox-venue-app:352",
-    "imageTag": "5988c8d9237398e17b4b2443b32b31795dda9245",
+    "taskDefinition": "htc-sandbox-venue-app:355",
+    "imageTag": "cab3a1f03831877d03d40db658b486ef1f2315a6",
     "rolloutState": "COMPLETED",
     "production_untouched": true,
-    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/35807014604"
+    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/35810851169"
   },
   "fixture": {
     "venue": "Jen's Fancy Venue",
@@ -26,21 +26,57 @@
     "1_public_inquiry_to_lead": "GREEN",
     "2_lead_workspace": "GREEN",
     "3_package_proposal": "GREEN",
-    "3b_proposal_email": "PROVIDER_ACCEPTED_MAILBOX_UNPROVEN",
+    "3b_proposal_email": "CLICKABLE_LINK_GREEN",
     "4_tour": "GREEN",
     "5_booking": "PENDING",
     "6_contract": "PENDING",
     "7_client_workspace": "PENDING",
-    "8_communications": "SMS_CONSENT_ACQUISITION_GREEN",
+    "8_communications": "MESSAGE_COLLAPSE_FIX_DEPLOYING",
     "9_brand": "PENDING",
     "10_data_integrity": "PENDING"
   },
   "open_items": [
-    "Proposal email mailbox inbox proof for real recipient addresses remains OPEN (provider accepted; .test mailbox unreadable).",
+    "RCJ-PROPOSAL-COMMERCIAL-PAYMENT-JOURNEY: Implementation in progress on feature/team-permissions-multi-owner — NOT GREEN. L1 commercial_proposals + client select/approve → L2; deposit email uses amount-due-now; event-date explicit field. Awaiting Sandbox migration + deploy + browser/Stripe E2E. See docs/qa/proposal-commercial-selection-payment-journey/STATUS.md.",
+    "RCJ-CONVERSATION-MESSAGE-COLLAPSE: cab3a1f0 live on :355 — collapse browser E2E still open.",
+    "RCJ payment/deposit journey: superseded by RCJ-PROPOSAL-COMMERCIAL-PAYMENT-JOURNEY (same workstream; deposit email fix included). Prior forensic: docs/qa/payment-deposit-journey-forensic/results.json.",
     "Brand Colors artifact evaluation deferred to Journey 9.",
-    "Jen's Fancy Venue Twilio remains pending_compliance — SMS send E2E used Texting E2E Disposable venue (ready)."
+    "Jen's Fancy Venue Twilio remains pending_compliance — SMS send E2E used Texting E2E Disposable venue (ready).",
+    "Original Yahoo Sent reply to tour confirm 01a0cbe2 is unrecoverable (delivered to Google jennifer@); future replies use Reply-To thread+@replies."
   ],
   "defects": [
+    {
+      "id": "RCJ-UPCOMING-TOURS-SORT-DESC",
+      "title": "Upcoming Tours listed farthest date first",
+      "root_cause": "getTourAppointments ordered scheduled_at descending; Tours page preserved that order for Upcoming.",
+      "fix": "Upcoming query window ascending + partitionTourAppointmentsForVenueList (Upcoming asc / Past desc).",
+      "status": "GREEN",
+      "commit": "474fd5f1f03276583237166727538b69279cc992",
+      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35809732836",
+      "runtime": "htc-sandbox-venue-app:354 / 474fd5f1",
+      "evidence": "docs/qa/upcoming-tours-sort/results.json"
+    },
+    {
+      "id": "RCJ-PROPOSAL-EMAIL-LINK-PLAINTEXT",
+      "title": "Proposal URL in email was plain text, not a clickable <a href>",
+      "root_cause": "plainTextToEmailHtml escaped body and never linkified http(s) URLs — conversation/scheduled email HTML had bare text URLs.",
+      "fix": "Shared linkifyPlainTextForEmailHtml in lib/email/conversation-brand.ts; /offer/{token} → View your proposal CTA + URL under it; plain text body still carries raw URL.",
+      "status": "GREEN",
+      "commit": "cab3a1f03831877d03d40db658b486ef1f2315a6",
+      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35810851169",
+      "runtime": "htc-sandbox-venue-app:355 / cab3a1f0",
+      "evidence": "docs/qa/proposal-email-clickable-link/results.json",
+      "resend_id": "01a0cc24-978a-709f-a0e6-6b4518ad7877"
+    },
+    {
+      "id": "RCJ-CONVERSATION-MESSAGE-COLLAPSE",
+      "title": "Conversation/Inbox message history fully expanded — does not scale",
+      "root_cause": "ConversationThread rendered every Bubble expanded; no progressive disclosure.",
+      "fix": "Shared ConversationThread: latest always expanded; older collapsed with sender/time/channel/preview; expand/collapse toggles; composer stays after history (not a fixed-height transcript box).",
+      "status": "FIX_DEPLOYING",
+      "commit": "cab3a1f03831877d03d40db658b486ef1f2315a6",
+      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35810851169",
+      "evidence": "docs/qa/conversation-message-collapse/results.json"
+    },
     {
       "id": "J4-D1",
       "title": "Lead Overview / Tours list showed browser-local tour time",
@@ -57,20 +93,17 @@
     {
       "id": "RCJ-SMS-CONSENT-ACQUISITION",
       "title": "Manually added Lead had no venue path to request SMS consent",
-      "root_cause": "Public inquiry/tour checkbox + START keyword existed, but Lead UI only displayed not_opted_in with no Request action; no sms_consent_request send purpose.",
-      "fix": "Venue Request text permission uses existing communication_permissions + START; sendSms purpose sms_consent_request allows solicitation while not_opted_in without granting opted_in or weakening ordinary outbound gate.",
       "status": "GREEN",
       "commit": "5988c8d9237398e17b4b2443b32b31795dda9245",
-      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35807014604",
-      "evidence": "docs/qa/manual-lead-sms-consent/results.json",
-      "e2e_lead_id": "874faf76-9580-4796-8344-3948b912c66c",
-      "provider_sid": "SM72cfbe402d14450651e6eeafd1ce03db"
+      "evidence": "docs/qa/manual-lead-sms-consent/results.json"
+    },
+    {
+      "id": "RCJ-INBOUND-EMAIL-REPLY-LOST",
+      "title": "Yahoo reply to tour confirmation never appeared in Lead conversation / Inbox",
+      "status": "GREEN",
+      "commit": "e461f8de8a89371e39c1af7248949f91ab2d048a",
+      "evidence": "docs/qa/inbound-email-reply-lost/results.json"
     }
   ],
-  "J4": {
-    "status": "GREEN",
-    "j4_d1": "GREEN",
-    "runtime": "fad061c0 / :349"
-  },
-  "note": "RCJ-SMS-CONSENT-ACQUISITION GREEN on :352 / 5988c8d9 — request→Twilio SID→START→opted_in→ordinary SMS allowed; inquiry message/date also green."
+  "note": "Proposal clickable link GREEN on :355/cab3a1f0. Message collapse still needs browser E2E on same runtime."
 }

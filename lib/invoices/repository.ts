@@ -25,7 +25,13 @@ type InvoiceRow = {
   quickbooks_sync_status: "not_synced" | "pending" | "synced" | "failed";
   branding_snapshot: InvoiceBrandingSnapshot | null;
   created_at: string; updated_at: string;
-  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
+  clients?: {
+    first_name: string;
+    last_name: string;
+    partner_first_name: string | null;
+    partner_last_name: string | null;
+    event_date?: string | null;
+  } | null;
   events?: { name: string; event_date: string; booked_at: string | null } | null;
 };
 type LineItemRow = { id: string; invoice_id: string; venue_id: string; package_id: string | null; type: InvoiceLineItem["type"]; description: string; quantity: number; unit_price: number; amount: number; sort_order: number; created_at: string; event_order_line_id: string | null; revenue_category: string | null; };
@@ -43,7 +49,7 @@ function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: stri
     quickbooksSyncStatus: r.quickbooks_sync_status,
     brandingSnapshot: r.branding_snapshot ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at, clientName: cn,
-    eventDate: r.events?.event_date ?? null,
+    eventDate: r.events?.event_date ?? r.clients?.event_date ?? null,
     bookedAt: r.events?.booked_at ?? null,
     eventName: r.events?.name ?? null,
   };
@@ -55,7 +61,7 @@ const mapActivity = (r: ActivityRow): InvoiceActivity => ({ id: r.id, venueId: r
 
 export async function getInvoices(client: DbClient, venueId: string, filters?: { q?: string; status?: string }): Promise<Invoice[]> {
   let q = client.from("invoices")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date, booked_at)")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
     .eq("venue_id", venueId);
   if (filters?.status) q = q.eq("status", filters.status);
   if (filters?.q) q = q.ilike("invoice_number", `%${filters.q}%`);
@@ -66,7 +72,7 @@ export async function getInvoices(client: DbClient, venueId: string, filters?: {
 
 export async function getInvoice(client: DbClient, venueId: string, id: string): Promise<InvoiceWithLineItems | null> {
   const [invRes, itemsRes, amendedByRes, activitiesRes] = await Promise.all([
-    client.from("invoices").select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date, booked_at)").eq("id", id).eq("venue_id", venueId).maybeSingle<InvoiceRow>(),
+    client.from("invoices").select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)").eq("id", id).eq("venue_id", venueId).maybeSingle<InvoiceRow>(),
     client.from("invoice_line_items").select("*").eq("invoice_id", id).order("sort_order").order("created_at"),
     client.from("invoices").select("id, invoice_number").eq("amends_invoice_id", id).eq("venue_id", venueId).maybeSingle<{ id: string; invoice_number: string }>(),
     // D8 — invoice_activities has been written to (insertActivity, below)
@@ -88,7 +94,7 @@ export async function getInvoice(client: DbClient, venueId: string, id: string):
 
 export async function getInvoicesForClient(client: DbClient, venueId: string, clientId: string): Promise<Invoice[]> {
   const { data, error } = await client.from("invoices")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date, booked_at)")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
     .eq("venue_id", venueId).eq("client_id", clientId).order("created_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));

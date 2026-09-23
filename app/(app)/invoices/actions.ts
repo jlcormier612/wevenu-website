@@ -104,48 +104,138 @@ export async function sendInvoiceEmailAction(
     .maybeSingle<{ email: string | null; first_name: string; last_name: string }>();
   if (!client?.email) return { ok: false, message: "Client has no email address on file." };
 
-  // Build plain text email
-  const dueStr = invoiceToSend.dueDate
-    ? new Date(invoiceToSend.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-    : null;
+  // Amount due NOW = next open schedule installment (not full commitment).
+  const { resolveAmountDueNow } = await import("@/lib/invoices/amount-due-now");
+  const { getPaymentSchedules, getPaymentSchedule } = await import("@/lib/payments/service");
+  const schedules = (await getPaymentSchedules()).filter((s) => s.invoiceId === invoiceId);
+  let scheduleLines: { amount: number; dueDate: string | null; status: string; label?: string; obligationKind?: string | null; sortOrder?: number }[] | null = null;
+  if (schedules.length > 0) {
+    const detail = await getPaymentSchedule(schedules[0]!.id);
+    scheduleLines = (detail?.lineItems ?? []).map((li) => ({
+      amount: li.amount,
+      dueDate: li.dueDate,
+      status: li.status,
+      label: li.label,
+      obligationKind: li.obligationKind,
+      sortOrder: li.sortOrder,
+    }));
+  }
+  const dueNow = resolveAmountDueNow({
+    balanceDue: invoiceToSend.balanceDue,
+    scheduleLines,
+  });
 
-  const lineItemsText = invoiceToSend.lineItems
-    .filter((i) => i.type !== "discount" && i.type !== "deposit")
-    .map((i) => `  ${i.description}: ${formatCurrency(i.amount)}`)
-    .join("\n");
+  // Portal pay link (create session if needed).
+  const { publicAppOrigin } = await import("@/lib/env");
+  const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
+  let portalPayUrl: string | null = null;
+  try {
+    let sessions = await getPortalSessions(invoiceToSend.clientId);
+    if (sessions.length === 0) {
+      const created = await createPortalSession(invoiceToSend.clientId, "Payment", "couple");
+      if (created) sessions = [created];
+    }
+    if (sessions[0]?.accessToken) {
+      portalPayUrl = `${publicAppOrigin()}/p/${sessions[0].accessToken}#payments`;
+    }
+  } catch {
+    /* email still sends without link */
+  }
 
-  const discountsText = invoiceToSend.lineItems
-    .filter((i) => i.type === "discount" || i.type === "deposit")
-    .map((i) => `  ${i.description}: -${formatCurrency(i.amount)}`)
-    .join("\n");
+  const amountDueLabel =
+    dueNow.kind === "next_installment"
+      ? dueNow.label?.trim() ||
+        (dueNow.obligationKind === "deposit" ? "Deposit" : "Amount due now")
+      : dueNow.kind === "paid_in_full"
+        ? "Paid in full"
+        : "Balance remaining";
 
-  const text = [
+  const amountDueValue =
+    dueNow.kind === "next_installment"
+      ? formatCurrency(dueNow.amount)
+      : dueNow.kind === "paid_in_full"
+        ? formatCurrency(0)
+        : formatCurrency(invoiceToSend.balanceDue);
+
+  const dueDateStr =
+    dueNow.kind === "next_installment" && dueNow.dueDate
+      ? new Date(dueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      : invoiceToSend.dueDate
+        ? new Date(invoiceToSend.dueDate + "T12:00:00").toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })
+        : null;
+
+  const paidToDate = Math.max(0, invoiceToSend.total - invoiceToSend.balanceDue);
+  const remainingAfter =
+    dueNow.kind === "next_installment"
+      ? Math.max(0, invoiceToSend.balanceDue - dueNow.amount)
+      : invoiceToSend.balanceDue;
+
+  const textLines = [
     `Hi ${client.first_name},`,
     "",
-    `Please find your invoice from ${venue.name} below.`,
+    `${venue.name} is requesting a payment for invoice ${invoiceToSend.invoiceNumber}.`,
     "",
-    `Invoice: ${invoiceToSend.invoiceNumber}`,
-    dueStr ? `Due: ${dueStr}` : null,
+    `${amountDueLabel}: ${amountDueValue}`,
+    dueDateStr ? `Due: ${dueDateStr}` : null,
     "",
-    lineItemsText || null,
-    discountsText ? `\nDiscounts / deposits:\n${discountsText}` : null,
-    invoiceToSend.taxAmount > 0 ? `\nTax: ${formatCurrency(invoiceToSend.taxAmount)}` : null,
+    `Total contracted: ${formatCurrency(invoiceToSend.total)}`,
+    `Paid to date: ${formatCurrency(paidToDate)}`,
+    dueNow.kind === "next_installment"
+      ? `Remaining after this payment: ${formatCurrency(remainingAfter)}`
+      : invoiceToSend.balanceDue > 0
+        ? `Balance remaining: ${formatCurrency(invoiceToSend.balanceDue)}`
+        : "Paid in full.",
     "",
-    `Total: ${formatCurrency(invoiceToSend.total)}`,
-    invoiceToSend.balanceDue > 0 ? `Balance due: ${formatCurrency(invoiceToSend.balanceDue)}` : "Paid in full.",
-    invoiceToSend.notes ? `\nNotes: ${invoiceToSend.notes}` : null,
-    "",
-    `Please don't hesitate to reach out with any questions.`,
-    "",
+    portalPayUrl ? `Pay online: ${portalPayUrl}` : null,
+    portalPayUrl ? "" : null,
+    invoiceToSend.notes ? `Notes: ${invoiceToSend.notes}` : null,
+    invoiceToSend.notes ? "" : null,
     `Warm regards,`,
     venue.name,
     venue.email ?? "",
-  ].filter(Boolean).join("\n");
+  ].filter((line) => line !== null);
+
+  const text = textLines.join("\n");
+
+  const html = [
+    `<p>Hi ${escapeHtml(client.first_name)},</p>`,
+    `<p>${escapeHtml(venue.name)} is requesting a payment for invoice <strong>${escapeHtml(invoiceToSend.invoiceNumber)}</strong>.</p>`,
+    `<p style="font-size:18px;margin:16px 0"><strong>${escapeHtml(amountDueLabel)}: ${escapeHtml(amountDueValue)}</strong></p>`,
+    dueDateStr ? `<p>Due: ${escapeHtml(dueDateStr)}</p>` : "",
+    `<p>Total contracted: ${escapeHtml(formatCurrency(invoiceToSend.total))}<br/>`,
+    `Paid to date: ${escapeHtml(formatCurrency(paidToDate))}<br/>`,
+    dueNow.kind === "next_installment"
+      ? `Remaining after this payment: ${escapeHtml(formatCurrency(remainingAfter))}</p>`
+      : invoiceToSend.balanceDue > 0
+        ? `Balance remaining: ${escapeHtml(formatCurrency(invoiceToSend.balanceDue))}</p>`
+        : `Paid in full.</p>`,
+    portalPayUrl
+      ? `<p><a href="${escapeHtml(portalPayUrl)}" style="display:inline-block;padding:12px 20px;background:#5D6F5D;color:#fff;text-decoration:none;border-radius:6px">Pay ${escapeHtml(amountDueValue)}</a></p><p style="font-size:12px;color:#666">${escapeHtml(portalPayUrl)}</p>`
+      : "",
+    invoiceToSend.notes ? `<p>Notes: ${escapeHtml(invoiceToSend.notes)}</p>` : "",
+    `<p>Warm regards,<br/>${escapeHtml(venue.name)}</p>`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const subject =
+    dueNow.kind === "next_installment" && dueNow.obligationKind === "deposit"
+      ? `Deposit request ${amountDueValue} — ${venue.name}`
+      : `Payment request ${amountDueValue} — ${venue.name}`;
 
   const result = await sendEmail({
     to: client.email,
-    subject: `Invoice ${invoiceToSend.invoiceNumber} from ${venue.name}`,
+    subject,
     text,
+    html,
     replyTo: venue.email ?? undefined,
   });
 
@@ -174,4 +264,12 @@ export async function sendInvoiceEmailAction(
     if (invoiceToSend.clientId) revalidatePath(`/clients/${invoiceToSend.clientId}`);
   }
   return result;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

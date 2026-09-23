@@ -6,7 +6,13 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type PkgRow = {
   id: string; venue_id: string; name: string; description: string | null;
   base_price: number | string | null; category: string | null; is_active: boolean;
-  sort_order: number; source_master_key: string | null; created_at: string; updated_at: string;
+  sort_order: number; source_master_key: string | null;
+  offer_role?: string | null;
+  eligible_event_types?: string[] | null;
+  min_guest_count?: number | null;
+  max_guest_count?: number | null;
+  eligible_space_ids?: string[] | null;
+  created_at: string; updated_at: string;
 };
 type ItemRow = { id: string; package_id: string; venue_id: string; description: string; quantity: number; unit: string | null; sort_order: number; created_at: string; };
 
@@ -20,6 +26,11 @@ const map = (r: PkgRow): Package => ({
   isActive: r.is_active,
   sortOrder: r.sort_order,
   sourceMasterKey: r.source_master_key ?? null,
+  offerRole: r.offer_role === "addon" ? "addon" : "primary",
+  eligibleEventTypes: r.eligible_event_types ?? null,
+  minGuestCount: r.min_guest_count ?? null,
+  maxGuestCount: r.max_guest_count ?? null,
+  eligibleSpaceIds: r.eligible_space_ids ?? null,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });

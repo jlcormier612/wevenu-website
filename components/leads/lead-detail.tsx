@@ -678,6 +678,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               eventId={lead.linkedEventId ?? undefined}
               eventDate={lead.eventDate ?? undefined}
               spaceId={bookingSpaceId || undefined}
+              eventType={lead.eventType ?? undefined}
+              guestCount={lead.guestCount ?? undefined}
             />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
