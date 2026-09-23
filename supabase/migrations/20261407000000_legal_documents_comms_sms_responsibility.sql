@@ -156,7 +156,9 @@ These Terms are governed by the laws of the State of Delaware, excluding conflic
 Questions about these Terms: legal@hellotocheers.com
 
 Billing and account questions: through in-product support or the contact methods on our website.
-$vsa$
+$vsa$,
+    true,
+    true
   ),
   (
     'venue_terms_of_service',
@@ -291,7 +293,9 @@ These Terms are governed by the laws of the State of Delaware, excluding conflic
 Questions about these Terms: legal@hellotocheers.com
 
 Billing and account questions: through in-product support or the contact methods on our website.
-$vsa2$
+$vsa2$,
+    true,
+    true
   ),
   (
     'privacy_policy',
@@ -438,5 +442,7 @@ We may update this Privacy Policy from time to time. We will post the updated ve
 For privacy questions or requests: privacy@hellotocheers.com
 
 For general support: the contact methods listed on hellotocheers.com
-$priv$
+$priv$,
+    true,
+    true
   );
