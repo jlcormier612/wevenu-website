@@ -1,60 +1,43 @@
-# RCJ Human-Facing Cleanup Workstream — Forensic + Product Model
+# RCJ Human-Facing Cleanup Workstream
 
-**Status:** IMPLEMENTATION_COMPLETE_PENDING_SANDBOX — NOT GREEN  
+**Status:** PARTIAL — NOT full-workstream GREEN  
 **Production:** untouched  
-**Produced:** 2026-09-23
+**Updated:** 2026-09-23
 
-## Locked principles (from brief)
+## Proven on Sandbox (code + DB + runtime + browser)
 
-1. Venue setup choices determine which concepts appear in the human-facing product.
-2. Payment access ≠ portal access.
-3. Invoice number (system) ≠ invoice name (human).
-4. Phone ≠ SMS consent; texting configured ≠ consent.
-5. Physical space ≠ space use.
-6. Venue decides Booked — payment is not universally Booked.
-7. GREEN only after code + DB + exact Sandbox runtime + browser + RCJ outcomes.
+| Layer | Result |
+|---|---|
+| Commit (E2E runtime) | `0086371c` |
+| Migration | `20261405900000_…` applied — [run 35898554084](https://github.com/jlcormier612/wevenu-website/actions/runs/35898554084) |
+| Deploy | [35898557440](https://github.com/jlcormier612/wevenu-website/actions/runs/35898557440) success |
+| ECS | `htc-sandbox-venue-app:357` image `…:0086371c…` health 200 |
+| Pre-portal pay page | Wedding Deposit · Pay $800 · no portal nav · system # as Reference |
+| Stripe | Checkout + currency conversion · paid |
+| DB | Same invoice/line paid; balance_due 0; **financial session only** |
+| Confirmation | Payment received · What's next (no premature portal) · settled $0.00 |
 
----
+Evidence: `01-pre-portal-payment-page.png`, `02-payment-confirmation.png`, `03-payment-confirmation-settled.png`, `pre-portal-fixture.json`, `results.json`.
 
-## PART 1 — Date/time
+Follow-up commit `7dc63d6f` (confirmation refetch race) redeploying: [35899840462](https://github.com/jlcormier612/wevenu-website/actions/runs/35899840462).
 
-**Root cause:** human surfaces rendered machine 24h `tourTime` (`16:30`).
+## Product decisions locked
 
-**Fix:** `formatVenueLocalClock` / `formatVenueLocalShortDate` in `lib/venue/timezone.ts`; call sites updated (relationship card, upcoming tours, decision-engine, tour reminders, merge-context). Regression tests assert no raw `16:30` in ordinary UI.
+1. Payment access ≠ portal access (`financial` sessions → `PaymentAccessShell`).
+2. `invoice_number` immutable; `display_name` human editable.
+3. Unsolicited SMS consent solicitation **fails closed**; email solicitation OPEN pending legal.
+4. Spaces: `space_operating_mode` + `permitted_uses` + `event_space_assignments`; calendar filter only when `multi`.
+5. Payment ≠ Booked unless venue-configured.
 
----
+## OPEN (do not invent / still unproven in browser)
 
-## PART 2–6 — Payment vs portal
+- Legal basis for venue-initiated email SMS-consent solicitation.
+- Tour datetime consistency browser sweep (unit/regression green).
+- Manual-lead SMS UI browser proof.
+- Venue invoice-name edit UI browser proof.
+- Multi-space assignment editor + calendar filter browser proof.
+- Named deposit email mailbox capture on financial send path.
 
-**Fix:** deposit email creates/reuses `financial` portal sessions when no `couple` invite exists. `/p/{token}` routes financial → `PaymentAccessShell` (pay-only, no workspace nav). Confirmation explains booking setup / invitation forthcoming. Same invoice/line SoT. Payment ≠ Booked.
+## Automated tests
 
----
-
-## PART 7–11 — Invoice name
-
-**Schema:** `invoices.display_name` (migration `20261405900000_…`). `invoice_number` immutable. Venue can edit name. Email/payment page/list/detail use human label; system number shown as reference.
-
----
-
-## PART 12–15 — SMS consent
-
-**Decision:** refuse unsolicited SMS consent solicitation (`requestSmsConsentForLead` fails closed). UI shows accurate not-opted-in states. Email solicitation **OPEN** — no legal basis affirmed; do not invent.
-
----
-
-## PART 16–26 — Spaces
-
-**Schema:** `venue_spaces.permitted_uses`, `venues.space_operating_mode`, `event_space_assignments`. Contract merge prefers assignments. Calendar space filter only when `multi`. Setup UI: single vs multi + permitted uses when multi.
-
-**OPEN (post-Sandbox if needed):** dedicated event-form use→space assignment editor beyond schema + contract backfill; package eligibility already uses `eligible_space_ids` → `venue_spaces`.
-
----
-
-## OPEN (do not invent)
-
-- Legal basis for venue-initiated **email** SMS-consent solicitation.
-- Full event-assignment UI for multi-use (schema + contract path shipped; editor polish may remain).
-
-## Verification gate
-
-Do not mark GREEN until Sandbox migration + deploy + browser/DB/provider E2E prove the journeys.
+47 focused tests pass (timezone, invoice display-name, SMS fail-closed, payment-access, spaces uses, contract merge).

@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "fixture": "pre-portal-financial-payment",
+  "client": {
+    "id": "509e1d4c-154c-4a41-8f85-c86f05b8f107",
+    "first_name": "PrePortal",
+    "last_name": "Pay1790186362997",
+    "email": "preportal.pay.1790186362997@hellotocheers.test"
+  },
+  "invoice": {
+    "id": "5c5bd28b-acb3-4d19-a469-821a8a2c5deb",
+    "invoice_number": "INV-PREPAY-MUEEQM45",
+    "display_name": "Wedding Deposit",
+    "total": 800,
+    "balance_due": 800
+  },
+  "schedule_id": "2c8c412a-dc4a-480b-a33e-b0e39bd5c2d7",
+  "line": {
+    "id": "5b799d39-d828-47a7-bdfe-bde8a02242c6",
+    "label": "Initial payment",
+    "amount": 800,
+    "status": "pending"
+  },
+  "session": {
+    "id": "f1c975b6-12e7-4cf1-b6ac-3383514bf6bc",
+    "access_level": "financial"
+  },
+  "pay_url": "https://app.sandbox.hellotocheers.com/p/66761b828ed3c8ef9c04dc6696828cbc24e6245a4a406f5b45f310be9fcde264",
+  "note": "No couple portal session; financial-only token for PaymentAccessShell"
+}
