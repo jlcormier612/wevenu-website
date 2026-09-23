@@ -112,7 +112,7 @@ export async function createTemplateFromImport(rawText: string, name: string, ev
         title: item.title, description: item.description || null, notes: null,
         timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, dayOffset: 0,
         needsReview: item.guessed,
-        audiences: ["venue"], sortOrder: i,
+        audiences: ["client"], sortOrder: i,
       });
     }
     return { ok: true, templateId, itemCount: proposal.items.length, guessedCount, aiStructured: proposal.aiStructured } as ImportTimelineTemplateResult;
