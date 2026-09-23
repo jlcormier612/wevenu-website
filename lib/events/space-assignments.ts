@@ -4,6 +4,7 @@
  * events.space_id to the primary assignment for availability/legacy.
  */
 
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
@@ -57,6 +58,9 @@ export async function getEventSpaceAssignments(
 /**
  * Replace all use→space rows for an event. Empty list clears assignments
  * and clears events.space_id.
+ *
+ * Writes go through the service role after venue/session checks so a full
+ * replace (delete + insert) cannot leave stale backfill rows under RLS.
  */
 export async function replaceEventSpaceAssignments(
   eventId: string,
@@ -85,9 +89,10 @@ export async function replaceEventSpaceAssignments(
 
   const normalized = normalizeAssignmentInputs(assignments);
   const primarySpaceId = primarySpaceIdFromAssignments(normalized);
+  const admin = createAdminClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: delErr } = await (supabase.from("event_space_assignments") as any)
+  const { error: delErr } = await (admin.from("event_space_assignments") as any)
     .delete()
     .eq("venue_id", venue.id)
     .eq("event_id", eventId);
@@ -103,13 +108,13 @@ export async function replaceEventSpaceAssignments(
       sort_order: i,
     }));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insErr } = await (supabase.from("event_space_assignments") as any).insert(rows);
+    const { error: insErr } = await (admin.from("event_space_assignments") as any).insert(rows);
     if (insErr) return { ok: false, message: insErr.message };
   }
 
   // Keep legacy single FK aligned for availability / overview chip.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: updErr } = await (supabase.from("events") as any)
+  const { error: updErr } = await (admin.from("events") as any)
     .update({ space_id: primarySpaceId })
     .eq("id", eventId)
     .eq("venue_id", venue.id);

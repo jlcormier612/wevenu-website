@@ -35,6 +35,17 @@ describe("venue-configured space uses", () => {
     );
   });
 
+  it("drops legacy event_space backfill when configured uses are present", () => {
+    assert.equal(
+      formatEventSpaceAssignmentsDisplay([
+        { useKey: "event_space", useLabel: "Event space", spaceName: "Barn" },
+        { useKey: "ceremony", useLabel: "Ceremony", spaceName: "Barn" },
+        { useKey: "reception", useLabel: "Reception", spaceName: "Barn" },
+      ]),
+      "Ceremony: Barn\nReception: Barn",
+    );
+  });
+
   it("allows the same physical space on multiple uses", () => {
     const text = formatEventSpaceAssignmentsDisplay([
       { useKey: "ceremony", useLabel: "Ceremony", spaceName: "Barn" },

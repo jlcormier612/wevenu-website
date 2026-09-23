@@ -36,14 +36,18 @@ export function formatEventSpaceAssignmentsDisplay(
   assignments: Array<{ useKey: string; useLabel: string; spaceName: string }>,
 ): string | null {
   if (assignments.length === 0) return null;
-  if (assignments.length === 1 && assignments[0]!.useKey === "event_space") {
-    return assignments[0]!.spaceName;
+  // Prefer venue-configured uses over legacy single "event_space" backfill rows
+  // when both exist (e.g. after a partial replace).
+  const configured = assignments.filter((a) => a.useKey !== "event_space");
+  const rows = configured.length > 0 ? configured : assignments;
+  if (rows.length === 1 && rows[0]!.useKey === "event_space") {
+    return rows[0]!.spaceName;
   }
-  if (assignments.length === 1) {
-    const a = assignments[0]!;
+  if (rows.length === 1) {
+    const a = rows[0]!;
     return `${labelForUseKey(a.useKey, a.useLabel)}: ${a.spaceName}`;
   }
-  return assignments
+  return rows
     .map((a) => `${labelForUseKey(a.useKey, a.useLabel)}: ${a.spaceName}`)
     .join("\n");
 }
