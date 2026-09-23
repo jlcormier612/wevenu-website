@@ -1,0 +1,32 @@
+[
+  {
+    "id": "01a0d009-dfd7-754c-a269-1088045b34c3",
+    "to": [
+      "jennifer@hellotocheers.com"
+    ],
+    "from": "Hello to Cheers <onboarding@resend.dev>",
+    "subject": "New tour scheduled — Tour Notif1790196657210",
+    "last_event": "delivered",
+    "text": "Oct 02, 2028 at 10:00 AM · 60 min · Wedding\n\nhttps://app.sandbox.hellotocheers.com/leads/01b7bee7-161c-44b1-b3f5-3ed375ef63a4"
+  },
+  {
+    "id": "01a0d009-e250-7498-98d4-b44726a82f46",
+    "to": [
+      "jennifer@hellotocheers.com"
+    ],
+    "from": "Hello to Cheers <onboarding@resend.dev>",
+    "subject": "Tour confirmed — Tour Notif1790196657210",
+    "last_event": "delivered",
+    "text": "Oct 02, 2028 at 10:00 AM · Confirmed by the guest\n\nhttps://app.sandbox.hellotocheers.com/leads/01b7bee7-161c-44b1-b3f5-3ed375ef63a4"
+  },
+  {
+    "id": "01a0d009-e441-754d-9112-89359eef4573",
+    "to": [
+      "jennifer@hellotocheers.com"
+    ],
+    "from": "Hello to Cheers <onboarding@resend.dev>",
+    "subject": "Proposal accepted — Tour Notif1790196657210",
+    "last_event": "delivered",
+    "text": "$7,700.00 · Signature Wedding\n\nhttps://app.sandbox.hellotocheers.com/leads/01b7bee7-161c-44b1-b3f5-3ed375ef63a4"
+  }
+]

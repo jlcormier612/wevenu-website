@@ -1,0 +1,47 @@
+{
+  "rcj": "customer-action-notification-prefs",
+  "status": "GREEN_PENDING_UI_DEPLOY",
+  "production_untouched": true,
+  "sha": "500279e56e6520f517b835f489be58a9e9ffd0cf",
+  "migration": {
+    "file": "20261407100000_customer_action_notification_preferences.sql",
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35918338483",
+    "conclusion": "success"
+  },
+  "deploy": {
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35918341201",
+    "note": "venue-app image must include Settings UI rows"
+  },
+  "db_rcj": {
+    "file": "results.json",
+    "ok": true,
+    "tour_scheduled_on": true,
+    "tour_scheduled_off": true,
+    "tour_confirmed_on": true,
+    "tour_confirmed_replay_no_duplicate": true,
+    "confirmation_request_no_notify": true,
+    "tour_confirmed_off": true,
+    "proposal_accepted_on": true,
+    "proposal_accepted_replay_no_duplicate": true,
+    "proposal_accepted_off": true
+  },
+  "email_delivery": {
+    "ok": true,
+    "to": "jennifer@hellotocheers.com",
+    "subjects": [
+      "New tour scheduled — Tour Notif1790196657210",
+      "Tour confirmed — Tour Notif1790196657210",
+      "Proposal accepted — Tour Notif1790196657210"
+    ],
+    "resend_ids": [
+      "01a0d009-dfd7-754c-a269-1088045b34c3",
+      "01a0d009-e250-7498-98d4-b44726a82f46",
+      "01a0d009-e441-754d-9112-89359eef4573"
+    ],
+    "last_event": "delivered"
+  },
+  "unit_tests": {
+    "preference-matrix": "pass",
+    "customer-action-prefs": "pass"
+  }
+}

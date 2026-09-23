@@ -81,22 +81,23 @@ async function main() {
       first_name: "Tour",
       last_name: `Notif${stamp}`,
       email: `tour.notif.${stamp}@hellotocheers.test`,
-      status: "new_inquiry",
       sales_stage: "new_inquiry",
-      source: "manual",
     } as never)
     .select("id, first_name, last_name")
     .single();
   if (le || !lead) throw new Error(`lead: ${le?.message}`);
 
-  const slot = new Date(Date.now() + 7 * 86400000);
-  slot.setMinutes(0, 0, 0);
+  // Unique far-future slots to avoid capacity collisions with live Sandbox tours.
+  const dayOffset = (stamp % 300) + 5;
+  const base = Date.UTC(2028, 2, 1, 14, 0, 0) + dayOffset * 86400000;
+  const slotAt = (offsetDays: number) =>
+    new Date(base + offsetDays * 86400000).toISOString();
   const { data: appt, error: ae } = await sb
     .from("tour_appointments")
     .insert({
       venue_id: FANCY,
       lead_id: lead.id,
-      scheduled_at: slot.toISOString(),
+      scheduled_at: slotAt(0),
       duration_minutes: 60,
       status: "scheduled",
       contact_name: `${lead.first_name} ${lead.last_name}`,
@@ -122,7 +123,7 @@ async function main() {
     .insert({
       venue_id: FANCY,
       lead_id: lead.id,
-      scheduled_at: new Date(slot.getTime() + 86400000).toISOString(),
+      scheduled_at: slotAt(1),
       duration_minutes: 45,
       status: "scheduled",
       contact_name: `${lead.first_name} ${lead.last_name}`,
@@ -178,7 +179,7 @@ async function main() {
     .insert({
       venue_id: FANCY,
       lead_id: lead.id,
-      scheduled_at: new Date(slot.getTime() + 2 * 86400000).toISOString(),
+      scheduled_at: slotAt(2),
       duration_minutes: 60,
       status: "scheduled",
       contact_name: `${lead.first_name} ${lead.last_name}`,
@@ -203,7 +204,7 @@ async function main() {
     .insert({
       venue_id: FANCY,
       lead_id: lead.id,
-      scheduled_at: new Date(slot.getTime() + 3 * 86400000).toISOString(),
+      scheduled_at: slotAt(3),
       duration_minutes: 60,
       status: "scheduled",
       contact_name: `${lead.first_name} ${lead.last_name}`,

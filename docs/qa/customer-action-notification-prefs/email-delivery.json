@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "proofs": [
+    {
+      "id": "8d2f413f-2c0f-4440-a857-9ec82325e270",
+      "type": "tour_scheduled",
+      "subject": "New tour scheduled — Tour Notif1790196657210",
+      "to": "jennifer@hellotocheers.com",
+      "ok": true,
+      "providerId": "01a0d009-dfd7-754c-a269-1088045b34c3"
+    },
+    {
+      "id": "ba636105-fad6-4015-97d8-bb2355156b12",
+      "type": "tour_confirmed",
+      "subject": "Tour confirmed — Tour Notif1790196657210",
+      "to": "jennifer@hellotocheers.com",
+      "ok": true,
+      "providerId": "01a0d009-e250-7498-98d4-b44726a82f46"
+    },
+    {
+      "id": "7dcbc4ef-3c7f-4130-a9ef-3015806019dd",
+      "type": "proposal_accepted",
+      "subject": "Proposal accepted — Tour Notif1790196657210",
+      "to": "jennifer@hellotocheers.com",
+      "ok": true,
+      "providerId": "01a0d009-e441-754d-9112-89359eef4573"
+    }
+  ]
+}
