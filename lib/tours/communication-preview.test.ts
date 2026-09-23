@@ -78,4 +78,22 @@ describe("tour send previews use the real email builders", () => {
     assert.match(src, /no confirmation email was sent/);
     assert.match(src, /if \(status !== "accepted"\)/);
   });
+
+  it("tour confirmation and request emails pass threadId so replies hit HTC inbound", () => {
+    const src = readFileSync(resolve("lib/tours/communication.ts"), "utf8");
+    assert.match(src, /threadId: conversationId/);
+    assert.match(src, /findOrCreateVenueCoupleConversation/);
+    // Must resolve conversation before sendEmail so Reply-To is set.
+    const confirmFn = src.slice(src.indexOf("export async function sendTourConfirmation"));
+    const confirmSend = confirmFn.slice(0, confirmFn.indexOf("export async function sendTourConfirmationRequest"));
+    assert.ok(
+      confirmSend.indexOf("findOrCreateConversation") < confirmSend.indexOf("sendEmail({"),
+      "conversation must be resolved before sendEmail in sendTourConfirmation",
+    );
+    const requestFn = src.slice(src.indexOf("export async function sendTourConfirmationRequest"));
+    assert.ok(
+      requestFn.indexOf("findOrCreateConversation") < requestFn.indexOf("sendEmail({"),
+      "conversation must be resolved before sendEmail in sendTourConfirmationRequest",
+    );
+  });
 });

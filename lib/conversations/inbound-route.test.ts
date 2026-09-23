@@ -27,3 +27,28 @@ describe("conversation email send carries thread context", () => {
     assert.match(source, /isSendableChannel/);
   });
 });
+
+describe("tour emails also carry thread context for inbound reply matching", () => {
+  const source = readFileSync(resolve("lib/tours/communication.ts"), "utf8");
+  it("sendTourConfirmation and sendTourConfirmationRequest pass threadId", () => {
+    assert.match(source, /threadId: conversationId \?\? undefined/);
+  });
+});
+
+describe("venue conversation messages are newest-first", () => {
+  it("migration orders get_conversation messages by sent_at desc", () => {
+    const migration = readFileSync(
+      resolve("supabase/migrations/20261405700000_conversation_messages_newest_first.sql"),
+      "utf8",
+    );
+    assert.match(migration, /order by cm\.sent_at desc/);
+    assert.doesNotMatch(migration, /order by cm\.sent_at asc/);
+  });
+
+  it("Lead conversation UI sticks to the top (newest) not the bottom", () => {
+    const thread = readFileSync(resolve("components/conversations/conversation-thread.tsx"), "utf8");
+    assert.match(thread, /stickToNewestRef/);
+    assert.match(thread, /scrollMessagesToNewest/);
+    assert.match(thread, /const last = next\[0\]/);
+  });
+});

@@ -70,17 +70,20 @@ export function conversationNeedsResponse(
 export function latestMeaningfulFromMessages(
   messages: ReadonlyArray<{ senderType: ConversationSenderType; channel: ConversationChannel; body: string; sentAt: string }>,
 ): ConversationMessagePreview | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i]!;
+  // Order-independent — works for oldest-first or newest-first thread arrays.
+  let best: ConversationMessagePreview | null = null;
+  for (const m of messages) {
     if (!isMeaningfulCommunication(m)) continue;
-    return {
-      body: m.body,
-      senderType: m.senderType,
-      sentAt: m.sentAt,
-      channel: m.channel,
-    };
+    if (!best || m.sentAt > best.sentAt) {
+      best = {
+        body: m.body,
+        senderType: m.senderType,
+        sentAt: m.sentAt,
+        channel: m.channel,
+      };
+    }
   }
-  return null;
+  return best;
 }
 
 /**

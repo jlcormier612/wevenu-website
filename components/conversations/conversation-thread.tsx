@@ -399,9 +399,10 @@ export function ConversationThread({
   );
   const [clearingNeedsResponse, setClearingNeedsResponse] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  const topRef = React.useRef<HTMLDivElement>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  /** Stick to newest unless the user scrolls up into history. */
-  const stickToBottomRef = React.useRef(true);
+  /** Stick to newest (top) unless the user scrolls down into history. */
+  const stickToNewestRef = React.useRef(true);
   const initialScrollDoneRef = React.useRef(false);
   const [scheduled, setScheduled] = React.useState<ScheduledMessage[]>([]);
   const [prefill, setPrefill] = React.useState<{ body: string; channel: ConversationChannel; nonce: number } | null>(null);
@@ -462,7 +463,7 @@ export function ConversationThread({
   React.useEffect(() => {
     let cancelled = false;
     openedNotifiedRef.current = false;
-    stickToBottomRef.current = true;
+    stickToNewestRef.current = true;
     initialScrollDoneRef.current = false;
     setMessages(null);
     void getConversationAction(conversationId)
@@ -497,24 +498,23 @@ export function ConversationThread({
     };
   }, [conversationId]);
 
-  const scrollMessagesToBottom = React.useCallback((behavior: ScrollBehavior) => {
+  const scrollMessagesToNewest = React.useCallback((behavior: ScrollBehavior) => {
     const el = flow === "contained" ? scrollRef.current : null;
     if (!el) {
-      bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+      topRef.current?.scrollIntoView({ behavior, block: "start" });
       return;
     }
     if (behavior === "smooth") {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      el.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = 0;
     }
   }, [flow]);
 
   function handleMessagesScroll() {
     const el = scrollRef.current;
     if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    stickToBottomRef.current = distanceFromBottom < 96;
+    stickToNewestRef.current = el.scrollTop < 96;
   }
 
   // In `page` flow the thread has no scrollport of its own, so "am I still at
@@ -527,26 +527,25 @@ export function ConversationThread({
     }
     if (!host) return;
     const onScroll = () => {
-      const distanceFromBottom = host!.scrollHeight - host!.scrollTop - host!.clientHeight;
-      stickToBottomRef.current = distanceFromBottom < 96;
+      stickToNewestRef.current = host!.scrollTop < 96;
     };
     host.addEventListener("scroll", onScroll, { passive: true });
     return () => host?.removeEventListener("scroll", onScroll);
   }, [flow]);
 
-  // Open at newest; keep sticking only while the user is at (or near) the bottom.
+  // Open at newest (top); keep sticking only while the user is near the top.
   React.useLayoutEffect(() => {
     if (messages === null) return;
     if (!initialScrollDoneRef.current) {
-      scrollMessagesToBottom("auto");
+      scrollMessagesToNewest("auto");
       initialScrollDoneRef.current = true;
-      stickToBottomRef.current = true;
+      stickToNewestRef.current = true;
       return;
     }
-    if (stickToBottomRef.current) {
-      scrollMessagesToBottom("smooth");
+    if (stickToNewestRef.current) {
+      scrollMessagesToNewest("smooth");
     }
-  }, [messages, scrollMessagesToBottom]);
+  }, [messages, scrollMessagesToNewest]);
 
   async function handleSent(ack?: SentMessageAck) {
     try {
@@ -558,7 +557,8 @@ export function ConversationThread({
           ? detail.needsResponse
           : conversationNeedsResponse(latestMeaningfulFromMessages(next));
       setNeedsResponse(persistedNeeds);
-      const last = next[next.length - 1];
+      // Newest-first: the latest message is at index 0.
+      const last = next[0];
       if (last && onInboxSentRef.current) {
         const preview: ConversationMessagePreview = {
           body: last.body,
@@ -709,24 +709,27 @@ export function ConversationThread({
         ) : messages.length === 0 ? (
           <p className="text-xs text-muted-foreground">No messages yet — say hello.</p>
         ) : (
-          grouped.map((g) => (
-            <div key={g.label}>
-              <DateSep label={g.label} />
-              <div className="space-y-2">
-                {g.msgs.map((m) => (
-                  <Bubble
-                    key={m.id}
-                    msg={m}
-                    leadId={summary?.leadId ?? null}
-                    clientId={summary?.clientId ?? null}
-                    eventId={docsEventId}
-                    onPrefill={prefillFromFailed}
-                    onCreateTask={createFollowUpTask}
-                  />
-                ))}
+          <>
+            <div ref={topRef} />
+            {grouped.map((g) => (
+              <div key={g.label}>
+                <DateSep label={g.label} />
+                <div className="space-y-2">
+                  {g.msgs.map((m) => (
+                    <Bubble
+                      key={m.id}
+                      msg={m}
+                      leadId={summary?.leadId ?? null}
+                      clientId={summary?.clientId ?? null}
+                      eventId={docsEventId}
+                      onPrefill={prefillFromFailed}
+                      onCreateTask={createFollowUpTask}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </>
         )}
         <div ref={bottomRef} />
       </div>

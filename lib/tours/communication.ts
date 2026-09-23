@@ -29,6 +29,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
 import { publicAppOrigin } from "@/lib/env";
+import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
 import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 import type { TourCustomerSendPreview } from "@/lib/tours/types";
 
@@ -180,14 +181,7 @@ export function previewTourConfirmationRequest(params: TourConfirmationRequestPa
 }
 
 async function findOrCreateConversation(client: AdminClient, venueId: string, relationshipId: string): Promise<string | null> {
-  const { data: existing } = await client.from("conversations")
-    .select("id").eq("relationship_id", relationshipId).maybeSingle<{ id: string }>();
-  if (existing) return existing.id;
-
-  const { data: created } = await client.from("conversations")
-    .insert({ venue_id: venueId, relationship_id: relationshipId })
-    .select("id").single<{ id: string }>();
-  return created?.id ?? null;
+  return findOrCreateVenueCoupleConversation(client, venueId, relationshipId);
 }
 
 /**
@@ -205,7 +199,21 @@ export async function sendTourConfirmation(params: TourConfirmationParams): Prom
   const supabase = createAdminClient();
   const { subject, text, html } = buildConfirmationContent(params);
 
-  const emailResult = await sendEmail({ to: params.contactEmail, subject, text, html });
+  // Resolve the venue↔couple conversation *before* send so Reply-To can
+  // carry thread+{conversationId}@replies… — without threadId, replies go
+  // to the From mailbox and never hit HTC inbound.
+  let conversationId: string | null = null;
+  if (params.relationshipId) {
+    conversationId = await findOrCreateConversation(supabase, params.venueId, params.relationshipId);
+  }
+
+  const emailResult = await sendEmail({
+    to: params.contactEmail,
+    subject,
+    text,
+    html,
+    threadId: conversationId ?? undefined,
+  });
   const providerId = emailResult.ok && emailResult.method === "resend" ? emailResult.providerId : undefined;
   // A "mailto" fallback opens the *user's* mail client — meaningless in
   // this fully automated, backend-only send with nobody there to click
@@ -217,22 +225,19 @@ export async function sendTourConfirmation(params: TourConfirmationParams): Prom
     : emailResult.method === "mailto" ? "Email isn't fully configured for this venue yet."
     : null;
 
-  if (params.relationshipId) {
-    const conversationId = await findOrCreateConversation(supabase, params.venueId, params.relationshipId);
-    if (conversationId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("conversation_messages") as any).insert({
-        conversation_id: conversationId,
-        venue_id: params.venueId,
-        sender_type: "system",
-        channel: "email",
-        body: text,
-        body_html: html,
-        provider_id: providerId ?? null,
-        status,
-        failure_reason: failureReason,
-      });
-    }
+  if (conversationId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("conversation_messages") as any).insert({
+      conversation_id: conversationId,
+      venue_id: params.venueId,
+      sender_type: "system",
+      channel: "email",
+      body: text,
+      body_html: html,
+      provider_id: providerId ?? null,
+      status,
+      failure_reason: failureReason,
+    });
   }
 
   if (status !== "accepted") {
@@ -258,29 +263,37 @@ export async function sendTourConfirmationRequest(params: TourConfirmationReques
   const supabase = createAdminClient();
   const { subject, text, html } = buildConfirmationRequestContent(params);
 
-  const emailResult = await sendEmail({ to: params.contactEmail, subject, text, html });
+  let conversationId: string | null = null;
+  if (params.relationshipId) {
+    conversationId = await findOrCreateConversation(supabase, params.venueId, params.relationshipId);
+  }
+
+  const emailResult = await sendEmail({
+    to: params.contactEmail,
+    subject,
+    text,
+    html,
+    threadId: conversationId ?? undefined,
+  });
   const providerId = emailResult.ok && emailResult.method === "resend" ? emailResult.providerId : undefined;
   const status = emailResult.ok && (emailResult.method === "resend" || emailResult.method === "disabled") ? "accepted" : "failed";
   const failureReason = !emailResult.ok ? emailResult.message
     : emailResult.method === "mailto" ? "Email isn't fully configured for this venue yet."
     : null;
 
-  if (params.relationshipId) {
-    const conversationId = await findOrCreateConversation(supabase, params.venueId, params.relationshipId);
-    if (conversationId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("conversation_messages") as any).insert({
-        conversation_id: conversationId,
-        venue_id: params.venueId,
-        sender_type: "system",
-        channel: "email",
-        body: text,
-        body_html: html,
-        provider_id: providerId ?? null,
-        status,
-        failure_reason: failureReason,
-      });
-    }
+  if (conversationId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("conversation_messages") as any).insert({
+      conversation_id: conversationId,
+      venue_id: params.venueId,
+      sender_type: "system",
+      channel: "email",
+      body: text,
+      body_html: html,
+      provider_id: providerId ?? null,
+      status,
+      failure_reason: failureReason,
+    });
   }
 
   if (status !== "accepted") return { ok: false, message: failureReason ?? "Could not send the confirmation request." };
