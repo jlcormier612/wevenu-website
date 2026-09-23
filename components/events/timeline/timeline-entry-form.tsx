@@ -32,6 +32,7 @@ import {
 import type {
   TimelineAudience, TimelineEntryAttachment, TimelineEntryInput, TimelineEntryLink, TimelineRelatedLink, TimelineSection,
 } from "@/lib/timeline/types";
+import { VENUE_OWNED_DEFAULT_AUDIENCES } from "@/lib/timeline/audience-ownership";
 import { VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
 import { timelineDayOptions } from "@/lib/timeline/constants";
 import type { StaffMember } from "@/lib/team/types";
@@ -79,7 +80,7 @@ export function TimelineEntryForm({
   const [dayOffset, setDayOffset] = React.useState(String(initial.dayOffset ?? 0));
   const [sectionId, setSectionId] = React.useState(initial.sectionId ?? NO_SECTION);
   const [audiences, setAudiences] = React.useState<TimelineAudience[]>(
-    initial.audiences ?? ["venue"]
+    initial.audiences ?? [...VENUE_OWNED_DEFAULT_AUDIENCES]
   );
   // Structural milestones lock by default (docs/client-workspace-product-
   // architecture.md §12) — a safety rail against accidental drift, always
@@ -213,12 +214,10 @@ export function TimelineEntryForm({
         />
       </div>
 
-      {/* Publication — the venue's own items are always visible to the
-          client (they're planning inside this framework); these tags are
-          purely about publishing further out to wedding party / vendors.
-          Guests are couple-owned — never offered here. */}
+      {/* Share with — venue-owned items: Client + Vendors only.
+          Wedding Party and Guests are client-controlled audiences. */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Publish to</Label>
+        <Label className="text-xs">Share with</Label>
         <div className="flex gap-1.5 flex-wrap">
           {VENUE_TIMELINE_AUDIENCES.map(a => (
             <button

@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatTime, formatTimelineDayHeader, isMultiDayEvent, maxDayOffset, timelineDayOptions, compareTimelineEntries } from "@/lib/timeline/constants";
-import { TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline/types";
+import { CLIENT_TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline/types";
 import type { PortalTimeline, PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
@@ -80,8 +80,8 @@ function VisibilityPicker({
 
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1">
-      <span className="text-[10px] text-muted-foreground">Also share with:</span>
-      {TIMELINE_AUDIENCES.map((a) => (
+      <span className="text-[10px] text-muted-foreground">Share with</span>
+      {CLIENT_TIMELINE_AUDIENCES.map((a) => (
         <button
           key={a.value}
           type="button"

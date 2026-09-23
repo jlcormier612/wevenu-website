@@ -1,13 +1,21 @@
-import { TIMELINE_AUDIENCES, VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
+import {
+  CLIENT_TIMELINE_AUDIENCES,
+  TIMELINE_AUDIENCES,
+  VENUE_TIMELINE_AUDIENCES,
+} from "@/lib/timeline/types";
 import type { TimelineAudience } from "@/lib/timeline/types";
 
-export { TIMELINE_AUDIENCES, VENUE_TIMELINE_AUDIENCES };
+export { CLIENT_TIMELINE_AUDIENCES, TIMELINE_AUDIENCES, VENUE_TIMELINE_AUDIENCES };
 export type { TimelineAudience };
 
-/** Strip guests from venue-authored template audiences. */
+/**
+ * Venue-authored template audiences: keep only Client + Vendors.
+ * Legacy tags (wedding_party, guests, venue) are dropped — not rejected —
+ * so older template rows still apply cleanly.
+ */
 export function sanitizeVenueTemplateAudiences(audiences: TimelineAudience[]): TimelineAudience[] {
-  const next = audiences.filter((a) => a !== "guests");
-  return next.length > 0 ? next : ["venue"];
+  const allowed = new Set<string>(["client", "vendors"]);
+  return audiences.filter((a) => allowed.has(a));
 }
 
 /** "+90 min" / "-30 min" / "At event start", for card and list display. */

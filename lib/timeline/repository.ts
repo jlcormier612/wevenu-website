@@ -11,6 +11,10 @@ import {
   timeToMinutes,
   type TimelineTemplate,
 } from "@/lib/timeline/constants";
+import {
+  sanitizeVenueOwnedAudiences,
+  VENUE_OWNED_DEFAULT_AUDIENCES,
+} from "@/lib/timeline/audience-ownership";
 import type {
   TimelineAudience, TimelineEntry, TimelineEntryAttachment, TimelineEntryInput,
   TimelineEntryLink, TimelineEntryStatus, TimelineLockState, TimelineOwner, TimelineRelatedLink, TimelineRelatedSourceType, TimelineSection,
@@ -39,7 +43,7 @@ function mapEntry(r: EntryRow): TimelineEntry {
     title: r.title, description: r.description, notes: r.notes,
     entryTime: r.entry_time?.slice(0, 5) ?? null,
     dayOffset: r.day_offset ?? 0,
-    audiences: (r.audiences ?? ["venue"]) as TimelineAudience[],
+    audiences: (r.audiences ?? [...VENUE_OWNED_DEFAULT_AUDIENCES]) as TimelineAudience[],
     sectionId: r.section_id,
     sortOrder: r.sort_order,
     owner: r.owner ?? "venue",
@@ -77,10 +81,14 @@ function mapSection(r: SectionRow): TimelineSection {
   return { id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "", name: r.name, sortOrder: r.sort_order, clientCanAdd: r.client_can_add, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 
-/** Venue never owns guest publication — strip on write so legacy tags can't re-stick. */
+/**
+ * Venue-owned writes: only Client + Vendors. Rejects wedding_party, guests,
+ * venue, and unknown tags (fail closed — not silent strip).
+ */
 function sanitizeVenueAudiences(audiences: TimelineAudience[] | undefined): TimelineAudience[] {
-  const next = (audiences ?? ["venue"]).filter((a) => a !== "guests");
-  return next.length > 0 ? next : ["venue"];
+  const result = sanitizeVenueOwnedAudiences(audiences);
+  if (!result.ok) throw new Error(result.message);
+  return result.audiences;
 }
 
 // ---- Entries -------------------------------------------------------------------

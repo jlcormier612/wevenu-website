@@ -47,8 +47,14 @@ export async function getTimelineEntries(eventId: string): Promise<TimelineEntry
 export async function addEntry(eventId: string, input: TimelineEntryInput): Promise<AddEntryResult> {
   if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
   const result = await withVenue(async (supabase, venueId) => {
-    const entry = await repo.insertEntry(supabase, venueId, eventId, input);
-    return { ok: true, entry } as AddEntryResult;
+    try {
+      const entry = await repo.insertEntry(supabase, venueId, eventId, input);
+      return { ok: true, entry } as AddEntryResult;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not save this item.";
+      if (message.includes("cannot share with")) return { ok: false, message };
+      throw e;
+    }
   });
   return result as AddEntryResult;
 }
@@ -63,8 +69,14 @@ export async function getClientTimelineEntries(clientId: string): Promise<Timeli
 export async function addClientEntry(clientId: string, input: TimelineEntryInput): Promise<AddEntryResult> {
   if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
   const result = await withVenue(async (supabase, venueId) => {
-    const entry = await repo.insertClientEntry(supabase, venueId, clientId, input);
-    return { ok: true, entry } as AddEntryResult;
+    try {
+      const entry = await repo.insertClientEntry(supabase, venueId, clientId, input);
+      return { ok: true, entry } as AddEntryResult;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not save this item.";
+      if (message.includes("cannot share with")) return { ok: false, message };
+      throw e;
+    }
   });
   return result as AddEntryResult;
 }
@@ -72,8 +84,16 @@ export async function addClientEntry(clientId: string, input: TimelineEntryInput
 export async function updateEntry(entryId: string, input: TimelineEntryInput): Promise<TimelineActionResult> {
   if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateEntry(supabase, venueId, entryId, input);
-    return { ok: true } as TimelineActionResult;
+    try {
+      await repo.updateEntry(supabase, venueId, entryId, input);
+      return { ok: true } as TimelineActionResult;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not save this item.";
+      if (message.includes("cannot share with") || message.includes("belongs to the couple")) {
+        return { ok: false, message };
+      }
+      throw e;
+    }
   });
   return result as TimelineActionResult;
 }

@@ -244,9 +244,9 @@ export async function sharePortalTimelineWithVendor(
 }
 
 // The Client Timeline — the couple's own always-live view (their own
-// draft + venue items tagged wedding_party), through get_portal_run_of_show.
-// Never gated by the couple's own submission state. Venue staff-only
-// framework items (no wedding_party audience) stay out of the portal.
+// draft + venue items shared with Client), through get_portal_run_of_show.
+// Never gated by the couple's own submission state. Venue items without
+// the client audience stay out of the portal.
 export async function resolvePortalTimeline(token: string): Promise<PortalTimeline> {
   const empty: PortalTimeline = { sections: [], entries: [], lastSubmittedAt: null, hasUnpublishedChanges: false };
   if (!isSupabaseConfigured) return empty;

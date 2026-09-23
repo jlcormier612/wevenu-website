@@ -44,7 +44,7 @@ import type { TimelineAudience } from "@/lib/timeline/types";
 function emptyForm(sortOrder: number): TimelineTemplateItemInput {
   return {
     title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null,
-    dayOffset: 0, needsReview: false, audiences: ["venue"], sortOrder,
+    dayOffset: 0, needsReview: false, audiences: ["client"], sortOrder,
   };
 }
 
@@ -318,7 +318,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               <Textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="min-h-16 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Audience</Label>
+              <Label className="text-xs">Share with</Label>
               <div className="flex flex-wrap gap-1.5">
                 {VENUE_TIMELINE_AUDIENCES.map((a) => (
                   <button

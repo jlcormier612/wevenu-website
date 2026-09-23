@@ -4,32 +4,50 @@
  */
 
 // docs/client-workspace-product-architecture.md §12 — the approved
-// Visibility vocabulary in full (matches the DB check constraint). "venue"
-// and "client" are kept as valid values for precision/future use, but
-// aren't offered as picker toggles below: per the approved workflow, the
-// venue's own live framework is always visible to the client (they're
-// planning inside it) and the venue always reads the client's latest
-// submitted snapshot — neither of those two core parties' mutual
-// visibility is gated by a tag. Only the three genuine external-audience
-// tags are real, deliberate per-item publishing decisions.
-// "public" (the old vocabulary's unused value, no picker UI ever) is dropped.
+// Visibility vocabulary in full (matches the DB check constraint).
+// Selection of which audiences an owner may set is gated separately in
+// lib/timeline/audience-ownership.ts — Owner ≠ Audience.
 export type TimelineAudience = "venue" | "client" | "wedding_party" | "guests" | "vendors";
 
 type TimelineAudienceOption = { value: TimelineAudience; label: string; color: string; emoji: string };
 
-// Full external-audience picker — couples own guest visibility (wedding
-// website Day-of Schedule). Venue builders must use VENUE_TIMELINE_AUDIENCES.
-export const TIMELINE_AUDIENCES: TimelineAudienceOption[] = [
+/** Full vocabulary labels (filters, badges) — not every value is pickable by every owner. */
+export const ALL_TIMELINE_AUDIENCE_OPTIONS: TimelineAudienceOption[] = [
+  { value: "venue",         label: "Venue",         color: "#6B5B4F", emoji: "🏛️" },
+  { value: "client",        label: "Client",        color: "#4A6FA5", emoji: "💍" },
   { value: "wedding_party", label: "Wedding Party", color: "#A98CC7", emoji: "💐" },
   { value: "guests",        label: "Guests",        color: "#5D6F5D", emoji: "🌿" },
   { value: "vendors",       label: "Vendors",       color: "#C7A66A", emoji: "🚚" },
 ];
 
-// Guests are couple-owned — venues never choose guest publication on their
-// timeline items (or anywhere else). Wedding party + vendors only.
-export const VENUE_TIMELINE_AUDIENCES: TimelineAudienceOption[] = TIMELINE_AUDIENCES.filter(
-  (a) => a.value !== "guests",
-);
+const byValue = Object.fromEntries(
+  ALL_TIMELINE_AUDIENCE_OPTIONS.map((o) => [o.value, o]),
+) as Record<TimelineAudience, TimelineAudienceOption>;
+
+/**
+ * Client/couple Share-with picker — Venue, Vendors, Guests, Wedding Party.
+ * Any combination including none is valid.
+ */
+export const CLIENT_TIMELINE_AUDIENCES: TimelineAudienceOption[] = [
+  byValue.venue,
+  byValue.vendors,
+  byValue.guests,
+  byValue.wedding_party,
+];
+
+/**
+ * Venue Share-with picker — Client and Vendors only.
+ * Wedding Party and Guests are client-controlled; not offered here.
+ */
+export const VENUE_TIMELINE_AUDIENCES: TimelineAudienceOption[] = [
+  byValue.client,
+  byValue.vendors,
+];
+
+/**
+ * @deprecated Prefer CLIENT_TIMELINE_AUDIENCES — kept as the couple picker alias.
+ */
+export const TIMELINE_AUDIENCES = CLIENT_TIMELINE_AUDIENCES;
 
 // docs/commitment-lifecycle-architecture.md §4 — who authored this item.
 // "shared" deliberately omitted (approved 2026-07-17): Delegation (§7)
