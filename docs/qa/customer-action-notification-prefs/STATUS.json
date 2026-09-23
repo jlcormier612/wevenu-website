@@ -1,8 +1,14 @@
 {
   "rcj": "customer-action-notification-prefs",
-  "status": "GREEN_PENDING_UI_DEPLOY",
+  "status": "GREEN",
   "production_untouched": true,
   "sha": "500279e56e6520f517b835f489be58a9e9ffd0cf",
+  "ecs_image": "htc-sandbox-venue-app:500279e56e6520f517b835f489be58a9e9ffd0cf",
+  "ui": {
+    "settings_path": "/settings/communications",
+    "rows_visible": ["Tour scheduled", "Tour confirmed", "Proposal accepted"],
+    "toggle_persist": "pref_tour_scheduled flipped OFF via UI then restored ON"
+  },
   "migration": {
     "file": "20261407100000_customer_action_notification_preferences.sql",
     "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35918338483",
