@@ -76,41 +76,60 @@ export function RelationshipCommunicationSummary({
         <span className="text-muted-foreground">Preferred: </span>
         {preferredLabel}
       </p>
-      <div className="space-y-0.5">
+
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium text-heading">Text messaging</p>
         <p className="text-sm text-foreground">
-          <span className="text-muted-foreground">Text messages: </span>
           <span className={smsDot}>●</span>{" "}
           {smsPermissionDisplayLabel(smsStatus)}
         </p>
-        {sourceLine && (smsStatus !== "not_opted_in" || consentRequested) && (
+
+        {smsStatus === "opted_in" && (
+          <>
+            <p className="text-xs text-muted-foreground">
+              This person gave permission to receive text messages.
+            </p>
+            {sourceLine && (
+              <p className="text-xs text-muted-foreground">
+                {sourceLine}
+                {when ? ` · ${when}` : ""}
+              </p>
+            )}
+          </>
+        )}
+
+        {(smsStatus === "opted_out" || smsStatus === "provider_blocked") && sourceLine && (
           <p className="text-xs text-muted-foreground">
             {sourceLine}
             {when ? ` · ${when}` : ""}
           </p>
         )}
-        {smsStatus === "not_opted_in" && !consentRequested && (
-          <p className="text-xs text-muted-foreground">
-            No text permission on file. Texts cannot be sent until they opt in.
-          </p>
-        )}
-        {consentRequested && sms?.source === SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST && (
-          <p className="text-xs text-muted-foreground">
-            Permission request emailed. Ordinary texts stay blocked until they opt in on the link.
-          </p>
-        )}
-        {consentRequested && sms?.source === SMS_PERMISSION_SOURCE_CONSENT_REQUEST && (
-          <p className="text-xs text-muted-foreground">
-            Permission request sent. Ordinary texts stay blocked until they reply START.
-          </p>
-        )}
-        {smsStatus === "not_opted_in" && leadId && (
-          <RequestSmsConsentButton
-            leadId={leadId}
-            alreadyRequested={consentRequested}
-            hasPhone={hasPhone}
-            hasEmail={hasEmail}
-            textingConfigured={textingConfigured}
-          />
+
+        {smsStatus === "not_opted_in" && (
+          <>
+            <p className="text-xs text-muted-foreground">
+              This person hasn&apos;t opted in to receive text messages from your venue.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Hello to Cheers requires the person&apos;s permission before you can send them text
+              messages through Hello to Cheers.
+            </p>
+            {consentRequested && sourceLine && (
+              <p className="text-xs text-muted-foreground">
+                {sourceLine}
+                {when ? ` · ${when}` : ""}
+              </p>
+            )}
+            {leadId && (
+              <RequestSmsConsentButton
+                leadId={leadId}
+                alreadyRequested={consentRequested}
+                hasPhone={hasPhone}
+                hasEmail={hasEmail}
+                textingConfigured={textingConfigured}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

@@ -41,7 +41,8 @@ import type {
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
 import {
-  type AccountState, getAccountStateAction, changePasswordAction, revokeSessionAction,
+  type AccountState, type PortalSmsPermissionView, getAccountStateAction, getPortalSmsPermissionAction,
+  changePasswordAction, revokeSessionAction,
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
 import { PortalLegalHistorySection } from "@/components/legal/legal-history-section";
@@ -4099,8 +4100,9 @@ const SUPPORT_ACCESS_DURATIONS = [
   { hours: 72, label: "3 days" },
 ];
 
-function AccountSettingsPanel({ venueName }: { venueName: string }) {
+function AccountSettingsPanel({ token, venueName }: { token: string; venueName: string }) {
   const [state, setState] = React.useState<AccountState | null>(null);
+  const [smsPermission, setSmsPermission] = React.useState<PortalSmsPermissionView | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -4111,8 +4113,12 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
   const [revokingGrantId, setRevokingGrantId] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(() => {
-    getAccountStateAction().then((s) => { setState(s); setLoading(false); });
-  }, []);
+    Promise.all([getAccountStateAction(), getPortalSmsPermissionAction(token)]).then(([s, sms]) => {
+      setState(s);
+      setSmsPermission(sms);
+      setLoading(false);
+    });
+  }, [token]);
 
   React.useEffect(() => { refresh(); }, [refresh]);
 
@@ -4154,16 +4160,27 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
     return <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /></div>;
   }
 
+  const smsCard = smsPermission ? (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-1.5">
+      <p className="text-sm font-semibold text-heading">Text messaging</p>
+      <p className="text-sm text-foreground">{smsPermission.label}</p>
+      <p className="text-xs text-muted-foreground">{smsPermission.detail}</p>
+    </div>
+  ) : null;
+
   if (!state?.loggedIn) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
-        <p className="text-sm font-semibold text-heading">Sign in to manage your account</p>
-        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-          Account settings — password, sessions, and support access — require signing in with your own account.
-        </p>
-        <a href="/client/login" className="inline-block text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background: SAGE }}>
-          Sign In
-        </a>
+      <div className="space-y-6">
+        {smsCard}
+        <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
+          <p className="text-sm font-semibold text-heading">Sign in to manage your account</p>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+            Account settings — password, sessions, and support access — require signing in with your own account.
+          </p>
+          <a href="/client/login" className="inline-block text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background: SAGE }}>
+            Sign In
+          </a>
+        </div>
       </div>
     );
   }
@@ -4177,6 +4194,8 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
         <p className="font-heading text-xl text-heading leading-snug">Your account, your workspace</p>
         <p className="text-sm text-muted-foreground mt-1">You own this account. {venueName} can invite, resend, or revoke access, but never sign in as you.</p>
       </div>
+
+      {smsCard}
 
       {/* Password */}
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
@@ -4325,7 +4344,7 @@ function AccountSection({ token, context, venueName }: { token: string; context:
       </div>
       {tab === "account" ? (
         <div className="space-y-6">
-          <AccountSettingsPanel venueName={venueName} />
+          <AccountSettingsPanel token={token} venueName={venueName} />
           <PortalProductFeedbackCard token={token} venueId={context.venue.id} />
         </div>
       ) : (

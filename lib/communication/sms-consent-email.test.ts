@@ -37,15 +37,16 @@ describe("email SMS consent solicitation", () => {
     assert.match(smsPermissionSourceLabel(SMS_PERMISSION_SOURCE_EMAIL_CONSENT), /email opt-in/i);
   });
 
-  it("manual-lead CTA is Request permission by email — not unsolicited SMS", () => {
+  it("manual-lead CTA requests text permission via email — not unsolicited SMS", () => {
     const button = readFileSync(
       resolve("components/leads/request-sms-consent-button.tsx"),
       "utf8",
     );
-    assert.match(button, /Request permission by email/);
+    assert.match(button, /Request text permission/);
     assert.match(button, /requestSmsConsentEmailAction/);
     assert.doesNotMatch(button, /requestSmsConsentAction/);
     assert.match(button, /unsolicited text/i);
+    assert.match(button, /Opening the email is not consent/i);
   });
 
   it("token migration + public redeem route exist", () => {
@@ -63,5 +64,40 @@ describe("email SMS consent solicitation", () => {
     assert.match(service, /status:\s*"opted_in"/);
     assert.match(service, /SMS_PERMISSION_SOURCE_EMAIL_CONSENT/);
     assert.equal(SMS_EMAIL_CONSENT_LANGUAGE_VERSION, "htc_sms_email_consent_v1");
+  });
+
+  it("venue Lead UX uses locked Text messaging copy and request≠consent", () => {
+    const summary = readFileSync(
+      resolve("components/leads/relationship-communication-summary.tsx"),
+      "utf8",
+    );
+    assert.match(summary, /Text messaging/);
+    assert.match(summary, /hasn(?:&apos;|')t opted in to receive text messages from your venue/);
+    assert.match(summary, /requires the person(?:&apos;|')s permission before you can send them text/);
+    assert.match(summary, /This person gave permission to receive text messages/);
+    assert.doesNotMatch(summary, /status:\s*"opted_in"/);
+  });
+
+  it("customer consent page requires affirmative Yes + Allow", () => {
+    const page = readFileSync(resolve("app/sms-consent/[token]/page.tsx"), "utf8");
+    const form = readFileSync(resolve("app/sms-consent/[token]/opt-in-form.tsx"), "utf8");
+    assert.match(page, /Would you like to receive text messages from/);
+    assert.match(form, /Yes, I(?:&apos;|')d like to receive text messages/);
+    assert.match(form, /Allow text messages/);
+    assert.match(form, /Opening this page is not consent/);
+    assert.match(form, /optedIn:\s*checked/);
+  });
+
+  it("portal Account surfaces the same canonical SMS permission", () => {
+    const actions = readFileSync(
+      resolve("app/(portal)/p/[token]/account-actions.ts"),
+      "utf8",
+    );
+    assert.match(actions, /getPortalSmsPermissionAction/);
+    assert.match(actions, /communication_permissions/);
+    assert.match(actions, /smsPermissionDisplayLabel/);
+    const shell = readFileSync(resolve("components/portal/portal-shell.tsx"), "utf8");
+    assert.match(shell, /getPortalSmsPermissionAction/);
+    assert.match(shell, /Text messaging/);
   });
 });

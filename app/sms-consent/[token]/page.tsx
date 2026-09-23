@@ -34,10 +34,15 @@ export default async function SmsConsentPage({ params }: Props) {
           </p>
         ) : (
           <>
+            <p className="text-sm text-foreground">
+              Would you like to receive text messages from{" "}
+              <strong>{preview.venueName}</strong>?
+            </p>
             <p className="text-sm text-muted-foreground">
-              {preview.venueName} is asking whether you want to receive text messages. You are{" "}
+              Texts may be about your inquiry, tour, or event planning. You are{" "}
               <strong className="text-foreground">not opted in yet</strong>. Confirm below only if
-              you want texts from them.
+              you want texts from them. Message and data rates may apply. Reply STOP anytime to
+              opt out.
             </p>
             <SmsConsentOptInForm token={token} venueName={preview.venueName} />
           </>

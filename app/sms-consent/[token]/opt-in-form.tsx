@@ -44,8 +44,8 @@ export function SmsConsentOptInForm({
           onChange={(e) => setChecked(e.target.checked)}
         />
         <span>
-          I agree to receive text messages from <strong>{venueName}</strong> about my event.
-          Message frequency varies. Message and data rates may apply. Reply STOP to opt out.
+          Yes, I&apos;d like to receive text messages from <strong>{venueName}</strong> about my
+          inquiry, tour, or event. Message and data rates may apply. Reply STOP to opt out.
         </span>
       </label>
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -53,7 +53,7 @@ export function SmsConsentOptInForm({
         {pending ? "Saving…" : "Allow text messages"}
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-        You are not opted in until you confirm here. Closing this page leaves your preference unchanged.
+        Opening this page is not consent. You are not opted in until you confirm here.
       </p>
     </div>
   );

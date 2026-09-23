@@ -21,9 +21,9 @@ describe("venue request SMS consent (manual Lead path)", () => {
       "utf8",
     );
     assert.doesNotMatch(button, /requestSmsConsentAction/);
-    assert.match(button, /Request permission by email/);
+    assert.match(button, /Request text permission/);
+    assert.match(button, /requestSmsConsentEmailAction/);
     assert.match(button, /unsolicited text/i);
-    assert.match(button, /START/);
   });
 
   it("service fails closed — refuses to send unsolicited SMS for consent", async () => {

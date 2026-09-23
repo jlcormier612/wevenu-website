@@ -314,8 +314,8 @@ export async function redeemSmsConsentEmailToken(
   }
 
   const consentText =
-    `I agree to receive text messages from ${venueName} about my event. ` +
-    `Message frequency varies. Message and data rates may apply. Reply STOP to opt out.`;
+    `Yes, I'd like to receive text messages from ${venueName} about my inquiry, tour, or event. ` +
+    `Message and data rates may apply. Reply STOP to opt out.`;
 
   const saved = await upsertCommunicationPermission(admin, {
     venueId: row.venue_id,
