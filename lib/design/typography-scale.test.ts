@@ -62,6 +62,7 @@ describe("staff typography scale", () => {
     // Font pairing stays as-is: Inter (portal), Source Sans 3 (staff), Cormorant.
     assert.match(layout, /Source_Sans_3/);
     assert.match(layout, /Inter/);
-    assert.match(layout, /Cormorant_Garamond/);
+    assert.match(layout, /CormorantGaramond/);
+    assert.match(layout, /next\/font\/local/);
   });
 });

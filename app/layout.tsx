@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import {
-  Cormorant_Garamond,
-  Geist_Mono,
-  Inter,
-  Source_Sans_3,
-} from "next/font/google";
+import { Geist_Mono, Inter, Source_Sans_3 } from "next/font/google";
+import localFont from "next/font/local";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -23,10 +19,16 @@ const sourceSans = Source_Sans_3({
   subsets: ["latin"],
 });
 
-const cormorant = Cormorant_Garamond({
+/**
+ * Heading face is vendored under app/fonts so Docker/CI builds do not depend on
+ * fonts.google.com (next/font/google multi-weight Cormorant fails intermittently
+ * in ECS image builds).
+ */
+const cormorant = localFont({
+  src: "./fonts/CormorantGaramond[wght].ttf",
   variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
