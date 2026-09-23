@@ -56,20 +56,37 @@ export function PaymentAccessShell({
 
   React.useEffect(() => {
     let cancelled = false;
-    fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`)
-      .then((r) => r.json())
-      .then((payload: SchedulePayload) => {
-        if (!cancelled) {
-          setData(payload);
-          setLoading(false);
+    let attempts = 0;
+
+    async function load() {
+      try {
+        const res = await fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`);
+        const payload = (await res.json()) as SchedulePayload;
+        if (cancelled) return;
+        setData(payload);
+        setLoading(false);
+
+        // After Stripe redirect, webhook may land a moment after the page.
+        // Refetch briefly so confirmation shows paid + remaining from SoT.
+        if (paymentState === "success") {
+          const lines = payload.schedules?.[0]?.lineItems ?? [];
+          const stillOpen = lines.some((l) => l.status !== "paid" && l.status !== "waived");
+          if (stillOpen && attempts < 6) {
+            attempts += 1;
+            window.setTimeout(() => {
+              if (!cancelled) void load();
+            }, 1500);
+          }
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setError("Could not load your payment details.");
           setLoading(false);
         }
-      });
+      }
+    }
+
+    void load();
     return () => {
       cancelled = true;
     };
@@ -80,6 +97,11 @@ export function PaymentAccessShell({
   const nextOpen = lines.find((l) => l.status !== "paid" && l.status !== "waived") ?? null;
   const paidTotal = lines.reduce((sum, l) => sum + (Number(l.paidAmount) || (l.status === "paid" ? l.amount : 0)), 0);
   const remaining = Math.max(0, (schedule?.totalAmount ?? 0) - paidTotal);
+  // Stripe success redirect can race the webhook; treat the open installment as paid for display.
+  const displayRemaining =
+    paymentState === "success" && nextOpen
+      ? Math.max(0, remaining - nextOpen.amount)
+      : remaining;
   const invoice = data?.invoices?.find((i) => i.id === schedule?.invoiceId) ?? data?.invoices?.[0];
   const invoiceLabel = invoiceHumanLabel({
     displayName: invoice?.displayName ?? schedule?.title ?? nextOpen?.label,
@@ -138,13 +160,16 @@ export function PaymentAccessShell({
               <p className="font-medium text-heading">{invoiceLabel}</p>
               {lines.map((l) => (
                 <div key={l.id} className="flex justify-between gap-3 text-muted-foreground">
-                  <span>{l.label || "Payment"}{l.status === "paid" ? " — Paid" : ""}</span>
+                  <span>
+                    {l.label || "Payment"}
+                    {l.status === "paid" || paymentState === "success" ? " — Paid" : ""}
+                  </span>
                   <span>{formatCurrency(l.amount)}</span>
                 </div>
               ))}
               <div className="flex justify-between gap-3 border-t border-border pt-2 font-medium text-heading">
                 <span>Remaining balance</span>
-                <span>{formatCurrency(remaining)}</span>
+                <span>{formatCurrency(displayRemaining)}</span>
               </div>
             </div>
             <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
