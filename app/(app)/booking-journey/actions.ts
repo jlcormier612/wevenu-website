@@ -179,11 +179,15 @@ export async function createProposalAction(input: {
       spaceId: input.spaceId,
     },
   });
-  if (result.ok) {
-    if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
-    if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  if (!result.ok) {
+    return { ok: false, message: result.message ?? "Could not create the proposal." };
   }
-  return result;
+  if (!("proposalId" in result) || !result.proposalId) {
+    return { ok: false, message: "Could not create the proposal." };
+  }
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return { ok: true, proposalId: result.proposalId };
 }
 
 export async function sendProposalAction(input: {

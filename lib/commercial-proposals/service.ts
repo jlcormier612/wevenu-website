@@ -17,7 +17,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { createAdminClient } from "@/integrations/supabase/admin";
 
 export type ProposalActionResult =
-  | { ok: true }
+  | { ok: true; proposalId?: string }
   | { ok: false; message: string };
 
 async function withVenue<T>(
@@ -62,7 +62,7 @@ export async function listEligiblePackagesForContext(ctx: {
  */
 export async function createCommercialProposal(
   input: CreateProposalInput,
-): Promise<{ ok: true; proposalId: string } | ProposalActionResult> {
+): Promise<{ ok: true; proposalId: string } | { ok: false; message: string }> {
   if (!input.leadId && !input.clientId) {
     return { ok: false, message: "A lead or client is required." };
   }
@@ -161,7 +161,16 @@ export async function createCommercialProposal(
 
     return { ok: true, proposalId: proposal.id } as { ok: true; proposalId: string };
   });
-  return result as { ok: true; proposalId: string } | ProposalActionResult;
+  if (!result || typeof result !== "object") {
+    return { ok: false, message: "Could not create the proposal." };
+  }
+  if ("ok" in result && result.ok === false) {
+    return { ok: false, message: result.message ?? "Could not create the proposal." };
+  }
+  if ("ok" in result && result.ok === true && "proposalId" in result && result.proposalId) {
+    return { ok: true, proposalId: String(result.proposalId) };
+  }
+  return { ok: false, message: "Could not create the proposal." };
 }
 
 export async function sendCommercialProposal(input: {
@@ -202,20 +211,16 @@ export async function sendCommercialProposal(input: {
       const title = `Proposal sent with ${updated.options.length} option${updated.options.length === 1 ? "" : "s"}.`;
       if (updated.leadId) {
         const { insertActivity } = await import("@/lib/leads/repository");
-        await insertActivity(supabase, venueId, updated.leadId, "proposal_sent", title, null);
+        await insertActivity(supabase, venueId, updated.leadId, "proposal_sent", title, undefined);
       } else if (updated.clientId) {
         const { insertClientActivity } = await import("@/lib/clients/repository");
-        await insertClientActivity(supabase, venueId, updated.clientId, "proposal_sent", title, null);
+        await insertClientActivity(supabase, venueId, updated.clientId, "proposal_sent", title, undefined);
       }
       const link = updated.clientId
         ? `/clients/${updated.clientId}`
         : updated.leadId
           ? `/leads/${updated.leadId}`
           : null;
-      const { createVenueNotification } = await import("@/lib/notifications/service").catch(() => ({
-        createVenueNotification: null,
-      }));
-      // Best-effort — some environments expose RPC only
       try {
         await supabase.rpc("create_venue_notification", {
           p_venue_id: venueId,
@@ -229,7 +234,6 @@ export async function sendCommercialProposal(input: {
       } catch {
         /* optional */
       }
-      void createVenueNotification;
     } catch {
       /* proposal already sent */
     }

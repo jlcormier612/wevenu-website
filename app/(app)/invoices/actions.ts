@@ -80,6 +80,7 @@ export async function sendInvoiceEmailAction(
   ]);
   if (!invoice || !venue) return { ok: false, message: "Invoice or venue not found." };
   if (!invoice.clientId) return { ok: false, message: "Invoice has no linked client." };
+  const clientId = invoice.clientId;
 
   // Booking Financial Architecture Phase 3b: emailing is another way content
   // leaves the building, not just "Mark as Sent" — an Event-Order-linked
@@ -100,7 +101,7 @@ export async function sendInvoiceEmailAction(
   // Fetch client email
   const { data: client } = await supabase.from("clients")
     .select("email, first_name, last_name")
-    .eq("id", invoiceToSend.clientId)
+    .eq("id", clientId)
     .maybeSingle<{ email: string | null; first_name: string; last_name: string }>();
   if (!client?.email) return { ok: false, message: "Client has no email address on file." };
 
@@ -130,9 +131,9 @@ export async function sendInvoiceEmailAction(
   const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
   let portalPayUrl: string | null = null;
   try {
-    let sessions = await getPortalSessions(invoiceToSend.clientId);
+    let sessions = await getPortalSessions(clientId);
     if (sessions.length === 0) {
-      const created = await createPortalSession(invoiceToSend.clientId, "Payment", "couple");
+      const created = await createPortalSession(clientId, "Payment", "couple");
       if (created) sessions = [created];
     }
     if (sessions[0]?.accessToken) {
@@ -249,7 +250,7 @@ export async function sendInvoiceEmailAction(
     const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
     const recorded = await recordExternalClientOutbound(createAdminClient(), {
       venueId: venue.id,
-      clientId: invoiceToSend.clientId,
+      clientId: clientId,
       channel: "email",
       body: text,
       providerId: result.providerId ?? null,
@@ -261,7 +262,7 @@ export async function sendInvoiceEmailAction(
       console.error("[sendInvoiceEmailAction] conversation record failed", recorded);
     }
     revalidatePath(`/invoices/${invoiceId}`);
-    if (invoiceToSend.clientId) revalidatePath(`/clients/${invoiceToSend.clientId}`);
+    if (clientId) revalidatePath(`/clients/${clientId}`);
   }
   return result;
 }

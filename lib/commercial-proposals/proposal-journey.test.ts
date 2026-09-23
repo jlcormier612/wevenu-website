@@ -129,8 +129,8 @@ describe("deposit amount due now (email gate)", () => {
     const r = resolveAmountDueNow({
       balanceDue: 32000,
       scheduleLines: [
-        { amount: 8000, dueDate: "2026-10-01", status: "pending", label: "Initial Payment", obligationKind: "deposit", sortOrder: 0 },
-        { amount: 24000, dueDate: "2027-05-01", status: "pending", label: "Remaining", obligationKind: "final", sortOrder: 1 },
+        { amount: 8000, dueDate: "2026-10-01", status: "pending", label: "Initial Payment", obligationKind: "deposit" },
+        { amount: 24000, dueDate: "2027-05-01", status: "pending", label: "Remaining", obligationKind: "final" },
       ],
     });
     assert.equal(r.kind, "next_installment");
