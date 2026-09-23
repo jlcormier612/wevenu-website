@@ -307,6 +307,11 @@ export type CheckAvailabilityOpts = {
   type: "event" | "tour";
   excludeId?: string; // Event id when type=event; lead id when type=tour
   timezone?: string | null;
+  /**
+   * booking (default) — Event write pre-check.
+   * preferred_date — Lead/inquiry preferred date (no space required).
+   */
+  purpose?: "booking" | "preferred_date";
 };
 
 function shiftIsoDate(iso: string, days: number): string {
@@ -332,12 +337,13 @@ export async function checkAvailability(
     : opts.date;
 
   const { data: venueRow } = await client.from("venues")
-    .select("timezone, tour_duration_minutes, allow_tours_during_booked_events")
+    .select("timezone, tour_duration_minutes, allow_tours_during_booked_events, hold_blocks_availability")
     .eq("id", venueId)
     .maybeSingle<{
       timezone: string | null;
       tour_duration_minutes: number | null;
       allow_tours_during_booked_events: boolean | null;
+      hold_blocks_availability: boolean | null;
     }>();
   const timezone = opts.timezone ?? venueRow?.timezone ?? null;
   const tourDurationMinutes = venueRow?.tour_duration_minutes && venueRow.tour_duration_minutes > 0
@@ -367,9 +373,11 @@ export async function checkAvailability(
     ? shiftIsoDate(opts.date, 1)
     : shiftIsoDate(rangeEnd, extraDays > 0 ? extraDays : 0);
   let eventsQuery = client.from("events")
-    .select("id, name, status, event_date, event_end_date, space_id, setup_time, start_time, end_time, teardown_time")
+    .select("id, name, status, event_date, event_end_date, space_id, setup_time, start_time, end_time, teardown_time, booked_at")
     .eq("venue_id", venueId)
-    .not("status", "in", "(cancelled)");
+    .not("status", "in", "(cancelled)")
+    // Occupancy truth matches events_enforce_availability: only booked rows occupy.
+    .not("booked_at", "is", null);
   eventsQuery = eventsQuery
     .lte("event_date", eventLookEnd)
     .or(`event_end_date.gte.${eventLookStart},and(event_end_date.is.null,event_date.gte.${eventLookStart})`);
@@ -461,6 +469,7 @@ export async function checkAvailability(
       spaceId: opts.spaceId,
       type: opts.type,
       excludeId: opts.excludeId,
+      purpose: opts.purpose,
       tourScheduledAtMs,
       tourDurationMinutes,
       timezone,
@@ -473,6 +482,7 @@ export async function checkAvailability(
         recurrence_ends_on?: string | null; recurrence_count?: number | null;
       }[]).map(mapCalendarBlockRow),
       holdCount: (holdsRes.data ?? []).length,
+      holdBlocksAvailability: venueRow?.hold_blocks_availability !== false,
       allowToursDuringBookedEvents: venueRow?.allow_tours_during_booked_events === true,
       rules,
       events,

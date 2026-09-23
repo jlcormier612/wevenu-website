@@ -7,7 +7,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createLeadAction, previewPossibleDuplicateLeadAction } from "@/app/(app)/leads/actions";
-import { markScheduleItemConvertedAction } from "@/app/(app)/availability/actions";
+import { checkAvailabilityAction, markScheduleItemConvertedAction } from "@/app/(app)/availability/actions";
+import { LeadDateUnavailableDialog } from "@/components/leads/lead-date-unavailable-dialog";
 import { PossibleMatchCreateDialog } from "@/components/leads/possible-match-create-dialog";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -22,12 +23,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
+import type { ConflictItem } from "@/lib/availability/types";
 import {
   LEAD_SOURCES,
   createInitialLeadInput,
 } from "@/lib/leads/constants";
 import type { DuplicateCandidate } from "@/lib/leads/duplicate-detection";
 import type { LeadErrors, LeadInput } from "@/lib/leads/types";
+import type { IdentityDecision } from "@/lib/identity/decision";
 
 function TextField({
   id, label, value, onChange, error, hint, type = "text",
@@ -111,13 +114,16 @@ export function NewInquiryForm({
   const [pending, startTransition] = React.useTransition();
   const [matchOpen, setMatchOpen] = React.useState(false);
   const [matches, setMatches] = React.useState<DuplicateCandidate[]>([]);
+  const [dateWarnOpen, setDateWarnOpen] = React.useState(false);
+  const [dateReasons, setDateReasons] = React.useState<ConflictItem[]>([]);
+  const pendingDecisionRef = React.useRef<IdentityDecision | undefined>(undefined);
 
   const set = <K extends keyof LeadInput>(key: K, value: LeadInput[K]) => {
     setInput((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
   };
 
-  async function saveLead(decision?: import("@/lib/identity/decision").IdentityDecision) {
+  async function saveLead(decision?: IdentityDecision) {
     const result = await createLeadAction({ ...input, identityDecision: decision });
     if (result.ok) {
       if (fromBlockId) {
@@ -131,6 +137,28 @@ export function NewInquiryForm({
     }
     if ("errors" in result && result.errors) setErrors(result.errors);
     toast.error(result.message ?? "Please fix the highlighted fields.");
+  }
+
+  /** Soft availability gate — never hard-blocks Lead create. */
+  async function checkPreferredDateThenSave(decision?: IdentityDecision) {
+    const date = input.eventDate?.trim();
+    if (!date) {
+      await saveLead(decision);
+      return;
+    }
+    const status = await checkAvailabilityAction({
+      date,
+      type: "event",
+      purpose: "preferred_date",
+    });
+    const blocking = status.conflicts.filter((c) => c.severity === "error");
+    if (blocking.length > 0) {
+      pendingDecisionRef.current = decision;
+      setDateReasons(blocking);
+      setDateWarnOpen(true);
+      return;
+    }
+    await saveLead(decision);
   }
 
   function handleSubmit() {
@@ -149,7 +177,7 @@ export function NewInquiryForm({
         setMatchOpen(true);
         return;
       }
-      await saveLead();
+      await checkPreferredDateThenSave();
     });
   }
 
@@ -162,6 +190,23 @@ export function NewInquiryForm({
         onCancel={() => setMatchOpen(false)}
         onDecide={(decision) => {
           setMatchOpen(false);
+          startTransition(async () => {
+            await checkPreferredDateThenSave(decision);
+          });
+        }}
+      />
+      <LeadDateUnavailableDialog
+        open={dateWarnOpen}
+        reasons={dateReasons}
+        pending={pending}
+        onGoBack={() => {
+          setDateWarnOpen(false);
+          pendingDecisionRef.current = undefined;
+        }}
+        onSaveAnyway={() => {
+          setDateWarnOpen(false);
+          const decision = pendingDecisionRef.current;
+          pendingDecisionRef.current = undefined;
           startTransition(async () => {
             await saveLead(decision);
           });
