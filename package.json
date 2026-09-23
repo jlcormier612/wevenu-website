@@ -10,7 +10,7 @@
     "dev:workspace:detach": "bash scripts/start-workspace-dev.sh",
     "dev:venue:detach": "bash scripts/start-venue-dev.sh",
     "dev:all:detach": "bash scripts/start-all-dev.sh",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start --port 3000",
     "lint": "eslint",
     "postinstall": "patch-package && node scripts/copy-pdf-worker.mjs",
