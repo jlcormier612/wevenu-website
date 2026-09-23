@@ -125,17 +125,24 @@ export function PaymentAccessShell({
   const boundMissing = Boolean(requestedItemId) && data != null && !boundLine;
 
   // Bound request → that obligation only. Unbound legacy links → next open by due/sort.
-  const payableLine: ScheduleLine | null = boundLine
+  const nextOpenId = boundLine
     ? isClosed(boundLine.status)
       ? null
-      : boundLine
+      : boundLine.id
     : pickNextOpenPaymentLine(
         lines.map((l) => ({
-          ...l,
+          amount: l.amount,
           dueDate: l.dueDate ?? null,
+          status: l.status,
           label: l.label ?? undefined,
+          obligationKind: l.obligationKind,
+          sortOrder: l.sortOrder,
+          id: l.id,
         })),
-      );
+      )?.id ?? null;
+  const payableLine: ScheduleLine | null = nextOpenId
+    ? lines.find((l) => l.id === nextOpenId) ?? null
+    : null;
 
   const boundAlreadyPaid = Boolean(boundLine && isClosed(boundLine.status));
   const paidTotal = lines.reduce(
