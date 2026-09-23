@@ -36,6 +36,13 @@ import {
 } from "@/lib/conversations/inbox-attention";
 import { conversationHeaderOrientation } from "@/lib/conversations/inbox-header";
 import { linkifyMessageBody } from "@/lib/conversations/message-body-links";
+import {
+  conversationMessageChannelLabel,
+  conversationMessagePreview,
+  conversationMessageSenderLabel,
+  isConversationMessageExpanded,
+  latestConversationMessageId,
+} from "@/lib/conversations/message-disclosure";
 import { SENDABLE_CHANNEL_LABEL } from "@/lib/conversations/channels";
 import {
   mergeSentAckIntoMessages,
@@ -247,19 +254,62 @@ function AutomatedBadge({ isVenue }: { isVenue: boolean }) {
   );
 }
 
+function CollapsedMessageRow({
+  msg, onExpand,
+}: {
+  msg: ConversationMessage;
+  onExpand: () => void;
+}) {
+  const isVenue = msg.senderType === "venue_staff" || msg.senderType === "system";
+  const preview = msg.body
+    ? conversationMessagePreview(msg.body)
+    : msg.attachments.length > 0
+      ? (msg.channel === "sms" ? "Photo or file" : "Attachment")
+      : "(no text)";
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      aria-expanded={false}
+      className={`flex w-full max-w-[min(42rem,88%)] flex-col gap-0.5 rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-colors hover:bg-muted/40 ${
+        isVenue ? "ml-auto" : "mr-auto"
+      }`}
+    >
+      <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-heading">
+        <ChannelIcon channel={msg.channel} />
+        <span className="truncate">{conversationMessageSenderLabel(msg)}</span>
+        <span className="text-muted-foreground font-normal">·</span>
+        <span className="shrink-0 text-muted-foreground font-normal">
+          {conversationMessageChannelLabel(msg.channel)}
+        </span>
+        <span className="ml-auto shrink-0 text-muted-foreground font-normal">
+          {formatTime(msg.sentAt)}
+        </span>
+      </span>
+      <span className="truncate text-xs text-muted-foreground">{preview}</span>
+    </button>
+  );
+}
+
 function Bubble({
-  msg, leadId, clientId, eventId, onPrefill, onCreateTask,
+  msg, leadId, clientId, eventId, expanded, isLatest, onToggleExpand, onPrefill, onCreateTask,
 }: {
   msg: ConversationMessage;
   leadId: string | null;
   clientId: string | null;
   eventId: string | null;
+  expanded: boolean;
+  isLatest: boolean;
+  onToggleExpand: () => void;
   onPrefill: (body: string, channel: ConversationChannel) => void;
   onCreateTask: (msg: ConversationMessage) => void;
 }) {
   // Delivery badges only for provider-backed outbound (email/SMS). Portal /
   // notes / system-without-status must never imply delivery success.
   const isVenue = msg.senderType === "venue_staff" || msg.senderType === "system";
+  if (!expanded) {
+    return <CollapsedMessageRow msg={msg} onExpand={onToggleExpand} />;
+  }
   const delivery = resolveDeliveryDisplay({
     status: msg.status,
     channel: msg.channel,
@@ -276,9 +326,30 @@ function Bubble({
           isVenue ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
         } ${failed ? "ring-1 ring-destructive/50" : ""}`}
       >
-        {msg.senderType === "system" && (
-          <div className="mb-1"><AutomatedBadge isVenue={isVenue} /></div>
-        )}
+        <div className={`mb-1 flex items-center gap-2 ${isVenue ? "justify-end" : "justify-start"}`}>
+          {msg.senderType === "system" && <AutomatedBadge isVenue={isVenue} />}
+          {isLatest && (
+            <span
+              className={`text-[9px] font-medium uppercase tracking-wide ${
+                isVenue ? "text-primary-foreground/70" : "text-muted-foreground"
+              }`}
+            >
+              Latest
+            </span>
+          )}
+          {!isLatest && (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-expanded
+              className={`text-[10px] underline-offset-2 hover:underline ${
+                isVenue ? "text-primary-foreground/70" : "text-muted-foreground"
+              }`}
+            >
+              Collapse
+            </button>
+          )}
+        </div>
         {msg.body && (
           <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
             {linkifyMessageBody(
@@ -394,6 +465,8 @@ export function ConversationThread({
   onNeedsResponseCleared?: () => void;
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
+  /** Older messages the venue explicitly expanded; latest is always expanded. */
+  const [manuallyExpandedIds, setManuallyExpandedIds] = React.useState<Set<string>>(() => new Set());
   const [needsResponse, setNeedsResponse] = React.useState<boolean>(
     () => Boolean(summary?.needsResponse),
   );
@@ -466,6 +539,7 @@ export function ConversationThread({
     stickToNewestRef.current = true;
     initialScrollDoneRef.current = false;
     setMessages(null);
+    setManuallyExpandedIds(new Set());
     void getConversationAction(conversationId)
       .then((detail) => {
         if (cancelled) return;
@@ -715,17 +789,35 @@ export function ConversationThread({
               <div key={g.label}>
                 <DateSep label={g.label} />
                 <div className="space-y-2">
-                  {g.msgs.map((m) => (
-                    <Bubble
-                      key={m.id}
-                      msg={m}
-                      leadId={summary?.leadId ?? null}
-                      clientId={summary?.clientId ?? null}
-                      eventId={docsEventId}
-                      onPrefill={prefillFromFailed}
-                      onCreateTask={createFollowUpTask}
-                    />
-                  ))}
+                  {g.msgs.map((m) => {
+                    const latestId = latestConversationMessageId(messages);
+                    const expanded = isConversationMessageExpanded(
+                      m.id,
+                      latestId,
+                      manuallyExpandedIds,
+                    );
+                    return (
+                      <Bubble
+                        key={m.id}
+                        msg={m}
+                        leadId={summary?.leadId ?? null}
+                        clientId={summary?.clientId ?? null}
+                        eventId={docsEventId}
+                        expanded={expanded}
+                        isLatest={m.id === latestId}
+                        onToggleExpand={() => {
+                          setManuallyExpandedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(m.id)) next.delete(m.id);
+                            else next.add(m.id);
+                            return next;
+                          });
+                        }}
+                        onPrefill={prefillFromFailed}
+                        onCreateTask={createFollowUpTask}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             ))}
