@@ -25,13 +25,21 @@ export default async function OfferPage({ params }: Props) {
   }
 
   // Legacy single-package accept flow
+  const legacyStatus =
+    offer.status === "accepted" || offer.status === "approved"
+      ? ("accepted" as const)
+      : offer.status === "offered"
+        ? ("offered" as const)
+        : offer.status === "superseded"
+          ? ("superseded" as const)
+          : ("draft" as const);
   const legacy = proposalViewFromSelection(
     {
       name: offer.name,
       totalAmount: offer.totalAmount,
       depositAmount: offer.depositAmount,
       includedItems: offer.includedItems,
-      status: offer.status === "accepted" || offer.status === "approved" ? "accepted" : offer.status,
+      status: legacyStatus,
       offerMessage: offer.offerMessage,
     },
     undefined,
