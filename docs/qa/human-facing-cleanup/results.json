@@ -1,89 +1,56 @@
 {
-  "workstream": "RCJ-HUMAN-FACING-CLEANUP",
-  "status": "PARTIAL — payment access + invoice name E2E GREEN; remaining journeys OPEN",
-  "produced_at": "2026-09-23T18:05:00Z",
-  "production_untouched": true,
-  "commits": {
-    "implementation": "0086371c6f7243d00ff9cf9068f8960ef9116cdd",
-    "confirmation_race_fix": "7dc63d6f19341107983e125064e22e3ac4549614"
-  },
-  "runtime_verified_at_e2e": {
-    "cluster": "htc-sandbox",
-    "service": "htc-sandbox-venue-app",
-    "taskDefinition": "htc-sandbox-venue-app:357",
-    "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0086371c6f7243d00ff9cf9068f8960ef9116cdd",
-    "commit": "0086371c6f7243d00ff9cf9068f8960ef9116cdd",
-    "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35898557440",
-    "deploy_conclusion": "success",
-    "health": "https://app.sandbox.hellotocheers.com/api/health → 200"
-  },
+  "workstream": "human-facing-cleanup-OPEN-list",
+  "updated": "2026-09-23",
+  "production": "untouched",
+  "commit": "0d545ff31749304804cc25fa7202a5c13b6aafcb",
   "migration": {
-    "file": "20261405900000_invoice_name_and_venue_spaces_uses.sql",
-    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35898554084",
-    "conclusion": "success",
-    "db_verified": {
-      "invoices.display_name": true,
-      "venues.space_operating_mode": true,
-      "venue_spaces.permitted_uses": true,
-      "event_space_assignments": true,
-      "get_portal_payments_invoices_displayName": true
+    "file": "20261406000000_sms_consent_email_tokens.sql",
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35902237823",
+    "conclusion": "success"
+  },
+  "deploy": {
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35902241069",
+    "headSha": "0d545ff31749304804cc25fa7202a5c13b6aafcb",
+    "status_at_report": "in_progress",
+    "prior_ecs_image": "htc-sandbox-venue-app:358 / 7dc63d6f… (not yet 0d545ff3)"
+  },
+  "implemented": {
+    "email_sms_consent": "Venue emails permission request; consent only after /sms-consent/[token] affirmative opt-in → communication_permissions source email_sms_consent. Unsolicited SMS remains fail-closed.",
+    "multi_space_assignment_ui": "Event create/edit shows use→space editor when space_operating_mode=multi and spaces have permitted_uses. Overview displays formatted assignments.",
+    "calendar_filter_gate": "Already gated on multi (prior). Confirmed Sweet Daisy (single Garden) week view has no space filter — correct."
+  },
+  "sandbox_fixture": {
+    "jen_fancy_venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "space_operating_mode": "multi",
+    "permitted_uses_set": {
+      "Barn": ["ceremony", "reception"],
+      "Garden Lawn": ["ceremony", "cocktail_hour"],
+      "Covered Bridge": ["cocktail_hour", "getting_ready"]
     }
   },
-  "redeploy_confirmation_fix": {
-    "commit": "7dc63d6f19341107983e125064e22e3ac4549614",
-    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35899840462",
-    "note": "Optimistic remaining + refetch after Stripe success; E2E already settled to $0 on reload against 0086371c"
-  },
-  "browser_e2e_pre_portal_payment": {
-    "ok": true,
-    "fixture": "pre-portal-fixture.json",
-    "pay_url": "https://app.sandbox.hellotocheers.com/p/66761b828ed3c8ef9c04dc6696828cbc24e6245a4a406f5b45f310be9fcde264",
-    "ui": {
-      "title": "Wedding Deposit",
-      "amount": "$800.00",
-      "no_portal_nav": true,
-      "system_reference": "INV-PREPAY-MUEEQM45",
-      "confirmation_whats_next": "invitation when client workspace is ready",
-      "settled_remaining": "$0.00",
-      "screenshots": [
-        "01-pre-portal-payment-page.png",
-        "02-payment-confirmation.png",
-        "03-payment-confirmation-settled.png"
-      ]
-    },
-    "stripe": {
-      "session": "cs_test_a1nA7Ns7dlqVgeZtUUVySYQCWOMTkMNgSBP3F6Y5wQ0O2EG3IWmjYID1FI",
-      "currency_conversion_shown": true,
-      "paid_usd": 800
-    },
-    "db": {
-      "invoice_id": "5c5bd28b-acb3-4d19-a469-821a8a2c5deb",
-      "display_name": "Wedding Deposit",
-      "invoice_number": "INV-PREPAY-MUEEQM45",
-      "balance_due": 0,
-      "status": "paid",
-      "line_status": "paid",
-      "portal_sessions": ["financial only — no couple"]
-    }
-  },
-  "automated_tests": {
-    "focused_pass": 47,
+  "tests": {
+    "focused": 30,
+    "result": "pass",
     "suites": [
-      "lib/venue/timezone.test.ts",
-      "lib/invoices/display-name.test.ts",
-      "lib/communication/request-sms-consent.test.ts",
-      "lib/portal/payment-access.test.ts",
-      "lib/venue-spaces/uses.test.ts",
-      "lib/contracts/event-spaces-merge.test.ts"
+      "sms-consent-email",
+      "request-sms-consent",
+      "assignments",
+      "uses",
+      "event-spaces-merge"
     ]
   },
-  "open": [
-    "Email SMS-consent solicitation — legal basis not affirmed (documented OPEN)",
-    "Browser E2E: tour datetime consistency across Lead/Client/Inbox/Calendar (code+unit tests done)",
-    "Browser E2E: manual-lead SMS consent UI states",
-    "Browser E2E: venue invoice name edit UI",
-    "Browser E2E: multi-space calendar filter + event use→space assignment editor",
-    "Mailbox proof of named deposit email subject/body on new financial send path",
-    "Redeploy 7dc63d6f must finish before calling confirmation-race fix live"
-  ]
+  "browser_rcj": {
+    "status": "NOT GREEN — blocked",
+    "blockers": [
+      "Deploy 0d545ff3 still in_progress — SMS email CTA + assignment editor not on ECS yet",
+      "Active browser session was Sweet Daisy Barn & Farm (single-space), not Jen's Fancy; sign-out click did not complete"
+    ],
+    "partial_observation": "Sweet Daisy calendar week view correctly omits space filter while multi mode exists on Jen Fancy in DB"
+  },
+  "out_of_scope_this_pass": [
+    "invoice-name edit UI browser",
+    "named deposit mailbox",
+    "payment path re-proof"
+  ],
+  "verdict": "PARTIAL — code+DB migration GREEN for OPEN list; runtime+browser NOT GREEN until deploy finishes and Jen Fancy RCJ completes"
 }

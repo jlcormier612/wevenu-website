@@ -1,43 +1,31 @@
 # RCJ Human-Facing Cleanup Workstream
 
-**Status:** PARTIAL — NOT full-workstream GREEN  
+**Status:** PARTIAL — code + Sandbox migration GREEN; deploy `0d545ff3` in progress; browser RCJ NOT GREEN  
 **Production:** untouched  
 **Updated:** 2026-09-23
 
-## Proven on Sandbox (code + DB + runtime + browser)
+## This pass (`0d545ff3`)
 
 | Layer | Result |
 |---|---|
-| Commit (E2E runtime) | `0086371c` |
-| Migration | `20261405900000_…` applied — [run 35898554084](https://github.com/jlcormier612/wevenu-website/actions/runs/35898554084) |
-| Deploy | [35898557440](https://github.com/jlcormier612/wevenu-website/actions/runs/35898557440) success |
-| ECS | `htc-sandbox-venue-app:357` image `…:0086371c…` health 200 |
-| Pre-portal pay page | Wedding Deposit · Pay $800 · no portal nav · system # as Reference |
-| Stripe | Checkout + currency conversion · paid |
-| DB | Same invoice/line paid; balance_due 0; **financial session only** |
-| Confirmation | Payment received · What's next (no premature portal) · settled $0.00 |
+| Commit | `0d545ff31749304804cc25fa7202a5c13b6aafcb` |
+| Migration `20261406000000` | Applied — [35902237823](https://github.com/jlcormier612/wevenu-website/actions/runs/35902237823) success |
+| Deploy | [35902241069](https://github.com/jlcormier612/wevenu-website/actions/runs/35902241069) **in progress** at report time |
+| ECS (at report) | Still `:358` / `7dc63d6f…` — not yet `0d545ff3` |
+| Focused tests | 30 pass |
 
-Evidence: `01-pre-portal-payment-page.png`, `02-payment-confirmation.png`, `03-payment-confirmation-settled.png`, `pre-portal-fixture.json`, `results.json`.
+### Implemented
+- **Email SMS consent:** Request permission by email → token page affirmative opt-in → `communication_permissions` (`email_sms_consent`). Opening email is not consent. Unsolicited SMS remains fail-closed.
+- **Multi-space assignment UI:** Event create/edit use→space editor when `multi` + configured `permitted_uses`. Booking overview shows formatted lines.
+- **Jen Fancy fixture:** `space_operating_mode=multi`; Barn/Garden/Bridge permitted uses set for Ceremony/Reception/Cocktail/Getting Ready.
 
-Follow-up commit `7dc63d6f` (confirmation refetch race) redeploying: [35899840462](https://github.com/jlcormier612/wevenu-website/actions/runs/35899840462).
+### Browser RCJ — NOT GREEN
+- Deploy image not live yet.
+- Session was on **Sweet Daisy** (single Garden) — calendar correctly had **no** space filter.
+- Need Jen Fancy login + post-deploy proof for SMS UI, tour times, assignment editor, multi calendar filter.
 
-## Product decisions locked
+### Out of this OPEN pass
+Invoice-name edit UI, named deposit mailbox, payment re-proof.
 
-1. Payment access ≠ portal access (`financial` sessions → `PaymentAccessShell`).
-2. `invoice_number` immutable; `display_name` human editable.
-3. Unsolicited SMS consent solicitation **fails closed**; email solicitation OPEN pending legal.
-4. Spaces: `space_operating_mode` + `permitted_uses` + `event_space_assignments`; calendar filter only when `multi`.
-5. Payment ≠ Booked unless venue-configured.
-
-## OPEN (do not invent / still unproven in browser)
-
-- Legal basis for venue-initiated email SMS-consent solicitation.
-- Tour datetime consistency browser sweep (unit/regression green).
-- Manual-lead SMS UI browser proof.
-- Venue invoice-name edit UI browser proof.
-- Multi-space assignment editor + calendar filter browser proof.
-- Named deposit email mailbox capture on financial send path.
-
-## Automated tests
-
-47 focused tests pass (timezone, invoice display-name, SMS fail-closed, payment-access, spaces uses, contract merge).
+## Prior proven (payment path)
+See earlier evidence under same folder (`0086371c` / pre-portal pay PNGs). Production untouched.
