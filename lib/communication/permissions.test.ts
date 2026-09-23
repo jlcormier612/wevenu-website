@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -53,5 +54,12 @@ describe("communication permissions", () => {
       status: "opted_in",
       source: "sms_keyword_start",
     });
+  });
+
+  it("documents sms_consent_request as the only not_opted_in send purpose", () => {
+    const src = readFileSync(new URL("./permissions.ts", import.meta.url), "utf8");
+    assert.match(src, /purpose\?: "outbound" \| "sms_consent_request"/);
+    assert.match(src, /sms_consent_request/);
+    assert.equal(isSmsOutboundAllowed("not_opted_in"), false);
   });
 });

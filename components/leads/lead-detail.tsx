@@ -691,6 +691,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 <RelationshipCommunicationSummary
                   preferredChannels={lead.preferredCommunicationChannels ?? []}
                   sms={smsPermission}
+                  leadId={lead.id}
+                  hasPhone={Boolean(lead.phone?.trim())}
                 />
                 {(lead.partnerFirstName || lead.partnerLastName) && (
                   <>

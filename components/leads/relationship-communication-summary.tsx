@@ -8,8 +8,10 @@ import {
   preferredChannelLabel,
   smsPermissionDisplayLabel,
   smsPermissionSourceLabel,
+  SMS_PERMISSION_SOURCE_CONSENT_REQUEST,
   type PreferredCommunicationChannel,
 } from "@/lib/communication/sms-consent";
+import { RequestSmsConsentButton } from "@/components/leads/request-sms-consent-button";
 
 export type SmsPermissionEvidenceView = {
   status: CommunicationPermissionStatus;
@@ -34,9 +36,14 @@ function formatWhen(iso: string | null): string | null {
 export function RelationshipCommunicationSummary({
   preferredChannels,
   sms,
+  leadId,
+  hasPhone,
 }: {
   preferredChannels: PreferredCommunicationChannel[];
   sms: SmsPermissionEvidenceView | null;
+  /** When set with hasPhone and not_opted_in, shows Request text permission. */
+  leadId?: string;
+  hasPhone?: boolean;
 }) {
   const preferredLabel = preferredChannels.length
     ? preferredChannels.map(preferredChannelLabel).join(", ")
@@ -50,6 +57,10 @@ export function RelationshipCommunicationSummary({
 
   const when = formatWhen(sms?.updatedAt ?? null);
   const sourceLine = sms ? smsPermissionSourceLabel(sms.source) : null;
+  const consentRequested =
+    smsStatus === "not_opted_in" && sms?.source === SMS_PERMISSION_SOURCE_CONSENT_REQUEST;
+  const canRequestConsent =
+    Boolean(leadId) && Boolean(hasPhone) && smsStatus === "not_opted_in";
 
   return (
     <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
@@ -66,16 +77,24 @@ export function RelationshipCommunicationSummary({
           <span className={smsDot}>●</span>{" "}
           {smsPermissionDisplayLabel(smsStatus)}
         </p>
-        {sourceLine && smsStatus !== "not_opted_in" && (
+        {sourceLine && (smsStatus !== "not_opted_in" || consentRequested) && (
           <p className="text-xs text-muted-foreground">
             {sourceLine}
             {when ? ` · ${when}` : ""}
           </p>
         )}
-        {smsStatus === "not_opted_in" && (
+        {smsStatus === "not_opted_in" && !consentRequested && (
           <p className="text-xs text-muted-foreground">
             No text permission on file. Texts cannot be sent until they opt in.
           </p>
+        )}
+        {consentRequested && (
+          <p className="text-xs text-muted-foreground">
+            Permission request sent. Ordinary texts stay blocked until they reply START.
+          </p>
+        )}
+        {canRequestConsent && leadId && (
+          <RequestSmsConsentButton leadId={leadId} alreadyRequested={consentRequested} />
         )}
       </div>
     </div>

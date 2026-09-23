@@ -28,6 +28,13 @@ export type SmsPayload = {
    * Never set this for lead/client/vendor outbound SMS/MMS.
    */
   skipPermissionCheck?: boolean;
+  /**
+   * Ordinary outbound (default) requires opted_in.
+   * sms_consent_request may send while not_opted_in so the venue can ask
+   * the contact to reply START — still blocked when opted_out / provider_blocked.
+   * Does not grant permission by itself.
+   */
+  purpose?: "outbound" | "sms_consent_request";
 };
 
 export type SmsSendResult =
@@ -86,6 +93,8 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
 
   // Hard stop for opted_out / provider_blocked at the Twilio boundary so no
   // automation, retry, or API path can bypass Inbox/scheduled checks.
+  // Ordinary SMS still requires opted_in; sms_consent_request is the only
+  // not_opted_in exception (solicitation that still requires START).
   if (!payload.skipPermissionCheck) {
     const { createAdminClient } = await import("@/integrations/supabase/admin");
     const { assertChannelAllowed } = await import("@/lib/communication/permissions");
@@ -93,6 +102,7 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
       venueId: payload.venueId,
       channel: "sms",
       rawAddress: payload.to,
+      purpose: payload.purpose === "sms_consent_request" ? "sms_consent_request" : "outbound",
     });
     if (!allowed.ok) return { ok: false, message: allowed.message };
   }

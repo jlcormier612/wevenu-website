@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
         evidence: { optOutType, body, messageSid, accountSid, unmatched: true },
       });
     } else if (permChange?.status === "opted_in") {
+      // Affirmative START after STOP, or first opt-in after a venue consent request.
       const addressKey = normalizeSmsAddressKey(from);
       if (addressKey) {
         const current = await getCommunicationPermission(supabase, {
@@ -134,7 +135,15 @@ export async function POST(request: NextRequest) {
           channel: "sms",
           addressKey,
         });
-        if (current === "opted_out") {
+        const { data: row } = await supabase
+          .from("communication_permissions")
+          .select("source")
+          .eq("venue_id", venueId)
+          .eq("channel", "sms")
+          .eq("address_key", addressKey)
+          .maybeSingle<{ source: string | null }>();
+        const pendingConsentRequest = row?.source === "sms_consent_request";
+        if (current === "opted_out" || (current === "not_opted_in" && pendingConsentRequest)) {
           await upsertCommunicationPermission(supabase, {
             venueId,
             channel: "sms",

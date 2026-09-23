@@ -8,6 +8,9 @@ export const SMS_INQUIRY_CONSENT_LANGUAGE_VERSION = "htc_sms_inquiry_v2" as cons
 
 export const SMS_PERMISSION_SOURCE_INQUIRY_FORM = "inquiry_form" as const;
 export const SMS_PERMISSION_SOURCE_TOUR_FORM = "tour_form" as const;
+/** Venue asked the contact to reply START — status stays not_opted_in until they do. */
+export const SMS_PERMISSION_SOURCE_CONSENT_REQUEST = "sms_consent_request" as const;
+export const SMS_CONSENT_REQUEST_LANGUAGE_VERSION = "htc_sms_consent_request_v1" as const;
 
 /** Venue-facing short labels for communication_permissions.status. */
 export function smsPermissionDisplayLabel(
@@ -32,6 +35,8 @@ export function smsPermissionSourceLabel(source: string | null | undefined): str
       return "Text permission provided through website inquiry";
     case SMS_PERMISSION_SOURCE_TOUR_FORM:
       return "Text permission provided through tour booking";
+    case SMS_PERMISSION_SOURCE_CONSENT_REQUEST:
+      return "Text permission requested — waiting for them to reply START";
     case "twilio_stop":
     case "sms_keyword_stop":
       return "Customer opted out via text message";
@@ -51,6 +56,20 @@ export function buildInquirySmsConsentText(venueName: string): string {
   return (
     `Yes, I’d like to receive text messages from ${name} about my inquiry, tour, or event. ` +
     `Message and data rates may apply. Reply STOP to opt out.`
+  );
+}
+
+/**
+ * Outbound solicitation SMS when a venue requests text permission from a
+ * contact who has not opted in yet. Does not grant permission by itself —
+ * the contact must reply START (or use the public form checkbox).
+ */
+export function buildSmsConsentRequestText(venueName: string): string {
+  const name = venueName.trim() || "this venue";
+  return (
+    `${name} would like to text you about your inquiry, tour, or event. ` +
+    `Reply START to agree to receive texts. Message and data rates may apply. ` +
+    `Reply STOP to opt out. Reply HELP for help.`
   );
 }
 

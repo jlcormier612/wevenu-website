@@ -9,8 +9,10 @@
  *   provider_blocked → BLOCKED
  *
  * Phone number entry is not consent. Selecting Text as a preference is not
- * consent. Only the explicit inquiry/tour form SMS permission checkbox
- * (or START / UNSTOP after a prior relationship) records opted_in.
+ * consent. Only the explicit inquiry/tour form SMS permission checkbox,
+ * a contact's START / UNSTOP reply, or (for solicitation only) a venue
+ * "Request text permission" SMS that still requires START — records opted_in.
+ * A consent-request SMS may be sent while not_opted_in; ordinary SMS may not.
  *
  * STOP must immediately persist + enforce opted_out.
  * START restores opted_in (Twilio OptOutType or start/unstop keywords only).
@@ -139,7 +141,17 @@ export async function getCommunicationPermission(
 export async function assertChannelAllowed(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
-  input: { venueId: string; channel: CommunicationChannel; rawAddress: string },
+  input: {
+    venueId: string;
+    channel: CommunicationChannel;
+    rawAddress: string;
+    /**
+     * Ordinary outbound SMS (default): requires opted_in.
+     * sms_consent_request: may send while not_opted_in so the venue can ask
+     * the contact to reply START — still blocked when opted_out / provider_blocked.
+     */
+    purpose?: "outbound" | "sms_consent_request";
+  },
 ): Promise<PermissionCheck> {
   const addressKey = input.channel === "sms"
     ? normalizeSmsAddressKey(input.rawAddress)
@@ -160,6 +172,18 @@ export async function assertChannelAllowed(
   });
   if (isHardBlocked(status)) {
     return { ok: false, status, message: blockMessage(input.channel, status) };
+  }
+  // Consent-request SMS is the only not_opted_in exception — it does not
+  // grant permission; the contact must still reply START.
+  if (input.channel === "sms" && input.purpose === "sms_consent_request") {
+    if (status === "opted_in") {
+      return {
+        ok: false,
+        status,
+        message: "This contact already has texting permission. You can message them from Conversation.",
+      };
+    }
+    return { ok: true, status };
   }
   // SMS: explicit opt-in required. Email has no opt-in gate at this layer —
   // only hard blocks refuse.

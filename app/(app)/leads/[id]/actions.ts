@@ -300,6 +300,13 @@ export async function previewTourConfirmationRequestAction(appointmentId: string
   return previewTourConfirmationRequestEmail(appointmentId);
 }
 
+export async function requestSmsConsentAction(leadId: string) {
+  const { requestSmsConsentForLead } = await import("@/lib/communication/request-sms-consent");
+  const result = await requestSmsConsentForLead(leadId);
+  if (result.ok) revalidateLead(leadId);
+  return result;
+}
+
 export async function previewDeleteLeadAction(leadId: string) {
   const { previewDeleteLead } = await import("@/lib/records/delete-record");
   return previewDeleteLead(leadId);

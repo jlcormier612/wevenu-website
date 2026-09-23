@@ -10,7 +10,9 @@ import {
 import {
   SMS_INQUIRY_CONSENT_LANGUAGE_VERSION,
   SMS_PUBLIC_CONSENT_DISCLOSURES,
+  SMS_CONSENT_REQUEST_LANGUAGE_VERSION,
   buildInquirySmsConsentText,
+  buildSmsConsentRequestText,
   effectivePublicCommunicationSettings,
   parseInquiryCommunicationSettings,
   preferredChannelLabel,
@@ -84,6 +86,16 @@ describe("first-party SMS consent helpers", () => {
     assert.equal(smsPermissionDisplayLabel("opted_out"), "Opted out");
     assert.match(smsPermissionSourceLabel("inquiry_form"), /website inquiry/i);
     assert.match(smsPermissionSourceLabel("tour_form"), /tour booking/i);
+    assert.match(smsPermissionSourceLabel("sms_consent_request"), /waiting for them to reply START/i);
     assert.match(smsPermissionSourceLabel("twilio_stop"), /opted out via text/i);
+  });
+
+  it("builds consent-request solicitation that requires START and does not grant opt-in by wording alone", () => {
+    assert.match(SMS_CONSENT_REQUEST_LANGUAGE_VERSION, /^htc_sms_consent_request_v/);
+    const text = buildSmsConsentRequestText("Jen's Fancy Venue");
+    assert.match(text, /Jen's Fancy Venue/);
+    assert.match(text, /Reply START to agree/);
+    assert.match(text, /Reply STOP to opt out/);
+    assert.doesNotMatch(text, /you are now opted in/i);
   });
 });
