@@ -1,0 +1,76 @@
+{
+  "sweep": "hello-to-cheers-real-customer-journey",
+  "started": "2026-09-22",
+  "runtime": {
+    "cluster": "htc-sandbox",
+    "service": "htc-sandbox-venue-app",
+    "taskDefinition": "htc-sandbox-venue-app:352",
+    "imageTag": "5988c8d9237398e17b4b2443b32b31795dda9245",
+    "rolloutState": "COMPLETED",
+    "production_untouched": true,
+    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/35807014604"
+  },
+  "fixture": {
+    "venue": "Jen's Fancy Venue",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "lead_id": "9ca3196f-3100-436f-921a-075ee3b7857d",
+    "relationship_id": "d8289c67-3136-4f96-ad53-be74d52af59c",
+    "email": "sweep.j1.20260922t2015@hellotocheers.test",
+    "commercial_selection_id": "43f230c9-2c93-4233-9a5c-bb23a71ae49b",
+    "proposal_url": "https://app.sandbox.hellotocheers.com/offer/c46c495046158f23b97124f57dd2afb75aedb18918d66fdd",
+    "planned_event_space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+    "appointment_id": "0068ef45-02ac-4bee-9730-9080abae32a6",
+    "confirm_token": "2e85816d-4f1e-41ba-8a7e-21ef9f0751ce"
+  },
+  "journeys": {
+    "1_public_inquiry_to_lead": "GREEN",
+    "2_lead_workspace": "GREEN",
+    "3_package_proposal": "GREEN",
+    "3b_proposal_email": "PROVIDER_ACCEPTED_MAILBOX_UNPROVEN",
+    "4_tour": "GREEN",
+    "5_booking": "PENDING",
+    "6_contract": "PENDING",
+    "7_client_workspace": "PENDING",
+    "8_communications": "SMS_CONSENT_ACQUISITION_GREEN",
+    "9_brand": "PENDING",
+    "10_data_integrity": "PENDING"
+  },
+  "open_items": [
+    "Proposal email mailbox inbox proof for real recipient addresses remains OPEN (provider accepted; .test mailbox unreadable).",
+    "Brand Colors artifact evaluation deferred to Journey 9.",
+    "Jen's Fancy Venue Twilio remains pending_compliance — SMS send E2E used Texting E2E Disposable venue (ready)."
+  ],
+  "defects": [
+    {
+      "id": "J4-D1",
+      "title": "Lead Overview / Tours list showed browser-local tour time",
+      "status": "GREEN",
+      "commit": "fad061c03aa28293b8ebb9cdc9b9035a3bc91226"
+    },
+    {
+      "id": "ADD-LEAD-INQUIRY-DEFAULTS",
+      "title": "Add Lead inquiry date defaulted to UTC tomorrow; Message/notes label misled",
+      "status": "GREEN",
+      "commit": "4683f1df549a41413593c7ebaf958fb3d9f8c9f6",
+      "evidence": "docs/qa/add-lead-inquiry-defaults/results.json"
+    },
+    {
+      "id": "RCJ-SMS-CONSENT-ACQUISITION",
+      "title": "Manually added Lead had no venue path to request SMS consent",
+      "root_cause": "Public inquiry/tour checkbox + START keyword existed, but Lead UI only displayed not_opted_in with no Request action; no sms_consent_request send purpose.",
+      "fix": "Venue Request text permission uses existing communication_permissions + START; sendSms purpose sms_consent_request allows solicitation while not_opted_in without granting opted_in or weakening ordinary outbound gate.",
+      "status": "GREEN",
+      "commit": "5988c8d9237398e17b4b2443b32b31795dda9245",
+      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35807014604",
+      "evidence": "docs/qa/manual-lead-sms-consent/results.json",
+      "e2e_lead_id": "874faf76-9580-4796-8344-3948b912c66c",
+      "provider_sid": "SM72cfbe402d14450651e6eeafd1ce03db"
+    }
+  ],
+  "J4": {
+    "status": "GREEN",
+    "j4_d1": "GREEN",
+    "runtime": "fad061c0 / :349"
+  },
+  "note": "RCJ-SMS-CONSENT-ACQUISITION GREEN on :352 / 5988c8d9 — request→Twilio SID→START→opted_in→ordinary SMS allowed; inquiry message/date also green."
+}
