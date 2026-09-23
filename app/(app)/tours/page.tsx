@@ -7,6 +7,7 @@ import { TourList } from "@/components/tours/tour-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { markVenueToursSeen } from "@/lib/navigation/attention-service";
+import { partitionTourAppointmentsForVenueList } from "@/lib/tours/list-order";
 import { getTourAppointments, getTourSettings } from "@/lib/tours/service";
 import { listUnresolvedProtectionRequests } from "@/lib/tours/protection";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
@@ -28,8 +29,7 @@ export default async function ToursPage() {
   // follow-ups remain until resolved).
   void markVenueToursSeen();
 
-  const upcoming = appointments.filter((a) => a.status !== "cancelled" && a.status !== "completed" && a.status !== "no_show" && new Date(a.scheduledAt) >= new Date());
-  const past     = appointments.filter((a) => a.status === "completed" || a.status === "no_show" || (a.status !== "cancelled" && new Date(a.scheduledAt) < new Date()));
+  const { upcoming, past } = partitionTourAppointmentsForVenueList(appointments);
 
   return (
     <div className="space-y-6">

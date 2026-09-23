@@ -407,7 +407,36 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
-  const { data } = await supabase.from("tour_appointments").select("*, leads(first_name,last_name,partner_first_name)").eq("venue_id", venue.id).order("scheduled_at", { ascending: false }).limit(50);
+  // Upcoming = soonest-first (scheduled_at asc). Past history is fetched
+  // separately so a long past cannot push upcoming out of a single limit.
+  const nowIso = new Date().toISOString();
+  const select = "*, leads(first_name,last_name,partner_first_name)";
+  const [{ data: upcomingRows }, { data: completedRows }, { data: overdueRows }] = await Promise.all([
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .in("status", ["scheduled", "confirmed"])
+      .gte("scheduled_at", nowIso)
+      .order("scheduled_at", { ascending: true })
+      .limit(50),
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .in("status", ["completed", "no_show"])
+      .order("scheduled_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .in("status", ["scheduled", "confirmed"])
+      .lt("scheduled_at", nowIso)
+      .order("scheduled_at", { ascending: false })
+      .limit(50),
+  ]);
+  const data = [...(upcomingRows ?? []), ...(completedRows ?? []), ...(overdueRows ?? [])];
   // The Tours list showed "Unknown" for appointments whose own
   // contact_name column was never populated (e.g. booked before that
   // column was consistently filled in) even though the linked Lead's name
