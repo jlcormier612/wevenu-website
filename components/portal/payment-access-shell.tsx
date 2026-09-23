@@ -99,11 +99,12 @@ export function PaymentAccessShell({
   const nextOpen = lines.find((l) => l.status !== "paid" && l.status !== "waived") ?? null;
   const paidTotal = lines.reduce((sum, l) => sum + (Number(l.paidAmount) || (l.status === "paid" ? l.amount : 0)), 0);
   const remaining = Math.max(0, (schedule?.totalAmount ?? 0) - paidTotal);
-  // Stripe success redirect can race the webhook; treat the open installment as paid for display.
-  const displayRemaining =
-    paymentState === "success" && nextOpen
-      ? Math.max(0, remaining - nextOpen.amount)
-      : remaining;
+  // Stripe success redirect can race the webhook. Only optimistic-adjust while
+  // SoT still shows nothing paid — once the webhook lands, trust paidTotal/remaining.
+  const webhookPending = paymentState === "success" && paidTotal === 0 && Boolean(nextOpen);
+  const displayRemaining = webhookPending
+    ? Math.max(0, remaining - (nextOpen?.amount ?? 0))
+    : remaining;
   const invoice = data?.invoices?.find((i) => i.id === schedule?.invoiceId) ?? data?.invoices?.[0];
   const invoiceLabel = invoiceHumanLabel({
     displayName: invoice?.displayName ?? schedule?.title ?? nextOpen?.label,
@@ -162,15 +163,20 @@ export function PaymentAccessShell({
             </div>
             <div className="space-y-2 text-sm">
               <p className="font-medium text-heading">{invoiceLabel}</p>
-              {lines.map((l) => (
+              {lines.map((l) => {
+                const showPaid =
+                  l.status === "paid" ||
+                  (webhookPending && nextOpen?.id === l.id);
+                return (
                 <div key={l.id} className="flex justify-between gap-3 text-muted-foreground">
                   <span>
                     {l.label || "Payment"}
-                    {l.status === "paid" || paymentState === "success" ? " — Paid" : ""}
+                    {showPaid ? " — Paid" : ""}
                   </span>
                   <span>{formatCurrency(l.amount)}</span>
                 </div>
-              ))}
+                );
+              })}
               <div className="flex justify-between gap-3 border-t border-border pt-2 font-medium text-heading">
                 <span>Remaining balance</span>
                 <span>{formatCurrency(displayRemaining)}</span>

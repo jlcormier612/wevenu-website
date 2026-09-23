@@ -21,4 +21,11 @@ describe("payment-access online payments readiness", () => {
       /disabled=\{paying \|\| !nextOpen\}/,
     );
   });
+
+  it("payment success race only optimistic-marks while paidTotal is still 0", () => {
+    const shell = readFileSync(resolve("components/portal/payment-access-shell.tsx"), "utf8");
+    assert.match(shell, /webhookPending/);
+    assert.match(shell, /paidTotal === 0/);
+    assert.doesNotMatch(shell, /l\.status === "paid" \|\| paymentState === "success"/);
+  });
 });
