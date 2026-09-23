@@ -209,6 +209,9 @@ export function BookingJourneyPanel({
         eventType={eventType}
         guestCount={guestCount}
         spaceId={spaceId}
+        venueName={journey.venueName}
+        brand={journey.brand}
+        defaultDepositPercent={journey.prefs.defaultDepositPercent}
       />
 
       <SelectPackageSheet

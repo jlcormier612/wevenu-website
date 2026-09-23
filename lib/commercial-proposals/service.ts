@@ -10,6 +10,10 @@ import type {
 } from "@/lib/commercial-proposals/types";
 import { validateClientChoices } from "@/lib/commercial-proposals/types";
 import { suggestDepositAmount, roundMoney } from "@/lib/commercial-selections/constants";
+import {
+  depositFromVenuePercent,
+  normalizeCommercialBookingPrefs,
+} from "@/lib/booking-journey/venue-prefs";
 import { evaluatePackageEligibility } from "@/lib/packages/eligibility";
 import { getPackage, getPackagesWithItems } from "@/lib/packages/service";
 import type { PackageWithItems } from "@/lib/packages/types";
@@ -109,14 +113,10 @@ export async function createCommercialProposal(
       optionRows.push({ packageId: pkg.id, offerRole: draft.offerRole, pkg });
     }
 
-    const maxPrimary = Math.max(
-      ...optionRows.filter((o) => o.offerRole === "primary").map((o) => Number(o.pkg.basePrice)),
-      0,
-    );
+    // Multi-option proposals must not attach a purchase deposit until the couple
+    // chooses. Only an explicit positive override is stored on the proposal row.
     const depositAmount = roundMoney(
-      input.depositAmount != null
-        ? input.depositAmount
-        : suggestDepositAmount(maxPrimary, null),
+      input.depositAmount != null && input.depositAmount > 0 ? input.depositAmount : 0,
     );
 
     // Supersede prior open proposals for this lead/client
@@ -343,9 +343,60 @@ export async function approveProposalByToken(
     if (err === "invalid_token") return { ok: false, message: "This proposal link is not valid." };
     return { ok: false, message: "Could not approve this proposal." };
   }
+
+  const selectionId = row.selectionId ? String(row.selectionId) : undefined;
+  // Deposit belongs to the chosen commercial total — not max-of-alternatives on the proposal.
+  if (selectionId && row.alreadyApproved !== true) {
+    await applyDepositFromChosenSelection(admin, selectionId);
+  }
+
   return {
     ok: true,
-    selectionId: row.selectionId ? String(row.selectionId) : undefined,
+    selectionId,
     alreadyApproved: row.alreadyApproved === true,
   };
+}
+
+/**
+ * After L1 approve creates L2, set deposit from the chosen total × venue default %.
+ * RPC currently copies proposal.deposit_amount (often 0 for multi-option).
+ */
+async function applyDepositFromChosenSelection(
+  admin: ReturnType<typeof createAdminClient>,
+  selectionId: string,
+): Promise<void> {
+  const { data: sel } = await admin
+    .from("commercial_selections")
+    .select("id, venue_id, total_amount, deposit_amount")
+    .eq("id", selectionId)
+    .maybeSingle<{
+      id: string;
+      venue_id: string;
+      total_amount: number | string;
+      deposit_amount: number | string;
+    }>();
+  if (!sel) return;
+
+  const { data: venue } = await admin
+    .from("venues")
+    .select("commercial_booking_prefs")
+    .eq("id", sel.venue_id)
+    .maybeSingle<{ commercial_booking_prefs: unknown }>();
+
+  const prefs = normalizeCommercialBookingPrefs(venue?.commercial_booking_prefs ?? null);
+  const total = Number(sel.total_amount);
+  if (!(total > 0)) return;
+
+  const fromPercent = depositFromVenuePercent(total, prefs);
+  const deposit = suggestDepositAmount(total, fromPercent, {
+    initialPaymentRequired: prefs.initialPaymentRequired,
+  });
+
+  if (Number(sel.deposit_amount) === deposit) return;
+
+  await admin
+    .from("commercial_selections")
+    .update({ deposit_amount: deposit })
+    .eq("id", selectionId)
+    .eq("venue_id", sel.venue_id);
 }

@@ -41,6 +41,11 @@ async function venueBrand() {
   };
 }
 
+async function venueName(): Promise<string | null> {
+  const venue = await getCurrentVenue();
+  return venue?.name ?? null;
+}
+
 function bestContract(clientId: string | null | undefined, contracts: Awaited<ReturnType<typeof getContracts>>): JourneyContract | null {
   if (!clientId) return null;
   const owned = contracts.filter((c) => c.clientId === clientId);
@@ -71,12 +76,13 @@ export async function loadBookingJourneyForLead(input: {
   }
   const clientId = input.linkedClientId ?? clientSelection?.clientId ?? null;
   const eventId = input.linkedEventId ?? clientSelection?.eventId ?? null;
-  const [paymentLines, invitation, applications, prefs, brand] = await Promise.all([
+  const [paymentLines, invitation, applications, prefs, brand, name] = await Promise.all([
     clientId ? paymentLinesForClient(clientId) : Promise.resolve([]),
     clientId ? getClientInvitation(clientId) : Promise.resolve(null),
     eventId ? getEventPlaybookApplications(eventId) : Promise.resolve([]),
     venuePrefs(),
     venueBrand(),
+    venueName(),
   ]);
   return buildBookingJourney({
     leadId: input.leadId,
@@ -89,6 +95,7 @@ export async function loadBookingJourneyForLead(input: {
     planningStarted: applications.some((a) => !!a.releasedAt),
     prefs,
     brand,
+    venueName: name,
   });
 }
 
@@ -97,7 +104,7 @@ export async function loadBookingJourneyForClient(input: {
   eventId?: string | null;
   leadId?: string | null;
 }): Promise<BookingJourneyModel> {
-  const [selection, contracts, paymentLines, invitation, applications, prefs, brand] = await Promise.all([
+  const [selection, contracts, paymentLines, invitation, applications, prefs, brand, name] = await Promise.all([
     getActiveSelectedPackageForClient(input.clientId),
     getContracts(),
     paymentLinesForClient(input.clientId),
@@ -105,6 +112,7 @@ export async function loadBookingJourneyForClient(input: {
     input.eventId ? getEventPlaybookApplications(input.eventId) : Promise.resolve([]),
     venuePrefs(),
     venueBrand(),
+    venueName(),
   ]);
   let resolved = selection;
   if (!resolved && input.leadId) {
@@ -121,5 +129,6 @@ export async function loadBookingJourneyForClient(input: {
     planningStarted: applications.some((a) => !!a.releasedAt),
     prefs,
     brand,
+    venueName: name,
   });
 }

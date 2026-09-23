@@ -48,6 +48,8 @@ export type BookingJourneyModel = {
     accentColor: string;
     neutralColor: string;
   };
+  /** Venue display name on couple-facing proposal. */
+  venueName: string | null;
 };
 
 export type JourneyContract = {
@@ -90,6 +92,8 @@ export type JourneyInputs = {
     accentColor: string;
     neutralColor: string;
   } | null;
+  /** Venue display name on couple-facing proposal. */
+  venueName?: string | null;
 };
 
 /**
@@ -440,6 +444,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     prefs,
     paymentLines: input.paymentLines,
     brand,
+    venueName: input.venueName ?? null,
   };
 }
 
