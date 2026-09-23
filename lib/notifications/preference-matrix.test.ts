@@ -28,11 +28,15 @@ const PREFERENCE_MATRIX: {
   { prefKey: "pref_vendor_checked_in", notificationType: "vendor_checked_in", uiLabel: "Vendor check-in", channel: "email_optional" },
   { prefKey: "pref_feedback_received", notificationType: "feedback_received", uiLabel: "Feedback received", channel: "email_optional" },
   { prefKey: "pref_referral_received", notificationType: "referral_received", uiLabel: "Referral received", channel: "email_optional" },
+  { prefKey: "pref_tour_scheduled", notificationType: "tour_scheduled", uiLabel: "Tour scheduled", channel: "email_optional" },
+  { prefKey: "pref_tour_confirmed", notificationType: "tour_confirmed", uiLabel: "Tour confirmed", channel: "email_optional" },
+  { prefKey: "pref_proposal_accepted", notificationType: "proposal_accepted", uiLabel: "Proposal accepted", channel: "email_optional" },
 ];
 
 describe("notification preference matrix", () => {
+  // Latest create_venue_notification (202614071) is the live gate for every type.
   const sql = readFileSync(
-    resolve("supabase/migrations/20261298000000_reminder_cadence_and_venue_email.sql"),
+    resolve("supabase/migrations/20261407100000_customer_action_notification_preferences.sql"),
     "utf8",
   );
   const ui = readFileSync(
