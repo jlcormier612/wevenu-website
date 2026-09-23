@@ -58,6 +58,9 @@ export async function createPortalCheckoutSession(token: string, itemId: string)
   const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] =
     ctx.acceptedPaymentMethods.length > 0 ? ctx.acceptedPaymentMethods : ["card"];
 
+  // Preserve ?item= on return URLs so success cannot rebind to a different installment.
+  const itemQs = ctx.itemId ? `item=${encodeURIComponent(ctx.itemId)}&` : "";
+
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
@@ -92,8 +95,8 @@ export async function createPortalCheckoutSession(token: string, itemId: string)
       },
       // Land on Payments so the confirming/confirmed notice is visible.
       // `payment=success` means Checkout finished — not that HTC has reconciled.
-      success_url: `${appUrl}/p/${token}?payment=success#payments`,
-      cancel_url: `${appUrl}/p/${token}?payment=cancelled#payments`,
+      success_url: `${appUrl}/p/${token}?${itemQs}payment=success#payments`,
+      cancel_url: `${appUrl}/p/${token}?${itemQs}payment=cancelled#payments`,
     },
     { stripeAccount: ctx.stripeAccountId },
   );

@@ -120,17 +120,26 @@ export async function sendInvoiceEmailAction(
   if (!client?.email) return { ok: false, message: "Client has no email address on file." };
 
   // Amount due NOW = next open schedule installment (not full commitment).
-  const { resolveAmountDueNow } = await import("@/lib/invoices/amount-due-now");
+  const { resolveAmountDueNow, pickNextOpenPaymentLine } = await import("@/lib/invoices/amount-due-now");
   const { getPaymentSchedules, getPaymentSchedule } = await import("@/lib/payments/service");
   const schedules = (await getPaymentSchedules()).filter((s) => s.invoiceId === invoiceId);
-  let scheduleLines: { amount: number; dueDate: string | null; status: string; label?: string; obligationKind?: string | null; sortOrder?: number }[] | null = null;
+  let scheduleLines: {
+    id: string;
+    amount: number;
+    dueDate: string | null;
+    status: string;
+    label?: string;
+    obligationKind?: string | null;
+    sortOrder?: number;
+  }[] | null = null;
   if (schedules.length > 0) {
     const detail = await getPaymentSchedule(schedules[0]!.id);
     scheduleLines = (detail?.lineItems ?? []).map((li) => ({
+      id: li.id,
       amount: li.amount,
       dueDate: li.dueDate,
       status: li.status,
-      label: li.label,
+      label: li.label ?? undefined,
       obligationKind: li.obligationKind,
       sortOrder: li.sortOrder,
     }));
@@ -139,10 +148,12 @@ export async function sendInvoiceEmailAction(
     balanceDue: invoiceToSend.balanceDue,
     scheduleLines,
   });
+  const dueNowLine = scheduleLines ? pickNextOpenPaymentLine(scheduleLines) : null;
 
   // Payment access ≠ portal access.
   // Prefer an existing full (couple) workspace link when the client was already invited.
   // Otherwise create/reuse a financial-only session so payers never land in an unclaimed workspace.
+  // Bind the CTA to the specific payment_line_item so Pay $X cannot resolve to another installment.
   const { publicAppOrigin } = await import("@/lib/env");
   const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
   let portalPayUrl: string | null = null;
@@ -155,11 +166,12 @@ export async function sendInvoiceEmailAction(
       paySession = await createPortalSession(clientId, "Payment", "financial");
     }
     if (paySession?.accessToken) {
-      // Financial sessions land on the payment-only experience (no #payments hash required).
+      // Bind CTA to the specific installment so Pay $X cannot resolve to another line.
+      const itemQs = dueNowLine?.id ? `?item=${encodeURIComponent(dueNowLine.id)}` : "";
       portalPayUrl =
         paySession.accessLevel === "financial"
-          ? `${publicAppOrigin()}/p/${paySession.accessToken}`
-          : `${publicAppOrigin()}/p/${paySession.accessToken}#payments`;
+          ? `${publicAppOrigin()}/p/${paySession.accessToken}${itemQs}`
+          : `${publicAppOrigin()}/p/${paySession.accessToken}${itemQs}#payments`;
     }
   } catch {
     /* email still sends without link */
