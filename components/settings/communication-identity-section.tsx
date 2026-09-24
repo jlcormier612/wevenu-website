@@ -111,11 +111,15 @@ export function CommunicationIdentitySection({
           <Row
             label="Reply / contact"
             value={
-              venueEmail
-                ? `Replies can route into Inbox when inbound is configured; contact shown as ${venueEmail}`
-                : "Set your venue contact email in Business & Brand"
+              venueEmail ? (
+                <div className="space-y-1">
+                  <p>Replies to your messages are routed to your Inbox automatically.</p>
+                  <p>Contact: {venueEmail}</p>
+                </div>
+              ) : (
+                "Set your venue contact email in Business & Brand"
+              )
             }
-            hint="Conversation emails can use thread matching when inbound email is configured."
           />
         </dl>
 
@@ -195,14 +199,14 @@ function Row({
 }: {
   label: string;
   value: React.ReactNode;
-  hint: string;
+  hint?: string;
 }) {
   return (
     <div className="px-4 py-3.5 bg-card grid gap-1 sm:grid-cols-[11rem_1fr] sm:gap-4">
       <dt className="text-sm font-medium text-heading">{label}</dt>
       <dd>
         <div className="text-sm text-foreground">{value}</div>
-        <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
+        {hint ? <p className="text-xs text-muted-foreground mt-0.5">{hint}</p> : null}
       </dd>
     </div>
   );

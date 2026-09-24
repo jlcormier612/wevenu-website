@@ -115,6 +115,20 @@ describe("SMS message body copy", () => {
   });
 });
 
+describe("Reply / contact copy", () => {
+  it("uses venue-facing Inbox routing copy without inbound plumbing language", () => {
+    assert.match(identitySection, /label="Reply \/ contact"/);
+    assert.match(
+      identitySection,
+      /Replies to your messages are routed to your Inbox automatically\./,
+    );
+    assert.match(identitySection, /Contact: \{venueEmail\}/);
+    assert.doesNotMatch(identitySection, /when inbound is configured/);
+    assert.doesNotMatch(identitySection, /thread matching/);
+    assert.doesNotMatch(identitySection, /contact shown as/);
+  });
+});
+
 describe("brand color swatch", () => {
   it("renders a swatch from the configured primaryColor value", () => {
     assert.match(identitySection, /backgroundColor: primaryColor/);
