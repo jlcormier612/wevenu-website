@@ -81,14 +81,14 @@ export default async function NewContractPage({ searchParams }: Props) {
         description={
           selection
             ? `Create a contract from ${selection.name}. Package details will be filled in automatically.`
-            : "Generate a contract from a template and send it for signing."
+            : "Prepare a draft from a template. Smart Fields stay in the draft until you send."
         }
       />
       <Card>
         <CardHeader>
           <CardTitle>Contract setup</CardTitle>
           <CardDescription>
-            Select a template and client, then apply merge fields to auto-fill the details.
+            Select a template and client, then edit with Smart Fields. Preview is display-only. Tokens resolve when you send.
           </CardDescription>
         </CardHeader>
         <CardContent>

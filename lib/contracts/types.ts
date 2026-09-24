@@ -34,7 +34,7 @@ export type Contract = {
   eventId: string | null;
   templateId: string | null;
   title: string;
-  content: string; // rendered (tokens already resolved)
+  content: string; // draft: authored tokens intact; sent/signed: customer-facing resolved text
   status: ContractStatus;
   /** htc = Hello to Cheers e-sign; external = recorded as executed elsewhere. */
   executionOrigin: ContractExecutionOrigin;
@@ -129,6 +129,8 @@ export type ContractActionResult =
       newlyBooked?: boolean;
       clientId?: string | null;
       eventId?: string | null;
+      /** Present after a draft content save — next edit must send this concurrency token. */
+      updatedAt?: string;
     }
   /** reason:"stale" — Work Package D4's concurrency check — a save was rejected because someone else saved first; the UI should prompt a reload, never silently overwrite. */
   | { ok: false; errors?: ContractErrors; message?: string; reason?: "stale" | "not_editable" | "not_found" };

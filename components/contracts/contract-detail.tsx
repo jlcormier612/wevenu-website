@@ -13,7 +13,6 @@ import {
   Lock,
   Pencil,
   RotateCcw,
-  Send,
   Trash2,
   X,
 } from "lucide-react";
@@ -34,6 +33,7 @@ import {
 } from "@/app/(app)/contracts/actions";
 import { SignForm } from "@/app/sign/[token]/sign-form";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
+import { ContractBuilder } from "@/components/contracts/contract-builder";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
 import { ContractSigningArtifact } from "@/components/contracts/contract-signing-artifact";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
@@ -85,7 +85,7 @@ export function ContractDetail({
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
-  const [reviewOpen, setReviewOpen] = React.useState(initialReview);
+  const [reviewOpen, setReviewOpen] = React.useState(initialReview && contract.status !== "draft");
   const [releaseMessage, setReleaseMessage] = React.useState("");
   const [sendPending, startSend] = React.useTransition();
   const [editTitle, setEditTitle] = React.useState(contract.title);
@@ -331,11 +331,7 @@ export function ContractDetail({
         lastUpdated={formatContractDate(contract.updatedAt.slice(0, 10))}
         relationship={contract.clientName ? { name: contract.clientName, href: `/clients/${contract.clientId}` } : null}
         primaryAction={
-          contract.status === "draft" ? (
-            <Button size="sm" onClick={() => { setReleaseMessage(shareDefaultMessage); setReviewOpen(true); }}>
-              <Send className="mr-1 h-3.5 w-3.5" />Review &amp; send to client
-            </Button>
-          ) : awaitingVenueSignature ? (
+          contract.status === "draft" ? null : awaitingVenueSignature ? (
             <Button size="sm" onClick={() => setShowVenueSign(true)}>
               <Pencil className="mr-1 h-3.5 w-3.5" />Sign as venue
             </Button>
@@ -386,14 +382,9 @@ export function ContractDetail({
       )}
       <BusinessAssetActionRow
         secondary={<>
-          {canEditContent && (
+          {canEditContent && contract.status !== "draft" && (
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-            </Button>
-          )}
-          {contract.status === "draft" && (
-            <Button variant="outline" size="sm" onClick={() => setReviewOpen(true)}>
-              Review contract
             </Button>
           )}
           {canReopen && (
@@ -615,8 +606,27 @@ export function ContractDetail({
         </Card>
       )}
 
+      {contract.status === "draft" && (
+        <ContractBuilder
+          mode="draft"
+          templates={[]}
+          clients={[]}
+          draft={{
+            contractId: contract.id,
+            title: contract.title,
+            content: contract.content,
+            clientId: contract.clientId,
+            eventId: contract.eventId ?? "",
+            clientName: contract.clientName,
+            expectedUpdatedAt: contract.updatedAt,
+          }}
+          signers={signers}
+          venueBrand={venueBrand}
+        />
+      )}
+
       {/* Contract document */}
-      {editing ? (
+      {contract.status !== "draft" && editing ? (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -638,7 +648,7 @@ export function ContractDetail({
             <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={28} className="font-mono text-sm" />
           </CardContent>
         </Card>
-      ) : (
+      ) : contract.status !== "draft" ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Contract Document</CardTitle>
@@ -649,9 +659,7 @@ export function ContractDetail({
                   ? "Fully Executed — both parties have signed. Finalize to generate the official PDF."
                   : clientSigned && !venueSigned
                     ? "Client-signed version — content is locked. Countersign below, or Create New Version for substantive changes."
-                    : contract.status === "sent"
-                      ? "Sent to Client — they are reviewing. You can still edit until they sign."
-                      : "Draft — prepare the agreement, then send it to the client for signature."}
+                    : "Sent to Client — they are reviewing. You can still edit until they sign."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -662,7 +670,7 @@ export function ContractDetail({
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Activity */}
       {contract.activities.length > 0 && (

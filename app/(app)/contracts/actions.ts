@@ -12,7 +12,6 @@ import {
   deleteContract_,
   deleteTemplate_,
   duplicateTemplate_,
-  mergeContent,
   reopenContractForEditing,
   resendContract,
   sendContract,
@@ -21,13 +20,9 @@ import {
   updateTemplate_,
   venueSignContract,
   withdrawVenueSignature,
-  buildContractMergeData,
+  previewContractContent,
 } from "@/lib/contracts/service";
 import { finalizeContract, getContractPdfUrl } from "@/lib/contracts/finalize";
-import {
-  EMPTY_EVENT_SPACES_LABEL,
-  replaceEmptyEventSpacesLabel,
-} from "@/lib/contracts/event-spaces-merge";
 import type {
   ContractActionResult,
   ContractErrors,
@@ -90,7 +85,19 @@ export async function createContractAction(input: NewContractInput): Promise<Cre
   return result;
 }
 
-/** Resolve merge fields for a template given client/event selection. */
+/** Display-only preview. Never persists. Tokens stay in the authored draft. */
+export async function previewContractContentAction(opts: {
+  templateContent: string;
+  clientId: string;
+  eventId: string;
+  contractTitle: string;
+  clientSignerContactIds?: string[];
+  selectionId?: string;
+}): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
+  return previewContractContent(opts);
+}
+
+/** @deprecated Use previewContractContentAction — same display-only resolve. */
 export async function previewMergedContentAction(opts: {
   templateContent: string;
   clientId: string;
@@ -98,23 +105,7 @@ export async function previewMergedContentAction(opts: {
   contractTitle: string;
   selectionId?: string;
 }): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
-  try {
-    const data = await buildContractMergeData({
-      clientId: opts.clientId,
-      eventId: opts.eventId,
-      contractTitle: opts.contractTitle,
-      selectionId: opts.selectionId,
-    });
-    return {
-      ok: true,
-      content: replaceEmptyEventSpacesLabel(
-        mergeContent(opts.templateContent, data),
-        data.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
-      ),
-    };
-  } catch {
-    return { ok: false, message: "Could not preview contract." };
-  }
+  return previewContractContentAction(opts);
 }
 
 /**

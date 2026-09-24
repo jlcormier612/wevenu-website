@@ -6,7 +6,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
 import * as documentIntegration from "@/lib/contracts/document-integration";
-import { buildMergeData, mergeContent, extractTokens, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
+import { buildMergeData, mergeContent, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
 import {
   EMPTY_EVENT_SPACES_LABEL,
   replaceEmptyEventSpacesLabel,
@@ -292,8 +292,8 @@ export async function getContractByToken(token: string): Promise<(Contract & {
 }
 
 /**
- * Generate a contract from a template + client/event.
- * Merges all available fields from the client, event, and venue.
+ * Generate a draft contract from a template + client/event.
+ * Stores authored content (Smart Fields intact). Tokens resolve at Send.
  */
 export async function createContract(input: NewContractInput): Promise<CreateContractResult> {
   const errors = validateNewContractInput(input);
@@ -336,28 +336,12 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
     });
     const mergeSelectionId = activeSelection?.id ?? resolvedInput.selectionId;
 
-    const mergeData = await buildContractMergeData({
-      clientId: resolvedInput.clientId, eventId: resolvedInput.eventId, contractTitle: resolvedInput.title,
-      selectionId: mergeSelectionId,
+    // Token-preserving draft: store authored content (Smart Fields intact).
+    // Tokens resolve only at Send. Preview is display-only and never writes back.
+    const contractId = await repo.insertContract(supabase, venueId, {
+      ...resolvedInput,
+      content: resolvedInput.content,
     });
-    const mergedBody = replaceEmptyEventSpacesLabel(
-      mergeContent(resolvedInput.content, mergeData),
-      mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
-    );
-    const resolvedContent = applyRequiredSignerSignatureBlocks(
-      mergedBody,
-      signerSeeds.seeds.map((s) => s.signerName),
-    );
-    // Drafts may still hold venue-policy placeholders (filled before send).
-    // Unresolved {{tokens}} must never land in a working contract.
-    const leftover = extractTokens(resolvedContent);
-    if (leftover.length > 0) {
-      return {
-        ok: false,
-        message: `Some details couldn't be filled in yet: ${leftover.map((t) => `{{${t}}}`).join(", ")}. Check the booking, client, and event, or remove those tokens before creating the agreement.`,
-      } as CreateContractResult;
-    }
-    const contractId = await repo.insertContract(supabase, venueId, { ...resolvedInput, content: resolvedContent });
     await repo.insertContractSigners(supabase, venueId, contractId, signerSeeds.seeds);
     const actor = await currentActor(venueId);
     await repo.insertContractActivity(
@@ -373,9 +357,13 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
   return result as CreateContractResult;
 }
 
-/** Live preview of merged contract body, including per-signer signature blocks. */
-export async function previewContractContent(opts: {
-  templateContent: string;
+/**
+ * Resolve authored (tokenized) draft content into customer-facing text.
+ * Used by Preview (display-only) and Send (the only persist path).
+ * Never writes the draft.
+ */
+export async function materializeAuthoredContractContent(opts: {
+  authoredContent: string;
   clientId: string;
   eventId: string;
   contractTitle: string;
@@ -385,23 +373,52 @@ export async function previewContractContent(opts: {
   try {
     const signerSeeds = await resolveClientSignerSeeds(opts.clientId, opts.clientSignerContactIds);
     if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message };
+    const { resolveActiveCommercialSelection } = await import("@/lib/commercial-selections/service");
+    const activeSelection = await resolveActiveCommercialSelection({
+      selectionId: opts.selectionId,
+      eventId: opts.eventId,
+      clientId: opts.clientId,
+    });
     const mergeData = await buildContractMergeData({
       clientId: opts.clientId,
       eventId: opts.eventId,
       contractTitle: opts.contractTitle,
-      selectionId: opts.selectionId,
+      selectionId: activeSelection?.id ?? opts.selectionId,
     });
     const content = applyRequiredSignerSignatureBlocks(
       replaceEmptyEventSpacesLabel(
-        mergeContent(opts.templateContent, mergeData),
+        mergeContent(opts.authoredContent, mergeData),
         mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
       ),
       signerSeeds.seeds.map((s) => s.signerName),
     );
     return { ok: true, content };
   } catch {
-    return { ok: false, message: "Could not preview contract." };
+    return { ok: false, message: "Could not resolve contract details." };
   }
+}
+
+/** Live preview of merged contract body, including per-signer signature blocks. */
+export async function previewContractContent(opts: {
+  templateContent: string;
+  clientId: string;
+  eventId: string;
+  contractTitle: string;
+  clientSignerContactIds?: string[];
+  selectionId?: string;
+}): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
+  const result = await materializeAuthoredContractContent({
+    authoredContent: opts.templateContent,
+    clientId: opts.clientId,
+    eventId: opts.eventId,
+    contractTitle: opts.contractTitle,
+    clientSignerContactIds: opts.clientSignerContactIds,
+    selectionId: opts.selectionId,
+  });
+  if (!result.ok) {
+    return { ok: false, message: result.message === "Could not resolve contract details." ? "Could not preview contract." : result.message };
+  }
+  return result;
 }
 
 /**
@@ -723,7 +740,7 @@ export async function updateContractContent_(id: string, title: string, content:
   const result = await withVenue(async (supabase, venueId) => {
     const outcome = await repo.updateContractContent(supabase, venueId, id, title, content, expectedUpdatedAt);
     if (!outcome.ok) return { ok: false, message: outcome.message, reason: outcome.reason } as ContractActionResult;
-    return { ok: true } as ContractActionResult;
+    return { ok: true, updatedAt: outcome.updatedAt } as ContractActionResult;
   });
   return result as ContractActionResult;
 }
@@ -919,10 +936,25 @@ export async function sendContract(id: string, customMessage?: string): Promise<
 
     // Client-first: venue signature is not required to issue the contract.
 
-    const safety = assertCustomerSafeContractContent(contract.content);
+    const priorContactIds = (contract.signers ?? [])
+      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
+      .map((s) => s.clientContactId as string);
+    const materialized = await materializeAuthoredContractContent({
+      authoredContent: contract.content,
+      clientId: contract.clientId ?? "",
+      eventId: contract.eventId ?? "",
+      contractTitle: contract.title,
+      clientSignerContactIds: priorContactIds.length > 0 ? priorContactIds : undefined,
+    });
+    if (!materialized.ok) {
+      return { ok: false, message: materialized.message } as ContractActionResult;
+    }
+    const safety = assertCustomerSafeContractContent(materialized.content);
     if (!safety.ok) {
       return { ok: false, message: safety.message } as ContractActionResult;
     }
+    await repo.forceResolveContractContent(supabase, venueId, id, materialized.content);
+    const customerFacing = { ...contract, content: materialized.content };
 
     const venue = await getCurrentVenue();
     const brandingSnapshot = venue ? captureContractBrandingSnapshot(venue) : undefined;
@@ -941,7 +973,7 @@ export async function sendContract(id: string, customMessage?: string): Promise<
     {
       const existingDocumentId = await documentIntegration.getContractDocumentId(supabase, id);
       if (!existingDocumentId) {
-        const { documentId: newDocumentId } = await documentIntegration.publishContractDocument(supabase, contract);
+        const { documentId: newDocumentId } = await documentIntegration.publishContractDocument(supabase, customerFacing);
         if (contract.amendsContractId) {
           const priorDocumentId = await documentIntegration.getContractDocumentId(supabase, contract.amendsContractId);
           if (priorDocumentId) {
@@ -949,7 +981,7 @@ export async function sendContract(id: string, customMessage?: string): Promise<
           }
         }
       } else {
-        await documentIntegration.versionContractDocument(supabase, existingDocumentId, contract.content, { type: "venue", id: venueId });
+        await documentIntegration.versionContractDocument(supabase, existingDocumentId, materialized.content, { type: "venue", id: venueId });
       }
     }
 

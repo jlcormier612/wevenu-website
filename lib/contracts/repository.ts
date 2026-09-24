@@ -481,7 +481,7 @@ export async function insertContract(client: DbClient, venueId: string, input: N
  */
 export async function updateContractContent(
   client: DbClient, venueId: string, id: string, title: string, content: string, expectedUpdatedAt: string,
-): Promise<{ ok: true } | { ok: false; message: string; reason?: "stale" | "not_editable" | "not_found" }> {
+): Promise<{ ok: true; updatedAt?: string } | { ok: false; message: string; reason?: "stale" | "not_editable" | "not_found" }> {
   const { data: existing, error: fetchError } = await client
     .from("contracts")
     .select("status")
@@ -510,7 +510,7 @@ export async function updateContractContent(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error } = await (client.from("contracts") as any).update({ title: title.trim(), content })
     .eq("id", id).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
-    .select("id");
+    .select("id, updated_at");
   if (error) throw error;
 
   if (!updated || updated.length === 0) {
@@ -522,7 +522,7 @@ export async function updateContractContent(
   }
 
   await insertContractActivity(client, venueId, id, "edited", "Contract content edited");
-  return { ok: true };
+  return { ok: true, updatedAt: (updated[0] as { updated_at: string }).updated_at };
 }
 
 /**
