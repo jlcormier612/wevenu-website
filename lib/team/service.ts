@@ -385,7 +385,6 @@ export async function recordOwnerMember(input: {
     const name = input.name.trim();
     if (!name || !email) return { ok: false, error: "Name and email are required." };
 
-    const membership = await getActiveVenueMembership();
     if (membership?.email && membership.email.toLowerCase() === email) {
       if (membership.isOwner) return { ok: true, staffId: membership.staffId };
       return promoteAcceptedMemberToOwner(supabase, membership.staffId);
