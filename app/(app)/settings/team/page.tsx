@@ -48,10 +48,9 @@ export default async function TeamDataSettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Team &amp; Permissions</CardTitle>
           <CardDescription>
-            Access controls day-to-day work (Administrator, Manager, Coordinator, and so on).
-            Ownership is a separate choice — Owners can add or remove other Owners and make
-            ownership decisions for the venue. Someone can be an Owner and still use any Access
-            level for their day-to-day responsibilities.
+            Owners have full access to the venue, including team, settings, billing, and
+            account ownership. Add people who help run your venue below — choose the access
+            level that fits their role, and customize individual permissions when needed.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -88,7 +87,7 @@ export default async function TeamDataSettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Migration Center</CardTitle>
           <CardDescription>
-            Switching from another venue-management system? Bring over your existing clients, leads, and vendors — we'll recognize duplicates and import quietly, with no surprise emails to your customers.
+            Switching from another venue-management system? Bring over your existing clients, leads, and vendors — we&apos;ll recognize duplicates and import quietly, with no surprise emails to your customers.
           </CardDescription>
         </CardHeader>
         <CardContent>

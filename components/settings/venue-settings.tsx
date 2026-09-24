@@ -21,10 +21,20 @@ import { Input } from "@/components/ui/input";
 import {
   BrandStep,
   BusinessHoursStep,
-  OwnerStep,
   VenueDetailsStep,
   VenueInfoStep,
 } from "@/components/setup/setup-steps";
+import { VenueOwnersSection } from "@/components/settings/venue-owners-section";
+import type { StaffMember } from "@/lib/team/types";
+import { CURRENCIES, WEEK_START_OPTIONS } from "@/lib/venue/constants";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -96,10 +106,14 @@ export function VenueSettings({
   initial,
   venueId,
   publicReviewUrl: initialReviewUrl = "",
+  owners = [],
+  actorIsOwner = false,
 }: {
   initial: VenueSetupInput;
   venueId: string;
   publicReviewUrl?: string;
+  owners?: StaffMember[];
+  actorIsOwner?: boolean;
 }) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
   const [publicReviewUrl, setPublicReviewUrl] = React.useState(initialReviewUrl);
@@ -291,13 +305,61 @@ export function VenueSettings({
         <BrandStep {...stepProps} />
       </SettingsSection>
 
-      {/* 5 — Owner profile and general settings */}
+      {/* Owners — relocated from Team invite; same venue_staff.is_owner path */}
+      <VenueOwnersSection initialOwners={owners} actorIsOwner={actorIsOwner} />
+
+      {/* General settings (currency / week) — owner profile fields no longer edited here */}
       <SettingsSection
-        title="Owner & general settings"
-        description="Owner profile, currency, and week configuration."
+        title="General settings"
+        description="Currency and week configuration for this venue."
         onSave={() => save(saveOwnerAction)}
       >
-        <OwnerStep {...stepProps} />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-currency" className="text-xs">
+              Currency
+            </Label>
+            <Select
+              value={input.currency}
+              onValueChange={(v) => set("currency", v)}
+              items={Object.fromEntries(CURRENCIES.map((c) => [c.value, c.label]))}
+            >
+              <SelectTrigger id="settings-currency">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-week-start" className="text-xs">
+              Week starts on
+            </Label>
+            <Select
+              value={String(input.weekStartsOn)}
+              onValueChange={(v) => set("weekStartsOn", Number(v))}
+              items={Object.fromEntries(
+                WEEK_START_OPTIONS.map((o) => [o.value, o.label]),
+              )}
+            >
+              <SelectTrigger id="settings-week-start">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WEEK_START_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </SettingsSection>
     </div>
   );

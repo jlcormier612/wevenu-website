@@ -273,6 +273,9 @@ export async function getVenueFullDetails(
     .select("full_name, title, email")
     .eq("venue_id", venue.id)
     .eq("is_owner", true)
+    .eq("is_active", true)
+    .order("accepted_at", { ascending: true, nullsFirst: false })
+    .limit(1)
     .maybeSingle<{ full_name: string; title: string | null; email: string | null }>();
   if (staffErr) throw staffErr;
 
@@ -346,10 +349,22 @@ export async function updateOwnerStaff(
   venueId: string,
   patch: { full_name: string; title: string | null; email: string | null },
 ): Promise<void> {
+  // Prefer a single accepted owner row when multiple owners exist (settings
+  // profile fields remain a primary-contact convenience, not multi-owner edit).
+  const { data: primary, error: findErr } = await client
+    .from("venue_staff")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("is_owner", true)
+    .eq("is_active", true)
+    .order("accepted_at", { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  if (findErr) throw findErr;
+  if (!primary) return;
   const { error } = await client
     .from("venue_staff")
     .update(patch)
-    .eq("venue_id", venueId)
-    .eq("is_owner", true);
+    .eq("id", primary.id);
   if (error) throw error;
 }

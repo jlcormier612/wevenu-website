@@ -4,33 +4,47 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { VenueSettings } from "@/components/settings/venue-settings";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
+import { getTeamMembers } from "@/lib/team/service";
+import { getActiveVenueMembership } from "@/lib/authorization/membership";
 
 export const metadata: Metadata = { title: "Business & Brand — Settings" };
 
 /**
- * Settings > Business & Brand. Renders the existing VenueSettings
- * component whole — it's exported as a single component internally
- * covering owner info/currency/week-start, venue story, review link,
- * brand colors, logo, and hero photo (see components/settings/venue-
- * settings.tsx), plus venue name/profile/hours fields not explicitly
- * named in the category spec. Splitting it further would mean editing
- * components/setup/setup-steps.tsx, which is shared with the setup
- * wizard — avoided per "don't rewrite business logic."
+ * Settings > Business & Brand. Venue identity + Owners (relocated from Team).
+ * Owner invite/remove reuses existing venue_staff.is_owner + inviteStaffMember.
  */
 export default async function BusinessBrandSettingsPage() {
-  const [settings, venue] = await Promise.all([getVenueSettings(), getCurrentVenue()]);
+  const [settings, venue, membership] = await Promise.all([
+    getVenueSettings(),
+    getCurrentVenue(),
+    getActiveVenueMembership(),
+  ]);
+
+  const owners = venue
+    ? (await getTeamMembers(venue.id)).filter(
+        (m) => m.isOwner || m.ownerInvitePending,
+      )
+    : [];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Business & Brand"
-        description="Your venue information, appearance, and public-facing details."
+        description="Your venue information, appearance, owners, and public-facing details."
       />
       <SettingsTabs />
       {settings ? (
-        <VenueSettings initial={settings.input} venueId={settings.venueId} publicReviewUrl={venue?.publicReviewUrl ?? ""} />
+        <VenueSettings
+          initial={settings.input}
+          venueId={settings.venueId}
+          publicReviewUrl={venue?.publicReviewUrl ?? ""}
+          owners={owners}
+          actorIsOwner={membership?.isOwner === true}
+        />
       ) : (
-        <p className="text-sm text-muted-foreground">Your venue settings could not be loaded. Please refresh the page.</p>
+        <p className="text-sm text-muted-foreground">
+          Your venue settings could not be loaded. Please refresh the page.
+        </p>
       )}
     </div>
   );

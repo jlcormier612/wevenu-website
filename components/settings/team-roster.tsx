@@ -8,7 +8,6 @@ import {
   ACCESS_TITLE_DESCRIPTIONS,
   ACCESS_TITLE_LABELS,
   ACCESS_TITLES,
-  describeOwnershipAlongsideAccess,
   formatAccessBadge,
   summarizeWhatPersonCan,
   type AccessTitle,
@@ -18,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -47,6 +45,7 @@ import {
 } from "@/app/(app)/settings/team/actions";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { TeamCapabilityCustomizer } from "@/components/settings/team-capability-customizer";
+import Link from "next/link";
 
 interface Props {
   initialMembers: StaffMember[];
@@ -68,6 +67,10 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+function isOwnerRow(m: StaffMember): boolean {
+  return m.isOwner || m.ownerInvitePending;
+}
+
 export function TeamRoster({
   initialMembers,
   venueId: _venueId,
@@ -82,24 +85,31 @@ export function TeamRoster({
   const [accessTitle, setAccessTitle] = React.useState<AccessTitle>("coordinator");
   const [titleBasis, setTitleBasis] = React.useState<BasisTitle>("coordinator");
   const [overrides, setOverrides] = React.useState<CapabilityOverrides>({});
-  const [inviteAsOwner, setInviteAsOwner] = React.useState(false);
   const [showCustomize, setShowCustomize] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
-  const [removing, setRemoving] = React.useState<{ id: string; name: string; isPending: boolean } | null>(null);
+  const [removing, setRemoving] = React.useState<{
+    id: string;
+    name: string;
+    isPending: boolean;
+  } | null>(null);
   const [removePending, setRemovePending] = React.useState(false);
   const [editing, setEditing] = React.useState<StaffMember | null>(null);
 
-  const accepted = members.filter((m) => m.acceptedAt);
-  const pending = members.filter((m) => !m.acceptedAt);
+  const owners = members.filter((m) => isOwnerRow(m) && m.isActive);
+  const staffAccepted = members.filter(
+    (m) => m.acceptedAt && !isOwnerRow(m) && m.isActive,
+  );
+  const staffPending = members.filter(
+    (m) => !m.acceptedAt && !isOwnerRow(m) && m.isActive,
+  );
 
   const invitePreview = summarizeWhatPersonCan({
     isActive: true,
-    isOwner: inviteAsOwner,
+    isOwner: false,
     accessTitle: accessTitle === "custom" ? "custom" : accessTitle,
     titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
     overrides,
   });
-  const ownershipNote = describeOwnershipAlongsideAccess(accessTitle, inviteAsOwner);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -112,20 +122,15 @@ export function TeamRoster({
         accessTitle,
         titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
         capabilityOverrides: overrides,
-        isOwner: inviteAsOwner,
+        isOwner: false,
       });
       if (result.ok) {
-        toast.success(
-          inviteAsOwner
-            ? `Owner invitation sent to ${email}`
-            : `Invitation sent to ${email}`,
-        );
+        toast.success(`Invitation sent to ${email}`);
         setName("");
         setEmail("");
         setAccessTitle("coordinator");
         setTitleBasis("coordinator");
         setOverrides({});
-        setInviteAsOwner(false);
         setShowCustomize(false);
         setMembers((prev) => [
           ...prev,
@@ -142,7 +147,7 @@ export function TeamRoster({
             accessTitle,
             titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
             capabilityOverrides: overrides,
-            ownerInvitePending: inviteAsOwner,
+            ownerInvitePending: false,
             inviteToken: null,
             invitedAt: new Date().toISOString(),
             acceptedAt: null,
@@ -178,79 +183,125 @@ export function TeamRoster({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Access controls day-to-day work. Ownership is separate — Owners can add or remove other
-        Owners and make ownership decisions. Someone can be an Owner and still use any Access
-        level for day-to-day responsibilities.
-      </p>
-
-      {accepted.length > 0 && (
-        <div className="space-y-2">
-          {accepted.map((member) => (
-            <div
-              key={member.id}
-              className="flex flex-col gap-2 border-b py-2.5 last:border-0 sm:flex-row sm:items-center sm:gap-3"
-            >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                  {initials(member.name)}
-                </div>
-                <div className="min-w-0 flex-1">
+      {/* Informational owners — managed in Business & Brand */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Owners
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Owners have full access to the venue, including team, settings, billing, and
+          account ownership.{" "}
+          {actorIsOwner ? (
+            <>
+              Manage owners in{" "}
+              <Link href="/settings/business" className="font-medium text-primary hover:underline">
+                Business &amp; Brand
+              </Link>
+              .
+            </>
+          ) : null}
+        </p>
+        {owners.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No owners listed.</p>
+        ) : (
+          <div className="space-y-1">
+            {owners.map((member) => (
+              <div
+                key={member.id}
+                className="flex flex-col gap-1 border-b py-2.5 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+              >
+                <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{member.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {[member.jobTitle, member.email].filter(Boolean).join(" · ")}
+                    {member.ownerInvitePending && !member.acceptedAt
+                      ? "Owner invite pending"
+                      : "Owner"}
+                    {member.email ? ` · ${member.email}` : ""}
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                <span className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs font-medium">
-                  {formatAccessBadge(member.accessTitle, member.isOwner)}
-                </span>
-                {member.isOwner ? (
-                  <span className="text-xs text-muted-foreground">Owner</span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Not Owner</span>
-                )}
-                {(canChangeAccess || actorIsOwner || canRemove) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={<Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" />}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {(canChangeAccess || actorIsOwner) && (
-                        <DropdownMenuItem onClick={() => setEditing(member)}>
-                          <Pencil className="mr-2 h-3.5 w-3.5" />
-                          Edit access
-                        </DropdownMenuItem>
-                      )}
-                      {canRemove && !(member.isOwner && !actorIsOwner) && (
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() =>
-                            setRemoving({ id: member.id, name: member.name, isPending: false })
-                          }
-                        >
-                          <Trash2 className="mr-2 h-3.5 w-3.5" />
-                          Remove
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Staff */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Team members
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Add people who help run your venue. Choose the access level that fits their
+          role, and customize individual permissions when needed.
+        </p>
+
+        {staffAccepted.length === 0 && staffPending.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No team members yet.</p>
+        ) : null}
+
+        {staffAccepted.map((member) => (
+          <div
+            key={member.id}
+            className="flex flex-col gap-2 border-b py-2.5 last:border-0 sm:flex-row sm:items-center sm:gap-3"
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                {initials(member.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{member.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {[member.jobTitle, member.email].filter(Boolean).join(" · ")}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <span className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs font-medium">
+                {formatAccessBadge(member.accessTitle, false)}
+              </span>
+              {(canChangeAccess || actorIsOwner || canRemove) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={<Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" />}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(canChangeAccess || actorIsOwner) && (
+                      <DropdownMenuItem onClick={() => setEditing(member)}>
+                        <Pencil className="mr-2 h-3.5 w-3.5" />
+                        Edit access
+                      </DropdownMenuItem>
+                    )}
+                    {canRemove && (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() =>
+                          setRemoving({
+                            id: member.id,
+                            name: member.name,
+                            isPending: false,
+                          })
+                        }
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        Remove
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
-      {pending.length > 0 && (
+      {staffPending.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Pending invitations
           </p>
-          {pending.map((member) => (
+          {staffPending.map((member) => (
             <div
               key={member.id}
               className="flex items-center gap-3 border-b py-2 opacity-70 last:border-0"
@@ -265,7 +316,7 @@ export function TeamRoster({
                 )}
               </div>
               <span className="inline-flex items-center rounded bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                {member.ownerInvitePending ? "Owner invite" : "Invited"}
+                Invited
               </span>
               {canRemove && (
                 <Button
@@ -285,15 +336,8 @@ export function TeamRoster({
       )}
 
       {canInvite && (
-        <form onSubmit={handleInvite} className="space-y-5 border-t pt-4">
-          <div>
-            <p className="text-sm font-medium">Invite a team member</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Choose their day-to-day Access first, then decide whether they should also be an
-              Owner.
-            </p>
-          </div>
-
+        <form onSubmit={handleInvite} className="space-y-4 border-t pt-4">
+          <p className="text-sm font-medium">Invite a team member</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="team-name" className="text-xs">
@@ -322,16 +366,10 @@ export function TeamRoster({
             </div>
           </div>
 
-          {/* Access — day-to-day responsibilities */}
-          <div className="space-y-3 rounded-md border p-3">
-            <div>
-              <Label htmlFor="team-access" className="text-sm font-medium">
-                Access
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                What this person can do day to day in the venue.
-              </p>
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="team-access" className="text-xs">
+              Access
+            </Label>
             <Select
               value={accessTitle}
               onValueChange={(v) => {
@@ -358,74 +396,64 @@ export function TeamRoster({
             <p className="text-xs text-muted-foreground">
               {ACCESS_TITLE_DESCRIPTIONS[accessTitle]}
             </p>
-
-            {accessTitle === "custom" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Start from</Label>
-                <Select
-                  value={titleBasis}
-                  onValueChange={(v) => {
-                    setTitleBasis(v as BasisTitle);
-                    setOverrides({});
-                  }}
-                  items={{
-                    administrator: "Administrator",
-                    manager: "Manager",
-                    coordinator: "Coordinator",
-                    staff: "Staff",
-                    view_only: "View Only",
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(
-                      ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
-                    ).map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {ACCESS_TITLE_LABELS[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCustomize((s) => !s)}
-            >
-              {showCustomize ? "Hide customize access" : "Customize access"}
-            </Button>
-
-            {showCustomize && (
-              <TeamCapabilityCustomizer
-                accessTitle={accessTitle}
-                titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
-                overrides={overrides}
-                onChange={setOverrides}
-                actorIsOwner={actorIsOwner}
-              />
-            )}
           </div>
 
-          {/* Ownership — orthogonal; does not change Access */}
-          {actorIsOwner && (
-            <TeamOwnershipSection
-              isOwner={inviteAsOwner}
-              onChange={setInviteAsOwner}
+          {accessTitle === "custom" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Start from</Label>
+              <Select
+                value={titleBasis}
+                onValueChange={(v) => {
+                  setTitleBasis(v as BasisTitle);
+                  setOverrides({});
+                }}
+                items={{
+                  administrator: "Administrator",
+                  manager: "Manager",
+                  coordinator: "Coordinator",
+                  staff: "Staff",
+                  view_only: "View Only",
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(
+                    ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
+                  ).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {ACCESS_TITLE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCustomize((s) => !s)}
+          >
+            {showCustomize ? "Hide customize access" : "Customize access"}
+          </Button>
+
+          {showCustomize && (
+            <TeamCapabilityCustomizer
               accessTitle={accessTitle}
-              ownershipNote={ownershipNote}
+              titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
+              overrides={overrides}
+              onChange={setOverrides}
+              actorIsOwner={actorIsOwner}
             />
           )}
 
           {invitePreview.length > 0 && (
             <div className="rounded-md bg-muted/50 px-3 py-2">
               <p className="mb-1 text-xs font-semibold text-muted-foreground">
-                This person can… ({formatAccessBadge(accessTitle, inviteAsOwner)})
+                This person can… ({ACCESS_TITLE_LABELS[accessTitle]})
               </p>
               <ul className="list-inside list-disc text-sm">
                 {invitePreview.map((line) => (
@@ -437,7 +465,7 @@ export function TeamRoster({
 
           <Button type="submit" size="sm" disabled={busy}>
             <UserPlus className="mr-2 h-4 w-4" />
-            {busy ? "Sending…" : inviteAsOwner ? "Invite as Owner" : "Send Invitation"}
+            {busy ? "Sending…" : "Send Invitation"}
           </Button>
         </form>
       )}
@@ -483,60 +511,6 @@ export function TeamRoster({
   );
 }
 
-function TeamOwnershipSection({
-  isOwner,
-  onChange,
-  accessTitle,
-  ownershipNote,
-}: {
-  isOwner: boolean;
-  onChange: (next: boolean) => void;
-  accessTitle: AccessTitle;
-  ownershipNote: string | null;
-}) {
-  const accessLabel = ACCESS_TITLE_LABELS[accessTitle];
-  return (
-    <div className="space-y-3 rounded-md border p-3">
-      <div>
-        <p className="text-sm font-medium">Ownership</p>
-        <p className="text-xs text-muted-foreground">
-          Separate from Access. Does not change their day-to-day {accessLabel} permissions.
-        </p>
-      </div>
-      <RadioGroup
-        value={isOwner ? "owner" : "member"}
-        onValueChange={(v) => onChange(v === "owner")}
-        className="gap-3"
-      >
-        <label className="flex cursor-pointer items-start gap-2.5">
-          <RadioGroupItem value="member" className="mt-0.5" />
-          <span>
-            <span className="block text-sm font-medium">This person is a team member</span>
-            <span className="block text-xs text-muted-foreground">
-              Works with the Access you chose above. No ownership-level control.
-            </span>
-          </span>
-        </label>
-        <label className="flex cursor-pointer items-start gap-2.5">
-          <RadioGroupItem value="owner" className="mt-0.5" />
-          <span>
-            <span className="block text-sm font-medium">Make this person an Owner</span>
-            <span className="block text-xs text-muted-foreground">
-              Adds ownership-level control of the venue account (add or remove Owners and make
-              ownership decisions). Their Access stays {accessLabel}.
-            </span>
-          </span>
-        </label>
-      </RadioGroup>
-      {ownershipNote && (
-        <p className="rounded-md bg-muted/60 px-2.5 py-2 text-xs text-muted-foreground">
-          {ownershipNote}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function TeamMemberEditDialog({
   member,
   actorIsOwner,
@@ -552,22 +526,21 @@ function TeamMemberEditDialog({
 }) {
   const [accessTitle, setAccessTitle] = React.useState<AccessTitle>(member.accessTitle);
   const [titleBasis, setTitleBasis] = React.useState<BasisTitle>(
-    member.titleBasis ?? (member.accessTitle === "custom" ? "manager" : (member.accessTitle as BasisTitle)),
+    member.titleBasis ??
+      (member.accessTitle === "custom" ? "manager" : (member.accessTitle as BasisTitle)),
   );
   const [overrides, setOverrides] = React.useState<CapabilityOverrides>(member.capabilityOverrides);
-  const [isOwner, setIsOwner] = React.useState(member.isOwner);
   const [jobTitle, setJobTitle] = React.useState(member.jobTitle ?? "");
   const [showCustomize, setShowCustomize] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
   const preview = summarizeWhatPersonCan({
     isActive: true,
-    isOwner,
+    isOwner: false,
     accessTitle,
     titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
     overrides,
   });
-  const ownershipNote = describeOwnershipAlongsideAccess(accessTitle, isOwner);
 
   async function handleSave() {
     setBusy(true);
@@ -576,8 +549,8 @@ function TeamMemberEditDialog({
         accessTitle,
         titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
         capabilityOverrides: overrides,
-        isOwner: actorIsOwner ? isOwner : undefined,
         jobTitle: jobTitle.trim() || null,
+        // Ownership is not edited here — Business & Brand owns that.
       });
       if (result.ok) {
         toast.success("Access updated");
@@ -586,7 +559,6 @@ function TeamMemberEditDialog({
           accessTitle,
           titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
           capabilityOverrides: overrides,
-          isOwner: actorIsOwner ? isOwner : member.isOwner,
           jobTitle: jobTitle.trim() || null,
         });
       } else {
@@ -603,8 +575,7 @@ function TeamMemberEditDialog({
         <DialogHeader>
           <DialogTitle>Edit access — {member.name}</DialogTitle>
           <DialogDescription>
-            Access is day-to-day work. Ownership is a separate choice and does not replace their
-            Access level.
+            Change what they can do day to day. Ownership is managed in Business &amp; Brand.
           </DialogDescription>
         </DialogHeader>
 
@@ -618,13 +589,8 @@ function TeamMemberEditDialog({
             />
           </div>
 
-          <div className="space-y-3 rounded-md border p-3">
-            <div>
-              <Label className="text-sm font-medium">Access</Label>
-              <p className="text-xs text-muted-foreground">
-                What this person can do day to day in the venue.
-              </p>
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Access</Label>
             <Select
               value={accessTitle}
               onValueChange={(v) => {
@@ -649,72 +615,63 @@ function TeamMemberEditDialog({
             <p className="text-xs text-muted-foreground">
               {ACCESS_TITLE_DESCRIPTIONS[accessTitle]}
             </p>
-
-            {accessTitle === "custom" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Start from</Label>
-                <Select
-                  value={titleBasis}
-                  onValueChange={(v) => {
-                    setTitleBasis(v as BasisTitle);
-                    setOverrides({});
-                  }}
-                  items={{
-                    administrator: "Administrator",
-                    manager: "Manager",
-                    coordinator: "Coordinator",
-                    staff: "Staff",
-                    view_only: "View Only",
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(
-                      ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
-                    ).map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {ACCESS_TITLE_LABELS[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCustomize((s) => !s)}
-            >
-              {showCustomize ? "Hide customize access" : "Customize access"}
-            </Button>
-
-            {showCustomize && (
-              <TeamCapabilityCustomizer
-                accessTitle={accessTitle}
-                titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
-                overrides={overrides}
-                onChange={setOverrides}
-                actorIsOwner={actorIsOwner}
-              />
-            )}
           </div>
 
-          {actorIsOwner && (
-            <TeamOwnershipSection
-              isOwner={isOwner}
-              onChange={setIsOwner}
+          {accessTitle === "custom" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Start from</Label>
+              <Select
+                value={titleBasis}
+                onValueChange={(v) => {
+                  setTitleBasis(v as BasisTitle);
+                  setOverrides({});
+                }}
+                items={{
+                  administrator: "Administrator",
+                  manager: "Manager",
+                  coordinator: "Coordinator",
+                  staff: "Staff",
+                  view_only: "View Only",
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(
+                    ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
+                  ).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {ACCESS_TITLE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCustomize((s) => !s)}
+          >
+            {showCustomize ? "Hide customize access" : "Customize access"}
+          </Button>
+
+          {showCustomize && (
+            <TeamCapabilityCustomizer
               accessTitle={accessTitle}
-              ownershipNote={ownershipNote}
+              titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
+              overrides={overrides}
+              onChange={setOverrides}
+              actorIsOwner={actorIsOwner}
             />
           )}
 
           <div className="rounded-md bg-muted/50 px-3 py-2">
             <p className="mb-1 text-xs font-semibold text-muted-foreground">
-              This person can… ({formatAccessBadge(accessTitle, isOwner)})
+              This person can… ({ACCESS_TITLE_LABELS[accessTitle]})
             </p>
             <ul className="list-inside list-disc text-sm">
               {preview.map((line) => (
