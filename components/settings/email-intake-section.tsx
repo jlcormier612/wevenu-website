@@ -94,7 +94,7 @@ export function EmailIntakeSection({
           {!hasReceivedAnything ? (
             <p className="text-xs text-muted-foreground">
               Forward a test inquiry to this address to confirm it&apos;s working. You&apos;ll see it
-              under Lead Capture once it arrives.
+              in Leads once it arrives.
             </p>
           ) : null}
 

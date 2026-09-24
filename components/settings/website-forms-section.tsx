@@ -2,8 +2,6 @@
 
 import * as React from "react";
 
-import Link from "next/link";
-
 import { Check, ChevronDown, Copy, ExternalLink } from "lucide-react";
 
 import { EmailIntakeSection } from "@/components/settings/email-intake-section";
@@ -147,60 +145,6 @@ export function WebsiteFormsSection({
       </div>
 
       <EmailIntakeSection status={emailIntakeStatus} leadEmailAddress={leadEmailAddress} />
-
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-        <p className="text-sm font-medium text-heading">Lead sources</p>
-        <p className="text-xs text-muted-foreground">
-          Bring inquiries from the places couples already find you.
-        </p>
-        <ul className="space-y-2.5 text-sm">
-          <li>
-            <p className="font-medium text-heading">Website</p>
-            <p className="text-xs text-muted-foreground">
-              Capture inquiries from your Hello to Cheers website form (setup above).
-            </p>
-          </li>
-          <li>
-            <p className="font-medium text-heading">Email intake</p>
-            <p className="text-xs text-muted-foreground">
-              Connect an inquiry email source so incoming inquiries can be captured as Leads
-              {leadEmailAddress ? " (setup above)." : "."}
-            </p>
-          </li>
-          <li>
-            <Link href="/setup-hub/lead-capture" className="font-medium text-primary hover:underline">
-              Facebook / Instagram Lead Ads
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              Connect Meta to bring Lead Ads into your Leads pipeline.
-            </p>
-          </li>
-          <li>
-            <Link href="/library/qr-campaigns" className="font-medium text-primary hover:underline">
-              QR code campaigns
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              Use QR codes on bridal-show materials, brochures, signs, and other marketing.
-            </p>
-          </li>
-          <li>
-            <Link href="/leads/new" className="font-medium text-primary hover:underline">
-              Manual entry
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              Add a Lead yourself from Relationships → Leads.
-            </p>
-          </li>
-          <li>
-            <Link href="/setup-hub/lead-capture" className="font-medium text-primary hover:underline">
-              Tour requests
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              Let couples book a tour; each request becomes a Lead.
-            </p>
-          </li>
-        </ul>
-      </div>
     </div>
   );
 }

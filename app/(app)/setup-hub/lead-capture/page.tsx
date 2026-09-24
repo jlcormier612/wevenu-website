@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LeadCaptureStage } from "@/components/setup-hub/lead-capture-stage";
-import { buildFacebookOAuthUrl } from "@/lib/facebook/config";
-import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
-import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { getLeadCaptureStageStatus } from "@/lib/setup-hub/service";
 import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
@@ -19,20 +16,15 @@ export const dynamic = "force-dynamic";
 export default async function LeadCaptureSetupPage() {
   const [
     venue, emailIntakeStatus, tourSettings, tourAvailability,
-    facebookConnection, facebookLeadForms, facebookLog,
-    qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
+    qrCampaigns, qrAnalytics, stageStatus,
     inquiryFormSettings, role,
   ] = await Promise.all([
     getCurrentVenue(),
     getEmailIntakeStatus(),
     getTourSettings(),
     getTourAvailability(),
-    getFacebookConnection(),
-    getFacebookLeadForms(),
-    getRecentFacebookLog(),
     getQrCampaigns(),
     getQrCampaignAnalytics(),
-    getIntakeHealthSummary(),
     getLeadCaptureStageStatus(),
     getInquiryFormSettings(),
     getCurrentUserRole(),
@@ -56,7 +48,6 @@ export default async function LeadCaptureSetupPage() {
         description="Bring inquiries from the places couples already find you."
       />
       <LeadCaptureStage
-        venueId={venue.id}
         embedKey={venue.embedKey}
         appUrl={appUrl}
         leadEmailAddress={leadEmailAddress}
@@ -65,13 +56,8 @@ export default async function LeadCaptureSetupPage() {
         tourWindows={tourWindows}
         tourExceptions={tourExceptions}
         tourAvailabilityLoadError={tourAvailabilityLoadError}
-        facebookConnection={facebookConnection}
-        facebookLeadForms={facebookLeadForms}
-        facebookLog={facebookLog}
-        facebookConnectUrl={buildFacebookOAuthUrl(venue.id)}
         qrCampaigns={qrCampaigns}
         qrAnalytics={qrAnalytics}
-        intakeHealth={intakeHealth}
         stageStatus={stageStatus}
         inquiryFormSettings={inquiryFormSettings}
         canEditInquiryForm={canEditInquiryForm}

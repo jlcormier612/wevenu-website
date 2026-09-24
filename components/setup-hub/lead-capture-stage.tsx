@@ -2,21 +2,18 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Globe, Mail, QrCode, Send, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { markChannelConfiguredAction, markChannelVerifiedAction, setLeadCapturePathAction } from "@/app/(app)/setup-hub/actions";
-import { FacebookConnectSection } from "@/components/settings/facebook-connect-section";
-import { LeadIntakeHealthSection } from "@/components/settings/lead-intake-health-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
-import type { IntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { QrCampaign, QrCampaignAnalytics } from "@/lib/qr-campaigns/types";
 import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
@@ -82,13 +79,11 @@ function ChannelActions({
 }
 
 export function LeadCaptureStage({
-  venueId, embedKey, appUrl, leadEmailAddress, emailIntakeStatus,
+  embedKey, appUrl, leadEmailAddress, emailIntakeStatus,
   tourSettings, tourWindows, tourExceptions, tourAvailabilityLoadError,
-  facebookConnection, facebookLeadForms, facebookLog, facebookConnectUrl,
-  qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
+  qrCampaigns, qrAnalytics, stageStatus,
   inquiryFormSettings = null, canEditInquiryForm = true,
 }: {
-  venueId: string;
   embedKey: string;
   appUrl: string;
   leadEmailAddress: string | null;
@@ -97,13 +92,8 @@ export function LeadCaptureStage({
   tourWindows: TourAvailabilityWindow[];
   tourExceptions: TourAvailabilityException[];
   tourAvailabilityLoadError?: string | null;
-  facebookConnection: FacebookConnection | null;
-  facebookLeadForms: FacebookLeadForm[];
-  facebookLog: FacebookLeadLogEntry[];
-  facebookConnectUrl?: string | null;
   qrCampaigns: QrCampaign[];
   qrAnalytics: QrCampaignAnalytics[];
-  intakeHealth: IntakeHealthSummary;
   stageStatus: LeadCaptureStageStatus | null;
   inquiryFormSettings?: InquiryFormSettings | null;
   canEditInquiryForm?: boolean;
@@ -111,7 +101,6 @@ export function LeadCaptureStage({
   const router = useRouter();
   const [path, setPath] = React.useState(stageStatus?.path ?? null);
   const [pathPending, startPathTransition] = React.useTransition();
-  const [showOtherSources, setShowOtherSources] = React.useState(false);
 
   const channelState = React.useCallback(
     (channel: LeadCaptureChannelKey) => stageStatus?.channels.find((c) => c.channel === channel) ?? { configuredAt: null, verifiedAt: null },
@@ -170,12 +159,12 @@ export function LeadCaptureStage({
 
       {path === "automated" && (
         <>
-          {/* Website Form (bundles Email Intake) */}
+          {/* Website */}
           <Card>
             <CardHeader className="flex-row items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium text-heading">Website Form</p>
+                <p className="text-sm font-medium text-heading">Website</p>
               </div>
               <ChannelBadge configuredAt={website.configuredAt} verifiedAt={website.verifiedAt} hasVerification />
             </CardHeader>
@@ -202,13 +191,13 @@ export function LeadCaptureStage({
             </CardContent>
           </Card>
 
-          {/* Tour Booking */}
+          {/* Tour requests */}
           {tourSettings && (
             <Card>
               <CardHeader className="flex-row items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-heading">Tour Booking</p>
+                  <p className="text-sm font-medium text-heading">Tour requests</p>
                 </div>
                 <ChannelBadge configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification />
               </CardHeader>
@@ -228,56 +217,47 @@ export function LeadCaptureStage({
             </Card>
           )}
 
-          {/* Other Sources — progressively disclosed */}
-          {!showOtherSources ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowOtherSources(true)}>
-              More lead sources — QR, Facebook/Instagram, manual entry
-            </Button>
-          ) : (
-            <Card id="other-lead-sources">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <QrCode className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-heading">Lead sources</p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Bring inquiries from the places couples already find you.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <p className="text-sm font-medium text-heading mb-1">Facebook / Instagram Lead Ads</p>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Connect Meta to bring Lead Ads into your Leads pipeline.
-                  </p>
-                  <FacebookConnectSection venueId={venueId} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} connectUrl={facebookConnectUrl ?? null} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-heading mb-1">QR code campaigns</p>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Use QR codes on bridal-show materials, brochures, signs, and other marketing.
-                  </p>
-                  <QrCampaignList initialCampaigns={qrCampaigns} analytics={qrAnalytics} appUrl={appUrl} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-heading mb-1">Manual entry</p>
-                  <p className="text-xs text-muted-foreground">
-                    Add a Lead yourself from{" "}
-                    <a href="/leads/new" className="text-primary hover:underline">Relationships → Leads</a>.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Facebook / Instagram */}
+          <Card>
+            <CardHeader className="flex-row items-center gap-2">
+              <p className="text-sm font-medium text-heading">Facebook / Instagram</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Connect Facebook and Instagram to bring Lead Ads into your Leads pipeline.
+              </p>
+              <Button type="button" size="sm" variant="outline" render={<Link href="/settings/integrations" />}>
+                Open Meta integration
+              </Button>
+            </CardContent>
+          </Card>
 
-          {/* Capture status — venue-facing, not system health */}
+          {/* QR campaigns */}
+          <Card>
+            <CardHeader className="flex-row items-center gap-2">
+              <div className="flex items-center gap-2">
+                <QrCode className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium text-heading">QR campaigns</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Use QR codes on bridal-show materials, brochures, signs, and other marketing.
+              </p>
+              <QrCampaignList initialCampaigns={qrCampaigns} analytics={qrAnalytics} appUrl={appUrl} />
+            </CardContent>
+          </Card>
+
+          {/* Manual entry */}
           <Card>
             <CardHeader>
-              <p className="text-sm font-medium text-heading">Lead Capture</p>
-              <p className="text-xs text-muted-foreground">Your inquiries, all in one place.</p>
+              <p className="text-sm font-medium text-heading">Manual entry</p>
             </CardHeader>
             <CardContent>
-              <LeadIntakeHealthSection summary={intakeHealth} />
+              <p className="text-sm text-muted-foreground">
+                Add a Lead yourself from{" "}
+                <Link href="/leads/new" className="text-primary hover:underline">Relationships → Leads</Link>.
+              </p>
             </CardContent>
           </Card>
         </>

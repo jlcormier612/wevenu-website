@@ -33,31 +33,52 @@ describe("Lead Capture venue summary", () => {
       resolve("app/(app)/settings/leads/page.tsx"),
       "utf8",
     );
+    const setupPage = readFileSync(
+      resolve("app/(app)/setup-hub/lead-capture/page.tsx"),
+      "utf8",
+    );
+    const setupStage = readFileSync(
+      resolve("components/setup-hub/lead-capture-stage.tsx"),
+      "utf8",
+    );
     for (const blob of [health, email, settings]) {
       assert.doesNotMatch(blob, /Lead Intake Health/);
       assert.doesNotMatch(blob, /\bRejected\b/);
       assert.doesNotMatch(blob, /\bErrors\b/);
+    }
+    for (const blob of [email, settings]) {
       assert.doesNotMatch(blob, /Confidence/);
       assert.doesNotMatch(blob, /Last email/);
       assert.doesNotMatch(blob, /Last lead/);
     }
+    // Reporting/activity stays in the shared component but is not mounted on setup surfaces.
     assert.match(health, /inquiries received in the last 7 days/);
     assert.match(health, /Where your inquiries come from/);
     assert.match(health, /All caught up/);
+    assert.doesNotMatch(settings, /LeadIntakeHealthSection/);
+    assert.doesNotMatch(setupPage, /getIntakeHealthSummary|LeadIntakeHealthSection|intakeHealth/);
+    assert.doesNotMatch(setupStage, /LeadIntakeHealthSection|intakeHealth|Where your inquiries come from|Recent inquiries/);
   });
 
-  it("preserves lead source setup links in website forms section", () => {
+  it("setup page explains each source once with setup actions (no summary list)", () => {
+    const stage = readFileSync(
+      resolve("components/setup-hub/lead-capture-stage.tsx"),
+      "utf8",
+    );
     const forms = readFileSync(
       resolve("components/settings/website-forms-section.tsx"),
       "utf8",
     );
-    assert.match(forms, /Facebook \/ Instagram Lead Ads/);
-    assert.match(forms, /QR code campaigns/);
-    assert.match(forms, /Manual entry/);
-    assert.match(forms, /Tour requests/);
-    assert.match(forms, /Email intake/);
-    assert.match(forms, /\/library\/qr-campaigns/);
-    assert.match(forms, /\/leads\/new/);
-    assert.match(forms, /\/setup-hub\/lead-capture/);
+    assert.doesNotMatch(forms, /Lead sources/);
+    assert.doesNotMatch(stage, /Lead sources/);
+    assert.doesNotMatch(stage, /More lead sources/);
+    assert.match(stage, /Facebook \/ Instagram/);
+    assert.match(stage, /Connect Facebook and Instagram to bring Lead Ads into your Leads pipeline\./);
+    assert.match(stage, /\/settings\/integrations/);
+    assert.match(stage, /QR campaigns/);
+    assert.match(stage, /Manual entry/);
+    assert.match(stage, /\/leads\/new/);
+    assert.match(stage, /Tour requests/);
+    assert.match(forms, /EmailIntakeSection/);
   });
 });
