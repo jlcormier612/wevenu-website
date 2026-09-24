@@ -452,33 +452,33 @@ export function FacebookConnectSection({
     />
   );
 
-  const recentActivity = recentLog.length > 0 && (
+  const succeededLog = recentLog.filter((e) => e.outcome === "succeeded");
+  const failedCount = recentLog.filter(
+    (e) => e.outcome === "dead_lettered" || e.outcome === "retrying",
+  ).length;
+  const recentActivity = (succeededLog.length > 0 || failedCount > 0) && (
     <div className="space-y-1.5 rounded-lg border border-border p-3">
-      <p className="text-xs font-medium text-muted-foreground">Recent activity</p>
-      <ul className="space-y-1">
-        {recentLog.slice(0, 10).map((entry) => (
-          <li key={entry.id} className="flex items-center justify-between text-xs">
-            <span>
-              <Badge
-                variant={
-                  entry.outcome === "succeeded"
-                    ? "success"
-                    : entry.outcome === "dead_lettered"
-                      ? "destructive"
-                      : "warning"
-                }
-              >
-                {entry.outcome === "succeeded"
-                  ? "Imported"
-                  : entry.outcome === "dead_lettered"
-                    ? "Failed"
-                    : "Retrying"}
-              </Badge>
-            </span>
-            <span className="text-muted-foreground">{new Date(entry.createdAt).toLocaleString()}</span>
-          </li>
-        ))}
-      </ul>
+      <p className="text-xs font-medium text-muted-foreground">Recent Lead Ads</p>
+      {failedCount > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Lead Ads needs attention — reconnect Meta or check your selected forms.
+        </p>
+      ) : null}
+      {succeededLog.length > 0 ? (
+        <ul className="space-y-1">
+          {succeededLog.slice(0, 5).map((entry) => (
+            <li key={entry.id} className="flex items-center justify-between text-xs">
+              <span className="text-foreground">Received</span>
+              <span className="text-muted-foreground">
+                {new Date(entry.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 

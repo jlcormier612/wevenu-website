@@ -80,9 +80,9 @@ export default async function LeadsBookingSettingsPage() {
       {venue && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Lead Intake Health</CardTitle>
+            <CardTitle className="text-base">Lead Capture</CardTitle>
             <CardDescription>
-              Every inquiry your venue receives — website, tour requests, and email intake — in one place.
+              Your inquiries, all in one place.
             </CardDescription>
           </CardHeader>
           <CardContent>

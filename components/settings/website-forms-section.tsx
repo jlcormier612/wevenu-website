@@ -148,28 +148,58 @@ export function WebsiteFormsSection({
 
       <EmailIntakeSection status={emailIntakeStatus} leadEmailAddress={leadEmailAddress} />
 
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
-        <p className="text-sm font-medium text-heading">More lead sources</p>
+      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <p className="text-sm font-medium text-heading">Lead sources</p>
         <p className="text-xs text-muted-foreground">
-          Lead Capture is where you manage every way inquiries reach Hello to Cheers — not only this website form.
+          Bring inquiries from the places couples already find you.
         </p>
-        <ul className="space-y-1.5 text-xs">
+        <ul className="space-y-2.5 text-sm">
           <li>
-            <Link href="/setup-hub/lead-capture" className="text-primary hover:underline">Facebook / Instagram Lead Ads</Link>
-            <span className="text-muted-foreground"> — connect Meta and choose which Lead Ads forms create leads</span>
+            <p className="font-medium text-heading">Website</p>
+            <p className="text-xs text-muted-foreground">
+              Capture inquiries from your Hello to Cheers website form (setup above).
+            </p>
           </li>
           <li>
-            <Link href="/library/qr-campaigns" className="text-primary hover:underline">QR code campaigns</Link>
-            <span className="text-muted-foreground"> — bridal shows, brochures, front-gate signs</span>
+            <p className="font-medium text-heading">Email intake</p>
+            <p className="text-xs text-muted-foreground">
+              Connect an inquiry email source so incoming inquiries can be captured as Leads
+              {leadEmailAddress ? " (setup above)." : "."}
+            </p>
           </li>
           <li>
-            <Link href="/leads/new" className="text-primary hover:underline">Manual entry</Link>
-            <span className="text-muted-foreground"> — add a lead yourself from Your Relationships → Leads</span>
+            <Link href="/setup-hub/lead-capture" className="font-medium text-primary hover:underline">
+              Facebook / Instagram Lead Ads
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Connect Meta to bring Lead Ads into your Leads pipeline.
+            </p>
+          </li>
+          <li>
+            <Link href="/library/qr-campaigns" className="font-medium text-primary hover:underline">
+              QR code campaigns
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Use QR codes on bridal-show materials, brochures, signs, and other marketing.
+            </p>
+          </li>
+          <li>
+            <Link href="/leads/new" className="font-medium text-primary hover:underline">
+              Manual entry
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Add a Lead yourself from Relationships → Leads.
+            </p>
+          </li>
+          <li>
+            <Link href="/setup-hub/lead-capture" className="font-medium text-primary hover:underline">
+              Tour requests
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Let couples book a tour; each request becomes a Lead.
+            </p>
           </li>
         </ul>
-        <p className="text-xs text-muted-foreground italic pt-1">
-          All sources flow into this same lead pipeline — every opportunity begins in Hello to Cheers.
-        </p>
       </div>
     </div>
   );

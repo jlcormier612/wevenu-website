@@ -1,69 +1,116 @@
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 
-import type { IntakeHealthSummary } from "@/lib/lead-intake/monitoring";
-import { sourceLabel } from "@/lib/leads/constants";
+import type { LeadCaptureSummary } from "@/lib/lead-intake/monitoring";
 
-const STATUS_LABEL: Record<string, string> = {
-  accepted: "Accepted",
-  rejected_rate_limited: "Rate limited",
-  rejected_invalid: "Invalid",
-  rejected_duplicate_batch: "Duplicate (import)",
-  error: "Error",
-};
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
-export function LeadIntakeHealthSection({ summary }: { summary: IntakeHealthSummary }) {
-  if (summary.totalLast7Days === 0) {
+/**
+ * Venue-facing Lead Capture summary.
+ * Answers: Are inquiries arriving? Where from? Do I need to do something?
+ * Does not expose rejected/error/confidence telemetry.
+ */
+export function LeadIntakeHealthSection({ summary }: { summary: LeadCaptureSummary }) {
+  const received = summary.receivedLast7Days;
+  const needsReview = summary.needsReview ?? [];
+  const sources = summary.sourceBreakdown ?? [];
+  const recent = summary.recentInquiries ?? [];
+
+  if (received === 0 && needsReview.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No inquiries in the last 7 days yet — this will fill in once your form, tour scheduler, or email intake receives one.
-      </p>
+      <div className="space-y-2">
+        <p className="text-sm text-heading font-medium">No inquiries in the last 7 days yet.</p>
+        <p className="text-sm text-muted-foreground">
+          Once couples reach you through your website, tours, email intake, or other sources,
+          they&apos;ll show up here.
+        </p>
+      </div>
     );
   }
 
-  const rejected = summary.totalLast7Days - summary.acceptedLast7Days;
-
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="text-xs text-muted-foreground">Last 7 days</p>
-          <p className="text-xl font-semibold text-heading">{summary.totalLast7Days}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="text-xs text-muted-foreground">Accepted</p>
-          <p className="text-xl font-semibold text-heading">{summary.acceptedLast7Days}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="text-xs text-muted-foreground">Rejected</p>
-          <p className="text-xl font-semibold text-heading">{rejected}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="text-xs text-muted-foreground">Errors</p>
-          <p className="text-xl font-semibold text-heading">{summary.errored}</p>
-        </div>
+    <div className="space-y-5">
+      <div>
+        <p className="text-lg font-semibold text-heading">
+          {received === 1
+            ? "1 inquiry received in the last 7 days"
+            : `${received} inquiries received in the last 7 days`}
+        </p>
+        {needsReview.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            All caught up. Your inquiries are being captured normally.
+          </p>
+        ) : null}
       </div>
 
-      {summary.recentAttempts.length > 0 && (
+      {sources.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-heading">Where your inquiries come from</p>
+          <ul className="space-y-1.5">
+            {sources.map((s) => (
+              <li
+                key={s.source}
+                className="flex items-center justify-between gap-3 text-sm"
+              >
+                <span className="text-foreground">{s.label}</span>
+                <span className="font-medium text-heading tabular-nums">{s.count}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {needsReview.length > 0 ? (
+        <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+          <p className="text-sm font-medium text-heading">Needs your attention</p>
+          <p className="text-sm text-muted-foreground">
+            {needsReview.length === 1
+              ? "1 inquiry needs review before automated follow-up."
+              : `${needsReview.length} inquiries need review before automated follow-up.`}
+          </p>
+          <ul className="space-y-1.5">
+            {needsReview.slice(0, 5).map((item) => (
+              <li key={item.leadId} className="flex items-center justify-between gap-2 text-sm">
+                <span className="truncate text-foreground">{item.displayName}</span>
+                <Link
+                  href={`/leads/${item.leadId}`}
+                  className="shrink-0 text-primary hover:underline"
+                >
+                  Review
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {recent.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent activity</p>
+          <p className="text-sm font-medium text-heading">Recent inquiries</p>
           <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
-            {summary.recentAttempts.map((a) => (
-              <div key={a.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  {a.status === "accepted"
-                    ? <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                    : <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                  <span className="truncate">{sourceLabel(a.source)}</span>
+            {recent.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="truncate text-foreground">{a.sourceLabel}</span>
+                  <span className="text-xs text-muted-foreground">Received</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground">
-                  <span>{STATUS_LABEL[a.status] ?? a.status}</span>
-                  <span>{new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+                  <span>{formatShortDate(a.createdAt)}</span>
+                  {a.leadId ? (
+                    <Link href={`/leads/${a.leadId}`} className="text-primary hover:underline">
+                      Open
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

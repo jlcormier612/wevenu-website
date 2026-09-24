@@ -141,7 +141,7 @@ export function LeadCaptureStage({
         <CardHeader>
           <p className="text-sm font-medium text-heading">How do you want new inquiries to reach Hello to Cheers?</p>
           <p className="text-sm text-muted-foreground">
-            You don&apos;t need every channel below — just a workable way for new couples to reach you. The website inquiry form is the easiest place to start for most venues; it automatically brings every submission straight into Hello to Cheers.
+            Pick a workable path for your venue. The website inquiry form is the easiest place to start for most venues.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -231,37 +231,50 @@ export function LeadCaptureStage({
           {/* Other Sources — progressively disclosed */}
           {!showOtherSources ? (
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowOtherSources(true)}>
-              Other lead sources — QR campaigns, Facebook/Instagram, manual entry
+              More lead sources — QR, Facebook/Instagram, manual entry
             </Button>
           ) : (
             <Card id="other-lead-sources">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <QrCode className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-heading">Other Lead Sources</p>
+                  <p className="text-sm font-medium text-heading">Lead sources</p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Manage every other way inquiries reach Hello to Cheers. Facebook / Instagram Lead Ads uses your existing Meta connection — connect once, then choose which forms create leads.
+                  Bring inquiries from the places couples already find you.
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <p className="text-sm font-medium text-heading mb-2">Facebook / Instagram Lead Ads</p>
+                  <p className="text-sm font-medium text-heading mb-1">Facebook / Instagram Lead Ads</p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Connect Meta to bring Lead Ads into your Leads pipeline.
+                  </p>
                   <FacebookConnectSection venueId={venueId} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} connectUrl={facebookConnectUrl ?? null} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-heading mb-2">QR Campaigns</p>
+                  <p className="text-sm font-medium text-heading mb-1">QR code campaigns</p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Use QR codes on bridal-show materials, brochures, signs, and other marketing.
+                  </p>
                   <QrCampaignList initialCampaigns={qrCampaigns} analytics={qrAnalytics} appUrl={appUrl} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-heading mb-1">Manual entry</p>
+                  <p className="text-xs text-muted-foreground">
+                    Add a Lead yourself from{" "}
+                    <a href="/leads/new" className="text-primary hover:underline">Relationships → Leads</a>.
+                  </p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Verify It Works */}
+          {/* Capture status — venue-facing, not system health */}
           <Card>
             <CardHeader>
-              <p className="text-sm font-medium text-heading">Verify It Works</p>
-              <p className="text-xs text-muted-foreground">The last 7 days of inquiries across every channel above.</p>
+              <p className="text-sm font-medium text-heading">Lead Capture</p>
+              <p className="text-xs text-muted-foreground">Your inquiries, all in one place.</p>
             </CardHeader>
             <CardContent>
               <LeadIntakeHealthSection summary={intakeHealth} />

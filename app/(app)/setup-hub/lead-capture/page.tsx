@@ -53,7 +53,7 @@ export default async function LeadCaptureSetupPage() {
     <div className="space-y-6">
       <PageHeader
         title="Lead Capture"
-        description="How new inquiries reach Hello to Cheers."
+        description="Bring inquiries from the places couples already find you."
       />
       <LeadCaptureStage
         venueId={venue.id}

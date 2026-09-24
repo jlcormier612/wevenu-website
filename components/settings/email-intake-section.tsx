@@ -18,16 +18,6 @@ const PROVIDERS: { name: string; steps: string[] }[] = [
   { name: "Outlook", steps: ["Settings → Mail → Rules → Add a new rule", "Condition: subject/sender matches your inquiry notifications", "Action: forward to your forwarding address"] },
 ];
 
-function timeAgo(iso: string | null): string {
-  if (!iso) return "Never";
-  const ms = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(ms / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 30) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
 export function EmailIntakeSection({
   status, leadEmailAddress,
 }: {
@@ -67,17 +57,23 @@ export function EmailIntakeSection({
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-heading">Email intake</p>
+        <div>
+          <p className="text-sm font-medium text-heading">Email intake</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connect an inquiry email source so incoming inquiries can be captured as Leads.
+          </p>
+        </div>
         {isConnected ? (
           hasReceivedAnything
             ? <Badge variant="success">Connected</Badge>
-            : <Badge variant="warning">Awaiting first email</Badge>
+            : <Badge variant="outline">Waiting for first inquiry</Badge>
         ) : (
           <Badge variant="muted">Not connected</Badge>
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Forward inquiry notifications from The Knot, WeddingWire, or anywhere else that emails you a new inquiry — each one becomes a lead automatically.
+        Forward inquiry notifications from The Knot, WeddingWire, or anywhere else that emails you
+        a new inquiry — each one becomes a Lead automatically.
       </p>
 
       {!isConnected ? (
@@ -94,6 +90,13 @@ export function EmailIntakeSection({
               {copied ? <><Check className="mr-1 h-3.5 w-3.5" />Copied!</> : <><Copy className="mr-1 h-3.5 w-3.5" />Copy</>}
             </Button>
           </div>
+
+          {!hasReceivedAnything ? (
+            <p className="text-xs text-muted-foreground">
+              Forward a test inquiry to this address to confirm it&apos;s working. You&apos;ll see it
+              under Lead Capture once it arrives.
+            </p>
+          ) : null}
 
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Forwarding instructions</p>
@@ -116,27 +119,8 @@ export function EmailIntakeSection({
             ))}
             <p className="text-[10px] text-muted-foreground italic">General steps — exact menus vary by provider and change over time.</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-3 rounded-md border border-border p-3 text-center">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Last email</p>
-              <p className="text-sm font-medium text-heading">{timeAgo(status.lastEmailReceivedAt)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Last lead</p>
-              <p className="text-sm font-medium text-heading">{timeAgo(status.lastLeadImportedAt)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Confidence</p>
-              <p className="text-sm font-medium text-heading">{status.confidencePercent != null ? `${status.confidencePercent}%` : "—"}</p>
-            </div>
-          </div>
         </div>
       )}
-
-      <p className="text-xs text-muted-foreground">
-        Each lead shows how confident the extraction was. When it&apos;s low, the lead is still created right away, but automated follow-ups wait until you&apos;ve confirmed the details.
-      </p>
     </div>
   );
 }
