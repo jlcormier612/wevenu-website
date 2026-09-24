@@ -64,11 +64,13 @@ export function ActivateAccountForm({
   token,
   email,
   venueName,
+  setupPersonName,
   relationshipId,
 }: {
   token: string;
   email: string;
   venueName: string;
+  setupPersonName?: string;
   relationshipId?: string | null;
 }) {
   const [state, action, pending] = useActionState(activateAccountAction, null);
@@ -143,11 +145,19 @@ export function ActivateAccountForm({
       ) : null}
 
       <fieldset className="space-y-3 rounded-sm border border-border/60 px-4 py-3">
-        <legend className="ws-eyebrow px-1">Are you an owner of this venue?</legend>
+        <legend className="ws-eyebrow px-1">Who owns this venue?</legend>
         <p className="text-sm text-muted-foreground">
-          Some people buy Hello to Cheers for their own venue. Others set it up for the owners.
-          This only affects ownership — not whether you can finish setup.
+          You&apos;re setting up Hello to Cheers for:
         </p>
+        <div className="rounded-sm bg-muted/60 px-3 py-2 text-sm">
+          {setupPersonName ? (
+            <p className="font-medium text-foreground">{setupPersonName}</p>
+          ) : null}
+          <p className={setupPersonName ? "text-muted-foreground" : "font-medium text-foreground"}>
+            {email}
+          </p>
+        </div>
+        <p className="text-sm font-medium text-foreground">Are you an owner of this venue?</p>
         <label className="flex cursor-pointer items-start gap-3 text-sm">
           <input
             type="radio"
@@ -158,9 +168,9 @@ export function ActivateAccountForm({
             className="mt-1"
           />
           <span>
-            <span className="font-medium text-foreground">I&apos;m an owner of this venue</span>
+            <span className="font-medium text-foreground">Yes, I&apos;m an owner</span>
             <span className="mt-0.5 block text-muted-foreground">
-              You&apos;ll be able to manage ownership and invite other Owners.
+              I&apos;m one of the people who owns this venue.
             </span>
           </span>
         </label>
@@ -175,11 +185,10 @@ export function ActivateAccountForm({
           />
           <span>
             <span className="font-medium text-foreground">
-              I&apos;m setting this up on behalf of the venue
+              No, I&apos;m setting this up for someone else
             </span>
             <span className="mt-0.5 block text-muted-foreground">
-              You&apos;ll get Administrator access to run the account, including billing.
-              We&apos;ll invite the Owner separately — they don&apos;t have to approve you first.
+              I&apos;ll manage the venue in HTC, and I&apos;ll add the owner(s).
             </span>
           </span>
         </label>
@@ -187,32 +196,54 @@ export function ActivateAccountForm({
 
       {ownershipChoice === "on_behalf" ? (
         <div className="space-y-3 rounded-sm border border-border/60 px-4 py-3">
-          <p className="text-sm font-medium text-foreground">Invite the venue Owner</p>
+          <p className="text-sm font-medium text-foreground">Who owns this venue?</p>
           <p className="text-sm text-muted-foreground">
-            We&apos;ll let them know you&apos;re administering the account and invite them as an Owner.
+            Add an owner now, or add them after you sign in. You can invite them now or record them without inviting yet.
           </p>
           <label className="block">
-            <span className="ws-eyebrow">Owner name</span>
+            <span className="ws-eyebrow">Full name</span>
             <input
               name="invitedOwnerName"
               type="text"
-              required
               disabled={pending}
               autoComplete="name"
               className="ws-control mt-2 w-full rounded-sm px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
             />
           </label>
           <label className="block">
-            <span className="ws-eyebrow">Owner email</span>
+            <span className="ws-eyebrow">Email address</span>
             <input
               name="invitedOwnerEmail"
               type="email"
-              required
               disabled={pending}
               autoComplete="email"
               className="ws-control mt-2 w-full rounded-sm px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
             />
           </label>
+          <fieldset className="space-y-2">
+            <legend className="ws-eyebrow">Invite to Hello to Cheers</legend>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="radio"
+                name="inviteOwnerNow"
+                value="later"
+                defaultChecked
+                disabled={pending}
+                className="mt-1"
+              />
+              <span>Invite later</span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="radio"
+                name="inviteOwnerNow"
+                value="now"
+                disabled={pending}
+                className="mt-1"
+              />
+              <span>Invite now</span>
+            </label>
+          </fieldset>
         </div>
       ) : null}
 

@@ -15,8 +15,8 @@ export const ACTIVATE_PASSWORD_LENGTH_ERROR =
 export const ACTIVATE_PASSWORD_MISMATCH_ERROR = "Passwords do not match.";
 export const ACTIVATE_OWNERSHIP_REQUIRED_ERROR =
   "Please tell us whether you are an owner of this venue.";
-export const ACTIVATE_INVITED_OWNER_REQUIRED_ERROR =
-  "Please enter the venue owner's name and email so we can invite them.";
+export const ACTIVATE_INVITED_OWNER_INCOMPLETE_ERROR =
+  "Enter both the owner's name and email, or leave both blank and add them after you sign in.";
 
 export type ActivateOwnershipChoice = "owner" | "on_behalf";
 
@@ -27,6 +27,7 @@ export type ActivateAccountFieldState = {
   ownershipChoice?: ActivateOwnershipChoice | "";
   invitedOwnerName?: string;
   invitedOwnerEmail?: string;
+  inviteOwnerNow?: boolean;
   pending?: boolean;
 };
 
@@ -51,6 +52,7 @@ export function parseActivateAccountFormData(formData: FormData): {
   ownershipChoice: ActivateOwnershipChoice | "";
   invitedOwnerName: string;
   invitedOwnerEmail: string;
+  inviteOwnerNow: boolean;
 } {
   const rawChoice = String(formData.get("ownershipChoice") || "").trim();
   const ownershipChoice: ActivateOwnershipChoice | "" =
@@ -65,6 +67,7 @@ export function parseActivateAccountFormData(formData: FormData): {
     ownershipChoice,
     invitedOwnerName: String(formData.get("invitedOwnerName") || "").trim(),
     invitedOwnerEmail: String(formData.get("invitedOwnerEmail") || "").trim().toLowerCase(),
+    inviteOwnerNow: String(formData.get("inviteOwnerNow") || "") === "now",
   };
 }
 
@@ -94,8 +97,9 @@ export function validateActivateAccountFields(
   if (input.ownershipChoice === "on_behalf") {
     const name = (input.invitedOwnerName ?? "").trim();
     const email = (input.invitedOwnerEmail ?? "").trim();
-    if (!name || !email || !email.includes("@")) {
-      return { ok: false, error: ACTIVATE_INVITED_OWNER_REQUIRED_ERROR };
+    const either = Boolean(name || email);
+    if (either && (!name || !email || !email.includes("@"))) {
+      return { ok: false, error: ACTIVATE_INVITED_OWNER_INCOMPLETE_ERROR };
     }
   }
   return { ok: true };
@@ -123,6 +127,7 @@ export function gateActivateAccountSubmission(formData: FormData):
       purchaserIsOwner: boolean;
       invitedOwnerName: string | null;
       invitedOwnerEmail: string | null;
+      inviteOwnerNow: boolean;
     }
   | { ok: false; error: string } {
   const parsed = parseActivateAccountFormData(formData);
@@ -141,8 +146,9 @@ export function gateActivateAccountSubmission(formData: FormData):
     password: parsed.password,
     relationshipId: parsed.relationshipId,
     purchaserIsOwner,
-    invitedOwnerName: purchaserIsOwner ? null : parsed.invitedOwnerName,
-    invitedOwnerEmail: purchaserIsOwner ? null : parsed.invitedOwnerEmail,
+    invitedOwnerName: purchaserIsOwner ? null : (parsed.invitedOwnerName || null),
+    invitedOwnerEmail: purchaserIsOwner ? null : (parsed.invitedOwnerEmail || null),
+    inviteOwnerNow: purchaserIsOwner ? false : parsed.inviteOwnerNow,
   };
 }
 

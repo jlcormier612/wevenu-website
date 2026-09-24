@@ -113,6 +113,10 @@ export default async function ActivateAccountPage({
 
   const email = lookup.ownerEmail.trim();
   const venueName = lookup.venueName;
+  const setupPersonName = [lookup.ownerFirstName, lookup.ownerLastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
   if (!email) {
     return (
@@ -141,7 +145,12 @@ export default async function ActivateAccountPage({
           Create your password below, and we&apos;ll get everything ready for
           your first visit.
         </p>
-        <ActivateAccountForm token={token} email={email} venueName={venueName} />
+        <ActivateAccountForm
+          token={token}
+          email={email}
+          venueName={venueName}
+          setupPersonName={setupPersonName}
+        />
       </div>
     </div>
   );

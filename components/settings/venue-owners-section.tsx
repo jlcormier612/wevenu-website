@@ -51,19 +51,24 @@ function ownerStatusLabel(
 export function VenueOwnersSection({
   initialOwners,
   actorIsOwner,
+  actorCanManageOwners,
   actorStaffId = null,
+  setupMode = false,
 }: {
   initialOwners: StaffMember[];
   actorIsOwner: boolean;
+  actorCanManageOwners?: boolean;
   actorStaffId?: string | null;
+  setupMode?: boolean;
 }) {
+  const canManage = actorCanManageOwners ?? actorIsOwner;
   const [owners, setOwners] = React.useState(initialOwners);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [accessChoice, setAccessChoice] = React.useState<OwnerAccessChoice>("record_only");
   const [busy, setBusy] = React.useState(false);
   const [invitingId, setInvitingId] = React.useState<string | null>(null);
-  const [showAdd, setShowAdd] = React.useState(false);
+  const [showAdd, setShowAdd] = React.useState(setupMode);
   const [removing, setRemoving] = React.useState<StaffMember | null>(null);
   const [removePending, setRemovePending] = React.useState(false);
 
@@ -229,9 +234,9 @@ export function VenueOwnersSection({
         <CardHeader>
           <CardTitle className="text-lg">Owners</CardTitle>
           <CardDescription>
-            Who owns this venue? Owners have full access to the venue and its
-            account. You can add owners who already use Hello to Cheers or record
-            another owner and invite them when you&apos;re ready.
+            Owners have ownership-level access to this venue. Add another owner,
+            invite them now, or record them and invite later. This does not
+            change who purchased or administers the Hello to Cheers account.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -242,14 +247,15 @@ export function VenueOwnersSection({
               {listedOwners.map((owner) => {
                 const status = ownerStatusLabel(owner, actorStaffId);
                 const canInviteLater =
-                  actorIsOwner &&
+                  canManage &&
                   owner.isOwner &&
                   !owner.acceptedAt &&
                   !owner.ownerInvitePending;
                 const canCancelInvite =
-                  actorIsOwner && owner.ownerInvitePending && !owner.acceptedAt;
+                  canManage && owner.ownerInvitePending && !owner.acceptedAt;
                 const canRemove =
-                  actorIsOwner &&
+                  canManage &&
+                  (actorIsOwner || !owner.acceptedAt) &&
                   (owner.acceptedAt ||
                     (owner.isOwner && !owner.ownerInvitePending) ||
                     owner.ownerInvitePending);
@@ -307,7 +313,7 @@ export function VenueOwnersSection({
             </ul>
           )}
 
-          {actorIsOwner && (
+          {canManage && (
             <div className="space-y-3 border-t pt-4">
               {!showAdd ? (
                 <Button

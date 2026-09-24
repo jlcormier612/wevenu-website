@@ -649,8 +649,9 @@ export function OwnerStep({ input, errors, set }: StepProps) {
           <UserRound className="h-4.5 w-4.5" />
         </span>
         <p className="text-sm text-muted-foreground">
-          You&apos;ll be recorded as the venue owner. You can add more staff
-          later.
+          Confirm who owns this venue. If you are setting this up for someone
+          else, enter their name and email — do not re-enter yourself unless you
+          are an owner.
         </p>
       </div>
       <TextField

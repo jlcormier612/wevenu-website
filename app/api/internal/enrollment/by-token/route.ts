@@ -45,6 +45,8 @@ export type ByTokenLookupResult =
       id: string;
       venueName: string;
       ownerEmail: string;
+      ownerFirstName: string | null;
+      ownerLastName: string | null;
     }
   | { ok: false; error: string };
 
@@ -84,7 +86,7 @@ export async function POST(request: Request) {
   try {
     const { data: enrollment, error } = await admin
       .from("venue_enrollments")
-      .select("id, venue_name, owner_email, status, activation_token_created_at")
+      .select("id, venue_name, owner_email, owner_first_name, owner_last_name, status, activation_token_created_at")
       .eq("activation_token", token)
       .maybeSingle();
     if (error) throw error;
@@ -119,6 +121,8 @@ export async function POST(request: Request) {
       id: enrollment.id as string,
       venueName: (enrollment.venue_name as string) || "your venue",
       ownerEmail: (enrollment.owner_email as string) || "",
+      ownerFirstName: (enrollment.owner_first_name as string | null) ?? null,
+      ownerLastName: (enrollment.owner_last_name as string | null) ?? null,
     } satisfies ByTokenLookupResult);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

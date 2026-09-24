@@ -72,7 +72,16 @@ export type EnrollmentLookupResult =
 export type TokenLookupResult =
   | { ok: true; found: false }
   | { ok: true; found: true; reason: "already_activated" | "expired" }
-  | { ok: true; found: true; reason: "valid"; id: string; venueName: string; ownerEmail: string }
+  | {
+      ok: true;
+      found: true;
+      reason: "valid";
+      id: string;
+      venueName: string;
+      ownerEmail: string;
+      ownerFirstName?: string | null;
+      ownerLastName?: string | null;
+    }
   | { ok: false; error: string };
 
 function baseUrl(): string {
@@ -134,6 +143,7 @@ export async function activateVenueAccount(input: {
   purchaserIsOwner: boolean;
   invitedOwnerName?: string | null;
   invitedOwnerEmail?: string | null;
+  inviteOwnerNow?: boolean;
 }): Promise<ActivateAccountResult> {
   return postInternal<ActivateAccountResult>("/api/internal/enrollment/activate", input);
 }

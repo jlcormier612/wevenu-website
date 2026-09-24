@@ -8,6 +8,8 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
+import { needsInitialOwnershipStep } from "@/lib/onboarding/initial-ownership";
+import { getActiveVenueMembership } from "@/lib/authorization/membership";
 import { bootstrapActiveVenueContext } from "@/lib/venue/active-context";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
@@ -81,7 +83,7 @@ export default async function WorkspaceLayout({
   const admin = createAdminClient();
   const { data: enrollment } = await admin
     .from("venue_enrollments")
-    .select("onboarding_type, status, white_glove_status, intake_token, owner_email")
+    .select("onboarding_type, status, white_glove_status, intake_token, owner_email, owner_first_name, owner_last_name, purchaser_is_owner")
     .eq("venue_id", venue.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -91,6 +93,9 @@ export default async function WorkspaceLayout({
       white_glove_status: string | null;
       intake_token: string | null;
       owner_email: string;
+      owner_first_name: string | null;
+      owner_last_name: string | null;
+      purchaser_is_owner: boolean | null;
     }>();
 
   if (
@@ -116,6 +121,32 @@ export default async function WorkspaceLayout({
         );
       }
       redirect("/login");
+    }
+  }
+
+  const membership = await getActiveVenueMembership();
+  if (enrollment && membership && !pathname.startsWith("/onboarding/ownership")) {
+    const { count: ownerCount } = await admin
+      .from("venue_staff")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", venue.id)
+      .eq("is_active", true)
+      .or("is_owner.eq.true,owner_invite_pending.eq.true");
+    if (
+      needsInitialOwnershipStep({
+        actorEmail: membership.email,
+        enrollment: {
+          id: "",
+          owner_email: enrollment.owner_email,
+          owner_first_name: enrollment.owner_first_name,
+          owner_last_name: enrollment.owner_last_name,
+          purchaser_is_owner: enrollment.purchaser_is_owner,
+        },
+        actorIsOwner: membership.isOwner,
+        ownerCount: ownerCount ?? 0,
+      })
+    ) {
+      redirect("/onboarding/ownership");
     }
   }
 

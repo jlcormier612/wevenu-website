@@ -138,6 +138,16 @@ export async function provisionWorkspaceFromEnrollment(
     }
   }
 
+  // Do not promote an existing purchaser Administrator to Owner.
+  const { data: existingByUser } = await admin
+    .from("venue_staff")
+    .select("id, is_owner")
+    .eq("venue_id", venueId)
+    .eq("user_id", ownerUserId)
+    .maybeSingle<{ id: string; is_owner: boolean }>();
+  if (existingByUser) {
+    // Preserve the ownership choice already recorded on this membership.
+  } else {
   // Owner staff — idempotent upsert on unique owner-per-venue.
   const { error: staffErr } = await admin.from("venue_staff").upsert(
     {
@@ -187,6 +197,7 @@ export async function provisionWorkspaceFromEnrollment(
         return { ok: false, error: insertStaffErr.message };
       }
     }
+  }
   }
 
   // Setup Hub state

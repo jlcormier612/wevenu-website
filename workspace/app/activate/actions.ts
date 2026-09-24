@@ -25,6 +25,7 @@ export async function activateAccountAction(
     purchaserIsOwner,
     invitedOwnerName,
     invitedOwnerEmail,
+    inviteOwnerNow,
   } = gated;
 
   // Record legal acceptances immediately before completing CRM account activation.
@@ -51,6 +52,7 @@ export async function activateAccountAction(
     purchaserIsOwner,
     invitedOwnerName,
     invitedOwnerEmail,
+    inviteOwnerNow,
   });
   if (!bridged.ok) {
     console.error("[activate] product account bridge failed", bridged.error);

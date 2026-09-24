@@ -28,6 +28,7 @@ type ActivateBody = {
   purchaserIsOwner?: unknown;
   invitedOwnerName?: string | null;
   invitedOwnerEmail?: string | null;
+  inviteOwnerNow?: unknown;
 };
 
 function authorize(request: Request): boolean {
@@ -72,15 +73,16 @@ export async function POST(request: Request) {
   const purchaserIsOwner = ownership.purchaserIsOwner;
   const invitedOwnerName = body.invitedOwnerName?.trim() || null;
   const invitedOwnerEmail = body.invitedOwnerEmail?.trim().toLowerCase() || null;
+  const inviteOwnerNow = body.inviteOwnerNow === true;
   if (!token) {
     return NextResponse.json({ error: "token is required" }, { status: 400 });
   }
   if (password.length < 8) {
     return NextResponse.json({ error: "password must be at least 8 characters" }, { status: 400 });
   }
-  if (!purchaserIsOwner && (!invitedOwnerName || !invitedOwnerEmail)) {
+  if (!purchaserIsOwner && ((invitedOwnerName && !invitedOwnerEmail) || (!invitedOwnerName && invitedOwnerEmail))) {
     return NextResponse.json(
-      { error: "invited Owner name and email are required when setting up on behalf of the venue" },
+      { error: "Owner name and email must both be provided, or both left blank to add later." },
       { status: 400 },
     );
   }
@@ -119,8 +121,8 @@ export async function POST(request: Request) {
         p_activation_token: token,
         p_owner_user_id: userId,
         p_purchaser_is_owner: purchaserIsOwner,
-        p_invited_owner_name: invitedOwnerName,
-        p_invited_owner_email: invitedOwnerEmail,
+        p_invited_owner_name: inviteOwnerNow ? invitedOwnerName : null,
+        p_invited_owner_email: inviteOwnerNow ? invitedOwnerEmail : null,
       })
       .single();
     if (activateErr) {
@@ -179,8 +181,41 @@ export async function POST(request: Request) {
         console.error("[enrollment/activate] CRM milestone sync failed", crmErr);
       }
 
-      // Send pending Owner invitation when purchaser set up on behalf.
-      if (!purchaserIsOwner && invitedOwnerEmail && !row.already_activated) {
+      // Record or invite the first Owner after purchaser said they are not one.
+      if (!purchaserIsOwner && invitedOwnerName && invitedOwnerEmail && !row.already_activated) {
+        if (!inviteOwnerNow) {
+          try {
+            const { data: existingOwner } = await admin
+              .from("venue_staff")
+              .select("id")
+              .eq("venue_id", row.venue_id)
+              .eq("email", invitedOwnerEmail)
+              .eq("is_active", true)
+              .maybeSingle<{ id: string }>();
+            if (!existingOwner) {
+              await admin.from("venue_staff").insert({
+                venue_id: row.venue_id,
+                user_id: null,
+                full_name: invitedOwnerName,
+                email: invitedOwnerEmail,
+                role: "staff",
+                is_owner: true,
+                is_active: true,
+                accepted_at: null,
+                invited_at: null,
+                invite_token: null,
+                access_title: "administrator",
+                title_basis: "administrator",
+                capability_overrides: {},
+                owner_invite_pending: false,
+              });
+            }
+          } catch (recordErr) {
+            console.error("[enrollment/activate] record Owner later failed", recordErr);
+          }
+        }
+      }
+      if (!purchaserIsOwner && inviteOwnerNow && invitedOwnerEmail && !row.already_activated) {
         try {
           const { data: pendingOwner } = await admin
             .from("venue_staff")

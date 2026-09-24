@@ -56,4 +56,9 @@ describe("Owner setup — ownership vs invitation", () => {
     assert.match(service, /Already has HTC access/);
     assert.match(service, /promoteAcceptedMemberToOwner/);
   });
+
+  it("setup Administrator purchaser can establish owners without changing the owner model", () => {
+    assert.match(service, /canSetupPurchaserEstablishOwners/);
+    assert.match(ownersUi, /actorCanManageOwners/);
+  });
 });

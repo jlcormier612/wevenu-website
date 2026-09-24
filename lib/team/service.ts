@@ -30,6 +30,10 @@ import {
   buildTeamInviteText,
 } from "@/lib/email/team-invite";
 import { recordEngagementEvent } from "@/lib/activation/service";
+import {
+  canSetupPurchaserEstablishOwners,
+  getEnrollmentOwnershipForVenue,
+} from "@/lib/onboarding/initial-ownership";
 import type {
   StaffAccessUpdate,
   StaffInviteInput,
@@ -181,9 +185,23 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
     if (!actor) return { ok: false, error: "Session expired." };
 
     const designateOwner = input.isOwner === true;
+    const membership = designateOwner ? await getActiveVenueMembership() : null;
+    const enrollment = designateOwner
+      ? await getEnrollmentOwnershipForVenue(venueId)
+      : null;
+    const mayEstablishOwners =
+      actor.isOwner
+      || canSetupPurchaserEstablishOwners({
+        isOwner: membership?.isOwner === true,
+        isActive: membership?.isActive === true,
+        accessTitle: membership?.accessTitle ?? actor.accessTitle,
+        actorEmail: membership?.email,
+        enrollment,
+      });
     if (designateOwner) {
-      const ownerGate = await requireOwner("Only an Owner can invite another Owner.");
-      if (!ownerGate.ok) return { ok: false, error: ownerGate.error };
+      if (!mayEstablishOwners) {
+        return { ok: false, error: "Only an Owner can invite another Owner." };
+      }
     } else {
       const inviteGate = await requireCapability(
         "team.invite",
@@ -201,13 +219,15 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
         : (input.titleBasis ?? (accessTitle as BasisTitle));
     const overrides = input.capabilityOverrides ?? {};
 
-    const scope = assertCanManageMember(actor, {
-      accessTitle,
-      titleBasis,
-      overrides,
-      isOwner: designateOwner,
-    });
-    if (!scope.ok) return { ok: false, error: scope.message };
+    if (!(designateOwner && mayEstablishOwners && !actor.isOwner)) {
+      const scope = assertCanManageMember(actor, {
+        accessTitle,
+        titleBasis,
+        overrides,
+        isOwner: designateOwner,
+      });
+      if (!scope.ok) return { ok: false, error: scope.message };
+    }
 
     const email = input.email.trim().toLowerCase();
     const existing = await findActiveStaffByEmail(supabase, venueId, email);
@@ -334,19 +354,32 @@ export async function recordOwnerMember(input: {
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Session expired." };
 
-    const ownerGate = await requireOwner("Only an Owner can add another Owner.");
-    if (!ownerGate.ok) return { ok: false, error: ownerGate.error };
-
     const actor = await getActiveTeamActor();
     if (!actor) return { ok: false, error: "Session expired." };
+    const membership = await getActiveVenueMembership();
+    const enrollment = await getEnrollmentOwnershipForVenue(venueId);
+    const mayEstablishOwners =
+      actor.isOwner
+      || canSetupPurchaserEstablishOwners({
+        isOwner: membership?.isOwner === true,
+        isActive: membership?.isActive === true,
+        accessTitle: membership?.accessTitle ?? actor.accessTitle,
+        actorEmail: membership?.email,
+        enrollment,
+      });
+    if (!mayEstablishOwners) {
+      return { ok: false, error: "Only an Owner can add another Owner." };
+    }
 
-    const scope = assertCanManageMember(actor, {
-      accessTitle: "administrator",
-      titleBasis: "administrator",
-      overrides: {},
-      isOwner: true,
-    });
-    if (!scope.ok) return { ok: false, error: scope.message };
+    if (actor.isOwner) {
+      const scope = assertCanManageMember(actor, {
+        accessTitle: "administrator",
+        titleBasis: "administrator",
+        overrides: {},
+        isOwner: true,
+      });
+      if (!scope.ok) return { ok: false, error: scope.message };
+    }
 
     const email = input.email.trim().toLowerCase();
     const name = input.name.trim();
@@ -422,8 +455,22 @@ export async function inviteRecordedOwner(staffId: string): Promise<TeamActionRe
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Session expired." };
 
-    const ownerGate = await requireOwner("Only an Owner can invite another Owner.");
-    if (!ownerGate.ok) return { ok: false, error: ownerGate.error };
+    const actor = await getActiveTeamActor();
+    if (!actor) return { ok: false, error: "Session expired." };
+    const membership = await getActiveVenueMembership();
+    const enrollment = await getEnrollmentOwnershipForVenue(venueId);
+    const mayEstablishOwners =
+      actor.isOwner
+      || canSetupPurchaserEstablishOwners({
+        isOwner: membership?.isOwner === true,
+        isActive: membership?.isActive === true,
+        accessTitle: membership?.accessTitle ?? actor.accessTitle,
+        actorEmail: membership?.email,
+        enrollment,
+      });
+    if (!mayEstablishOwners) {
+      return { ok: false, error: "Only an Owner can invite another Owner." };
+    }
 
     const { data: target } = await supabase
       .from("venue_staff")
@@ -549,9 +596,26 @@ export async function removeStaffMember(staffId: string): Promise<TeamActionResu
 
     const targetMember = rowToStaffMember(target as Record<string, unknown>);
 
-    if (targetMember.isOwner) {
-      const ownerGate = await requireOwner("Only an Owner can remove another Owner.");
-      if (!ownerGate.ok) return { ok: false, error: ownerGate.error };
+    if (targetMember.isOwner || targetMember.ownerInvitePending) {
+      const membership = await getActiveVenueMembership();
+      const venue = await getCurrentVenue();
+      const enrollment = venue ? await getEnrollmentOwnershipForVenue(venue.id) : null;
+      const mayEstablishOwners =
+        actor.isOwner
+        || canSetupPurchaserEstablishOwners({
+          isOwner: membership?.isOwner === true,
+          isActive: membership?.isActive === true,
+          accessTitle: membership?.accessTitle ?? actor.accessTitle,
+          actorEmail: membership?.email,
+          enrollment,
+        });
+      if (!actor.isOwner && !(mayEstablishOwners && !targetMember.acceptedAt)) {
+        return { ok: false, error: "Only an Owner can remove another Owner." };
+      }
+      if (actor.isOwner) {
+        const ownerGate = await requireOwner("Only an Owner can remove another Owner.");
+        if (!ownerGate.ok) return { ok: false, error: ownerGate.error };
+      }
     } else {
       const removeGate = await requireCapability(
         "team.remove",

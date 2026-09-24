@@ -108,6 +108,7 @@ export function VenueSettings({
   publicReviewUrl: initialReviewUrl = "",
   owners = [],
   actorIsOwner = false,
+  actorCanManageOwners,
   actorStaffId = null,
 }: {
   initial: VenueSetupInput;
@@ -115,6 +116,7 @@ export function VenueSettings({
   publicReviewUrl?: string;
   owners?: StaffMember[];
   actorIsOwner?: boolean;
+  actorCanManageOwners?: boolean;
   actorStaffId?: string | null;
 }) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
@@ -311,6 +313,7 @@ export function VenueSettings({
       <VenueOwnersSection
         initialOwners={owners}
         actorIsOwner={actorIsOwner}
+        actorCanManageOwners={actorCanManageOwners ?? actorIsOwner}
         actorStaffId={actorStaffId}
       />
 

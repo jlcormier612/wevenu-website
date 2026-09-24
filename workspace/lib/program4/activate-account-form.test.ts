@@ -112,14 +112,22 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
     );
   });
 
-  it("on-behalf requires invited Owner name and email", () => {
-    const missing = validateActivateAccountFields({
+  it("on-behalf can continue without an owner yet; incomplete pair is rejected", () => {
+    const empty = validateActivateAccountFields({
       password: VALID_PASSWORD,
       confirm: VALID_PASSWORD,
       legalAccepted: true,
       ownershipChoice: "on_behalf",
     });
-    assert.equal(missing.ok, false);
+    assert.equal(empty.ok, true);
+    const incomplete = validateActivateAccountFields({
+      password: VALID_PASSWORD,
+      confirm: VALID_PASSWORD,
+      legalAccepted: true,
+      ownershipChoice: "on_behalf",
+      invitedOwnerName: "Pat Owner",
+    });
+    assert.equal(incomplete.ok, false);
     const ok = validateActivateAccountFields({
       password: VALID_PASSWORD,
       confirm: VALID_PASSWORD,
@@ -223,7 +231,8 @@ describe("Let's go submit path", () => {
     assert.doesNotMatch(formSrc, /type="hidden"[^>]*name="legalAccepted"/);
     assert.match(formSrc, /type="checkbox"/);
     assert.match(formSrc, /name="ownershipChoice"/);
-    assert.match(formSrc, /setting this up on behalf of the venue/);
+    assert.match(formSrc, /Yes, I&apos;m an owner/);
+    assert.match(formSrc, /No, I&apos;m setting this up for someone else/);
   });
 
   it("successful submit is wired to activateAccountAction → activateVenueAccount", () => {

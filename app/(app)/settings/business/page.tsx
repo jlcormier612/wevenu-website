@@ -6,6 +6,10 @@ import { VenueSettings } from "@/components/settings/venue-settings";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getTeamMembers } from "@/lib/team/service";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
+import {
+  canSetupPurchaserEstablishOwners,
+  getEnrollmentOwnershipForVenue,
+} from "@/lib/onboarding/initial-ownership";
 
 export const metadata: Metadata = { title: "Business & Brand — Settings" };
 
@@ -25,6 +29,16 @@ export default async function BusinessBrandSettingsPage() {
         (m) => m.isOwner || m.ownerInvitePending,
       )
     : [];
+  const enrollment = venue ? await getEnrollmentOwnershipForVenue(venue.id) : null;
+  const actorCanManageOwners =
+    membership?.isOwner === true
+    || canSetupPurchaserEstablishOwners({
+      isOwner: membership?.isOwner === true,
+      isActive: membership?.isActive === true,
+      accessTitle: membership?.accessTitle ?? "staff",
+      actorEmail: membership?.email,
+      enrollment,
+    });
 
   return (
     <div className="space-y-6">
@@ -40,6 +54,7 @@ export default async function BusinessBrandSettingsPage() {
           publicReviewUrl={venue?.publicReviewUrl ?? ""}
           owners={owners}
           actorIsOwner={membership?.isOwner === true}
+          actorCanManageOwners={actorCanManageOwners}
           actorStaffId={membership?.staffId ?? null}
         />
       ) : (
