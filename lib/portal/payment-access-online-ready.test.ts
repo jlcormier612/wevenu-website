@@ -22,6 +22,13 @@ describe("payment-access online payments readiness", () => {
     );
   });
 
+  it("portal payment section only renders Pay now when online payments are ready", () => {
+    const section = readFileSync(resolve("components/portal/payment-section.tsx"), "utf8");
+    assert.match(section, /onlinePaymentsReady/);
+    assert.match(section, /onlinePaymentsReady && \(next\.status === "pending"/);
+    assert.match(section, /onlinePaymentsReady && \(item\.status === "pending"/);
+  });
+
   it("payment success race only optimistic-marks while paidTotal is still 0", () => {
     const shell = readFileSync(resolve("components/portal/payment-access-shell.tsx"), "utf8");
     assert.match(shell, /webhookPending/);

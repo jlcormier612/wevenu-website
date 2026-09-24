@@ -185,11 +185,12 @@ function StatusPill({ status, dueDate }: { status: PaymentStatus; dueDate: strin
 // ── Summary bar ───────────────────────────────────────────────────────────────
 
 function SummaryBar({
-  schedule, token, paidTotal,
+  schedule, token, paidTotal, onlinePaymentsReady,
 }: {
   schedule: PortalPaymentSchedule;
   token: string;
   paidTotal: number;
+  onlinePaymentsReady: boolean;
 }) {
   const { remaining, planTotal, paid } = computeTotals(schedule);
   const displayPaid = paidTotal > 0 ? paidTotal : paid;
@@ -266,7 +267,7 @@ function SummaryBar({
                 {next.dueDate ? ` · Due ${formatDate(next.dueDate)}` : ""}
               </p>
             </div>
-            {(next.status === "pending" || next.status === "overdue") && (
+            {onlinePaymentsReady && (next.status === "pending" || next.status === "overdue") && (
               <PayNowButton token={token} itemId={next.id} paidTotal={paidTotal} />
             )}
           </div>
@@ -332,11 +333,12 @@ function PayNowButton({
 // ── Payment timeline ──────────────────────────────────────────────────────────
 
 function PaymentTimeline({
-  items, token, paidTotal,
+  items, token, paidTotal, onlinePaymentsReady,
 }: {
   items: PortalPaymentItem[];
   token: string;
   paidTotal: number;
+  onlinePaymentsReady: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -412,7 +414,7 @@ function PaymentTimeline({
                         {formatMoney(item.paidAmount ?? item.amount)}
                       </p>
                       <StatusPill status={item.status} dueDate={item.dueDate} />
-                      {(item.status === "pending" || item.status === "overdue") && (
+                      {onlinePaymentsReady && (item.status === "pending" || item.status === "overdue") && (
                         <div><PayNowButton token={token} itemId={item.id} paidTotal={paidTotal} /></div>
                       )}
                     </div>
@@ -429,14 +431,27 @@ function PaymentTimeline({
 
 // ── Main section ──────────────────────────────────────────────────────────────
 
-async function fetchPortalSchedules(token: string): Promise<PortalPaymentSchedule[]> {
+type PortalPaymentsPayload = {
+  schedules?: PortalPaymentSchedule[];
+  onlinePaymentsReady?: boolean;
+  error?: string;
+};
+
+async function fetchPortalPayments(token: string): Promise<{
+  schedules: PortalPaymentSchedule[];
+  onlinePaymentsReady: boolean;
+}> {
   const res = await fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`);
-  const data = await res.json() as { schedules?: PortalPaymentSchedule[]; error?: string };
-  return data.schedules ?? [];
+  const data = await res.json() as PortalPaymentsPayload;
+  return {
+    schedules: data.schedules ?? [],
+    onlinePaymentsReady: data.onlinePaymentsReady === true,
+  };
 }
 
 export function PaymentSection({ token }: { token: string }) {
   const [schedules, setSchedules] = React.useState<PortalPaymentSchedule[] | null>(null);
+  const [onlinePaymentsReady, setOnlinePaymentsReady] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [checkoutReturn, setCheckoutReturn] = React.useState<"success" | "cancelled" | null>(null);
   const [checkoutBaseline, setCheckoutBaseline] = React.useState<CheckoutBaseline | null>(null);
@@ -465,9 +480,17 @@ export function PaymentSection({ token }: { token: string }) {
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchPortalSchedules(token)
-      .then((next) => { if (!cancelled) setSchedules(next); })
-      .catch(() => { if (!cancelled) setSchedules([]); })
+    fetchPortalPayments(token)
+      .then((next) => {
+        if (cancelled) return;
+        setSchedules(next.schedules);
+        setOnlinePaymentsReady(next.onlinePaymentsReady);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSchedules([]);
+        setOnlinePaymentsReady(false);
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [token]);
@@ -491,8 +514,11 @@ export function PaymentSection({ token }: { token: string }) {
       if (cancelled) return;
       if (Date.now() - started > CHECKOUT_POLL_MAX_MS) return;
       try {
-        const next = await fetchPortalSchedules(token);
-        if (!cancelled) setSchedules(next);
+        const next = await fetchPortalPayments(token);
+        if (!cancelled) {
+          setSchedules(next.schedules);
+          setOnlinePaymentsReady(next.onlinePaymentsReady);
+        }
       } catch {
         // Keep the current notice; next interval retries.
       }
@@ -626,7 +652,12 @@ export function PaymentSection({ token }: { token: string }) {
       </div>
 
       {/* Summary */}
-      <SummaryBar schedule={schedule} token={token} paidTotal={paidTotal} />
+      <SummaryBar
+        schedule={schedule}
+        token={token}
+        paidTotal={paidTotal}
+        onlinePaymentsReady={onlinePaymentsReady}
+      />
 
       {/* Luv observations */}
       {luvObs.length > 0 && (
@@ -648,7 +679,14 @@ export function PaymentSection({ token }: { token: string }) {
       )}
 
       {/* Timeline */}
-      {allItems.length > 0 && <PaymentTimeline items={allItems} token={token} paidTotal={paidTotal} />}
+      {allItems.length > 0 && (
+        <PaymentTimeline
+          items={allItems}
+          token={token}
+          paidTotal={paidTotal}
+          onlinePaymentsReady={onlinePaymentsReady}
+        />
+      )}
 
       {/* Notes */}
       {schedule.notes && (
