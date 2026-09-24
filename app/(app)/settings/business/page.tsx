@@ -30,11 +30,13 @@ export default async function BusinessBrandSettingsPage() {
       )
     : [];
   const enrollment = venue ? await getEnrollmentOwnershipForVenue(venue.id) : null;
+  const actorIsOwner = membership?.isOwner === true;
+  const actorIsActive = membership?.isActive === true;
   const actorCanManageOwners =
-    membership?.isOwner === true
+    actorIsOwner
     || canSetupPurchaserEstablishOwners({
-      isOwner: membership?.isOwner === true,
-      isActive: membership?.isActive === true,
+      isOwner: actorIsOwner,
+      isActive: actorIsActive,
       accessTitle: membership?.accessTitle ?? "staff",
       actorEmail: membership?.email,
       enrollment,
@@ -53,7 +55,7 @@ export default async function BusinessBrandSettingsPage() {
           venueId={settings.venueId}
           publicReviewUrl={venue?.publicReviewUrl ?? ""}
           owners={owners}
-          actorIsOwner={membership?.isOwner === true}
+          actorIsOwner={actorIsOwner}
           actorCanManageOwners={actorCanManageOwners}
           actorStaffId={membership?.staffId ?? null}
         />
