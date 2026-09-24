@@ -18,6 +18,16 @@ export const SUGGESTED_SPACE_USES = [
   { key: "other", label: "Other" },
 ] as const;
 
+/** Stable key for a venue-entered custom use. Suggested keys stay as-is. */
+export function customUseKeyFromLabel(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+}
+
 export function labelForUseKey(useKey: string, useLabel?: string | null): string {
   const trimmed = useLabel?.trim();
   if (trimmed) return trimmed;
@@ -52,7 +62,15 @@ export function formatEventSpaceAssignmentsDisplay(
     .join("\n");
 }
 
-/** Calendar space filter only when venue opted into multi-space operations. */
-export function shouldShowCalendarSpaceFilter(mode: SpaceOperatingMode | null | undefined): boolean {
-  return mode === "multi";
+/**
+ * Calendar space filter only when the venue operates multiple physical spaces.
+ * Mode must be multi and at least two active spaces must exist.
+ */
+export function shouldShowCalendarSpaceFilter(
+  mode: SpaceOperatingMode | null | undefined,
+  activeSpaceCount?: number,
+): boolean {
+  if (mode !== "multi") return false;
+  if (activeSpaceCount == null) return true;
+  return activeSpaceCount >= 2;
 }

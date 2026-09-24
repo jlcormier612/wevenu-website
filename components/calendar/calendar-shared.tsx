@@ -337,11 +337,12 @@ export function FilterBar({
           )}
           {spaceOptions.length > 0 && (
             <select
+              aria-label="Space"
               value={filters.spaceId ?? ""}
               onChange={(e) => onChange({ ...filters, spaceId: e.target.value || null })}
               className="h-7 rounded-md border border-border bg-background px-2 text-xs"
             >
-              <option value="">Every space</option>
+              <option value="">All spaces</option>
               <option value={UNASSIGNED}>No space set</option>
               {spaceOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>

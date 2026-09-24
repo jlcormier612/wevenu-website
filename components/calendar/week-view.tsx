@@ -29,6 +29,7 @@ function toIso(d: Date): string {
 export function WeekView({
   weekStart, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
   showSpaceFilter = false,
+  venueSpaces = [],
 }: {
   /** ISO date of this week's Sunday. */
   weekStart: string;
@@ -40,12 +41,13 @@ export function WeekView({
   deletePending?: boolean;
   tastingEnabled?: boolean;
   showSpaceFilter?: boolean;
+  venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
     items,
     undefined,
-    { showSpaceFilter },
+    { showSpaceFilter, venueSpaces },
   );
   const displayItems = filteredItems;
   const [y, m, d] = weekStart.split("-").map(Number);

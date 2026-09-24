@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { SpaceInput, VenueSpace } from "@/lib/availability/types";
-import { SUGGESTED_SPACE_USES } from "@/lib/venue-spaces/uses";
+import { customUseKeyFromLabel, SUGGESTED_SPACE_USES } from "@/lib/venue-spaces/uses";
 
 function SpaceForm({
   initial,
@@ -40,12 +40,24 @@ function SpaceForm({
   const [capacity, setCapacity] = React.useState(initial.capacity);
   const [isActive, setIsActive] = React.useState(initial.isActive);
   const [permittedUses, setPermittedUses] = React.useState<string[]>(initial.permittedUses ?? []);
+  const [customUse, setCustomUse] = React.useState("");
 
   function toggleUse(key: string) {
     setPermittedUses((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
   }
+
+  function addCustomUse() {
+    const key = customUseKeyFromLabel(customUse);
+    if (!key) return;
+    setPermittedUses((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    setCustomUse("");
+  }
+
+  const extraUses = permittedUses.filter(
+    (k) => !SUGGESTED_SPACE_USES.some((u) => u.key === k),
+  );
 
   return (
     <div className="space-y-3 rounded-xl border border-ring bg-card p-4">
@@ -65,7 +77,11 @@ function SpaceForm({
       </div>
       {showUses && (
         <div className="space-y-2">
-          <Label className="text-xs">Permitted uses <span className="font-normal text-muted-foreground">(optional — leave empty for unrestricted)</span></Label>
+          <Label className="text-xs">Permitted uses</Label>
+          <p className="text-xs text-muted-foreground">
+            What can happen in this physical space. A space can support more than one use.
+            Leave empty if any use is allowed.
+          </p>
           <div className="flex flex-wrap gap-2">
             {SUGGESTED_SPACE_USES.map((u) => {
               const on = permittedUses.includes(u.key);
@@ -82,6 +98,33 @@ function SpaceForm({
                 </button>
               );
             })}
+            {extraUses.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => toggleUse(key)}
+                className="rounded-md border border-ring bg-muted px-2.5 py-1 text-xs text-foreground"
+              >
+                {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} ×
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={customUse}
+              onChange={(e) => setCustomUse(e.target.value)}
+              placeholder="Add a custom use…"
+              className="h-8 max-w-xs text-xs"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustomUse();
+                }
+              }}
+            />
+            <Button type="button" variant="outline" size="sm" disabled={!customUse.trim()} onClick={addCustomUse}>
+              Add use
+            </Button>
           </div>
         </div>
       )}
@@ -233,25 +276,31 @@ export function VenueSpacesSection({
               showUses={showUses}
             />
           ) : (
-            <div key={space.id} className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+            <div key={space.id} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className={`text-sm font-medium ${space.isActive ? "text-foreground" : "text-muted-foreground line-through"}`}>{space.name}</p>
                 <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
                   {space.capacity != null && <span>{space.capacity.toLocaleString()} guests max</span>}
                   {space.description && <span>{space.description}</span>}
-                  {showUses && space.permittedUses.length > 0 && (
-                    <span>
-                      Uses: {space.permittedUses
-                        .map((k) => SUGGESTED_SPACE_USES.find((u) => u.key === k)?.label ?? k)
-                        .join(", ")}
-                    </span>
-                  )}
                   {!space.isActive && <span className="text-destructive font-medium">Inactive</span>}
                 </div>
+                {showUses && (
+                  <p className="text-xs text-muted-foreground">
+                    {space.permittedUses.length > 0
+                      ? `Uses: ${space.permittedUses
+                          .map((k) => SUGGESTED_SPACE_USES.find((u) => u.key === k)?.label ?? k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))
+                          .join(", ")}`
+                      : "Uses: any (not restricted)"}
+                  </p>
+                )}
               </div>
-              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <button type="button" onClick={() => setEditingId(space.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></button>
-                <button type="button" onClick={() => handleDelete(space.id, space.name)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditingId(space.id)}>
+                  <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                </Button>
+                <button type="button" onClick={() => handleDelete(space.id, space.name)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Delete">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
           )

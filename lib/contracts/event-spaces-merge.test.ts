@@ -16,6 +16,7 @@ import {
 const SPACES = [
   { id: "barn-id", name: "Barn" },
   { id: "garden-id", name: "Garden Lawn" },
+  { id: "bridge-id", name: "Covered Bridge" },
 ];
 
 describe("resolveEventSpacesLabel", () => {
@@ -97,6 +98,21 @@ describe("resolveEventSpacesLabel", () => {
         ],
       }),
       "Ceremony: Garden Lawn\nReception: Barn",
+    );
+  });
+
+  it("renders unused uses as absent — only assigned uses appear", () => {
+    assert.equal(
+      resolveEventSpacesLabel({
+        spaces: SPACES,
+        eventSpaceId: "barn-id",
+        assignments: [
+          { useKey: "ceremony", useLabel: "Ceremony", spaceId: "garden-id" },
+          { useKey: "reception", useLabel: "Reception", spaceId: "barn-id" },
+          { useKey: "cocktail_hour", useLabel: "Cocktail Hour", spaceId: "bridge-id" },
+        ],
+      }),
+      "Ceremony: Garden Lawn\nReception: Barn\nCocktail Hour: Covered Bridge",
     );
   });
 });

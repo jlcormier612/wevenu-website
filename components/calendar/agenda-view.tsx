@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 export function AgendaView({
   items, today, year, month, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
   showSpaceFilter = false,
+  venueSpaces = [],
 }: {
   items: CalendarItem[];
   today: string;
@@ -34,12 +35,13 @@ export function AgendaView({
   deletePending?: boolean;
   tastingEnabled?: boolean;
   showSpaceFilter?: boolean;
+  venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
     items,
     undefined,
-    { showSpaceFilter },
+    { showSpaceFilter, venueSpaces },
   );
   const displayItems = filteredItems;
 

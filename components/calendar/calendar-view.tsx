@@ -54,6 +54,7 @@ import {
   venueCalendarTaxonomyKey,
   venueCalendarTaxonomyLabel,
 } from "@/lib/calendar/venue-calendar-scope";
+import { shouldShowCalendarSpaceFilter } from "@/lib/venue-spaces/uses";
 
 export { TYPE_META, formatTime, ItemRow, venueCalendarLegendEntries } from "@/components/calendar/calendar-shared";
 
@@ -294,6 +295,7 @@ export function CalendarView({
   scheduleCatalog = [],
   bookingEventTypeOptions = [],
   spaceOperatingMode = "single",
+  venueSpaces = [],
 }: {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
@@ -311,13 +313,16 @@ export function CalendarView({
   bookingEventTypeOptions?: VenueEventTypeOption[];
   /** multi = show calendar-by-space filter; single = hide (venue setup choice). */
   spaceOperatingMode?: "single" | "multi";
+  /** Configured physical spaces — filter lists these, not only spaces with items this month. */
+  venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
 }) {
   const router = useRouter();
-  const showSpaceFilter = spaceOperatingMode === "multi";
+  const activeSpaceCount = venueSpaces.filter((s) => s.isActive !== false).length;
+  const showSpaceFilter = shouldShowCalendarSpaceFilter(spaceOperatingMode, activeSpaceCount);
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
     items,
     undefined,
-    { showSpaceFilter },
+    { showSpaceFilter, venueSpaces },
   );
   const tastingEnabled = scheduleCatalog.some(
     (r) => r.source === "builtin" && r.builtinKey === "tasting" && r.enabled && !r.archivedAt,
@@ -1043,6 +1048,7 @@ export function CalendarView({
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
           showSpaceFilter={showSpaceFilter}
+          venueSpaces={venueSpaces}
         />
       )}
       {view === "day" && (
@@ -1052,6 +1058,7 @@ export function CalendarView({
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
           showSpaceFilter={showSpaceFilter}
+          venueSpaces={venueSpaces}
         />
       )}
       {view === "agenda" && (
@@ -1061,6 +1068,7 @@ export function CalendarView({
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
           showSpaceFilter={showSpaceFilter}
+          venueSpaces={venueSpaces}
         />
       )}
 

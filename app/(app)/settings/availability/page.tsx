@@ -130,8 +130,9 @@ export default async function AvailabilityCapacitySettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Event Spaces</CardTitle>
           <CardDescription>
-            Define the named spaces within your venue (Ballroom, Garden, Barn…).
-            Each space can have its own capacity and be assigned to events. If you have more than one
+            Define the named physical spaces within your venue (Ballroom, Garden, Barn…).
+            Each space can have its own capacity and permitted uses (Ceremony, Reception, and others).
+            Uses are what happens there — they are not separate spaces. If you have more than one
             space, add them here before bringing over dated events in Bring Your Business.
           </CardDescription>
         </CardHeader>

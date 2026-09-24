@@ -149,10 +149,11 @@ describe("Calendar Slice 1 — perspectives retired, copy, filters, help", () =>
   it("filters share one localStorage key across views", () => {
     assert.equal(CALENDAR_FILTER_STORAGE_KEY, "shared-taxonomy-v1");
     assert.match(filtersSrc, /CALENDAR_FILTER_STORAGE_KEY = "shared-taxonomy-v1"/);
-    assert.match(readFileSync(resolve("components/calendar/week-view.tsx"), "utf8"), /useCalendarFilters\(items\)/);
-    assert.match(readFileSync(resolve("components/calendar/day-view.tsx"), "utf8"), /useCalendarFilters\(items\)/);
-    assert.match(readFileSync(resolve("components/calendar/agenda-view.tsx"), "utf8"), /useCalendarFilters\(items\)/);
-    assert.match(calendarViewSrc, /useCalendarFilters\(items\)/);
+    assert.match(readFileSync(resolve("components/calendar/week-view.tsx"), "utf8"), /useCalendarFilters\(/);
+    assert.match(readFileSync(resolve("components/calendar/day-view.tsx"), "utf8"), /useCalendarFilters\(/);
+    assert.match(readFileSync(resolve("components/calendar/agenda-view.tsx"), "utf8"), /useCalendarFilters\(/);
+    assert.match(calendarViewSrc, /useCalendarFilters\(/);
+    assert.match(filtersSrc, /storageKey = CALENDAR_FILTER_STORAGE_KEY/);
   });
 
   it("sanitizeVenueCalendarFilters strips excluded types and legacy manual tour", () => {

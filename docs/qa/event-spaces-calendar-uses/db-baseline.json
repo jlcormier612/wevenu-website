@@ -1,0 +1,204 @@
+{
+  "fancy": {
+    "id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "name": "Jen's Fancy Venue",
+    "mode": "multi",
+    "showFilter": true,
+    "spaces": [
+      {
+        "id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+        "name": "Barn",
+        "capacity": 150,
+        "permitted_uses": [
+          "ceremony",
+          "reception"
+        ]
+      },
+      {
+        "id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+        "name": "Garden Lawn",
+        "capacity": 125,
+        "permitted_uses": [
+          "ceremony",
+          "cocktail_hour"
+        ]
+      },
+      {
+        "id": "40f81c67-199d-47f8-bf7d-79c118e34198",
+        "name": "Covered Bridge",
+        "capacity": 80,
+        "permitted_uses": [
+          "cocktail_hour",
+          "getting_ready"
+        ]
+      }
+    ]
+  },
+  "daisy": {
+    "id": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+    "name": "Sweet Daisy Barn & Farm",
+    "mode": "single",
+    "showFilter": false,
+    "spaces": [
+      {
+        "id": "3244df58-5945-4fa5-a640-cb5d799ae3ba",
+        "name": "Garden",
+        "capacity": 80,
+        "permitted_uses": []
+      }
+    ]
+  },
+  "assignmentSample": [
+    {
+      "event_id": "8d48aed4-ebe4-4f64-9f6a-5e4fda46342f",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+      "venue_spaces": {
+        "name": "Garden Lawn"
+      }
+    },
+    {
+      "event_id": "360975e0-e63c-4a3f-b5b1-b2ffaa24a464",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+      "venue_spaces": {
+        "name": "Garden Lawn"
+      }
+    },
+    {
+      "event_id": "b1b4ab0a-4dc2-4885-b0e8-4c7cd224cff0",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "venue_spaces": {
+        "name": "Barn"
+      }
+    },
+    {
+      "event_id": "cec9d0b1-a6ec-4ae5-8806-80b79a33c266",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "venue_spaces": {
+        "name": "Barn"
+      }
+    },
+    {
+      "event_id": "b16f8c7a-5754-4354-9ce3-ac6e25085525",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+      "venue_spaces": {
+        "name": "Garden Lawn"
+      }
+    },
+    {
+      "event_id": "3b958437-e578-4a9d-8909-26caca0d909f",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+      "venue_spaces": {
+        "name": "Garden Lawn"
+      }
+    },
+    {
+      "event_id": "36fae9a0-899c-4012-bc32-b9f415158b50",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+      "venue_spaces": {
+        "name": "Garden Lawn"
+      }
+    },
+    {
+      "event_id": "bcfc4c63-8d3d-4c07-8493-8dea39e45b28",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+      "venue_spaces": {
+        "name": "Garden Lawn"
+      }
+    },
+    {
+      "event_id": "bc9f01f1-4ee0-42f9-a997-9b226306c387",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "venue_spaces": {
+        "name": "Barn"
+      }
+    },
+    {
+      "event_id": "e107c4f8-12bf-43c0-87c2-96e8cfa3fae3",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "venue_spaces": {
+        "name": "Barn"
+      }
+    },
+    {
+      "event_id": "27a7d8da-3b9d-49e7-9c91-cd79f603bc22",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "venue_spaces": {
+        "name": "Barn"
+      }
+    },
+    {
+      "event_id": "a968f3ac-15b2-48c5-aabe-ac4f40abebdb",
+      "use_key": "event_space",
+      "use_label": "Event space",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "venue_spaces": {
+        "name": "Barn"
+      }
+    }
+  ],
+  "filterProof": {
+    "allSpacesShowsBoth": true,
+    "barnOnly": true,
+    "unassignedNotBarn": true
+  },
+  "preserved": {
+    "barn": {
+      "id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "name": "Barn",
+      "capacity": 150,
+      "permitted_uses": [
+        "ceremony",
+        "reception"
+      ],
+      "is_active": true,
+      "sort_order": 0
+    },
+    "bridge": {
+      "id": "40f81c67-199d-47f8-bf7d-79c118e34198",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "name": "Covered Bridge",
+      "capacity": 80,
+      "permitted_uses": [
+        "cocktail_hour",
+        "getting_ready"
+      ],
+      "is_active": true,
+      "sort_order": 0
+    },
+    "lawn": {
+      "id": "95f961e0-1995-4c62-8b01-add7a2cffc84",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "name": "Garden Lawn",
+      "capacity": 125,
+      "permitted_uses": [
+        "ceremony",
+        "cocktail_hour"
+      ],
+      "is_active": true,
+      "sort_order": 0
+    }
+  }
+}

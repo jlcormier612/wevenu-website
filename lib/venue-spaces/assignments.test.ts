@@ -59,16 +59,20 @@ describe("event space assignments", () => {
     assert.deepEqual(forReception, ["barn", "suite"]);
   });
 
-  it("calendar space filter only when multi", () => {
+  it("calendar space filter only when multi and at least two spaces", () => {
     assert.equal(shouldShowCalendarSpaceFilter("single"), false);
     assert.equal(shouldShowCalendarSpaceFilter("multi"), true);
+    assert.equal(shouldShowCalendarSpaceFilter("multi", 1), false);
+    assert.equal(shouldShowCalendarSpaceFilter("multi", 2), true);
+    assert.equal(shouldShowCalendarSpaceFilter("single", 3), false);
   });
 
-  it("event form wires multi assignment editor; calendar gates on spaceOperatingMode", () => {
+  it("event form wires multi assignment editor; calendar gates on configured spaces", () => {
     const form = readFileSync(resolve("components/events/event-form.tsx"), "utf8");
     assert.match(form, /EventSpaceAssignmentsEditor/);
     assert.match(form, /spaceOperatingMode/);
     const cal = readFileSync(resolve("components/calendar/calendar-view.tsx"), "utf8");
-    assert.match(cal, /showSpaceFilter = spaceOperatingMode === "multi"/);
+    assert.match(cal, /shouldShowCalendarSpaceFilter/);
+    assert.match(cal, /venueSpaces/);
   });
 });

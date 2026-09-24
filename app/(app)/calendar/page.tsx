@@ -6,6 +6,7 @@ import { ShareAvailability } from "@/components/calendar/share-availability";
 import { ShareTourAvailability } from "@/components/calendar/share-tour-availability";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { getSpaces } from "@/lib/availability/service";
 import { getScheduleItemTypesForPicker } from "@/lib/calendar/schedule-item-catalog-service";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
 import { publicAppOrigin } from "@/lib/env";
@@ -29,12 +30,13 @@ type Props = { searchParams: Promise<CalendarViewParams> };
  */
 export default async function CalendarPage({ searchParams }: Props) {
   const params = await searchParams;
-  const [{ view, year, month, weekStart, dayDate, items, today }, scheduleCatalog, venue, tourSettings, inquirySettings] = await Promise.all([
+  const [{ view, year, month, weekStart, dayDate, items, today }, scheduleCatalog, venue, tourSettings, inquirySettings, spaces] = await Promise.all([
     resolveCalendarView(params),
     getScheduleItemTypesForPicker(),
     getCurrentVenue(),
     getTourSettings(),
     getInquiryFormSettings(),
+    getSpaces(),
   ]);
 
   const printHref = `/calendar/print?view=${view}&year=${year}&month=${month}&weekStart=${weekStart}&date=${dayDate}`;
@@ -89,6 +91,7 @@ export default async function CalendarPage({ searchParams }: Props) {
         scheduleCatalog={scheduleCatalog}
         bookingEventTypeOptions={bookingEventTypeOptions}
         spaceOperatingMode={venue?.spaceOperatingMode ?? "single"}
+        venueSpaces={spaces.map((s) => ({ id: s.id, name: s.name, isActive: s.isActive }))}
       />
     </div>
   );

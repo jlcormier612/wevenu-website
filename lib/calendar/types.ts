@@ -49,6 +49,12 @@ export type CalendarItem = {
   assignedToName?: string | null;
   spaceId?: string | null;
   spaceName?: string | null;
+  /**
+   * All canonical physical spaces for this item (event_space_assignments +
+   * events.space_id). Calendar space filter matches any of these. Empty /
+   * omitted = no space assignment — never attributed to a named space.
+   */
+  spaceIds?: string[];
   // Calendar Manual Type Redesign — only calendar_block items carry this.
   // "Block" is now one of several manual schedule types a coordinator can
   // pick (Tour, Consultation, Client Meeting, Walkthrough, Tasting, Vendor

@@ -137,7 +137,7 @@ export async function getCalendarData(
     // here, so an expired hold kept showing (and blocking) indefinitely
     // until a human manually released it.
     supabase.from("date_holds")
-      .select("id, title, hold_date, start_time, lead_id, leads(first_name, last_name)")
+      .select("id, title, hold_date, start_time, lead_id, space_id, leads(first_name, last_name)")
       .eq("venue_id", venue.id)
       .eq("status", "active")
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
@@ -157,11 +157,30 @@ export async function getCalendarData(
 
   const items: CalendarItem[] = [];
 
+  const eventRows = (eventsRes.data ?? []) as any[];
+  const eventIds = eventRows.map((e) => e.id as string).filter(Boolean);
+  const assignmentSpaceIds = new Map<string, string[]>();
+  if (eventIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: assignRows } = await (supabase.from("event_space_assignments") as any)
+      .select("event_id, space_id")
+      .eq("venue_id", venue.id)
+      .in("event_id", eventIds);
+    for (const row of (assignRows ?? []) as { event_id: string; space_id: string }[]) {
+      if (!row.event_id || !row.space_id) continue;
+      const list = assignmentSpaceIds.get(row.event_id) ?? [];
+      if (!list.includes(row.space_id)) list.push(row.space_id);
+      assignmentSpaceIds.set(row.event_id, list);
+    }
+  }
+
   // Events — one item per protected day in the visible range (Calendar is a
   // view; occupancy still uses event_date through coalesce(event_end_date)).
-  for (const e of (eventsRes.data ?? []) as any[]) {
+  for (const e of eventRows) {
     const cn = e.clients ? `${e.clients.first_name} ${e.clients.last_name}` : null;
     const dates = calendarDatesForProtectedEvent(e.event_date, e.event_end_date ?? null, start, end);
+    const assigned = assignmentSpaceIds.get(e.id) ?? [];
+    const spaceIds = [...new Set([e.space_id, ...assigned].filter(Boolean))] as string[];
     for (const date of dates) {
       items.push({
         id: `event-${e.id}-${date}`,
@@ -177,6 +196,7 @@ export async function getCalendarData(
         clientId: e.client_id ?? null,
         spaceId: e.space_id ?? null,
         spaceName: e.venue_spaces?.name ?? null,
+        spaceIds,
       });
     }
   }
@@ -212,6 +232,8 @@ export async function getCalendarData(
       subtitle: ln ? `Hold for ${ln}` : null,
       time: h.start_time?.slice(0, 5) ?? null,
       link: h.lead_id ? `/leads/${h.lead_id}` : "/calendar",
+      spaceId: h.space_id ?? null,
+      spaceIds: h.space_id ? [h.space_id] : [],
     });
   }
 
