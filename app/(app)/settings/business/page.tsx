@@ -40,6 +40,7 @@ export default async function BusinessBrandSettingsPage() {
           publicReviewUrl={venue?.publicReviewUrl ?? ""}
           owners={owners}
           actorIsOwner={membership?.isOwner === true}
+          actorStaffId={membership?.staffId ?? null}
         />
       ) : (
         <p className="text-sm text-muted-foreground">

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   inviteTeamMemberAction,
+  inviteRecordedOwnerAction,
   removeTeamMemberAction,
   updateTeamMemberAccessAction,
 } from "@/app/(app)/settings/team/actions";
@@ -71,6 +72,18 @@ function isOwnerRow(m: StaffMember): boolean {
   return m.isOwner || m.ownerInvitePending;
 }
 
+function ownerDisplayState(
+  member: StaffMember,
+  actorStaffId: string | null,
+): string {
+  if (member.acceptedAt) {
+    return actorStaffId && member.id === actorStaffId ? "You" : "Has access";
+  }
+  if (member.ownerInvitePending) return "Invitation sent";
+  if (member.isOwner) return "Not yet invited";
+  return "Owner";
+}
+
 export function TeamRoster({
   initialMembers,
   venueId: _venueId,
@@ -78,7 +91,8 @@ export function TeamRoster({
   canInvite,
   canChangeAccess,
   canRemove,
-}: Props) {
+  actorStaffId = null,
+}: Props & { actorStaffId?: string | null }) {
   const [members, setMembers] = React.useState(initialMembers);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -87,6 +101,7 @@ export function TeamRoster({
   const [overrides, setOverrides] = React.useState<CapabilityOverrides>({});
   const [showCustomize, setShowCustomize] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [invitingOwnerId, setInvitingOwnerId] = React.useState<string | null>(null);
   const [removing, setRemoving] = React.useState<{
     id: string;
     name: string;
@@ -205,7 +220,14 @@ export function TeamRoster({
           <p className="text-sm text-muted-foreground">No owners listed.</p>
         ) : (
           <div className="space-y-1">
-            {owners.map((member) => (
+            {owners.map((member) => {
+              const state = ownerDisplayState(member, actorStaffId);
+              const canInviteOwner =
+                actorIsOwner &&
+                member.isOwner &&
+                !member.acceptedAt &&
+                !member.ownerInvitePending;
+              return (
               <div
                 key={member.id}
                 className="flex flex-col gap-1 border-b py-2.5 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
@@ -213,14 +235,45 @@ export function TeamRoster({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{member.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {member.ownerInvitePending && !member.acceptedAt
-                      ? "Owner invite pending"
-                      : "Owner"}
-                    {member.email ? ` · ${member.email}` : ""}
+                    Owner{member.email ? ` · ${member.email}` : ""}
                   </p>
+                  <p className="text-xs text-muted-foreground">{state}</p>
                 </div>
+                {canInviteOwner ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    disabled={invitingOwnerId === member.id}
+                    onClick={async () => {
+                      setInvitingOwnerId(member.id);
+                      const result = await inviteRecordedOwnerAction(member.id);
+                      setInvitingOwnerId(null);
+                      if (result.ok) {
+                        toast.success(`Invitation sent to ${member.email ?? member.name}`);
+                        setMembers((prev) =>
+                          prev.map((m) =>
+                            m.id === member.id
+                              ? {
+                                  ...m,
+                                  ownerInvitePending: true,
+                                  invitedAt: new Date().toISOString(),
+                                }
+                              : m,
+                          ),
+                        );
+                      } else {
+                        toast.error(result.error ?? "Could not send invitation");
+                      }
+                    }}
+                  >
+                    {invitingOwnerId === member.id ? "Sending…" : "Invite"}
+                  </Button>
+                ) : null}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

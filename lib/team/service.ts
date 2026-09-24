@@ -127,6 +127,49 @@ export async function getTeamMembers(venueId: string): Promise<StaffMember[]> {
   return (data ?? []).map((row) => rowToStaffMember(row as Record<string, unknown>));
 }
 
+async function findActiveStaffByEmail(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  email: string,
+): Promise<StaffMember | null> {
+  const { data } = await supabase
+    .from("venue_staff")
+    .select(STAFF_SELECT)
+    .eq("venue_id", venueId)
+    .eq("is_active", true)
+    .eq("email", email.trim().toLowerCase())
+    .maybeSingle();
+  return data ? rowToStaffMember(data as Record<string, unknown>) : null;
+}
+
+/**
+ * Promote an accepted team member (or the acting user) to Owner without
+ * creating an invitation. Ownership ≠ invitation.
+ */
+async function promoteAcceptedMemberToOwner(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  staffId: string,
+): Promise<TeamActionResult> {
+  const { data, error } = await supabase
+    .from("venue_staff")
+    .update({
+      is_owner: true,
+      owner_invite_pending: false,
+    })
+    .eq("id", staffId)
+    .select("id");
+  if (error) {
+    if (error.message.includes("last_owner") || error.message.includes("ownership_only")) {
+      return { ok: false, error: error.message };
+    }
+    return { ok: false, error: error.message };
+  }
+  if (!data || data.length === 0) {
+    return { ok: false, error: "Could not update ownership." };
+  }
+  return { ok: true, staffId };
+}
+
 export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamActionResult> {
   return withVenue(async (supabase, venueId) => {
     const {
@@ -166,13 +209,37 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
     });
     if (!scope.ok) return { ok: false, error: scope.message };
 
+    const email = input.email.trim().toLowerCase();
+    const existing = await findActiveStaffByEmail(supabase, venueId, email);
+
+    // Already has HTC access — ownership without a duplicate invitation.
+    if (designateOwner && existing?.acceptedAt) {
+      if (existing.isOwner) {
+        return { ok: true, staffId: existing.id };
+      }
+      return promoteAcceptedMemberToOwner(supabase, existing.id);
+    }
+
+    if (existing) {
+      if (existing.ownerInvitePending) {
+        return { ok: false, error: "An Owner invitation is already pending for this email." };
+      }
+      if (existing.isOwner && !existing.acceptedAt) {
+        return {
+          ok: false,
+          error: "This person is already recorded as an Owner. Invite them from the Owners list.",
+        };
+      }
+      return { ok: false, error: "A team member with this email already exists." };
+    }
+
     const { data, error } = await supabase
       .from("venue_staff")
       .insert({
         venue_id: venueId,
         user_id: null,
         full_name: input.name.trim(),
-        email: input.email.trim().toLowerCase(),
+        email,
         title: input.jobTitle?.trim() || null,
         is_owner: false,
         is_active: true,
@@ -205,7 +272,7 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
 
     if (designateOwner) {
       await sendEmail({
-        to: input.email,
+        to: email,
         subject: `You're invited as an Owner of ${venueName} on Hello to Cheers`,
         text: buildOwnerInviteText({
           memberName: input.name,
@@ -222,7 +289,7 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
       });
     } else {
       await sendEmail({
-        to: input.email,
+        to: email,
         subject: `You're invited to join ${venueName} on Hello to Cheers`,
         text: buildTeamInviteText({
           memberName: input.name,
@@ -242,6 +309,200 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
     void recordEngagementEvent({
       venueId,
       eventType: designateOwner ? "team.owner_invited" : "team.member_invited",
+      actorType: "venue_user",
+      actorId: user.id,
+      entityType: "venue_staff",
+      entityId: staff.id,
+    });
+
+    return { ok: true, staffId: staff.id };
+  }) as Promise<TeamActionResult>;
+}
+
+/**
+ * Record someone as an Owner without sending an HTC invitation.
+ * Uses venue_staff.is_owner=true with no owner_invite_pending and no accepted_at
+ * until they are invited later or already have access.
+ */
+export async function recordOwnerMember(input: {
+  name: string;
+  email: string;
+}): Promise<TeamActionResult> {
+  return withVenue(async (supabase, venueId) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Session expired." };
+
+    const ownerGate = await requireOwner("Only an Owner can add another Owner.");
+    if (!ownerGate.ok) return { ok: false, error: ownerGate.error };
+
+    const actor = await getActiveTeamActor();
+    if (!actor) return { ok: false, error: "Session expired." };
+
+    const scope = assertCanManageMember(actor, {
+      accessTitle: "administrator",
+      titleBasis: "administrator",
+      overrides: {},
+      isOwner: true,
+    });
+    if (!scope.ok) return { ok: false, error: scope.message };
+
+    const email = input.email.trim().toLowerCase();
+    const name = input.name.trim();
+    if (!name || !email) return { ok: false, error: "Name and email are required." };
+
+    const membership = await getActiveVenueMembership();
+    if (membership?.email && membership.email.toLowerCase() === email) {
+      if (membership.isOwner) return { ok: true, staffId: membership.staffId };
+      return promoteAcceptedMemberToOwner(supabase, membership.staffId);
+    }
+
+    const existing = await findActiveStaffByEmail(supabase, venueId, email);
+    if (existing?.acceptedAt) {
+      if (existing.isOwner) return { ok: true, staffId: existing.id };
+      return promoteAcceptedMemberToOwner(supabase, existing.id);
+    }
+    if (existing?.ownerInvitePending) {
+      return { ok: false, error: "An Owner invitation is already pending for this email." };
+    }
+    if (existing?.isOwner) {
+      return { ok: true, staffId: existing.id };
+    }
+    if (existing) {
+      return { ok: false, error: "A team member with this email already exists." };
+    }
+
+    const { data, error } = await supabase
+      .from("venue_staff")
+      .insert({
+        venue_id: venueId,
+        user_id: null,
+        full_name: name,
+        email,
+        title: null,
+        is_owner: true,
+        is_active: true,
+        invited_by: user.id,
+        invited_at: null,
+        invite_token: null,
+        accepted_at: null,
+        access_title: "administrator",
+        title_basis: "administrator",
+        capability_overrides: {},
+        owner_invite_pending: false,
+      })
+      .select(STAFF_SELECT)
+      .single();
+
+    if (error) return { ok: false, error: error.message };
+
+    const staff = rowToStaffMember(data as Record<string, unknown>);
+    void recordEngagementEvent({
+      venueId,
+      eventType: "team.owner_recorded",
+      actorType: "venue_user",
+      actorId: user.id,
+      entityType: "venue_staff",
+      entityId: staff.id,
+    });
+
+    return { ok: true, staffId: staff.id };
+  }) as Promise<TeamActionResult>;
+}
+
+/**
+ * Send an Owner invitation for someone already recorded as Owner
+ * (is_owner, not yet accepted, no pending invite).
+ */
+export async function inviteRecordedOwner(staffId: string): Promise<TeamActionResult> {
+  return withVenue(async (supabase, venueId) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Session expired." };
+
+    const ownerGate = await requireOwner("Only an Owner can invite another Owner.");
+    if (!ownerGate.ok) return { ok: false, error: ownerGate.error };
+
+    const { data: target } = await supabase
+      .from("venue_staff")
+      .select(STAFF_SELECT)
+      .eq("id", staffId)
+      .eq("venue_id", venueId)
+      .maybeSingle();
+    if (!target) return { ok: false, error: "Owner not found." };
+
+    const member = rowToStaffMember(target as Record<string, unknown>);
+    if (!member.isActive) return { ok: false, error: "Owner not found." };
+    if (member.acceptedAt) {
+      return { ok: false, error: "This Owner already has Hello to Cheers access." };
+    }
+    if (member.ownerInvitePending) {
+      return { ok: false, error: "An invitation is already pending for this Owner." };
+    }
+    if (!member.isOwner) {
+      return { ok: false, error: "This person is not recorded as an Owner." };
+    }
+    if (!member.email) {
+      return { ok: false, error: "This Owner needs an email address before they can be invited." };
+    }
+
+    const { data: updated, error } = await supabase
+      .from("venue_staff")
+      .update({
+        owner_invite_pending: true,
+        invited_at: new Date().toISOString(),
+        invited_by: user.id,
+        invite_token: crypto.randomUUID(),
+      })
+      .eq("id", staffId)
+      .select(STAFF_SELECT)
+      .single();
+
+    if (error) {
+      if (error.message.includes("venue_staff_one_pending_owner_invite")) {
+        return {
+          ok: false,
+          error: "Another Owner invitation is already pending. Cancel it before sending a new one.",
+        };
+      }
+      return { ok: false, error: error.message };
+    }
+
+    const staff = rowToStaffMember(updated as Record<string, unknown>);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const acceptUrl = `${appUrl}/join?token=${staff.inviteToken}`;
+
+    const { data: venue } = await supabase
+      .from("venues")
+      .select("name")
+      .eq("id", venueId)
+      .single();
+    const venueName = venue?.name ?? "Your venue";
+    const actorMembership = await getActiveVenueMembership();
+    const adminName = actorMembership?.fullName ?? "Your team";
+
+    await sendEmail({
+      to: member.email,
+      subject: `You're invited as an Owner of ${venueName} on Hello to Cheers`,
+      text: buildOwnerInviteText({
+        memberName: member.name,
+        venueName,
+        acceptUrl,
+        administratorName: adminName,
+      }),
+      html: buildOwnerInviteHtml({
+        memberName: member.name,
+        venueName,
+        acceptUrl,
+        administratorName: adminName,
+      }),
+    });
+
+    void recordEngagementEvent({
+      venueId,
+      eventType: "team.owner_invited",
       actorType: "venue_user",
       actorId: user.id,
       entityType: "venue_staff",

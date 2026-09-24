@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import {
   inviteStaffMember,
+  inviteRecordedOwner,
+  recordOwnerMember,
   removeStaffMember,
   transferVenueOwnership,
   updateStaffAccess,
@@ -30,6 +32,31 @@ export async function inviteTeamMemberAction(
           isOwner: input.role === "owner",
         };
   const result = await inviteStaffMember(normalized);
+  if ("ok" in result && result.ok) {
+    revalidatePath("/settings/team");
+    revalidatePath("/settings/business");
+  }
+  return result as TeamActionResult;
+}
+
+/** Record an Owner without sending an HTC invitation. */
+export async function recordOwnerMemberAction(input: {
+  name: string;
+  email: string;
+}): Promise<TeamActionResult> {
+  const result = await recordOwnerMember(input);
+  if ("ok" in result && result.ok) {
+    revalidatePath("/settings/team");
+    revalidatePath("/settings/business");
+  }
+  return result as TeamActionResult;
+}
+
+/** Invite a recorded (not-yet-invited) Owner to HTC. */
+export async function inviteRecordedOwnerAction(
+  staffId: string,
+): Promise<TeamActionResult> {
+  const result = await inviteRecordedOwner(staffId);
   if ("ok" in result && result.ok) {
     revalidatePath("/settings/team");
     revalidatePath("/settings/business");

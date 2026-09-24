@@ -108,12 +108,14 @@ export function VenueSettings({
   publicReviewUrl: initialReviewUrl = "",
   owners = [],
   actorIsOwner = false,
+  actorStaffId = null,
 }: {
   initial: VenueSetupInput;
   venueId: string;
   publicReviewUrl?: string;
   owners?: StaffMember[];
   actorIsOwner?: boolean;
+  actorStaffId?: string | null;
 }) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
   const [publicReviewUrl, setPublicReviewUrl] = React.useState(initialReviewUrl);
@@ -306,7 +308,11 @@ export function VenueSettings({
       </SettingsSection>
 
       {/* Owners — relocated from Team invite; same venue_staff.is_owner path */}
-      <VenueOwnersSection initialOwners={owners} actorIsOwner={actorIsOwner} />
+      <VenueOwnersSection
+        initialOwners={owners}
+        actorIsOwner={actorIsOwner}
+        actorStaffId={actorStaffId}
+      />
 
       {/* General settings (currency / week) — owner profile fields no longer edited here */}
       <SettingsSection

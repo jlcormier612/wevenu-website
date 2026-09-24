@@ -58,6 +58,7 @@ export default async function TeamDataSettingsPage() {
             initialMembers={members}
             venueId={venue.id}
             actorIsOwner={actorIsOwner}
+            actorStaffId={membership?.staffId ?? null}
             canInvite={canInvite}
             canChangeAccess={canChangeAccess}
             canRemove={canRemove}
