@@ -76,7 +76,7 @@ export function summarizeWhatPersonCan(input: MembershipAccessInput): string[] {
     lines.push(rule.label);
   }
   if (input.isOwner) {
-    lines.push("Control ownership and Owners");
+    lines.push("Add or remove Owners and make ownership decisions");
   }
   return lines;
 }
@@ -87,4 +87,20 @@ export function formatAccessBadge(accessTitle: AccessTitle | string, isOwner: bo
       ? ACCESS_TITLE_LABELS[accessTitle as AccessTitle]
       : String(accessTitle);
   return isOwner ? `${label} · Owner` : label;
+}
+
+/**
+ * Plain-language note when Ownership is on alongside an Access title.
+ * Owner does not change day-to-day Access — keep that explicit in the UI.
+ */
+export function describeOwnershipAlongsideAccess(
+  accessTitle: AccessTitle | string,
+  isOwner: boolean,
+): string | null {
+  if (!isOwner) return null;
+  const label =
+    accessTitle in ACCESS_TITLE_LABELS
+      ? ACCESS_TITLE_LABELS[accessTitle as AccessTitle]
+      : String(accessTitle);
+  return `Ownership does not change their Access. Day-to-day work still follows ${label}. Ownership only adds the ability to add or remove Owners and make ownership decisions for this venue.`;
 }

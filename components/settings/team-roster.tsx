@@ -8,6 +8,7 @@ import {
   ACCESS_TITLE_DESCRIPTIONS,
   ACCESS_TITLE_LABELS,
   ACCESS_TITLES,
+  describeOwnershipAlongsideAccess,
   formatAccessBadge,
   summarizeWhatPersonCan,
   type AccessTitle,
@@ -17,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -67,16 +68,6 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function memberSummary(m: StaffMember): string[] {
-  return summarizeWhatPersonCan({
-    isActive: true,
-    isOwner: m.isOwner,
-    accessTitle: m.accessTitle,
-    titleBasis: m.titleBasis,
-    overrides: m.capabilityOverrides,
-  });
-}
-
 export function TeamRoster({
   initialMembers,
   venueId: _venueId,
@@ -108,6 +99,7 @@ export function TeamRoster({
     titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
     overrides,
   });
+  const ownershipNote = describeOwnershipAlongsideAccess(accessTitle, inviteAsOwner);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -187,7 +179,9 @@ export function TeamRoster({
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Owners control ownership. Administrators can manage the venue without owning it.
+        Access controls day-to-day work. Ownership is separate — Owners can add or remove other
+        Owners and make ownership decisions. Someone can be an Owner and still use any Access
+        level for day-to-day responsibilities.
       </p>
 
       {accepted.length > 0 && (
@@ -291,8 +285,15 @@ export function TeamRoster({
       )}
 
       {canInvite && (
-        <form onSubmit={handleInvite} className="space-y-4 border-t pt-4">
-          <p className="text-sm font-medium">Invite a team member</p>
+        <form onSubmit={handleInvite} className="space-y-5 border-t pt-4">
+          <div>
+            <p className="text-sm font-medium">Invite a team member</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Choose their day-to-day Access first, then decide whether they should also be an
+              Owner.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="team-name" className="text-xs">
@@ -321,10 +322,16 @@ export function TeamRoster({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="team-access" className="text-xs">
-              Access
-            </Label>
+          {/* Access — day-to-day responsibilities */}
+          <div className="space-y-3 rounded-md border p-3">
+            <div>
+              <Label htmlFor="team-access" className="text-sm font-medium">
+                Access
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                What this person can do day to day in the venue.
+              </p>
+            </div>
             <Select
               value={accessTitle}
               onValueChange={(v) => {
@@ -351,85 +358,75 @@ export function TeamRoster({
             <p className="text-xs text-muted-foreground">
               {ACCESS_TITLE_DESCRIPTIONS[accessTitle]}
             </p>
-          </div>
 
-          {accessTitle === "custom" && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Start from</Label>
-              <Select
-                value={titleBasis}
-                onValueChange={(v) => {
-                  setTitleBasis(v as BasisTitle);
-                  setOverrides({});
-                }}
-                items={{
-                  administrator: "Administrator",
-                  manager: "Manager",
-                  coordinator: "Coordinator",
-                  staff: "Staff",
-                  view_only: "View Only",
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(
-                    ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
-                  ).map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {ACCESS_TITLE_LABELS[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {actorIsOwner && (
-            <div className="space-y-2 rounded-md border p-3">
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="invite-owner"
-                  checked={inviteAsOwner}
-                  onCheckedChange={(v) => setInviteAsOwner(v === true)}
-                />
-                <div>
-                  <Label htmlFor="invite-owner" className="text-sm font-medium">
-                    This person is an Owner
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Owners have ownership-level control of the venue account.
-                  </p>
-                </div>
+            {accessTitle === "custom" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start from</Label>
+                <Select
+                  value={titleBasis}
+                  onValueChange={(v) => {
+                    setTitleBasis(v as BasisTitle);
+                    setOverrides({});
+                  }}
+                  items={{
+                    administrator: "Administrator",
+                    manager: "Manager",
+                    coordinator: "Coordinator",
+                    staff: "Staff",
+                    view_only: "View Only",
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(
+                      ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
+                    ).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {ACCESS_TITLE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setShowCustomize((s) => !s)}
             >
-              Customize access
+              {showCustomize ? "Hide customize access" : "Customize access"}
             </Button>
+
+            {showCustomize && (
+              <TeamCapabilityCustomizer
+                accessTitle={accessTitle}
+                titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
+                overrides={overrides}
+                onChange={setOverrides}
+                actorIsOwner={actorIsOwner}
+              />
+            )}
           </div>
 
-          {showCustomize && (
-            <TeamCapabilityCustomizer
+          {/* Ownership — orthogonal; does not change Access */}
+          {actorIsOwner && (
+            <TeamOwnershipSection
+              isOwner={inviteAsOwner}
+              onChange={setInviteAsOwner}
               accessTitle={accessTitle}
-              titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
-              overrides={overrides}
-              onChange={setOverrides}
-              actorIsOwner={actorIsOwner}
+              ownershipNote={ownershipNote}
             />
           )}
 
           {invitePreview.length > 0 && (
             <div className="rounded-md bg-muted/50 px-3 py-2">
-              <p className="mb-1 text-xs font-semibold text-muted-foreground">This person can…</p>
+              <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                This person can… ({formatAccessBadge(accessTitle, inviteAsOwner)})
+              </p>
               <ul className="list-inside list-disc text-sm">
                 {invitePreview.map((line) => (
                   <li key={line}>{line}</li>
@@ -486,6 +483,60 @@ export function TeamRoster({
   );
 }
 
+function TeamOwnershipSection({
+  isOwner,
+  onChange,
+  accessTitle,
+  ownershipNote,
+}: {
+  isOwner: boolean;
+  onChange: (next: boolean) => void;
+  accessTitle: AccessTitle;
+  ownershipNote: string | null;
+}) {
+  const accessLabel = ACCESS_TITLE_LABELS[accessTitle];
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      <div>
+        <p className="text-sm font-medium">Ownership</p>
+        <p className="text-xs text-muted-foreground">
+          Separate from Access. Does not change their day-to-day {accessLabel} permissions.
+        </p>
+      </div>
+      <RadioGroup
+        value={isOwner ? "owner" : "member"}
+        onValueChange={(v) => onChange(v === "owner")}
+        className="gap-3"
+      >
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <RadioGroupItem value="member" className="mt-0.5" />
+          <span>
+            <span className="block text-sm font-medium">This person is a team member</span>
+            <span className="block text-xs text-muted-foreground">
+              Works with the Access you chose above. No ownership-level control.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <RadioGroupItem value="owner" className="mt-0.5" />
+          <span>
+            <span className="block text-sm font-medium">Make this person an Owner</span>
+            <span className="block text-xs text-muted-foreground">
+              Adds ownership-level control of the venue account (add or remove Owners and make
+              ownership decisions). Their Access stays {accessLabel}.
+            </span>
+          </span>
+        </label>
+      </RadioGroup>
+      {ownershipNote && (
+        <p className="rounded-md bg-muted/60 px-2.5 py-2 text-xs text-muted-foreground">
+          {ownershipNote}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function TeamMemberEditDialog({
   member,
   actorIsOwner,
@@ -516,6 +567,7 @@ function TeamMemberEditDialog({
     titleBasis: accessTitle === "custom" ? titleBasis : accessTitle,
     overrides,
   });
+  const ownershipNote = describeOwnershipAlongsideAccess(accessTitle, isOwner);
 
   async function handleSave() {
     setBusy(true);
@@ -551,7 +603,8 @@ function TeamMemberEditDialog({
         <DialogHeader>
           <DialogTitle>Edit access — {member.name}</DialogTitle>
           <DialogDescription>
-            Change what they can do. Ownership stays the same unless you change it explicitly.
+            Access is day-to-day work. Ownership is a separate choice and does not replace their
+            Access level.
           </DialogDescription>
         </DialogHeader>
 
@@ -565,8 +618,13 @@ function TeamMemberEditDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs">Access</Label>
+          <div className="space-y-3 rounded-md border p-3">
+            <div>
+              <Label className="text-sm font-medium">Access</Label>
+              <p className="text-xs text-muted-foreground">
+                What this person can do day to day in the venue.
+              </p>
+            </div>
             <Select
               value={accessTitle}
               onValueChange={(v) => {
@@ -591,75 +649,73 @@ function TeamMemberEditDialog({
             <p className="text-xs text-muted-foreground">
               {ACCESS_TITLE_DESCRIPTIONS[accessTitle]}
             </p>
+
+            {accessTitle === "custom" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start from</Label>
+                <Select
+                  value={titleBasis}
+                  onValueChange={(v) => {
+                    setTitleBasis(v as BasisTitle);
+                    setOverrides({});
+                  }}
+                  items={{
+                    administrator: "Administrator",
+                    manager: "Manager",
+                    coordinator: "Coordinator",
+                    staff: "Staff",
+                    view_only: "View Only",
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(
+                      ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
+                    ).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {ACCESS_TITLE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCustomize((s) => !s)}
+            >
+              {showCustomize ? "Hide customize access" : "Customize access"}
+            </Button>
+
+            {showCustomize && (
+              <TeamCapabilityCustomizer
+                accessTitle={accessTitle}
+                titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
+                overrides={overrides}
+                onChange={setOverrides}
+                actorIsOwner={actorIsOwner}
+              />
+            )}
           </div>
 
-          {accessTitle === "custom" && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Start from</Label>
-              <Select
-                value={titleBasis}
-                onValueChange={(v) => {
-                  setTitleBasis(v as BasisTitle);
-                  setOverrides({});
-                }}
-                items={{
-                  administrator: "Administrator",
-                  manager: "Manager",
-                  coordinator: "Coordinator",
-                  staff: "Staff",
-                  view_only: "View Only",
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(
-                    ["administrator", "manager", "coordinator", "staff", "view_only"] as BasisTitle[]
-                  ).map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {ACCESS_TITLE_LABELS[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {actorIsOwner && (
-            <div className="flex items-start gap-2 rounded-md border p-3">
-              <Checkbox
-                id="edit-owner"
-                checked={isOwner}
-                onCheckedChange={(v) => setIsOwner(v === true)}
-              />
-              <div>
-                <Label htmlFor="edit-owner" className="text-sm font-medium">
-                  This person is an Owner
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Owners have ownership-level control of the venue account.
-                </p>
-              </div>
-            </div>
-          )}
-
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowCustomize((s) => !s)}>
-            Customize access
-          </Button>
-
-          {showCustomize && (
-            <TeamCapabilityCustomizer
+            <TeamOwnershipSection
+              isOwner={isOwner}
+              onChange={setIsOwner}
               accessTitle={accessTitle}
-              titleBasis={accessTitle === "custom" ? titleBasis : (accessTitle as BasisTitle)}
-              overrides={overrides}
-              onChange={setOverrides}
-              actorIsOwner={actorIsOwner}
+              ownershipNote={ownershipNote}
             />
           )}
 
           <div className="rounded-md bg-muted/50 px-3 py-2">
-            <p className="mb-1 text-xs font-semibold text-muted-foreground">This person can…</p>
+            <p className="mb-1 text-xs font-semibold text-muted-foreground">
+              This person can… ({formatAccessBadge(accessTitle, isOwner)})
+            </p>
             <ul className="list-inside list-disc text-sm">
               {preview.map((line) => (
                 <li key={line}>{line}</li>

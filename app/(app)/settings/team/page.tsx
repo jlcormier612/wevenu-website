@@ -48,8 +48,10 @@ export default async function TeamDataSettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Team &amp; Permissions</CardTitle>
           <CardDescription>
-            Access titles control what people can do. Ownership is separate — Owners control
-            ownership, while Administrators can run the venue day to day.
+            Access controls day-to-day work (Administrator, Manager, Coordinator, and so on).
+            Ownership is a separate choice — Owners can add or remove other Owners and make
+            ownership decisions for the venue. Someone can be an Owner and still use any Access
+            level for their day-to-day responsibilities.
           </CardDescription>
         </CardHeader>
         <CardContent>

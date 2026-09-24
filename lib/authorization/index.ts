@@ -58,6 +58,7 @@ export {
   ACCESS_TITLE_DESCRIPTIONS,
   ACCESS_TITLE_LABELS,
   BASIS_TITLE_LABELS,
+  describeOwnershipAlongsideAccess,
   formatAccessBadge,
   summarizeWhatPersonCan,
 } from "@/lib/authorization/access-copy";

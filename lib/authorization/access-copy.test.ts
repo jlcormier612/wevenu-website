@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  describeOwnershipAlongsideAccess,
   formatAccessBadge,
   summarizeWhatPersonCan,
 } from "@/lib/authorization/access-copy";
@@ -31,12 +32,20 @@ describe("customer-facing access copy", () => {
       isOwner: true,
       accessTitle: "administrator",
     });
-    assert.ok(owner.includes("Control ownership and Owners"));
+    assert.ok(owner.includes("Add or remove Owners and make ownership decisions"));
     const admin = summarizeWhatPersonCan({
       isActive: true,
       isOwner: false,
       accessTitle: "administrator",
     });
-    assert.ok(!admin.includes("Control ownership and Owners"));
+    assert.ok(!admin.includes("Add or remove Owners and make ownership decisions"));
+  });
+
+  it("explains Owner coexists with Access without changing it", () => {
+    const note = describeOwnershipAlongsideAccess("coordinator", true);
+    assert.ok(note);
+    assert.match(note!, /Coordinator/);
+    assert.match(note!, /does not change their Access/i);
+    assert.equal(describeOwnershipAlongsideAccess("manager", false), null);
   });
 });
