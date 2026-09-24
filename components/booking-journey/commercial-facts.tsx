@@ -5,6 +5,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
+import { collectsInitialPayment } from "@/lib/booking-journey/venue-prefs";
+import { publicAppOrigin } from "@/lib/env";
+import { toast } from "sonner";
 
 export function CommercialFacts({
   journey,
@@ -30,18 +33,36 @@ export function CommercialFacts({
   onRecordDeposit: () => void;
 }) {
   const selection = journey.selection;
+  const proposal = journey.proposal;
   const rows = describeCommercialFacts({
     selection,
+    proposal,
     contract: journey.contract,
     paymentLines: journey.paymentLines,
     prefs: journey.prefs,
   });
   const allowOffer = journey.prefs.agreementMethod === "offer" || journey.prefs.agreementMethod === "either";
   const allowContract = journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either";
+  const allowSelectPackage =
+    journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either";
   const depositLine = journey.paymentLines.find(
     (line) => line.obligationKind === "deposit" && line.status !== "cancelled",
   );
   const depositDue = Boolean(depositLine && depositLine.status !== "paid");
+  const collectPayment = collectsInitialPayment(journey.prefs);
+
+  function copyProposalLink() {
+    const token = proposal?.acceptToken;
+    if (!token) {
+      toast.error("Send the proposal first to get a share link.");
+      return;
+    }
+    const url = `${publicAppOrigin()}/offer/${token}`;
+    void navigator.clipboard.writeText(url).then(
+      () => toast.success("Proposal link copied."),
+      () => toast.error("Could not copy the link."),
+    );
+  }
 
   return (
     <section className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5">
@@ -50,9 +71,36 @@ export function CommercialFacts({
       </h2>
       <p className="mt-2 text-sm font-medium text-heading">What they booked</p>
       <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-        These records are separate from the sales pipeline. Your venue&apos;s booking workflow determines when a relationship becomes Booked. This is not a required sequence.
+        These records are separate from the sales pipeline. You mark a relationship Booked when you&apos;re ready — payment does not decide it.
       </p>
       <p className="mt-3 text-sm text-heading">{journey.direction}</p>
+
+      {!selection && !proposal ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {allowOffer && onCreateProposal ? (
+            <Button type="button" size="sm" onClick={onCreateProposal}>
+              Create proposal
+              <span className="ml-1.5 hidden text-xs font-normal opacity-80 sm:inline">
+                — Let the couple choose
+              </span>
+            </Button>
+          ) : null}
+          {allowSelectPackage ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={allowOffer ? "outline" : "default"}
+              onClick={onSelectPackage}
+            >
+              Select package
+              <span className="ml-1.5 hidden text-xs font-normal opacity-80 sm:inline">
+                — Choose the package now
+              </span>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       <ul className="mt-4 divide-y divide-border">
         {rows.map((row) => (
           <li key={row.key} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -62,38 +110,42 @@ export function CommercialFacts({
               {row.detail ? <p className="mt-1 text-xs text-muted-foreground">{row.detail}</p> : null}
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
-              {row.key === "package" && (
-                <>
-                  <Button type="button" size="sm" variant={selection ? "outline" : "default"} onClick={onSelectPackage}>
-                    {selection ? "View / Change package" : "Select package"}
-                  </Button>
-                  {!selection && allowOffer && onCreateProposal ? (
-                    <Button type="button" size="sm" variant="outline" onClick={onCreateProposal}>
-                      Create proposal
-                    </Button>
-                  ) : null}
-                </>
-              )}
-              {row.key === "proposal" && !selection && allowOffer && onCreateProposal ? (
-                <Button type="button" size="sm" onClick={onCreateProposal}>
-                  Create proposal
+              {row.key === "package" && selection ? (
+                <Button type="button" size="sm" variant="outline" onClick={onSelectPackage}>
+                  View / Change package
                 </Button>
               ) : null}
-              {row.key === "proposal" && selection && (
-                <Button type="button" size="sm" variant="outline" onClick={onPreviewProposal}>
-                  Preview
-                </Button>
-              )}
-              {row.key === "proposal" && selection && allowOffer && selection.status !== "accepted" && (
+              {row.key === "package" && selection && !proposal && allowOffer && selection.status !== "accepted" ? (
                 <Button type="button" size="sm" onClick={onCreateShareLink}>
                   Create share link
                 </Button>
-              )}
-              {row.key === "proposal" && selection?.acceptToken && (
+              ) : null}
+              {row.key === "package" && selection?.acceptToken && !proposal ? (
                 <Button type="button" size="sm" variant="outline" onClick={onCopyShareLink}>
                   Copy share link
                 </Button>
-              )}
+              ) : null}
+              {row.key === "package" && selection && !proposal ? (
+                <Button type="button" size="sm" variant="outline" onClick={onPreviewProposal}>
+                  Preview
+                </Button>
+              ) : null}
+
+              {row.key === "proposal" && proposal ? (
+                <>
+                  {onCreateProposal && (proposal.status === "draft" || proposal.status === "superseded") ? (
+                    <Button type="button" size="sm" onClick={onCreateProposal}>
+                      {proposal.status === "draft" ? "Continue proposal" : "Create proposal"}
+                    </Button>
+                  ) : null}
+                  {proposal.acceptToken ? (
+                    <Button type="button" size="sm" variant="outline" onClick={copyProposalLink}>
+                      Copy proposal link
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
+
               {row.key === "contract" && !journey.contract && selection && allowContract && (
                 <Button type="button" size="sm" variant="outline" disabled={contractPending} onClick={onCreateContract}>
                   {contractPending ? "Preparing…" : "Create contract"}
@@ -124,9 +176,9 @@ export function CommercialFacts({
                   Record deposit received
                 </Button>
               )}
-              {row.key === "deposit" && !depositLine && selection && journey.prefs.initialPaymentRequired && selection.depositAmount > 0 && (
+              {row.key === "deposit" && !depositLine && selection && collectPayment && selection.depositAmount > 0 && (
                 <Button type="button" size="sm" variant="outline" onClick={onSetupPayments}>
-                  Set up deposit
+                  Set up initial payment
                 </Button>
               )}
             </div>

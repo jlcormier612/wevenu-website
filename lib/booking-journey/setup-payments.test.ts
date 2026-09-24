@@ -17,6 +17,7 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
     clientId: "c1",
     eventId: "e1",
     sourcePackageId: "pkg-1",
+    proposalId: null,
     name: "Garden Package",
     totalAmount: 3200,
     depositAmount: 800,

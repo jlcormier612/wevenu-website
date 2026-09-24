@@ -167,8 +167,8 @@ describe("Booking Journey coherence after pipeline Booked", () => {
   it("Booking Journey remains derived from commercial records, not a second pipeline", () => {
     const model = read("lib/booking-journey/model.ts");
     assert.match(model, /derived presentation model/);
-    assert.match(model, /isCommerciallyBooked/);
-    assert.match(model, /Independent of sales_stage/);
+    assert.match(model, /commercialReady/);
+    assert.match(model, /Booked is NOT derived here/);
   });
 
   it("conversion migrates lead tasks to the event without inventing calendar entries", () => {

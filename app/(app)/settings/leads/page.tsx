@@ -39,9 +39,9 @@ export default async function LeadsBookingSettingsPage() {
       {venue && (
         <Card id="booking">
           <CardHeader>
-            <CardTitle className="text-base">How you book</CardTitle>
+            <CardTitle className="text-base">How you sell</CardTitle>
             <CardDescription>
-              Agreement method, deposit rules, and payment defaults for the commercial booking journey.
+              Agreement, initial payment, and payment collection defaults. Booked remains your decision.
             </CardDescription>
           </CardHeader>
           <CardContent>

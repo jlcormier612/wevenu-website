@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
-import { isCommerciallyBooked } from "@/lib/booking-journey/model";
+import { commercialStepsComplete } from "@/lib/booking-journey/model";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
+import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
   return {
@@ -14,6 +15,7 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
     leadId: "lead-1",
     clientId: null,
     eventId: null,
+    proposalId: null,
     sourcePackageId: "pkg-1",
     name: "Essential Wedding",
     totalAmount: 15000,
@@ -35,9 +37,10 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
 }
 
 describe("commercial artifact states", () => {
-  it("a selected package is not a sent proposal", () => {
+  it("direct package selection does not invent a Proposal row", () => {
     const facts = describeCommercialFacts({
       selection: selection(),
+      proposal: null,
       contract: null,
       paymentLines: [],
     });
@@ -45,38 +48,38 @@ describe("commercial artifact states", () => {
     const proposal = facts.find((row) => row.key === "proposal");
     assert.equal(pkg?.state, "Essential Wedding · $15,000.00");
     assert.equal(pkg?.detail, "Selected internally · Not yet shared");
-    assert.equal(proposal?.state, "Draft");
-    assert.match(proposal?.detail ?? "", /Not shared/);
+    assert.equal(proposal, undefined);
     assert.equal(
-      isCommerciallyBooked({ selection: selection(), contract: null, paymentLines: [] }),
+      commercialStepsComplete({ selection: selection(), contract: null, paymentLines: [] }),
       false,
     );
   });
 
-  it("a share link is not an email", () => {
-    const proposal = describeCommercialFacts({
-      selection: selection({
-        status: "offered",
-        acceptToken: "tok",
+  it("L1 proposal row appears only when a proposal record exists", () => {
+    const facts = describeCommercialFacts({
+      selection: null,
+      proposal: {
+        id: "prop-1",
+        status: "sent",
         offeredAt: "2026-09-19T19:42:00.000Z",
-      }),
+        acceptToken: "tok",
+        selectionId: null,
+      },
       contract: null,
       paymentLines: [],
-    }).find((row) => row.key === "proposal");
-    assert.equal(proposal?.state, "Share link created");
-    assert.match(proposal?.detail ?? "", /Link exists/);
-    assert.match(proposal?.detail ?? "", /Not emailed/);
-    assert.doesNotMatch(`${proposal?.state} ${proposal?.detail}`, /\bsent\b/i);
+    });
+    const proposal = facts.find((row) => row.key === "proposal");
+    assert.equal(proposal?.state, "Sent");
+    assert.match(proposal?.detail ?? "", /Waiting for the couple/);
   });
 
-  it("proposal acceptance is not contract execution", () => {
+  it("acceptance is not contract execution", () => {
     const facts = describeCommercialFacts({
       selection: selection({ status: "accepted", acceptedAt: "2026-09-19T19:42:00.000Z" }),
       contract: null,
       paymentLines: [],
     });
-    assert.equal(facts.find((row) => row.key === "proposal")?.state, "Accepted");
-    assert.match(facts.find((row) => row.key === "proposal")?.detail ?? "", /not a signed contract/);
+    assert.equal(facts.find((row) => row.key === "proposal"), undefined);
     assert.equal(facts.find((row) => row.key === "contract")?.state, "Not created");
   });
 
@@ -113,7 +116,7 @@ describe("commercial artifact states", () => {
     assert.notEqual(facts.find((row) => row.key === "deposit")?.state, "Paid");
     assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /Not paid/);
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "accepted", invoiceId: "inv-1" }),
         contract: null,
         paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 3750 }],
@@ -137,35 +140,27 @@ describe("commercial artifact states", () => {
     assert.equal(paid?.state, "Paid");
   });
 
-  it("an accepted proposal with an unpaid deposit is not booked", () => {
+  it("Booked fact never derives Booked from payment", () => {
     const booked = describeCommercialFacts({
       selection: selection({ status: "accepted", acceptedAt: "2026-09-20T15:00:00.000Z" }),
       contract: null,
       paymentLines: [],
     }).find((row) => row.key === "booked");
-    assert.equal(booked?.state, "Not booked");
-    assert.match(booked?.detail ?? "", /does not book/i);
-    assert.match(booked?.detail ?? "", /booking workflow/i);
+    assert.equal(booked?.state, "Venue decision");
+    assert.match(booked?.detail ?? "", /do not decide Booked/i);
   });
 
-  it("a contract-only venue stays unbooked after proposal acceptance", () => {
+  it("Booked fact stays venue decision even when commercial steps complete", () => {
     const booked = describeCommercialFacts({
       selection: selection({ status: "accepted" }),
       contract: null,
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 3750 }],
       prefs: {
+        ...DEFAULT_COMMERCIAL_BOOKING_PREFS,
         agreementMethod: "contract",
-        processOrder: "agreement_first",
-        initialPaymentRequired: true,
-        paymentCollection: "either",
-        defaultDepositPercent: 25,
-        remainingBalanceMode: "varies",
-        defaultSchedulePresetId: null,
       },
     }).find((row) => row.key === "booked");
-    assert.equal(booked?.state, "Not booked");
-    assert.match(booked?.detail ?? "", /contract is not signed yet/i);
-    assert.match(booked?.detail ?? "", /booking workflow/i);
+    assert.equal(booked?.state, "Venue decision");
   });
 });
 

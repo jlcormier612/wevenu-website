@@ -3,8 +3,8 @@ import { describe, it } from "node:test";
 
 import {
   buildBookingJourney,
+  commercialStepsComplete,
   initialPaymentSatisfied,
-  isCommerciallyBooked,
 } from "@/lib/booking-journey/model";
 import {
   DEFAULT_COMMERCIAL_BOOKING_PREFS,
@@ -21,6 +21,7 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
     leadId: "lead-1",
     clientId: "client-1",
     eventId: "event-1",
+    proposalId: null,
     sourcePackageId: "pkg-1",
     name: "Garden Package",
     totalAmount: 3200,
@@ -49,7 +50,28 @@ describe("Venue commercial booking prefs", () => {
     });
     assert.equal(prefs.defaultDepositPercent, 100);
     assert.equal(prefs.agreementMethod, "either");
+    assert.equal(prefs.collectInitialPayment, true);
     assert.equal(prefs.initialPaymentRequired, true);
+    assert.equal(prefs.processOrder, "agreement_first");
+    assert.equal(prefs.remainingBalanceMode, "final");
+  });
+
+  it("maps legacy initialPaymentRequired into collectInitialPayment", () => {
+    const prefs = normalizeCommercialBookingPrefs({
+      initialPaymentRequired: false,
+    });
+    assert.equal(prefs.collectInitialPayment, false);
+    assert.equal(prefs.initialPaymentRequired, false);
+  });
+
+  it("maps legacy remainingBalanceMode varies → final", () => {
+    const prefs = normalizeCommercialBookingPrefs({ remainingBalanceMode: "varies" });
+    assert.equal(prefs.remainingBalanceMode, "final");
+  });
+
+  it("forces processOrder to agreement_first even when deposit_first is stored", () => {
+    const prefs = normalizeCommercialBookingPrefs({ processOrder: "deposit_first" });
+    assert.equal(prefs.processOrder, "agreement_first");
   });
 
   it("suggests $800 deposit from 25% of $3200", () => {
@@ -57,11 +79,11 @@ describe("Venue commercial booking prefs", () => {
   });
 });
 
-describe("Configurable commercial Booked conditions", () => {
-  it("contract-only acceptance does not book even when the deposit is paid", () => {
+describe("Commercial steps vs Booked", () => {
+  it("contract-only acceptance does not complete commercial steps without signed contract", () => {
     const prefs = { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "contract" as const };
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "accepted" }),
         contract: null,
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
@@ -70,7 +92,7 @@ describe("Configurable commercial Booked conditions", () => {
       false,
     );
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "accepted" }),
         contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
@@ -80,10 +102,14 @@ describe("Configurable commercial Booked conditions", () => {
     );
   });
 
-  it("F — agreement alone books when initial payment not required", () => {
-    const prefs = { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, initialPaymentRequired: false };
+  it("collectInitialPayment=false skips Deposit stage — still not Booked", () => {
+    const prefs = {
+      ...DEFAULT_COMMERCIAL_BOOKING_PREFS,
+      collectInitialPayment: false,
+      initialPaymentRequired: false,
+    };
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "accepted" }),
         contract: null,
         paymentLines: [],
@@ -101,12 +127,12 @@ describe("Configurable commercial Booked conditions", () => {
       planningStarted: false,
       prefs,
     });
-    assert.equal(j.isCommerciallyBooked, true);
-    assert.equal(j.currentKey, "booked");
+    assert.equal(j.commercialReady, true);
+    assert.equal(j.currentKey, "ready");
     assert.ok(!j.stages.some((s) => s.key === "deposit"));
     assert.equal(j.depositSummary, null);
     assert.equal(j.remainingSummary, null);
-    assert.doesNotMatch(j.direction, /\$800|deposit/i);
+    assert.match(j.direction, /Mark them Booked when you're ready/i);
   });
 
   it("D — full payment deposit line satisfies payment condition", () => {
@@ -129,7 +155,7 @@ describe("Configurable commercial Booked conditions", () => {
     );
   });
 
-  it("C — deposit-first shows deposit before agreement", () => {
+  it("legacy deposit_first is ignored — agreement comes before deposit", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",
       selection: selection(),
@@ -139,13 +165,12 @@ describe("Configurable commercial Booked conditions", () => {
       planningStarted: false,
       prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, processOrder: "deposit_first" },
     });
-    assert.equal(j.currentKey, "deposit");
-    assert.equal(j.primaryAction, "setup_payments");
-    assert.equal(j.stages[1]?.key, "deposit");
-    assert.equal(j.stages[2]?.key, "agreement");
+    assert.equal(j.currentKey, "agreement");
+    assert.equal(j.stages[1]?.key, "agreement");
+    assert.equal(j.stages[2]?.key, "deposit");
   });
 
-  it("contract-only venues hide Send proposal as primary", () => {
+  it("contract-only venues hide Create share link as primary", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",
       clientId: "client-1",

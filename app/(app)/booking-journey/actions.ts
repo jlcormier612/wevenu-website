@@ -33,8 +33,8 @@ export async function createSelectedPackageAction(input: {
   const prefs = venue?.commercialBookingPrefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
   const result = await createSelectedPackageFromLibrary({
     ...input,
-    depositAmount: prefs.initialPaymentRequired ? input.depositAmount : 0,
-    initialPaymentRequired: prefs.initialPaymentRequired,
+    depositAmount: prefs.collectInitialPayment ? input.depositAmount : 0,
+    initialPaymentRequired: prefs.collectInitialPayment,
   });
   if (result.ok) {
     if (input.leadId) revalidatePath(`/leads/${input.leadId}`);

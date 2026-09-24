@@ -12,7 +12,7 @@ const DEFAULT_BRAND: ProposalBrand = {
 };
 
 /**
- * The couple-facing proposal body. Venue preview and /offer/{token} share
+ * The couple-facing package / proposal body. Venue preview and /offer/{token} share
  * this renderer so the review cannot drift from what the couple receives.
  *
  * Venue Brand Colors roles:
@@ -20,15 +20,22 @@ const DEFAULT_BRAND: ProposalBrand = {
  * - Secondary: supporting eyebrow / venue name
  * - Accent: selective emphasis on the package total
  * - Neutral: soft venue-branded page surface
+ *
+ * Use eyebrow "Your proposal" for multi-option L1 proposals.
+ * Use eyebrow "Review and accept" for direct Path B package offers.
  */
 export function ProposalArtifact({
   proposal,
   context,
   acceptSlot,
+  eyebrow = "Your proposal",
+  previewAcceptLabel = "Accept proposal",
 }: {
   proposal: ProposalView;
   context: "couple" | "venue-preview";
   acceptSlot?: ReactNode;
+  eyebrow?: string;
+  previewAcceptLabel?: string;
 }) {
   const showDeposit = proposal.depositAmount > 0;
   const accepted = proposal.status === "accepted";
@@ -51,7 +58,7 @@ export function ProposalArtifact({
         className="text-xs font-medium uppercase tracking-widest"
         style={{ color: "var(--venue-secondary)" }}
       >
-        Your proposal
+        {eyebrow}
       </p>
       {proposal.venueName ? (
         <p className="mt-2 text-sm" style={{ color: "var(--venue-secondary)" }}>
@@ -111,10 +118,11 @@ export function ProposalArtifact({
           acceptSlot
         ) : context === "venue-preview" ? (
           <Button type="button" size="lg" className="w-full" disabled>
-            Accept proposal
+            {previewAcceptLabel}
           </Button>
         ) : null}
       </div>
     </div>
   );
 }
+

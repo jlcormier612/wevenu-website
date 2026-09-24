@@ -213,7 +213,7 @@ export function SelectPackageSheet({
             </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No deposit is required to book. Agreement completion books this package.
+                No initial payment by default. You can still add one when setting up payments.
               </p>
             )}
             {error && <p className="text-sm text-destructive">{error}</p>}

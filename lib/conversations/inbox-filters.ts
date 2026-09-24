@@ -208,8 +208,10 @@ const STAGE_LABELS: Record<string, string> = {
   package: "Package",
   agreement: "Agreement",
   deposit: "Deposit",
-  booked: "Booked",
+  ready: "Next steps",
   planning: "Planning",
+  // Legacy filter value from prior journey stage key
+  booked: "Next steps",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {

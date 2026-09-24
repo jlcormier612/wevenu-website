@@ -389,7 +389,7 @@ async function applyDepositFromChosenSelection(
 
   const fromPercent = depositFromVenuePercent(total, prefs);
   const deposit = suggestDepositAmount(total, fromPercent, {
-    initialPaymentRequired: prefs.initialPaymentRequired,
+    initialPaymentRequired: prefs.collectInitialPayment,
   });
 
   if (Number(sel.deposit_amount) === deposit) return;

@@ -3,36 +3,40 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-describe("Customer-facing Offer → Proposal terminology", () => {
-  const files = [
-    "lib/booking-journey/model.ts",
-    "components/booking-journey/booking-journey-panel.tsx",
-    "components/booking-journey/offer-accept-client.tsx",
-    "components/settings/commercial-booking-prefs-section.tsx",
-    "lib/commercial-selections/constants.ts",
-    "app/offer/[token]/page.tsx",
-  ];
-
-  it("booking surfaces say Proposal, not Send offer", () => {
-    for (const file of files) {
-      const src = readFileSync(resolve(file), "utf8");
-      assert.doesNotMatch(src, /Send offer/, file);
-      assert.doesNotMatch(src, />Your offer</, file);
-    }
-    const panel = readFileSync(resolve("components/booking-journey/booking-journey-panel.tsx"), "utf8");
-    assert.match(panel, /Create share link/);
-    assert.match(panel, /Review proposal/);
-    assert.doesNotMatch(panel, /Send proposal/);
-    const model = readFileSync(resolve("lib/booking-journey/model.ts"), "utf8");
-    assert.match(model, /primaryLabel = "Create share link"/);
+describe("Customer-facing Proposal vs direct-selection terminology", () => {
+  it("multi-option L1 keeps Proposal language; Path B uses Review and accept", () => {
     const couple = readFileSync(resolve("components/booking-journey/offer-accept-client.tsx"), "utf8");
-    assert.match(couple, /Accept proposal/);
+    assert.match(couple, /Review and accept/);
+    assert.match(couple, /"Accept"/);
+    assert.doesNotMatch(couple, /Accept proposal/);
+
     const artifact = readFileSync(resolve("components/booking-journey/proposal-artifact.tsx"), "utf8");
     assert.match(artifact, /Your proposal/);
+    assert.match(artifact, /eyebrow/);
+
+    const panel = readFileSync(resolve("components/booking-journey/booking-journey-panel.tsx"), "utf8");
+    assert.match(panel, /Create share link/);
+    assert.match(panel, /Review/);
+    assert.doesNotMatch(panel, /Send proposal/);
+
+    const model = readFileSync(resolve("lib/booking-journey/model.ts"), "utf8");
+    assert.match(model, /Create share link/);
+    assert.match(model, /create_proposal/);
+    assert.match(model, /select_package/);
+
     const labels = readFileSync(resolve("lib/commercial-selections/constants.ts"), "utf8");
     assert.match(labels, /Share link created/);
     assert.doesNotMatch(labels, /Proposal sent/);
-    assert.match(labels, /Proposal accepted/);
+    assert.match(labels, /accepted: "Accepted"/);
+
+    const settings = readFileSync(
+      resolve("components/settings/commercial-booking-prefs-section.tsx"),
+      "utf8",
+    );
+    assert.match(settings, /Let the couple choose/);
+    assert.match(settings, /Collect an initial payment/);
+    assert.doesNotMatch(settings, /Require initial payment to book/);
+    assert.doesNotMatch(settings, /Process order/);
   });
 
   it("keeps internal offer identifiers", () => {

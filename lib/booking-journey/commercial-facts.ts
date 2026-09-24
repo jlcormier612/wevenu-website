@@ -2,18 +2,20 @@
  * Commercial artifact states for the Lead and Client workspaces.
  * Independent of the sales pipeline and of events.booked_at.
  * A selected package is not a sent proposal. A share link is not an email.
+ * A Proposal row requires an actual L1 commercial_proposals record.
  */
 
-import { SELECTION_STATUS_LABEL } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { deriveContractSigningUiState } from "@/lib/contracts/signers";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { STATUS_LABEL } from "@/lib/payments/constants";
 
-import { isCommerciallyBooked } from "@/lib/booking-journey/model";
-import type { JourneyContract, JourneyPaymentLine } from "@/lib/booking-journey/model";
-import type { VenueCommercialBookingPrefs } from "@/lib/booking-journey/venue-prefs";
-import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
+import type { JourneyContract, JourneyPaymentLine, JourneyProposal } from "@/lib/booking-journey/model";
+import {
+  collectsInitialPayment,
+  DEFAULT_COMMERCIAL_BOOKING_PREFS,
+  type VenueCommercialBookingPrefs,
+} from "@/lib/booking-journey/venue-prefs";
 
 export type CommercialFactKey =
   | "package"
@@ -64,49 +66,61 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
   };
 }
 
-export function proposalFact(selection: CommercialSelection | null): CommercialFact {
-  if (!selection) {
-    return {
-      key: "proposal",
-      title: "Proposal",
-      state: "Not started",
-      detail: "A package selection is not a proposal.",
-    };
-  }
-  if (selection.status === "draft") {
+/**
+ * Proposal fact — only for an actual L1 commercial_proposals row.
+ * Direct Path B selections (proposal_id null) must not invent a Proposal row.
+ */
+export function proposalFactFromL1(proposal: JourneyProposal): CommercialFact {
+  if (proposal.status === "draft") {
     return {
       key: "proposal",
       title: "Proposal",
       state: "Draft",
-      detail: "Not shared. Preview does not send it. A share link is not an email.",
+      detail: "Not shared. Preview does not send it.",
     };
   }
-  if (selection.status === "offered") {
-    const when = stamp(selection.offeredAt);
+  if (proposal.status === "sent") {
+    const when = stamp(proposal.offeredAt);
     return {
       key: "proposal",
       title: "Proposal",
-      state: "Share link created",
+      state: "Sent",
       detail: when
-        ? `Link created ${when}. Link exists · Not emailed.`
-        : "Link exists · Not emailed.",
+        ? `Sent ${when}. Waiting for the couple to choose.`
+        : "Waiting for the couple to choose.",
     };
   }
-  if (selection.status === "accepted") {
-    const when = stamp(selection.acceptedAt);
+  if (proposal.status === "selected") {
     return {
       key: "proposal",
       title: "Proposal",
-      state: "Accepted",
+      state: "Option chosen",
+      detail: "Waiting for the couple to approve their selection.",
+    };
+  }
+  if (proposal.status === "approved") {
+    const when = stamp(proposal.offeredAt);
+    return {
+      key: "proposal",
+      title: "Proposal",
+      state: "Approved",
       detail: when
-        ? `Accepted ${when}. This is not a signed contract.`
-        : "Accepted. This is not a signed contract.",
+        ? `Approved. One package selection was created from their choice.`
+        : "Approved. One package selection was created from their choice.",
+    };
+  }
+  if (proposal.status === "superseded" || proposal.status === "withdrawn") {
+    return {
+      key: "proposal",
+      title: "Proposal",
+      state: proposal.status === "superseded" ? "Replaced" : "Withdrawn",
+      detail: null,
     };
   }
   return {
     key: "proposal",
     title: "Proposal",
-    state: SELECTION_STATUS_LABEL[selection.status] ?? selection.status,
+    state: proposal.status,
     detail: null,
   };
 }
@@ -117,7 +131,7 @@ export function contractFact(contract: JourneyContract | null): CommercialFact {
       key: "contract",
       title: "Contract",
       state: "Not created",
-      detail: "Accepting a proposal does not execute the contract.",
+      detail: "Accepting a package does not execute the contract.",
     };
   }
   const ui = deriveContractSigningUiState({
@@ -179,12 +193,12 @@ export function depositFact(input: {
   prefs?: VenueCommercialBookingPrefs | null;
 }): CommercialFact {
   const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
-  if (!prefs.initialPaymentRequired) {
+  if (!collectsInitialPayment(prefs)) {
     return {
       key: "deposit",
-      title: "Deposit",
-      state: "Not required",
-      detail: "This venue does not require an initial payment.",
+      title: "Initial payment",
+      state: "Not collecting",
+      detail: "This venue's default is not to collect an initial payment. You can still set one up on a booking.",
     };
   }
   const line = input.lines.find(
@@ -196,84 +210,55 @@ export function depositFact(input: {
       : "";
     return {
       key: "deposit",
-      title: "Deposit",
+      title: "Initial payment",
       state: "Not set up",
-      detail: `No deposit payment exists.${configured}`,
+      detail: `No initial payment exists.${configured}`,
     };
   }
   if (line.status === "paid") {
     return {
       key: "deposit",
-      title: "Deposit",
+      title: "Initial payment",
       state: "Paid",
       detail: formatCurrency(line.amount),
     };
   }
   return {
     key: "deposit",
-    title: "Deposit",
+    title: "Initial payment",
     state: STATUS_LABEL[line.status] ?? line.status,
     detail: `${formatCurrency(line.amount)} is due. Not paid.`,
   };
 }
 
-export function bookedFact(input: {
-  selection: CommercialSelection | null;
-  contract: JourneyContract | null;
-  lines: JourneyPaymentLine[];
-  prefs?: VenueCommercialBookingPrefs | null;
-}): CommercialFact {
-  const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
-  if (isCommerciallyBooked({
-    selection: input.selection,
-    contract: input.contract,
-    paymentLines: input.lines,
-    prefs,
-  })) {
-    return {
-      key: "booked",
-      title: "Commercial milestones",
-      state: "Recorded",
-      detail: "These are business facts. Your venue's booking workflow determines when the relationship becomes Booked.",
-    };
-  }
-  if (prefs.agreementMethod === "contract" && input.selection?.status === "accepted" && input.contract?.status !== "signed") {
-    return {
-      key: "booked",
-      title: "Booked",
-      state: "Not booked",
-      detail: "The proposal is accepted and the contract is not signed yet. Your venue's booking workflow determines when the relationship becomes Booked.",
-    };
-  }
-  if (prefs.initialPaymentRequired && input.selection?.status === "accepted") {
-    const line = input.lines.find((item) => item.obligationKind === "deposit" && item.status !== "cancelled");
-    if (!line || line.status !== "paid") {
-      const amount = input.selection.depositAmount > 0 ? formatCurrency(input.selection.depositAmount) : "The deposit";
-      return {
-        key: "booked",
-        title: "Booked",
-        state: "Not booked",
-        detail: `${amount} has not been paid. A payment does not book this relationship. Your venue's booking workflow determines when it becomes Booked.`,
-      };
-    }
-  }
+/**
+ * Booked fact — informational only. Never derives Booked from payment/agreement.
+ * Canonical Booked is bookClient / events.booked_at.
+ */
+export function bookedFact(): CommercialFact {
   return {
     key: "booked",
     title: "Booked",
-    state: "Not booked",
-    detail: "Your venue's booking workflow determines when the relationship becomes Booked. A selected package or a share link is not a booking.",
+    state: "Venue decision",
+    detail: "You mark a relationship Booked when you're ready. Payment and agreements do not decide Booked for you.",
   };
 }
 
 export function describeCommercialFacts(input: {
   selection: CommercialSelection | null;
+  proposal?: JourneyProposal | null;
   contract: JourneyContract | null;
   paymentLines: JourneyPaymentLine[];
   prefs?: VenueCommercialBookingPrefs | null;
 }): CommercialFact[] {
-  return [
-    packageFact(input.selection),
-    proposalFact(input.selection),
+  const rows: CommercialFact[] = [packageFact(input.selection)];
+
+  // Proposal row only when an actual L1 record exists.
+  if (input.proposal) {
+    rows.push(proposalFactFromL1(input.proposal));
+  }
+
+  rows.push(
     contractFact(input.contract),
     invoiceFact(input.selection?.invoiceId),
     paymentPlanFact(input.paymentLines),
@@ -282,11 +267,8 @@ export function describeCommercialFacts(input: {
       lines: input.paymentLines,
       prefs: input.prefs,
     }),
-    bookedFact({
-      selection: input.selection,
-      contract: input.contract,
-      lines: input.paymentLines,
-      prefs: input.prefs,
-    }),
-  ];
+    bookedFact(),
+  );
+
+  return rows;
 }

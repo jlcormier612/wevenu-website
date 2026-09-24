@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 
 import { SALES_STAGE_META, salesStageLabel } from "@/lib/leads/sales-stages";
 import { formatTimingLabel } from "@/lib/payments/starters";
-import { isCommerciallyBooked, buildBookingJourney } from "@/lib/booking-journey/model";
+import { commercialStepsComplete, buildBookingJourney } from "@/lib/booking-journey/model";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
 const root = resolve(process.cwd());
@@ -24,12 +24,14 @@ describe("Pipeline terminology — Booking Started vs commercial Booked", () => 
     );
   });
 
-  it("Booking rule stays the automatic trigger, and the five-step strip is gone", () => {
+  it("commercialReady is informational; Booked is only bookClient", () => {
     const model = read("lib/booking-journey/model.ts");
-    assert.match(model, /isCommerciallyBooked/);
+    assert.match(model, /commercialReady/);
+    assert.match(model, /commercialStepsComplete/);
+    assert.doesNotMatch(model, /export function isCommerciallyBooked/);
     const facts = read("components/booking-journey/commercial-facts.tsx");
-    assert.match(facts, /booking workflow determines when a relationship becomes Booked/i);
-    assert.match(facts, /not a required sequence/i);
+    assert.match(facts, /You mark a relationship Booked when you/);
+    assert.match(facts, /payment does not decide it/i);
     const panel = read("components/booking-journey/booking-journey-panel.tsx");
     assert.doesNotMatch(panel, /BookingJourneyStrip|Booking Journey/);
     assert.doesNotMatch(panel, /Send proposal/);
@@ -76,7 +78,7 @@ describe("events.booked_at — commercial Booked only", () => {
   });
 });
 
-describe("Commercial Booked gate", () => {
+describe("Commercial steps (not Booked)", () => {
   function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
     return {
       id: "s1",
@@ -84,6 +86,7 @@ describe("Commercial Booked gate", () => {
       leadId: null,
       clientId: "c1",
       eventId: "e1",
+      proposalId: null,
       sourcePackageId: null,
       name: "Gold",
       totalAmount: 10000,
@@ -104,9 +107,9 @@ describe("Commercial Booked gate", () => {
     };
   }
 
-  it("is commercially Booked only with agreement + deposit", () => {
+  it("commercial steps complete with agreement + deposit — still not Booked", () => {
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection(),
         contract: null,
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 2000 }],
@@ -114,7 +117,7 @@ describe("Commercial Booked gate", () => {
       true,
     );
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "offered" }),
         contract: null,
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 2000 }],
@@ -123,7 +126,7 @@ describe("Commercial Booked gate", () => {
     );
   });
 
-  it("journey Booked stage stays commercial", () => {
+  it("journey ready stage never claims Booked", () => {
     const j = buildBookingJourney({
       selection: selection(),
       contract: null,
@@ -133,8 +136,9 @@ describe("Commercial Booked gate", () => {
       clientId: "c1",
       eventId: "e1",
     });
-    assert.equal(j.isCommerciallyBooked, true);
-    assert.equal(j.stages.find((s) => s.key === "booked")?.label, "Booked");
+    assert.equal(j.commercialReady, true);
+    assert.equal(j.stages.find((s) => s.key === "ready")?.label, "Next steps");
+    assert.match(j.direction, /Mark them Booked when you're ready/i);
   });
 });
 

@@ -18,7 +18,7 @@ import {
   projectCloneDraftFromSource,
   type CloneSourceSnapshot,
 } from "@/lib/contracts/signature-blocks";
-import { isCommerciallyBooked } from "@/lib/booking-journey/model";
+import { commercialStepsComplete } from "@/lib/booking-journey/model";
 
 function read(path: string): string {
   return readFileSync(resolve(path), "utf8");
@@ -347,9 +347,9 @@ describe("Finalize Contract remains explicit", () => {
 });
 
 describe("commercial continuity", () => {
-  it("fully signed contract alone is not commercially Booked without deposit", () => {
+  it("fully signed contract alone is not commercially ready without deposit", () => {
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: null,
         contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 500 }],

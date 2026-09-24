@@ -34,6 +34,7 @@ function mapSelection(row: SelectionRow): CommercialSelection {
     leadId: row.lead_id,
     clientId: row.client_id,
     eventId: row.event_id,
+    proposalId: null,
     sourcePackageId: null,
     name: row.name,
     totalAmount: Number(row.total_amount),

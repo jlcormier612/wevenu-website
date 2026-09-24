@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
-import { isCommerciallyBooked } from "@/lib/booking-journey/model";
+import { commercialStepsComplete } from "@/lib/booking-journey/model";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 import { suggestDepositAmount } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
@@ -17,6 +17,7 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
     leadId: "lead-1",
     clientId: "client-1",
     eventId: "event-1",
+    proposalId: null,
     sourcePackageId: "pkg-1",
     name: "Garden Package",
     totalAmount: 3200,
@@ -62,10 +63,10 @@ describe("Start booking file — workspace only", () => {
   });
 });
 
-describe("Commercial Booked transition", () => {
-  it("agreement + required deposit is Booked", () => {
+describe("Commercial steps vs Booked", () => {
+  it("agreement + deposit completes commercial steps — not Booked", () => {
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "accepted" }),
         contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
@@ -84,9 +85,16 @@ describe("Commercial Booked transition", () => {
     assert.match(book, /recordLifecycleBooking/);
     assert.doesNotMatch(book, /status: "cancelled"/);
   });
+
+  it("model no longer exports isCommerciallyBooked", () => {
+    const model = read("lib/booking-journey/model.ts");
+    assert.doesNotMatch(model, /export function isCommerciallyBooked/);
+    assert.match(model, /commercialStepsComplete/);
+    assert.match(model, /NEVER means the relationship is Booked/);
+  });
 });
 
-describe("Variant F — initialPaymentRequired false", () => {
+describe("Variant F — collectInitialPayment false", () => {
   it("does not autofill an $800 deposit", () => {
     assert.equal(
       suggestDepositAmount(3200, 800, { initialPaymentRequired: false }),
@@ -95,14 +103,14 @@ describe("Variant F — initialPaymentRequired false", () => {
     assert.equal(suggestDepositAmount(3200), 800);
   });
 
-  it("create action forces deposit 0 when payment is not required", () => {
+  it("create action forces deposit 0 when not collecting initial payment", () => {
     const actions = read("app/(app)/booking-journey/actions.ts");
-    assert.match(actions, /prefs\.initialPaymentRequired \? input\.depositAmount : 0/);
+    assert.match(actions, /prefs\.collectInitialPayment \? input\.depositAmount : 0/);
   });
 
   it("package sheet hides required-deposit UI", () => {
     const sheet = read("components/booking-journey/select-package-sheet.tsx");
     assert.match(sheet, /initialPaymentRequired/);
-    assert.match(sheet, /No deposit is required to book/);
+    assert.match(sheet, /No initial payment by default/);
   });
 });

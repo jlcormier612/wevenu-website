@@ -144,7 +144,7 @@ export function BookingJourneyPanel({
           toast.error(result.message ?? "Could not mark accepted.");
           return;
         }
-        toast.success("Proposal marked accepted.");
+        toast.success("Marked accepted.");
         router.refresh();
       } catch {
         toast.error("Could not mark accepted. Reload and try again.");
@@ -222,7 +222,7 @@ export function BookingJourneyPanel({
         clientId={clientId}
         eventId={eventId}
         defaultDepositPercent={journey.prefs.defaultDepositPercent}
-        initialPaymentRequired={journey.prefs.initialPaymentRequired}
+        initialPaymentRequired={journey.prefs.collectInitialPayment}
       />
 
       {selection && (
@@ -256,9 +256,9 @@ export function BookingJourneyPanel({
       >
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader className="mb-6">
-            <SheetTitle>Proposal message</SheetTitle>
+            <SheetTitle>Share message</SheetTitle>
             <p className="text-sm text-muted-foreground">
-              Optional note on {selection?.name}. Preview the proposal before creating a share link.
+              Optional note on {selection?.name}. Preview before creating a share link.
               Creating the link does not email it.
             </p>
           </SheetHeader>
@@ -266,7 +266,7 @@ export function BookingJourneyPanel({
             <div className="mb-4 rounded-lg border border-border bg-muted/20 p-4 text-sm">
               <p className="font-medium text-heading">{selection.name}</p>
               <p>{formatCurrency(selection.totalAmount)}</p>
-              {journey.prefs.initialPaymentRequired && (
+              {journey.prefs.collectInitialPayment && (
               <p className="mt-1 text-muted-foreground">
                 Deposit {formatCurrency(selection.depositAmount)} · Remaining{" "}
                 {formatCurrency(remainingAmount(selection.totalAmount, selection.depositAmount))}
@@ -321,13 +321,13 @@ export function BookingJourneyPanel({
               }}
               disabled={!selection}
             >
-              Review proposal
+              Review
             </Button>
           </div>
           {selection && selection.status !== "accepted" && (
             <div className="mt-8 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground">
-                Internal exception — does not send the proposal to the couple.
+                Internal exception — does not send anything to the couple.
               </p>
               <button
                 type="button"
@@ -345,7 +345,7 @@ export function BookingJourneyPanel({
       {selection ? (
         <ArtifactReviewOverlay
           open={offerReviewOpen}
-          eyebrow="Customer-facing proposal"
+          eyebrow="Customer-facing preview"
           title={selection.name}
           onBack={() => {
             setOfferReviewOpen(false);
@@ -368,6 +368,8 @@ export function BookingJourneyPanel({
           <ProposalArtifact
             proposal={proposalViewFromSelection(selection, offerMessage, journey.brand)}
             context="venue-preview"
+            eyebrow={selection.proposalId ? "Your proposal" : "Review and accept"}
+            previewAcceptLabel={selection.proposalId ? "Accept proposal" : "Accept"}
           />
         </ArtifactReviewOverlay>
       ) : null}

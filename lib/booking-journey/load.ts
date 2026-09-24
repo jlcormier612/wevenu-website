@@ -1,8 +1,10 @@
-import { buildBookingJourney, type BookingJourneyModel, type JourneyContract } from "@/lib/booking-journey/model";
+import { buildBookingJourney, type BookingJourneyModel, type JourneyContract, type JourneyProposal } from "@/lib/booking-journey/model";
 import {
   getActiveSelectedPackageForClient,
   getActiveSelectedPackageForLead,
 } from "@/lib/commercial-selections/service";
+import { resolveActiveProposal } from "@/lib/commercial-proposals/service";
+import type { CommercialProposal } from "@/lib/commercial-proposals/types";
 import { getClientInvitation } from "@/lib/client-auth/service";
 import { getContracts } from "@/lib/contracts/service";
 import { pickContract } from "@/lib/clients/booking-handoff";
@@ -61,14 +63,26 @@ function bestContract(clientId: string | null | undefined, contracts: Awaited<Re
   };
 }
 
+function toJourneyProposal(p: CommercialProposal | null): JourneyProposal | null {
+  if (!p) return null;
+  return {
+    id: p.id,
+    status: p.status,
+    offeredAt: p.offeredAt,
+    acceptToken: p.acceptToken,
+    selectionId: p.selectionId,
+  };
+}
+
 export async function loadBookingJourneyForLead(input: {
   leadId: string;
   linkedClientId?: string | null;
   linkedEventId?: string | null;
 }): Promise<BookingJourneyModel> {
-  const [selection, contracts] = await Promise.all([
+  const [selection, contracts, proposal] = await Promise.all([
     getActiveSelectedPackageForLead(input.leadId),
     getContracts(),
+    resolveActiveProposal({ leadId: input.leadId, clientId: input.linkedClientId ?? undefined }),
   ]);
   let clientSelection = selection;
   if (!clientSelection && input.linkedClientId) {
@@ -89,6 +103,7 @@ export async function loadBookingJourneyForLead(input: {
     clientId,
     eventId,
     selection: clientSelection,
+    proposal: toJourneyProposal(proposal),
     contract: bestContract(clientId, contracts),
     paymentLines,
     portalInvited: Boolean(invitation && invitation.status !== "revoked"),
@@ -104,7 +119,7 @@ export async function loadBookingJourneyForClient(input: {
   eventId?: string | null;
   leadId?: string | null;
 }): Promise<BookingJourneyModel> {
-  const [selection, contracts, paymentLines, invitation, applications, prefs, brand, name] = await Promise.all([
+  const [selection, contracts, paymentLines, invitation, applications, prefs, brand, name, proposal] = await Promise.all([
     getActiveSelectedPackageForClient(input.clientId),
     getContracts(),
     paymentLinesForClient(input.clientId),
@@ -113,6 +128,7 @@ export async function loadBookingJourneyForClient(input: {
     venuePrefs(),
     venueBrand(),
     venueName(),
+    resolveActiveProposal({ clientId: input.clientId, leadId: input.leadId ?? undefined }),
   ]);
   let resolved = selection;
   if (!resolved && input.leadId) {
@@ -123,6 +139,7 @@ export async function loadBookingJourneyForClient(input: {
     clientId: input.clientId,
     eventId: input.eventId ?? resolved?.eventId,
     selection: resolved,
+    proposal: toJourneyProposal(proposal),
     contract: bestContract(input.clientId, contracts),
     paymentLines,
     portalInvited: Boolean(invitation && invitation.status !== "revoked"),

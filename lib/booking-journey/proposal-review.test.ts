@@ -42,7 +42,7 @@ describe("Proposal review artifact", () => {
     assert.match(couple, /ProposalArtifact/);
     assert.match(couple, /acceptOfferAction/);
     assert.doesNotMatch(artifact, /acceptOfferAction|sendOfferAction|markOfferAccepted/);
-    assert.match(panel, /Review proposal/);
+    assert.match(panel, />\s*Review\s*</);
     assert.match(panel, /proposalViewFromSelection/);
     assert.match(panel, /ArtifactReviewOverlay/);
     assert.match(panel, /handleSendOffer/);
@@ -67,6 +67,6 @@ describe("Proposal review artifact", () => {
     assert.match(overlay, /Create share link/);
     assert.doesNotMatch(overlay, /Send proposal/);
     assert.doesNotMatch(overlay, /handleMarkAccepted|Mark accepted/);
-    assert.match(panel, /Internal exception — does not send the proposal to the couple/);
+    assert.match(panel, /Internal exception — does not send anything to the couple/);
   });
 });

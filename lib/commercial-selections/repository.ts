@@ -12,6 +12,7 @@ type Row = {
   lead_id: string | null;
   client_id: string | null;
   event_id: string | null;
+  proposal_id: string | null;
   source_package_id: string | null;
   name: string;
   total_amount: number | string;
@@ -37,6 +38,7 @@ function mapRow(r: Row): CommercialSelection {
     leadId: r.lead_id,
     clientId: r.client_id,
     eventId: r.event_id,
+    proposalId: r.proposal_id ?? null,
     sourcePackageId: r.source_package_id,
     name: r.name,
     totalAmount: Number(r.total_amount),

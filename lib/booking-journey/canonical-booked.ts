@@ -2,11 +2,13 @@
  * The one customer-facing answer to "is this relationship booked?"
  *
  * `events.booked_at` is written only by `bookClient` — the one Lead →
- * Booked transition. Automatic booking calls it when `isCommerciallyBooked`
- * is true. Manual Mark as Booked calls the same function.
+ * Booked transition (manual Mark as Booked / Return to Booked / pipeline
+ * Booked actions). Payment completion and commercial agreement milestones
+ * do NOT stamp Booked.
+ *
  * Clients, Booked Business, and calendar "officially booked" consume this
  * set. They must not re-derive booked from pipeline stage, client status,
- * or the internal `canonical_bookings` financial view.
+ * payment status, or commercial preferences.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";

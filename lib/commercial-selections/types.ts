@@ -22,6 +22,8 @@ export type CommercialSelection = {
   leadId: string | null;
   clientId: string | null;
   eventId: string | null;
+  /** L1 commercial_proposals id when created from a multi-option proposal; null for direct Select package. */
+  proposalId: string | null;
   sourcePackageId: string | null;
   name: string;
   totalAmount: number;

@@ -8,13 +8,18 @@ export function roundMoney(amount: number): number {
 /**
  * Default deposit: venue override if provided, else 25% of total, rounded to cents.
  * Clamped to [0, total].
+ * When collectInitialPayment / initialPaymentRequired is false, returns 0.
  */
 export function suggestDepositAmount(
   totalAmount: number,
   venueDefaultDeposit?: number | null,
-  opts?: { initialPaymentRequired?: boolean },
+  opts?: { initialPaymentRequired?: boolean; collectInitialPayment?: boolean },
 ): number {
-  if (opts?.initialPaymentRequired === false) return 0;
+  const collect =
+    opts?.collectInitialPayment
+    ?? opts?.initialPaymentRequired
+    ?? true;
+  if (collect === false) return 0;
   if (!(totalAmount >= 0) || Number.isNaN(totalAmount)) return 0;
   if (venueDefaultDeposit != null && venueDefaultDeposit >= 0 && !Number.isNaN(venueDefaultDeposit)) {
     return roundMoney(Math.min(venueDefaultDeposit, totalAmount));
@@ -61,6 +66,6 @@ export function formatPackageSection(
 export const SELECTION_STATUS_LABEL: Record<string, string> = {
   draft: "Not sent",
   offered: "Share link created",
-  accepted: "Proposal accepted",
+  accepted: "Accepted",
   superseded: "Replaced",
 };
