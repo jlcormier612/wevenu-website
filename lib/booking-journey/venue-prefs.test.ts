@@ -74,6 +74,33 @@ describe("Venue commercial booking prefs", () => {
     assert.equal(prefs.processOrder, "agreement_first");
   });
 
+  it("keeps Custom when a valid defaultCustomSchedule is present", () => {
+    const prefs = normalizeCommercialBookingPrefs({
+      remainingBalanceMode: "plan",
+      defaultSchedulePresetId: "custom",
+      defaultCustomSchedule: {
+        mode: "percentage",
+        items: [
+          { label: "Initial payment", pctOfTotal: 50, amount: 0, timing: { type: "at_booking" }, obligationKind: "deposit" },
+          { label: "Final payment", pctOfTotal: 50, amount: 0, timing: { type: "before_event", days: 30 }, obligationKind: "final" },
+        ],
+      },
+    });
+    assert.equal(prefs.defaultSchedulePresetId, "custom");
+    assert.equal(prefs.defaultCustomSchedule?.mode, "percentage");
+    assert.equal(prefs.defaultCustomSchedule?.items.length, 2);
+  });
+
+  it("strips Custom when template is missing or invalid", () => {
+    const prefs = normalizeCommercialBookingPrefs({
+      remainingBalanceMode: "plan",
+      defaultSchedulePresetId: "custom",
+      defaultCustomSchedule: null,
+    });
+    assert.equal(prefs.defaultSchedulePresetId, null);
+    assert.equal(prefs.defaultCustomSchedule, null);
+  });
+
   it("suggests $800 deposit from 25% of $3200", () => {
     assert.equal(depositFromVenuePercent(3200, DEFAULT_COMMERCIAL_BOOKING_PREFS), 800);
   });
@@ -243,5 +270,31 @@ describe("buildGuidedScheduleLines", () => {
     assert.equal(result.lines[0]?.amount, 800);
     assert.equal(result.lines.reduce((s, l) => s + l.amount, 0), 3200);
     assert.ok(result.lines.length >= 3);
+  });
+
+  it("custom percentage schedule applies from commercial total (not deposit override)", () => {
+    const result = buildGuidedScheduleLines({
+      total: 7700,
+      deposit: 800,
+      today: "2026-09-23",
+      remainingDueDate: null,
+      eventDate: "2027-06-15",
+      scheduleStructure: "custom",
+      customSchedule: {
+        mode: "percentage",
+        items: [
+          { label: "Initial payment", pctOfTotal: 25, amount: 0, timing: { type: "at_booking" }, obligationKind: "deposit" },
+          { label: "Payment 2", pctOfTotal: 25, amount: 0, timing: { type: "before_event", days: 90 }, obligationKind: "installment" },
+          { label: "Payment 3", pctOfTotal: 25, amount: 0, timing: { type: "before_event", days: 60 }, obligationKind: "installment" },
+          { label: "Final payment", pctOfTotal: 25, amount: 0, timing: { type: "before_event", days: 30 }, obligationKind: "final" },
+        ],
+      },
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.deepEqual(
+      result.lines.map((l) => l.amount),
+      [1925, 1925, 1925, 1925],
+    );
   });
 });

@@ -27,6 +27,10 @@ import { remainingAmount } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
+import {
+  applyCustomScheduleToTotal,
+  type CustomScheduleTemplate,
+} from "@/lib/payments/custom-default-schedule";
 
 export function SetupPaymentsSheet({
   open,
@@ -39,6 +43,7 @@ export function SetupPaymentsSheet({
   spaceId,
   defaultScheduleStructure = "deposit_remaining",
   paymentCollection = "either",
+  customSchedule = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -51,6 +56,7 @@ export function SetupPaymentsSheet({
   spaceId?: string;
   defaultScheduleStructure?: string;
   paymentCollection?: "online" | "external" | "either";
+  customSchedule?: CustomScheduleTemplate | null;
 }) {
   // Remount body when opening so step/deposit reset without an effect.
   return (
@@ -67,6 +73,7 @@ export function SetupPaymentsSheet({
           spaceId={spaceId}
           defaultScheduleStructure={defaultScheduleStructure}
           paymentCollection={paymentCollection}
+          customSchedule={customSchedule}
         />
       ) : null}
     </Sheet>
@@ -83,6 +90,7 @@ function SetupPaymentsSheetBody({
   spaceId,
   defaultScheduleStructure,
   paymentCollection,
+  customSchedule,
 }: {
   onOpenChange: (open: boolean) => void;
   selection: CommercialSelection;
@@ -93,6 +101,7 @@ function SetupPaymentsSheetBody({
   spaceId?: string;
   defaultScheduleStructure: string;
   paymentCollection: "online" | "external" | "either";
+  customSchedule: CustomScheduleTemplate | null;
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
@@ -103,20 +112,41 @@ function SetupPaymentsSheetBody({
   const [error, setError] = React.useState("");
 
   const isFull = scheduleStructure === "full";
+  const isCustom = scheduleStructure === "custom";
   const depositAmount = isFull
     ? selection.totalAmount
     : parseFloat(deposit.replace(/[$,]/g, "")) || 0;
   const remaining = remainingAmount(selection.totalAmount, depositAmount);
-  const needsRemainingDue = remaining > 0;
+  const needsRemainingDue = !isCustom && remaining > 0;
   const hasEventDue = Boolean(eventDate);
 
+  const customPreview =
+    isCustom && customSchedule
+      ? applyCustomScheduleToTotal({
+          template: customSchedule,
+          total: selection.totalAmount,
+          today: new Date().toISOString().slice(0, 10),
+          eventDate: eventDate ?? (remainingDueDate || null),
+          remainingDueDate: remainingDueDate || null,
+        })
+      : null;
+
   function create(requestDeposit: boolean) {
-    if (!(depositAmount >= 0) || depositAmount > selection.totalAmount) {
+    if (isCustom && !customSchedule) {
+      setError("Configure a Custom payment schedule in Settings first.");
+      return;
+    }
+    if (!isCustom && (!(depositAmount >= 0) || depositAmount > selection.totalAmount)) {
       setError("Enter a valid deposit amount.");
       return;
     }
     if (needsRemainingDue && !hasEventDue && !remainingDueDate.trim()) {
       setError("Set a due date for the remaining balance.");
+      setStep(2);
+      return;
+    }
+    if (isCustom && customPreview && !customPreview.ok) {
+      setError(customPreview.message);
       setStep(2);
       return;
     }
@@ -126,12 +156,13 @@ function SetupPaymentsSheetBody({
         clientId,
         eventId,
         eventDate: eventDate ?? undefined,
-        remainingDueDate: needsRemainingDue && !hasEventDue ? remainingDueDate : undefined,
+        remainingDueDate: needsRemainingDue && !hasEventDue ? remainingDueDate : (isCustom && !hasEventDue ? remainingDueDate : undefined),
         leadId,
         spaceId,
-        depositAmount,
+        depositAmount: isCustom ? undefined : depositAmount,
         requestDeposit,
         scheduleStructure,
+        customSchedule: isCustom ? customSchedule : undefined,
       });
       if (!result.ok) {
         setError(result.message);
@@ -182,7 +213,9 @@ function SetupPaymentsSheetBody({
       {step === 2 && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Couples usually pay the deposit now. The rest stays on the payment plan.
+            {isCustom
+              ? "Your Custom schedule from Settings will create the payment plan for this booking total."
+              : "Couples usually pay the deposit now. The rest stays on the payment plan."}
           </p>
           <div className="space-y-2">
             <Label>Payment structure</Label>
@@ -198,53 +231,98 @@ function SetupPaymentsSheetBody({
                     {p.label}
                   </SelectItem>
                 ))}
+                {customSchedule ? (
+                  <SelectItem value="custom">Custom (venue default)</SelectItem>
+                ) : null}
               </SelectContent>
             </Select>
           </div>
-          {!isFull && (
+          {isCustom ? (
             <div className="space-y-2">
-              <Label htmlFor="setup-deposit">Deposit</Label>
-              <Input
-                id="setup-deposit"
-                value={deposit}
-                onChange={(e) => {
-                  setDeposit(e.target.value);
-                  setError("");
-                }}
-                inputMode="decimal"
-              />
-              <p className="text-xs text-muted-foreground">Deposit is due today.</p>
-            </div>
-          )}
-          {needsRemainingDue && (
-            <div className="space-y-2">
-              <Label htmlFor="setup-remaining-due">Remaining balance due date</Label>
-              {hasEventDue ? (
-                <p className="text-sm text-heading">
-                  Event date — {eventDate}
-                </p>
+              {customPreview?.ok ? (
+                <div className="rounded-lg border border-border px-4 py-3 text-sm space-y-1">
+                  {customPreview.lines.map((line) => (
+                    <p key={`${line.label}-${line.dueDate}`}>
+                      {line.label}: <strong>{formatCurrency(line.amount)}</strong>
+                      <span className="text-muted-foreground"> · due {line.dueDate}</span>
+                    </p>
+                  ))}
+                </div>
               ) : (
-                <Input
-                  id="setup-remaining-due"
-                  type="date"
-                  value={remainingDueDate}
-                  onChange={(e) => {
-                    setRemainingDueDate(e.target.value);
-                    setError("");
-                  }}
-                />
+                <p className="text-sm text-destructive">
+                  {customPreview && !customPreview.ok
+                    ? customPreview.message
+                    : "Configure a Custom schedule in Settings first."}
+                </p>
               )}
-              <p className="text-xs text-muted-foreground">
-                {hasEventDue
-                  ? "Remaining balance is due on the event date (installment dates may land earlier)."
-                  : "Required when there is no event date yet."}
-              </p>
+              {!hasEventDue ? (
+                <div className="space-y-2">
+                  <Label htmlFor="setup-remaining-due">Event / schedule anchor date</Label>
+                  <Input
+                    id="setup-remaining-due"
+                    type="date"
+                    value={remainingDueDate}
+                    onChange={(e) => {
+                      setRemainingDueDate(e.target.value);
+                      setError("");
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Needed for installments due before the event.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Event date — {eventDate}</p>
+              )}
             </div>
+          ) : (
+            <>
+              {!isFull && (
+                <div className="space-y-2">
+                  <Label htmlFor="setup-deposit">Deposit</Label>
+                  <Input
+                    id="setup-deposit"
+                    value={deposit}
+                    onChange={(e) => {
+                      setDeposit(e.target.value);
+                      setError("");
+                    }}
+                    inputMode="decimal"
+                  />
+                  <p className="text-xs text-muted-foreground">Deposit is due today.</p>
+                </div>
+              )}
+              {needsRemainingDue && (
+                <div className="space-y-2">
+                  <Label htmlFor="setup-remaining-due">Remaining balance due date</Label>
+                  {hasEventDue ? (
+                    <p className="text-sm text-heading">
+                      Event date — {eventDate}
+                    </p>
+                  ) : (
+                    <Input
+                      id="setup-remaining-due"
+                      type="date"
+                      value={remainingDueDate}
+                      onChange={(e) => {
+                        setRemainingDueDate(e.target.value);
+                        setError("");
+                      }}
+                    />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {hasEventDue
+                      ? "Remaining balance is due on the event date (installment dates may land earlier)."
+                      : "Required when there is no event date yet."}
+                  </p>
+                </div>
+              )}
+              <div className="rounded-lg border border-border px-4 py-3 text-sm">
+                <p>Deposit: <strong>{formatCurrency(depositAmount)}</strong> (due today)</p>
+                <p className="mt-1">Remaining balance: <strong>{formatCurrency(remaining)}</strong></p>
+              </div>
+            </>
           )}
-          <div className="rounded-lg border border-border px-4 py-3 text-sm">
-            <p>Deposit: <strong>{formatCurrency(depositAmount)}</strong> (due today)</p>
-            <p className="mt-1">Remaining balance: <strong>{formatCurrency(remaining)}</strong></p>
-          </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-between gap-2">
             <Button type="button" variant="ghost" onClick={() => setStep(1)}>Back</Button>
@@ -257,11 +335,21 @@ function SetupPaymentsSheetBody({
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm space-y-2">
             <p><strong>{selection.name}</strong> — {formatCurrency(selection.totalAmount)}</p>
-            <p>Deposit {formatCurrency(depositAmount)} (due today) · Remaining {formatCurrency(remaining)}</p>
-            {needsRemainingDue && (
-              <p className="text-xs text-muted-foreground">
-                Remaining due {hasEventDue ? eventDate : remainingDueDate || "—"}
-              </p>
+            {isCustom && customPreview?.ok ? (
+              customPreview.lines.map((line) => (
+                <p key={`${line.label}-${line.dueDate}`}>
+                  {line.label}: {formatCurrency(line.amount)} · due {line.dueDate}
+                </p>
+              ))
+            ) : (
+              <>
+                <p>Deposit {formatCurrency(depositAmount)} (due today) · Remaining {formatCurrency(remaining)}</p>
+                {needsRemainingDue && (
+                  <p className="text-xs text-muted-foreground">
+                    Remaining due {hasEventDue ? eventDate : remainingDueDate || "—"}
+                  </p>
+                )}
+              </>
             )}
             <p className="text-xs text-muted-foreground">
               Creates one invoice and one payment schedule. Existing Library package prices are not changed.

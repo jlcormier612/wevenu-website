@@ -240,6 +240,7 @@ export function BookingJourneyPanel({
               ? "deposit_remaining"
               : journey.prefs.defaultSchedulePresetId ?? "deposit_remaining"
           }
+          customSchedule={journey.prefs.defaultCustomSchedule}
           paymentCollection={journey.prefs.paymentCollection}
         />
       )}

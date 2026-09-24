@@ -11,6 +11,11 @@
  * - `remainingBalanceMode: "varies"` — treated as `final` in the simplified UI.
  */
 
+import {
+  normalizeCustomScheduleTemplate,
+  type CustomScheduleTemplate,
+} from "@/lib/payments/custom-default-schedule";
+
 export type AgreementMethod = "offer" | "contract" | "either";
 /** @deprecated Always agreement_first. Kept for backcompat reads only. */
 export type ProcessOrder = "agreement_first" | "deposit_first";
@@ -40,8 +45,17 @@ export type VenueCommercialBookingPrefs = {
   /** 0–100; used to suggest deposit when package/total is known. */
   defaultDepositPercent: number;
   remainingBalanceMode: RemainingBalanceMode;
-  /** Optional SCHEDULE_PRESETS id applied as default remaining structure. */
+  /**
+   * Optional SCHEDULE_PRESETS id applied as default remaining structure.
+   * Use `"custom"` with a valid `defaultCustomSchedule` for venue-built defaults.
+   */
   defaultSchedulePresetId: string | null;
+  /**
+   * Venue-built Custom schedule DEFAULT (percentage or dollar).
+   * Applied when creating payment obligations for a booking with a known total.
+   * Per-booking schedules remain editable — this is not an immutable rule.
+   */
+  defaultCustomSchedule: CustomScheduleTemplate | null;
 };
 
 export const DEFAULT_COMMERCIAL_BOOKING_PREFS: VenueCommercialBookingPrefs = {
@@ -53,6 +67,7 @@ export const DEFAULT_COMMERCIAL_BOOKING_PREFS: VenueCommercialBookingPrefs = {
   defaultDepositPercent: 25,
   remainingBalanceMode: "final",
   defaultSchedulePresetId: null,
+  defaultCustomSchedule: null,
 };
 
 function asString(v: unknown): string | null {
@@ -102,6 +117,22 @@ export function normalizeCommercialBookingPrefs(
       : DEFAULT_COMMERCIAL_BOOKING_PREFS.remainingBalanceMode;
   if (remaining === "varies") remaining = "final";
 
+  const custom = normalizeCustomScheduleTemplate(src.defaultCustomSchedule);
+  // "custom" is only valid with a validated schedule template.
+  let defaultSchedulePresetId: string | null = null;
+  let defaultCustomSchedule: CustomScheduleTemplate | null = null;
+  if (preset === "custom" && custom) {
+    defaultSchedulePresetId = "custom";
+    defaultCustomSchedule = custom;
+  } else if (preset && preset !== "custom") {
+    defaultSchedulePresetId = preset;
+    defaultCustomSchedule = null;
+  } else if (custom && remaining === "plan") {
+    // Recover Custom when template is present even if id was stripped historically.
+    defaultSchedulePresetId = "custom";
+    defaultCustomSchedule = custom;
+  }
+
   return {
     agreementMethod:
       agreementMethod === "offer" || agreementMethod === "contract" || agreementMethod === "either"
@@ -119,7 +150,8 @@ export function normalizeCommercialBookingPrefs(
         : DEFAULT_COMMERCIAL_BOOKING_PREFS.paymentCollection,
     defaultDepositPercent,
     remainingBalanceMode: remaining,
-    defaultSchedulePresetId: preset && preset !== "custom" ? preset : null,
+    defaultSchedulePresetId,
+    defaultCustomSchedule,
   };
 }
 

@@ -6,6 +6,7 @@ import { sendInvoiceEmailAction } from "@/app/(app)/invoices/actions";
 import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensure-commercial-customer";
 import { setupPaymentsFromSelection } from "@/lib/booking-journey/setup-payments";
 import type { SetupPaymentsResult } from "@/lib/booking-journey/setup-payments";
+import type { CustomScheduleTemplate } from "@/lib/payments/custom-default-schedule";
 
 export async function setupPaymentsAction(input: {
   selectionId: string;
@@ -18,6 +19,7 @@ export async function setupPaymentsAction(input: {
   depositAmount?: number;
   requestDeposit?: boolean;
   scheduleStructure?: string | null;
+  customSchedule?: CustomScheduleTemplate | null;
 }): Promise<SetupPaymentsResult & { emailSent?: boolean }> {
   let clientId = input.clientId;
   let eventId = input.eventId ?? null;
@@ -42,6 +44,7 @@ export async function setupPaymentsAction(input: {
     depositAmount: input.depositAmount,
     requestDeposit: input.requestDeposit,
     scheduleStructure: input.scheduleStructure,
+    customSchedule: input.customSchedule,
   });
   if (!result.ok) return result;
 

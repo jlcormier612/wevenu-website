@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { saveCommercialBookingPrefsAction } from "@/app/(app)/settings/commercial-booking-actions";
+import { CustomPaymentScheduleBuilder } from "@/components/settings/custom-payment-schedule-builder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,10 @@ import {
 } from "@/components/ui/select";
 import type { VenueCommercialBookingPrefs } from "@/lib/booking-journey/venue-prefs";
 import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
+import {
+  defaultCustomScheduleTemplate,
+  validateCustomScheduleTemplate,
+} from "@/lib/payments/custom-default-schedule";
 
 function RadioOption({
   name,
@@ -60,6 +65,13 @@ export function CommercialBookingPrefsSection({
   const [pending, startTransition] = React.useTransition();
 
   function save() {
+    if (prefs.remainingBalanceMode === "plan" && prefs.defaultSchedulePresetId === "custom") {
+      const v = validateCustomScheduleTemplate(prefs.defaultCustomSchedule);
+      if (!v.ok) {
+        toast.error(v.errors[0] ?? "Fix your Custom payment schedule before saving.");
+        return;
+      }
+    }
     startTransition(async () => {
       const result = await saveCommercialBookingPrefsAction({
         ...prefs,
@@ -78,6 +90,7 @@ export function CommercialBookingPrefsSection({
   }
 
   const remainingMode = prefs.remainingBalanceMode === "plan" ? "plan" : "final";
+  const planSelectValue = prefs.defaultSchedulePresetId ?? "deposit_remaining";
 
   return (
     <div className="space-y-8">
@@ -226,6 +239,7 @@ export function CommercialBookingPrefsSection({
                   ...p,
                   remainingBalanceMode: "final",
                   defaultSchedulePresetId: null,
+                  defaultCustomSchedule: null,
                 }))
               }
               title="One final payment"
@@ -241,29 +255,65 @@ export function CommercialBookingPrefsSection({
           </div>
         </div>
         {remainingMode === "plan" ? (
-          <div className="space-y-2 max-w-sm">
-            <Label>Default payment plan</Label>
-            <Select
-              value={prefs.defaultSchedulePresetId ?? "deposit_remaining"}
-              onValueChange={(v) =>
-                setPrefs((p) => ({
-                  ...p,
-                  defaultSchedulePresetId: v === "deposit_remaining" ? null : v,
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="deposit_remaining">Deposit + final balance</SelectItem>
-                {SCHEDULE_PRESETS.filter((p) => p.items.length > 0).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-3">
+            <div className="space-y-2 max-w-sm">
+              <Label>Default payment plan</Label>
+              <Select
+                value={planSelectValue}
+                onValueChange={(v) =>
+                  setPrefs((p) => {
+                    if (v === "deposit_remaining") {
+                      return {
+                        ...p,
+                        defaultSchedulePresetId: null,
+                        defaultCustomSchedule: null,
+                      };
+                    }
+                    if (v === "custom") {
+                      return {
+                        ...p,
+                        defaultSchedulePresetId: "custom",
+                        defaultCustomSchedule:
+                          p.defaultCustomSchedule ?? defaultCustomScheduleTemplate("percentage"),
+                      };
+                    }
+                    return {
+                      ...p,
+                      defaultSchedulePresetId: v,
+                      defaultCustomSchedule: null,
+                    };
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="deposit_remaining">Deposit + final balance</SelectItem>
+                  {SCHEDULE_PRESETS.filter((p) => p.items.length > 0).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose a preset, or Custom to create your own schedule.
+              </p>
+            </div>
+            {planSelectValue === "custom" ? (
+              <CustomPaymentScheduleBuilder
+                value={prefs.defaultCustomSchedule}
+                onChange={(defaultCustomSchedule) =>
+                  setPrefs((p) => ({
+                    ...p,
+                    defaultSchedulePresetId: "custom",
+                    defaultCustomSchedule,
+                  }))
+                }
+              />
+            ) : null}
           </div>
         ) : null}
       </section>
