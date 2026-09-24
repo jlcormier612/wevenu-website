@@ -30,7 +30,6 @@ export function EmailIntakeSection({
   const [openProvider, setOpenProvider] = React.useState<string | null>(null);
 
   const isConnected = !!status?.connectedAt;
-  const hasReceivedAnything = !!status?.lastEmailReceivedAt;
 
   function handleConnect() {
     startConnect(async () => {
@@ -64,9 +63,7 @@ export function EmailIntakeSection({
           </p>
         </div>
         {isConnected ? (
-          hasReceivedAnything
-            ? <Badge variant="success">Connected</Badge>
-            : <Badge variant="outline">Waiting for first inquiry</Badge>
+          <Badge variant="success">Connected</Badge>
         ) : (
           <Badge variant="muted">Not connected</Badge>
         )}
@@ -91,12 +88,10 @@ export function EmailIntakeSection({
             </Button>
           </div>
 
-          {!hasReceivedAnything ? (
-            <p className="text-xs text-muted-foreground">
-              Forward a test inquiry to this address to confirm it&apos;s working. You&apos;ll see it
-              in Leads once it arrives.
-            </p>
-          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Forward a test inquiry to this address to confirm it&apos;s working. You&apos;ll see it
+            in Leads once it arrives.
+          </p>
 
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Forwarding instructions</p>

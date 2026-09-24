@@ -81,4 +81,15 @@ describe("Lead Capture venue summary", () => {
     assert.match(stage, /Tour requests/);
     assert.match(forms, /EmailIntakeSection/);
   });
+
+  it("email intake setup status is Connected or Not connected, not waiting-for-inquiry", () => {
+    const email = readFileSync(
+      resolve("components/settings/email-intake-section.tsx"),
+      "utf8",
+    );
+    assert.match(email, /Connected/);
+    assert.match(email, /Not connected/);
+    assert.doesNotMatch(email, /Waiting for first inquiry/);
+    assert.doesNotMatch(email, /hasReceivedAnything/);
+  });
 });
