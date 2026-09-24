@@ -13,6 +13,7 @@ import { sanitizeVenueCalendarFilters, isVenueCalendarItemType } from "@/lib/cal
 import {
   calendarItemMatchesSpace,
   calendarSpaceOptionsFromVenueSpaces,
+  normalizeCalendarSpaceFilterId,
 } from "@/lib/calendar/space-filter";
 
 export type CalendarFilterState = {
@@ -53,7 +54,7 @@ function loadSaved(key: string): CalendarFilterState | null {
     return sanitizeVenueCalendarFilters({
       types: parsed.types ?? null,
       staffId: parsed.staffId ?? null,
-      spaceId: parsed.spaceId ?? null,
+      spaceId: normalizeCalendarSpaceFilterId(parsed.spaceId ?? null),
       manualTypes: parsed.manualTypes ?? null,
     });
   } catch {
@@ -92,9 +93,10 @@ export function useCalendarFilters(
   }, [showSpaceFilter, filters.spaceId]);
 
   const setFilters = React.useCallback((next: CalendarFilterState) => {
-    const sanitized = sanitizeVenueCalendarFilters(
-      showSpaceFilter ? next : { ...next, spaceId: null },
-    );
+    const sanitized = sanitizeVenueCalendarFilters({
+      ...(showSpaceFilter ? next : { ...next, spaceId: null }),
+      spaceId: showSpaceFilter ? normalizeCalendarSpaceFilterId(next.spaceId) : null,
+    });
     setFiltersState(sanitized);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(sanitized));

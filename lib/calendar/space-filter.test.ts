@@ -6,11 +6,12 @@ import { describe, it } from "node:test";
 import {
   calendarItemMatchesSpace,
   calendarSpaceOptionsFromVenueSpaces,
+  normalizeCalendarSpaceFilterId,
   spaceIdsForCalendarItem,
 } from "@/lib/calendar/space-filter";
 
 describe("calendar space filter", () => {
-  it("matches All spaces, a named space, and unassigned without inventing assignment", () => {
+  it("matches All spaces and a named space; unassigned is not a filter option", () => {
     const barn = { spaceId: "barn", spaceIds: ["barn"] };
     const garden = { spaceId: "barn", spaceIds: ["garden", "barn"] };
     const unassigned = { spaceId: null, spaceIds: [] };
@@ -25,8 +26,9 @@ describe("calendar space filter", () => {
     assert.equal(calendarItemMatchesSpace(garden, "barn"), true);
 
     assert.equal(calendarItemMatchesSpace(unassigned, "barn"), false);
+    assert.equal(normalizeCalendarSpaceFilterId("__unassigned__"), null);
     assert.equal(calendarItemMatchesSpace(unassigned, "__unassigned__"), true);
-    assert.equal(calendarItemMatchesSpace(barn, "__unassigned__"), false);
+    assert.equal(calendarItemMatchesSpace(barn, "__unassigned__"), true);
   });
 
   it("uses assignment spaceIds before the primary spaceId", () => {
@@ -67,6 +69,8 @@ describe("calendar space filter", () => {
     const bar = readFileSync(resolve("components/calendar/calendar-shared.tsx"), "utf8");
     assert.match(bar, /All spaces/);
     assert.doesNotMatch(bar, /Every space/);
+    assert.doesNotMatch(bar, /No space set/);
+    assert.match(filters, /normalizeCalendarSpaceFilterId/);
     const page = readFileSync(resolve("app/(app)/calendar/page.tsx"), "utf8");
     assert.match(page, /getSpaces/);
     assert.match(page, /venueSpaces=/);

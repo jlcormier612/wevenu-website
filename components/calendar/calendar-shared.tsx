@@ -343,7 +343,6 @@ export function FilterBar({
               className="h-7 rounded-md border border-border bg-background px-2 text-xs"
             >
               <option value="">All spaces</option>
-              <option value={UNASSIGNED}>No space set</option>
               {spaceOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
           )}

@@ -17,8 +17,17 @@ export function spaceIdsForCalendarItem(
   return item.spaceId ? [item.spaceId] : [];
 }
 
+/** Former “No space set” sentinel — not a physical space; treat as All spaces. */
+export const CALENDAR_UNASSIGNED_SPACE = "__unassigned__";
+
+/** All spaces (null / leftover unassigned sentinel) — no physical-space restriction. */
+export function normalizeCalendarSpaceFilterId(spaceId: string | null): string | null {
+  if (!spaceId || spaceId === CALENDAR_UNASSIGNED_SPACE) return null;
+  return spaceId;
+}
+
 /**
- * All spaces (null) → every item.
+ * All spaces (null) → every item, including items with no space assignment.
  * A configured space → items associated with that space only.
  * Unassigned items are never attributed to a named space.
  */
@@ -26,10 +35,10 @@ export function calendarItemMatchesSpace(
   item: Pick<CalendarItem, "spaceId" | "spaceIds">,
   selectedSpaceId: string | null,
 ): boolean {
-  if (!selectedSpaceId) return true;
+  const selected = normalizeCalendarSpaceFilterId(selectedSpaceId);
+  if (!selected) return true;
   const ids = spaceIdsForCalendarItem(item);
-  if (selectedSpaceId === "__unassigned__") return ids.length === 0;
-  return ids.includes(selectedSpaceId);
+  return ids.includes(selected);
 }
 
 export function calendarSpaceOptionsFromVenueSpaces(
