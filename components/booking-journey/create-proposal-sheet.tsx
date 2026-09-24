@@ -10,6 +10,7 @@ import {
   createProposalAction,
   sendProposalAction,
 } from "@/app/(app)/booking-journey/actions";
+import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { MultiOptionProposalView } from "@/components/booking-journey/multi-option-proposal-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -224,54 +225,34 @@ export function CreateProposalSheet({
     brand,
   });
 
-  const sheetWide = step === "preview";
+  const sendButton = (
+    <Button type="button" size="sm" onClick={handleCreateAndSend} disabled={pending}>
+      {pending ? (
+        <>
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          Sending…
+        </>
+      ) : (
+        "Send proposal"
+      )}
+    </Button>
+  );
 
   return (
+    <>
     <Sheet
-      open={open}
+      open={open && step !== "preview"}
       onOpenChange={(v) => {
+        if (step === "preview") return;
         onOpenChange(v);
         if (!v) reset();
       }}
     >
       <SheetContent
         side="right"
-        className={`w-full overflow-y-auto ${sheetWide ? "sm:max-w-xl" : "sm:max-w-lg"}`}
+        className="w-full overflow-y-auto sm:max-w-lg"
       >
-        {step === "preview" ? (
-          <>
-            <SheetHeader className="mb-4">
-              <SheetTitle>Proposal preview</SheetTitle>
-              <p className="text-sm text-muted-foreground">
-                This is a preview — nothing has been sent. This is the same presentation the couple
-                will receive.
-              </p>
-            </SheetHeader>
-            <div className="rounded-lg border border-border overflow-hidden">
-              <MultiOptionProposalView
-                key={drafts.map((d) => `${d.packageId}:${d.offerRole}`).join("|") + "|" + message}
-                offer={draftOffer}
-                mode="preview"
-              />
-            </div>
-            {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("edit")} disabled={pending}>
-                Back to edit
-              </Button>
-              <Button type="button" onClick={handleCreateAndSend} disabled={pending}>
-                {pending ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    Sending…
-                  </>
-                ) : (
-                  "Send proposal"
-                )}
-              </Button>
-            </div>
-          </>
-        ) : step === "sent" && acceptUrl ? (
+        {step === "sent" && acceptUrl ? (
           <>
             <SheetHeader className="mb-6">
               <SheetTitle>Proposal sent</SheetTitle>
@@ -397,5 +378,29 @@ export function CreateProposalSheet({
         )}
       </SheetContent>
     </Sheet>
+
+    <ArtifactReviewOverlay
+      open={open && step === "preview"}
+      eyebrow="This is a preview — nothing has been sent"
+      title="Proposal preview"
+      onBack={() => {
+        if (pending) return;
+        setStep("edit");
+      }}
+      primary={sendButton}
+    >
+      <p className="border-b border-border bg-background px-4 py-2 text-sm text-muted-foreground sm:px-6">
+        This is the same presentation the couple will receive.
+      </p>
+      {error ? (
+        <p className="bg-background px-4 py-2 text-sm text-destructive sm:px-6">{error}</p>
+      ) : null}
+      <MultiOptionProposalView
+        key={drafts.map((d) => `${d.packageId}:${d.offerRole}`).join("|") + "|" + message}
+        offer={draftOffer}
+        mode="preview"
+      />
+    </ArtifactReviewOverlay>
+    </>
   );
 }

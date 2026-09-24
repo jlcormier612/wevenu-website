@@ -89,8 +89,15 @@ describe("multi-option deposit after selection (intended model)", () => {
 describe("create proposal sheet flow wiring", () => {
   it("Preview → Send uses shared MultiOptionProposalView; no maxPrimary deposit field", () => {
     const sheet = readFileSync(resolve("components/booking-journey/create-proposal-sheet.tsx"), "utf8");
-    assert.match(sheet, /step === "preview"/);
-    assert.match(sheet, /Back to edit/);
+    const overlay = readFileSync(resolve("components/artifacts/artifact-review-overlay.tsx"), "utf8");
+    assert.match(sheet, /ArtifactReviewOverlay/);
+    assert.match(sheet, /open=\{open && step === "preview"\}/);
+    assert.match(sheet, /open=\{open && step !== "preview"\}/);
+    assert.doesNotMatch(sheet, /sm:max-w-xl/);
+    assert.match(overlay, /Back to edit/);
+    assert.match(overlay, /createPortal/);
+    assert.match(overlay, /z-\[200\]/);
+    assert.match(overlay, /min-h-0 flex-1 overflow-x-hidden overflow-y-auto/);
     assert.match(sheet, /Send proposal/);
     assert.match(sheet, /MultiOptionProposalView/);
     assert.match(sheet, /mode="preview"/);
