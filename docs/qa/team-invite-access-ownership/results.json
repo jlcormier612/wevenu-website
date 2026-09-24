@@ -1,0 +1,20 @@
+{
+  "verdict": "GREEN",
+  "commit": "ac3d4ceee52b6955e3e52a5199d4eb507fa3edc8",
+  "deployRun": 35948620461,
+  "taskDefinition": "htc-sandbox-venue-app:374",
+  "imageDigest": "sha256:ee3d3210534c1e4709fdfc387f69cfc51165a8a25cbb41872ab7ff5b62775686",
+  "scenarios": {
+    "existingOwnerJennifer": "PASS — is_owner true, administrator",
+    "addOwnerFromBusinessBrand": "PASS — owner_invite_pending + administrator",
+    "ownersOnTeamPage": "PASS — Jennifer + QA Second Owner listed",
+    "staffInviteNoOwnerOption": "PASS — Access options exclude Owner",
+    "inviteCoordinator": "PASS — access_title coordinator, is_owner false",
+    "inviteCustom": "PASS — access_title custom, customize UI works",
+    "accessOptionsVisible": "PASS — Administrator/Manager/Coordinator/Staff/View Only/Custom",
+    "jenniferUnchanged": "PASS",
+    "responsiveMobile390": "PASS",
+    "responsiveDesktop1280": "PASS",
+    "productionUntouched": "PASS"
+  }
+}

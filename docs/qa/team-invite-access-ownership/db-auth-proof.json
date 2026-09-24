@@ -1,0 +1,48 @@
+{
+  "commit": "ac3d4ceee52b6955e3e52a5199d4eb507fa3edc8",
+  "deploy": 35948620461,
+  "taskDefinition": "htc-sandbox-venue-app:374",
+  "imageDigest": "sha256:ee3d3210534c1e4709fdfc387f69cfc51165a8a25cbb41872ab7ff5b62775686",
+  "staff": [
+    {
+      "full_name": "QA Second Owner",
+      "email": "qa-second-owner-ac3d4cee@hellotocheers.test",
+      "is_owner": false,
+      "owner_invite_pending": true,
+      "access_title": "administrator",
+      "title_basis": "administrator",
+      "capability_overrides": {},
+      "accepted_at": null
+    },
+    {
+      "full_name": "QA Custom Staff",
+      "email": "qa-custom-ac3d4cee@hellotocheers.test",
+      "is_owner": false,
+      "owner_invite_pending": false,
+      "access_title": "custom",
+      "title_basis": "coordinator",
+      "capability_overrides": {},
+      "accepted_at": null
+    },
+    {
+      "full_name": "Jennifer Fancy",
+      "email": "jennifer@hellotocheers.com",
+      "is_owner": true,
+      "owner_invite_pending": false,
+      "access_title": "administrator",
+      "title_basis": "administrator",
+      "capability_overrides": {},
+      "accepted_at": "2026-09-22T00:27:26.23007+00:00"
+    },
+    {
+      "full_name": "QA Coord Staff",
+      "email": "qa-coord-ac3d4cee@hellotocheers.test",
+      "is_owner": false,
+      "owner_invite_pending": false,
+      "access_title": "coordinator",
+      "title_basis": "coordinator",
+      "capability_overrides": {},
+      "accepted_at": null
+    }
+  ]
+}
