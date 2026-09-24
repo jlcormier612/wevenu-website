@@ -454,7 +454,7 @@ export function FacebookConnectSection({
 
   const succeededLog = recentLog.filter((e) => e.outcome === "succeeded");
   const failedCount = recentLog.filter(
-    (e) => e.outcome === "dead_lettered" || e.outcome === "retrying",
+    (e) => e.outcome === "dead_lettered" || e.outcome === "failed",
   ).length;
   const recentActivity = (succeededLog.length > 0 || failedCount > 0) && (
     <div className="space-y-1.5 rounded-lg border border-border p-3">
