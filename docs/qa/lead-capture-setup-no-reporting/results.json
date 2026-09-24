@@ -1,0 +1,57 @@
+{
+  "verdict": "GREEN",
+  "production": "untouched",
+  "commit": "4b75d776c8a15f8e0f2b018400c60a69cb789243",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/35950031985",
+  "ecs": {
+    "cluster": "htc-sandbox",
+    "service": "htc-sandbox-venue-app",
+    "taskDefinition": "htc-sandbox-venue-app:375",
+    "taskArn": "arn:aws:ecs:us-east-1:405254329873:task/htc-sandbox/7a665a115bab4987ba92c1034d7a5724",
+    "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4b75d776c8a15f8e0f2b018400c60a69cb789243",
+    "imageDigest": "sha256:433621c969e001527bf3a71debf4694e88171bbceb86351cab39c170a097afdd",
+    "rolloutState": "COMPLETED"
+  },
+  "browser": {
+    "setupHubLeadCapture": {
+      "url": "https://app.sandbox.hellotocheers.com/setup-hub/lead-capture",
+      "absent": [
+        "inquiries received in the last 7 days",
+        "Where your inquiries come from",
+        "Recent inquiries",
+        "All caught up",
+        "Lead sources overview",
+        "More lead sources"
+      ],
+      "present": [
+        "Website",
+        "Email intake",
+        "Waiting for first inquiry",
+        "Tour requests",
+        "Facebook / Instagram",
+        "Connect Facebook and Instagram to bring Lead Ads into your Leads pipeline.",
+        "Open Meta integration -> /settings/integrations",
+        "QR campaigns",
+        "Manual entry"
+      ]
+    },
+    "settingsLeads": {
+      "url": "https://app.sandbox.hellotocheers.com/settings/leads",
+      "leadCaptureReportingCard": false,
+      "inquiryForm": true,
+      "emailIntake": true,
+      "tourScheduling": true
+    },
+    "leadsPage": {
+      "url": "https://app.sandbox.hellotocheers.com/leads",
+      "loaded": true,
+      "activeLeadsVisible": true
+    },
+    "viewports": ["desktop", "390"]
+  },
+  "preserved": [
+    "lib/lead-intake/monitoring.ts",
+    "components/settings/lead-intake-health-section.tsx",
+    "lead capture / attribution / email / meta / qr / tours / manual"
+  ]
+}
