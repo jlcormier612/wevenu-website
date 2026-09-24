@@ -1,0 +1,33 @@
+{
+  "at": "2026-09-24T03:41:16.391Z",
+  "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "error": null,
+  "owners": [
+    {
+      "id": "72495b35-c11b-4a84-8bcb-911135eac2bd",
+      "full_name": "Ron Cormier",
+      "email": "ron.owner-record-a08781b8@hellotocheers.test",
+      "is_owner": true,
+      "owner_invite_pending": true,
+      "accepted_at": null,
+      "user_id": null,
+      "invite_token": "524bbbbe-17a7-4058-8571-c6fb9a95703e",
+      "invited_at": "2026-09-24T03:40:36.1+00:00",
+      "is_active": true,
+      "access_title": "administrator"
+    },
+    {
+      "id": "67458154-e6fe-41e3-830e-ea39844e4e19",
+      "full_name": "Jennifer Fancy",
+      "email": "jennifer@hellotocheers.com",
+      "is_owner": true,
+      "owner_invite_pending": false,
+      "accepted_at": "2026-09-22T00:27:26.23007+00:00",
+      "user_id": "2fa73101-337b-4530-8c77-f3c272c5463e",
+      "invite_token": "d2d23454-9462-462d-abaf-7ae5acf5cdc3",
+      "invited_at": null,
+      "is_active": true,
+      "access_title": "administrator"
+    }
+  ]
+}

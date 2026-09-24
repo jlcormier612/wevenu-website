@@ -1,0 +1,47 @@
+{
+  "verdict": "GREEN",
+  "production": "untouched",
+  "commit": "a08781b846bd8266fad29717df40713b8a3c5752",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/35951813084",
+  "ecs": {
+    "cluster": "htc-sandbox",
+    "service": "htc-sandbox-venue-app",
+    "taskDefinition": "htc-sandbox-venue-app:376",
+    "taskArn": "arn:aws:ecs:us-east-1:405254329873:task/htc-sandbox/84e8bec1256b490ab833bbfc9b21edec",
+    "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a08781b846bd8266fad29717df40713b8a3c5752",
+    "imageDigest": "sha256:6d30abfa8fec4aec24b954ccb50ee32b11f02fc50da8f9f09d93a39a1dff830e"
+  },
+  "representation": {
+    "recordOnly": "is_owner=true, owner_invite_pending=false, accepted_at=null, invite_token=null",
+    "inviteNow": "existing inviteStaffMember isOwner path (owner_invite_pending until accept)",
+    "inviteLater": "inviteRecordedOwner sets owner_invite_pending + token + email"
+  },
+  "dbEvidence": {
+    "jennifer": {
+      "is_owner": true,
+      "accepted_at": "set",
+      "owner_invite_pending": false,
+      "ui": "You"
+    },
+    "ronAfterRecordOnly": {
+      "email": "ron.owner-record-a08781b8@hellotocheers.test",
+      "is_owner": true,
+      "owner_invite_pending": false,
+      "accepted_at": null,
+      "invite_token": null,
+      "ui": "Owner access not yet invited"
+    },
+    "ronAfterInviteLater": {
+      "is_owner": true,
+      "owner_invite_pending": true,
+      "invited_at": "set",
+      "invite_token": "set",
+      "ui": "Invitation sent"
+    }
+  },
+  "teamPage": {
+    "ownersVisible": true,
+    "staffAccessTitles": ["Administrator", "Manager", "Coordinator", "Staff", "View Only", "Custom"],
+    "inviteAsOwner": false
+  }
+}
