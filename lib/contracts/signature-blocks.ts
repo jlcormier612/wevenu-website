@@ -50,6 +50,70 @@ export function applyRequiredSignerSignatureBlocks(
   return content;
 }
 
+/** Format a signed_at ISO timestamp as a readable date for signature blocks. */
+export function formatSignatureDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const day = iso.slice(0, 10);
+  const [y, m, d] = day.split("-").map(Number);
+  if (!y || !m || !d) return day;
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export type SignatureEvidence = {
+  signerType: "venue" | "client";
+  signerName: string | null;
+  signedAt: string | null;
+  isRequired?: boolean;
+};
+
+/**
+ * Render-time only: fill blank Signature/Date lines from contract_signers evidence.
+ * Does NOT mutate stored content or content hashes — presentation for Fully Executed
+ * artifacts (detail, PDF, portal). Unsigned / incomplete signers keep blank lines.
+ */
+export function fillCompletedSignatureBlocks(
+  content: string,
+  signers: SignatureEvidence[],
+): string {
+  let next = content;
+
+  const clients = signers.filter(
+    (s) => s.signerType === "client" && s.signedAt && (s.isRequired !== false),
+  );
+  for (const s of clients) {
+    const name = (s.signerName ?? "").trim();
+    if (!name) continue;
+    const signedLabel = formatSignatureDate(s.signedAt);
+    // Match Client block for this signer (blank signature/date lines).
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const block = new RegExp(
+      `(Client\\n${escaped}\\n\\n)Signature: _{8,}\\nDate: _{8,}`,
+    );
+    next = next.replace(
+      block,
+      `$1Signature: ${name} (electronically signed)\nDate: ${signedLabel}`,
+    );
+  }
+
+  const venue = signers.find((s) => s.signerType === "venue" && s.signedAt);
+  if (venue) {
+    const name = (venue.signerName ?? "").trim() || "Authorized Representative";
+    const signedLabel = formatSignatureDate(venue.signedAt);
+    // Fill blank Authorized Representative / Signature lines under Venue.
+    // Date may already contain a merge date or underscores — always replace with signed date.
+    next = next.replace(
+      /(Venue\n[^\n]+\n\n)Authorized Representative: _{4,}(\n)Signature: _{8,}(\n)Date: [^\n]+/,
+      `$1Authorized Representative: ${name}$2Signature: ${name} (electronically signed)$3Date: ${signedLabel}`,
+    );
+  }
+
+  return next;
+}
+
 export type ClientSigningParty = {
   id: string;
   name: string;

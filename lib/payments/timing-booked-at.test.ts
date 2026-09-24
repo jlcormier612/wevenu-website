@@ -40,10 +40,10 @@ describe("Payment timing — At booking vs before event", () => {
     assert.notEqual(due, today);
   });
 
-  it("starter deposits use at_booking timing", () => {
+  it("starter deposits use due_today timing (not booking-date picker)", () => {
     for (const id of ["thirds", "wedding_four", "fifty_fifty", "deposit_30_70"]) {
       const preset = SCHEDULE_PRESETS.find((p) => p.id === id)!;
-      assert.equal(preset.items[0]!.timing.type, "at_booking", id);
+      assert.equal(preset.items[0]!.timing.type, "due_today", id);
     }
   });
 });
@@ -52,8 +52,9 @@ describe("Payment timing — financial paths never stamp booked_at", () => {
   it("createPaymentSchedule and regeneratePaymentSchedule do not call ensureEventBookedAt", () => {
     const src = readFileSync(resolve("lib/payments/service.ts"), "utf8");
     assert.doesNotMatch(src, /ensureEventBookedAt/);
-    assert.doesNotMatch(src, /venueToday/);
+    // venueToday is allowed for due_today resolution — never to invent booked_at.
     assert.match(src, /Add the booking date on the Event to continue/);
+    assert.match(src, /Never invent booked_at/);
   });
 
   it("status transitions do not stamp booked_at", () => {
@@ -165,12 +166,12 @@ describe("Payment timing — Owner/Manager permission gate on booking-date corre
 });
 
 describe("Payment timing — 50/25/25 starter", () => {
-  it("expresses 50% at booking, 25% at 60 days before event, 25% at 14 days before event", () => {
+  it("expresses 50% due today, 25% at 60 days before event, 25% at 14 days before event", () => {
     const preset = SCHEDULE_PRESETS.find((p) => p.id === "fifty_25_25");
     assert.ok(preset, "fifty_25_25 preset must exist");
     if (!preset) return;
     assert.equal(preset.items.length, 3);
-    assert.equal(preset.items[0]!.timing.type, "at_booking");
+    assert.equal(preset.items[0]!.timing.type, "due_today");
     assert.equal(preset.items[0]!.pctOfTotal, 50);
     assert.deepEqual(preset.items[1]!.timing, { type: "before_event", days: 60 });
     assert.equal(preset.items[1]!.pctOfTotal, 25);
@@ -180,9 +181,9 @@ describe("Payment timing — 50/25/25 starter", () => {
     assert.equal(total, 100);
   });
 
-  it("resolves the correct calendar dates for a fixed booking/event date pair", () => {
+  it("resolves the correct calendar dates for a fixed today/event date pair", () => {
     const preset = SCHEDULE_PRESETS.find((p) => p.id === "fifty_25_25")!;
-    const ctx = { eventDate: "2027-06-12", bookingDate: "2025-12-01" };
+    const ctx = { eventDate: "2027-06-12", bookingDate: "2025-12-01", today: "2025-12-01" };
     assert.equal(resolveDueDateFromTiming(preset.items[0]!.timing, ctx), "2025-12-01");
     assert.equal(resolveDueDateFromTiming(preset.items[1]!.timing, ctx), "2027-04-13");
     assert.equal(resolveDueDateFromTiming(preset.items[2]!.timing, ctx), "2027-05-29");

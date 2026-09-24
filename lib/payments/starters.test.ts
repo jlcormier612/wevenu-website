@@ -66,11 +66,21 @@ describe("Payment Plan starters", () => {
     assert.doesNotMatch(defaultInvoiceNotes("Garden Hall"), /late fee|cancell/i);
   });
 
-  it("explains timing in venue-owner language (at booking ≠ event day)", () => {
+  it("explains timing in venue-owner language (due today ≠ event day ≠ at booking)", () => {
+    assert.equal(formatTimingLabel({ type: "due_today" }), "Due today");
+    assert.equal(formatTimingLabel({ type: "on_event" }), "On the event day");
+    assert.equal(
+      formatTimingLabel({ type: "after_execution", days: 7 }),
+      "7 days after the contract is fully executed",
+    );
     assert.equal(formatTimingLabel({ type: "at_booking" }), "At booking (when Booked)");
     assert.equal(formatTimingLabel({ type: "before_event", days: 60 }), "60 days before the event");
     assert.equal(formatTimingLabel({ type: "before_event", days: 0 }), "On the event day");
     assert.equal(formatTimingLabel({ type: "after_booking", days: 30 }), "30 days after booking (when Booked)");
+    assert.notEqual(
+      formatTimingLabel({ type: "due_today" }),
+      formatTimingLabel({ type: "before_event", days: 0 }),
+    );
     assert.notEqual(
       formatTimingLabel({ type: "at_booking" }),
       formatTimingLabel({ type: "before_event", days: 0 }),
@@ -83,9 +93,11 @@ describe("Payment Plan starters", () => {
     assert.equal(previewDueDateFromEvent("2026-10-17", -60), "2026-08-18");
   });
 
-  it("resolves concrete due dates from timing rules without collapsing at-booking into event day", () => {
+  it("resolves concrete due dates from timing rules without collapsing anchors", () => {
     const eventDate = "2026-10-17";
     const bookingDate = "2025-01-10";
+    const today = "2026-03-01";
+    const executedAt = "2026-02-15";
     assert.equal(
       resolveDueDateFromTiming({ type: "before_event", days: 60 }, { eventDate, bookingDate }),
       "2026-08-18",
@@ -93,6 +105,21 @@ describe("Payment Plan starters", () => {
     assert.equal(
       resolveDueDateFromTiming({ type: "before_event", days: 0 }, { eventDate, bookingDate }),
       "2026-10-17",
+    );
+    assert.equal(
+      resolveDueDateFromTiming({ type: "on_event" }, { eventDate, bookingDate }),
+      "2026-10-17",
+    );
+    assert.equal(
+      resolveDueDateFromTiming({ type: "due_today" }, { eventDate, bookingDate, today }),
+      "2026-03-01",
+    );
+    assert.equal(
+      resolveDueDateFromTiming(
+        { type: "after_execution", days: 14 },
+        { eventDate, bookingDate, executedAt },
+      ),
+      "2026-03-01",
     );
     assert.equal(
       resolveDueDateFromTiming({ type: "at_booking" }, { eventDate, bookingDate }),
@@ -106,11 +133,15 @@ describe("Payment Plan starters", () => {
       resolveDueDateFromTiming({ type: "at_booking" }, { eventDate, bookingDate: null }),
       null,
     );
+    assert.equal(
+      resolveDueDateFromTiming({ type: "due_today" }, { eventDate, bookingDate, today: null }),
+      null,
+    );
   });
 
-  it("starter deposit lines use at booking; later lines use before event", () => {
+  it("starter deposit lines use due today; later lines use before event", () => {
     const thirds = SCHEDULE_PRESETS.find((p) => p.id === "thirds")!;
-    assert.equal(thirds.items[0]!.timing.type, "at_booking");
+    assert.equal(thirds.items[0]!.timing.type, "due_today");
     assert.deepEqual(thirds.items[1]!.timing, { type: "before_event", days: 90 });
     assert.deepEqual(thirds.items[2]!.timing, { type: "before_event", days: 30 });
 
@@ -120,7 +151,8 @@ describe("Payment Plan starters", () => {
       { pctOfTotal: 25 },
     ]);
     assert.deepEqual(mixed, [5000, 2500, 2500]);
-    const ctx = { eventDate: "2026-10-17", bookingDate: "2025-09-03" };
+    const ctx = { eventDate: "2026-10-17", bookingDate: "2025-09-03", today: "2025-09-03" };
+    assert.equal(resolveDueDateFromTiming({ type: "due_today" }, ctx), "2025-09-03");
     assert.equal(resolveDueDateFromTiming({ type: "at_booking" }, ctx), "2025-09-03");
     assert.equal(resolveDueDateFromTiming({ type: "before_event", days: 60 }, ctx), "2026-08-18");
     assert.equal(resolveDueDateFromTiming({ type: "before_event", days: 14 }, ctx), "2026-10-03");

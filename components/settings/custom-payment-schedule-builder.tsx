@@ -20,11 +20,23 @@ import {
 } from "@/lib/payments/custom-default-schedule";
 import type { PaymentObligationKind } from "@/lib/payments/types";
 
-function timingMode(timing: PaymentTiming): "at_booking" | "before_event" | "after_booking" {
+function timingMode(timing: PaymentTiming): TimingUiMode {
+  if (timing.type === "due_today") return "due_today";
+  if (timing.type === "after_execution") return "after_execution";
+  if (timing.type === "on_event") return "on_event";
   if (timing.type === "at_booking") return "at_booking";
   if (timing.type === "after_booking") return "after_booking";
+  if (timing.type === "before_event" && timing.days === 0) return "on_event";
   return "before_event";
 }
+
+type TimingUiMode =
+  | "due_today"
+  | "after_execution"
+  | "before_event"
+  | "on_event"
+  | "at_booking"
+  | "after_booking";
 
 function TimingEditor({
   timing,
@@ -42,41 +54,55 @@ function TimingEditor({
           className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
           value={mode}
           onChange={(e) => {
-            const v = e.target.value;
-            if (v === "at_booking") onChange({ type: "at_booking" });
+            const v = e.target.value as TimingUiMode;
+            if (v === "due_today") onChange({ type: "due_today" });
+            else if (v === "after_execution") onChange({ type: "after_execution", days: 0 });
+            else if (v === "on_event") onChange({ type: "on_event" });
+            else if (v === "at_booking") onChange({ type: "at_booking" });
             else if (v === "after_booking") onChange({ type: "after_booking", days: 7 });
             else onChange({ type: "before_event", days: 30 });
           }}
         >
-          <option value="at_booking">At booking</option>
+          <option value="due_today">Due today</option>
+          <option value="after_execution">Days after contract is fully executed</option>
           <option value="before_event">Days before event</option>
-          <option value="after_booking">Days after booking</option>
+          <option value="on_event">On event date</option>
+          {(mode === "at_booking" || mode === "after_booking") && (
+            <>
+              <option value="at_booking">At booking (legacy)</option>
+              <option value="after_booking">Days after booking (legacy)</option>
+            </>
+          )}
         </select>
       </div>
-      {mode === "before_event" || mode === "after_booking" ? (
+      {mode === "before_event" || mode === "after_execution" || mode === "after_booking" ? (
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Days</Label>
           <Input
             type="number"
             min={0}
             value={
-              timing.type === "before_event" || timing.type === "after_booking"
+              timing.type === "before_event"
+                || timing.type === "after_execution"
+                || timing.type === "after_booking"
                 ? timing.days
                 : 0
             }
             onChange={(e) => {
               const days = Math.max(0, Number(e.target.value) || 0);
-              onChange(
-                mode === "after_booking"
-                  ? { type: "after_booking", days }
-                  : { type: "before_event", days },
-              );
+              if (mode === "after_execution") onChange({ type: "after_execution", days });
+              else if (mode === "after_booking") onChange({ type: "after_booking", days });
+              else onChange({ type: "before_event", days });
             }}
           />
         </div>
       ) : (
         <p className="flex items-end pb-2 text-xs text-muted-foreground">
-          Uses the booking date
+          {mode === "due_today"
+            ? "Uses today’s date"
+            : mode === "on_event"
+              ? "Uses the event date"
+              : "Uses the booking date (legacy)"}
         </p>
       )}
     </div>
@@ -120,7 +146,7 @@ export function CustomPaymentScheduleBuilder({
           pctOfTotal: 0,
           amount: 0,
           timing: isFirst
-            ? { type: "at_booking" }
+            ? { type: "due_today" }
             : { type: "before_event", days: 30 },
           obligationKind: (isFirst ? "deposit" : "installment") as PaymentObligationKind,
         },

@@ -65,6 +65,19 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       paidToDate={paidToDate}
       cancelledPlanAmount={cancelledPlanAmount}
       venue={venue}
+      linkedScheduleId={linked?.id ?? null}
+      scheduleLines={
+        linked
+          ? linked.lineItems.map((i) => ({
+              label: i.label,
+              amount: i.amount,
+              dueDate: i.dueDate,
+              status: i.status,
+              obligationKind: i.obligationKind,
+            }))
+          : null
+      }
+      scheduleNotes={linked?.notes ?? null}
     />
   );
 }

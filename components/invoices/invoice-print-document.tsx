@@ -17,6 +17,14 @@ export type InvoicePrintMilestone = {
   obligationKind: PaymentObligationKind | null;
 };
 
+export type InvoicePrintScheduleLine = {
+  label: string;
+  amount: number;
+  dueDate: string | null;
+  status: string;
+  obligationKind?: PaymentObligationKind | null;
+};
+
 export function InvoicePrintDocument({
   invoice,
   venue,
@@ -24,6 +32,8 @@ export function InvoicePrintDocument({
   amountDueNow = null,
   paidToDateOverride = null,
   cancelledPlanAmount = 0,
+  scheduleLines = null,
+  paymentInstructions = null,
 }: {
   invoice: InvoiceWithLineItems;
   venue: Venue;
@@ -33,6 +43,10 @@ export function InvoicePrintDocument({
   /** Net retained collections when a linked schedule exists (refund-aware). */
   paidToDateOverride?: number | null;
   cancelledPlanAmount?: number;
+  /** Complete payment plan — every installment, amount, due date, status. */
+  scheduleLines?: InvoicePrintScheduleLine[] | null;
+  /** Venue-provided payment instructions (especially for external collection). */
+  paymentInstructions?: string | null;
 }) {
   // Prefer branding frozen at send time; pre-existing sent invoices without a
   // snapshot fall back to live venue branding (documented — no silent backfill).
@@ -248,6 +262,58 @@ export function InvoicePrintDocument({
           </div>
         </div>
       </div>
+
+      {/* ── Complete payment plan ───────────────────────────────────────── */}
+      {scheduleLines && scheduleLines.length > 0 && (
+        <div className="border-t border-gray-200 px-12 py-8">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: secondaryColor }}>
+            Payment Plan
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            Total commitment {formatCurrency(invoice.total)}
+            {paidToDate > 0 ? ` · Paid to date ${formatCurrency(paidToDate)}` : ""}
+            {invoice.balanceDue > 0 ? ` · Balance remaining ${formatCurrency(invoice.balanceDue)}` : ""}
+          </p>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b-2 border-gray-300">
+                <th className="pb-2 text-left font-semibold text-gray-700">Installment</th>
+                <th className="pb-2 text-left font-semibold text-gray-700">Due</th>
+                <th className="pb-2 text-left font-semibold text-gray-700">Status</th>
+                <th className="pb-2 text-right font-semibold text-gray-700">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scheduleLines.map((line, i) => (
+                <tr key={`${line.label}-${i}-${line.dueDate ?? ""}`} className="border-b border-gray-100">
+                  <td className="py-2.5 text-gray-900">{line.label}</td>
+                  <td className="py-2.5 text-gray-700">
+                    {line.dueDate
+                      ? new Date(line.dueDate + "T12:00:00").toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </td>
+                  <td className="py-2.5 text-gray-600 capitalize">{line.status.replace(/_/g, " ")}</td>
+                  <td className="py-2.5 text-right font-medium text-gray-900">{formatCurrency(line.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {(paymentInstructions?.trim() || invoice.notes?.trim()) && (
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                Payment instructions
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-line">
+                {paymentInstructions?.trim() || invoice.notes}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Notes ──────────────────────────────────────────────────────── */}
       <div className="border-t border-gray-200 px-12 py-6">

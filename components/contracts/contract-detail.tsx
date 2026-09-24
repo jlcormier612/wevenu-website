@@ -50,6 +50,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatContractDate } from "@/lib/contracts/constants";
 import { resolveContractBrandPresentation, type ContractBrandingSnapshot } from "@/lib/contracts/branding";
+import { renderExecutedContractContent } from "@/lib/contracts/executed-content";
 import {
   anyClientHasSigned,
   CONTRACT_SIGNATURE_CONSENT_TEXT,
@@ -655,7 +656,9 @@ export function ContractDetail({
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border border-border bg-background p-6 font-sans text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-              {contract.content}
+              {contract.status === "signed"
+                ? renderExecutedContractContent(contract.content, signers, { status: contract.status })
+                : contract.content}
             </div>
           </CardContent>
         </Card>
@@ -709,9 +712,13 @@ export function ContractDetail({
       >
         <ContractSigningArtifact
           title={contract.title}
-          content={contract.content}
+          content={
+            contract.status === "signed"
+              ? renderExecutedContractContent(contract.content, signers, { status: contract.status })
+              : contract.content
+          }
           brand={resolveContractBrandPresentation(contract.brandingSnapshot, venueBrand)}
-          signatureSlot={<SignForm preview />}
+          signatureSlot={contract.status === "signed" ? undefined : <SignForm preview />}
         />
       </ArtifactReviewOverlay>
     </div>

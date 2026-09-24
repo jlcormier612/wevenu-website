@@ -583,10 +583,23 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
                 </span>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}`} />}>
-              View Invoice →
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                render={<Link href={`/invoices/${invoice.id}/print`} target="_blank" />}
+              >
+                Preview payment plan
+              </Button>
+              <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}`} />}>
+                View Invoice →
+              </Button>
+            </div>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            After you create a plan, preview the complete schedule on the invoice. Requesting the initial payment is a separate deliberate action from the invoice page.
+          </p>
         </div>
       )}
 

@@ -111,13 +111,23 @@ export function obligationKindLabel(kind: PaymentObligationKind | null | undefin
  * Reusable payment timing rule for starters / presets.
  * Stored schedules keep concrete due_date only — the rule is not re-stored on lines.
  *
- * at_booking ≠ before_event with days 0 (event day). Those are different business rules.
- * after_booking is supported in the model for future custom structures; starters use
- * at_booking + before_event today.
+ * Preferred customer-facing anchors (new schedules):
+ *   due_today | after_execution | before_event | on_event | specific date (dueDate override)
+ *
+ * Legacy (still resolve for already-created templates/schedules):
+ *   at_booking | after_booking — never offer as preferred new builder choices.
+ *
+ * before_event days 0 ≡ on_event (event day). Those stay distinct from due_today /
+ * at_booking (agreement/booking anchors, not the event calendar day).
  */
 export type PaymentTiming =
-  | { type: "at_booking" }
+  | { type: "due_today" }
+  | { type: "after_execution"; days: number }
   | { type: "before_event"; days: number }
+  | { type: "on_event" }
+  /** @deprecated Prefer due_today for new schedules. Kept for existing presets/templates. */
+  | { type: "at_booking" }
+  /** @deprecated Prefer after_execution for new schedules. Kept for existing templates. */
   | { type: "after_booking"; days: number };
 
 export type SchedulePresetItem = {
@@ -146,9 +156,9 @@ export const SCHEDULE_PRESETS: SchedulePreset[] = [
   {
     id: "thirds",
     label: "Standard Wedding — 3 Payments",
-    description: "Initial payment at booking, a planning payment, and final payment before the event.",
+    description: "Initial payment due today, a planning payment, and final payment before the event.",
     items: [
-      { label: "Initial Payment", pctOfTotal: 33.33, timing: { type: "at_booking" }, obligationKind: "deposit" },
+      { label: "Initial Payment", pctOfTotal: 33.33, timing: { type: "due_today" }, obligationKind: "deposit" },
       { label: "Planning Payment", pctOfTotal: 33.33, timing: { type: "before_event", days: 90 }, obligationKind: "installment" },
       { label: "Final Payment", pctOfTotal: 33.34, timing: { type: "before_event", days: 30 }, obligationKind: "final" },
     ],
@@ -156,9 +166,9 @@ export const SCHEDULE_PRESETS: SchedulePreset[] = [
   {
     id: "wedding_four",
     label: "Standard Wedding — 4 Payments",
-    description: "Initial payment at booking, two planning payments, and final payment before the event.",
+    description: "Initial payment due today, two planning payments, and final payment before the event.",
     items: [
-      { label: "Initial Payment", pctOfTotal: 25, timing: { type: "at_booking" }, obligationKind: "deposit" },
+      { label: "Initial Payment", pctOfTotal: 25, timing: { type: "due_today" }, obligationKind: "deposit" },
       { label: "Planning Payment 1", pctOfTotal: 25, timing: { type: "before_event", days: 120 }, obligationKind: "installment" },
       { label: "Planning Payment 2", pctOfTotal: 25, timing: { type: "before_event", days: 60 }, obligationKind: "installment" },
       { label: "Final Payment", pctOfTotal: 25, timing: { type: "before_event", days: 30 }, obligationKind: "final" },
@@ -173,27 +183,27 @@ export const SCHEDULE_PRESETS: SchedulePreset[] = [
   {
     id: "fifty_fifty",
     label: "50% Initial + 50% Final",
-    description: "Half at booking, half before the event (certified split).",
+    description: "Half due today, half before the event (certified split).",
     items: [
-      { label: "Initial Payment (50%)", pctOfTotal: 50, timing: { type: "at_booking" }, obligationKind: "deposit" },
+      { label: "Initial Payment (50%)", pctOfTotal: 50, timing: { type: "due_today" }, obligationKind: "deposit" },
       { label: "Final Payment (50%)", pctOfTotal: 50, timing: { type: "before_event", days: 30 }, obligationKind: "final" },
     ],
   },
   {
     id: "deposit_30_70",
     label: "30% Initial + 70% Final",
-    description: "Smaller initial payment at booking, larger final before the event (certified split).",
+    description: "Smaller initial payment due today, larger final before the event (certified split).",
     items: [
-      { label: "Initial Payment (30%)", pctOfTotal: 30, timing: { type: "at_booking" }, obligationKind: "deposit" },
+      { label: "Initial Payment (30%)", pctOfTotal: 30, timing: { type: "due_today" }, obligationKind: "deposit" },
       { label: "Final Payment (70%)", pctOfTotal: 70, timing: { type: "before_event", days: 30 }, obligationKind: "final" },
     ],
   },
   {
     id: "fifty_25_25",
     label: "50% Initial + 25% + 25%",
-    description: "Half at booking, then two even planning/final payments before the event.",
+    description: "Half due today, then two even planning/final payments before the event.",
     items: [
-      { label: "Initial Payment (50%)", pctOfTotal: 50, timing: { type: "at_booking" }, obligationKind: "deposit" },
+      { label: "Initial Payment (50%)", pctOfTotal: 50, timing: { type: "due_today" }, obligationKind: "deposit" },
       { label: "Planning Payment (25%)", pctOfTotal: 25, timing: { type: "before_event", days: 60 }, obligationKind: "installment" },
       { label: "Final Payment (25%)", pctOfTotal: 25, timing: { type: "before_event", days: 14 }, obligationKind: "final" },
     ],

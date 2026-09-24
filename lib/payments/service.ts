@@ -48,6 +48,7 @@ import {
   validateScheduleInput,
 } from "@/lib/payments/validation";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 
@@ -176,6 +177,10 @@ export async function createPaymentSchedule(
     const totalAmount = invoice.total;
     const eventDate = invoice.eventDate;
     const bookingDate = invoice.bookedAt;
+    const venueForTz = await getCurrentVenue();
+    const today = venueForTz
+      ? venueToday(venueForTz.timezone)
+      : new Date().toISOString().slice(0, 10);
 
     const hasBuilderLines = Array.isArray(builderLines) && builderLines.length > 0;
     if (hasBuilderLines) {
@@ -249,7 +254,11 @@ export async function createPaymentSchedule(
         for (let i = 0; i < preset.items.length; i++) {
           const pi = preset.items[i];
           const amt = amounts[i] ?? 0;
-          const dueDate = resolvePresetItemDueDate(pi, { eventDate, bookingDate }) ?? undefined;
+          const dueDate = resolvePresetItemDueDate(pi, {
+            eventDate,
+            bookingDate,
+            today,
+          }) ?? undefined;
           const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
             label: pi.label, amount: String(amt), dueDate: dueDate ?? "",
             obligationKind: pi.obligationKind,
@@ -766,6 +775,7 @@ export async function regeneratePaymentSchedule(scheduleId: string, presetId: st
         const dueDate = resolvePresetItemDueDate(pi, {
           eventDate: schedule.eventDate,
           bookingDate: schedule.bookedAt,
+          today: new Date().toISOString().slice(0, 10),
         }) ?? undefined;
         const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
           label: pi.label, amount: String(amt), dueDate: dueDate ?? "",

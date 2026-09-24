@@ -55,7 +55,9 @@ export async function finalizeContract(contractId: string): Promise<ContractActi
   // Generate the PDF from the exact current (signed) content — the same
   // data `getContract` already returned, no separate re-fetch, no risk
   // of finalizing different content than what's on screen.
-  const pdfBuffer = await generateContractPdf(contract, venue);
+  // Signature blanks are filled at render time from contract_signers evidence
+  // (stored content + content hashes stay unchanged).
+  const pdfBuffer = await generateContractPdf(contract, venue, contract.signers);
 
   const storagePath = `${venue.id}/${contractId}/final-${Date.now()}.pdf`;
   const serviceClient = getServiceClient();

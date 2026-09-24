@@ -4,12 +4,34 @@ import { InvoicePickerForSchedule } from "@/components/payments/invoice-picker-f
 import { NewScheduleForm } from "@/components/payments/new-schedule-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
+import { createClient } from "@/integrations/supabase/server";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { getInvoice, getInvoices } from "@/lib/invoices/service";
 
 export const metadata: Metadata = { title: "New payment schedule" };
 
 type Props = { searchParams: Promise<{ invoiceId?: string; preset?: string }> };
+
+/** Latest Fully Executed contract date for this client (YYYY-MM-DD), if any. */
+async function latestExecutedContractDate(clientId: string | null): Promise<string | null> {
+  if (!clientId) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contracts")
+    .select("signed_at")
+    .eq("venue_id", venue.id)
+    .eq("client_id", clientId)
+    .eq("status", "signed")
+    .not("signed_at", "is", null)
+    .order("signed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ signed_at: string }>();
+  return data?.signed_at ? data.signed_at.slice(0, 10) : null;
+}
 
 /**
  * Booking Financial Architecture Phase 1: a Payment Schedule always links
@@ -67,11 +89,17 @@ export default async function NewPaymentPage({ searchParams }: Props) {
     );
   }
 
+  const venue = await getCurrentVenue();
+  const today = venue
+    ? venueToday(venue.timezone)
+    : new Date().toISOString().slice(0, 10);
+  const executedAt = await latestExecutedContractDate(invoice.clientId);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payment Plan Builder"
-        description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then review and save the schedule."
+        description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then preview and create the schedule. Requesting payment is a separate step."
       />
       <Card>
         <CardHeader>
@@ -81,13 +109,18 @@ export default async function NewPaymentPage({ searchParams }: Props) {
             {invoice.eventDate
               ? ` · Event ${invoice.eventDate}`
               : " · Add an Event date on the booking so event-relative due dates can become calendar dates"}
-            {invoice.bookedAt
-              ? ` · Booked ${invoice.bookedAt}`
-              : " · At-booking timing needs a booking date on the Event first"}
+            {executedAt
+              ? ` · Contract fully executed ${executedAt}`
+              : " · Agreement-relative timing needs a fully executed contract"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NewScheduleForm linkedInvoice={invoice} initialPresetId={preset} />
+          <NewScheduleForm
+            linkedInvoice={invoice}
+            initialPresetId={preset}
+            executedAt={executedAt}
+            today={today}
+          />
         </CardContent>
       </Card>
     </div>

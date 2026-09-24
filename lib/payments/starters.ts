@@ -69,16 +69,35 @@ export function addCalendarDays(isoDate: string, days: number): string {
 /** Human timing for venue owners — never expose implementation field names. */
 export function formatTimingLabel(timing?: PaymentTiming | null): string {
   if (!timing) return "You set the date when you create the schedule";
+  if (timing.type === "due_today") return "Due today";
+  if (timing.type === "on_event") return "On the event day";
+  if (timing.type === "after_execution") {
+    return timing.days === 0
+      ? "When the contract is fully executed"
+      : timing.days === 1
+        ? "1 day after the contract is fully executed"
+        : `${timing.days} days after the contract is fully executed`;
+  }
   if (timing.type === "at_booking") return "At booking (when Booked)";
   if (timing.type === "after_booking") {
     return timing.days === 1
       ? "1 day after booking (when Booked)"
       : `${timing.days} days after booking (when Booked)`;
   }
-  // before_event — days 0 means the event day, not "at booking"
+  // before_event — days 0 means the event day, not "due today"
   if (timing.days === 0) return "On the event day";
   return timing.days === 1 ? "1 day before the event" : `${timing.days} days before the event`;
 }
+
+export type PaymentTimingContext = {
+  eventDate: string | null;
+  /** Legacy Booked date — only for at_booking / after_booking compatibility. */
+  bookingDate: string | null;
+  /** YYYY-MM-DD when the agreement reached Fully Executed (contracts.signed_at). */
+  executedAt?: string | null;
+  /** Venue-local today (YYYY-MM-DD) for due_today. */
+  today?: string | null;
+};
 
 /**
  * @deprecated Prefer formatTimingLabel. Kept for any callers still passing legacy offsets.
@@ -103,12 +122,22 @@ export function formatPresetPercent(pctOfTotal: number): string {
 
 /**
  * Concrete calendar due date from a reusable timing rule.
- * Returns null when the required anchor date is missing (Event or booking date).
+ * Returns null when the required anchor date is missing.
  */
 export function resolveDueDateFromTiming(
   timing: PaymentTiming,
-  ctx: { eventDate: string | null; bookingDate: string | null },
+  ctx: PaymentTimingContext,
 ): string | null {
+  if (timing.type === "due_today") {
+    return ctx.today ? ctx.today.trim().slice(0, 10) : null;
+  }
+  if (timing.type === "after_execution") {
+    if (!ctx.executedAt) return null;
+    return addCalendarDays(ctx.executedAt, timing.days);
+  }
+  if (timing.type === "on_event") {
+    return ctx.eventDate ? ctx.eventDate.trim().slice(0, 10) : null;
+  }
   if (timing.type === "at_booking") {
     return ctx.bookingDate ? ctx.bookingDate.trim().slice(0, 10) : null;
   }
@@ -122,7 +151,7 @@ export function resolveDueDateFromTiming(
 
 export function resolvePresetItemDueDate(
   item: Pick<SchedulePresetItem, "timing">,
-  ctx: { eventDate: string | null; bookingDate: string | null },
+  ctx: PaymentTimingContext,
 ): string | null {
   return resolveDueDateFromTiming(item.timing, ctx);
 }

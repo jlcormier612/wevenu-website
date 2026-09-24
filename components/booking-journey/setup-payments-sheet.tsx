@@ -89,7 +89,7 @@ function SetupPaymentsSheetBody({
   leadId,
   spaceId,
   defaultScheduleStructure,
-  paymentCollection,
+  paymentCollection: _paymentCollection,
   customSchedule,
 }: {
   onOpenChange: (open: boolean) => void;
@@ -169,13 +169,7 @@ function SetupPaymentsSheetBody({
         toast.error(result.message);
         return;
       }
-      toast.success(
-        requestDeposit
-          ? result.emailSent
-            ? "Payments set up — deposit request emailed."
-            : "Payments set up — deposit marked ready. Send the invoice if email wasn't delivered."
-          : "Payments set up.",
-      );
+      toast.success("Payment plan created. Preview it, then request the initial payment when ready.");
       onOpenChange(false);
       router.push(`/invoices/${result.invoiceId}`);
       router.refresh();
@@ -188,7 +182,7 @@ function SetupPaymentsSheetBody({
         <SheetTitle>Set up payments</SheetTitle>
         <p className="text-sm text-muted-foreground">
           Step {step} of 3 — create the {formatCurrency(selection.totalAmount)} commitment and
-          collect the deposit.
+          payment plan. Requesting the initial payment is a separate step after you preview.
         </p>
       </SheetHeader>
 
@@ -357,19 +351,16 @@ function SetupPaymentsSheetBody({
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex flex-col gap-2">
-            {paymentCollection !== "external" && (
-              <Button type="button" onClick={() => create(true)} disabled={pending}>
-                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Creating…</> : "Create & request deposit"}
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant={paymentCollection === "external" ? "default" : "outline"}
-              onClick={() => create(false)}
-              disabled={pending}
-            >
-              {paymentCollection === "external" ? "Create schedule (record payment next)" : "Create only"}
+            <Button type="button" onClick={() => create(false)} disabled={pending}>
+              {pending ? (
+                <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Creating…</>
+              ) : (
+                "Create payment plan"
+              )}
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Creates the invoice and complete payment schedule. Preview and request the initial payment are separate steps after creation.
+            </p>
             <Button type="button" variant="ghost" onClick={() => setStep(2)} disabled={pending}>
               Back
             </Button>

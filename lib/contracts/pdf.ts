@@ -21,6 +21,8 @@ import * as React from "react";
 import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
 import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
 import { resolveContractBrandPresentation } from "@/lib/contracts/branding";
+import { renderExecutedContractContent } from "@/lib/contracts/executed-content";
+import type { SignatureEvidence } from "@/lib/contracts/signature-blocks";
 import type { Contract } from "@/lib/contracts/types";
 import type { Venue } from "@/lib/venue/types";
 
@@ -88,7 +90,15 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: Venue }) {
+function ContractPdfDocument({
+  contract,
+  venue,
+  signers = [],
+}: {
+  contract: Contract;
+  venue: Venue;
+  signers?: SignatureEvidence[];
+}) {
   // Prefer branding frozen at release; pre-existing contracts without a
   // snapshot fall back to live venue branding (no silent backfill).
   const brandFields = resolveContractBrandPresentation(contract.brandingSnapshot, venue);
@@ -104,6 +114,10 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
     brandFields?.website ?? venue.website,
   ].filter(Boolean).join("  ·  ");
   const logoUrl = brandFields?.logoUrl ?? venue.logoUrl;
+  const bodyContent = renderExecutedContractContent(contract.content, signers, {
+    status: contract.status,
+  });
+  const completedSigners = signers.filter((s) => s.signedAt);
 
   return (
     React.createElement(Document, { title: contract.title, author: venueDisplayName },
@@ -141,28 +155,40 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
         ),
 
         React.createElement(View, { style: styles.contentBlock },
-          React.createElement(Text, { style: styles.contentText }, contract.content),
+          React.createElement(Text, { style: styles.contentText }, bodyContent),
         ),
 
-        // Work Package D8 — a real bug caught by rendering with a
-        // realistic, longer contract body: the "SIGNATURE" heading landed
-        // alone at the bottom of one page while the signer name/date/
-        // disclaimer it belongs to flowed to the next — an orphaned
-        // heading, the same class of bug already fixed for Brochures
-        // (lib/brochures/pdf.ts). `wrap: false` keeps the whole block
-        // (heading + content) together, moved to the next page as one
-        // unit if it doesn't fit — safe here since the block is short.
-        contract.signedAt ? React.createElement(View, { style: styles.signatureBlock, wrap: false },
-          React.createElement(Text, { style: [styles.signatureTitle, { color: brand.secondary }] }, "Signature"),
-          React.createElement(View, { style: styles.signatureRow },
-            React.createElement(View, null,
-              React.createElement(Text, { style: styles.signatureName }, contract.signerName || "—"),
-              React.createElement(Text, { style: styles.signatureMeta }, `Signed ${fmtDate(contract.signedAt)}`),
-            ),
-          ),
-          React.createElement(Text, { style: styles.disclaimer },
-            "This signature was captured as a typed name with explicit consent, not a cryptographic or identity-verified electronic signature."),
-        ) : null,
+        // Completed signer evidence — always from contract_signers when Fully Executed.
+        // Body blanks are also filled via renderExecutedContractContent (render-time only).
+        contract.status === "signed" && completedSigners.length > 0
+          ? React.createElement(View, { style: styles.signatureBlock, wrap: false },
+              React.createElement(Text, { style: [styles.signatureTitle, { color: brand.secondary }] }, "Signatures"),
+              ...completedSigners.map((s) =>
+                React.createElement(View, { key: `${s.signerType}-${s.signerName}-${s.signedAt}`, style: styles.signatureRow },
+                  React.createElement(View, null,
+                    React.createElement(Text, { style: styles.signatureName },
+                      s.signerName || (s.signerType === "venue" ? "Venue" : "Client")),
+                    React.createElement(Text, { style: styles.signatureMeta },
+                      `${s.signerType === "venue" ? "Venue" : "Client"} · Electronically signed ${fmtDate(s.signedAt)}`),
+                  ),
+                ),
+              ),
+              React.createElement(Text, { style: styles.disclaimer },
+                "These signatures were captured as typed names with explicit consent, not cryptographic or identity-verified electronic signatures."),
+            )
+          : contract.signedAt
+            ? React.createElement(View, { style: styles.signatureBlock, wrap: false },
+                React.createElement(Text, { style: [styles.signatureTitle, { color: brand.secondary }] }, "Signature"),
+                React.createElement(View, { style: styles.signatureRow },
+                  React.createElement(View, null,
+                    React.createElement(Text, { style: styles.signatureName }, contract.signerName || "—"),
+                    React.createElement(Text, { style: styles.signatureMeta }, `Signed ${fmtDate(contract.signedAt)}`),
+                  ),
+                ),
+                React.createElement(Text, { style: styles.disclaimer },
+                  "This signature was captured as a typed name with explicit consent, not a cryptographic or identity-verified electronic signature."),
+              )
+            : null,
 
         React.createElement(View, { style: styles.footer, fixed: true },
           React.createElement(Text, null, contactLine || venueDisplayName),
@@ -174,6 +200,12 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
 }
 
 /** Renders the exact given Contract content into a PDF buffer. Never called for anything but the currently-locked, signed content at finalize time. */
-export async function generateContractPdf(contract: Contract, venue: Venue): Promise<Buffer> {
-  return renderToBuffer(React.createElement(ContractPdfDocument, { contract, venue }) as never);
+export async function generateContractPdf(
+  contract: Contract,
+  venue: Venue,
+  signers: SignatureEvidence[] = [],
+): Promise<Buffer> {
+  return renderToBuffer(
+    React.createElement(ContractPdfDocument, { contract, venue, signers }) as never,
+  );
 }

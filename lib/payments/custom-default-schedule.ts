@@ -45,8 +45,9 @@ export function roundMoney(n: number): number {
 function isTiming(v: unknown): v is PaymentTiming {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   const t = v as Record<string, unknown>;
-  if (t.type === "at_booking") return true;
+  if (t.type === "due_today" || t.type === "on_event" || t.type === "at_booking") return true;
   if (t.type === "before_event" && typeof t.days === "number" && t.days >= 0) return true;
+  if (t.type === "after_execution" && typeof t.days === "number" && t.days >= 0) return true;
   if (t.type === "after_booking" && typeof t.days === "number" && t.days >= 0) return true;
   return false;
 }
@@ -63,7 +64,7 @@ export function defaultCustomScheduleTemplate(
       label: "Initial payment",
       pctOfTotal: 25,
       amount: 0,
-      timing: { type: "at_booking" },
+      timing: { type: "due_today" },
       obligationKind: "deposit",
     },
     {
@@ -194,6 +195,8 @@ export function applyCustomScheduleToTotal(input: {
   eventDate?: string | null;
   remainingDueDate?: string | null;
   bookingDate?: string | null;
+  /** YYYY-MM-DD — Fully Executed contract date for after_execution timing. */
+  executedAt?: string | null;
 }): { ok: true; lines: AppliedCustomLine[] } | { ok: false; message: string } {
   const validation = validateCustomScheduleTemplate(input.template);
   if (!validation.ok) {
@@ -225,8 +228,10 @@ export function applyCustomScheduleToTotal(input: {
     }
   }
 
+  const today = input.today.trim().slice(0, 10);
   const bookingDate = (input.bookingDate ?? input.today).trim().slice(0, 10);
   const eventDate = input.eventDate?.trim().slice(0, 10) || null;
+  const executedAt = input.executedAt?.trim().slice(0, 10) || null;
   const fallbackRemaining = input.remainingDueDate?.trim().slice(0, 10) || eventDate;
 
   const lines: AppliedCustomLine[] = [];
@@ -236,12 +241,34 @@ export function applyCustomScheduleToTotal(input: {
     if (!(amount > 0)) continue;
 
     let dueDate: string | null = null;
-    if (item.timing.type === "at_booking") {
+    if (item.timing.type === "due_today") {
+      dueDate = today;
+    } else if (item.timing.type === "at_booking") {
       dueDate = bookingDate;
     } else if (item.timing.type === "after_booking") {
       const d = new Date(`${bookingDate}T12:00:00`);
       d.setDate(d.getDate() + item.timing.days);
       dueDate = d.toISOString().slice(0, 10);
+    } else if (item.timing.type === "after_execution") {
+      if (!executedAt) {
+        return {
+          ok: false,
+          message:
+            "A fully executed contract date is needed for installments due after the agreement is signed.",
+        };
+      }
+      const d = new Date(`${executedAt}T12:00:00`);
+      d.setDate(d.getDate() + item.timing.days);
+      dueDate = d.toISOString().slice(0, 10);
+    } else if (item.timing.type === "on_event") {
+      if (!eventDate && !fallbackRemaining) {
+        return {
+          ok: false,
+          message:
+            "Set an event date (or a remaining due date) before applying this payment schedule.",
+        };
+      }
+      dueDate = (eventDate ?? fallbackRemaining)!;
     } else if (item.timing.type === "before_event") {
       if (!eventDate && !fallbackRemaining) {
         return {

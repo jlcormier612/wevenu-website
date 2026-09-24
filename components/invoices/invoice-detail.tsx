@@ -58,6 +58,9 @@ export function InvoiceDetail({
   paidToDate = null,
   cancelledPlanAmount = 0,
   venue,
+  linkedScheduleId = null,
+  scheduleLines = null,
+  scheduleNotes = null,
 }: {
   invoice: InvoiceWithLineItems;
   packages: Package[];
@@ -75,6 +78,15 @@ export function InvoiceDetail({
   /** Sum of cancelled schedule commitments still shown on the plan history. */
   cancelledPlanAmount?: number;
   venue: Venue;
+  linkedScheduleId?: string | null;
+  scheduleLines?: {
+    label: string;
+    amount: number;
+    dueDate: string | null;
+    status: string;
+    obligationKind?: import("@/lib/payments/types").PaymentObligationKind | null;
+  }[] | null;
+  scheduleNotes?: string | null;
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
@@ -209,6 +221,16 @@ export function InvoiceDetail({
               title="Full-page preview of the invoice the client would receive. Preview does not send it."
               onClick={() => setPreviewOpen(true)}>
               <Mail className="mr-1 h-3.5 w-3.5" /> Preview
+            </Button>
+          )}
+          {linkedScheduleId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              render={<Link href={`/payments/${linkedScheduleId}`} />}
+            >
+              View payment plan
             </Button>
           )}
           {status !== "void" && status !== "paid" && (
@@ -363,6 +385,74 @@ export function InvoiceDetail({
       {status !== "void" && invoice.total > 0 && (
         <Card>
           <CardContent className="pt-6">
+            {linkedScheduleId && scheduleLines && scheduleLines.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-heading">Payment plan</p>
+                    <p className="text-xs text-muted-foreground">
+                      Complete schedule for this booking. Preview does not send. Requesting the initial payment is a separate action.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPreviewOpen(true)}
+                    >
+                      Preview payment plan
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      render={<Link href={`/payments/${linkedScheduleId}`} />}
+                    >
+                      View payment plan
+                    </Button>
+                    {invoice.clientId && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={emailPending}
+                        onClick={sendInvoiceEmail}
+                      >
+                        {emailPending
+                          ? "Sending…"
+                          : emailConfigured
+                            ? "Request initial payment"
+                            : "Open request in email"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <ul className="space-y-2 text-sm">
+                  {scheduleLines.map((line, i) => (
+                    <li
+                      key={`${line.label}-${i}`}
+                      className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/40 pb-2 last:border-0 last:pb-0"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{line.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {line.dueDate
+                            ? new Date(line.dueDate + "T12:00:00").toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "No due date"}
+                          {" · "}
+                          <span className="capitalize">{line.status.replace(/_/g, " ")}</span>
+                        </p>
+                      </div>
+                      <p className="font-semibold text-heading">{formatCurrency(line.amount)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium text-heading">
@@ -383,6 +473,7 @@ export function InvoiceDetail({
                 {continueToSchedule ? "Continue to payment schedule →" : "Create payment schedule →"}
               </Button>
             </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -437,6 +528,8 @@ export function InvoiceDetail({
             amountDueNow={amountDueNow}
             paidToDateOverride={paidToDate}
             cancelledPlanAmount={cancelledPlanAmount}
+            scheduleLines={scheduleLines}
+            paymentInstructions={scheduleNotes ?? invoice.notes}
           />
         </div>
       </ArtifactReviewOverlay>

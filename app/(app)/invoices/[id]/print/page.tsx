@@ -65,6 +65,8 @@ export default async function InvoicePrintPage({ params }: Props) {
         amountDueNow={amountDueNow}
         paidToDateOverride={paidToDateOverride}
         cancelledPlanAmount={cancelledPlanAmount}
+        scheduleLines={scheduleLines}
+        paymentInstructions={linked?.notes ?? invoice.notes}
       />
     </>
   );
