@@ -16,7 +16,6 @@ import { getSpaces } from "@/lib/availability/service";
 import { getEventIdForClient } from "@/lib/events/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service";
-import { computeTotalPaid } from "@/lib/payments/constants";
 import { formatContractDate } from "@/lib/contracts/constants";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type {
@@ -83,57 +82,8 @@ async function resolveClientSignerSeeds(
   const client = await getClient(clientId);
   if (!client) return { ok: false, message: "Client not found." };
   const contacts = await getClientContacts(clientId);
-
-  if (selectedContactIds && selectedContactIds.length > 0) {
-    const seeds: ClientSignerSeed[] = [];
-    for (const contactId of selectedContactIds) {
-      const contact = contacts.find((c) => c.id === contactId);
-      if (!contact) return { ok: false, message: "One of the selected signers was not found." };
-      if (!contact.email?.trim()) {
-        return {
-          ok: false,
-          message: `${contact.firstName} has no email on file — add an email before making them a required signer.`,
-        };
-      }
-      seeds.push({
-        clientContactId: contact.id,
-        signerRefId: contact.id,
-        signerName: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
-        signerEmail: contact.email.trim(),
-        signerRole: contact.roleLabel || contact.relationship || null,
-      });
-    }
-    return { ok: true, seeds };
-  }
-
-  // Default: one required signer from primary contact, else the client record
-  const primary = contacts.find((c) => c.isPrimary && c.email?.trim())
-    ?? contacts.find((c) => c.email?.trim());
-  if (primary?.email?.trim()) {
-    return {
-      ok: true,
-      seeds: [{
-        clientContactId: primary.id,
-        signerRefId: primary.id,
-        signerName: [primary.firstName, primary.lastName].filter(Boolean).join(" "),
-        signerEmail: primary.email.trim(),
-        signerRole: primary.roleLabel || primary.relationship || "primary",
-      }],
-    };
-  }
-  if (!client.email?.trim()) {
-    return { ok: false, message: "This client has no email on file — add one before creating a contract." };
-  }
-  return {
-    ok: true,
-    seeds: [{
-      clientContactId: null,
-      signerRefId: client.id,
-      signerName: [client.firstName, client.lastName].filter(Boolean).join(" "),
-      signerEmail: client.email.trim(),
-      signerRole: "primary",
-    }],
-  };
+  const { resolveSignerSeedsFromSelection } = await import("@/lib/contracts/signer-candidates");
+  return resolveSignerSeedsFromSelection(client, contacts, selectedContactIds);
 }
 
 // ---- templates --------------------------------------------------------------
@@ -514,16 +464,12 @@ export async function buildContractMergeData(opts: {
   const venueAddress = addressParts.length > 0 ? addressParts.join("\n") : null;
 
   let eventSpaces = EMPTY_EVENT_SPACES_LABEL;
-  let venueAccessHours = "Event hours will follow your booking and Timeline.";
-  let ceremonySummary = "No separate ceremony details are listed on this booking yet.";
-  let receptionSummary = "No separate reception details are listed on this booking yet.";
+  // Package / payment contractual fields — filled only from existing SoT at contract time.
   let packageSection = "No package is currently selected for this booking.";
   let includedItemsSummary = "No included items are listed on this booking yet.";
   let additionalItemsSummary = "No additional or optional items are listed on this booking yet.";
   let paymentScheduleSummary = "No payment schedule is on file for this celebration yet.";
   let contractTotal: string | null = null;
-  let balanceRemaining: string | null = null;
-  let vendorsOnFile = "No vendors are currently listed for this celebration.";
   let coordinatorName: string | null = null;
   let packageFromSelection = false;
 
@@ -548,7 +494,6 @@ export async function buildContractMergeData(opts: {
           .join("\n");
       }
       contractTotal = selection.totalAmount.toFixed(2);
-      balanceRemaining = (selection.totalAmount - selection.depositAmount).toFixed(2);
     }
   } catch { /* selection optional */ }
 
@@ -605,45 +550,23 @@ export async function buildContractMergeData(opts: {
   } catch { /* optional */ }
 
   if (event) {
-    const fmtTime = (t: string | null) => {
-      if (!t) return null;
-      const [h, m] = t.split(":");
-      const hour = Number(h);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const h12 = ((hour + 11) % 12) + 1;
-      return `${h12}:${m ?? "00"} ${ampm}`;
-    };
-    const start = fmtTime(event.startTime);
-    const end = fmtTime(event.endTime);
-    if (start || end) {
-      venueAccessHours = [start ? `Start ${start}` : null, end ? `End ${end}` : null].filter(Boolean).join(" · ");
-    }
-    if (event.setupTime || event.teardownTime) {
-      const setup = fmtTime(event.setupTime);
-      const tear = fmtTime(event.teardownTime);
-      const extra = [setup ? `Setup from ${setup}` : null, tear ? `Teardown by ${tear}` : null].filter(Boolean).join(" · ");
-      if (extra) {
-        venueAccessHours = venueAccessHours.includes("Start") || venueAccessHours.includes("End")
-          ? `${venueAccessHours}\n${extra}`
-          : extra;
-      }
-    }
-
     try {
       const order = await getEventOrder(event.id);
       if (order?.lines?.length) {
+        // Package-defined lines only — inventory/operational assignments are not contract-time SoT.
         const packageLines = order.lines.filter((l) => l.provenance === "package");
-        const included = order.lines.filter((l) => l.provenance === "package" || l.provenance === "inventory");
         const additional = order.lines.filter((l) => l.provenance === "custom");
         if (!packageFromSelection && packageLines.length > 0) {
           const names = [...new Set(packageLines.map((l) => l.description))];
           packageSection = `Selected package / services:\n${names.map((n) => `• ${n}`).join("\n")}`;
-        }
-        if (!packageFromSelection && included.length > 0) {
-          includedItemsSummary = included.map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`).join("\n");
+          includedItemsSummary = packageLines
+            .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`)
+            .join("\n");
         }
         if (additional.length > 0) {
-          additionalItemsSummary = additional.map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`).join("\n");
+          additionalItemsSummary = additional
+            .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`)
+            .join("\n");
         }
       }
     } catch { /* Event Order may be disabled */ }
@@ -663,43 +586,10 @@ export async function buildContractMergeData(opts: {
               return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
             })
             .join("\n");
-          // Frozen Selected Package owns contract_total / balance_remaining when present.
           if (!packageFromSelection) {
             contractTotal = fmt(detail.totalAmount);
-            const paid = computeTotalPaid(detail.lineItems);
-            balanceRemaining = fmt(Math.max(0, detail.totalAmount - paid));
           }
         }
-      }
-    } catch { /* optional */ }
-
-    try {
-      const supabase = await createClient();
-      const { data: assignments } = await supabase.from("event_vendor_assignments")
-        .select("role, vendors(name)")
-        .eq("event_id", event.id)
-        .eq("venue_id", event.venueId);
-      const rows = (assignments ?? []) as { role?: string | null; vendors?: { name?: string } | null }[];
-      if (rows.length > 0) {
-        vendorsOnFile = rows
-          .map((a) => `• ${a.vendors?.name ?? "Vendor"}${a.role ? ` — ${a.role}` : ""}`)
-          .join("\n");
-      }
-    } catch { /* optional */ }
-
-    try {
-      const supabase = await createClient();
-      const { data: q } = await supabase.from("event_questionnaires")
-        .select("ceremony_start_time, ceremony_location, reception_start_time, reception_location")
-        .eq("event_id", event.id).eq("kind", "final_details").maybeSingle<{
-          ceremony_start_time: string | null; ceremony_location: string | null;
-          reception_start_time: string | null; reception_location: string | null;
-        }>();
-      if (q) {
-        const cer = [q.ceremony_location, q.ceremony_start_time].filter(Boolean).join(" · ");
-        const rec = [q.reception_location, q.reception_start_time].filter(Boolean).join(" · ");
-        if (cer) ceremonySummary = cer;
-        if (rec) receptionSummary = rec;
       }
     } catch { /* optional */ }
   }
@@ -721,25 +611,38 @@ export async function buildContractMergeData(opts: {
     guestCount: event?.guestCount ?? client?.guestCount ?? null,
     eventSpaces,
     coordinatorName: coordinatorName || "Your venue team",
-    venueAccessHours,
-    ceremonySummary,
-    receptionSummary,
     packageSection,
     includedItemsSummary,
     additionalItemsSummary,
     paymentScheduleSummary,
     contractTotal: contractTotal ?? "See payment schedule",
-    balanceRemaining: balanceRemaining ?? "See payment schedule",
-    vendorsOnFile,
     contractTitle: opts.contractTitle ?? "",
   });
 }
 
-export async function updateContractContent_(id: string, title: string, content: string, expectedUpdatedAt: string): Promise<ContractActionResult> {
+export async function updateContractContent_(
+  id: string,
+  title: string,
+  content: string,
+  expectedUpdatedAt: string,
+  clientSignerContactIds?: string[],
+): Promise<ContractActionResult> {
   if (!title.trim() || !content.trim()) return { ok: false, message: "Title and content are required." };
   const result = await withVenue(async (supabase, venueId) => {
     const outcome = await repo.updateContractContent(supabase, venueId, id, title, content, expectedUpdatedAt);
     if (!outcome.ok) return { ok: false, message: outcome.message, reason: outcome.reason } as ContractActionResult;
+
+    if (clientSignerContactIds !== undefined) {
+      const contract = await repo.getContract(supabase, venueId, id);
+      if (!contract?.clientId) {
+        return { ok: false, message: "This draft has no client — cannot update signers." } as ContractActionResult;
+      }
+      const seeds = await resolveClientSignerSeeds(contract.clientId, clientSignerContactIds);
+      if (!seeds.ok) return { ok: false, message: seeds.message } as ContractActionResult;
+      const replaced = await repo.replaceDraftClientSigners(supabase, venueId, id, seeds.seeds);
+      if (!replaced.ok) return { ok: false, message: replaced.message } as ContractActionResult;
+    }
+
     return { ok: true, updatedAt: outcome.updatedAt } as ContractActionResult;
   });
   return result as ContractActionResult;

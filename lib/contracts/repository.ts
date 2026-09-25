@@ -329,6 +329,53 @@ export async function insertContractSigners(
   if (error) throw error;
 }
 
+/**
+ * Replace required client signers on a draft only. Venue signer row is preserved.
+ * New clients get fresh sign tokens (DB default).
+ */
+export async function replaceDraftClientSigners(
+  client: DbClient,
+  venueId: string,
+  contractId: string,
+  clientSigners: ClientSignerSeed[],
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: contract, error: cErr } = await client.from("contracts")
+    .select("id, status")
+    .eq("id", contractId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; status: string }>();
+  if (cErr) throw cErr;
+  if (!contract) return { ok: false, message: "Contract not found." };
+  if (contract.status !== "draft") {
+    return { ok: false, message: "Required signers can only be changed while the contract is a draft." };
+  }
+  if (clientSigners.length === 0) {
+    return { ok: false, message: "Select at least one required client signer with an email." };
+  }
+
+  const { error: delErr } = await client.from("contract_signers")
+    .delete()
+    .eq("contract_id", contractId)
+    .eq("venue_id", venueId)
+    .eq("signer_type", "client");
+  if (delErr) throw delErr;
+
+  const rows = clientSigners.map((s) => ({
+    contract_id: contractId,
+    venue_id: venueId,
+    signer_type: "client" as const,
+    signer_role: s.signerRole,
+    signer_ref_id: s.signerRefId,
+    client_contact_id: s.clientContactId,
+    signer_name: s.signerName,
+    signer_email: s.signerEmail,
+    is_required: true,
+    sign_order: 1,
+  }));
+  const { error: insErr } = await client.from("contract_signers").insert(rows);
+  if (insErr) throw insErr;
+  return { ok: true };
+}
+
 export async function venueSignContract(
   client: DbClient,
   venueId: string,

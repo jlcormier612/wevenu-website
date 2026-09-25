@@ -7,6 +7,10 @@ import { getContractDetail, getContractVersionFamily } from "@/lib/contracts/ser
 import { isContractFinalized } from "@/lib/contracts/document-integration";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { getClient } from "@/lib/clients/service";
+import { getClientContacts } from "@/lib/contacts/service";
+import type { Client } from "@/lib/clients/types";
+import type { ClientContact } from "@/lib/contacts/types";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ review?: string }> };
 
@@ -27,6 +31,17 @@ export default async function ContractDetailPage({ params, searchParams }: Props
   if (!contract) notFound();
   const supabase = await createClient();
   const finalized = await isContractFinalized(supabase, id);
+
+  let draftClients: Client[] = [];
+  let contactsByClientId: Record<string, ClientContact[]> = {};
+  if (contract.status === "draft" && contract.clientId) {
+    const client = await getClient(contract.clientId);
+    if (client) {
+      draftClients = [client];
+      contactsByClientId[client.id] = await getClientContacts(client.id);
+    }
+  }
+
   return (
     <ContractDetail
       contract={contract}
@@ -35,6 +50,8 @@ export default async function ContractDetailPage({ params, searchParams }: Props
       venueBrand={venue ? captureContractBrandingSnapshot(venue) : null}
       versionFamily={versionFamily}
       initialReview={review === "1"}
+      draftClients={draftClients}
+      contactsByClientId={contactsByClientId}
     />
   );
 }

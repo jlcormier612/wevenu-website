@@ -161,8 +161,14 @@ export async function resendContractAction(id: string, customMessage?: string): 
   return result;
 }
 
-export async function updateContractContentAction(id: string, title: string, content: string, expectedUpdatedAt: string): Promise<ContractActionResult> {
-  const result = await updateContractContent_(id, title, content, expectedUpdatedAt);
+export async function updateContractContentAction(
+  id: string,
+  title: string,
+  content: string,
+  expectedUpdatedAt: string,
+  clientSignerContactIds?: string[],
+): Promise<ContractActionResult> {
+  const result = await updateContractContent_(id, title, content, expectedUpdatedAt, clientSignerContactIds);
   if (result.ok) revalidatePath(`/contracts/${id}`);
   return result;
 }

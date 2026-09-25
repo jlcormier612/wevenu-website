@@ -25,16 +25,11 @@ export type MergeContext = {
   guestCount: number | null;
   eventSpaces?: string | null;
   coordinatorName?: string | null;
-  venueAccessHours?: string | null;
-  ceremonySummary?: string | null;
-  receptionSummary?: string | null;
   packageSection?: string | null;
   includedItemsSummary?: string | null;
   additionalItemsSummary?: string | null;
   paymentScheduleSummary?: string | null;
   contractTotal?: string | null;
-  balanceRemaining?: string | null;
-  vendorsOnFile?: string | null;
   contractTitle: string;
 };
 
@@ -84,16 +79,11 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.guest_count = ctx.guestCount != null ? String(ctx.guestCount) : "To be confirmed";
   setIfPresent(data, "event_spaces", ctx.eventSpaces);
   setIfPresent(data, "coordinator_name", ctx.coordinatorName);
-  setIfPresent(data, "venue_access_hours", ctx.venueAccessHours);
-  setIfPresent(data, "ceremony_summary", ctx.ceremonySummary);
-  setIfPresent(data, "reception_summary", ctx.receptionSummary);
   setIfPresent(data, "package_section", ctx.packageSection);
   setIfPresent(data, "included_items_summary", ctx.includedItemsSummary);
   setIfPresent(data, "additional_items_summary", ctx.additionalItemsSummary);
   setIfPresent(data, "payment_schedule_summary", ctx.paymentScheduleSummary);
   setIfPresent(data, "contract_total", ctx.contractTotal);
-  setIfPresent(data, "balance_remaining", ctx.balanceRemaining);
-  setIfPresent(data, "vendors_on_file", ctx.vendorsOnFile);
 
   return data;
 }

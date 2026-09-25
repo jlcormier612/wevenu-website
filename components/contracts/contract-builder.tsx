@@ -25,12 +25,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { Client } from "@/lib/clients/types";
-import { MERGE_FIELDS } from "@/lib/contracts/constants";
+import { DEFERRED_MERGE_FIELD_KEYS, MERGE_FIELDS } from "@/lib/contracts/constants";
 import type { ContractErrors, ContractTemplate } from "@/lib/contracts/types";
 import type { ClientContact } from "@/lib/contacts/types";
 import type { ContractSigner } from "@/lib/contracts/signers";
 import type { ContractBrandingSnapshot } from "@/lib/contracts/branding";
 import { resolveContractBrandPresentation } from "@/lib/contracts/branding";
+import {
+  buildSignerCandidates,
+  defaultSelectedSignerIds,
+  selectedIdsFromExistingSigners,
+} from "@/lib/contracts/signer-candidates";
 
 export type ContractBuilderDraft = {
   contractId: string;
@@ -79,7 +84,7 @@ export function ContractBuilder({
   const activeTemplates = templates.filter((t) => !t.isArchived);
   const defaultTemplate = requestedTemplate ?? activeTemplates.find((t) => t.isDefault) ?? activeTemplates[0];
 
-  const [templateId, setTemplateId] = React.useState(draft ? ("" ) : (defaultTemplate?.id ?? ""));
+  const [templateId, setTemplateId] = React.useState(draft ? ("") : (defaultTemplate?.id ?? ""));
   const [clientId, setClientId] = React.useState(draft?.clientId ?? initialClientId ?? "");
   const [eventId] = React.useState(draft?.eventId ?? initialEventId ?? "");
   const [title, setTitle] = React.useState(draft?.title ?? "");
@@ -87,6 +92,7 @@ export function ContractBuilder({
   const [expectedUpdatedAt, setExpectedUpdatedAt] = React.useState(draft?.expectedUpdatedAt ?? "");
   const [errors, setErrors] = React.useState<ContractErrors>({});
   const [selectedSignerIds, setSelectedSignerIds] = React.useState<string[]>([]);
+  const [signersInitialized, setSignersInitialized] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const [previewPending, startPreview] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -104,9 +110,30 @@ export function ContractBuilder({
     }
   }, [mode, initialClientId, clients, title]);
 
+  const associatedClient = clients.find((c) => c.id === clientId) ?? null;
   const clientContacts = clientId ? (contactsByClientId[clientId] ?? []) : [];
-  const selectableContacts = clientContacts.filter((c) => c.email?.trim());
-  const associatedClient = clients.find((c) => c.id === clientId);
+  const signerCandidates = React.useMemo(
+    () => (associatedClient ? buildSignerCandidates(associatedClient, clientContacts) : []),
+    [associatedClient, clientContacts],
+  );
+
+  React.useEffect(() => {
+    if (!clientId || !associatedClient) {
+      setSelectedSignerIds([]);
+      setSignersInitialized(false);
+      return;
+    }
+    if (mode === "draft" && signers.length > 0 && !signersInitialized) {
+      setSelectedSignerIds(selectedIdsFromExistingSigners(signerCandidates, signers));
+      setSignersInitialized(true);
+      return;
+    }
+    if (mode === "create" && !signersInitialized) {
+      setSelectedSignerIds(defaultSelectedSignerIds(signerCandidates));
+      setSignersInitialized(true);
+    }
+  }, [clientId, associatedClient, mode, signers, signerCandidates, signersInitialized]);
+
   const associatedClientLabel = associatedClient
     ? clientDisplayName(associatedClient.firstName, associatedClient.lastName, associatedClient.partnerFirstName, associatedClient.partnerLastName)
     : draft?.clientName ?? "this client";
@@ -119,6 +146,7 @@ export function ContractBuilder({
 
   function handleClientChange(id: string) {
     setClientId(id);
+    setSignersInitialized(false);
     setSelectedSignerIds([]);
     const c = clients.find((x) => x.id === id);
     if (c && !title) {
@@ -127,13 +155,18 @@ export function ContractBuilder({
     }
   }
 
-  function toggleSigner(contactId: string) {
-    setSelectedSignerIds((prev) =>
-      prev.includes(contactId) ? prev.filter((x) => x !== contactId) : [...prev, contactId],
-    );
+  function toggleSigner(candidateId: string) {
+    setSelectedSignerIds((prev) => {
+      if (prev.includes(candidateId)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((x) => x !== candidateId);
+      }
+      return [...prev, candidateId];
+    });
   }
 
   function insertSmartField(key: string) {
+    if ((DEFERRED_MERGE_FIELD_KEYS as readonly string[]).includes(key)) return;
     const token = `{{${key}}}`;
     const el = contentRef.current;
     if (!el) {
@@ -156,12 +189,16 @@ export function ContractBuilder({
       toast.error("Select a client to preview with their details.");
       return null;
     }
+    if (selectedSignerIds.length === 0) {
+      toast.error("Select at least one required client signer with an email.");
+      return null;
+    }
     const result = await previewContractContentAction({
       templateContent: content,
       clientId,
       eventId,
       contractTitle: title,
-      clientSignerContactIds: selectedSignerIds.length > 0 ? selectedSignerIds : undefined,
+      clientSignerContactIds: selectedSignerIds,
       selectionId: draft?.selectionId ?? selectionId,
     });
     if (!result.ok) {
@@ -192,6 +229,10 @@ export function ContractBuilder({
       const clientLabel = client
         ? clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)
         : "this client";
+      if (selectedSignerIds.length === 0) {
+        toast.error("Select at least one required client signer with an email.");
+        return;
+      }
       const confirmed = confirm(
         `Save a draft contract for ${clientLabel}?\n\nTemplate: ${template?.name ?? "—"}\n\n`
         + "Smart Fields stay in the draft until you send. This does not email the client or request a signature.",
@@ -204,7 +245,7 @@ export function ContractBuilder({
           eventId,
           title,
           content,
-          clientSignerContactIds: selectedSignerIds.length > 0 ? selectedSignerIds : undefined,
+          clientSignerContactIds: selectedSignerIds,
           selectionId,
         });
         if (result.ok) {
@@ -219,8 +260,18 @@ export function ContractBuilder({
     }
 
     if (!draft) return;
+    if (selectedSignerIds.length === 0) {
+      toast.error("Select at least one required client signer with an email.");
+      return;
+    }
     startTransition(async () => {
-      const result = await updateContractContentAction(draft.contractId, title, content, expectedUpdatedAt);
+      const result = await updateContractContentAction(
+        draft.contractId,
+        title,
+        content,
+        expectedUpdatedAt,
+        selectedSignerIds,
+      );
       if (result.ok) {
         if (result.updatedAt) setExpectedUpdatedAt(result.updatedAt);
         toast.success("Draft saved.");
@@ -239,8 +290,18 @@ export function ContractBuilder({
 
   function handleReviewAndSend() {
     if (!draft) return;
+    if (selectedSignerIds.length === 0) {
+      toast.error("Select at least one required client signer with an email.");
+      return;
+    }
     startPreview(async () => {
-      const save = await updateContractContentAction(draft.contractId, title, content, expectedUpdatedAt);
+      const save = await updateContractContentAction(
+        draft.contractId,
+        title,
+        content,
+        expectedUpdatedAt,
+        selectedSignerIds,
+      );
       if (!save.ok) {
         if (save.reason === "stale") {
           toast.error(save.message, { duration: 8000 });
@@ -274,6 +335,7 @@ export function ContractBuilder({
   }
 
   const brand = resolveContractBrandPresentation(null, venueBrand);
+  const showSignerConfig = Boolean(clientId && associatedClient);
 
   return (
     <div className="space-y-6">
@@ -347,52 +409,51 @@ export function ContractBuilder({
         </div>
       )}
 
-      {mode === "create" && selectableContacts.length > 1 && (
-        <div className="space-y-2 rounded-md border p-4">
+      {showSignerConfig && (
+        <div className="space-y-2 rounded-md border p-4" data-testid="required-client-signers">
           <Label>Required client signers</Label>
           <p className="text-xs text-muted-foreground">
-            Choose who must sign this agreement. Leave unchecked to use the default primary contact only — the system never assumes a couple needs two signers.
+            Choose who must sign. Each selected person needs their own email and receives their own signing link.
+            A multi-person relationship is never treated as one signer. Default is the primary contact only — we never assume a couple needs two signers.
           </p>
-          <div className="space-y-2">
-            {selectableContacts.map((c) => {
-              const label = [c.firstName, c.lastName].filter(Boolean).join(" ");
-              const checked = selectedSignerIds.includes(c.id);
-              return (
-                <label key={c.id} className="flex items-start gap-2 text-sm">
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={() => toggleSigner(c.id)}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    {label}
-                    <span className="text-muted-foreground"> · {c.email}</span>
-                    {c.roleLabel || c.relationship ? (
-                      <span className="text-muted-foreground"> · {c.roleLabel || c.relationship}</span>
-                    ) : null}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {mode === "draft" && signers.length > 0 && (
-        <div className="space-y-2 rounded-md border p-4">
-          <Label>Signers</Label>
-          <p className="text-xs text-muted-foreground">
-            Client signs first. Venue signs second. A client-signed contract is not Fully Executed.
-          </p>
-          <ul className="space-y-1 text-sm">
-            {signers.map((s) => (
-              <li key={s.id} className="text-foreground">
-                {s.signerType === "venue" ? "Venue" : "Client"}
-                {s.signerName ? ` — ${s.signerName}` : ""}
-                {s.signerEmail ? ` · ${s.signerEmail}` : ""}
-              </li>
-            ))}
-          </ul>
+          {signerCandidates.length === 0 ? (
+            <p className="text-sm text-destructive">
+              No people with emails are on this client relationship yet. Add an email on the client record (and partner email if both should sign).
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {signerCandidates.map((c) => {
+                const checked = selectedSignerIds.includes(c.id);
+                return (
+                  <label
+                    key={c.id}
+                    className={`flex items-start gap-2 text-sm ${c.selectable ? "" : "opacity-60"}`}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      disabled={!c.selectable}
+                      onCheckedChange={() => {
+                        if (!c.selectable) return;
+                        toggleSigner(c.id);
+                      }}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      {c.name}
+                      {c.email ? (
+                        <span className="text-muted-foreground"> · {c.email}</span>
+                      ) : (
+                        <span className="text-destructive"> · add an email to require their signature</span>
+                      )}
+                      {c.roleLabel ? (
+                        <span className="text-muted-foreground"> · {c.roleLabel}</span>
+                      ) : null}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -426,7 +487,7 @@ export function ContractBuilder({
         <div className="space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100svh-6rem)] lg:overflow-y-auto">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Smart Fields</p>
           <p className="text-xs text-muted-foreground">
-            Click to insert a field at the cursor. They resolve on Preview and Send — not while you edit.
+            Click to insert a field at the cursor. Only values with a source at contract time are listed. They resolve on Preview and Send — not while you edit.
           </p>
           <div className="space-y-2">
             {MERGE_FIELDS.map((f) => (

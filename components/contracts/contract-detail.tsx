@@ -63,6 +63,8 @@ import {
   type ContractVersionEntry,
 } from "@/lib/contracts/version-lineage";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
+import type { Client } from "@/lib/clients/types";
+import type { ClientContact } from "@/lib/contacts/types";
 
 const CONTRACT_WAITING_ON: Record<ContractStatus, WaitingOn> = {
   draft: "venue", sent: "client", signed: "completed", cancelled: "none", expired: "none",
@@ -75,6 +77,8 @@ export function ContractDetail({
   venueBrand = null,
   versionFamily = [],
   initialReview = false,
+  draftClients = [],
+  contactsByClientId = {},
 }: {
   contract: ContractWithDetails;
   finalized: boolean;
@@ -82,6 +86,8 @@ export function ContractDetail({
   venueBrand?: ContractBrandingSnapshot | null;
   versionFamily?: ContractVersionEntry[];
   initialReview?: boolean;
+  draftClients?: Client[];
+  contactsByClientId?: Record<string, ClientContact[]>;
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
@@ -610,7 +616,8 @@ export function ContractDetail({
         <ContractBuilder
           mode="draft"
           templates={[]}
-          clients={[]}
+          clients={draftClients}
+          contactsByClientId={contactsByClientId}
           draft={{
             contractId: contract.id,
             title: contract.title,

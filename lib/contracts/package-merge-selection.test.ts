@@ -33,8 +33,9 @@ describe("resolveActiveCommercialSelection wiring", () => {
 
   it("payment schedule does not overwrite frozen selection totals", () => {
     const src = readFileSync(join(root, "lib/contracts/service.ts"), "utf8");
-    assert.match(src, /Frozen Selected Package owns contract_total/);
     assert.match(src, /if \(!packageFromSelection\)/);
+    assert.match(src, /contractTotal = fmt\(detail\.totalAmount\)/);
+    assert.doesNotMatch(src, /balanceRemaining/);
   });
 
   it("ensureCommercialCustomer resolves superseded selection ids", () => {

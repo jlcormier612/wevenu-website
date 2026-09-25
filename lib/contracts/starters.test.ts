@@ -56,16 +56,11 @@ describe("Wedding Venue Agreement starter", () => {
       guestCount: 120,
       eventSpaces: "Ballroom",
       coordinatorName: "Jordan",
-      venueAccessHours: "Start 2:00 PM · End 11:00 PM",
-      ceremonySummary: "Garden · 3:00 PM",
-      receptionSummary: "Ballroom · 5:00 PM",
       packageSection: "Classic Wedding Package",
       includedItemsSummary: "• Tables",
       additionalItemsSummary: "• Extra hour",
       paymentScheduleSummary: "• Deposit $1,000",
       contractTotal: "$10,000",
-      balanceRemaining: "$9,000",
-      vendorsOnFile: "• Florist",
       contractTitle: "Wedding Venue Agreement",
     });
     const merged = mergeContent(filledPolicies, data);
@@ -73,6 +68,11 @@ describe("Wedding Venue Agreement starter", () => {
     assert.equal(result.ok, true);
     assert.match(merged, /Garden Hall/);
     assert.equal(merged.includes("{{"), false);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{venue_access_hours\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{balance_remaining\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{vendors_on_file\}\}/);
   });
 
   it("exposes first/last/full name merge tokens from client columns", () => {

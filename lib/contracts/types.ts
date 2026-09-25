@@ -111,9 +111,9 @@ export type NewContractInput = {
   /** Work Package D4 — set only by createAmendmentFromContract. */
   amendsContractId?: string;
   /**
-   * Client contact ids selected as required signers. Empty/undefined → default
-   * one required signer from the client's primary contact (or client record).
-   * Never auto-assumes couple = two signers.
+   * Required signer candidate ids: client_contact uuid, or
+   * relationship:primary / relationship:partner. Empty/undefined → default
+   * one required signer (primary with email). Never auto-assumes couple = 2.
    */
   clientSignerContactIds?: string[];
   /** Booking Journey — link contract to frozen Selected Package (CommercialSelection). */

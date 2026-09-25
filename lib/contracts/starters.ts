@@ -59,17 +59,17 @@ EVENT SCHEDULE
 Event Date
 {{event_date}}
 
-Venue Access / Event Hours
-{{venue_access_hours}}
-
-Ceremony
-{{ceremony_summary}}
-
-Reception
-{{reception_summary}}
-
 Event Spaces
 {{event_spaces}}
+
+Venue Access / Event Hours
+Add your venue's approved access hours and event-day timing language here.
+
+Ceremony
+Add your venue's approved ceremony timing and location language here, or leave blank until those details are confirmed.
+
+Reception
+Add your venue's approved reception timing and location language here, or leave blank until those details are confirmed.
 
 ────────────────────────────────
 VENUE & EVENT SPACES
@@ -99,9 +99,6 @@ PAYMENT SCHEDULE
 
 Total contracted amount
 {{contract_total}}
-
-Balance
-{{balance_remaining}}
 
 ────────────────────────────────
 VENUE POLICIES
@@ -136,8 +133,6 @@ Add your venue's approved description of venue responsibilities and included ser
 VENDORS & OUTSIDE SERVICES
 ────────────────────────────────
 Add your venue's approved vendor and outside-service policy here.
-
-{{vendors_on_file}}
 
 ────────────────────────────────
 FOOD & BEVERAGE
