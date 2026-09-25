@@ -36,7 +36,6 @@ export type CommitmentReconcileDecision = {
 
 const ACTIVE_STATUSES: PaymentItemStatus[] = [
   "processing",
-  "overdue",
   "paid",
   "partially_refunded",
   "refunded",

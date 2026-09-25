@@ -7,6 +7,7 @@ import {
   commitmentMismatchCopy,
   planTotalsReconcile,
   recalculateLineAmounts,
+  scheduleHasPaymentActivity,
   scheduledPlanTotal,
 } from "@/lib/payments/reconcile-commitment";
 
@@ -66,6 +67,22 @@ describe("classifyCommitmentReconcile", () => {
     });
     assert.equal(d.kind, "needs_review");
     assert.equal(d.reason, "customized");
+  });
+
+  it("does not treat an unused overdue installment as payment activity", () => {
+    assert.equal(
+      scheduleHasPaymentActivity([
+        { status: "pending", paidAmount: 0 },
+        { status: "overdue", paidAmount: 0 },
+      ]),
+      false,
+    );
+    assert.equal(
+      scheduleHasPaymentActivity([
+        { status: "overdue", paidAmount: 0, stripeCheckoutSessionId: "cs_test" },
+      ]),
+      true,
+    );
   });
 
   it("locks when payments have already been requested or paid", () => {
