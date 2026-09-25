@@ -8,7 +8,7 @@
  */
 import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
 import { allocatePresetAmounts } from "@/lib/payments/starters";
-import type { PaymentItemStatus, PaymentLineItem } from "@/lib/payments/types";
+import type { PaymentItemStatus } from "@/lib/payments/types";
 
 const MONEY_EPS = 0.02;
 
@@ -43,12 +43,17 @@ const ACTIVE_STATUSES: PaymentItemStatus[] = [
 ];
 
 export function scheduleHasPaymentActivity(
-  lines: Pick<PaymentLineItem, "status" | "paidAmount" | "stripeCheckoutSessionId" | "stripePaymentIntentId">[],
+  lines: {
+    status: string;
+    paidAmount?: number | null;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+  }[],
   invoiceStatus?: string | null,
 ): boolean {
   if (invoiceStatus && invoiceStatus !== "draft") return true;
   return lines.some((l) => {
-    if (ACTIVE_STATUSES.includes(l.status)) return true;
+    if (ACTIVE_STATUSES.includes(l.status as PaymentItemStatus)) return true;
     if ((l.paidAmount ?? 0) > 0) return true;
     if (l.stripeCheckoutSessionId || l.stripePaymentIntentId) return true;
     return false;
