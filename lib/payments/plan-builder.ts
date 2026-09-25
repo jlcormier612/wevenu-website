@@ -97,7 +97,7 @@ export function defaultEqualLines(
 }
 
 export function linesFromPreset(
-  presetId: PlanBuilderQuickPresetId,
+  presetId: PlanBuilderQuickPresetId | string,
   invoiceTotal: number,
 ): PlanBuilderLineDraft[] {
   const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
@@ -244,6 +244,68 @@ export function toCommitLines(
     dueDate: resolveBuilderLineDueDate(line, ctx) ?? "",
     obligationKind: line.obligationKind,
   }));
+}
+
+function calendarDaysBetween(from: string, to: string): number {
+  const a = new Date(`${from.slice(0, 10)}T12:00:00`);
+  const b = new Date(`${to.slice(0, 10)}T12:00:00`);
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
+/** Rehydrate stored installments into builder drafts without inventing a booking-date picker. */
+export function draftsFromStoredLines(
+  lines: {
+    label: string;
+    amount: number;
+    dueDate: string | null;
+    obligationKind?: PaymentObligationKind | null;
+  }[],
+  ctx: PaymentTimingContext,
+): PlanBuilderLineDraft[] {
+  const today = ctx.today?.trim().slice(0, 10) || null;
+  const eventDate = ctx.eventDate?.trim().slice(0, 10) || null;
+  const executedAt = ctx.executedAt?.trim().slice(0, 10) || null;
+  return lines.map((line, i) => {
+    const due = line.dueDate?.trim().slice(0, 10) || "";
+    let timing: PaymentTiming = { type: "due_today" };
+    let dueDate = "";
+    if (!due) {
+      timing = { type: "due_today" };
+    } else if (today && due === today) {
+      timing = { type: "due_today" };
+    } else if (eventDate && due === eventDate) {
+      timing = { type: "on_event" };
+    } else if (eventDate) {
+      const daysBefore = calendarDaysBetween(due, eventDate);
+      if (daysBefore > 0) {
+        timing = { type: "before_event", days: daysBefore };
+      } else {
+        dueDate = due;
+      }
+    } else if (executedAt) {
+      const daysAfter = calendarDaysBetween(executedAt, due);
+      if (daysAfter >= 0) {
+        timing = { type: "after_execution", days: daysAfter };
+      } else {
+        dueDate = due;
+      }
+    } else {
+      dueDate = due;
+    }
+    const isFirst = i === 0;
+    const isLast = i === lines.length - 1;
+    const obligationKind: PaymentObligationKind = line.obligationKind
+      ?? (isFirst ? "deposit" : isLast ? "final" : "installment");
+    return {
+      id: createLineId(),
+      label: line.label,
+      amount: line.amount,
+      pctOfTotal: 0,
+      timing,
+      dueDate,
+      obligationKind,
+    };
+  });
 }
 
 export const PLAN_BUILDER_STRUCTURES: {

@@ -20,6 +20,12 @@ export async function setupPaymentsAction(input: {
   requestDeposit?: boolean;
   scheduleStructure?: string | null;
   customSchedule?: CustomScheduleTemplate | null;
+  builderLines?: {
+    label: string;
+    amount: number;
+    dueDate: string;
+    obligationKind: import("@/lib/payments/types").PaymentObligationKind;
+  }[] | null;
 }): Promise<SetupPaymentsResult & { emailSent?: boolean }> {
   let clientId = input.clientId;
   let eventId = input.eventId ?? null;
@@ -45,6 +51,7 @@ export async function setupPaymentsAction(input: {
     requestDeposit: input.requestDeposit,
     scheduleStructure: input.scheduleStructure,
     customSchedule: input.customSchedule,
+    builderLines: input.builderLines,
   });
   if (!result.ok) return result;
 

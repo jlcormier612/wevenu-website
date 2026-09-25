@@ -808,3 +808,110 @@ export async function addReviewInstallment(scheduleId: string, input: LineItemIn
   });
   return result as AddLineItemResult;
 }
+
+export type ReplaceScheduleLinesInput = {
+  label: string;
+  amount: string;
+  dueDate: string;
+  obligationKind: PaymentObligationKind;
+};
+
+/**
+ * Replace pending lines on a schedule with builder output.
+ * Refuses if any payment has been requested or collected.
+ */
+export async function replacePendingScheduleLines(
+  scheduleId: string,
+  lines: ReplaceScheduleLinesInput[],
+): Promise<PaymentActionResult> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) return ctx;
+  const { schedule, invoiceTotal } = ctx;
+  const { scheduleHasPaymentActivity, planTotalsReconcile, roundMoney } =
+    await import("@/lib/payments/reconcile-commitment");
+  if (scheduleHasPaymentActivity(schedule.lineItems)) {
+    return { ok: false, message: "Payments have already been requested or collected. Historical installments cannot be replaced." };
+  }
+  const scheduled = roundMoney(lines.reduce((s, l) => s + (parseFloat(l.amount.replace(/[$,]/g, "")) || 0), 0));
+  if (!planTotalsReconcile(scheduled, invoiceTotal)) {
+    return { ok: false, message: "Payment schedule must reconcile to the current booking commitment before saving." };
+  }
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.deleteUnresolvedLineItems(supabase, venueId, scheduleId);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!;
+      await repo.insertLineItem(supabase, venueId, scheduleId, {
+        label: line.label,
+        amount: line.amount,
+        dueDate: line.dueDate,
+        obligationKind: line.obligationKind,
+      }, i);
+    }
+    await repo.updateScheduleTotalAmount(supabase, venueId, scheduleId, invoiceTotal);
+    await repo.setAcknowledgedInvoiceTotal(supabase, venueId, scheduleId, invoiceTotal);
+    await repo.insertPaymentActivity(
+      supabase, venueId, scheduleId, "schedule_rebuilt",
+      "Payment plan updated to match the current booking commitment.",
+    );
+    return { ok: true } as PaymentActionResult;
+  });
+  return result as PaymentActionResult;
+}
+
+/**
+ * After an invoice line/commitment change: auto-recalc safe presets, or
+ * leave a visible needs-review mismatch. Never mutates requested/paid lines.
+ */
+export async function syncPaymentPlanToInvoiceCommitment(invoiceId: string): Promise<void> {
+  const { classifyCommitmentReconcile, recalculateLineAmounts, scheduleHasPaymentActivity } =
+    await import("@/lib/payments/reconcile-commitment");
+  await withVenue(async (supabase, venueId) => {
+    const invoice = await repo.getInvoiceSummaryForSchedule(supabase, venueId, invoiceId);
+    if (!invoice) return { ok: true } as PaymentActionResult;
+    const { data: scheduleRow } = await supabase.from("payment_schedules")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("invoice_id", invoiceId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    if (!scheduleRow) return { ok: true } as PaymentActionResult;
+    const schedule = await repo.getSchedule(supabase, venueId, scheduleRow.id);
+    if (!schedule) return { ok: true } as PaymentActionResult;
+
+    const pending = schedule.lineItems.filter((l) => l.status === "pending" || l.status === "overdue");
+    const lineSum = pending.reduce((s, l) => s + l.amount, 0);
+    const decision = classifyCommitmentReconcile({
+      scheduleTotal: lineSum,
+      commitmentTotal: invoice.total,
+      lineAmounts: pending.map((l) => l.amount),
+      hasActivity: scheduleHasPaymentActivity(schedule.lineItems),
+    });
+    if (decision.kind === "current" && Math.abs(schedule.totalAmount - invoice.total) > 0.02) {
+      await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, invoice.total);
+      return { ok: true } as PaymentActionResult;
+    }
+    if (decision.kind !== "auto_recalc") return { ok: true } as PaymentActionResult;
+
+    const nextAmounts = recalculateLineAmounts({
+      previousAmounts: pending.map((l) => l.amount),
+      previousTotal: decision.previousTotal,
+      nextTotal: decision.nextTotal,
+    });
+    for (let i = 0; i < pending.length; i++) {
+      const line = pending[i]!;
+      await repo.updateLineItem(supabase, venueId, line.id, {
+        label: line.label,
+        amount: String(nextAmounts[i] ?? line.amount),
+        dueDate: line.dueDate ?? "",
+        obligationKind: line.obligationKind ?? undefined,
+      });
+    }
+    await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, invoice.total);
+    await repo.insertPaymentActivity(
+      supabase, venueId, schedule.id, "schedule_recalculated",
+      `Payment plan recalculated for the new commitment of ${invoice.total}.`,
+    );
+    return { ok: true } as PaymentActionResult;
+  });
+}

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -152,6 +153,72 @@ describe("runSetupPaymentsFromSelection — failure / retry safety", () => {
     assert.equal(result.ok, false);
     if (result.ok) return;
     assert.match(result.message, /already set up/i);
+  });
+
+  it("creates an explicit custom builder schedule without requesting payment", async () => {
+    const added: { label: string; amount: string; dueDate: string }[] = [];
+    let statusUpdated = false;
+    const result = await runSetupPaymentsFromSelection(
+      {
+        ...input,
+        requestDeposit: false,
+        scheduleStructure: "custom",
+        builderLines: [
+          { label: "Conversation retainer", amount: 1500, dueDate: "2026-09-08", obligationKind: "deposit" },
+          { label: "Planning", amount: 900, dueDate: "2026-10-01", obligationKind: "installment" },
+          { label: "Event day", amount: 800, dueDate: "2026-10-17", obligationKind: "final" },
+        ],
+      },
+      baseDeps({
+        addLineItem: async (_id, line) => {
+          added.push({ label: line.label, amount: line.amount, dueDate: line.dueDate });
+          return { ok: true, item: {} as never };
+        },
+        updateInvoiceStatus: async () => {
+          statusUpdated = true;
+          return { ok: true };
+        },
+      }),
+    );
+    assert.equal(result.ok, true);
+    assert.equal(statusUpdated, false);
+    assert.deepEqual(added, [
+      { label: "Conversation retainer", amount: "1500", dueDate: "2026-09-08" },
+      { label: "Planning", amount: "900", dueDate: "2026-10-01" },
+      { label: "Event day", amount: "800", dueDate: "2026-10-17" },
+    ]);
+  });
+
+  it("refuses builder lines that do not equal the commitment", async () => {
+    const result = await runSetupPaymentsFromSelection(
+      {
+        ...input,
+        scheduleStructure: "custom",
+        builderLines: [
+          { label: "Only part", amount: 500, dueDate: "2026-09-08", obligationKind: "deposit" },
+        ],
+      },
+      baseDeps(),
+    );
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.match(result.message, /reconcile/i);
+  });
+
+  it("booking journey sheet exposes Custom payment plan and no booking-date picker", () => {
+    const src = readFileSync("components/booking-journey/setup-payments-sheet.tsx", "utf8");
+    assert.match(src, /PaymentPlanBuilder/);
+    assert.match(src, /requestDeposit: false/);
+    assert.match(src, /bookingDate: null/);
+    assert.doesNotMatch(src, /Booked date|Booking date/);
+    const builder = readFileSync("components/payments/payment-plan-builder.tsx", "utf8");
+    assert.match(builder, /Custom payment plan/);
+    assert.match(builder, /Due today/);
+    assert.match(builder, /Days after contract is fully executed/);
+    assert.match(builder, /Days before event/);
+    assert.match(builder, /On event date/);
+    assert.match(builder, /Specific date/);
+    assert.doesNotMatch(builder, /Booked date|Booking date/);
   });
 
   it("happy path returns ids only after link succeeds", async () => {

@@ -208,6 +208,8 @@ export async function addLineItem(invoiceId: string, input: InvoiceLineItemInput
     const item = await repo.addLineItem(c, venueId, invoiceId, input);
     await repo.insertActivity(c, venueId, invoiceId, "line_item_added", `Line item added: ${input.description.trim()}`);
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
+    const { syncPaymentPlanToInvoiceCommitment } = await import("@/lib/payments/service");
+    await syncPaymentPlanToInvoiceCommitment(invoiceId);
     return { ok: true, item } as AddLineItemResult;
   });
   return result as AddLineItemResult;
@@ -221,6 +223,8 @@ export async function removeLineItem(invoiceId: string, itemId: string): Promise
     if (!outcome.ok) return { ok: false, message: outcome.message } as InvoiceActionResult;
     await repo.insertActivity(c, venueId, invoiceId, "line_item_removed", "Line item removed");
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
+    const { syncPaymentPlanToInvoiceCommitment } = await import("@/lib/payments/service");
+    await syncPaymentPlanToInvoiceCommitment(invoiceId);
     return { ok: true } as InvoiceActionResult;
   });
   return result as InvoiceActionResult;

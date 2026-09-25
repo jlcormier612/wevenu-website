@@ -12,6 +12,7 @@ import {
   markLineItemPaid,
   refundLineItem_,
   regeneratePaymentSchedule,
+  replacePendingScheduleLines,
   updateLineItem_,
 } from "@/lib/payments/service";
 import type {
@@ -107,5 +108,19 @@ export async function regeneratePaymentScheduleAction(scheduleId: string, preset
 export async function addReviewInstallmentAction(scheduleId: string, input: LineItemInput): Promise<AddLineItemResult> {
   const result = await addReviewInstallment(scheduleId, input);
   if (result.ok) revalidate(scheduleId);
+  return result;
+}
+
+export async function replacePendingScheduleLinesAction(
+  scheduleId: string,
+  lines: { label: string; amount: string; dueDate: string; obligationKind: import("@/lib/payments/types").PaymentObligationKind }[],
+  invoiceId?: string,
+): Promise<PaymentActionResult> {
+  const result = await replacePendingScheduleLines(scheduleId, lines);
+  if (result.ok) {
+    revalidate(scheduleId);
+    revalidatePath("/invoices");
+    if (invoiceId) revalidatePath(`/invoices/${invoiceId}`);
+  }
   return result;
 }

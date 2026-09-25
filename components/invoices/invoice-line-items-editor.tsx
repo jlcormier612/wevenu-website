@@ -5,6 +5,8 @@ import * as React from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRouter } from "next/navigation";
+
 import { addLineItemAction, removeLineItemAction } from "@/app/(app)/invoices/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +63,7 @@ export function InvoiceLineItemsEditor({
   // See lib/hooks/use-synced-state.ts — the invoice-status control on this
   // same page calls router.refresh() on status change, and Event-Order-
   // projected lines can also change from outside this component entirely.
+  const router = useRouter();
   const [items, setItems] = useSyncedState(initialItems);
   const [showAdd, setShowAdd] = React.useState(false);
   const [input, setInput] = React.useState<InvoiceLineItemInput>(EMPTY_INPUT);
@@ -85,6 +88,7 @@ export function InvoiceLineItemsEditor({
         setItems((p) => [...p, result.item]);
         setInput(EMPTY_INPUT);
         setShowAdd(false);
+        router.refresh();
       } else toast.error(result.message ?? "Could not add line item.");
     });
   }
@@ -93,8 +97,10 @@ export function InvoiceLineItemsEditor({
     setRemovingId(itemId);
     const result = await removeLineItemAction(invoiceId, itemId);
     setRemovingId(null);
-    if (result.ok) setItems((p) => p.filter((i) => i.id !== itemId));
-    else toast.error(result.message ?? "Could not remove.");
+    if (result.ok) {
+      setItems((p) => p.filter((i) => i.id !== itemId));
+      router.refresh();
+    } else toast.error(result.message ?? "Could not remove.");
   }
 
   const total = items.reduce((s, i) => {

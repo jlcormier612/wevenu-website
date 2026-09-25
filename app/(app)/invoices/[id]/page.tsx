@@ -13,6 +13,7 @@ import {
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> };
 
@@ -74,10 +75,23 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
               dueDate: i.dueDate,
               status: i.status,
               obligationKind: i.obligationKind,
+              paidAmount: i.paidAmount,
+              stripeCheckoutSessionId: i.stripeCheckoutSessionId,
+              stripePaymentIntentId: i.stripePaymentIntentId,
             }))
           : null
       }
       scheduleNotes={linked?.notes ?? null}
+      scheduleTiming={
+        linked
+          ? {
+              eventDate: invoice.eventDate,
+              bookingDate: invoice.bookedAt,
+              executedAt: null,
+              today: venueToday(venue.timezone),
+            }
+          : null
+      }
     />
   );
 }

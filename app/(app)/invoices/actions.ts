@@ -34,13 +34,19 @@ export async function createInvoiceAction(input: InvoiceInput): Promise<CreateIn
 
 export async function addLineItemAction(invoiceId: string, input: InvoiceLineItemInput): Promise<AddLineItemResult> {
   const result = await addLineItem(invoiceId, input);
-  if (result.ok) revalidatePath(`/invoices/${invoiceId}`);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/payments");
+  }
   return result;
 }
 
 export async function removeLineItemAction(invoiceId: string, itemId: string): Promise<InvoiceActionResult> {
   const result = await removeLineItem(invoiceId, itemId);
-  if (result.ok) revalidatePath(`/invoices/${invoiceId}`);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/payments");
+  }
   return result;
 }
 
@@ -144,6 +150,17 @@ export async function sendInvoiceEmailAction(
       sortOrder: li.sortOrder,
     }));
   }
+  if (scheduleLines && scheduleLines.length > 0) {
+    const { assertRequestablePaymentPlan } = await import("@/lib/payments/reconcile-commitment");
+    const gate = assertRequestablePaymentPlan({
+      commitmentTotal: invoiceToSend.total,
+      lines: scheduleLines,
+    });
+    if (!gate.ok) {
+      return { ok: false, message: `${gate.title} ${gate.body}` };
+    }
+  }
+
   const dueNow = resolveAmountDueNow({
     balanceDue: invoiceToSend.balanceDue,
     scheduleLines,

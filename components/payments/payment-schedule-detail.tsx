@@ -35,6 +35,7 @@ import {
   PaymentStatusBadge,
   ScheduleStatusBadge,
 } from "@/components/payments/payment-status-badge";
+import { PaymentPlanEditor, PaymentPlanNeedsReview } from "@/components/payments/payment-plan-editor";
 import { ScheduleReviewBanner } from "@/components/payments/schedule-review-banner";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
@@ -70,6 +71,11 @@ import type {
 } from "@/lib/payments/types";
 import type { Invoice } from "@/lib/invoices/types";
 import { formatCurrency } from "@/lib/invoices/constants";
+import {
+  planTotalsReconcile,
+  scheduleHasPaymentActivity,
+  scheduledPlanTotal,
+} from "@/lib/payments/reconcile-commitment";
 import { cn } from "@/lib/utils";
 
 // ---- Inline add/edit form ---------------------------------------------------
@@ -506,6 +512,7 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
   const router = useRouter();
   const [items, setItems] = React.useState(schedule.lineItems);
   const [showAdd, setShowAdd] = React.useState(false);
+  const [editingPlan, setEditingPlan] = React.useState(false);
   const [addPending, startAdd] = React.useTransition();
 
   const totalPaid = computeTotalPaid(items);
@@ -516,6 +523,11 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
   // Surface a clear Needs Review state." A direct comparison against the
   // linked invoice's current total, not a timestamp or revision counter.
   const reviewStatus = paymentPlanReviewStatus(schedule, invoice?.total ?? null);
+  const lineSum = scheduledPlanTotal(items);
+  const commitmentMismatch = Boolean(
+    invoice && !planTotalsReconcile(lineSum, invoice.total),
+  );
+  const planHasActivity = scheduleHasPaymentActivity(items, invoice?.status);
 
   // Allocation tracking (all active installments, whether paid or not)
   const allocated = items.filter((i) => i.status !== "cancelled").reduce((s, i) => s + i.amount, 0);
@@ -561,8 +573,12 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
               problem (an overdue/refunded installment vs. this schedule
               no longer matching its invoice). Named for what's actually
               wrong instead. */}
-          {reviewStatus === "needs_review" && <Badge variant="warning">🟡 Out of Sync with Invoice</Badge>}
-          {reviewStatus === "current" && invoice && <Badge variant="success">🟢 Current</Badge>}
+          {(reviewStatus === "needs_review" || commitmentMismatch) && (
+            <Badge variant="warning">Payment plan needs review</Badge>
+          )}
+          {reviewStatus === "current" && invoice && !commitmentMismatch && (
+            <Badge variant="success">🟢 Current</Badge>
+          )}
           <ScheduleStatusBadge status={schedule.scheduleStatus} />
         </>}
         lastUpdated={new Date(schedule.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -603,7 +619,33 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
         </div>
       )}
 
-      {reviewStatus === "needs_review" && invoice && (
+      {commitmentMismatch && invoice && !planHasActivity && (
+        <PaymentPlanNeedsReview
+          previousTotal={lineSum}
+          nextTotal={invoice.total}
+          canEdit
+          onEdit={() => setEditingPlan(true)}
+        />
+      )}
+      {editingPlan && invoice && !planHasActivity && (
+        <div className="rounded-lg border border-border p-4">
+          <PaymentPlanEditor
+            scheduleId={schedule.id}
+            invoiceId={invoice.id}
+            invoiceTotal={invoice.total}
+            lines={items}
+            timingCtx={{
+              eventDate: schedule.eventDate,
+              bookingDate: schedule.bookedAt,
+              executedAt: null,
+              today: new Date().toISOString().slice(0, 10),
+            }}
+            commitLabel="Save payment plan"
+            onSaved={() => setEditingPlan(false)}
+          />
+        </div>
+      )}
+      {commitmentMismatch && invoice && planHasActivity && (
         <ScheduleReviewBanner scheduleId={schedule.id} scheduleTotal={schedule.totalAmount} invoiceTotal={invoice.total} />
       )}
 

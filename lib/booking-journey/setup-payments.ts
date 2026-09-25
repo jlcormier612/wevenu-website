@@ -44,8 +44,10 @@ export type SetupPaymentsInput = {
    * - a SCHEDULE_PRESETS id — deposit override + remaining installments from preset
    */
   scheduleStructure?: string | null;
-  /** Required when scheduleStructure is "custom". */
+  /** Required when scheduleStructure is "custom" and no builderLines. */
   customSchedule?: CustomScheduleTemplate | null;
+  /** Explicit builder lines from the full payment-plan builder. */
+  builderLines?: ScheduleLineDraft[] | null;
 };
 
 /** Pure: resolve deposit (today) + remaining due dates for guided setup. */
@@ -281,13 +283,17 @@ export async function runSetupPaymentsFromSelection(
     return { ok: false, message: "Enter a valid deposit amount." };
   }
   const remaining = remainingAmount(total, deposit);
-  const isCustom = input.scheduleStructure === "custom";
+  const hasBuilderLines = Array.isArray(input.builderLines) && input.builderLines.length > 0;
+  const isCustom = input.scheduleStructure === "custom" || hasBuilderLines;
 
   // Custom schedules resolve due dates from timing rules; still need an event/
   // remaining anchor when any line uses before_event.
   let remainingDueDate = input.remainingDueDate ?? null;
   let depositDueDate = deps.today;
-  if (!isCustom) {
+  if (hasBuilderLines) {
+    remainingDueDate = input.remainingDueDate ?? input.eventDate ?? null;
+    depositDueDate = input.builderLines![0]?.dueDate || deps.today;
+  } else if (!isCustom) {
     const dueDates = resolveGuidedSetupDueDates({
       depositAmount: deposit,
       remainingAmount: remaining,
@@ -312,16 +318,22 @@ export async function runSetupPaymentsFromSelection(
     }
   }
 
-  const scheduleLines = buildGuidedScheduleLines({
-    total,
-    deposit,
-    today: deps.today,
-    remainingDueDate,
-    eventDate: input.eventDate,
-    scheduleStructure: input.scheduleStructure,
-    customSchedule: input.customSchedule,
-  });
+  const scheduleLines = hasBuilderLines
+    ? { ok: true as const, lines: input.builderLines! }
+    : buildGuidedScheduleLines({
+        total,
+        deposit,
+        today: deps.today,
+        remainingDueDate,
+        eventDate: input.eventDate,
+        scheduleStructure: input.scheduleStructure,
+        customSchedule: input.customSchedule,
+      });
   if (!scheduleLines.ok) return scheduleLines;
+  const scheduledSum = roundMoney(scheduleLines.lines.reduce((s, l) => s + l.amount, 0));
+  if (Math.abs(scheduledSum - total) > 0.005) {
+    return { ok: false, message: "Payment schedule must reconcile to the commitment total." };
+  }
 
   // For Custom, the first deposit-kind line is the initial payment amount.
   if (isCustom) {

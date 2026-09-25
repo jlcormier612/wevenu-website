@@ -16,6 +16,7 @@ import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
+import { PaymentPlanEditor, PaymentPlanNeedsReview } from "@/components/payments/payment-plan-editor";
 import { InvoicePrintDocument } from "@/components/invoices/invoice-print-document";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
@@ -28,6 +29,11 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, invoiceStatusLabel } from "@/lib/invoices/constants";
+import {
+  planTotalsReconcile,
+  scheduleHasPaymentActivity,
+  scheduledPlanTotal,
+} from "@/lib/payments/reconcile-commitment";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
@@ -61,6 +67,7 @@ export function InvoiceDetail({
   linkedScheduleId = null,
   scheduleLines = null,
   scheduleNotes = null,
+  scheduleTiming = null,
 }: {
   invoice: InvoiceWithLineItems;
   packages: Package[];
@@ -85,8 +92,17 @@ export function InvoiceDetail({
     dueDate: string | null;
     status: string;
     obligationKind?: import("@/lib/payments/types").PaymentObligationKind | null;
+    paidAmount?: number | null;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
   }[] | null;
   scheduleNotes?: string | null;
+  scheduleTiming?: {
+    eventDate: string | null;
+    bookingDate: string | null;
+    executedAt: string | null;
+    today: string;
+  } | null;
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
@@ -94,6 +110,7 @@ export function InvoiceDetail({
   const [emailPending, startEmail] = React.useTransition();
   const [namePending, startName] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [editingPlan, setEditingPlan] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
   const humanTitle = invoiceHumanLabel({
     displayName: invoice.displayName,
@@ -105,6 +122,13 @@ export function InvoiceDetail({
   const displayPaidToDate = paidToDate != null
     ? paidToDate
     : Math.max(0, invoice.total - invoice.balanceDue);
+  const scheduledTotal = scheduleLines ? scheduledPlanTotal(scheduleLines) : 0;
+  const planMismatch = Boolean(
+    scheduleLines && scheduleLines.length > 0 && !planTotalsReconcile(scheduledTotal, invoice.total),
+  );
+  const planHasActivity = Boolean(
+    scheduleLines && scheduleHasPaymentActivity(scheduleLines),
+  );
 
   function saveDisplayName() {
     startName(async () => {
@@ -411,11 +435,21 @@ export function InvoiceDetail({
                     >
                       View payment plan
                     </Button>
+                    {!planHasActivity && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingPlan(true)}
+                      >
+                        Edit payment plan
+                      </Button>
+                    )}
                     {invoice.clientId && (
                       <Button
                         type="button"
                         size="sm"
-                        disabled={emailPending}
+                        disabled={emailPending || planMismatch}
                         onClick={sendInvoiceEmail}
                       >
                         {emailPending
@@ -427,6 +461,32 @@ export function InvoiceDetail({
                     )}
                   </div>
                 </div>
+                {planMismatch && (
+                  <PaymentPlanNeedsReview
+                    previousTotal={scheduledTotal}
+                    nextTotal={invoice.total}
+                    canEdit={!planHasActivity}
+                    onEdit={() => setEditingPlan(true)}
+                  />
+                )}
+                {editingPlan && !planHasActivity ? (
+                  <div className="rounded-lg border border-border p-4">
+                    <PaymentPlanEditor
+                      scheduleId={linkedScheduleId}
+                      invoiceId={invoice.id}
+                      invoiceTotal={invoice.total}
+                      lines={scheduleLines}
+                      timingCtx={scheduleTiming ?? {
+                        eventDate: invoice.eventDate,
+                        bookingDate: invoice.bookedAt,
+                        executedAt: null,
+                        today: new Date().toISOString().slice(0, 10),
+                      }}
+                      commitLabel="Save payment plan"
+                      onSaved={() => setEditingPlan(false)}
+                    />
+                  </div>
+                ) : (
                 <ul className="space-y-2 text-sm">
                   {scheduleLines.map((line, i) => (
                     <li
@@ -451,6 +511,7 @@ export function InvoiceDetail({
                     </li>
                   ))}
                 </ul>
+                )}
               </div>
             ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -513,7 +574,7 @@ export function InvoiceDetail({
         eyebrow="Customer-facing invoice"
         title={humanTitle}
         onBack={() => setPreviewOpen(false)}
-        primary={invoice.clientId && status !== "void" ? (
+        primary={invoice.clientId && status !== "void" && !planMismatch ? (
           <Button type="button" size="sm" disabled={emailPending} onClick={sendInvoiceEmail}>
             {emailPending
               ? "Sending…"
