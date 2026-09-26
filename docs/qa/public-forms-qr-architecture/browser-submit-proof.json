@@ -1,0 +1,58 @@
+{
+  "browserLead": {
+    "id": "082b78e5-fb00-4e60-afc4-3106b801e829",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "first_name": "Browser",
+    "last_name": "ExpoQA",
+    "email": "browser.expo.qa.1790444000@example.com",
+    "source": "website",
+    "source_data": {
+      "source": "public_form",
+      "form_key": "35a56b1d565ff8d49287e1d2abb3870c",
+      "landing_page": "https://app.sandbox.hellotocheers.com/forms/35a56b1d565ff8d49287e1d2abb3870c",
+      "submitted_at": "2026-09-26T17:34:59.353506+00:00",
+      "custom_answers": [
+        {
+          "answer": "Indoor reception space",
+          "questionId": "b92bc747-3817-438a-a0f9-b2a69dcc5c7c",
+          "questionText": "What are you looking for?"
+        },
+        {
+          "answer": "Fall",
+          "questionId": "19082b07-19a3-4fa7-bf46-3196a8f7efed",
+          "questionText": "Preferred wedding season?"
+        }
+      ],
+      "public_form_id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+      "public_form_public_title": "Welcome to our Wedding Expo!",
+      "public_form_internal_name": "Wedding Expo — QA"
+    },
+    "relationship_id": "a73db07b-2a35-42aa-b24c-a13dc924366c"
+  },
+  "clientsForRelationship": 0,
+  "qrScans": 3,
+  "qrAnalytics": {
+    "id": "70bb03ba-b3bb-4292-9ff5-f5e93b9116b9",
+    "name": "Wedding Expo — QA",
+    "scans": 3,
+    "conversions": 1,
+    "destination_type": "public_form"
+  },
+  "sourceAttribution": {
+    "public_form_id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+    "qr_campaign_id": null,
+    "custom_answers": [
+      {
+        "answer": "Indoor reception space",
+        "questionId": "b92bc747-3817-438a-a0f9-b2a69dcc5c7c",
+        "questionText": "What are you looking for?"
+      },
+      {
+        "answer": "Fall",
+        "questionId": "19082b07-19a3-4fa7-bf46-3196a8f7efed",
+        "questionText": "Preferred wedding season?"
+      }
+    ],
+    "source": "public_form"
+  }
+}

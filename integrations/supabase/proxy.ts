@@ -29,6 +29,7 @@ export const PUBLIC_PATHS = [
   "/client/accept-participant", // delegate invite accept (pre-auth)
   "/vendor/login",   // vendor portal login (isolated cookie jar)
   "/form",           // public venue inquiry forms - /form/{embedKey}
+  "/forms",          // purpose-specific Public Forms - /forms/{publicKey}
   "/availability",   // public shareable availability calendar - /availability/{embedKey}
   "/questionnaire",  // public final details forms - /questionnaire/{accessKey}
   "/api/public",     // public API routes - /api/public/inquire, /api/public/questionnaire

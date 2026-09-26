@@ -5,14 +5,16 @@ import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
 import { QrStarterExamples } from "@/components/qr-campaigns/qr-starter-examples";
 import { ensureQrStartersForCurrentVenue } from "@/lib/qr-campaigns/provision";
 import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/service";
+import { listPublishedPublicFormsForPicker } from "@/lib/public-forms/service";
 
 export const metadata: Metadata = { title: "QR Campaigns" };
 
 export default async function QrCampaignsPage() {
   await ensureQrStartersForCurrentVenue();
-  const [campaigns, analytics] = await Promise.all([
+  const [campaigns, analytics, publishedPublicForms] = await Promise.all([
     getQrCampaigns(true),
     getQrCampaignAnalytics(),
+    listPublishedPublicFormsForPicker(),
   ]);
   const existingMasterKeys = campaigns
     .map((c) => c.sourceMasterKey)
@@ -29,6 +31,7 @@ export default async function QrCampaignsPage() {
         initialCampaigns={campaigns}
         analytics={analytics}
         appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
+        publishedPublicForms={publishedPublicForms}
       />
     </div>
   );
