@@ -1,20 +1,36 @@
 /**
  * Contract merge-field resolution.
- * Tokens left out of the map when values are unknown — never silently blanked,
- * except known operational fields which always receive an honest fallback so
- * customer-facing Preview/Send never shows raw {{tokens}} for those keys.
+ *
+ * Product rule: every MERGE_FIELDS key always resolves to a real value or an
+ * honest fallback. Customer-facing Preview / Review / Send must never show
+ * raw {{token}} for a picker field.
  */
-import { formatContractDate } from "@/lib/contracts/constants";
+import { MERGE_FIELDS, formatContractDate } from "@/lib/contracts/constants";
 import {
   formatBalanceRemaining,
   formatCeremonyOrReceptionSummary,
   formatRequiredClientPartyName,
   formatVenueAccessHours,
+  MISSING_ADDITIONAL_ITEMS,
   MISSING_BALANCE_REMAINING,
   MISSING_CEREMONY_SUMMARY,
+  MISSING_CLIENT_EMAIL,
+  MISSING_CLIENT_PHONE,
+  MISSING_CONTRACT_TOTAL,
+  MISSING_COORDINATOR,
+  MISSING_EVENT_NAME,
+  MISSING_EVENT_SPACES,
+  MISSING_FIRST_NAME,
+  MISSING_INCLUDED_ITEMS,
+  MISSING_LAST_NAME,
+  MISSING_PACKAGE,
+  MISSING_PAYMENT_SCHEDULE,
   MISSING_RECEPTION_SUMMARY,
   MISSING_VENDORS_ON_FILE,
   MISSING_VENUE_ACCESS_HOURS,
+  MISSING_VENUE_ADDRESS,
+  MISSING_VENUE_EMAIL,
+  MISSING_VENUE_PHONE,
 } from "@/lib/contracts/merge-extras";
 import { type MergeData } from "@/lib/shared-merge/tokens";
 
@@ -53,11 +69,12 @@ export type MergeContext = {
   balanceRemaining?: string | null;
 };
 
-function setIfPresent(data: MergeData, key: string, value: string | null | undefined) {
-  if (value != null && value !== "") data[key] = value;
+function present(value: string | null | undefined, fallback: string): string {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : fallback;
 }
 
-/** Build the MergeData map. Optional tokens are omitted when unknown. */
+/** Build the MergeData map. Every MERGE_FIELDS key is always present. */
 export function buildMergeData(ctx: MergeContext): MergeData {
   const today = new Date().toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
@@ -67,7 +84,7 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   const partyFromSigners = ctx.requiredClientSignerNames
     ? formatRequiredClientPartyName(ctx.requiredClientSignerNames)
     : "";
-  const clientName = partyFromSigners || primaryName;
+  const clientName = partyFromSigners || primaryName || "Client";
 
   const eventTypePretty = ctx.eventType
     ? ctx.eventType.charAt(0).toUpperCase() +
@@ -75,41 +92,47 @@ export function buildMergeData(ctx: MergeContext): MergeData {
     : "";
 
   const data: MergeData = {
-    venue_name: ctx.venueName,
+    venue_name: present(ctx.venueName, "Your venue"),
+    venue_address: present(ctx.venueAddress, MISSING_VENUE_ADDRESS),
+    venue_phone: present(ctx.venuePhone, MISSING_VENUE_PHONE),
+    venue_email: present(ctx.venueEmail, MISSING_VENUE_EMAIL),
     client_name: clientName,
+    first_name: present(ctx.clientFirstName, MISSING_FIRST_NAME),
+    last_name: present(ctx.clientLastName, MISSING_LAST_NAME),
+    client_email: present(ctx.clientEmail, MISSING_CLIENT_EMAIL),
+    client_phone: present(ctx.clientPhone, MISSING_CLIENT_PHONE),
+    event_name: present(ctx.eventName, MISSING_EVENT_NAME),
+    event_date: ctx.eventDate ? formatContractDate(ctx.eventDate) : "Date to be confirmed",
+    event_type: eventTypePretty || "Celebration",
+    guest_count: ctx.guestCount != null ? String(ctx.guestCount) : "To be confirmed",
+    event_spaces: present(ctx.eventSpaces, MISSING_EVENT_SPACES),
+    venue_access_hours: present(ctx.venueAccessHours, MISSING_VENUE_ACCESS_HOURS),
+    ceremony_summary: present(ctx.ceremonySummary, MISSING_CEREMONY_SUMMARY),
+    reception_summary: present(ctx.receptionSummary, MISSING_RECEPTION_SUMMARY),
+    coordinator_name: present(ctx.coordinatorName, MISSING_COORDINATOR),
+    package_section: present(ctx.packageSection, MISSING_PACKAGE),
+    included_items_summary: present(ctx.includedItemsSummary, MISSING_INCLUDED_ITEMS),
+    additional_items_summary: present(ctx.additionalItemsSummary, MISSING_ADDITIONAL_ITEMS),
+    payment_schedule_summary: present(ctx.paymentScheduleSummary, MISSING_PAYMENT_SCHEDULE),
+    contract_total: present(ctx.contractTotal, MISSING_CONTRACT_TOTAL),
+    balance_remaining: present(ctx.balanceRemaining, MISSING_BALANCE_REMAINING),
     today_date: today,
-    contract_title: ctx.contractTitle,
+    contract_title: present(ctx.contractTitle, "Agreement"),
+    // Deferred: not a picker Smart Field — honest wording only for legacy bodies.
+    vendors_on_file: MISSING_VENDORS_ON_FILE,
   };
 
-  setIfPresent(data, "first_name", ctx.clientFirstName);
-  setIfPresent(data, "last_name", ctx.clientLastName);
-
-  setIfPresent(data, "venue_address", ctx.venueAddress);
-  setIfPresent(data, "venue_phone", ctx.venuePhone);
-  setIfPresent(data, "venue_email", ctx.venueEmail);
-  setIfPresent(data, "client_email", ctx.clientEmail);
-  setIfPresent(data, "client_phone", ctx.clientPhone);
-  setIfPresent(data, "event_name", ctx.eventName);
-  data.event_date = ctx.eventDate ? formatContractDate(ctx.eventDate) : "Date to be confirmed";
-  data.event_type = eventTypePretty || "Celebration";
-  data.guest_count = ctx.guestCount != null ? String(ctx.guestCount) : "To be confirmed";
-  setIfPresent(data, "event_spaces", ctx.eventSpaces);
-  setIfPresent(data, "coordinator_name", ctx.coordinatorName);
-  setIfPresent(data, "package_section", ctx.packageSection);
-  setIfPresent(data, "included_items_summary", ctx.includedItemsSummary);
-  setIfPresent(data, "additional_items_summary", ctx.additionalItemsSummary);
-  setIfPresent(data, "payment_schedule_summary", ctx.paymentScheduleSummary);
-  setIfPresent(data, "contract_total", ctx.contractTotal);
-
-  // Always resolve these keys so legacy Library templates never leave raw tokens.
-  data.venue_access_hours = ctx.venueAccessHours?.trim() || MISSING_VENUE_ACCESS_HOURS;
-  data.ceremony_summary = ctx.ceremonySummary?.trim() || MISSING_CEREMONY_SUMMARY;
-  data.reception_summary = ctx.receptionSummary?.trim() || MISSING_RECEPTION_SUMMARY;
-  data.balance_remaining = ctx.balanceRemaining?.trim() || MISSING_BALANCE_REMAINING;
-  // Deferred: not a picker Smart Field and not vendor SoT — honest wording only.
-  data.vendors_on_file = MISSING_VENDORS_ON_FILE;
-
   return data;
+}
+
+/** Keys that must always resolve for customer-facing materialization. */
+export function requiredMergeFieldKeys(): string[] {
+  return MERGE_FIELDS.map((f) => f.key);
+}
+
+/** True when every MERGE_FIELDS key is present in the merge map. */
+export function mergeDataCoversPickerFields(data: MergeData): boolean {
+  return requiredMergeFieldKeys().every((key) => typeof data[key] === "string" && data[key] !== "");
 }
 
 /** Re-export pure formatters for tests / callers. */

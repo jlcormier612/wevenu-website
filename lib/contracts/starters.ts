@@ -59,17 +59,17 @@ EVENT SCHEDULE
 Event Date
 {{event_date}}
 
-Event Spaces
-{{event_spaces}}
-
 Venue Access / Event Hours
-Add your venue's approved access hours and event-day timing language here.
+{{venue_access_hours}}
 
 Ceremony
-Add your venue's approved ceremony timing and location language here, or leave blank until those details are confirmed.
+{{ceremony_summary}}
 
 Reception
-Add your venue's approved reception timing and location language here, or leave blank until those details are confirmed.
+{{reception_summary}}
+
+Event Spaces
+{{event_spaces}}
 
 ────────────────────────────────
 VENUE & EVENT SPACES
@@ -99,6 +99,9 @@ PAYMENT SCHEDULE
 
 Total contracted amount
 {{contract_total}}
+
+Balance
+{{balance_remaining}}
 
 ────────────────────────────────
 VENUE POLICIES

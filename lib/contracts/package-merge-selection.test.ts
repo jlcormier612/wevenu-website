@@ -65,8 +65,10 @@ describe("resolveActiveCommercialSelection wiring", () => {
 
 describe("package merge field semantics (source contracts)", () => {
   it("default no-package copy remains the empty-state message", () => {
-    const src = readFileSync(join(root, "lib/contracts/service.ts"), "utf8");
+    const src = readFileSync(join(root, "lib/contracts/merge-fallbacks.ts"), "utf8");
     assert.match(src, /No package is currently selected for this booking\./);
+    const merge = readFileSync(join(root, "lib/contracts/merge.ts"), "utf8");
+    assert.match(merge, /MISSING_PACKAGE/);
   });
 
   it("formatPackageSection includes totals used by contract merge", () => {

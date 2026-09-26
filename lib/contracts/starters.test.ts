@@ -73,10 +73,11 @@ describe("Wedding Venue Agreement starter", () => {
     assert.equal(data.primary_contact_name, undefined);
     assert.equal(data.full_name, undefined);
     assert.equal(data.partner_name, undefined);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{venue_access_hours\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{balance_remaining\}\}/);
+    // Schedule / balance Smart Fields are supported and appear in the starter.
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{venue_access_hours\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{balance_remaining\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{vendors_on_file\}\}/);
   });
 

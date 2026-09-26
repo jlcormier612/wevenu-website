@@ -12,8 +12,10 @@
 
 import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
 
-export const EMPTY_EVENT_SPACES_LABEL =
-  "No event spaces are listed on this booking yet.";
+import { MISSING_EVENT_SPACES } from "@/lib/contracts/merge-fallbacks";
+
+/** Same honest empty copy used by merge fallbacks. */
+export const EMPTY_EVENT_SPACES_LABEL = MISSING_EVENT_SPACES;
 
 export type EventSpaceNameRow = { id: string; name: string };
 

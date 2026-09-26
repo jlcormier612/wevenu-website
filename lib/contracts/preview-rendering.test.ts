@@ -118,9 +118,10 @@ describe("deferred/operational token resolution", () => {
     assert.equal(data.reception_summary, MISSING_RECEPTION_SUMMARY);
     assert.equal(data.balance_remaining, MISSING_BALANCE_REMAINING);
     assert.equal(data.vendors_on_file, MISSING_VENDORS_ON_FILE);
+    assert.equal(data.event_spaces, "No event spaces are listed on this booking yet.");
 
     const body = mergeContent(
-      "{{balance_remaining}} {{venue_access_hours}} {{ceremony_summary}} {{reception_summary}} {{vendors_on_file}}",
+      "{{balance_remaining}} {{venue_access_hours}} {{ceremony_summary}} {{reception_summary}} {{vendors_on_file}} {{event_spaces}} {{contract_total}} {{payment_schedule_summary}}",
       data,
     );
     assert.doesNotMatch(body, /\{\{/);

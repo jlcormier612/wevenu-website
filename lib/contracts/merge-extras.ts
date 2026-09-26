@@ -6,12 +6,28 @@
 import { formatTime } from "@/lib/events/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
 
-export const MISSING_VENUE_ACCESS_HOURS = "Venue access hours are not listed yet.";
-export const MISSING_CEREMONY_SUMMARY = "Ceremony details are not listed yet.";
-export const MISSING_RECEPTION_SUMMARY = "Reception details are not listed yet.";
-export const MISSING_BALANCE_REMAINING = "Balance remaining is not listed yet.";
-/** Deferred token — no contract-time vendor SoT; honest wording only (never invents vendors). */
-export const MISSING_VENDORS_ON_FILE = "Vendors on file are not listed yet.";
+export {
+  MISSING_ADDITIONAL_ITEMS,
+  MISSING_BALANCE_REMAINING,
+  MISSING_CEREMONY_SUMMARY,
+  MISSING_CLIENT_EMAIL,
+  MISSING_CLIENT_PHONE,
+  MISSING_CONTRACT_TOTAL,
+  MISSING_COORDINATOR,
+  MISSING_EVENT_NAME,
+  MISSING_EVENT_SPACES,
+  MISSING_FIRST_NAME,
+  MISSING_INCLUDED_ITEMS,
+  MISSING_LAST_NAME,
+  MISSING_PACKAGE,
+  MISSING_PAYMENT_SCHEDULE,
+  MISSING_RECEPTION_SUMMARY,
+  MISSING_VENDORS_ON_FILE,
+  MISSING_VENUE_ACCESS_HOURS,
+  MISSING_VENUE_ADDRESS,
+  MISSING_VENUE_EMAIL,
+  MISSING_VENUE_PHONE,
+} from "@/lib/contracts/merge-fallbacks";
 
 /** Join required client signer names for contract party wording. */
 export function formatRequiredClientPartyName(signerNames: string[]): string {

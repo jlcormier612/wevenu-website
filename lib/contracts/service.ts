@@ -518,10 +518,10 @@ export async function buildContractMergeData(opts: {
 
   let eventSpaces = EMPTY_EVENT_SPACES_LABEL;
   // Package / payment contractual fields — filled only from existing SoT at contract time.
-  let packageSection = "No package is currently selected for this booking.";
-  let includedItemsSummary = "No included items are listed on this booking yet.";
-  let additionalItemsSummary = "No additional or optional items are listed on this booking yet.";
-  let paymentScheduleSummary = "No payment schedule is on file for this celebration yet.";
+  let packageSection = "";
+  let includedItemsSummary = "";
+  let additionalItemsSummary = "";
+  let paymentScheduleSummary = "";
   let contractTotal: string | null = null;
   let balanceRemaining: string | null = null;
   let coordinatorName: string | null = null;
@@ -599,10 +599,8 @@ export async function buildContractMergeData(opts: {
       plannedEventSpaceId,
       assignments,
     });
-    // Venue has no space concepts configured / assigned — omit empty chrome.
-    if (eventSpaces === EMPTY_EVENT_SPACES_LABEL) {
-      eventSpaces = "";
-    }
+    // Keep EMPTY_EVENT_SPACES_LABEL — buildMergeData always materializes it.
+    // Never clear to "" (that left raw {{event_spaces}} in customer-facing output).
 
     const ceremonyAsg = assignments.find((a) => a.useKey === "ceremony");
     const receptionAsg = assignments.find((a) => a.useKey === "reception");
@@ -705,25 +703,25 @@ export async function buildContractMergeData(opts: {
 
   return buildMergeData({
     venueName: venue?.name ?? "",
-    venueAddress: venueAddress ?? "Address on file with the venue",
-    venuePhone: venue?.phone?.trim() || "Phone on file with the venue",
-    venueEmail: venue?.email?.trim() || "Email on file with the venue",
+    venueAddress,
+    venuePhone: venue?.phone?.trim() || null,
+    venueEmail: venue?.email?.trim() || null,
     clientFirstName: client?.firstName ?? "",
     clientLastName: client?.lastName ?? "",
-    clientEmail: client?.email?.trim() || "Email on the client record",
-    clientPhone: client?.phone?.trim() || "Phone on the client record",
+    clientEmail: client?.email?.trim() || null,
+    clientPhone: client?.phone?.trim() || null,
     requiredClientSignerNames: opts.requiredClientSignerNames ?? null,
-    eventName: event?.name || "Your celebration",
+    eventName: event?.name || null,
     eventDate: event?.eventDate ?? client?.eventDate ?? null,
     eventType: event?.eventType ?? client?.eventType ?? null,
     guestCount: event?.guestCount ?? client?.guestCount ?? null,
     eventSpaces,
-    coordinatorName: coordinatorName || "Your venue team",
-    packageSection,
-    includedItemsSummary,
-    additionalItemsSummary,
-    paymentScheduleSummary,
-    contractTotal: contractTotal ?? "See payment schedule",
+    coordinatorName,
+    packageSection: packageSection || null,
+    includedItemsSummary: includedItemsSummary || null,
+    additionalItemsSummary: additionalItemsSummary || null,
+    paymentScheduleSummary: paymentScheduleSummary || null,
+    contractTotal,
     contractTitle: opts.contractTitle ?? "",
     venueAccessHours,
     ceremonySummary,
