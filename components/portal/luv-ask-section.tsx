@@ -3,8 +3,9 @@
 /**
  * LuvAskSection — "Ask Luv" in the couple portal.
  *
- * Couples ask how Hello to Cheers works (HTC product knowledge) or about
- * this venue (Venue Guide). Answers stay grounded in those layers only.
+ * Knowledge layers: HTC product, Venue Guide, and this couple's portal context
+ * (payments / contracts / documents). Suggested chips derive from the same
+ * portal snapshot used to answer — payment due-date chip only when authoritative.
  */
 
 import * as React from "react";
@@ -12,6 +13,13 @@ import { Loader2, Send } from "lucide-react";
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { Button } from "@/components/ui/button";
+import {
+  buildLuvAskPortalContext,
+  resolveLuvAskSuggestedChips,
+  type LuvAskPortalContext,
+} from "@/lib/luv/portal-context";
+import type { PortalPaymentScheduleLike } from "@/lib/portal/payment-schedules";
+import type { PortalInvoiceRef } from "@/lib/portal/payment-obligations";
 
 const DUSTY_ROSE = "#D8A7AA";
 const ROSE_DEEP  = "#8B5456";
@@ -28,15 +36,6 @@ const GUIDE_SECTIONS: Record<string, { emoji: string; label: string }> = {
   faqs:           { emoji: "❓", label: "FAQs" },
   contacts:       { emoji: "📞", label: "Important Contacts" },
 };
-
-const SUGGESTED = [
-  "How do I sign my contract?",
-  "Where do I find Documents?",
-  "How do I complete Your Choices?",
-  "Is there parking for guests?",
-  "What's the rain plan?",
-  "Can we have sparklers?",
-];
 
 type QA = {
   id: string;
@@ -117,7 +116,36 @@ export function LuvAskSection({
   const [answers, setAnswers]   = React.useState<QA[]>([]);
   const [input, setInput]       = React.useState("");
   const [loading, setLoading]   = React.useState(false);
+  const [suggested, setSuggested] = React.useState<string[]>(() =>
+    resolveLuvAskSuggestedChips(null),
+  );
   const bottomRef               = React.useRef<HTMLDivElement>(null);
+
+  // Chip eligibility from the same payment snapshot Ask Luv uses for answers.
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d: {
+        schedules?: PortalPaymentScheduleLike[];
+        invoices?: PortalInvoiceRef[];
+        onlinePaymentsReady?: boolean;
+      }) => {
+        if (cancelled) return;
+        const ctx: LuvAskPortalContext = buildLuvAskPortalContext({
+          schedules: d.schedules ?? [],
+          invoices: d.invoices ?? [],
+          onlinePaymentsReady: d.onlinePaymentsReady ?? null,
+        });
+        setSuggested(resolveLuvAskSuggestedChips(ctx));
+      })
+      .catch(() => {
+        if (!cancelled) setSuggested(resolveLuvAskSuggestedChips(null));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   async function ask(question: string) {
     const q = question.trim();
@@ -156,7 +184,7 @@ export function LuvAskSection({
     }
   }
 
-  const unusedSuggestions = SUGGESTED.filter((q) => !answers.some((a) => a.question === q));
+  const unusedSuggestions = suggested.filter((q) => !answers.some((a) => a.question === q));
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -195,7 +223,7 @@ export function LuvAskSection({
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Try asking:</p>
           <div className="flex flex-wrap gap-2">
-            {SUGGESTED.map((q) => (
+            {suggested.map((q) => (
               <button
                 key={q}
                 type="button"

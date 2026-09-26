@@ -2,10 +2,10 @@
  * POST /api/portal/luv-ask
  *
  * Couple asks Luv a question.
- * Knowledge layers (Phase 1):
+ * Knowledge layers:
  *   1. HTC product knowledge — couple-safe Help article projections
  *   2. Venue Guide — what this venue provided
- * Portal facts are intentionally not included yet (Phase 2 extension point).
+ *   3. Portal context — this couple's payments / contracts / documents (Phase 2A)
  *
  * Body:     { token: string; question: string }
  * Response: { answer: string; guideSection?: string | null } | { error: string }
@@ -21,6 +21,7 @@ import {
 } from "@/lib/luv/ask-guard";
 import { buildCoupleAskLuvSystemPrompt } from "@/lib/luv/couple-ask-prompt";
 import { retrieveCoupleHtcKnowledge } from "@/lib/luv/couple-htc-knowledge";
+import { loadLuvAskPortalContext } from "@/lib/luv/portal-context";
 import {
   getLuvSettingsForVenueId,
   isLuvDraftingEnabled,
@@ -126,6 +127,14 @@ export async function POST(request: Request) {
   const trimmedQuestion = question.trim();
   const htcHits = retrieveCoupleHtcKnowledge(trimmedQuestion);
 
+  let portalContext = null;
+  try {
+    portalContext = await loadLuvAskPortalContext(token);
+  } catch (err) {
+    console.error("luv-ask portal context load failed:", err);
+    // Continue without portal facts rather than failing the whole ask.
+  }
+
   const systemPrompt = buildCoupleAskLuvSystemPrompt({
     venueName,
     voiceInstruction: luvAskVoiceInstruction(settings.preferredTone),
@@ -146,6 +155,7 @@ export async function POST(request: Request) {
         name: string; url?: string; code?: string; notes?: string;
       }[],
     },
+    portalContext,
   });
 
   try {

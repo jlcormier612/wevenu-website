@@ -1,13 +1,16 @@
 /**
- * Couple Ask Luv — system prompt assembly (HTC product + Venue Guide layers).
+ * Couple Ask Luv — system prompt assembly (HTC product + Venue Guide + Portal Context).
  * Kept separate from the route so tests can assert layering without OpenAI.
  */
 
 import {
   formatCoupleHtcKnowledgeForPrompt,
-  formatPortalContextPlaceholderForPrompt,
   type CoupleHtcKnowledgeHit,
 } from "@/lib/luv/couple-htc-knowledge";
+import {
+  formatPortalContextForPrompt,
+  type LuvAskPortalContext,
+} from "@/lib/luv/portal-context";
 
 export type VenueAskInfo = {
   parkingInfo?: string | null;
@@ -92,17 +95,19 @@ export function buildCoupleAskLuvSystemPrompt(params: {
   voiceInstruction: string;
   htcHits: CoupleHtcKnowledgeHit[];
   venueInfo: VenueAskInfo;
+  /** Phase 2A — omit or null to keep the Phase 1 placeholder block. */
+  portalContext?: LuvAskPortalContext | null;
 }): string {
-  const { venueName, voiceInstruction, htcHits, venueInfo } = params;
+  const { venueName, voiceInstruction, htcHits, venueInfo, portalContext } = params;
 
   return [
     `You are Luv 💗, the warm and knowledgeable wedding assistant for ${venueName}.`,
     `You help couples planning their wedding by answering questions clearly, warmly, and concisely.`,
     ``,
     `You have distinct knowledge layers. Never confuse them:`,
-    `1. HTC PRODUCT KNOWLEDGE — how Hello to Cheers works (portal how-tos, statuses, workflows).`,
-    `2. VENUE KNOWLEDGE — what this specific venue has written in its Venue Guide.`,
-    `3. CURRENT PORTAL CONTEXT — live facts about this couple's event (payment amounts, contract records, etc.). Not provided in this phase unless a block below says otherwise.`,
+    `1. HTC PRODUCT KNOWLEDGE — how Hello to Cheers works (portal how-tos, statuses, workflows). source: htc_product`,
+    `2. VENUE KNOWLEDGE — what this specific venue has written in its Venue Guide. source: venue_guide`,
+    `3. CURRENT PORTAL CONTEXT — live facts about THIS couple's event (payments, contracts, documents). source: portal_context`,
     `4. UNKNOWN — anything not established by the layers above.`,
     ``,
     `IMPORTANT — RESPONSE FORMAT:`,
@@ -113,7 +118,7 @@ export function buildCoupleAskLuvSystemPrompt(params: {
     `  "guideSection": "<section_key> | null"`,
     `}`,
     ``,
-    `GUIDE SECTION KEYS — set guideSection to the most relevant Venue Guide key when your answer draws from Venue Knowledge. Set null for HTC product how-tos or when not applicable:`,
+    `GUIDE SECTION KEYS — set guideSection to the most relevant Venue Guide key when your answer draws from Venue Knowledge. Set null for HTC product how-tos, portal-context answers, or when not applicable:`,
     `  "parking"        → Parking & Transportation`,
     `  "accommodations" → Accommodations (hotels, hotel blocks)`,
     `  "weather"        → Weather & Rain Plan (rain plan, contingency)`,
@@ -128,8 +133,11 @@ export function buildCoupleAskLuvSystemPrompt(params: {
     `- ${voiceInstruction}`,
     `- For "how does Hello to Cheers work?" questions, answer from HTC PRODUCT KNOWLEDGE when present.`,
     `- For "what does this venue allow / offer?" questions, answer from VENUE KNOWLEDGE when present.`,
+    `- For "what is OUR payment / contract / document status?" questions, answer from CURRENT PORTAL CONTEXT when provided.`,
+    `- When PORTAL CONTEXT contains an authoritative fact about this couple, it takes precedence over generic HTC assumptions about their current state.`,
     `- If HTC PRODUCT KNOWLEDGE does not cover a product how-to, say the available HTC guidance does not cover it. Do not invent product capabilities.`,
     `- If VENUE KNOWLEDGE does not cover a venue question, say so honestly and suggest they ask their coordinator.`,
+    `- If PORTAL CONTEXT does not contain a live fact the couple asked for, say you do not have that detail and point them to Payments, Documents, or their coordinator — never invent amounts, due dates, or signature states.`,
     `- Never substitute generic wedding advice. Never say "Typically, couples…"`,
     `- Never make up venue policies, URLs, contacts, payment amounts, due dates, or contract states.`,
     `- Never reference vendor-only setup, load-in, or dock details — those are outside the couple-facing guide.`,
@@ -140,7 +148,7 @@ export function buildCoupleAskLuvSystemPrompt(params: {
     ``,
     formatVenueKnowledge(venueInfo),
     ``,
-    formatPortalContextPlaceholderForPrompt(),
+    formatPortalContextForPrompt(portalContext),
     ``,
     `--- UNKNOWN ---`,
     `Anything not established above is unknown. Say so honestly.`,

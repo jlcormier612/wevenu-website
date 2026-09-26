@@ -284,15 +284,8 @@ export function formatCoupleHtcKnowledgeForPrompt(hits: CoupleHtcKnowledgeHit[])
 }
 
 /**
- * Extension point for Phase 2 — portal facts (payments due, contract state, etc.).
- * Phase 1 deliberately returns an empty / placeholder block so the prompt layer
- * stays stable without inventing portal context.
+ * Extension point for Phase 2 — portal facts live in lib/luv/portal-context.
+ * Re-export keeps Phase 1 import paths stable.
  */
-export function formatPortalContextPlaceholderForPrompt(): string {
-  return [
-    `--- CURRENT PORTAL CONTEXT ---`,
-    `status: not_provided_in_phase_1`,
-    `(No live payment amounts, contract records, questionnaire rows, lifecycle state, or other portal facts are available in this turn.)`,
-    `Do not invent portal facts. If the couple asks for their specific dates, amounts, or statuses, say you do not have that live portal detail in this chat and point them to the matching portal section (Documents, Payments, Tasks, Your Choices) or their coordinator.`,
-  ].join("\n");
-}
+export { formatPortalContextPlaceholderForPrompt } from "@/lib/luv/portal-context/format";
+
