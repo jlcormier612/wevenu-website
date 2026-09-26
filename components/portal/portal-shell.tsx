@@ -1732,7 +1732,6 @@ function OverviewSection({
     ? Math.round(required.filter(t => t.status === "complete").length / required.length * 100)
     : 0;
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
-  const bracket = getSuggestionBracket(du);
   const venueHeroPhotoUrl = context.venue.heroImageUrl;
   const venueName = context.venue.name;
   const accessLevel = context.accessLevel;
@@ -1906,10 +1905,20 @@ function OverviewSection({
       <div className="space-y-3" data-luv-home>
         <LuvDailyCard
           token={token}
+          venueName={venueName}
+          hasEvent={Boolean(context.event)}
+          eventDateLabel={
+            context.event?.eventDate
+              ? new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : null
+          }
           du={du}
           guestStats={guestStats}
           readiness={readinessScore}
-          bracket={bracket}
           recentActivity={recentActivity}
           venueAttentionCount={p1Count ?? 0}
           planningCapabilities={context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES}
@@ -5710,31 +5719,45 @@ function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | nul
   return <WeddingLaunchCard icon="💍" model={model} onNavigate={onNavigate} />;
 }
 
-// Couple Home Impl 6 — Luv Suggestions:
-// One quiet suggestion card under Your Wedding (P4). Existing priority chain
-// via resolveLuvHomeSuggestion — warm, optional, never silently acts, and
-// skips venue-owned signals when Your Next Steps already has attention.
+// Couple Home — Luv Suggestions:
+// One quiet suggestion under Your Wedding (P4). Speaks only from HTC-known
+// venue/client facts (contract, payment, tasks, event date) — never generic
+// wedding-planning assumptions. Warm, optional, never silently acts.
 function LuvDailyCard({
-  token, du, guestStats, readiness, bracket, recentActivity, venueAttentionCount, planningCapabilities = DEFAULT_PLANNING_CAPABILITIES, onNavigate,
+  token, venueName, hasEvent, eventDateLabel, du, guestStats, readiness, recentActivity, venueAttentionCount, planningCapabilities = DEFAULT_PLANNING_CAPABILITIES, onNavigate,
 }: {
   token: string;
+  venueName: string;
+  hasEvent: boolean;
+  eventDateLabel: string | null;
   du: number | null;
   guestStats: GuestStats | null;
   readiness: number;
-  bracket: string;
   recentActivity: RecentActivity | null;
   venueAttentionCount: number;
   planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
+  const [documents, setDocuments] = React.useState<{ docType: string; status: string | null; signToken?: string | null }[] | null>(null);
+  const [paymentSchedules, setPaymentSchedules] = React.useState<{
+    id?: string;
+    lineItems: { label: string; amount: number; dueDate: string | null; status: string }[];
+  }[] | null>(null);
 
   React.useEffect(() => {
     fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json())
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
+    fetch(`/api/portal/documents?token=${token}`).then((r) => r.json())
+      .then((d: { documents?: { docType: string; status: string | null; signToken?: string | null }[] }) => setDocuments(d.documents ?? []))
+      .catch(() => setDocuments([]));
+    fetch(`/api/portal/payments?token=${token}`).then((r) => r.json())
+      .then((d: { schedules?: { id?: string; lineItems: { label: string; amount: number; dueDate: string | null; status: string }[] }[] }) =>
+        setPaymentSchedules(d.schedules ?? []))
+      .catch(() => setPaymentSchedules([]));
   }, [token]);
 
-  if (questionnaire === undefined) {
+  if (questionnaire === undefined || documents === null || paymentSchedules === null) {
     return (
       <section
         className="rounded-2xl px-4 py-3.5"
@@ -5754,21 +5777,49 @@ function LuvDailyCard({
     );
   }
 
-  const today = new Date();
   const questionnaireOpen = Boolean(
     questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed",
   );
 
+  const contractAwaitingSignature = documents.some(
+    (d) => d.docType === "contract" && d.status === "sent",
+  );
+  const contractFullyExecuted = documents.some(
+    (d) => d.docType === "contract" && (d.status === "signed" || d.status === "fully_executed"),
+  );
+
+  const outstanding = selectCanonicalPaymentSchedules(
+    paymentSchedules.map((s, i) => ({ ...s, id: s.id ?? `anon_${i}` })),
+  )
+    .flatMap((s) => s.lineItems)
+    .filter((li) => li.status !== "paid" && li.status !== "cancelled" && li.dueDate);
+  outstanding.sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1));
+  const nextLi = outstanding[0] ?? null;
+  const nextPayment = nextLi
+    ? {
+        label: nextLi.label,
+        dueDateLabel: new Date(nextLi.dueDate! + "T12:00:00").toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }),
+      }
+    : null;
+
   const suggestion = resolveLuvHomeSuggestion({
+    venueName,
+    hasEvent,
     daysUntil: du,
+    eventDateLabel,
     guestTotal: guestStats?.total ?? 0,
     guestAttending: guestStats?.attending ?? 0,
     readiness,
-    bracket,
     totalThisWeek: recentActivity?.totalThisWeek ?? 0,
     questionnaireOpen,
     venueAttentionCount,
-    dayOfMonth: today.getDate(),
+    contractAwaitingSignature,
+    contractFullyExecuted,
+    nextPayment,
     disabledDestinations: planningCapabilities.vendors ? [] : ["vendors"],
   });
 
