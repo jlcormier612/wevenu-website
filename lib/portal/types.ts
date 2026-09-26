@@ -163,7 +163,7 @@ export type PortalVenueSpace = {
 };
 
 
-export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "inventory" | "floor_plans" | "event-order";
+export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "inventory" | "floor_plans" | "event-order" | "choices";
 
 /** Phase 1 — couple Floor Plan list item (layout view). */
 export type PortalFloorPlanSummary = {

@@ -60,6 +60,11 @@ import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
+import { getTemplates as getChoicesTemplates } from "@/lib/client-choices-templates/service";
+import {
+  getClientChoices,
+  listClientChoicesForEvent,
+} from "@/lib/client-choices/service";
 import { listActiveOfferings } from "@/lib/offerings/service";
 import { getPackages, getPackagesWithItems } from "@/lib/packages/service";
 import { bookingCelebrationPending } from "@/lib/booking-journey/booking-celebration";
@@ -426,10 +431,12 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   ]);
 
   // Event Order is always available (optional by use). No feature gate.
-  const [eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings] = await Promise.all([
+  const [eventOrder, packages, eventOrderTemplates, choicesTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings] = await Promise.all([
     getEventOrder(eventId),
     getPackages(),
     getEventOrderTemplates(),
+    getChoicesTemplates(),
+    listClientChoicesForEvent(eventId),
     getPackagesWithItems(true),
     getActiveSelectedPackageForClient(client.id),
     loadBookingJourneyForClient({
@@ -439,6 +446,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     }),
     listActiveOfferings(),
   ]);
+  const clientChoices = (
+    await Promise.all(clientChoicesList.map((c) => getClientChoices(c.id)))
+  ).filter((c): c is NonNullable<typeof c> => !!c);
   // Shared catalog fetch for Event Order Add-from-Inventory and Event Inventory.
   const inventoryItems = inventoryCatalogItems;
   const readinessSummary = buildEventReadiness({
@@ -507,6 +517,8 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       eventInventory={eventInventory}
       inventoryTemplates={inventoryTemplates}
       eventOrderTemplates={eventOrderTemplates}
+      choicesTemplates={choicesTemplates}
+      clientChoices={clientChoices}
       packagesWithItems={packagesWithItems}
       bookingJourney={bookingJourney}
       selectedPackage={selectedPackage}

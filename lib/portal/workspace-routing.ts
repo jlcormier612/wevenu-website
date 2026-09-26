@@ -56,6 +56,7 @@ const PORTAL_SECTIONS = new Set<string>([
   "inventory",
   "floor_plans",
   "event-order",
+  "choices",
 ]);
 
 export function isPortalWorkspaceFocus(value: string | null | undefined): value is PortalWorkspaceFocus {

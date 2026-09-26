@@ -19,6 +19,7 @@ import { getTemplates as getInventoryTemplates } from "@/lib/event-inventory/ser
 import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-templates/service";
 import { getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
+import { getTemplates as getChoicesTemplates } from "@/lib/client-choices-templates/service";
 import { getBrochures } from "@/lib/brochures/service";
 import { getSavedReports } from "@/lib/saved-reports/service";
 import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
@@ -88,7 +89,7 @@ export default async function LibraryPage() {
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
     packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates, inventoryTemplates,
-    questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports, offeringsAll,
+    questionnaireTemplates, eventOrderTemplatesAll, choicesTemplatesAll, brochuresAll, savedReports, offeringsAll,
   ] = await Promise.all([
     getContractTemplates(),
     getPlaybookTemplates(),
@@ -101,11 +102,13 @@ export default async function LibraryPage() {
     getInventoryTemplates(),
     getQuestionnaireTemplates(),
     getEventOrderTemplates(true),
+    getChoicesTemplates(true),
     getBrochures(true),
     getSavedReports(),
     listOfferings(true),
   ]);
   const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
+  const choicesTemplates = choicesTemplatesAll.filter((t) => !t.isArchived);
   const brochures = brochuresAll.filter((b) => !b.isArchived);
   const playbookTemplates = playbookTemplatesAll.filter((t) => !t.isArchived);
   const timelineTemplates = timelineTemplatesAll.filter((t) => !t.isArchived);
@@ -136,6 +139,7 @@ export default async function LibraryPage() {
         <ToolboxCard title="Timeline Templates" description="Reusable day-of schedules for any booking." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
         <ToolboxCard title="Floor Plan Templates" description="Reusable room layouts for any booking." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
         <ToolboxCard title="Event Order Templates" description="Reusable Event Order structure — sections and optional priced offerings." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
+        <ToolboxCard title="Choices Templates" description="Menus, bar, rentals, and other client choices after booking." href="/library/choices-templates" count={choicesTemplates.length} icon={LayoutGrid} />
         <ToolboxCard title="Available Inventory Items" description="Physical stock your venue owns — chairs, tables, linens, equipment." href="/library/inventory" count={inventoryItems.length} icon={Package} />
         <ToolboxCard title="Inventory Templates" description="What you typically allocate for a wedding — Ceremony + Reception or Reception Only." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
       </Group>

@@ -51,7 +51,7 @@ describe("Task Destination Audit — venue-side action types", () => {
     const universal: TaskActionType[] = [
       "vendor_library", "payments", "documents", "guest_list",
       "questionnaire", "contract", "timeline", "floor_plan",
-      "event_order", "event_details",
+      "event_order", "client_choices", "event_details",
     ];
     for (const value of universal) {
       assert.ok(clientOptions.has(value), `${value} missing from Client Planning options`);
@@ -62,7 +62,7 @@ describe("Task Destination Audit — venue-side action types", () => {
   it("covers the native workflows from the Task Destination Audit (Key Dates retired)", () => {
     const values = TASK_ACTION_TYPES.map((a) => a.value).sort();
     assert.deepEqual(values, [
-      "contract", "documents", "event_details", "event_order",
+      "client_choices", "contract", "documents", "event_details", "event_order",
       "floor_plan", "guest_list", "payments",
       "questionnaire", "timeline", "vendor_library", "wedding_website",
     ]);

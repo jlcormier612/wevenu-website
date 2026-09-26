@@ -48,6 +48,7 @@ export function mapCategory(row: WorkspaceRawRow): WorkspaceCategory {
     case "floor_plan": return "Floor Plans";
     case "questionnaire": return "Questionnaires";
     case "event_order": return "Planning";
+    case "client_choices": return "Planning";
     case "document":
       switch (row.category) {
         case "contract": return "Contracts";

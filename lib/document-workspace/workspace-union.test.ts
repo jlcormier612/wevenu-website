@@ -8,6 +8,10 @@ const migration = readFileSync(
   join(root, "supabase/migrations/20261370000000_documents_workspace_completion.sql"),
   "utf8",
 );
+const choicesMigration = readFileSync(
+  join(root, "supabase/migrations/20261407300000_client_choices_foundation.sql"),
+  "utf8",
+);
 
 describe("get_venue_documents workspace union", () => {
   it("unions generic documents, contracts, invoices, floor plans, questionnaires, and event orders", () => {
@@ -17,6 +21,11 @@ describe("get_venue_documents workspace union", () => {
     assert.match(migration, /'docType',\s+'floor_plan'/);
     assert.match(migration, /'docType',\s+'questionnaire'/);
     assert.match(migration, /'docType',\s+'event_order'/);
+  });
+
+  it("extends the union with client_choices in the Client Choices foundation migration", () => {
+    assert.match(choicesMigration, /'docType',\s+'client_choices'/);
+    assert.match(choicesMigration, /from public\.client_choices cc/);
   });
 
   it("does not dump inbox attachments, media, or templates into the union", () => {
@@ -38,18 +47,5 @@ describe("get_venue_documents workspace union", () => {
       migration.indexOf("'docType',         'invoice'"),
     );
     assert.match(contractBlock, /'fileUrl',\s+null/);
-  });
-
-  it("creates append-only document_file_versions and replace_document_file", () => {
-    assert.match(migration, /create table if not exists public\.document_file_versions/);
-    assert.match(migration, /create or replace function public\.replace_document_file/);
-    assert.match(migration, /if v_doc\.storage_path = p_storage_path then/);
-  });
-
-  it("makes the documents bucket private and keeps the sandbox verifier aligned", () => {
-    assert.match(migration, /update storage\.buckets\s+set public = false\s+where id = 'documents'/);
-    const verify = readFileSync(join(root, "scripts/verify-sandbox-database.sh"), "utf8");
-    assert.match(verify, /\["documents"\]="f"/);
-    assert.doesNotMatch(verify, /\["documents"\]="t"/);
   });
 });

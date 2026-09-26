@@ -52,6 +52,7 @@ import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
 import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
+import { ClientChoicesPanel } from "@/components/client-choices/client-choices-panel";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Package } from "@/lib/packages/types";
@@ -283,6 +284,8 @@ export function EventDetail({
   eventInventory = null,
   inventoryTemplates = [],
   eventOrderTemplates = [],
+  choicesTemplates = [],
+  clientChoices = [],
   requestsByTaskId = {},
   requests = [],
   readinessSummary,
@@ -350,6 +353,8 @@ export function EventDetail({
   inventoryTemplates?: import("@/lib/event-inventory/types").InventoryTemplate[];
   // D7A — Event Order Templates. Same additive, non-feature-flagged shape as inventoryTemplates above.
   eventOrderTemplates?: import("@/lib/event-order-templates/types").EventOrderTemplate[];
+  choicesTemplates?: import("@/lib/client-choices-templates/types").ChoicesTemplate[];
+  clientChoices?: import("@/lib/client-choices/types").ClientChoicesWithHistory[];
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
@@ -903,6 +908,11 @@ export function EventDetail({
 
         {/* ── Event Order ──────────────────────────────────────────── */}
         <TabsContent value="event-order">
+          <ClientChoicesPanel
+            eventId={event.id}
+            templates={choicesTemplates}
+            choices={clientChoices}
+          />
           <EventOrderPanel
             eventId={event.id}
             clientId={event.clientId}

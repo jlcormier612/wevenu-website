@@ -273,6 +273,59 @@ export function describeExperience(input: {
     };
   }
 
+  if (input.docType === "client_choices") {
+    const status = input.rawStatus ?? "";
+    const who = input.relationshipName?.trim() || "Client";
+    if (status === "finalized") {
+      return {
+        experienceStatus: "final",
+        nextActor: null,
+        nextActionLabel: null,
+        filterStatus: "complete",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    if (status === "submitted" || status === "resubmitted") {
+      return {
+        experienceStatus: "review",
+        nextActor: "venue",
+        nextActionLabel: "Venue to review",
+        filterStatus: "action_needed",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    if (status === "changes_requested") {
+      return {
+        experienceStatus: "changes_requested",
+        nextActor: "couple",
+        nextActionLabel: `${who} to update`,
+        filterStatus: "action_needed",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    if (status === "sent" || status === "in_progress") {
+      return {
+        experienceStatus: "with_someone",
+        nextActor: "couple",
+        nextActionLabel: `${who} to complete`,
+        filterStatus: "action_needed",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    return {
+      experienceStatus: "draft",
+      nextActor: "venue",
+      nextActionLabel: "Venue to send",
+      filterStatus: "in_progress",
+      producerHref: input.eventId ? `/events/${input.eventId}` : null,
+      artifactAuthority: "working_record",
+    };
+  }
+
   return {
     experienceStatus: "none",
     nextActor: null,

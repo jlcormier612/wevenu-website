@@ -48,6 +48,7 @@ export type UnifiedTaskTargetSection =
   | "seating"
   | "inventory"
   | "event-order"
+  | "choices"
   | "website"
   | "floor_plans"
   | "overview";
@@ -128,6 +129,7 @@ const TRIGGER_WORKSPACE: Record<
   // Impl 7: verified Final Payment — same payments workspace; completableHere false.
   final_payment_obligation_paid: { section: "payments", actionLabel: "Pay now", focus: null },
   questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form", focus: "form" },
+  client_choices_submitted: { section: "choices", actionLabel: "Complete your choices", focus: "form" },
   // D5A — fires when the venue finalizes the Event Inventory (see
   // lib/event-inventory/service.ts finalizeEventInventory); read-only for
   // the couple, so there's nothing to "do" beyond looking.
@@ -164,6 +166,7 @@ const ACTION_TYPE_WORKSPACE: Record<
   timeline: { section: "timeline", focus: null, actionLabel: "Open Timeline" },
   floor_plan: { section: "floor_plans", focus: null, actionLabel: "Open Floor Plan" },
   event_order: { section: "event-order", focus: null, actionLabel: "Open Event Order" },
+  client_choices: { section: "choices", focus: "form", actionLabel: "Open Your Choices" },
   wedding_website: { section: "website", focus: null, actionLabel: "Open Wedding Website" },
   // Historical playbook action_type only — Key Dates product is retired.
   // Overview is the honest destination (same as event_details).

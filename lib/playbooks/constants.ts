@@ -26,6 +26,7 @@ export const TASK_ACTION_TYPES: { value: TaskActionType; defaultLabel: string; t
   { value: "timeline",         defaultLabel: "Open Timeline",           tabHash: "timeline" },
   { value: "floor_plan",       defaultLabel: "Open Floor Plan",         tabHash: "floorplan" },
   { value: "event_order",      defaultLabel: "Open Event Order",        tabHash: "event-order" },
+  { value: "client_choices",   defaultLabel: "Open Your Choices",       tabHash: "event-order" },
   { value: "event_details",    defaultLabel: "Open Event Details",      tabHash: "overview" },
   { value: "wedding_website",  defaultLabel: "Open Wedding Website",    tabHash: "overview", audiences: ["client"] },
 ];
@@ -85,6 +86,8 @@ export const AUTO_COMPLETE_TRIGGERS: { value: string; label: string }[] = [
   { value: "payment_received",      label: "Any payment received" },
   { value: "final_payment_obligation_paid", label: "Final Payment obligation paid" },
   { value: "questionnaire_submitted", label: "Final details submitted" },
+  { value: "client_choices_submitted", label: "Client choices submitted" },
+  { value: "client_choices_finalized", label: "Client choices finalized" },
   { value: "guest_count_finalized", label: "Guest count submitted" },
   { value: "seating_submitted",     label: "Seating plan submitted" },
   { value: "document_uploaded",     label: "Any document uploaded" },

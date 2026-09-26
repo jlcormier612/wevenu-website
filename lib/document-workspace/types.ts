@@ -9,7 +9,7 @@
  */
 
 /** Producer legs get_venue_documents() unions. Matches document_workspace_pins/interactions.doc_type. */
-export type WorkspaceDocType = "document" | "contract" | "invoice" | "floor_plan" | "questionnaire" | "event_order";
+export type WorkspaceDocType = "document" | "contract" | "invoice" | "floor_plan" | "questionnaire" | "event_order" | "client_choices";
 
 /** The brief's fixed, 12-value category list (Step 2, Section 3). No additional categories. */
 export type WorkspaceCategory =

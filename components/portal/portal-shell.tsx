@@ -107,6 +107,7 @@ import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
 import { InventoryPortalSection } from "@/components/portal/inventory-section";
+import { ChoicesPortalSection } from "@/components/portal/choices-section";
 import { EventOrderPortalSection } from "@/components/portal/event-order-section";
 import FloorPlanSection from "@/components/portal/floor-plan-section";
 import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
@@ -4430,6 +4431,7 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
   { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
   { id: "event-order", icon: "📋", label: "Event Order",       shortLabel: "Order",    available: true, group: "venue" },
+  { id: "choices",     icon: "✅", label: "Your Choices",      shortLabel: "Choices",  available: true, group: "venue" },
   { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
   { id: "messages",    icon: "💬", label: "Messages",          available: true, group: "venue" },
   { id: "guide",       icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",    available: true, group: "venue" },
@@ -4462,6 +4464,7 @@ export function PortalShell({
   /** Messages nav badge — unread venue messages. */
   const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
   const [hasSharedEventOrder, setHasSharedEventOrder] = React.useState(false);
+  const [hasClientChoices, setHasClientChoices] = React.useState(false);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
@@ -4483,7 +4486,8 @@ export function PortalShell({
       available:
         item.available
         && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities)
-        && (item.id !== "event-order" || hasSharedEventOrder),
+        && (item.id !== "event-order" || hasSharedEventOrder)
+        && (item.id !== "choices" || hasClientChoices),
     }))
     .filter((item) => item.available);
 
@@ -4496,6 +4500,14 @@ export function PortalShell({
       })
       .catch(() => {
         if (!cancelled) setHasSharedEventOrder(false);
+      });
+    fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d: { choices?: unknown[] }) => {
+        if (!cancelled) setHasClientChoices(Array.isArray(d?.choices) && d.choices.length > 0);
+      })
+      .catch(() => {
+        if (!cancelled) setHasClientChoices(false);
       });
     return () => { cancelled = true; };
   }, [token]);
@@ -4927,6 +4939,7 @@ export function PortalShell({
             )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
+            {activeSection === "choices" && <ChoicesPortalSection token={token} />}
             {activeSection === "inventory" && <InventoryPortalSection token={token} />}
             {activeSection === "event-order" && <EventOrderPortalSection token={token} />}
             {activeSection === "floor_plans" && planningCapabilities.floorPlan && <FloorPlanSection token={token} />}

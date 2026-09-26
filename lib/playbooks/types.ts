@@ -79,6 +79,7 @@ export type TaskActionType =
   | "vendor_library" | "payments" | "documents" | "guest_list"
   | "questionnaire" | "contract" | "timeline" | "floor_plan"
   | "event_order" | "wedding_website" | "event_details"
+  | "client_choices"
   /** @deprecated Key Dates product retired — kept only so historical playbook/task rows still typecheck. */
   | "key_dates";
 
