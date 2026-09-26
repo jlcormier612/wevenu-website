@@ -1,0 +1,27 @@
+{
+  "verdict": "GREEN",
+  "commit": "4446af99b0745cb64fc4f21736b20e9409e47881",
+  "migration": "20261407600000_public_forms_wave1.sql",
+  "migrationRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/36259163776",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/36259165687",
+  "ecsTaskDefinition": "htc-sandbox-venue-app:398",
+  "ecsImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4446af99b0745cb64fc4f21736b20e9409e47881",
+  "production": "untouched",
+  "fixture": {
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "publicFormId": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+    "publicKey": "35a56b1d565ff8d49287e1d2abb3870c",
+    "publicUrl": "https://app.sandbox.hellotocheers.com/forms/35a56b1d565ff8d49287e1d2abb3870c",
+    "qrCampaignId": "70bb03ba-b3bb-4292-9ff5-f5e93b9116b9",
+    "qrBoothCampaignId": "ccaade52-1a00-4cf2-baeb-7e35ee9f6174",
+    "browserLeadId": "082b78e5-fb00-4e60-afc4-3106b801e829",
+    "qrAttributedLeadId": "fa6c85c3-95d5-437c-ab41-72a97260e50e",
+    "rpcLeadId": "77c69ad8-9a08-4907-80ee-67b4e068ea45"
+  },
+  "legacyQr": {
+    "inquiry": "315cadef90b28a13 → /form/2551bc9f8f6d4b9aabfcab9b8795edf6?qr=f0645b7e-30ab-4651-ba32-b1dbdbadfaae",
+    "tour": "4f59a2b401ffbb43 → /book/06d9570c05b77ccfe65b0a750363c5e5?qr=19239273-e4b3-4cbd-bc33-ab6c3e126497",
+    "inquiryWeddingExpo": "dad61152386ea231 → /form/…?qr=921deab2-647e-46cb-a5af-798021ce8893"
+  },
+  "smsPolicy": "Custom Public Forms do not collect SMS consent; phone ≠ consent."
+}

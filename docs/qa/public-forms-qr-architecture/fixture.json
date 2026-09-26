@@ -1,0 +1,44 @@
+{
+  "createdAt": "2026-09-26T17:29:51.800Z",
+  "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "publicForm": {
+    "id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+    "internalName": "Wedding Expo \u2014 QA",
+    "publicTitle": "Welcome to our Wedding Expo!",
+    "status": "published",
+    "publicKey": "35a56b1d565ff8d49287e1d2abb3870c",
+    "url": "https://app.sandbox.hellotocheers.com/forms/35a56b1d565ff8d49287e1d2abb3870c"
+  },
+  "qrCampaign": {
+    "id": "70bb03ba-b3bb-4292-9ff5-f5e93b9116b9",
+    "name": "Wedding Expo \u2014 QA",
+    "code": "e56175492a291771",
+    "publicFormId": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+    "scanUrl": "https://app.sandbox.hellotocheers.com/qr/e56175492a291771"
+  },
+  "legacyActiveCampaigns": [
+    {
+      "id": "19239273-e4b3-4cbd-bc33-ab6c3e126497",
+      "name": "Front Gate Lead Capture",
+      "code": "4f59a2b401ffbb43",
+      "destination_type": "tour_booking",
+      "status": "active"
+    },
+    {
+      "id": "f0645b7e-30ab-4651-ba32-b1dbdbadfaae",
+      "name": "Brochure QR",
+      "code": "315cadef90b28a13",
+      "destination_type": "inquiry_form",
+      "status": "active"
+    },
+    {
+      "id": "921deab2-647e-46cb-a5af-798021ce8893",
+      "name": "Wedding Expo",
+      "code": "dad61152386ea231",
+      "destination_type": "inquiry_form",
+      "status": "active"
+    }
+  ],
+  "tablesProbeOk": true,
+  "sandboxBase": "https://app.sandbox.hellotocheers.com"
+}
