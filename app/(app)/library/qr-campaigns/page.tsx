@@ -4,17 +4,24 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
 import { QrStarterExamples } from "@/components/qr-campaigns/qr-starter-examples";
 import { ensureQrStartersForCurrentVenue } from "@/lib/qr-campaigns/provision";
+import { parseQrCreateSearchParams } from "@/lib/qr-campaigns/qr-form-return";
 import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/service";
-import { listPublishedPublicFormsForPicker } from "@/lib/public-forms/service";
+import { listPublicFormsForQrPicker } from "@/lib/public-forms/service";
 
 export const metadata: Metadata = { title: "QR Campaigns" };
 
-export default async function QrCampaignsPage() {
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function QrCampaignsPage({ searchParams }: Props) {
   await ensureQrStartersForCurrentVenue();
-  const [campaigns, analytics, publishedPublicForms] = await Promise.all([
+  const sp = await searchParams;
+  const createState = parseQrCreateSearchParams(sp);
+  const [campaigns, analytics, publicForms] = await Promise.all([
     getQrCampaigns(true),
     getQrCampaignAnalytics(),
-    listPublishedPublicFormsForPicker(),
+    listPublicFormsForQrPicker(),
   ]);
   const existingMasterKeys = campaigns
     .map((c) => c.sourceMasterKey)
@@ -31,7 +38,11 @@ export default async function QrCampaignsPage() {
         initialCampaigns={campaigns}
         analytics={analytics}
         appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
-        publishedPublicForms={publishedPublicForms}
+        publicForms={publicForms}
+        initialOpenCreate={createState.openCreate}
+        initialDestinationType={createState.destinationType}
+        initialPublicFormId={createState.publicFormId}
+        initialName={createState.name}
       />
     </div>
   );

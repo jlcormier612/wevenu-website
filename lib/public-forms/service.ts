@@ -162,6 +162,21 @@ export async function listPublishedPublicFormsForPicker(): Promise<
     .map((f) => ({ id: f.id, internalName: f.internalName, publicTitle: f.publicTitle }));
 }
 
+/** Draft + published forms for QR creation (archived excluded). Status is shown so draft is never silently treated as live. */
+export async function listPublicFormsForQrPicker(): Promise<
+  Array<{ id: string; internalName: string; publicTitle: string; status: "draft" | "published" }>
+> {
+  const forms = await listPublicForms(false);
+  return forms
+    .filter((f): f is typeof f & { status: "draft" | "published" } => f.status === "draft" || f.status === "published")
+    .map((f) => ({
+      id: f.id,
+      internalName: f.internalName,
+      publicTitle: f.publicTitle,
+      status: f.status,
+    }));
+}
+
 export async function getPublicForm(id: string): Promise<PublicForm | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();

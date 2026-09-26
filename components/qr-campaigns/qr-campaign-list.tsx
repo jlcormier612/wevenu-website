@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveArchiveToggle } from "@/lib/qr-campaigns/archive-ui-state";
+import { buildQrCreateReturnPath } from "@/lib/qr-campaigns/qr-form-return";
 import type { QrCampaign, QrCampaignAnalytics, QrDestinationType } from "@/lib/qr-campaigns/types";
 
 const DESTINATION_LABELS: Record<QrDestinationType, string> = {
@@ -25,6 +26,17 @@ const DESTINATION_LABELS: Record<QrDestinationType, string> = {
   wedding_website: "A couple's wedding website",
   external_url: "External URL",
 };
+
+export type QrPublicFormOption = {
+  id: string;
+  internalName: string;
+  publicTitle: string;
+  status: "draft" | "published";
+};
+
+function statusLabel(status: QrPublicFormOption["status"]): string {
+  return status === "published" ? "Published" : "Draft";
+}
 
 function CampaignRow({
   campaign, appUrl, analytics, onStatusChange, publicFormLabel,
@@ -90,25 +102,66 @@ function CampaignRow({
 }
 
 export function QrCampaignList({
-  initialCampaigns, analytics, appUrl, publishedPublicForms = [],
+  initialCampaigns,
+  analytics,
+  appUrl,
+  publicForms = [],
+  initialOpenCreate = false,
+  initialDestinationType = null,
+  initialPublicFormId = null,
+  initialName = null,
 }: {
   initialCampaigns: QrCampaign[];
   analytics: QrCampaignAnalytics[];
   appUrl: string;
-  publishedPublicForms?: Array<{ id: string; internalName: string; publicTitle: string }>;
+  /** Draft + published Public Forms for the Custom public form destination. */
+  publicForms?: QrPublicFormOption[];
+  initialOpenCreate?: boolean;
+  initialDestinationType?: QrDestinationType | null;
+  initialPublicFormId?: string | null;
+  initialName?: string | null;
 }) {
   const [campaigns, setCampaigns] = React.useState(initialCampaigns);
-  const [showForm, setShowForm] = React.useState(false);
-  const [name, setName] = React.useState("");
-  const [destinationType, setDestinationType] = React.useState<QrDestinationType>("inquiry_form");
+  const [showForm, setShowForm] = React.useState(initialOpenCreate);
+  const [name, setName] = React.useState(initialName ?? "");
+  const [destinationType, setDestinationType] = React.useState<QrDestinationType>(
+    initialDestinationType ?? "inquiry_form",
+  );
   const [destinationUrl, setDestinationUrl] = React.useState("");
-  const [publicFormId, setPublicFormId] = React.useState("");
+  const [publicFormId, setPublicFormId] = React.useState(initialPublicFormId ?? "");
   const [pending, startTransition] = React.useTransition();
 
+  React.useEffect(() => {
+    setCampaigns(initialCampaigns);
+  }, [initialCampaigns]);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) setShowForm(true);
+    if (initialDestinationType) setDestinationType(initialDestinationType);
+    if (initialPublicFormId) setPublicFormId(initialPublicFormId);
+    if (initialName) setName(initialName);
+  }, [initialOpenCreate, initialDestinationType, initialPublicFormId, initialName]);
+
   const analyticsById = new Map(analytics.map((a) => [a.id, a]));
-  const formLabelById = new Map(publishedPublicForms.map((f) => [f.id, f.internalName]));
+  const formById = new Map(publicForms.map((f) => [f.id, f]));
+  const selectedForm = publicFormId ? formById.get(publicFormId) ?? null : null;
   const active = campaigns.filter((c) => c.status === "active");
   const archived = campaigns.filter((c) => c.status === "archived");
+
+  const returnToAfterFormEdit = buildQrCreateReturnPath({
+    publicFormId: publicFormId || null,
+    name: name || null,
+  });
+
+  const createNewFormHref = `/library/public-forms?create=1&returnTo=${encodeURIComponent(
+    buildQrCreateReturnPath({ name: name || null }),
+  )}`;
+
+  const customizeFormHref = selectedForm
+    ? `/library/public-forms/${selectedForm.id}?returnTo=${encodeURIComponent(
+        buildQrCreateReturnPath({ publicFormId: selectedForm.id, name: name || null }),
+      )}`
+    : null;
 
   function handleStatusChange(id: string, status: QrCampaign["status"]) {
     setCampaigns((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));
@@ -140,9 +193,13 @@ export function QrCampaignList({
     });
   }
 
+  const publicFormReady =
+    destinationType !== "public_form" ||
+    (Boolean(publicFormId) && selectedForm?.status === "published");
+
   const canCreate =
     name.trim() &&
-    (destinationType !== "public_form" || publicFormId) &&
+    publicFormReady &&
     ((destinationType !== "wedding_website" && destinationType !== "external_url") || destinationUrl.trim());
 
   return (
@@ -173,38 +230,60 @@ export function QrCampaignList({
             </select>
           </div>
           {destinationType === "public_form" && (
-            <div className="space-y-2 rounded-md border border-dashed border-border bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">
-                Point this QR at an existing published Public Form, or create a new one first.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href="/library/public-forms"
-                  className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-                >
-                  Create new form
-                </Link>
-              </div>
+            <div className="space-y-3 rounded-md border border-dashed border-border bg-muted/20 p-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Choose existing form</Label>
+                <Label className="text-xs">Choose a form</Label>
                 <select
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                   value={publicFormId}
                   onChange={(e) => setPublicFormId(e.target.value)}
                 >
-                  <option value="">Select a published form…</option>
-                  {publishedPublicForms.map((f) => (
+                  <option value="">Select a public form…</option>
+                  {publicForms.map((f) => (
                     <option key={f.id} value={f.id}>
-                      {f.internalName}
+                      {f.internalName} — {statusLabel(f.status)}
                     </option>
                   ))}
                 </select>
-                {publishedPublicForms.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    No published public forms yet. Create and publish one, then return here.
-                  </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={createNewFormHref}
+                  className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+                >
+                  + Create new form
+                </Link>
+                {customizeFormHref && (
+                  <Link
+                    href={customizeFormHref}
+                    className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+                  >
+                    Customize form
+                  </Link>
                 )}
               </div>
+
+              {publicForms.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  No public forms yet. Create a new form, customize it, publish it, then return here to finish this QR.
+                </p>
+              )}
+
+              {selectedForm?.status === "draft" && (
+                <p className="text-[11px] text-muted-foreground">
+                  This form is still a draft. Customize and publish it before creating the QR — the public link is not live until published.
+                </p>
+              )}
+
+              {selectedForm?.status === "published" && (
+                <p className="text-[11px] text-muted-foreground">
+                  Selected: {selectedForm.internalName} (Published). Several QR codes can share this same form.
+                </p>
+              )}
+
+              {/* Keep returnTo in the DOM for tests / return-path continuity when customizing */}
+              <input type="hidden" name="returnTo" value={returnToAfterFormEdit} readOnly />
             </div>
           )}
           {(destinationType === "wedding_website" || destinationType === "external_url") && (
@@ -236,7 +315,7 @@ export function QrCampaignList({
               appUrl={appUrl}
               analytics={analyticsById.get(c.id)}
               onStatusChange={handleStatusChange}
-              publicFormLabel={c.publicFormId ? formLabelById.get(c.publicFormId) : null}
+              publicFormLabel={c.publicFormId ? formById.get(c.publicFormId)?.internalName : null}
             />
           ))}
           {archived.length > 0 && (
@@ -250,7 +329,7 @@ export function QrCampaignList({
                     appUrl={appUrl}
                     analytics={analyticsById.get(c.id)}
                     onStatusChange={handleStatusChange}
-                    publicFormLabel={c.publicFormId ? formLabelById.get(c.publicFormId) : null}
+                    publicFormLabel={c.publicFormId ? formById.get(c.publicFormId)?.internalName : null}
                   />
                 ))}
               </div>

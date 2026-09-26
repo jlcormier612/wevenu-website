@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { publicFormAbsoluteUrl } from "@/lib/public-forms/public-url";
+import { buildQrCreateReturnPath } from "@/lib/qr-campaigns/qr-form-return";
 import type { PublicFormListItem } from "@/lib/public-forms/types";
 
 function statusLabel(status: PublicFormListItem["status"]): string {
@@ -35,14 +36,20 @@ export function PublicFormList({
   initialForms,
   appUrl,
   canEdit = true,
+  initialShowCreate = false,
+  returnTo = null,
 }: {
   initialForms: PublicFormListItem[];
   appUrl: string;
   canEdit?: boolean;
+  /** Open the create panel immediately (e.g. arrived from QR → Create new form). */
+  initialShowCreate?: boolean;
+  /** After create, open the editor with this return path (QR create round-trip). */
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const [forms, setForms] = React.useState(initialForms);
-  const [showCreate, setShowCreate] = React.useState(false);
+  const [showCreate, setShowCreate] = React.useState(initialShowCreate);
   const [internalName, setInternalName] = React.useState("");
   const [publicTitle, setPublicTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -51,6 +58,10 @@ export function PublicFormList({
   React.useEffect(() => {
     setForms(initialForms);
   }, [initialForms]);
+
+  React.useEffect(() => {
+    if (initialShowCreate) setShowCreate(true);
+  }, [initialShowCreate]);
 
   function handleCreate() {
     startTransition(async () => {
@@ -68,7 +79,13 @@ export function PublicFormList({
         return;
       }
       toast.success("Form created as a draft.");
-      router.push(`/library/public-forms/${result.id}`);
+      const editorReturnTo = returnTo?.startsWith("/library/qr-campaigns")
+        ? buildQrCreateReturnPath({ publicFormId: result.id })
+        : returnTo;
+      const editorPath = editorReturnTo
+        ? `/library/public-forms/${result.id}?returnTo=${encodeURIComponent(editorReturnTo)}`
+        : `/library/public-forms/${result.id}`;
+      router.push(editorPath);
     });
   }
 
@@ -116,6 +133,11 @@ export function PublicFormList({
 
       {canEdit && showCreate && (
         <div className="space-y-3 rounded-lg border border-border p-4">
+          {returnTo?.startsWith("/library/qr-campaigns") && (
+            <p className="text-xs text-muted-foreground">
+              Creating a form for your QR code. Customize and publish it, then return to finish the QR.
+            </p>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs">Form name</Label>
             <Input

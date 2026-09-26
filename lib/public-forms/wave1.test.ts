@@ -158,7 +158,26 @@ describe("Public Form Wave 1 — QR destination picker + ownership", () => {
     assert.match(service, /Select a public form/);
     assert.match(list, /Custom public form/);
     assert.match(list, /Create new form/);
-    assert.match(list, /Choose existing form/);
+    assert.match(list, /Choose a form/);
+    assert.match(list, /Customize form/);
+    assert.match(list, /buildQrCreateReturnPath/);
+    assert.match(list, /listPublicFormsForQrPicker|publicForms/);
+  });
+
+  it("QR create round-trip preserves publicFormId via returnTo", () => {
+    const qrPage = readFileSync(join(root, "app/(app)/library/qr-campaigns/page.tsx"), "utf8");
+    const formsPage = readFileSync(join(root, "app/(app)/library/public-forms/page.tsx"), "utf8");
+    const detailPage = readFileSync(join(root, "app/(app)/library/public-forms/[id]/page.tsx"), "utf8");
+    const builder = readFileSync(join(root, "components/public-forms/public-form-builder.tsx"), "utf8");
+    assert.match(qrPage, /parseQrCreateSearchParams/);
+    assert.match(qrPage, /listPublicFormsForQrPicker/);
+    assert.match(formsPage, /returnTo/);
+    assert.match(formsPage, /sp\.create === "1"/);
+    assert.match(detailPage, /returnTo/);
+    assert.match(builder, /Return to QR creation/);
+    const listUi = readFileSync(join(root, "components/public-forms/public-form-list.tsx"), "utf8");
+    assert.match(listUi, /create=1|initialShowCreate/);
+    assert.match(listUi, /buildQrCreateReturnPath/);
   });
 
   it("management service gates create/update to owner/manager", () => {

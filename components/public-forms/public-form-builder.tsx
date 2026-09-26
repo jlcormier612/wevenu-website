@@ -68,12 +68,15 @@ export function PublicFormBuilder({
   canEdit = true,
   qrCodes = [],
   leads = [],
+  returnTo = null,
 }: {
   form: PublicForm;
   appUrl: string;
   canEdit?: boolean;
   qrCodes?: PublicFormQrSummary[];
   leads?: PublicFormLeadSummary[];
+  /** When set (e.g. from QR create), show an explicit return action. */
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const [internalName, setInternalName] = React.useState(form.internalName);
@@ -84,6 +87,7 @@ export function PublicFormBuilder({
   const [status, setStatus] = React.useState(form.status);
   const [pending, startTransition] = React.useTransition();
   const [qrName, setQrName] = React.useState("");
+  const returningToQr = Boolean(returnTo?.startsWith("/library/qr-campaigns"));
 
   const publicPath = publicFormPath(form.publicKey);
   const publicUrl = `${appUrl}${publicPath}`;
@@ -257,7 +261,27 @@ export function PublicFormBuilder({
             Open form <ExternalLink className="h-3 w-3" />
           </a>
         )}
+        {returnTo && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(returnTo)}
+          >
+            {returningToQr ? "Return to QR creation" : "Back"}
+          </Button>
+        )}
       </div>
+      {returningToQr && status !== "published" && status !== "archived" && (
+        <p className="text-xs text-muted-foreground">
+          Publish this form when you are ready, then return to QR creation. The QR will not be live until the form is published.
+        </p>
+      )}
+      {returningToQr && status === "published" && (
+        <p className="text-xs text-muted-foreground">
+          This form is published. Return to QR creation to finish saving the QR code.
+        </p>
+      )}
 
       <div className="space-y-3 rounded-lg border border-border p-4">
         <div className="space-y-1.5">

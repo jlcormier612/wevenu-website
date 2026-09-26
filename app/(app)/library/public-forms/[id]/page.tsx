@@ -8,9 +8,16 @@ import {
   listLeadsForPublicForm,
   listQrCampaignsForPublicForm,
 } from "@/lib/public-forms/service";
+import {
+  buildQrCreateReturnPath,
+  safePublicFormEditorReturnTo,
+} from "@/lib/qr-campaigns/qr-form-return";
 import { getCurrentUserRole } from "@/lib/venue/service";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -18,8 +25,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: form ? form.internalName : "Public Form" };
 }
 
-export default async function PublicFormDetailPage({ params }: Props) {
+export default async function PublicFormDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  const returnTo =
+    safePublicFormEditorReturnTo(sp.returnTo) ??
+    // If opened without returnTo but came from QR create intent, still allow a sensible back path.
+    null;
   const [form, role, qrCodes, leads] = await Promise.all([
     getPublicForm(id),
     getCurrentUserRole(),
@@ -28,6 +40,12 @@ export default async function PublicFormDetailPage({ params }: Props) {
   ]);
   if (!form) notFound();
   const canEdit = role === "owner" || role === "manager";
+
+  // When returning to QR create, always stamp this form id so selection is restored.
+  const qrReturnTo =
+    returnTo?.startsWith("/library/qr-campaigns")
+      ? buildQrCreateReturnPath({ publicFormId: form.id })
+      : returnTo;
 
   return (
     <div className="space-y-6">
@@ -41,6 +59,7 @@ export default async function PublicFormDetailPage({ params }: Props) {
         canEdit={canEdit}
         qrCodes={qrCodes}
         leads={leads}
+        returnTo={qrReturnTo}
       />
     </div>
   );
