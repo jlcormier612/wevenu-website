@@ -228,8 +228,13 @@ export async function resendProposalEmailAction(input: {
 > {
   const { resendCommercialProposalEmail } = await import("@/lib/commercial-proposals/service");
   const result = await resendCommercialProposalEmail(input.proposalId);
-  if (!result.ok) {
-    return { ok: false, message: result.message ?? "Could not resend the proposal email." };
+  if (!result.ok || !("emailSubmitted" in result)) {
+    return {
+      ok: false,
+      message: "message" in result && result.message
+        ? result.message
+        : "Could not resend the proposal email.",
+    };
   }
   if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
   if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
