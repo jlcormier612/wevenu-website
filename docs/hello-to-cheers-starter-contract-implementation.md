@@ -56,8 +56,8 @@ Section-level initials are **not** configured by the starter — the certified s
 |---|---|---|
 | `venue_name` | Venue | Required identity |
 | `venue_address` / `phone` / `email` | Venue profile | Honest fallback if blank |
-| `client_name` / `couple_name` | Client (+ partner) | `couple_name` kept as alias |
-| `primary_contact_name` | Client primary | |
+| `client_name` | Primary client contact first + last | Canonical customer-name field; additional people use signer/contact records |
+| `first_name` / `last_name` | Primary client contact | |
 | `client_email` / `client_phone` | Client | |
 | `event_name` | Event | Real name only |
 | `event_date` / `event_type` / `guest_count` | Event (else client) | |

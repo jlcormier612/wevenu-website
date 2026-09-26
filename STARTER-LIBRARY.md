@@ -516,8 +516,7 @@ VENUE
 ────────────────────────────────
 CLIENT
 ────────────────────────────────
-{{couple_name}}
-Primary Contact: {{primary_contact_name}}
+{{client_name}}
 [Client Email]
 [Client Phone]
 
@@ -846,8 +845,7 @@ Comparison behavior follows Reporting’s shared date-range resolver (automatic 
 | Customer-facing field | Token | Real today? | Source | Resolution |
 |-----------------------|-------|-------------|--------|------------|
 | Venue Name | `{{venue_name}}` | Yes | Venue | Contract create/send merge |
-| Client Name | `{{couple_name}}` | Yes | Client names | Same |
-| Primary Contact | `{{primary_contact_name}}` | Yes | Primary client name | Same |
+| Client Name | `{{client_name}}` | Yes | Primary client contact first + last | Same |
 | Event Date | `{{event_date}}` | Yes | Event | Long US date |
 | Event Type | `{{event_type}}` | Yes | Event | Pretty label |
 | Guest Count | `{{guest_count}}` | Yes | Merge context guest count | String |
@@ -859,7 +857,7 @@ Comparison behavior follows Reporting’s shared date-range resolver (automatic 
 | Customer-facing field | Token | Real today? | Source | Resolution |
 |-----------------------|-------|-------------|--------|------------|
 | Venue Name | `{{venue_name}}` | Yes | Venue | Scheduled send / share merge |
-| Client Name | `{{client_name}}` | Yes | Client display name | Same |
+| Client Name | `{{client_name}}` | Yes | Primary client contact first + last | Same |
 | Coordinator Name | `{{coordinator_name}}` | Yes | Sender | Same |
 | Event Date | `{{event_date}}` | Yes | Event | Same |
 | Days Until Event | `{{days_until_event}}` | Yes | Computed | Same |

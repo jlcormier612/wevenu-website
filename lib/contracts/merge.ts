@@ -15,8 +15,6 @@ export type MergeContext = {
   venueEmail?: string | null;
   clientFirstName: string;
   clientLastName: string;
-  partnerFirstName: string | null;
-  partnerLastName: string | null;
   clientEmail?: string | null;
   clientPhone?: string | null;
   eventName?: string | null;
@@ -43,12 +41,7 @@ export function buildMergeData(ctx: MergeContext): MergeData {
     month: "long", day: "numeric", year: "numeric",
   });
 
-  const primary = `${ctx.clientFirstName} ${ctx.clientLastName}`.trim();
-  const partner =
-    ctx.partnerFirstName || ctx.partnerLastName
-      ? `${ctx.partnerFirstName ?? ""} ${ctx.partnerLastName ?? ""}`.trim()
-      : null;
-  const clientName = partner ? `${primary} & ${partner}` : primary;
+  const clientName = `${ctx.clientFirstName} ${ctx.clientLastName}`.trim();
 
   const eventTypePretty = ctx.eventType
     ? ctx.eventType.charAt(0).toUpperCase() +
@@ -58,15 +51,12 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   const data: MergeData = {
     venue_name: ctx.venueName,
     client_name: clientName,
-    couple_name: clientName,
-    primary_contact_name: primary,
     today_date: today,
     contract_title: ctx.contractTitle,
   };
 
   setIfPresent(data, "first_name", ctx.clientFirstName);
   setIfPresent(data, "last_name", ctx.clientLastName);
-  setIfPresent(data, "full_name", primary);
 
   setIfPresent(data, "venue_address", ctx.venueAddress);
   setIfPresent(data, "venue_phone", ctx.venuePhone);

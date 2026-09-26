@@ -1,6 +1,7 @@
 /**
- * Recipient-specific merge perspective for primary vs partner email destinations.
- * client_name (couple display) never swaps. first_name / partner_* swap by role.
+ * Recipient-specific merge perspective for each email destination.
+ * client_name is always the primary client contact. first_name / last_name
+ * address the person receiving this send. Partner_* is not a Smart Field.
  */
 import type { MergeContext } from "@/lib/message-templates/merge";
 import type { EmailDestinationRole } from "@/lib/scheduled-messages/email-destinations";

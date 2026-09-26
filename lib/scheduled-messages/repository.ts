@@ -141,13 +141,7 @@ export async function getMergeContextForRelationship(
     partner_first_name: string | null; partner_last_name: string | null;
     event_date: string | null;
   };
-  const displayName = (p: PersonRow) => {
-    const primary = `${p.first_name} ${p.last_name}`.trim();
-    const partner = p.partner_first_name || p.partner_last_name
-      ? `${p.partner_first_name ?? ""} ${p.partner_last_name ?? ""}`.trim()
-      : null;
-    return partner ? `${primary} & ${partner}` : primary;
-  };
+  const displayName = (p: PersonRow) => `${p.first_name} ${p.last_name}`.trim();
 
   const coordinatorName = (opts?.coordinatorName?.trim()
     || staff?.full_name

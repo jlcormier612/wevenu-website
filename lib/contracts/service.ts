@@ -601,8 +601,6 @@ export async function buildContractMergeData(opts: {
     venueEmail: venue?.email?.trim() || "Email on file with the venue",
     clientFirstName: client?.firstName ?? "",
     clientLastName: client?.lastName ?? "",
-    partnerFirstName: client?.partnerFirstName ?? null,
-    partnerLastName: client?.partnerLastName ?? null,
     clientEmail: client?.email?.trim() || "Email on the client record",
     clientPhone: client?.phone?.trim() || "Phone on the client record",
     eventName: event?.name || "Your celebration",

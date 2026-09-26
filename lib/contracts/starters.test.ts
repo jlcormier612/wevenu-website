@@ -46,8 +46,6 @@ describe("Wedding Venue Agreement starter", () => {
       venueEmail: "h@example.com",
       clientFirstName: "Ada",
       clientLastName: "Lovelace",
-      partnerFirstName: "Charles",
-      partnerLastName: "Babbage",
       clientEmail: "a@example.com",
       clientPhone: "555",
       eventName: "Ada & Charles",
@@ -67,7 +65,14 @@ describe("Wedding Venue Agreement starter", () => {
     const result = assertCustomerSafeContractContent(merged);
     assert.equal(result.ok, true);
     assert.match(merged, /Garden Hall/);
+    assert.match(merged, /Ada Lovelace/);
+    assert.doesNotMatch(merged, /Charles Babbage/);
     assert.equal(merged.includes("{{"), false);
+    assert.equal(data.client_name, "Ada Lovelace");
+    assert.equal(data.couple_name, undefined);
+    assert.equal(data.primary_contact_name, undefined);
+    assert.equal(data.full_name, undefined);
+    assert.equal(data.partner_name, undefined);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{venue_access_hours\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
@@ -75,13 +80,11 @@ describe("Wedding Venue Agreement starter", () => {
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{vendors_on_file\}\}/);
   });
 
-  it("exposes first/last/full name merge tokens from client columns", () => {
+  it("exposes first/last/client name from the primary client contact", () => {
     const data = buildMergeData({
       venueName: "Garden Hall",
       clientFirstName: "Ada",
       clientLastName: "Lovelace",
-      partnerFirstName: null,
-      partnerLastName: null,
       eventDate: "2027-06-12",
       eventType: "wedding",
       guestCount: 80,
@@ -89,7 +92,7 @@ describe("Wedding Venue Agreement starter", () => {
     });
     assert.equal(data.first_name, "Ada");
     assert.equal(data.last_name, "Lovelace");
-    assert.equal(data.full_name, "Ada Lovelace");
+    assert.equal(data.client_name, "Ada Lovelace");
     assert.equal(mergeContent("Dear {{first_name}},", data), "Dear Ada,");
   });
 });

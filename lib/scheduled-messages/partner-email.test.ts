@@ -17,7 +17,7 @@ import { SAMPLE_MERGE_VALUES } from "@/lib/message-templates/preview";
 
 const baseCouple: MergeContext = {
   venueName: "Willow Creek Estate",
-  clientName: "Grace & Wayne",
+  clientName: "Grace Van Pelt",
   clientFirstName: "Grace",
   clientLastName: "Van Pelt",
   partnerFirstName: "Wayne",
@@ -82,25 +82,29 @@ describe("uniqueEmailDestinations", () => {
 });
 
 describe("recipient-specific merge", () => {
-  it("primary receives own first name and partner fields", () => {
+  it("primary receives own first name; client_name stays the primary contact", () => {
     const ctx = mergeContextForEmailDestination(baseCouple, "primary");
     const data = buildMergeData(ctx);
     assert.equal(data.first_name, "Grace");
-    assert.equal(data.partner_first_name, "Wayne");
-    assert.equal(data.client_name, "Grace & Wayne");
+    assert.equal(data.last_name, "Van Pelt");
+    assert.equal(data.client_name, "Grace Van Pelt");
+    assert.equal(data.partner_first_name, undefined);
+    assert.equal(data.partner_name, undefined);
   });
 
-  it("partner receives own first name; primary as partner_*", () => {
+  it("second destination is addressed by their own first name without a partner Smart Field", () => {
     const ctx = mergeContextForEmailDestination(baseCouple, "partner");
     const data = buildMergeData(ctx);
     assert.equal(data.first_name, "Wayne");
-    assert.equal(data.partner_first_name, "Grace");
-    assert.equal(data.full_name, "Wayne Rigsby");
-    assert.equal(data.partner_full_name, "Grace Van Pelt");
-    assert.equal(data.client_name, "Grace & Wayne");
+    assert.equal(data.last_name, "Rigsby");
+    assert.equal(data.client_name, "Grace Van Pelt");
+    assert.equal(data.full_name, undefined);
+    assert.equal(data.partner_first_name, undefined);
+    assert.equal(data.partner_full_name, undefined);
+    assert.equal(data.partner_name, undefined);
   });
 
-  it("missing partner does not fabricate partner fields", () => {
+  it("missing second person does not fabricate partner fields", () => {
     const data = buildMergeData({
       venueName: "Venue",
       clientName: "Grace Van Pelt",
@@ -112,9 +116,10 @@ describe("recipient-specific merge", () => {
     assert.equal(data.first_name, "Grace");
     assert.equal(data.partner_first_name, undefined);
     assert.equal(data.partner_full_name, undefined);
+    assert.equal(data.partner_name, undefined);
   });
 
-  it("template requiring missing partner refuses send", () => {
+  it("obsolete partner_first_name token is not resolved and refuses send", () => {
     const result = resolveForCustomerSend(
       "Hi {{first_name}} and {{partner_first_name}},",
       "Hello",
@@ -122,6 +127,7 @@ describe("recipient-specific merge", () => {
         venueName: "Venue",
         clientName: "Grace",
         clientFirstName: "Grace",
+        partnerFirstName: "Wayne",
         coordinatorName: "Jordan",
         eventDate: null,
       },
@@ -129,7 +135,6 @@ describe("recipient-specific merge", () => {
     assert.equal(result.ok, false);
     if (!result.ok) {
       assert.ok(result.tokens.includes("partner_first_name"));
-      assert.match(result.message, /partner details/);
     }
   });
 
@@ -147,16 +152,22 @@ describe("recipient-specific merge", () => {
 });
 
 describe("partner merge catalog + starters", () => {
-  it("MESSAGE_MERGE_FIELDS includes partner_* keys", () => {
+  it("MESSAGE_MERGE_FIELDS does not include partner or couple tokens", () => {
     const keys = MESSAGE_MERGE_FIELDS.map((f) => f.key);
-    assert.ok(keys.includes("partner_first_name"));
-    assert.ok(keys.includes("partner_last_name"));
-    assert.ok(keys.includes("partner_full_name"));
+    assert.ok(!keys.includes("partner_name"));
+    assert.ok(!keys.includes("partner_first_name"));
+    assert.ok(!keys.includes("partner_last_name"));
+    assert.ok(!keys.includes("partner_full_name"));
+    assert.ok(!keys.includes("couple_name"));
+    assert.ok(!keys.includes("full_name"));
+    assert.ok(keys.includes("client_name"));
   });
 
-  it("SAMPLE_MERGE_VALUES covers partner fields", () => {
-    assert.ok(SAMPLE_MERGE_VALUES.partner_first_name);
-    assert.ok(SAMPLE_MERGE_VALUES.partner_full_name);
+  it("SAMPLE_MERGE_VALUES does not cover removed partner/couple fields", () => {
+    assert.equal(SAMPLE_MERGE_VALUES.partner_first_name, undefined);
+    assert.equal(SAMPLE_MERGE_VALUES.partner_full_name, undefined);
+    assert.equal(SAMPLE_MERGE_VALUES.couple_name, undefined);
+    assert.ok(SAMPLE_MERGE_VALUES.client_name);
   });
 
   it("MSG-01 through MSG-11 open with Hi {{first_name}},", () => {

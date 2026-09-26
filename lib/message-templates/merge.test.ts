@@ -55,7 +55,7 @@ describe("buildMergeData optional tokens", () => {
   it("omits tour/payment keys when absent so literals can be detected", () => {
     const data = buildMergeData({
       venueName: "Willow Creek",
-      clientName: "Emily & James",
+      clientName: "Emily Carter",
       coordinatorName: "Jordan",
       eventDate: "2027-06-12",
     });
@@ -67,24 +67,30 @@ describe("buildMergeData optional tokens", () => {
     assert.equal(mergeContent(body, data), "See you on {{tour_datetime}}");
   });
 
-  it("includes first/last/full name when present", () => {
+  it("includes first/last name when present and does not invent partner fields", () => {
     const data = buildMergeData({
       venueName: "Willow Creek",
-      clientName: "Emily & James Carter",
+      clientName: "Emily Carter",
       clientFirstName: "Emily",
       clientLastName: "Carter",
+      partnerFirstName: "James",
+      partnerLastName: "Carter",
       coordinatorName: "Jordan",
       eventDate: "2027-06-12",
     });
     assert.equal(data.first_name, "Emily");
     assert.equal(data.last_name, "Carter");
-    assert.equal(data.full_name, "Emily Carter");
+    assert.equal(data.client_name, "Emily Carter");
+    assert.equal(data.full_name, undefined);
+    assert.equal(data.partner_name, undefined);
+    assert.equal(data.partner_first_name, undefined);
+    assert.equal(data.couple_name, undefined);
   });
 
   it("includes tour and payment when present", () => {
     const data = buildMergeData({
       venueName: "Willow Creek",
-      clientName: "Emily & James",
+      clientName: "Emily Carter",
       coordinatorName: "Jordan",
       eventDate: "2027-06-12",
       tourDatetime: "Saturday, May 9, 2027 at 2:00 PM",
@@ -113,7 +119,7 @@ describe("customer-safe merge gate", () => {
     const master = STARTER_MESSAGE_MASTERS.find((m) => m.key === "MSG-02")!;
     const result = resolveForCustomerSend(master.emailBody, master.emailSubject, {
       venueName: "Willow Creek Estate",
-      clientName: "Emily & James Carter",
+      clientName: "Emily Carter",
       clientFirstName: "Emily",
       coordinatorName: "Jordan Blake",
       eventDate: "2027-06-12",
@@ -131,7 +137,7 @@ describe("customer-safe merge gate", () => {
     const master = STARTER_MESSAGE_MASTERS.find((m) => m.key === "MSG-10")!;
     const result = resolveForCustomerSend(master.emailBody, master.emailSubject, {
       venueName: "Willow Creek Estate",
-      clientName: "Emily & James Carter",
+      clientName: "Emily Carter",
       coordinatorName: "Jordan Blake",
       eventDate: "2027-06-12",
     });

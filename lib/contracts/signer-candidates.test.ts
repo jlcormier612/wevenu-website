@@ -145,5 +145,9 @@ describe("contract-time Smart Fields", () => {
     assert.ok(keys.includes("package_section"));
     assert.ok(keys.includes("contract_total"));
     assert.ok(keys.includes("client_name"));
+    assert.ok(!keys.includes("couple_name"));
+    assert.ok(!keys.includes("partner_name"));
+    assert.ok(!keys.includes("full_name"));
+    assert.ok(!keys.includes("primary_contact_name"));
   });
 });
