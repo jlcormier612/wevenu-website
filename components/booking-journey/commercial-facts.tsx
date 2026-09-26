@@ -1,8 +1,18 @@
 "use client";
 
+import * as React from "react";
+
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import { collectsInitialPayment } from "@/lib/booking-journey/venue-prefs";
@@ -18,6 +28,8 @@ export function CommercialFacts({
   onCreateShareLink,
   onCopyShareLink,
   onResendProposalEmail,
+  onWithdrawProposal,
+  withdrawPending,
   onCreateContract,
   onSetupPayments,
   onRecordDeposit,
@@ -30,6 +42,8 @@ export function CommercialFacts({
   onCreateShareLink: () => void;
   onCopyShareLink: () => void;
   onResendProposalEmail?: () => void;
+  onWithdrawProposal?: () => void;
+  withdrawPending?: boolean;
   onCreateContract: () => void;
   onSetupPayments: () => void;
   onRecordDeposit: () => void;
@@ -52,6 +66,9 @@ export function CommercialFacts({
   );
   const depositDue = Boolean(depositLine && depositLine.status !== "paid");
   const collectPayment = collectsInitialPayment(journey.prefs);
+  const [withdrawOpen, setWithdrawOpen] = React.useState(false);
+  const waitingOnCouple = proposal?.status === "sent" || proposal?.status === "selected";
+  const proposalWithdrawn = proposal?.status === "withdrawn";
 
   function copyProposalLink() {
     const token = proposal?.acceptToken;
@@ -112,6 +129,11 @@ export function CommercialFacts({
               {row.detail ? <p className="mt-1 text-xs text-muted-foreground">{row.detail}</p> : null}
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
+              {row.key === "package" && !selection && proposalWithdrawn ? (
+                <Button type="button" size="sm" onClick={onSelectPackage}>
+                  Select package
+                </Button>
+              ) : null}
               {row.key === "package" && selection ? (
                 <Button type="button" size="sm" variant="outline" onClick={onSelectPackage}>
                   View / Change package
@@ -140,9 +162,17 @@ export function CommercialFacts({
                       {proposal.status === "draft" ? "Continue proposal" : "Create proposal"}
                     </Button>
                   ) : null}
-                  {proposal.acceptToken ? (
+                  {proposal.acceptToken && !proposalWithdrawn ? (
                     <Button type="button" size="sm" variant="outline" onClick={copyProposalLink}>
                       Copy proposal link
+                    </Button>
+                  ) : null}
+                  {proposalWithdrawn ? (
+                    <p className="self-center text-xs text-muted-foreground">Link no longer active</p>
+                  ) : null}
+                  {proposalWithdrawn && onCreateProposal && allowOffer ? (
+                    <Button type="button" size="sm" variant="ghost" onClick={onCreateProposal}>
+                      Create proposal
                     </Button>
                   ) : null}
                   {onResendProposalEmail && (proposal.status === "sent" || proposal.status === "selected") ? (
@@ -192,6 +222,47 @@ export function CommercialFacts({
           </li>
         ))}
       </ul>
+
+      {waitingOnCouple && onWithdrawProposal ? (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-xs text-muted-foreground">Need to proceed another way?</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto px-0 text-xs text-muted-foreground"
+            onClick={() => setWithdrawOpen(true)}
+          >
+            Continue manually
+          </Button>
+        </div>
+      ) : null}
+
+      <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Continue manually?</DialogTitle>
+            <DialogDescription>
+              This will withdraw the proposal so the couple can no longer approve it through the proposal link. You can then select the package and continue the booking manually.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setWithdrawOpen(false)} disabled={withdrawPending}>
+              Keep waiting for couple
+            </Button>
+            <Button
+              type="button"
+              disabled={withdrawPending || !onWithdrawProposal}
+              onClick={() => {
+                setWithdrawOpen(false);
+                onWithdrawProposal?.();
+              }}
+            >
+              {withdrawPending ? "Withdrawing…" : "Withdraw proposal & continue manually"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

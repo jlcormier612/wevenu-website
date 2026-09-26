@@ -73,6 +73,27 @@ describe("commercial artifact states", () => {
     assert.match(proposal?.detail ?? "", /Waiting for the couple/);
   });
 
+  it("a withdrawn proposal is history, not a waiting state", () => {
+    const facts = describeCommercialFacts({
+      selection: null,
+      proposal: {
+        id: "prop-1",
+        status: "withdrawn",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: null,
+      },
+      contract: null,
+      paymentLines: [],
+    });
+    const proposal = facts.find((row) => row.key === "proposal");
+    assert.equal(proposal?.state, "Withdrawn");
+    assert.match(proposal?.detail ?? "", /continued manually/i);
+    assert.doesNotMatch(proposal?.detail ?? "", /Waiting for the couple/);
+    const pkg = facts.find((row) => row.key === "package");
+    assert.equal(pkg?.state, "Not selected");
+  });
+
   it("acceptance is not contract execution", () => {
     const facts = describeCommercialFacts({
       selection: selection({ status: "accepted", acceptedAt: "2026-09-19T19:42:00.000Z" }),

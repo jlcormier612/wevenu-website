@@ -11,6 +11,7 @@ import {
   prepareCreateContractAction,
   resendProposalEmailAction,
   sendOfferAction,
+  withdrawProposalAction,
 } from "@/app/(app)/booking-journey/actions";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { CommercialFacts } from "@/components/booking-journey/commercial-facts";
@@ -153,6 +154,20 @@ export function BookingJourneyPanel({
     });
   }
 
+  function handleWithdrawProposal() {
+    const proposalId = journey.proposal?.id;
+    if (!proposalId) return;
+    startTransition(async () => {
+      const result = await withdrawProposalAction({ proposalId, leadId, clientId });
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      toast.success("Proposal withdrawn. Select the package to continue.");
+      router.refresh();
+    });
+  }
+
   function handleResendProposalEmail() {
     const proposalId = journey.proposal?.id;
     if (!proposalId) return;
@@ -208,6 +223,12 @@ export function BookingJourneyPanel({
         onCreateShareLink={() => setOfferOpen(true)}
         onCopyShareLink={copyShareLink}
         onResendProposalEmail={journey.proposal?.id ? handleResendProposalEmail : undefined}
+        onWithdrawProposal={
+          journey.proposal && (journey.proposal.status === "sent" || journey.proposal.status === "selected")
+            ? handleWithdrawProposal
+            : undefined
+        }
+        withdrawPending={pending}
         onCreateContract={handleCreateContract}
         onSetupPayments={() => {
           if (selection) setPaymentsOpen(true);

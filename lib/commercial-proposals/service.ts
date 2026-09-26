@@ -320,6 +320,57 @@ export async function getProposalForVenue(proposalId: string): Promise<Commercia
   return repo.getProposal(await createClient(), venue.id, proposalId);
 }
 
+/**
+ * Venue manual takeover. Flips a waiting proposal to withdrawn.
+ * Does not create a selection, contract, invoice, or payment plan.
+ */
+export async function withdrawCommercialProposal(proposalId: string): Promise<ProposalActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getProposal(supabase, venueId, proposalId);
+    if (!existing) return { ok: false, message: "Proposal not found." } as ProposalActionResult;
+    if (existing.status === "approved") {
+      return { ok: false, message: "This proposal was already approved." } as ProposalActionResult;
+    }
+    if (existing.status !== "sent" && existing.status !== "selected") {
+      return { ok: false, message: "Only a proposal the couple is still reviewing can be withdrawn." } as ProposalActionResult;
+    }
+    const updated = await repo.withdrawProposal(supabase, venueId, existing.id);
+    if (!updated) return { ok: false, message: "Could not withdraw the proposal." } as ProposalActionResult;
+
+    const title = "Continued booking manually — proposal withdrawn from waiting.";
+    try {
+      if (existing.leadId) {
+        const { insertActivity } = await import("@/lib/leads/repository");
+        await insertActivity(supabase, venueId, existing.leadId, "proposal_withdrawn", title, undefined);
+      } else if (existing.clientId) {
+        const { insertClientActivity } = await import("@/lib/clients/repository");
+        await insertClientActivity(supabase, venueId, existing.clientId, "proposal_withdrawn", title, undefined);
+      }
+    } catch {
+      /* status already withdrawn */
+    }
+    return { ok: true } as ProposalActionResult;
+  });
+  return result as ProposalActionResult;
+}
+
+/** Latest withdrawn proposal for history, when no active proposal remains. */
+export async function resolveLatestWithdrawnProposal(input: {
+  leadId?: string;
+  clientId?: string;
+}): Promise<CommercialProposal | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  if (input.leadId) {
+    const byLead = await repo.getLatestWithdrawnProposalForLead(supabase, venue.id, input.leadId);
+    if (byLead) return byLead;
+  }
+  if (input.clientId) return repo.getLatestWithdrawnProposalForClient(supabase, venue.id, input.clientId);
+  return null;
+}
+
 export async function resolveActiveProposal(input: {
   leadId?: string;
   clientId?: string;

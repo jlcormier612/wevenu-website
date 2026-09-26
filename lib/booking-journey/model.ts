@@ -235,7 +235,8 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
   const selection = input.selection && input.selection.status !== "superseded" ? input.selection : null;
   const proposal = input.proposal ?? null;
   const hasPackage = !!selection;
-  const hasProposal = !!proposal;
+  // Withdrawn and replaced proposals stay on the record but do not block Path B.
+  const hasProposal = !!proposal && proposal.status !== "withdrawn" && proposal.status !== "superseded";
   const collectPayment = collectsInitialPayment(prefs);
   const agreementDone = agreementComplete(selection, input.contract, prefs);
   const paymentDone = initialPaymentSatisfied({
@@ -293,7 +294,15 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
   const allowOffer = prefs.agreementMethod === "offer" || prefs.agreementMethod === "either";
   const allowContract = prefs.agreementMethod === "contract" || prefs.agreementMethod === "either";
 
-  if (!hasPackage && !hasProposal) {
+  if (!hasPackage && proposal?.status === "withdrawn") {
+    direction = "You continued manually. Select the package to keep booking.";
+    primaryLabel = "Select package";
+    primaryAction = "select_package";
+    if (allowOffer) {
+      secondaryLabel = "Create proposal";
+      secondaryAction = "create_proposal";
+    }
+  } else if (!hasPackage && !hasProposal) {
     if (prefs.agreementMethod === "offer") {
       direction = "Create a proposal so the couple can choose between options.";
       primaryLabel = "Create proposal";

@@ -109,11 +109,19 @@ export function proposalFactFromL1(proposal: JourneyProposal): CommercialFact {
         : "Approved. One package selection was created from their choice.",
     };
   }
-  if (proposal.status === "superseded" || proposal.status === "withdrawn") {
+  if (proposal.status === "withdrawn") {
     return {
       key: "proposal",
       title: "Proposal",
-      state: proposal.status === "superseded" ? "Replaced" : "Withdrawn",
+      state: "Withdrawn",
+      detail: "You continued manually. The proposal link is no longer an approval path.",
+    };
+  }
+  if (proposal.status === "superseded") {
+    return {
+      key: "proposal",
+      title: "Proposal",
+      state: "Replaced",
       detail: null,
     };
   }

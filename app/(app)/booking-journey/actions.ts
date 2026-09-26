@@ -240,6 +240,21 @@ export async function resendProposalEmailAction(input: {
   };
 }
 
+export async function withdrawProposalAction(input: {
+  proposalId: string;
+  leadId?: string;
+  clientId?: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { withdrawCommercialProposal } = await import("@/lib/commercial-proposals/service");
+  const result = await withdrawCommercialProposal(input.proposalId);
+  if (!result.ok) {
+    return { ok: false, message: result.message ?? "Could not withdraw the proposal." };
+  }
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return { ok: true };
+}
+
 export async function markOfferAcceptedAction(input: {
   selectionId: string;
   leadId?: string;

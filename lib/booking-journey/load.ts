@@ -3,7 +3,7 @@ import {
   getActiveSelectedPackageForClient,
   getActiveSelectedPackageForLead,
 } from "@/lib/commercial-selections/service";
-import { resolveActiveProposal } from "@/lib/commercial-proposals/service";
+import { resolveActiveProposal, resolveLatestWithdrawnProposal } from "@/lib/commercial-proposals/service";
 import type { CommercialProposal } from "@/lib/commercial-proposals/types";
 import { getClientInvitation } from "@/lib/client-auth/service";
 import { getContracts } from "@/lib/contracts/service";
@@ -82,7 +82,9 @@ export async function loadBookingJourneyForLead(input: {
   const [selection, contracts, proposal] = await Promise.all([
     getActiveSelectedPackageForLead(input.leadId),
     getContracts(),
-    resolveActiveProposal({ leadId: input.leadId, clientId: input.linkedClientId ?? undefined }),
+    resolveActiveProposal({ leadId: input.leadId, clientId: input.linkedClientId ?? undefined }).then(async (active) =>
+      active ?? resolveLatestWithdrawnProposal({ leadId: input.leadId, clientId: input.linkedClientId ?? undefined }),
+    ),
   ]);
   let clientSelection = selection;
   if (!clientSelection && input.linkedClientId) {
@@ -128,7 +130,9 @@ export async function loadBookingJourneyForClient(input: {
     venuePrefs(),
     venueBrand(),
     venueName(),
-    resolveActiveProposal({ clientId: input.clientId, leadId: input.leadId ?? undefined }),
+    resolveActiveProposal({ clientId: input.clientId, leadId: input.leadId ?? undefined }).then(async (active) =>
+      active ?? resolveLatestWithdrawnProposal({ clientId: input.clientId, leadId: input.leadId ?? undefined }),
+    ),
   ]);
   let resolved = selection;
   if (!resolved && input.leadId) {

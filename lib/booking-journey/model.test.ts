@@ -65,6 +65,52 @@ describe("Booking Journey derivation", () => {
     assert.equal(j.secondaryAction, undefined);
   });
 
+  it("a sent proposal waits and does not offer Select package", () => {
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: null,
+      proposal: {
+        id: "prop-1",
+        status: "sent",
+        offeredAt: "2026-09-26T00:00:00Z",
+        acceptToken: "tok",
+        selectionId: null,
+      },
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "either" },
+    });
+    assert.match(j.direction, /waiting for the couple/i);
+    assert.equal(j.primaryAction, "copy_proposal_link");
+    assert.notEqual(j.primaryAction, "select_package");
+    assert.notEqual(j.secondaryAction, "select_package");
+  });
+
+  it("a withdrawn proposal unlocks Select package and stops waiting", () => {
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: null,
+      proposal: {
+        id: "prop-1",
+        status: "withdrawn",
+        offeredAt: "2026-09-26T00:00:00Z",
+        acceptToken: "tok",
+        selectionId: null,
+      },
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "either" },
+    });
+    assert.doesNotMatch(j.direction, /waiting for the couple/i);
+    assert.equal(j.primaryAction, "select_package");
+    assert.equal(j.primaryLabel, "Select package");
+    assert.equal(j.proposal?.status, "withdrawn");
+  });
+
   it("Agreement=Proposal starts with Create proposal only", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",

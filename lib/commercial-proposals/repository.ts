@@ -297,6 +297,61 @@ export async function markProposalSent(
   return getProposal(client, venueId, proposalId);
 }
 
+export async function withdrawProposal(
+  client: SupabaseClient,
+  venueId: string,
+  proposalId: string,
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("commercial_proposals")
+    .update({ status: "withdrawn" })
+    .eq("id", proposalId)
+    .eq("venue_id", venueId)
+    .in("status", ["sent", "selected"])
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+export async function getLatestWithdrawnProposalForLead(
+  client: SupabaseClient,
+  venueId: string,
+  leadId: string,
+): Promise<CommercialProposal | null> {
+  const { data, error } = await client
+    .from("commercial_proposals")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .eq("status", "withdrawn")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return getProposal(client, venueId, (data as { id: string }).id);
+}
+
+export async function getLatestWithdrawnProposalForClient(
+  client: SupabaseClient,
+  venueId: string,
+  clientId: string,
+): Promise<CommercialProposal | null> {
+  const { data, error } = await client
+    .from("commercial_proposals")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("client_id", clientId)
+    .eq("status", "withdrawn")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return getProposal(client, venueId, (data as { id: string }).id);
+}
+
 export async function supersedeProposal(
   client: SupabaseClient,
   venueId: string,
