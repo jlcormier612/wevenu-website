@@ -30,6 +30,22 @@ describe("token-preserving contract draft", () => {
     assert.match(send, /publishContractDocument\(supabase, customerFacing\)/);
   });
 
+  it("sendContract freezes from persisted signer names, not clientContactId-only", () => {
+    const send = service.slice(service.indexOf("export async function sendContract"));
+    assert.match(send, /requiredClientSignerNamesFromSigners/);
+    assert.match(send, /requiredClientSignerNames/);
+    assert.doesNotMatch(
+      send.slice(0, send.indexOf("forceResolveContractContent")),
+      /clientContactId\)\s*\.map/,
+    );
+  });
+
+  it("materialize accepts requiredClientSignerNames override for Send freeze", () => {
+    const mat = service.slice(service.indexOf("export async function materializeAuthoredContractContent"));
+    assert.match(mat, /requiredClientSignerNames\?:/);
+    assert.match(mat, /opts\.requiredClientSignerNames/);
+  });
+
   it("preview is display-only and never writes authored content", () => {
     assert.match(builder, /previewContractContentAction/);
     assert.doesNotMatch(builder, /setContent\(result\.content\)/);

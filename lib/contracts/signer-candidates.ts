@@ -215,6 +215,19 @@ export function resolveSignerSeedsFromSelection(
   return { ok: true, seeds: [...byEmail.values()] };
 }
 
+/** Required client display names from persisted contract_signers — same SoT as invite emails. */
+export function requiredClientSignerNamesFromSigners(
+  signers: Array<{
+    signerType: string;
+    isRequired: boolean;
+    signerName: string | null;
+  }>,
+): string[] {
+  return signers
+    .filter((s) => s.signerType === "client" && s.isRequired && Boolean(s.signerName?.trim()))
+    .map((s) => s.signerName!.trim());
+}
+
 /** Map existing draft signers back to candidate ids for checkbox state. */
 export function selectedIdsFromExistingSigners(
   candidates: SignerCandidate[],

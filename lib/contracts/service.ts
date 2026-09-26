@@ -96,6 +96,33 @@ async function resolveClientSignerSeeds(
   return resolveSignerSeedsFromSelection(client, contacts, selectedContactIds);
 }
 
+/**
+ * Re-seed from persisted contract_signers without dropping relationship
+ * primary/partner rows that have null client_contact_id.
+ */
+async function resolveClientSignerSeedsFromPersistedSigners(
+  clientId: string,
+  signers: Array<{
+    signerType: string;
+    isRequired: boolean;
+    clientContactId: string | null;
+    signerEmail: string | null;
+    signerRole: string | null;
+  }>,
+): Promise<{ ok: true; seeds: ClientSignerSeed[] } | { ok: false; message: string }> {
+  const client = await getClient(clientId);
+  if (!client) return { ok: false, message: "Client not found." };
+  const contacts = await getClientContacts(clientId);
+  const {
+    buildSignerCandidates,
+    resolveSignerSeedsFromSelection,
+    selectedIdsFromExistingSigners,
+  } = await import("@/lib/contracts/signer-candidates");
+  const candidates = buildSignerCandidates(client, contacts);
+  const selectedIds = selectedIdsFromExistingSigners(candidates, signers);
+  return resolveSignerSeedsFromSelection(client, contacts, selectedIds);
+}
+
 // ---- templates --------------------------------------------------------------
 
 export async function getTemplates(includeArchived = false): Promise<ContractTemplate[]> {
@@ -321,6 +348,11 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
  * Resolve authored (tokenized) draft content into customer-facing text.
  * Used by Preview (display-only) and Send (the only persist path).
  * Never writes the draft.
+ *
+ * Signer names: prefer `requiredClientSignerNames` when already known from
+ * persisted `contract_signers` (Send). Otherwise resolve from
+ * `clientSignerContactIds` (Preview / create). Never fall back to primary-only
+ * when the contract already has multiple required client signers on file.
  */
 export async function materializeAuthoredContractContent(opts: {
   authoredContent: string;
@@ -328,18 +360,28 @@ export async function materializeAuthoredContractContent(opts: {
   eventId: string;
   contractTitle: string;
   clientSignerContactIds?: string[];
+  /** Authoritative names from persisted required client signers (Send freeze). */
+  requiredClientSignerNames?: string[];
   selectionId?: string;
 }): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
   try {
-    const signerSeeds = await resolveClientSignerSeeds(opts.clientId, opts.clientSignerContactIds);
-    if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message };
+    let requiredClientSignerNames =
+      opts.requiredClientSignerNames
+        ?.map((n) => n.trim())
+        .filter(Boolean) ?? [];
+
+    if (requiredClientSignerNames.length === 0) {
+      const signerSeeds = await resolveClientSignerSeeds(opts.clientId, opts.clientSignerContactIds);
+      if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message };
+      requiredClientSignerNames = signerSeeds.seeds.map((s) => s.signerName);
+    }
+
     const { resolveActiveCommercialSelection } = await import("@/lib/commercial-selections/service");
     const activeSelection = await resolveActiveCommercialSelection({
       selectionId: opts.selectionId,
       eventId: opts.eventId,
       clientId: opts.clientId,
     });
-    const requiredClientSignerNames = signerSeeds.seeds.map((s) => s.signerName);
     const mergeData = await buildContractMergeData({
       clientId: opts.clientId,
       eventId: opts.eventId,
@@ -414,12 +456,9 @@ export async function createAmendmentFromContract(sourceContractId: string): Pro
     if (!source.clientId) {
       return { ok: false, message: "This contract has no client — cannot create an amendment." } as CreateContractResult;
     }
-    const priorContactIds = (source.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
-    const seeds = await resolveClientSignerSeeds(
+    const seeds = await resolveClientSignerSeedsFromPersistedSigners(
       source.clientId,
-      priorContactIds.length > 0 ? priorContactIds : undefined,
+      source.signers ?? [],
     );
     if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
 
@@ -912,15 +951,19 @@ export async function sendContract(id: string, customMessage?: string): Promise<
 
     // Client-first: venue signature is not required to issue the contract.
 
-    const priorContactIds = (contract.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
+    // Freeze using the same required client signers that drive invite emails.
+    // Do NOT re-derive from clientContactId alone — relationship primary/partner
+    // seeds store clientContactId=null, which previously dropped Brian and froze
+    // primary-only content while still creating two signing links.
+    const { requiredClientSignerNamesFromSigners } = await import("@/lib/contracts/signer-candidates");
+    const requiredClientSignerNames = requiredClientSignerNamesFromSigners(contract.signers ?? []);
     const materialized = await materializeAuthoredContractContent({
       authoredContent: contract.content,
       clientId: contract.clientId ?? "",
       eventId: contract.eventId ?? "",
       contractTitle: contract.title,
-      clientSignerContactIds: priorContactIds.length > 0 ? priorContactIds : undefined,
+      requiredClientSignerNames:
+        requiredClientSignerNames.length > 0 ? requiredClientSignerNames : undefined,
     });
     if (!materialized.ok) {
       return { ok: false, message: materialized.message } as ContractActionResult;
@@ -1068,12 +1111,9 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
       return { ok: false, message: "This contract has no client — cannot create a new version." } as CreateContractResult;
     }
 
-    const priorContactIds = (source.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
-    const seeds = await resolveClientSignerSeeds(
+    const seeds = await resolveClientSignerSeedsFromPersistedSigners(
       source.clientId,
-      priorContactIds.length > 0 ? priorContactIds : undefined,
+      source.signers ?? [],
     );
     if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
 

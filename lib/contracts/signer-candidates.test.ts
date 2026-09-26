@@ -9,7 +9,9 @@ import {
   defaultSelectedSignerIds,
   RELATIONSHIP_PARTNER_SIGNER_ID,
   RELATIONSHIP_PRIMARY_SIGNER_ID,
+  requiredClientSignerNamesFromSigners,
   resolveSignerSeedsFromSelection,
+  selectedIdsFromExistingSigners,
 } from "@/lib/contracts/signer-candidates";
 import { DEFERRED_MERGE_FIELD_KEYS, MERGE_FIELDS } from "@/lib/contracts/constants";
 import type { Client } from "@/lib/clients/types";
@@ -136,6 +138,87 @@ describe("signer candidates from client relationship", () => {
     const candidates = buildSignerCandidates(c, contacts);
     assert.ok(candidates.some((x) => x.id === "ct1"));
     assert.ok(!candidates.some((x) => x.id === RELATIONSHIP_PRIMARY_SIGNER_ID));
+  });
+});
+
+describe("Send freeze signer SoT from persisted contract_signers", () => {
+  it("reads both relationship primary+partner names even when clientContactId is null", () => {
+    const names = requiredClientSignerNamesFromSigners([
+      { signerType: "venue", isRequired: true, signerName: null },
+      {
+        signerType: "client",
+        isRequired: true,
+        signerName: "Rebecca Sunshine",
+      },
+      {
+        signerType: "client",
+        isRequired: true,
+        signerName: "Brian Friendly",
+      },
+    ]);
+    assert.deepEqual(names, ["Rebecca Sunshine", "Brian Friendly"]);
+  });
+
+  it("maps null-contact relationship signers back to selection ids for re-seed", () => {
+    const c = client({
+      id: "c1",
+      firstName: "Rebecca",
+      lastName: "Sunshine",
+      email: "rebecca@example.com",
+      partnerFirstName: "Brian",
+      partnerLastName: "Friendly",
+      partnerEmail: "brian@example.com",
+    });
+    const candidates = buildSignerCandidates(c, []);
+    const ids = selectedIdsFromExistingSigners(candidates, [
+      {
+        signerType: "client",
+        isRequired: true,
+        clientContactId: null,
+        signerEmail: "rebecca@example.com",
+        signerRole: "primary",
+      },
+      {
+        signerType: "client",
+        isRequired: true,
+        clientContactId: null,
+        signerEmail: "brian@example.com",
+        signerRole: "partner",
+      },
+    ]);
+    assert.deepEqual(ids, [RELATIONSHIP_PRIMARY_SIGNER_ID, RELATIONSHIP_PARTNER_SIGNER_ID]);
+    const seeds = resolveSignerSeedsFromSelection(c, [], ids);
+    assert.equal(seeds.ok, true);
+    if (seeds.ok) {
+      assert.equal(seeds.seeds.length, 2);
+      assert.equal(seeds.seeds[0]!.signerName, "Rebecca Sunshine");
+      assert.equal(seeds.seeds[1]!.signerName, "Brian Friendly");
+      assert.equal(seeds.seeds[0]!.clientContactId, null);
+      assert.equal(seeds.seeds[1]!.clientContactId, null);
+    }
+  });
+
+  it("filtering only by clientContactId would lose the partner — that path is wrong", () => {
+    const signers = [
+      {
+        signerType: "client",
+        isRequired: true,
+        clientContactId: null as string | null,
+        signerName: "Rebecca Sunshine",
+      },
+      {
+        signerType: "client",
+        isRequired: true,
+        clientContactId: null as string | null,
+        signerName: "Brian Friendly",
+      },
+    ];
+    const byContactOnly = signers
+      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
+      .map((s) => s.clientContactId);
+    assert.equal(byContactOnly.length, 0);
+    const byNames = requiredClientSignerNamesFromSigners(signers);
+    assert.deepEqual(byNames, ["Rebecca Sunshine", "Brian Friendly"]);
   });
 });
 

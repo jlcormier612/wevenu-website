@@ -249,6 +249,54 @@ describe("multi-signer client party identity", () => {
     assert.match(withSigs, /Client\nBrian Friendly\n\nSignature:/);
   });
 
+  it("Send freeze with persisted names matches Preview two-signer materialization", () => {
+    // Simulates sendContract passing requiredClientSignerNamesFromSigners(...)
+    // when both relationship signers have null clientContactId.
+    const persistedNames = ["Rebecca Sunshine", "Brian Friendly"];
+    const data = buildMergeData({
+      venueName: "Jen's Fancy Venue",
+      clientFirstName: "Rebecca",
+      clientLastName: "Sunshine",
+      requiredClientSignerNames: persistedNames,
+      eventDate: "2027-06-26",
+      eventType: "wedding",
+      guestCount: 150,
+      contractTitle: "Venue Rental Agreement — Rebecca Sunshine & Brian Friendly",
+      packageSection:
+        "Selected package / services:\n• Full Service Wedding\n\nPackage total: $25,000.00\nDeposit: $6,250.00\nRemaining: $18,750.00",
+      contractTotal: "$25,000.00",
+    });
+    const authored =
+      "This Agreement is between {{venue_name}} and {{client_name}} for the celebration described below.\n\n" +
+      "{{package_section}}\n\nSIGNATURES\nClient\n{{client_name}}\n\nSignature: ________________________________\nDate: ____________________________________\n\nVenue\n{{venue_name}}";
+    const frozen = applyRequiredSignerSignatureBlocks(mergeContent(authored, data), persistedNames);
+    assert.match(frozen, /Jen's Fancy Venue and Rebecca Sunshine & Brian Friendly/);
+    assert.match(frozen, /Client\nRebecca Sunshine\n\nSignature:/);
+    assert.match(frozen, /Client\nBrian Friendly\n\nSignature:/);
+    assert.match(frozen, /Venue\nJen's Fancy Venue/);
+    assert.doesNotMatch(frozen, /\{\{/);
+    // Contrast: primary-only fallback would look like this — must not equal freeze.
+    const primaryOnly = applyRequiredSignerSignatureBlocks(
+      mergeContent(
+        authored,
+        buildMergeData({
+          venueName: "Jen's Fancy Venue",
+          clientFirstName: "Rebecca",
+          clientLastName: "Sunshine",
+          requiredClientSignerNames: ["Rebecca Sunshine"],
+          eventDate: "2027-06-26",
+          eventType: "wedding",
+          guestCount: 150,
+          contractTitle: "Venue Rental Agreement — Rebecca Sunshine & Brian Friendly",
+        }),
+      ),
+      ["Rebecca Sunshine"],
+    );
+    assert.match(primaryOnly, /and Rebecca Sunshine for/);
+    assert.doesNotMatch(primaryOnly, /Brian Friendly/);
+    assert.notEqual(frozen, primaryOnly);
+  });
+
   it("does not invent a second person when only one signer is selected", () => {
     const data = buildMergeData({
       venueName: "Jen's Fancy Venue",
