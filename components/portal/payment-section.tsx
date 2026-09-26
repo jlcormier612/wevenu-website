@@ -13,6 +13,7 @@ import {
   type CheckoutNoticeKind,
 } from "@/lib/portal/checkout-return-notice";
 import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
+import { formatPortalPaymentDate } from "@/lib/portal/payment-display-date";
 import {
   invoicesWithoutPaymentPlan,
   labelForSchedule,
@@ -74,11 +75,8 @@ function formatMoney(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
+function formatDate(iso: string | null | undefined): string {
+  return formatPortalPaymentDate(iso);
 }
 
 function daysUntilDate(iso: string): number {
