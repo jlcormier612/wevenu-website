@@ -19,12 +19,14 @@ export function EventEditForm({
   maxSimultaneousEvents = 1,
   spaceOperatingMode = "single",
   initialAssignments = [],
+  excludeLeadId,
 }: {
   event: VenueEvent;
   spaces?: VenueSpace[];
   maxSimultaneousEvents?: number;
   spaceOperatingMode?: "single" | "multi";
   initialAssignments?: EventSpaceAssignmentInput[];
+  excludeLeadId?: string;
 }) {
   const router = useRouter();
   const buildInput = React.useCallback((): EventInput => ({
@@ -62,6 +64,7 @@ export function EventEditForm({
       submitLabel="Save changes"
       spaces={spaces}
       existingEventId={event.id}
+      excludeLeadId={excludeLeadId}
       maxSimultaneousEvents={maxSimultaneousEvents}
       spaceOperatingMode={spaceOperatingMode}
     />

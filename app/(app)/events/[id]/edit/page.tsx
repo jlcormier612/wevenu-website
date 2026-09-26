@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
 import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
+import { getClient } from "@/lib/clients/service";
 import { getEvent } from "@/lib/events/service";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
@@ -31,6 +32,9 @@ export default async function EditEventPage({ params }: Props) {
     getEventSpaceAssignments(id),
   ]);
   if (!event) notFound();
+  const ownerLeadId = event.clientId
+    ? (await getClient(event.clientId))?.leadId ?? undefined
+    : undefined;
   const canEditBookingDate = role === "owner" || role === "manager";
   const spaceOperatingMode = venue?.spaceOperatingMode ?? "single";
   return (
@@ -67,6 +71,7 @@ export default async function EditEventPage({ params }: Props) {
               useLabel: a.useLabel,
               spaceId: a.spaceId,
             }))}
+            excludeLeadId={ownerLeadId}
           />
         </CardContent>
       </Card>

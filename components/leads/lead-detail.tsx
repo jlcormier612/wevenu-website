@@ -519,6 +519,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 endDate={lead.endDate ?? undefined}
                 spaceId={bookingSpaceId || undefined}
                 type="event"
+                excludeLeadId={lead.id}
+                purpose="preferred_date"
                 onStatusChange={setEventDateBlocked}
               />
             </div>

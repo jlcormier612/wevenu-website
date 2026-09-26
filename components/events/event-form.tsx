@@ -33,7 +33,7 @@ import {
 
 export function EventFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Create event",
-  spaces = [], existingEventId, maxSimultaneousEvents = 1,
+  spaces = [],   existingEventId, excludeLeadId, maxSimultaneousEvents = 1,
   spaceOperatingMode = "single",
 }: {
   input: EventInput;
@@ -44,6 +44,8 @@ export function EventFormFields({
   submitLabel?: string;
   spaces?: VenueSpace[];
   existingEventId?: string; // exclude self when editing
+  /** Originating lead — that lead's own hold must not block this event. */
+  excludeLeadId?: string;
   maxSimultaneousEvents?: number;
   spaceOperatingMode?: "single" | "multi";
 }) {
@@ -131,6 +133,7 @@ export function EventFormFields({
           spaceId={input.spaceId || undefined}
           type="event"
           excludeId={existingEventId}
+          excludeLeadId={excludeLeadId}
           onStatusChange={setDateBlocked}
         />
       )}

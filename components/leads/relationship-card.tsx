@@ -287,7 +287,7 @@ export function RelationshipCard({
                 <p className="text-xs text-destructive">A tour time is required to schedule a venue tour. Clear the date to remove a scheduled tour.</p>
               ) : null}
               {input.tourDate && input.tourTime && !input.tourCompleted && (
-                <ConflictWarning date={input.tourDate} startTime={input.tourTime} type="tour" excludeId={lead.id} onStatusChange={setTourDateBlocked} />
+                <ConflictWarning date={input.tourDate} startTime={input.tourTime} type="tour" excludeId={lead.id} excludeLeadId={lead.id} onStatusChange={setTourDateBlocked} />
               )}
               <div className="flex items-center gap-2">
                 <Switch

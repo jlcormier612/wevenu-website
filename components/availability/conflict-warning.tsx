@@ -63,6 +63,8 @@ export function ConflictWarning({
   spaceId,
   type,
   excludeId,
+  excludeLeadId,
+  purpose,
   onStatusChange,
 }: {
   date: string;
@@ -74,6 +76,9 @@ export function ConflictWarning({
   spaceId?: string;
   type: "event" | "tour";
   excludeId?: string;
+  /** date_holds.lead_id of the lead being edited — own hold must not self-block. */
+  excludeLeadId?: string;
+  purpose?: "booking" | "preferred_date";
   /** Called when availability resolves. `true` = hard block exists, save must be prevented. */
   onStatusChange?: (blocked: boolean) => void;
 }) {
@@ -99,13 +104,15 @@ export function ConflictWarning({
         spaceId: spaceId || undefined,
         type,
         excludeId,
+        excludeLeadId,
+        purpose,
       });
       setStatus(result);
       onStatusChange?.(result.conflicts.some((c) => c.severity === "error"));
     }, 400);
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [date, endDate, startTime, endTime, setupTime, teardownTime, spaceId, type, excludeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [date, endDate, startTime, endTime, setupTime, teardownTime, spaceId, type, excludeId, excludeLeadId, purpose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!status || status.conflicts.length === 0) return null;
 

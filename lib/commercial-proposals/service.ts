@@ -177,7 +177,7 @@ export async function sendCommercialProposal(input: {
   proposalId: string;
   message?: string;
 }): Promise<
-  | { ok: true; acceptToken: string; proposal: CommercialProposal }
+  | { ok: true; acceptToken: string; proposal: CommercialProposal; emailSubmitted: boolean; emailMessage?: string }
   | ProposalActionResult
 > {
   const result = await withVenue(async (supabase, venueId) => {
@@ -206,15 +206,40 @@ export async function sendCommercialProposal(input: {
     );
     if (!updated) return { ok: false, message: "Could not send the proposal." } as ProposalActionResult;
 
+    const { submitProposalCoupleEmail } = await import("@/lib/commercial-proposals/couple-email");
+    let email: { submitted: boolean; message?: string; recipient?: string };
+    try {
+      email = await submitProposalCoupleEmail({
+        supabase,
+        venueId,
+        proposalId: updated.id,
+        acceptToken,
+        leadId: updated.leadId,
+        clientId: updated.clientId,
+        offerMessage: updated.offerMessage,
+        optionNames: updated.options.map((o) => o.name),
+      });
+    } catch (err) {
+      email = {
+        submitted: false,
+        message: err instanceof Error
+          ? `The proposal is published, but the email was not submitted: ${err.message}`
+          : "The proposal is published, but the email was not submitted.",
+      };
+    }
+
     // Activity: proposal sent
     try {
       const title = `Proposal sent with ${updated.options.length} option${updated.options.length === 1 ? "" : "s"}.`;
+      const emailNote = email.submitted
+        ? `Proposal email submitted to ${email.recipient}.`
+        : (email.message ?? "Proposal email was not submitted.");
       if (updated.leadId) {
         const { insertActivity } = await import("@/lib/leads/repository");
-        await insertActivity(supabase, venueId, updated.leadId, "proposal_sent", title, undefined);
+        await insertActivity(supabase, venueId, updated.leadId, "proposal_sent", title, emailNote);
       } else if (updated.clientId) {
         const { insertClientActivity } = await import("@/lib/clients/repository");
-        await insertClientActivity(supabase, venueId, updated.clientId, "proposal_sent", title, undefined);
+        await insertClientActivity(supabase, venueId, updated.clientId, "proposal_sent", title, emailNote);
       }
       const link = updated.clientId
         ? `/clients/${updated.clientId}`
@@ -238,10 +263,53 @@ export async function sendCommercialProposal(input: {
       /* proposal already sent */
     }
 
-    return { ok: true, acceptToken, proposal: updated };
+    return {
+      ok: true,
+      acceptToken,
+      proposal: updated,
+      emailSubmitted: email.submitted,
+      emailMessage: email.message,
+    };
   });
   return result as
-    | { ok: true; acceptToken: string; proposal: CommercialProposal }
+    | { ok: true; acceptToken: string; proposal: CommercialProposal; emailSubmitted: boolean; emailMessage?: string }
+    | ProposalActionResult;
+}
+
+/** Resend the couple email for an already-sent proposal. Does not change status or token. */
+export async function resendCommercialProposalEmail(proposalId: string): Promise<
+  | { ok: true; emailSubmitted: boolean; emailMessage?: string; acceptToken: string }
+  | ProposalActionResult
+> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getProposal(supabase, venueId, proposalId);
+    if (!existing) return { ok: false, message: "Proposal not found." } as ProposalActionResult;
+    if (existing.status !== "sent" && existing.status !== "selected") {
+      return { ok: false, message: "Send the proposal before resending the email." } as ProposalActionResult;
+    }
+    if (!existing.acceptToken) {
+      return { ok: false, message: "This proposal has no link to include in the email." } as ProposalActionResult;
+    }
+    const { submitProposalCoupleEmail } = await import("@/lib/commercial-proposals/couple-email");
+    const email = await submitProposalCoupleEmail({
+      supabase,
+      venueId,
+      proposalId: existing.id,
+      acceptToken: existing.acceptToken,
+      leadId: existing.leadId,
+      clientId: existing.clientId,
+      offerMessage: existing.offerMessage,
+      optionNames: existing.options.map((o) => o.name),
+    });
+    return {
+      ok: true as const,
+      acceptToken: existing.acceptToken,
+      emailSubmitted: email.submitted,
+      emailMessage: email.message,
+    };
+  });
+  return result as
+    | { ok: true; emailSubmitted: boolean; emailMessage?: string; acceptToken: string }
     | ProposalActionResult;
 }
 

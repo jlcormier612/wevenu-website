@@ -336,6 +336,7 @@ export async function checkAvailability(opts: {
   spaceId?: string;
   type: "event" | "tour";
   excludeId?: string;
+  excludeLeadId?: string;
   purpose?: "booking" | "preferred_date";
 }): Promise<AvailabilityStatus> {
   if (!isSupabaseConfigured) return { available: true, conflicts: [] };

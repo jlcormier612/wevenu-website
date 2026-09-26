@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   markOfferAcceptedAction,
   prepareCreateContractAction,
+  resendProposalEmailAction,
   sendOfferAction,
 } from "@/app/(app)/booking-journey/actions";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
@@ -152,6 +153,20 @@ export function BookingJourneyPanel({
     });
   }
 
+  function handleResendProposalEmail() {
+    const proposalId = journey.proposal?.id;
+    if (!proposalId) return;
+    startTransition(async () => {
+      const result = await resendProposalEmailAction({ proposalId, leadId, clientId });
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      if (result.emailSubmitted) toast.success(result.emailMessage ?? "Proposal email submitted.");
+      else toast.error(result.emailMessage ?? "The proposal email was not submitted.");
+    });
+  }
+
   function handleSendOffer() {
     if (!selection) return;
     startTransition(async () => {
@@ -192,6 +207,7 @@ export function BookingJourneyPanel({
         onPreviewProposal={() => setOfferReviewOpen(true)}
         onCreateShareLink={() => setOfferOpen(true)}
         onCopyShareLink={copyShareLink}
+        onResendProposalEmail={journey.proposal?.id ? handleResendProposalEmail : undefined}
         onCreateContract={handleCreateContract}
         onSetupPayments={() => {
           if (selection) setPaymentsOpen(true);

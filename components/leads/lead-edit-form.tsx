@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateLeadInfoAction } from "@/app/(app)/leads/[id]/actions";
+import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,6 +177,15 @@ export function LeadEditForm({
             </Field>
           )}
         </div>
+        {input.eventDate && !lead.linkedEventId ? (
+          <ConflictWarning
+            date={input.eventDate}
+            endDate={input.endDate || undefined}
+            type="event"
+            excludeLeadId={lead.id}
+            purpose="preferred_date"
+          />
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
           {lead.linkedEventId ? (
             <ManagedOnEventField label="Estimated guests" value={input.guestCount} eventId={lead.linkedEventId} />

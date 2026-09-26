@@ -146,6 +146,7 @@ export async function checkAvailabilityAction(opts: {
   spaceId?: string;
   type: "event" | "tour";
   excludeId?: string;
+  excludeLeadId?: string;
   purpose?: "booking" | "preferred_date";
 }): Promise<AvailabilityStatus> {
   return checkAvailability(opts);

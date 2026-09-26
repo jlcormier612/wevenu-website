@@ -7,6 +7,7 @@ import type { OccupancyInput, OccupancyResult } from "@/lib/availability/event-o
 import { persistScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { mapCalendarBlockRow } from "@/lib/availability/calendar-block-coverage";
 import { effectiveMinTurnaroundHours, protectedEndDate } from "@/lib/availability/event-occupancy";
+import { foreignHoldCount } from "@/lib/availability/holds";
 import { buildAvailabilityConflicts } from "@/lib/availability/precheck";
 import { venueLocalToUtcIso } from "@/lib/venue/timezone";
 import type {
@@ -306,6 +307,12 @@ export type CheckAvailabilityOpts = {
   spaceId?: string;
   type: "event" | "tour";
   excludeId?: string; // Event id when type=event; lead id when type=tour
+  /**
+   * When set, an active date hold owned by this lead does not count as a
+   * conflict for this check. Other leads' holds still count. Identity is
+   * date_holds.lead_id only.
+   */
+  excludeLeadId?: string;
   timezone?: string | null;
   /**
    * booking (default) — Event write pre-check.
@@ -355,7 +362,7 @@ export async function checkAvailability(
     .eq("venue_id", venueId)
     .or(`and(start_date.lte.${rangeEnd},end_date.gte.${opts.date},recurrence_rule.eq.none),and(recurrence_rule.neq.none,start_date.lte.${rangeEnd},or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${opts.date}))`);
 
-  const holdsQuery = client.from("date_holds").select("title")
+  const holdsQuery = client.from("date_holds").select("lead_id")
     .eq("venue_id", venueId).eq("hold_date", opts.date).eq("status", "active")
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
@@ -481,7 +488,10 @@ export async function checkAvailability(
         recurrence_rule?: string | null; recurrence_interval?: number | null;
         recurrence_ends_on?: string | null; recurrence_count?: number | null;
       }[]).map(mapCalendarBlockRow),
-      holdCount: (holdsRes.data ?? []).length,
+      holdCount: foreignHoldCount(
+        (holdsRes.data ?? []) as { lead_id: string | null }[],
+        opts.excludeLeadId,
+      ),
       holdBlocksAvailability: venueRow?.hold_blocks_availability !== false,
       allowToursDuringBookedEvents: venueRow?.allow_tours_during_booked_events === true,
       rules,

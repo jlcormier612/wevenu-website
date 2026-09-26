@@ -195,7 +195,10 @@ export async function sendProposalAction(input: {
   message?: string;
   leadId?: string;
   clientId?: string;
-}): Promise<{ ok: true; acceptUrl: string } | { ok: false; message: string }> {
+}): Promise<
+  | { ok: true; acceptUrl: string; emailSubmitted: boolean; emailMessage?: string }
+  | { ok: false; message: string }
+> {
   const { sendCommercialProposal } = await import("@/lib/commercial-proposals/service");
   const result = await sendCommercialProposal({
     proposalId: input.proposalId,
@@ -207,7 +210,34 @@ export async function sendProposalAction(input: {
   const acceptUrl = `${publicAppOrigin()}/offer/${result.acceptToken}`;
   if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
   if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
-  return { ok: true, acceptUrl };
+  return {
+    ok: true,
+    acceptUrl,
+    emailSubmitted: result.emailSubmitted,
+    emailMessage: result.emailMessage,
+  };
+}
+
+export async function resendProposalEmailAction(input: {
+  proposalId: string;
+  leadId?: string;
+  clientId?: string;
+}): Promise<
+  | { ok: true; emailSubmitted: boolean; emailMessage?: string }
+  | { ok: false; message: string }
+> {
+  const { resendCommercialProposalEmail } = await import("@/lib/commercial-proposals/service");
+  const result = await resendCommercialProposalEmail(input.proposalId);
+  if (!result.ok) {
+    return { ok: false, message: result.message ?? "Could not resend the proposal email." };
+  }
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return {
+    ok: true,
+    emailSubmitted: result.emailSubmitted,
+    emailMessage: result.emailMessage,
+  };
 }
 
 export async function markOfferAcceptedAction(input: {

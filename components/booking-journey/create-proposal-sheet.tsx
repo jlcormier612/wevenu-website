@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 
 import {
   createProposalAction,
+  resendProposalEmailAction,
   sendProposalAction,
 } from "@/app/(app)/booking-journey/actions";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
@@ -116,6 +117,9 @@ export function CreateProposalSheet({
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState("");
   const [acceptUrl, setAcceptUrl] = React.useState<string | null>(null);
+  const [emailSubmitted, setEmailSubmitted] = React.useState(false);
+  const [emailNote, setEmailNote] = React.useState<string | null>(null);
+  const [sentProposalId, setSentProposalId] = React.useState<string | null>(null);
 
   const ctx = { eventType, guestCount, spaceId };
   const eligible = packages.filter((p) =>
@@ -153,6 +157,9 @@ export function CreateProposalSheet({
     setMessage("");
     setError("");
     setAcceptUrl(null);
+    setEmailSubmitted(false);
+    setEmailNote(null);
+    setSentProposalId(null);
     setStep("edit");
   }
 
@@ -210,9 +217,18 @@ export function CreateProposalSheet({
         toast.error(sent.message);
         return;
       }
+      setSentProposalId(created.proposalId);
       setAcceptUrl(sent.acceptUrl);
+      setEmailNote(sent.emailSubmitted
+        ? (sent.emailMessage ?? "Proposal email submitted.")
+        : (sent.emailMessage ?? "The proposal is published, but the email was not submitted."));
+      setEmailSubmitted(sent.emailSubmitted);
       setStep("sent");
-      toast.success("Proposal sent — share the link with the couple.");
+      if (sent.emailSubmitted) {
+        toast.success("Proposal published. Email submitted to the couple.");
+      } else {
+        toast.error(sent.emailMessage ?? "Proposal published, but the email was not submitted.");
+      }
       router.refresh();
     });
   }
@@ -258,17 +274,51 @@ export function CreateProposalSheet({
               <SheetTitle>Proposal sent</SheetTitle>
             </SheetHeader>
             <div className="space-y-4">
-              <p className="text-sm text-heading">Share this link with the couple:</p>
+              <p className="text-sm text-heading">
+                {emailSubmitted
+                  ? "The proposal is published and the email was submitted. The couple can open the link to review and choose. Choosing does not sign a contract."
+                  : "The proposal is published, but the email was not submitted. Copy the link or resend the email."}
+              </p>
+              {emailNote ? <p className="text-sm text-muted-foreground">{emailNote}</p> : null}
+              <p className="text-sm text-heading">Proposal link</p>
               <Input readOnly value={acceptUrl} onFocus={(e) => e.target.select()} />
-              <Button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(acceptUrl);
-                  toast.success("Link copied.");
-                }}
-              >
-                Copy link
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(acceptUrl);
+                    toast.success("Link copied.");
+                  }}
+                >
+                  Copy link
+                </Button>
+                {sentProposalId ? (
+                  <Button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      startTransition(async () => {
+                        const resent = await resendProposalEmailAction({
+                          proposalId: sentProposalId,
+                          leadId,
+                          clientId,
+                        });
+                        if (!resent.ok) {
+                          toast.error(resent.message);
+                          return;
+                        }
+                        setEmailSubmitted(resent.emailSubmitted);
+                        setEmailNote(resent.emailMessage ?? null);
+                        if (resent.emailSubmitted) toast.success(resent.emailMessage ?? "Proposal email submitted.");
+                        else toast.error(resent.emailMessage ?? "The email was not submitted.");
+                      });
+                    }}
+                  >
+                    {pending ? "Sending…" : "Resend email"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </>
         ) : (

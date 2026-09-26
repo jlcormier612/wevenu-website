@@ -17,6 +17,7 @@ export function CommercialFacts({
   onPreviewProposal,
   onCreateShareLink,
   onCopyShareLink,
+  onResendProposalEmail,
   onCreateContract,
   onSetupPayments,
   onRecordDeposit,
@@ -28,6 +29,7 @@ export function CommercialFacts({
   onPreviewProposal: () => void;
   onCreateShareLink: () => void;
   onCopyShareLink: () => void;
+  onResendProposalEmail?: () => void;
   onCreateContract: () => void;
   onSetupPayments: () => void;
   onRecordDeposit: () => void;
@@ -141,6 +143,11 @@ export function CommercialFacts({
                   {proposal.acceptToken ? (
                     <Button type="button" size="sm" variant="outline" onClick={copyProposalLink}>
                       Copy proposal link
+                    </Button>
+                  ) : null}
+                  {onResendProposalEmail && (proposal.status === "sent" || proposal.status === "selected") ? (
+                    <Button type="button" size="sm" variant="outline" onClick={onResendProposalEmail}>
+                      Resend proposal email
                     </Button>
                   ) : null}
                 </>
