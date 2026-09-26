@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-celebrations";
+import { coupleDocumentStatusBadge } from "@/lib/portal/couple-document-status";
 import { portalFocusElementId } from "@/lib/portal/workspace-routing";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -59,14 +60,11 @@ const DOC_META: Record<DocType, { emoji: string; label: string; color: string }>
   other:          { emoji: "📁", label: "File",           color: "bg-gray-50 text-gray-600 border-gray-100" },
 };
 
-const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  signed:    { label: "Signed",    color: "bg-green-50 text-green-700 border-green-200" },
-  sent:      { label: "Awaiting your signature", color: "bg-amber-50 text-amber-700 border-amber-200" },
-  draft:     { label: "Draft",     color: "bg-gray-50 text-gray-500 border-gray-200" },
-  paid:      { label: "Paid",      color: "bg-green-50 text-green-700 border-green-200" },
-  overdue:   { label: "Overdue",   color: "bg-red-50 text-red-600 border-red-200" },
-  cancelled: { label: "Void",      color: "bg-gray-50 text-gray-400 border-gray-200" },
-};
+function StatusBadge({ doc }: { doc: CoupleDocument }) {
+  const badge = coupleDocumentStatusBadge(doc.docType, doc.status);
+  if (!badge) return null;
+  return <Badge className={`text-[10px] px-1.5 py-0 border ${badge.color}`}>{badge.label}</Badge>;
+}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -95,9 +93,7 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-heading truncate">{doc.name}</span>
-            {doc.status && STATUS_BADGE[doc.status] && (
-              <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
-            )}
+            <StatusBadge doc={doc} />
           </div>
           <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
             {doc.signedAt ? <span>Signed {fmtDate(doc.signedAt)}</span> : <span>Shared {fmtDate(doc.createdAt)}</span>}
@@ -145,9 +141,7 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-heading truncate">{doc.name}</span>
-            {doc.status && STATUS_BADGE[doc.status] && (
-              <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
-            )}
+            <StatusBadge doc={doc} />
           </div>
           {doc.invoiceNumber ? (
             <p className="text-[11px] text-muted-foreground">{doc.invoiceNumber}</p>
