@@ -3085,6 +3085,12 @@ function TimelinePortalSection({
 function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavigateToGuide: () => void }) {
   const [open, setOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("htc:open-ask-luv", onOpen);
+    return () => window.removeEventListener("htc:open-ask-luv", onOpen);
+  }, []);
+
   return (
     <>
       {open && (

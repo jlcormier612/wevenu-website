@@ -1,9 +1,11 @@
 /**
  * POST /api/portal/luv-ask
  *
- * Couple asks Luv a question about the venue.
- * Luv answers warmly and returns the most relevant Venue Guide section so
- * the UI can surface a "View in Venue Guide →" chip.
+ * Couple asks Luv a question.
+ * Knowledge layers (Phase 1):
+ *   1. HTC product knowledge — couple-safe Help article projections
+ *   2. Venue Guide — what this venue provided
+ * Portal facts are intentionally not included yet (Phase 2 extension point).
  *
  * Body:     { token: string; question: string }
  * Response: { answer: string; guideSection?: string | null } | { error: string }
@@ -17,6 +19,8 @@ import {
   isLuvAskQuestionTooLong,
   luvAskClientIp,
 } from "@/lib/luv/ask-guard";
+import { buildCoupleAskLuvSystemPrompt } from "@/lib/luv/couple-ask-prompt";
+import { retrieveCoupleHtcKnowledge } from "@/lib/luv/couple-htc-knowledge";
 import {
   getLuvSettingsForVenueId,
   isLuvDraftingEnabled,
@@ -26,20 +30,6 @@ import {
   projectGuideForAudience,
   type VenueGuideRaw,
 } from "@/lib/venue-guide/audience";
-
-type VenueInfo = {
-  venueName?: string;
-  parkingInfo?: string | null;
-  transportation?: string | null;
-  faqs?: { question: string; answer: string }[] | null;
-  policies?: string | null;
-  ceremonyInstructions?: string | null;
-  rainPlan?: string | null;
-  nearbyAccommodations?: string | null;
-  thingsToDo?: string | null;
-  importantContacts?: { name: string; role: string; phone?: string; email?: string }[] | null;
-  hotelBlocks?: { name: string; url?: string; code?: string; notes?: string }[] | null;
-};
 
 // Map our guide section keys to their UI labels — must match venue-guide-section.tsx
 const GUIDE_SECTION_LABELS: Record<string, string> = {
@@ -52,91 +42,6 @@ const GUIDE_SECTION_LABELS: Record<string, string> = {
   faqs:           "FAQs",
   contacts:       "Important Contacts",
 };
-
-function hasContent(v: string | null | undefined): boolean {
-  return typeof v === "string" && v.trim().length > 0;
-}
-
-function buildContext(info: VenueInfo, venueName: string, voiceInstruction: string): string {
-  const parts: string[] = [];
-
-  parts.push(
-    `You are Luv 💗, the warm and knowledgeable wedding assistant for ${venueName}.`,
-    `You help couples planning their wedding by answering questions about this venue clearly, warmly, and concisely.`,
-    ``,
-    `IMPORTANT — RESPONSE FORMAT:`,
-    `Always respond with a single valid JSON object. Do not include markdown fences or any text outside the JSON.`,
-    `Format:`,
-    `{`,
-    `  "answer": "Your warm, helpful answer here. One to three short paragraphs. No markdown formatting.",`,
-    `  "guideSection": "<section_key> | null"`,
-    `}`,
-    ``,
-    `GUIDE SECTION KEYS — set guideSection to the most relevant key when your answer draws from that section's info. Set null if not applicable:`,
-    `  "parking"        → Parking & Transportation`,
-    `  "accommodations" → Accommodations (hotels, hotel blocks)`,
-    `  "weather"        → Weather & Rain Plan (rain plan, contingency)`,
-    `  "policies"       → Policies & Rules (what's allowed, vendor rules, restrictions)`,
-    `  "ceremony"       → Ceremony & Arrival (ceremony setup, arrival instructions)`,
-    `  "things_to_know" → Things To Know (general venue tips)`,
-    `  "faqs"           → FAQs`,
-    `  "contacts"       → Important Contacts (coordinator, venue team)`,
-    ``,
-    `RULES:`,
-    `- Only use the information provided below. If something isn't covered, say so honestly and suggest they ask their coordinator directly.`,
-    `- ${voiceInstruction}`,
-    `- When you reference information from a specific section, set guideSection accordingly so couples can explore further.`,
-    `- Never make up information about the venue.`,
-    `- Never reference vendor-only setup, load-in, or dock details — those are outside this couple-facing guide.`,
-    ``,
-    `--- VENUE KNOWLEDGE ---`,
-  );
-
-  if (hasContent(info.policies))
-    parts.push(`Policies & Rules (guideSection: "policies"):\n${info.policies}`);
-
-  if (hasContent(info.parkingInfo) || hasContent(info.transportation)) {
-    parts.push(`Parking & Transportation (guideSection: "parking"):`);
-    if (hasContent(info.parkingInfo))    parts.push(info.parkingInfo!);
-    if (hasContent(info.transportation)) parts.push(info.transportation!);
-  }
-
-  if (hasContent(info.ceremonyInstructions))
-    parts.push(`Ceremony & Arrival (guideSection: "ceremony"):\n${info.ceremonyInstructions}`);
-
-  if (hasContent(info.rainPlan))
-    parts.push(`Weather & Rain Plan (guideSection: "weather"):\n${info.rainPlan}`);
-
-  if (hasContent(info.nearbyAccommodations) || (info.hotelBlocks?.length)) {
-    parts.push(`Accommodations (guideSection: "accommodations"):`);
-    if (hasContent(info.nearbyAccommodations)) parts.push(info.nearbyAccommodations!);
-    if (info.hotelBlocks?.length) {
-      parts.push("Hotel Blocks:");
-      for (const h of info.hotelBlocks) {
-        parts.push(`- ${h.name}${h.code ? ` (booking code: ${h.code})` : ""}${h.url ? ` — ${h.url}` : ""}${h.notes ? ` — ${h.notes}` : ""}`);
-      }
-    }
-  }
-
-  if (hasContent(info.thingsToDo))
-    parts.push(`Things To Know (guideSection: "things_to_know"):\n${info.thingsToDo}`);
-
-  if (info.faqs?.length) {
-    parts.push(`Frequently Asked Questions (guideSection: "faqs"):`);
-    for (const faq of info.faqs) {
-      parts.push(`Q: ${faq.question}\nA: ${faq.answer}`);
-    }
-  }
-
-  if (info.importantContacts?.length) {
-    parts.push(`Important Contacts (guideSection: "contacts"):`);
-    for (const c of info.importantContacts) {
-      parts.push(`- ${c.name} (${c.role})${c.phone ? ` — ${c.phone}` : ""}${c.email ? ` — ${c.email}` : ""}`);
-    }
-  }
-
-  return parts.join("\n\n");
-}
 
 function parseAskJson(raw: string): { answer: string; guideSection: string | null } {
   // Strip markdown fences the model might add despite instructions
@@ -218,28 +123,36 @@ export async function POST(request: Request) {
   }
 
   const venueName = "your venue";
+  const trimmedQuestion = question.trim();
+  const htcHits = retrieveCoupleHtcKnowledge(trimmedQuestion);
 
-  const info: VenueInfo = {
+  const systemPrompt = buildCoupleAskLuvSystemPrompt({
     venueName,
-    parkingInfo:          projected?.parkingInfo ?? null,
-    transportation:       projected?.transportation ?? null,
-    faqs:                 projected?.faqs ?? [],
-    policies:             projected?.policies ?? null,
-    ceremonyInstructions: projected?.ceremonyInstructions ?? null,
-    rainPlan:             projected?.rainPlan ?? null,
-    nearbyAccommodations: projected?.nearbyAccommodations ?? null,
-    thingsToDo:           projected?.thingsToDo ?? null,
-    importantContacts:    (projected?.importantContacts ?? []) as VenueInfo["importantContacts"],
-    hotelBlocks:          (projected?.hotelBlocks ?? []) as VenueInfo["hotelBlocks"],
-  };
-
-  const systemPrompt = buildContext(info, venueName, luvAskVoiceInstruction(settings.preferredTone));
+    voiceInstruction: luvAskVoiceInstruction(settings.preferredTone),
+    htcHits,
+    venueInfo: {
+      parkingInfo:          projected?.parkingInfo ?? null,
+      transportation:       projected?.transportation ?? null,
+      faqs:                 projected?.faqs ?? [],
+      policies:             projected?.policies ?? null,
+      ceremonyInstructions: projected?.ceremonyInstructions ?? null,
+      rainPlan:             projected?.rainPlan ?? null,
+      nearbyAccommodations: projected?.nearbyAccommodations ?? null,
+      thingsToDo:           projected?.thingsToDo ?? null,
+      importantContacts:    (projected?.importantContacts ?? []) as {
+        name: string; role: string; phone?: string; email?: string;
+      }[],
+      hotelBlocks:          (projected?.hotelBlocks ?? []) as {
+        name: string; url?: string; code?: string; notes?: string;
+      }[],
+    },
+  });
 
   try {
     const raw = await openAiChatCompletion({
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Question from the couple: "${question.trim()}"` },
+        { role: "user", content: `Question from the couple: "${trimmedQuestion}"` },
       ],
       maxCompletionTokens: 600,
       timeoutMs: 25_000,

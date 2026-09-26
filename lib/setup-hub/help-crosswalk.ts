@@ -38,7 +38,9 @@ export type SetupHelpCrosswalkRow = {
   completionSignal: string;
 };
 
-const publishedSlugs = new Set(FINAL_HELP_ARTICLES.map((a) => a.slug));
+const publishedSlugs = new Set(
+  FINAL_HELP_ARTICLES.filter((a) => (a.audience ?? "staff") !== "couple").map((a) => a.slug),
+);
 
 function help(slug: string): { helpSlug: string; helpTitle: string } {
   const article = FINAL_HELP_ARTICLES.find((a) => a.slug === slug);

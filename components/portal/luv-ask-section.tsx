@@ -1,12 +1,10 @@
 "use client";
 
 /**
- * LuvAskSection — "Ask Luv" venue knowledge assistant in the couple portal.
+ * LuvAskSection — "Ask Luv" in the couple portal.
  *
- * Couples type a question; Luv searches the venue's operational info
- * (FAQs, policies, parking, hotels, contacts) and replies warmly.
- * When an answer comes from a specific Venue Guide section, a "View in Guide →"
- * chip appears so couples can explore further in one tap.
+ * Couples ask how Hello to Cheers works (HTC product knowledge) or about
+ * this venue (Venue Guide). Answers stay grounded in those layers only.
  */
 
 import * as React from "react";
@@ -32,12 +30,12 @@ const GUIDE_SECTIONS: Record<string, { emoji: string; label: string }> = {
 };
 
 const SUGGESTED = [
-  "Can we have sparklers?",
+  "How do I sign my contract?",
+  "Where do I find Documents?",
+  "How do I complete Your Choices?",
   "Is there parking for guests?",
-  "What hotels do you recommend?",
   "What's the rain plan?",
-  "When is our final payment due?",
-  "Can we bring our own caterer?",
+  "Can we have sparklers?",
 ];
 
 type QA = {
@@ -170,7 +168,7 @@ export function LuvAskSection({
           <h2 className="font-heading text-xl font-medium text-heading">Ask Luv</h2>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Ask anything about your venue — policies, parking, hotel recommendations, what to expect on the day. Luv searches the venue&apos;s information and answers right here.
+          Ask how Hello to Cheers works — Documents, contracts, payments, questionnaires, Your Choices — or anything in your Venue Guide. Luv answers from those sources only.
         </p>
         {onNavigateToGuide && (
           <button
@@ -220,7 +218,7 @@ export function LuvAskSection({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask anything about the venue…"
+          placeholder="Ask about Hello to Cheers or your venue…"
           rows={2}
           className="w-full resize-none bg-card px-4 pt-3 pb-1 text-sm text-heading placeholder:text-muted-foreground focus:outline-none"
         />

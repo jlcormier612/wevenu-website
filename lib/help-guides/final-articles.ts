@@ -2,17 +2,43 @@
  * Help & Guides — final published article set (editorial source of truth).
  * Bodies are exact customer-facing copy. Blocked articles must not publish
  * until Jennifer resolves the UI path mismatch.
+ *
+ * Audience / couple projection:
+ * - Default audience is staff (venue Help / Success Library).
+ * - `audience: "couple"` articles are couple-portal how-tos — canonical HTC
+ *   product knowledge, never published into venue staff Help.
+ * - `audience: "both"` with `coupleBody` keeps one staff body and a couple-safe
+ *   projection for Ask Luv (staff operational instructions stay out of couples).
  */
 
+import { COUPLE_PORTAL_HELP_ARTICLES } from "@/lib/help-guides/couple-portal-articles";
 import { INTEGRATION_SETUP_ARTICLES } from "@/lib/help-guides/integration-setup-articles";
 
 export type FinalHelpRelatedFeature = { href: string; label: string };
+
+/** Who may receive this article's content. Omitted = staff-only. */
+export type HelpArticleAudience = "staff" | "couple" | "both";
 
 export type FinalHelpArticle = {
   slug: string;
   title: string;
   category: string;
   body: string;
+  /**
+   * Audience gate. Default `staff`.
+   * Couple Ask Luv only receives `couple` articles, or `both` articles that
+   * also define `coupleBody` (never the raw staff body).
+   */
+  audience?: HelpArticleAudience;
+  /**
+   * Couple-safe projected body when `audience` is `both`.
+   * Derived from the same product truth as `body`; never invents capabilities.
+   */
+  coupleBody?: string;
+  /** Optional couple-facing title override for Ask Luv provenance. */
+  coupleTitle?: string;
+  /** Deterministic retrieval keywords for couple Ask Luv. */
+  coupleKeywords?: readonly string[];
   /** Optional “Go do it” links on the Help article page. */
   relatedFeatures?: readonly FinalHelpRelatedFeature[];
   /** When set, article must not be published until product/content resolves it. */
@@ -23,6 +49,12 @@ export type FinalHelpArticle = {
     appearsToBe: "content_mismatch" | "product_change";
   };
 };
+
+/** Staff Help / Success Library may publish these (excludes couple-only). */
+export function isStaffPublishableHelpArticle(article: FinalHelpArticle): boolean {
+  if (article.blocked) return false;
+  return (article.audience ?? "staff") !== "couple";
+}
 
 export const FINAL_HELP_CATEGORY_ORDER = [
   "Getting Started",
@@ -307,6 +339,26 @@ Use the underlying workspace to do the actual work.`,
     slug: "who-signs-a-contract-first-and-what-happens-after",
     title: "How Does Contract Signing Work?",
     category: "Contracts & Payments",
+    audience: "both",
+    coupleTitle: "How Does Contract Signing Work?",
+    coupleKeywords: ["contract signing", "who signs first", "client signs first", "venue signs"],
+    coupleBody: `Hello to Cheers uses a client-first signing process.
+
+Your venue prepares the contract and sends it to you for review.
+
+You can read through the contract and ask questions or request changes before signing.
+
+Once you are comfortable with the agreement, you sign first.
+
+After you sign, the contract goes back to your venue for their review and signature.
+
+The sequence is:
+
+Send to Client → You Review → You Sign → Venue Signs → Fully Executed
+
+Once both you and the venue have signed, the contract is Fully Executed and becomes locked. The completed contract appears in Documents.
+
+Contracts and payments are related, but they are separate. Signing a contract does not automatically create an invoice or payment plan.`,
     body: `Hello to Cheers uses a client-first signing process.
 
 When you create a contract, you prepare it and send it to the client for review.
@@ -335,6 +387,17 @@ Contracts and payments are related, but they are separate records in Hello to Ch
     slug: "can-more-than-one-person-sign-a-contract",
     title: "Can More Than One Person Sign a Contract?",
     category: "Contracts & Payments",
+    audience: "both",
+    coupleKeywords: ["multiple signers", "two signatures", "partner sign", "both sign"],
+    coupleBody: `Yes.
+
+A contract can require more than one client signature.
+
+Hello to Cheers tracks each required signer separately, so you can see whether all required signatures have been completed.
+
+For example, if two people need to sign, the contract can show that one of two signatures has been completed while the second is still outstanding.
+
+Each signer completes their own signature rather than sharing one signature between them.`,
     body: `Yes.
 
 A contract can require more than one client signature.
@@ -349,6 +412,15 @@ Each signer completes their own signature rather than sharing one signature betw
     slug: "can-couples-pay-online",
     title: "Can Couples Pay Online?",
     category: "Contracts & Payments",
+    audience: "both",
+    coupleKeywords: ["can i pay online", "stripe", "online payment", "credit card"],
+    coupleBody: `Yes — when your venue has connected online payment collection (Stripe).
+
+Open **Payments** in your portal to see amounts your venue has shared and any **Pay now** options that are available.
+
+Stripe handles the payment processing. Your venue's payment settings determine whether online payment is available to you.
+
+If you do not see a way to pay online, ask your coordinator — online collection may not be enabled, or that amount may not be payable online yet.`,
     body: `Yes, if your venue has connected Stripe for online payments.
 
 Go to:
@@ -629,6 +701,15 @@ This keeps the Calendar from becoming a second task list full of noise.`,
     slug: "how-do-vendors-work-in-hello-to-cheers",
     title: "How Do Vendors Work in Hello to Cheers?",
     category: "Vendors",
+    audience: "both",
+    coupleKeywords: ["how vendors work", "vendor portal", "connected vendor"],
+    coupleBody: `Vendors can be invited into Hello to Cheers so everyone is working from the same information.
+
+Once a vendor is connected to your event, you may see the vendor information your venue has made available, communicate with the vendor, and make vendor choices when appropriate.
+
+Your venue stays connected to the whole relationship.
+
+In your portal, start with **Preferred Vendors** for the list your venue has shared with you.`,
     body: `Vendors can be invited into Hello to Cheers so everyone is working from the same information.
 
 When you invite a vendor, they can create or access their own portal and maintain their business information, contact details, services, and other profile information. You don't have to keep updating their information for them.
@@ -753,7 +834,11 @@ Do not treat completion as deletion.
 The event has moved into its next stage; its history still matters.`,
   },
   ...INTEGRATION_SETUP_ARTICLES,
+  ...COUPLE_PORTAL_HELP_ARTICLES,
 ];
 
-export const PUBLISHABLE_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter((a) => !a.blocked);
+export const PUBLISHABLE_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter(isStaffPublishableHelpArticle);
 export const BLOCKED_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter((a) => a.blocked);
+export const COUPLE_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter(
+  (a) => (a.audience ?? "staff") === "couple" || ((a.audience ?? "staff") === "both" && Boolean(a.coupleBody)),
+);

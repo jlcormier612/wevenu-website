@@ -30,15 +30,18 @@ describe("Help & Guides final IA", () => {
     assert.match(HELP_GUIDES_TAGLINE, /start with Getting Started if you're new here/);
   });
 
-  it("publishes all 35 editorial articles with none blocked", () => {
-    assert.equal(FINAL_HELP_ARTICLES.length, 35);
+  it("publishes all 35 staff editorial articles with none blocked", () => {
     assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 35);
     assert.equal(BLOCKED_HELP_ARTICLES.length, 0);
-    assert.ok(FINAL_HELP_ARTICLES.every((a) => !a.blocked));
+    assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => !a.blocked));
+    assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => (a.audience ?? "staff") !== "couple"));
+    // Couple-portal how-tos live in the same canonical array but stay out of staff publish.
+    assert.ok(FINAL_HELP_ARTICLES.length > 35);
+    assert.ok(FINAL_HELP_ARTICLES.some((a) => a.audience === "couple"));
   });
 
-  it("keeps exact titles for every editorial article", () => {
-    const titles = FINAL_HELP_ARTICLES.map((a) => a.title);
+  it("keeps exact titles for every staff publishable article", () => {
+    const titles = PUBLISHABLE_HELP_ARTICLES.map((a) => a.title);
     assert.ok(titles.includes("Getting Started: Your First Morning"));
     assert.ok(titles.includes("How Should I Read My Reports?"));
     assert.ok(titles.includes("What Happens After an Event?"));
@@ -46,7 +49,7 @@ describe("Help & Guides final IA", () => {
     assert.ok(titles.includes("How to Connect QuickBooks Online"));
     assert.ok(titles.includes("How to Connect Facebook & Instagram Lead Ads"));
     assert.equal(new Set(titles).size, 35);
-    assert.equal(new Set(FINAL_HELP_ARTICLES.map((a) => a.slug)).size, 35);
+    assert.equal(new Set(PUBLISHABLE_HELP_ARTICLES.map((a) => a.slug)).size, 35);
   });
 
   it("does not publish stale Reporting or Booking language in publishable bodies", () => {
@@ -115,10 +118,13 @@ describe("Help & Guides final IA", () => {
       "how-to-connect-quickbooks-online",
       "how-to-connect-facebook-instagram-lead-ads",
     ]);
-    const historical = FINAL_HELP_ARTICLES.filter((a) => !laterEditorialSlugs.has(a.slug));
+    const historical = PUBLISHABLE_HELP_ARTICLES.filter((a) => !laterEditorialSlugs.has(a.slug));
     for (const a of historical) {
       assert.match(sql, new RegExp(`'${a.slug.replace(/-/g, "\\-")}'`));
     }
+    // Couple-only portal articles must not appear in the staff seed migration.
+    assert.doesNotMatch(sql, /couple-finding-documents/);
+    assert.doesNotMatch(sql, /couple-review-sign-contract/);
     assert.doesNotMatch(sql, /Your Venue → Settings → Tour Scheduling/);
     assert.doesNotMatch(sql, /Your Venue → Settings → Payments(?![\w])/);
     // Allow "Payments" in other contexts; forbid the exact stale Settings path.

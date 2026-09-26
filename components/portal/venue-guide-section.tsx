@@ -516,14 +516,24 @@ export function VenueGuideSection({ token, context, onNavigate }: { token: strin
         </GuideSection>
       )}
 
-      {/* Luv nudge at bottom */}
+      {/* Luv nudge at bottom — opens the real Ask Luv panel (same as FAB). */}
       {!loading && (hasAnyData || hasTeam || hasSpaces) && (
-        <div className="rounded-2xl border border-dashed p-4 text-center space-y-1" style={{ borderColor: `${ROSE}40`, background: `${ROSE}08` }}>
-          <p className="text-xs font-medium" style={{ color: ROSE }}>💗 Can't find what you're looking for?</p>
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("htc:open-ask-luv"));
+            }
+          }}
+          className="w-full rounded-2xl border border-dashed p-4 text-center space-y-1 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style={{ borderColor: `${ROSE}40`, background: `${ROSE}08` }}
+          aria-label="Ask Luv"
+        >
+          <p className="text-xs font-medium" style={{ color: ROSE }}>💗 Can&apos;t find what you&apos;re looking for?</p>
           <p className="text-[11px]" style={{ color: TAUPE }}>
-            Ask Luv — she knows everything in this guide and can answer your questions conversationally.
+            Ask Luv — she can answer questions about how Hello to Cheers works and what&apos;s in this guide.
           </p>
-        </div>
+        </button>
       )}
     </div>
   );
