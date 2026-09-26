@@ -5740,10 +5740,7 @@ function LuvDailyCard({
 }) {
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
   const [documents, setDocuments] = React.useState<{ docType: string; status: string | null; signToken?: string | null }[] | null>(null);
-  const [paymentSchedules, setPaymentSchedules] = React.useState<{
-    id?: string;
-    lineItems: { label: string; amount: number; dueDate: string | null; status: string }[];
-  }[] | null>(null);
+  const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
 
   React.useEffect(() => {
     fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json())
@@ -5752,8 +5749,7 @@ function LuvDailyCard({
       .then((d: { documents?: { docType: string; status: string | null; signToken?: string | null }[] }) => setDocuments(d.documents ?? []))
       .catch(() => setDocuments([]));
     fetch(`/api/portal/payments?token=${token}`).then((r) => r.json())
-      .then((d: { schedules?: { id?: string; lineItems: { label: string; amount: number; dueDate: string | null; status: string }[] }[] }) =>
-        setPaymentSchedules(d.schedules ?? []))
+      .then((d: { schedules?: PaymentScheduleLite[] }) => setPaymentSchedules(d.schedules ?? []))
       .catch(() => setPaymentSchedules([]));
   }, [token]);
 
