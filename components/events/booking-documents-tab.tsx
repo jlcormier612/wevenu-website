@@ -140,7 +140,7 @@ function SentRequestedSection({ contracts, questionnaire }: { contracts: Contrac
               <p className="text-sm font-medium text-foreground">Questionnaire</p>
               <p className="text-xs text-muted-foreground">
                 Sent {formatSentDate(questionnaire.sentAt)}
-                {questionnaire.submittedAt && ` · Completed ${formatSentDate(questionnaire.submittedAt)}`}
+                {questionnaire.submittedAt && ` · Submitted ${formatSentDate(questionnaire.submittedAt)}`}
               </p>
             </div>
             <Badge variant={

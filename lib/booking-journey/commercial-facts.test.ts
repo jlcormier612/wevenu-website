@@ -132,6 +132,7 @@ describe("commercial artifact states", () => {
       contract: null,
       paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 3750 }],
     });
+    assert.equal(facts.find((row) => row.key === "invoice")?.title, "Booking Invoice");
     assert.equal(facts.find((row) => row.key === "invoice")?.state, "On file");
     assert.match(facts.find((row) => row.key === "invoice")?.detail ?? "", /does not call it sent/);
     assert.notEqual(facts.find((row) => row.key === "deposit")?.state, "Paid");

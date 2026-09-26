@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  BOOKING_INVOICE_LABEL,
   SELECTIONS_INVOICE_DISPLAY_NAME,
   coupleDocumentInvoiceName,
   defaultInvoiceDisplayName,
@@ -34,6 +35,7 @@ describe("invoice display name", () => {
 
   it("names the selections invoice separately from a booking invoice", () => {
     assert.equal(SELECTIONS_INVOICE_DISPLAY_NAME, "Event & Inventory Selections");
+    assert.equal(BOOKING_INVOICE_LABEL, "Booking Invoice");
     assert.equal(coupleDocumentInvoiceName(SELECTIONS_INVOICE_DISPLAY_NAME), "Event & Inventory Selections");
     assert.notEqual(coupleDocumentInvoiceName("Garden Package"), coupleDocumentInvoiceName(SELECTIONS_INVOICE_DISPLAY_NAME));
     assert.equal(coupleDocumentInvoiceName("  "), "Invoice");

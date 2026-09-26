@@ -24,6 +24,8 @@ const service = readFileSync(join(root, "lib/events/questionnaire.ts"), "utf8");
 const actions = readFileSync(join(root, "app/(app)/events/[id]/questionnaire-actions.ts"), "utf8");
 const panel = readFileSync(join(root, "components/events/questionnaire-family-panel.tsx"), "utf8");
 const coupleForm = readFileSync(join(root, "components/form/couple-family-questionnaire-form.tsx"), "utf8");
+const bookingDocs = readFileSync(join(root, "components/events/booking-documents-tab.tsx"), "utf8");
+const coupleDocs = readFileSync(join(root, "components/portal/couple-documents-section.tsx"), "utf8");
 
 describe("questionnaire status vocabulary", () => {
   it("labels every lifecycle status", () => {
@@ -131,5 +133,21 @@ describe("venue + couple UI", () => {
     assert.match(coupleForm, /Your venue requested changes/);
     assert.match(coupleForm, /isChangesRequested \? "Resubmit" : "Submit"/);
     assert.match(coupleForm, /isQuestionnaireCoupleEditable/);
+  });
+
+  it("submittedAt is labeled Submitted, not Completed", () => {
+    assert.match(bookingDocs, /Submitted \$\{formatSentDate\(questionnaire\.submittedAt\)\}/);
+    assert.doesNotMatch(bookingDocs, /Completed \$\{formatSentDate\(questionnaire\.submittedAt\)\}/);
+    assert.equal(questionnaireStatusLabel("submitted"), "Submitted");
+    assert.equal(questionnaireStatusLabel("resubmitted"), "Resubmitted");
+    assert.equal(questionnaireStatusLabel("complete"), "Complete");
+    assert.notEqual(questionnaireStatusLabel("submitted"), "Completed");
+    assert.notEqual(questionnaireStatusLabel("resubmitted"), "Completed");
+  });
+
+  it("couple Documents does not call a submitted questionnaire Completed", () => {
+    assert.match(coupleDocs, /submitted:\s+\{\s+label: "Submitted"/);
+    assert.match(coupleDocs, /complete:\s+\{\s+label: "Complete"/);
+    assert.doesNotMatch(coupleDocs, /completed:\s+\{\s+label: "Submitted"/);
   });
 });

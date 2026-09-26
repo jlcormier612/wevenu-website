@@ -148,7 +148,7 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
           ) : null}
           <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
             <span>Total {fmtCurrency(doc.amount ?? 0)}</span>
-            {hasBalance && <span className="text-amber-700 font-medium">· {fmtCurrency(doc.balanceDue!)} due</span>}
+            {hasBalance && <span className="text-amber-700 font-medium">· Balance: {fmtCurrency(doc.balanceDue!)}</span>}
           </div>
         </div>
         <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-[var(--venue-primary)] hover:underline shrink-0">
@@ -239,12 +239,18 @@ const QUESTIONNAIRE_STATUS_BADGE: Record<string, { label: string; color: string 
   not_started: { label: "Not started", color: "bg-amber-50 text-amber-700 border-amber-200" },
   in_progress: { label: "In progress", color: "bg-amber-50 text-amber-700 border-amber-200" },
   submitted:   { label: "Submitted",   color: "bg-green-50 text-green-700 border-green-200" },
-  completed:   { label: "Submitted",   color: "bg-green-50 text-green-700 border-green-200" },
+  resubmitted: { label: "Resubmitted", color: "bg-green-50 text-green-700 border-green-200" },
+  complete:    { label: "Complete",    color: "bg-green-50 text-green-700 border-green-200" },
+  completed:   { label: "Complete",    color: "bg-green-50 text-green-700 border-green-200" },
 };
 
 function QuestionnaireCard({ status, onNavigate }: { status: string; onNavigate: (s: "questionnaire") => void }) {
   const badge = QUESTIONNAIRE_STATUS_BADGE[status] ?? QUESTIONNAIRE_STATUS_BADGE.not_started;
-  const isDone = status === "submitted" || status === "completed";
+  const isDone =
+    status === "submitted" ||
+    status === "resubmitted" ||
+    status === "complete" ||
+    status === "completed";
 
   return (
     <button type="button" onClick={() => onNavigate("questionnaire")}

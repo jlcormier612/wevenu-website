@@ -3,6 +3,11 @@
  * stays its own obligation. Do not collapse distinct invoices to the newest.
  */
 
+import {
+  BOOKING_INVOICE_LABEL,
+  SELECTIONS_INVOICE_DISPLAY_NAME,
+} from "@/lib/invoices/display-name";
+
 export type PortalInvoiceRef = {
   id: string;
   invoiceNumber: string;
@@ -24,6 +29,8 @@ export function portalInvoiceLabel(invoice: {
   invoiceNumber?: string | null;
 }): string {
   const name = invoice.displayName?.trim();
+  if (name === SELECTIONS_INVOICE_DISPLAY_NAME) return SELECTIONS_INVOICE_DISPLAY_NAME;
+  if (name === "Invoice") return BOOKING_INVOICE_LABEL;
   if (name) return name;
   return "Invoice";
 }

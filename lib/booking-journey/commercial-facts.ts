@@ -164,14 +164,14 @@ export function invoiceFact(invoiceId: string | null | undefined): CommercialFac
   if (!invoiceId) {
     return {
       key: "invoice",
-      title: "Invoice",
+      title: "Booking Invoice",
       state: "Not created",
       detail: "Selecting a package does not create an invoice.",
     };
   }
   return {
     key: "invoice",
-    title: "Invoice",
+    title: "Booking Invoice",
     state: "On file",
     detail: "Open the invoice to preview it and to see whether it was issued or emailed. This list does not call it sent.",
   };

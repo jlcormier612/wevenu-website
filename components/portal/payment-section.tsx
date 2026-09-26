@@ -707,12 +707,15 @@ export function PaymentSection({ token }: { token: string }) {
           <h3 className="text-sm font-semibold text-heading">{portalInvoiceLabel(invoice)}</h3>
           <p className="text-xs text-muted-foreground">{invoice.invoiceNumber}</p>
           <p className="text-sm text-heading">
-            Balance {formatMoney(invoice.balanceDue ?? invoice.total ?? 0, currency)}
+            Balance: {new Intl.NumberFormat("en-US", {
+              style: "currency", currency,
+              minimumFractionDigits: 2, maximumFractionDigits: 2,
+            }).format(invoice.balanceDue ?? invoice.total ?? 0)}
           </p>
           <p className="text-xs text-muted-foreground">
             {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : "No due date set"}
           </p>
-          <p className="text-xs text-muted-foreground">No payment plan on this invoice yet.</p>
+          <p className="text-xs text-muted-foreground">No payment schedule has been set for this invoice yet.</p>
         </section>
       ))}
 

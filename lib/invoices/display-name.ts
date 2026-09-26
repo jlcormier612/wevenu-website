@@ -5,6 +5,9 @@
 
 /** Display name used only when creating an Event Order selections invoice. */
 export const SELECTIONS_INVOICE_DISPLAY_NAME = "Event & Inventory Selections";
+
+/** Customer-facing label for the original booking-commitment invoice. */
+export const BOOKING_INVOICE_LABEL = "Booking Invoice";
 export function defaultInvoiceDisplayName(input: {
   obligationKind?: string | null;
   scheduleLabel?: string | null;
