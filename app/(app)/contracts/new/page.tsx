@@ -8,9 +8,11 @@ import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensu
 import { ensureContractPickerClient, getSelectableContractClients } from "@/lib/clients/service";
 import { resolveActiveCommercialSelection } from "@/lib/commercial-selections/service";
 import { getClientContacts } from "@/lib/contacts/service";
+import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
 import { getTemplates } from "@/lib/contracts/service";
 import { DEFAULT_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_DESCRIPTION } from "@/lib/contracts/constants";
 import type { ClientContact } from "@/lib/contacts/types";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "New Contract" };
 
@@ -42,9 +44,10 @@ export default async function NewContractPage({ searchParams }: Props) {
     }
   }
 
-  const [templates, selectableClients] = await Promise.all([
+  const [templates, selectableClients, venue] = await Promise.all([
     getTemplates(),
     getSelectableContractClients(),
+    getCurrentVenue(),
   ]);
   const selection = await resolveActiveCommercialSelection({
     selectionId,
@@ -113,6 +116,7 @@ export default async function NewContractPage({ searchParams }: Props) {
                   }
                 : null
             }
+            venueBrand={venue ? captureContractBrandingSnapshot(venue) : null}
           />
         </CardContent>
       </Card>

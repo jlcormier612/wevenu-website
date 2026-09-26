@@ -359,6 +359,32 @@ export async function replaceDraftClientSigners(
     .eq("signer_type", "client");
   if (delErr) throw delErr;
 
+  // Ensure venue placeholder exists (create/draft paths that never seeded signers).
+  const { data: venueRow, error: vErr } = await client.from("contract_signers")
+    .select("id")
+    .eq("contract_id", contractId)
+    .eq("venue_id", venueId)
+    .eq("signer_type", "venue")
+    .maybeSingle<{ id: string }>();
+  if (vErr) throw vErr;
+  if (!venueRow) {
+    const { error: venueInsErr } = await client.from("contract_signers").insert({
+      contract_id: contractId,
+      venue_id: venueId,
+      signer_type: "venue",
+      signer_role: null,
+      signer_ref_id: null,
+      client_contact_id: null,
+      signer_name: null,
+      signer_email: null,
+      is_required: true,
+      sign_order: 0,
+    });
+    if (venueInsErr) {
+      return { ok: false, message: venueInsErr.message || "Could not create venue signer." };
+    }
+  }
+
   const rows = clientSigners.map((s) => ({
     contract_id: contractId,
     venue_id: venueId,
@@ -372,7 +398,9 @@ export async function replaceDraftClientSigners(
     sign_order: 1,
   }));
   const { error: insErr } = await client.from("contract_signers").insert(rows);
-  if (insErr) throw insErr;
+  if (insErr) {
+    return { ok: false, message: insErr.message || "Could not update required client signers." };
+  }
   return { ok: true };
 }
 

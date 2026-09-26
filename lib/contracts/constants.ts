@@ -16,17 +16,21 @@ export type MergeFieldMeta = {
 };
 
 /**
- * Standard Contract Builder Smart Fields — only values with a legitimate
- * source of truth at contract author/send time. Deferred/operational fields
- * (ceremony, vendors, access hours, balance remaining, assigned inventory)
- * belong in template prose until an upstream SoT exists earlier in the journey.
+ * Standard Contract Builder Smart Fields — values with a legitimate
+ * source of truth at contract author/send time (or an honest fallback when
+ * that source is not yet filled). Vendor lists remain deferred.
  */
 export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "venue_name", label: "Venue Name", description: "Your venue's name" },
   { key: "venue_address", label: "Venue Address", description: "Address on your venue profile" },
   { key: "venue_phone", label: "Venue Phone", description: "Phone on your venue profile" },
   { key: "venue_email", label: "Venue Email", description: "Email on your venue profile" },
-  { key: "client_name", label: "Client Name", description: "Primary client contact's first and last name" },
+  {
+    key: "client_name",
+    label: "Client Name",
+    description:
+      "Selected required client signer(s) on this contract — one name, or multiple joined with &",
+  },
   { key: "first_name", label: "First Name", description: "Primary client contact's first name" },
   { key: "last_name", label: "Last Name", description: "Primary client contact's last name" },
   { key: "client_email", label: "Client Email", description: "Email on the client record" },
@@ -36,22 +40,22 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "event_type", label: "Event Type", description: "Type of event" },
   { key: "guest_count", label: "Guest Count", description: "Number of guests" },
   { key: "event_spaces", label: "Event Spaces", description: "Spaces already chosen for this booking" },
+  { key: "venue_access_hours", label: "Venue Access Hours", description: "Event setup / start / end / teardown when on file" },
+  { key: "ceremony_summary", label: "Ceremony Summary", description: "Ceremony location and time from Final Details or space assignments" },
+  { key: "reception_summary", label: "Reception Summary", description: "Reception location and time from Final Details or space assignments" },
   { key: "coordinator_name", label: "Coordinator", description: "Venue coordinator / owner name" },
   { key: "package_section", label: "Package", description: "Selected package summary" },
   { key: "included_items_summary", label: "Included Items", description: "Package-defined included services/items" },
   { key: "additional_items_summary", label: "Additional Items", description: "Additional / optional items already on the order" },
   { key: "payment_schedule_summary", label: "Payment Schedule", description: "Payment plan lines on file" },
   { key: "contract_total", label: "Contract Total", description: "Total contracted amount" },
+  { key: "balance_remaining", label: "Balance Remaining", description: "Remaining balance on the payment plan when on file" },
   { key: "today_date", label: "Today's Date", description: "Date the agreement is generated" },
   { key: "contract_title", label: "Contract Title", description: "Title of this agreement" },
 ];
 
 /** Deferred — not in the standard picker (no contract-time SoT). */
 export const DEFERRED_MERGE_FIELD_KEYS = [
-  "venue_access_hours",
-  "ceremony_summary",
-  "reception_summary",
-  "balance_remaining",
   "vendors_on_file",
 ] as const;
 

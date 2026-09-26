@@ -40,17 +40,21 @@ describe("supported Smart Field registries", () => {
   it("keeps one canonical customer-name field: client_name", () => {
     const client = MERGE_FIELDS.find((f) => f.key === "client_name");
     assert.ok(client);
-    assert.match(client!.description, /Primary client contact/i);
+    assert.match(client!.description, /required client signer/i);
     const message = MESSAGE_MERGE_FIELDS.find((f) => f.key === "client_name");
     assert.ok(message);
     assert.match(message!.description, /Primary client contact/i);
   });
 
-  it("does not reintroduce deferred operational fields", () => {
+  it("does not reintroduce vendors_on_file into the standard picker", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
     for (const deferred of DEFERRED_MERGE_FIELD_KEYS) {
       assert.ok(!keys.includes(deferred), deferred);
     }
+    assert.ok(keys.includes("balance_remaining"));
+    assert.ok(keys.includes("venue_access_hours"));
+    assert.ok(keys.includes("ceremony_summary"));
+    assert.ok(keys.includes("reception_summary"));
   });
 });
 
@@ -126,9 +130,9 @@ describe("canonical customer-name resolution", () => {
     assert.equal(data.full_name, undefined);
   });
 
-  it("contract preview samples use the primary contact for client_name", () => {
+  it("contract preview samples name both sample signers as the client party", () => {
     const sample = contractTemplatePreviewMergeData();
-    assert.equal(sample.client_name, "Buppy Robicheaux");
+    assert.equal(sample.client_name, "Buppy Robicheaux & Joy Robicheaux");
     assert.equal(sample.couple_name, undefined);
     assert.equal(sample.full_name, undefined);
     assert.equal(sample.primary_contact_name, undefined);

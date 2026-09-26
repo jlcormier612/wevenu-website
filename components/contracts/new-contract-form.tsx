@@ -2,6 +2,7 @@
 
 import { ContractBuilder } from "@/components/contracts/contract-builder";
 import type { Client } from "@/lib/clients/types";
+import type { ContractBrandingSnapshot } from "@/lib/contracts/branding";
 import type { ContractTemplate } from "@/lib/contracts/types";
 import type { ClientContact } from "@/lib/contacts/types";
 
@@ -15,6 +16,7 @@ export function NewContractForm({
   initialEventId,
   selectionId,
   selectionSummary,
+  venueBrand = null,
 }: {
   templates: ContractTemplate[];
   clients: Client[];
@@ -24,6 +26,7 @@ export function NewContractForm({
   initialEventId?: string;
   selectionId?: string;
   selectionSummary?: { name: string; totalAmount: number; depositAmount: number } | null;
+  venueBrand?: ContractBrandingSnapshot | null;
 }) {
   return (
     <ContractBuilder
@@ -36,6 +39,7 @@ export function NewContractForm({
       initialEventId={initialEventId}
       selectionId={selectionId}
       selectionSummary={selectionSummary}
+      venueBrand={venueBrand}
     />
   );
 }

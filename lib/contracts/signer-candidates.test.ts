@@ -96,7 +96,10 @@ describe("signer candidates from client relationship", () => {
     if (!result.ok) return;
     assert.equal(result.seeds.length, 2);
     assert.equal(result.seeds[0].signerEmail, "lydia@example.com");
+    assert.equal(result.seeds[0].signerRefId, "c1");
     assert.equal(result.seeds[1].signerEmail, "ali@example.com");
+    assert.equal(result.seeds[1].signerRefId, null, "partner ref must be null (uuid column; not clientId:partner)");
+    assert.equal(result.seeds[1].signerRole, "partner");
   });
 
   it("uses contact rows when present", () => {
@@ -137,13 +140,17 @@ describe("signer candidates from client relationship", () => {
 });
 
 describe("contract-time Smart Fields", () => {
-  it("excludes deferred operational/payment fields from the standard picker", () => {
+  it("excludes vendors_on_file from the standard picker; includes payment/event schedule fields", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
     for (const deferred of DEFERRED_MERGE_FIELD_KEYS) {
       assert.ok(!keys.includes(deferred), deferred);
     }
     assert.ok(keys.includes("package_section"));
     assert.ok(keys.includes("contract_total"));
+    assert.ok(keys.includes("balance_remaining"));
+    assert.ok(keys.includes("venue_access_hours"));
+    assert.ok(keys.includes("ceremony_summary"));
+    assert.ok(keys.includes("reception_summary"));
     assert.ok(keys.includes("client_name"));
     assert.ok(!keys.includes("couple_name"));
     assert.ok(!keys.includes("partner_name"));

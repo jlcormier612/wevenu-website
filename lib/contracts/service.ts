@@ -8,6 +8,12 @@ import * as repo from "@/lib/contracts/repository";
 import * as documentIntegration from "@/lib/contracts/document-integration";
 import { buildMergeData, mergeContent, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
 import {
+  formatBalanceRemaining,
+  formatCeremonyOrReceptionSummary,
+  formatContractTotalAmount,
+  formatVenueAccessHours,
+} from "@/lib/contracts/merge-extras";
+import {
   EMPTY_EVENT_SPACES_LABEL,
   replaceEmptyEventSpacesLabel,
   resolveEventSpacesLabel,
@@ -15,8 +21,12 @@ import {
 import { getSpaces } from "@/lib/availability/service";
 import { getEventIdForClient } from "@/lib/events/service";
 import { getEventOrder } from "@/lib/event-orders/service";
+import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service";
+import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
 import { formatContractDate } from "@/lib/contracts/constants";
+import { formatCurrency } from "@/lib/invoices/constants";
+import { labelForUseKey } from "@/lib/venue-spaces/uses";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type {
   Contract,
@@ -329,18 +339,20 @@ export async function materializeAuthoredContractContent(opts: {
       eventId: opts.eventId,
       clientId: opts.clientId,
     });
+    const requiredClientSignerNames = signerSeeds.seeds.map((s) => s.signerName);
     const mergeData = await buildContractMergeData({
       clientId: opts.clientId,
       eventId: opts.eventId,
       contractTitle: opts.contractTitle,
       selectionId: activeSelection?.id ?? opts.selectionId,
+      requiredClientSignerNames,
     });
     const content = applyRequiredSignerSignatureBlocks(
       replaceEmptyEventSpacesLabel(
         mergeContent(opts.authoredContent, mergeData),
         mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
       ),
-      signerSeeds.seeds.map((s) => s.signerName),
+      requiredClientSignerNames,
     );
     return { ok: true, content };
   } catch {
@@ -439,6 +451,8 @@ export async function buildContractMergeData(opts: {
   eventId?: string;
   contractTitle?: string;
   selectionId?: string;
+  /** Required client signer display names — drives {{client_name}} party wording. */
+  requiredClientSignerNames?: string[];
 }): Promise<Record<string, string>> {
   // Prefer an explicit eventId; otherwise use the client's canonical dated Event
   // so booked Event.space_id is visible even when the create URL omitted eventId.
@@ -470,8 +484,11 @@ export async function buildContractMergeData(opts: {
   let additionalItemsSummary = "No additional or optional items are listed on this booking yet.";
   let paymentScheduleSummary = "No payment schedule is on file for this celebration yet.";
   let contractTotal: string | null = null;
+  let balanceRemaining: string | null = null;
   let coordinatorName: string | null = null;
   let packageFromSelection = false;
+  let ceremonySpaceLabel: string | null = null;
+  let receptionSpaceLabel: string | null = null;
 
   // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
   try {
@@ -493,7 +510,7 @@ export async function buildContractMergeData(opts: {
           .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}${l.unit ? ` ${l.unit}` : ""}`)
           .join("\n");
       }
-      contractTotal = selection.totalAmount.toFixed(2);
+      contractTotal = formatContractTotalAmount(selection.totalAmount);
     }
   } catch { /* selection optional */ }
 
@@ -547,6 +564,15 @@ export async function buildContractMergeData(opts: {
     if (eventSpaces === EMPTY_EVENT_SPACES_LABEL) {
       eventSpaces = "";
     }
+
+    const ceremonyAsg = assignments.find((a) => a.useKey === "ceremony");
+    const receptionAsg = assignments.find((a) => a.useKey === "reception");
+    if (ceremonyAsg?.spaceName?.trim()) {
+      ceremonySpaceLabel = `${labelForUseKey(ceremonyAsg.useKey, ceremonyAsg.useLabel)}: ${ceremonyAsg.spaceName.trim()}`;
+    }
+    if (receptionAsg?.spaceName?.trim()) {
+      receptionSpaceLabel = `${labelForUseKey(receptionAsg.useKey, receptionAsg.useLabel)}: ${receptionAsg.spaceName.trim()}`;
+    }
   } catch { /* optional */ }
 
   if (event) {
@@ -578,20 +604,64 @@ export async function buildContractMergeData(opts: {
         const detail = await getPaymentSchedule(forEvent[0].id);
         if (detail) {
           const currency = detail.currency || "USD";
-          const fmt = (n: number) =>
-            new Intl.NumberFormat("en-US", { style: "currency", currency }).format(n);
+          const fmt = (n: number) => formatCurrency(n, currency);
           paymentScheduleSummary = detail.lineItems
             .map((li) => {
               const due = li.dueDate ? formatContractDate(li.dueDate) : "Date TBD";
               return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
             })
             .join("\n");
+          const totals = computePortalScheduleTotals(detail.lineItems);
+          balanceRemaining = formatBalanceRemaining(totals.remaining);
           if (!packageFromSelection) {
             contractTotal = fmt(detail.totalAmount);
           }
         }
       }
     } catch { /* optional */ }
+  }
+
+  const venueAccessHours = formatVenueAccessHours({
+    setupTime: event?.setupTime ?? null,
+    startTime: event?.startTime ?? client?.ceremonyTime ?? null,
+    endTime: event?.endTime ?? client?.receptionTime ?? null,
+    teardownTime: event?.teardownTime ?? null,
+  });
+
+  let ceremonySummary: string | null = null;
+  let receptionSummary: string | null = null;
+  if (event?.id) {
+    try {
+      const questionnaire = await getQuestionnaire(event.id, "final_details");
+      ceremonySummary = formatCeremonyOrReceptionSummary({
+        label: "Ceremony",
+        location: questionnaire?.ceremonyLocation,
+        startTime: questionnaire?.ceremonyStartTime ?? client?.ceremonyTime ?? null,
+        spaceAssignmentLabel: ceremonySpaceLabel,
+      });
+      receptionSummary = formatCeremonyOrReceptionSummary({
+        label: "Reception",
+        location: questionnaire?.receptionLocation,
+        startTime: questionnaire?.receptionStartTime ?? client?.receptionTime ?? null,
+        spaceAssignmentLabel: receptionSpaceLabel,
+      });
+    } catch { /* optional */ }
+  }
+  if (!ceremonySummary) {
+    ceremonySummary = formatCeremonyOrReceptionSummary({
+      label: "Ceremony",
+      location: null,
+      startTime: client?.ceremonyTime ?? null,
+      spaceAssignmentLabel: ceremonySpaceLabel,
+    });
+  }
+  if (!receptionSummary) {
+    receptionSummary = formatCeremonyOrReceptionSummary({
+      label: "Reception",
+      location: null,
+      startTime: client?.receptionTime ?? null,
+      spaceAssignmentLabel: receptionSpaceLabel,
+    });
   }
 
   return buildMergeData({
@@ -603,6 +673,7 @@ export async function buildContractMergeData(opts: {
     clientLastName: client?.lastName ?? "",
     clientEmail: client?.email?.trim() || "Email on the client record",
     clientPhone: client?.phone?.trim() || "Phone on the client record",
+    requiredClientSignerNames: opts.requiredClientSignerNames ?? null,
     eventName: event?.name || "Your celebration",
     eventDate: event?.eventDate ?? client?.eventDate ?? null,
     eventType: event?.eventType ?? client?.eventType ?? null,
@@ -615,6 +686,10 @@ export async function buildContractMergeData(opts: {
     paymentScheduleSummary,
     contractTotal: contractTotal ?? "See payment schedule",
     contractTitle: opts.contractTitle ?? "",
+    venueAccessHours,
+    ceremonySummary,
+    receptionSummary,
+    balanceRemaining,
   });
 }
 

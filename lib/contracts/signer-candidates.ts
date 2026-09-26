@@ -176,9 +176,11 @@ export function resolveSignerSeedsFromSelection(
           message: `${name} has no email on file — add a partner email before making them a required signer.`,
         };
       }
+      // signer_ref_id is uuid — do not use `${client.id}:partner` (invalid UUID).
+      // Partner identity is carried by signer_role + email; primary uses client.id.
       seeds.push({
         clientContactId: null,
-        signerRefId: `${client.id}:partner`,
+        signerRefId: null,
         signerName: name,
         signerEmail: client.partnerEmail.trim(),
         signerRole: "partner",

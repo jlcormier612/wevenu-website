@@ -1,8 +1,20 @@
 /**
  * Contract merge-field resolution.
- * Tokens left out of the map when values are unknown — never silently blanked.
+ * Tokens left out of the map when values are unknown — never silently blanked,
+ * except known operational fields which always receive an honest fallback so
+ * customer-facing Preview/Send never shows raw {{tokens}} for those keys.
  */
 import { formatContractDate } from "@/lib/contracts/constants";
+import {
+  formatBalanceRemaining,
+  formatCeremonyOrReceptionSummary,
+  formatRequiredClientPartyName,
+  formatVenueAccessHours,
+  MISSING_BALANCE_REMAINING,
+  MISSING_CEREMONY_SUMMARY,
+  MISSING_RECEPTION_SUMMARY,
+  MISSING_VENUE_ACCESS_HOURS,
+} from "@/lib/contracts/merge-extras";
 import { type MergeData } from "@/lib/shared-merge/tokens";
 
 export { mergeContent, extractTokens, type MergeData } from "@/lib/shared-merge/tokens";
@@ -17,6 +29,11 @@ export type MergeContext = {
   clientLastName: string;
   clientEmail?: string | null;
   clientPhone?: string | null;
+  /**
+   * When set (Preview/Send with explicit required signers), becomes client_name.
+   * Message templates and single-primary resolution leave this unset.
+   */
+  requiredClientSignerNames?: string[] | null;
   eventName?: string | null;
   eventDate: string | null;
   eventType: string | null;
@@ -29,6 +46,10 @@ export type MergeContext = {
   paymentScheduleSummary?: string | null;
   contractTotal?: string | null;
   contractTitle: string;
+  venueAccessHours?: string | null;
+  ceremonySummary?: string | null;
+  receptionSummary?: string | null;
+  balanceRemaining?: string | null;
 };
 
 function setIfPresent(data: MergeData, key: string, value: string | null | undefined) {
@@ -41,7 +62,11 @@ export function buildMergeData(ctx: MergeContext): MergeData {
     month: "long", day: "numeric", year: "numeric",
   });
 
-  const clientName = `${ctx.clientFirstName} ${ctx.clientLastName}`.trim();
+  const primaryName = `${ctx.clientFirstName} ${ctx.clientLastName}`.trim();
+  const partyFromSigners = ctx.requiredClientSignerNames
+    ? formatRequiredClientPartyName(ctx.requiredClientSignerNames)
+    : "";
+  const clientName = partyFromSigners || primaryName;
 
   const eventTypePretty = ctx.eventType
     ? ctx.eventType.charAt(0).toUpperCase() +
@@ -75,5 +100,19 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   setIfPresent(data, "payment_schedule_summary", ctx.paymentScheduleSummary);
   setIfPresent(data, "contract_total", ctx.contractTotal);
 
+  // Always resolve these keys so legacy Library templates never leave raw tokens.
+  data.venue_access_hours = ctx.venueAccessHours?.trim() || MISSING_VENUE_ACCESS_HOURS;
+  data.ceremony_summary = ctx.ceremonySummary?.trim() || MISSING_CEREMONY_SUMMARY;
+  data.reception_summary = ctx.receptionSummary?.trim() || MISSING_RECEPTION_SUMMARY;
+  data.balance_remaining = ctx.balanceRemaining?.trim() || MISSING_BALANCE_REMAINING;
+
   return data;
 }
+
+/** Re-export pure formatters for tests / callers. */
+export {
+  formatBalanceRemaining,
+  formatCeremonyOrReceptionSummary,
+  formatRequiredClientPartyName,
+  formatVenueAccessHours,
+};
