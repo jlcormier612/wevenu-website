@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { publicFormAbsoluteUrl } from "@/lib/public-forms/public-url";
-import { buildQrCreateReturnPath } from "@/lib/qr-campaigns/qr-form-return";
+import { stampQrCreateReturnWithPublicFormId } from "@/lib/qr-campaigns/qr-form-return";
 import type { PublicFormListItem } from "@/lib/public-forms/types";
 
 function statusLabel(status: PublicFormListItem["status"]): string {
@@ -80,7 +80,7 @@ export function PublicFormList({
       }
       toast.success("Form created as a draft.");
       const editorReturnTo = returnTo?.startsWith("/library/qr-campaigns")
-        ? buildQrCreateReturnPath({ publicFormId: result.id })
+        ? (stampQrCreateReturnWithPublicFormId(returnTo, result.id) ?? returnTo)
         : returnTo;
       const editorPath = editorReturnTo
         ? `/library/public-forms/${result.id}?returnTo=${encodeURIComponent(editorReturnTo)}`

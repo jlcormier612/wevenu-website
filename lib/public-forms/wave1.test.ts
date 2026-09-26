@@ -174,10 +174,14 @@ describe("Public Form Wave 1 — QR destination picker + ownership", () => {
     assert.match(formsPage, /returnTo/);
     assert.match(formsPage, /sp\.create === "1"/);
     assert.match(detailPage, /returnTo/);
+    assert.match(detailPage, /stampQrCreateReturnWithPublicFormId/);
     assert.match(builder, /Return to QR creation/);
     const listUi = readFileSync(join(root, "components/public-forms/public-form-list.tsx"), "utf8");
     assert.match(listUi, /create=1|initialShowCreate/);
-    assert.match(listUi, /buildQrCreateReturnPath/);
+    assert.match(listUi, /stampQrCreateReturnWithPublicFormId/);
+    const returnLib = readFileSync(join(root, "lib/qr-campaigns/qr-form-return.ts"), "utf8");
+    assert.match(returnLib, /stampQrCreateReturnWithPublicFormId/);
+    assert.match(returnLib, /name: state\.name/);
   });
 
   it("management service gates create/update to owner/manager", () => {

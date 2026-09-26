@@ -70,6 +70,24 @@ export function parseQrCreateSearchParams(
   };
 }
 
+/**
+ * Stamp the edited form id onto an existing QR-create returnTo while preserving
+ * other intentional create state (campaign name). Used when entering or leaving
+ * the Public Form editor from QR creation so the draft name survives the round trip.
+ */
+export function stampQrCreateReturnWithPublicFormId(
+  returnTo: string | null | undefined,
+  publicFormId: string,
+): string | null {
+  const safe = safeQrCampaignsReturnTo(returnTo);
+  if (!safe) return null;
+  const state = parseQrCreateSearchParams(new URL(safe, "http://local.test").searchParams);
+  return buildQrCreateReturnPath({
+    publicFormId,
+    name: state.name,
+  });
+}
+
 /** Editor/list returnTo that is either QR create or a generic public-forms path. */
 export function safePublicFormEditorReturnTo(raw: string | null | undefined): string | null {
   const qr = safeQrCampaignsReturnTo(raw);

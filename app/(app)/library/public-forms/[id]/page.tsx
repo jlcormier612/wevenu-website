@@ -9,8 +9,8 @@ import {
   listQrCampaignsForPublicForm,
 } from "@/lib/public-forms/service";
 import {
-  buildQrCreateReturnPath,
   safePublicFormEditorReturnTo,
+  stampQrCreateReturnWithPublicFormId,
 } from "@/lib/qr-campaigns/qr-form-return";
 import { getCurrentUserRole } from "@/lib/venue/service";
 
@@ -41,10 +41,10 @@ export default async function PublicFormDetailPage({ params, searchParams }: Pro
   if (!form) notFound();
   const canEdit = role === "owner" || role === "manager";
 
-  // When returning to QR create, always stamp this form id so selection is restored.
+  // When returning to QR create, stamp this form id and keep the draft campaign name.
   const qrReturnTo =
     returnTo?.startsWith("/library/qr-campaigns")
-      ? buildQrCreateReturnPath({ publicFormId: form.id })
+      ? (stampQrCreateReturnWithPublicFormId(returnTo, form.id) ?? returnTo)
       : returnTo;
 
   return (
