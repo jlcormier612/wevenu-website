@@ -23,4 +23,6 @@ export {
   LUV_ASK_CHIP_NEXT_PAYMENT,
   resolveLuvAskSuggestedChips,
 } from "@/lib/luv/portal-context/chips";
-export { loadLuvAskPortalContext } from "@/lib/luv/portal-context/load";
+// loadLuvAskPortalContext lives in ./load — import that path from server
+// routes only. Do not re-export it here: the barrel is imported by
+// client components (luv-ask-section) for pure builders/chips/types.

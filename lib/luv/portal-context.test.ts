@@ -433,6 +433,17 @@ describe("Ask Luv — portal context prompt layer", () => {
   });
 });
 
+describe("Ask Luv — portal-context barrel boundary", () => {
+  it("does not re-export the server loader from the client-safe barrel", async () => {
+    const barrel = await import("@/lib/luv/portal-context");
+    assert.equal(
+      "loadLuvAskPortalContext" in barrel,
+      false,
+      "loadLuvAskPortalContext must stay on ./load so client components cannot pull supabase/server",
+    );
+  });
+});
+
 describe("Ask Luv — suggested chips", () => {
   it("shows next-payment chip only when authoritative next payment exists", () => {
     const withNext = buildLuvAskPortalContext({

@@ -21,7 +21,7 @@ import {
 } from "@/lib/luv/ask-guard";
 import { buildCoupleAskLuvSystemPrompt } from "@/lib/luv/couple-ask-prompt";
 import { retrieveCoupleHtcKnowledge } from "@/lib/luv/couple-htc-knowledge";
-import { loadLuvAskPortalContext } from "@/lib/luv/portal-context";
+import { loadLuvAskPortalContext } from "@/lib/luv/portal-context/load";
 import {
   getLuvSettingsForVenueId,
   isLuvDraftingEnabled,
