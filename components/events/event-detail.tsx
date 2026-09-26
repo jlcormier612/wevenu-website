@@ -67,7 +67,9 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/invoices/constants";
+import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import type { Invoice } from "@/lib/invoices/types";
+import type { SelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
 import type { Document } from "@/lib/documents/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import {
@@ -286,6 +288,8 @@ export function EventDetail({
   eventOrderTemplates = [],
   choicesTemplates = [],
   clientChoices = [],
+  financialImpact = null,
+  bookingCommitmentInvoiceIds = [],
   requestsByTaskId = {},
   requests = [],
   readinessSummary,
@@ -355,6 +359,8 @@ export function EventDetail({
   eventOrderTemplates?: import("@/lib/event-order-templates/types").EventOrderTemplate[];
   choicesTemplates?: import("@/lib/client-choices-templates/types").ChoicesTemplate[];
   clientChoices?: import("@/lib/client-choices/types").ClientChoicesWithHistory[];
+  financialImpact?: SelectionsFinancialImpact | null;
+  bookingCommitmentInvoiceIds?: string[];
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
@@ -912,6 +918,7 @@ export function EventDetail({
             eventId={event.id}
             templates={choicesTemplates}
             choices={clientChoices}
+            financialImpact={financialImpact}
           />
           <EventOrderPanel
             eventId={event.id}
@@ -926,6 +933,7 @@ export function EventDetail({
             offerings={offerings}
             inventoryItems={inventoryItems}
             invoices={invoices}
+            bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
             floorPlans={event.floorPlans}
             templates={eventOrderTemplates}
             overview={{
@@ -1012,7 +1020,10 @@ export function EventDetail({
                       className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/30 transition-colors">
                       <div className="space-y-0.5 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-heading">{inv.invoiceNumber}</p>
+                          <p className="text-sm font-medium text-heading">
+                            {invoiceHumanLabel({ displayName: inv.displayName, invoiceNumber: inv.invoiceNumber })}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{inv.invoiceNumber}</p>
                           <InvoiceStatusBadge status={inv.status} />
                         </div>
                       </div>

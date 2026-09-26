@@ -13,6 +13,11 @@ import {
   type CheckoutNoticeKind,
 } from "@/lib/portal/checkout-return-notice";
 import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
+import {
+  invoicesWithoutPaymentPlan,
+  labelForSchedule,
+  portalInvoiceLabel,
+} from "@/lib/portal/payment-obligations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -431,26 +436,40 @@ function PaymentTimeline({
 
 // ── Main section ──────────────────────────────────────────────────────────────
 
+type PortalInvoiceRow = {
+  id: string;
+  invoiceNumber: string;
+  displayName?: string | null;
+  total?: number;
+  balanceDue?: number;
+  status?: string;
+  dueDate?: string | null;
+};
+
 type PortalPaymentsPayload = {
   schedules?: PortalPaymentSchedule[];
+  invoices?: PortalInvoiceRow[];
   onlinePaymentsReady?: boolean;
   error?: string;
 };
 
 async function fetchPortalPayments(token: string): Promise<{
   schedules: PortalPaymentSchedule[];
+  invoices: PortalInvoiceRow[];
   onlinePaymentsReady: boolean;
 }> {
   const res = await fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`);
   const data = await res.json() as PortalPaymentsPayload;
   return {
     schedules: data.schedules ?? [],
+    invoices: data.invoices ?? [],
     onlinePaymentsReady: data.onlinePaymentsReady === true,
   };
 }
 
 export function PaymentSection({ token }: { token: string }) {
   const [schedules, setSchedules] = React.useState<PortalPaymentSchedule[] | null>(null);
+  const [invoices, setInvoices] = React.useState<PortalInvoiceRow[]>([]);
   const [onlinePaymentsReady, setOnlinePaymentsReady] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [checkoutReturn, setCheckoutReturn] = React.useState<"success" | "cancelled" | null>(null);
@@ -484,20 +503,22 @@ export function PaymentSection({ token }: { token: string }) {
       .then((next) => {
         if (cancelled) return;
         setSchedules(next.schedules);
+        setInvoices(next.invoices);
         setOnlinePaymentsReady(next.onlinePaymentsReady);
       })
       .catch(() => {
         if (cancelled) return;
         setSchedules([]);
+        setInvoices([]);
         setOnlinePaymentsReady(false);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [token]);
 
-  const schedule = schedules?.[0] ?? null;
-  const allItems = schedule?.lineItems ?? [];
-  const paidTotal = settledPaidTotal(allItems);
+  const scheduleList = schedules ?? [];
+  const allItems = scheduleList.flatMap((row) => row.lineItems);
+  const bareInvoices = invoicesWithoutPaymentPlan(invoices, scheduleList);
   const checkoutNotice: CheckoutNoticeKind = resolveCheckoutNotice({
     checkoutReturn,
     lineItems: loading ? null : allItems,
@@ -517,6 +538,7 @@ export function PaymentSection({ token }: { token: string }) {
         const next = await fetchPortalPayments(token);
         if (!cancelled) {
           setSchedules(next.schedules);
+          setInvoices(next.invoices);
           setOnlinePaymentsReady(next.onlinePaymentsReady);
         }
       } catch {
@@ -570,7 +592,7 @@ export function PaymentSection({ token }: { token: string }) {
     );
   }
 
-  if (!schedules || schedules.length === 0 || !schedule) {
+  if (scheduleList.length === 0 && bareInvoices.length === 0) {
     return (
       <div className="space-y-6 px-1">
         {checkoutNotice === "confirming" && (
@@ -605,11 +627,10 @@ export function PaymentSection({ token }: { token: string }) {
     );
   }
 
-  // API returns one schedule per invoice (newest). Emma-style single-invoice
-  // relationships see exactly that plan; multi-invoice clients still pick the
-  // newest plan here (pre-existing Payments destination limitation).
   const luvObs = getPaymentObservations(allItems);
-  const { remaining } = computeTotals(schedule);
+  const currency = scheduleList[0]?.currency ?? "USD";
+  const remaining = scheduleList.reduce((sum, row) => sum + computeTotals(row).remaining, 0)
+    + bareInvoices.reduce((sum, invoice) => sum + (invoice.balanceDue ?? 0), 0);
   const next = nextUnpaidItem(allItems);
 
   return (
@@ -618,23 +639,23 @@ export function PaymentSection({ token }: { token: string }) {
         <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
           <p className="font-medium">Confirming your payment</p>
           <p>Checkout finished. Your balance updates when Hello to Cheers confirms the payment — this can take a moment.</p>
-          <p>Current remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+          <p>Current remaining balance: {formatMoney(remaining, currency)}</p>
         </div>
       )}
       {checkoutNotice === "processing" && (
         <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
           <p className="font-medium">Payment processing</p>
           <p>Your payment is processing (for example a bank transfer). It is not marked paid until it clears.</p>
-          <p>Current remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+          <p>Current remaining balance: {formatMoney(remaining, currency)}</p>
         </div>
       )}
       {checkoutNotice === "confirmed" && (
         <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#F7FBF8", border: "1px solid #B9D1C2", color: "#1F5C3D" }}>
           <p className="font-medium">Payment confirmed</p>
           <p>Thank you — your payment is reflected on your plan.</p>
-          <p>Remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+          <p>Remaining balance: {formatMoney(remaining, currency)}</p>
           {next?.dueDate && (
-            <p>Next payment due: {formatDate(next.dueDate)}{next.amount != null ? ` · ${formatMoney(next.amount, schedule.currency)}` : ""}</p>
+            <p>Next payment due: {formatDate(next.dueDate)}{next.amount != null ? ` · ${formatMoney(next.amount, currency)}` : ""}</p>
           )}
         </div>
       )}
@@ -651,13 +672,51 @@ export function PaymentSection({ token }: { token: string }) {
         </p>
       </div>
 
-      {/* Summary */}
-      <SummaryBar
-        schedule={schedule}
-        token={token}
-        paidTotal={paidTotal}
-        onlinePaymentsReady={onlinePaymentsReady}
-      />
+      {scheduleList.map((row) => {
+        const rowPaid = settledPaidTotal(row.lineItems);
+        return (
+          <section key={row.id} className="space-y-4" aria-label={labelForSchedule(row, invoices)}>
+            <h3 className="text-sm font-semibold text-heading">{labelForSchedule(row, invoices)}</h3>
+            <SummaryBar
+              schedule={row}
+              token={token}
+              paidTotal={rowPaid}
+              onlinePaymentsReady={onlinePaymentsReady}
+            />
+            {row.lineItems.length > 0 && (
+              <PaymentTimeline
+                items={row.lineItems}
+                token={token}
+                paidTotal={rowPaid}
+                onlinePaymentsReady={onlinePaymentsReady}
+              />
+            )}
+            {row.notes && (
+              <div
+                className="rounded-xl px-4 py-3"
+                style={{ background: "#F7F4F0", border: "1px solid #E8E2D8" }}
+              >
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1.5">Notes from your venue</p>
+                <p className="text-sm text-foreground leading-relaxed">{row.notes}</p>
+              </div>
+            )}
+          </section>
+        );
+      })}
+
+      {bareInvoices.map((invoice) => (
+        <section key={invoice.id} className="rounded-2xl border border-border bg-card p-6 space-y-2" aria-label={portalInvoiceLabel(invoice)}>
+          <h3 className="text-sm font-semibold text-heading">{portalInvoiceLabel(invoice)}</h3>
+          <p className="text-xs text-muted-foreground">{invoice.invoiceNumber}</p>
+          <p className="text-sm text-heading">
+            Balance {formatMoney(invoice.balanceDue ?? invoice.total ?? 0, currency)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : "No due date set"}
+          </p>
+          <p className="text-xs text-muted-foreground">No payment plan on this invoice yet.</p>
+        </section>
+      ))}
 
       {/* Luv observations */}
       {luvObs.length > 0 && (
@@ -675,27 +734,6 @@ export function PaymentSection({ token }: { token: string }) {
               <p className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Timeline */}
-      {allItems.length > 0 && (
-        <PaymentTimeline
-          items={allItems}
-          token={token}
-          paidTotal={paidTotal}
-          onlinePaymentsReady={onlinePaymentsReady}
-        />
-      )}
-
-      {/* Notes */}
-      {schedule.notes && (
-        <div
-          className="rounded-xl px-4 py-3"
-          style={{ background: "#F7F4F0", border: "1px solid #E8E2D8" }}
-        >
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1.5">Notes from your venue</p>
-          <p className="text-sm text-foreground leading-relaxed">{schedule.notes}</p>
         </div>
       )}
 

@@ -25,6 +25,7 @@ type CoupleDocument = {
   signedAt: string | null;
   amount: number | null;
   balanceDue?: number | null;
+  invoiceNumber?: string | null;
   fileUrl: string | null;
   fileSize: number | null;
   mimeType: string | null;
@@ -148,6 +149,9 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
               <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
             )}
           </div>
+          {doc.invoiceNumber ? (
+            <p className="text-[11px] text-muted-foreground">{doc.invoiceNumber}</p>
+          ) : null}
           <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
             <span>Total {fmtCurrency(doc.amount ?? 0)}</span>
             {hasBalance && <span className="text-amber-700 font-medium">· {fmtCurrency(doc.balanceDue!)} due</span>}

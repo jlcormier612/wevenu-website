@@ -34,7 +34,12 @@ import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-template
 import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
 import { getGuestReadinessSummary } from "@/lib/guests/service";
 import { getUsageForEvent } from "@/lib/inventory/service";
-import { getInvoices } from "@/lib/invoices/service";
+import { getInvoiceLineMarkers, getInvoices } from "@/lib/invoices/service";
+import {
+  frozenEventOrderLineIds,
+  packageBookingCommitmentInvoiceIds,
+} from "@/lib/invoices/booking-commitment";
+import { buildSelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
 import {
   getEventPlaybookApplications, getClientPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
   getEventTasks, getTaskContactsByStaffIds, getTemplatesForLibrary,
@@ -305,6 +310,12 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
   const timelineTemplates = allTimelineTemplates.filter((t) => !t.isArchived);
   const eventInvoices = allInvoices.filter((inv) => inv.eventId === eventId || inv.clientId === id);
+  const invoiceLineMarkers = await getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id));
+  const bookingCommitmentInvoiceIds = packageBookingCommitmentInvoiceIds(invoiceLineMarkers);
+  const frozenLineIds = frozenEventOrderLineIds(
+    invoiceLineMarkers,
+    eventInvoices.filter((inv) => inv.status !== "void").map((inv) => inv.id),
+  );
   const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
   const spaceAssignments = await getEventSpaceAssignments(eventId);
   const spaceAssignmentsDisplay = formatEventSpaceAssignmentsDisplay(
@@ -449,6 +460,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const clientChoices = (
     await Promise.all(clientChoicesList.map((c) => getClientChoices(c.id)))
   ).filter((c): c is NonNullable<typeof c> => !!c);
+  const financialImpact = buildSelectionsFinancialImpact({
+    eventOrderId: eventOrder?.id ?? null,
+    clientId: event.clientId,
+    lines: eventOrder?.lines ?? [],
+    invoices: eventInvoices,
+    frozenEventOrderLineIds: frozenLineIds,
+  });
   // Shared catalog fetch for Event Order Add-from-Inventory and Event Inventory.
   const inventoryItems = inventoryCatalogItems;
   const readinessSummary = buildEventReadiness({
@@ -519,6 +537,8 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       eventOrderTemplates={eventOrderTemplates}
       choicesTemplates={choicesTemplates}
       clientChoices={clientChoices}
+      financialImpact={financialImpact}
+      bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
       packagesWithItems={packagesWithItems}
       bookingJourney={bookingJourney}
       selectedPackage={selectedPackage}

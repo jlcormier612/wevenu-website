@@ -141,11 +141,52 @@ export async function removeLineAction(eventOrderId: string, eventId: string, li
   return result;
 }
 
-/** Secondary: create draft invoice linked to EO. Not the primary EO action. */
+/**
+ * Create New Invoice for an Event Order.
+ * Reuses a non-void invoice already linked to this Event Order.
+ * Does not create or change a payment plan, and does not touch a booking invoice.
+ */
 export async function createInvoiceFromEventOrderAction(
   eventOrderId: string, eventId: string, clientId: string,
 ): Promise<CreateInvoiceResult> {
-  const result = await createInvoice({ clientId, eventId, notes: "", dueDate: "", eventOrderId });
+  const { getInvoicesForEventOrder } = await import("@/lib/invoices/service");
+  const { invoiceToOpenForEventOrder } = await import("@/lib/client-choices/selections-billing");
+  const { SELECTIONS_INVOICE_DISPLAY_NAME } = await import("@/lib/invoices/display-name");
+  const existing = invoiceToOpenForEventOrder(await getInvoicesForEventOrder(eventOrderId), eventOrderId);
+  if (existing) {
+    revalidateEvent(eventId);
+    return { ok: true, invoiceId: existing.id };
+  }
+  const result = await createInvoice({
+    clientId,
+    eventId,
+    notes: "",
+    dueDate: "",
+    eventOrderId,
+    displayName: SELECTIONS_INVOICE_DISPLAY_NAME,
+  });
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/**
+ * Add to Existing: open the Event Order draft, or amend a sent/paid EO invoice.
+ * Hidden from callers when no EO-linked invoice exists. Never links a booking invoice.
+ */
+export async function addSelectionsToExistingInvoiceAction(
+  eventOrderId: string, eventId: string,
+): Promise<CreateInvoiceResult> {
+  const { getInvoicesForEventOrder, createAmendedInvoice } = await import("@/lib/invoices/service");
+  const { addToExistingPlan } = await import("@/lib/client-choices/selections-billing");
+  const plan = addToExistingPlan(await getInvoicesForEventOrder(eventOrderId), eventOrderId);
+  if (plan.kind === "unavailable") {
+    return { ok: false, message: "No Event Order invoice to add to." };
+  }
+  if (plan.kind === "open") {
+    revalidateEvent(eventId);
+    return { ok: true, invoiceId: plan.invoiceId };
+  }
+  const result = await createAmendedInvoice(plan.invoiceId);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { isPackageBookingCommitmentLines } from "@/lib/invoices/booking-commitment";
 import * as repo from "@/lib/invoices/repository";
 import { computeInvoiceTotals, deriveRevenueCategory } from "@/lib/invoices/constants";
 import type {
@@ -133,6 +134,20 @@ export async function getInvoicesForClient(clientId: string): Promise<Invoice[]>
   const venue = await getCurrentVenue();
   if (!venue) return [];
   return repo.getInvoicesForClient(await createClient(), venue.id, clientId);
+}
+
+export async function getInvoicesForEventOrder(eventOrderId: string): Promise<Invoice[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getInvoicesForEventOrder(await createClient(), venue.id, eventOrderId);
+}
+
+export async function getInvoiceLineMarkers(invoiceIds: string[]): Promise<repo.InvoiceLineMarker[]> {
+  if (!isSupabaseConfigured || invoiceIds.length === 0) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.listInvoiceLineMarkers(await createClient(), venue.id, invoiceIds);
 }
 
 export async function createInvoice(input: InvoiceInput): Promise<CreateInvoiceResult> {
@@ -335,6 +350,7 @@ export async function createAmendedInvoice(originalInvoiceId: string): Promise<C
     const newInvoiceId = await repo.insertInvoice(c, venueId, {
       clientId: original.clientId ?? "", eventId: original.eventId ?? "", notes: original.notes ?? "",
       dueDate: original.dueDate ?? "", eventOrderId: original.eventOrderId, amendsInvoiceId: original.id,
+      displayName: original.displayName?.trim() || undefined,
     });
     await repo.copyAdHocLineItems(c, venueId, newInvoiceId, original.lineItems);
     await repo.insertActivity(c, venueId, newInvoiceId, "created", `Amends ${original.invoiceNumber} — starts as a live Draft, not active until sent.`);
@@ -347,6 +363,14 @@ export async function createAmendedInvoice(originalInvoiceId: string): Promise<C
 /** Booking Financial Architecture Phase 3a — link an already-existing Draft invoice to an Event Order. */
 export async function linkInvoiceToEventOrder(invoiceId: string, eventOrderId: string): Promise<InvoiceActionResult> {
   const result = await withVenue(async (c, venueId) => {
+    const invoice = await repo.getInvoice(c, venueId, invoiceId);
+    if (!invoice) return { ok: false, message: "Invoice not found." } as InvoiceActionResult;
+    if (isPackageBookingCommitmentLines(invoice.lineItems)) {
+      return {
+        ok: false,
+        message: "A package booking invoice cannot be linked to an Event Order.",
+      } as InvoiceActionResult;
+    }
     const outcome = await repo.linkEventOrder(c, venueId, invoiceId, eventOrderId);
     if (!outcome.ok) return { ok: false, message: outcome.message } as InvoiceActionResult;
     await repo.insertActivity(c, venueId, invoiceId, "event_order_linked", "Linked to Event Order — now a live projection of it while in Draft.");

@@ -14,6 +14,12 @@ import {
   reviseClientChoicesAction,
   sendClientChoicesAction,
 } from "@/app/(app)/events/[id]/client-choices-actions";
+import {
+  addSelectionsToExistingInvoiceAction,
+  createInvoiceFromEventOrderAction,
+} from "@/app/(app)/events/[id]/event-order-actions";
+import { financialImpactCopy } from "@/lib/client-choices/selections-billing";
+import type { SelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -101,9 +107,7 @@ function ChoicesRow({
                   if (r.financialDelta === 0) {
                     toast.success("Finalized. Event Order updated — no additional cost.");
                   } else {
-                    toast.success(
-                      `Finalized. Event Order updated (+$${r.financialDelta.toFixed(2)}). Review Invoice / payment plan if needed.`,
-                    );
+                    toast.success("Finalized. Event Order updated.");
                   }
                   router.refresh();
                 })}
@@ -188,11 +192,84 @@ function ChoicesRow({
       ) : null}
 
       {row.eventOrderId && row.status === "finalized" ? (
-        <p className="text-xs text-muted-foreground">
-          Applied to Event Order.{" "}
-          <span className="text-heading">Amount due still lives on Invoice.</span>
-        </p>
+        <p className="text-xs text-muted-foreground">Applied to Event Order.</p>
       ) : null}
+    </div>
+  );
+}
+
+function FinancialImpact({
+  eventId,
+  impact,
+}: {
+  eventId: string;
+  impact: SelectionsFinancialImpact;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  const copy = financialImpactCopy(impact.unbilledAmount, impact.eoInvoice);
+  if (!copy || !impact.eventOrderId) return null;
+  const canAdd = impact.eoInvoice != null;
+
+  function go(invoiceId: string) {
+    router.push(`/invoices/${invoiceId}`);
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-sm border border-border bg-muted/20 p-4 space-y-3">
+      <p className="text-sm font-medium text-heading">Financial impact</p>
+      <p className="text-sm text-muted-foreground">{copy}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={pending || !impact.clientId}
+          onClick={() => startTransition(async () => {
+            const result = await createInvoiceFromEventOrderAction(
+              impact.eventOrderId!,
+              eventId,
+              impact.clientId!,
+            );
+            if (!result.ok) {
+              toast.error(result.message ?? "Could not create the invoice.");
+              return;
+            }
+            go(result.invoiceId);
+          })}
+        >
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create New Invoice"}
+        </Button>
+        {canAdd ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() => startTransition(async () => {
+              const result = await addSelectionsToExistingInvoiceAction(impact.eventOrderId!, eventId);
+              if (!result.ok) {
+                toast.error(result.message ?? "Could not open the Event Order invoice.");
+                return;
+              }
+              go(result.invoiceId);
+            })}
+          >
+            Add to Existing Invoice
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={pending}
+          onClick={() => {
+            toast.message("Nothing billed. The amount stays unbilled until you choose an invoice.");
+          }}
+        >
+          Not now
+        </Button>
+      </div>
     </div>
   );
 }
@@ -201,10 +278,12 @@ export function ClientChoicesPanel({
   eventId,
   templates,
   choices,
+  financialImpact = null,
 }: {
   eventId: string;
   templates: ChoicesTemplate[];
   choices: ClientChoicesWithHistory[];
+  financialImpact?: SelectionsFinancialImpact | null;
 }) {
   const router = useRouter();
   const [templateId, setTemplateId] = React.useState(templates[0]?.id ?? "");
@@ -263,6 +342,9 @@ export function ClientChoicesPanel({
             {choices.map((c) => (
               <ChoicesRow key={c.id} eventId={eventId} row={c} />
             ))}
+            {financialImpact && choices.some((c) => c.status === "finalized") ? (
+              <FinancialImpact eventId={eventId} impact={financialImpact} />
+            ) : null}
           </div>
         )}
       </CardContent>

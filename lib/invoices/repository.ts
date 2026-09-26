@@ -93,6 +93,40 @@ export async function getInvoice(client: DbClient, venueId: string, id: string):
   };
 }
 
+export async function getInvoicesForEventOrder(client: DbClient, venueId: string, eventOrderId: string): Promise<Invoice[]> {
+  const { data, error } = await client.from("invoices")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
+    .eq("venue_id", venueId)
+    .eq("event_order_id", eventOrderId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));
+}
+
+export type InvoiceLineMarker = {
+  invoiceId: string;
+  type: string;
+  eventOrderLineId: string | null;
+};
+
+export async function listInvoiceLineMarkers(
+  client: DbClient,
+  venueId: string,
+  invoiceIds: string[],
+): Promise<InvoiceLineMarker[]> {
+  if (invoiceIds.length === 0) return [];
+  const { data, error } = await client.from("invoice_line_items")
+    .select("invoice_id, type, event_order_line_id")
+    .eq("venue_id", venueId)
+    .in("invoice_id", invoiceIds);
+  if (error) throw error;
+  return ((data ?? []) as { invoice_id: string; type: string; event_order_line_id: string | null }[]).map((row) => ({
+    invoiceId: row.invoice_id,
+    type: row.type,
+    eventOrderLineId: row.event_order_line_id,
+  }));
+}
+
 export async function getInvoicesForClient(client: DbClient, venueId: string, clientId: string): Promise<Invoice[]> {
   const { data, error } = await client.from("invoices")
     .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")

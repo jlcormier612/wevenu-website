@@ -19,33 +19,40 @@ import type { Invoice } from "@/lib/invoices/types";
  * Creating/linking from EO is secondary/advanced only.
  */
 export function EventOrderInvoiceLink({
-  eventOrderId, eventId, clientId, invoices,
+  eventOrderId, eventId, clientId, invoices, bookingCommitmentInvoiceIds = [],
 }: {
-  eventOrderId: string; eventId: string; clientId: string; invoices: Invoice[];
+  eventOrderId: string;
+  eventId: string;
+  clientId: string;
+  invoices: Invoice[];
+  /** Package booking-commitment invoices. Never treated as this Event Order's amount due. */
+  bookingCommitmentInvoiceIds?: string[];
 }) {
   const [pending, startTransition] = React.useTransition();
   const [showAdvanced, setShowAdvanced] = React.useState(false);
+  const commitment = new Set(bookingCommitmentInvoiceIds);
 
-  const linked = invoices.find((inv) => inv.eventOrderId === eventOrderId);
-  const anyInvoice = invoices.find((inv) => inv.status !== "void") ?? invoices[0];
+  const linked = invoices.find((inv) => inv.eventOrderId === eventOrderId && inv.status === "draft")
+    ?? invoices.find((inv) => inv.eventOrderId === eventOrderId && inv.status !== "void");
 
-  if (linked || anyInvoice) {
-    const inv = linked ?? anyInvoice!;
+  if (linked) {
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">Amount due lives on</span>
-        <Link href={`/invoices/${inv.id}`} className="font-medium text-primary hover:underline">
-          Invoice {inv.invoiceNumber}
+        <Link href={`/invoices/${linked.id}`} className="font-medium text-primary hover:underline">
+          {linked.displayName?.trim() || "Invoice"} {linked.invoiceNumber}
         </Link>
-        <InvoiceStatusBadge status={inv.status} />
-        <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${inv.id}`} />}>
+        <InvoiceStatusBadge status={linked.status} />
+        <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${linked.id}`} />}>
           Open Invoice
         </Button>
       </div>
     );
   }
 
-  const linkableDraft = invoices.find((inv) => inv.status === "draft" && !inv.eventOrderId);
+  const linkableDraft = invoices.find((inv) =>
+    inv.status === "draft" && !inv.eventOrderId && !commitment.has(inv.id),
+  );
 
   function handleCreate() {
     startTransition(async () => {

@@ -176,7 +176,7 @@ function SectionFloorPlanLink({
 
 export function EventOrderPanel({
   eventId, planningClientId = null, clientId, clientName, clientEmail, venueName, eventOrder, packages, packagesWithItems = [],
-  selectedPackageName = null, offerings = [], inventoryItems, invoices, floorPlans, overview,
+  selectedPackageName = null, offerings = [], inventoryItems, invoices, bookingCommitmentInvoiceIds = [], floorPlans, overview,
   templates = [],
 }: {
   eventId: string;
@@ -192,6 +192,7 @@ export function EventOrderPanel({
   offerings?: Offering[];
   inventoryItems: InventoryItem[];
   invoices: Invoice[];
+  bookingCommitmentInvoiceIds?: string[];
   floorPlans: FloorPlan[];
   overview?: EventOrderOverview | null;
   templates?: EventOrderTemplate[];
@@ -498,7 +499,13 @@ export function EventOrderPanel({
         {clientId && (
           <div className="pt-3 mt-3 border-t border-border/60">
             {!preBooking && (
-            <EventOrderInvoiceLink eventOrderId={eventOrder.id} eventId={scopeId} clientId={clientId} invoices={invoices} />
+            <EventOrderInvoiceLink
+              eventOrderId={eventOrder.id}
+              eventId={scopeId}
+              clientId={clientId}
+              invoices={invoices}
+              bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+            />
             )}
           </div>
         )}

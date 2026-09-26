@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  SELECTIONS_INVOICE_DISPLAY_NAME,
+  coupleDocumentInvoiceName,
   defaultInvoiceDisplayName,
   invoiceHumanLabel,
   invoiceSystemNumber,
@@ -28,6 +30,13 @@ describe("invoice display name", () => {
       invoiceHumanLabel({ displayName: "Wedding Deposit", invoiceNumber: "INV-DEPMAL-MUED28ME" }),
       "Wedding Deposit",
     );
+  });
+
+  it("names the selections invoice separately from a booking invoice", () => {
+    assert.equal(SELECTIONS_INVOICE_DISPLAY_NAME, "Event & Inventory Selections");
+    assert.equal(coupleDocumentInvoiceName(SELECTIONS_INVOICE_DISPLAY_NAME), "Event & Inventory Selections");
+    assert.notEqual(coupleDocumentInvoiceName("Garden Package"), coupleDocumentInvoiceName(SELECTIONS_INVOICE_DISPLAY_NAME));
+    assert.equal(coupleDocumentInvoiceName("  "), "Invoice");
   });
 
   it("keeps system number separate", () => {
