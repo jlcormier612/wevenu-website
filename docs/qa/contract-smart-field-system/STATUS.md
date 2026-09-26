@@ -1,6 +1,8 @@
 # Contract Smart Field System
 
-**Status:** CODE COMPLETE — deploy + live browser pending  
+**Status:** NOT GREEN — code + tests complete; Sandbox deploy in progress  
+**Commit:** `3d2892b400997866c02ce4f86630999630af0b1b`  
+**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/36265787739  
 **Branch:** `fix/contract-send-two-signer-freeze` (includes two-signer freeze + Smart Field system)  
 **Production:** untouched
 
@@ -13,3 +15,12 @@
 5. Payments remain non-inventing (schedule/balance honest when absent).
 
 See `AUDIT.md` for full inventory.
+
+## Tests
+
+`npx tsx --test 'lib/contracts/*.test.ts'` → **142/142 pass**  
+Typecheck: baseline only (cross-surface-contract TS2322, inbox-needs-response TS2345)
+
+## Live gate
+
+Blocked until ECS runs `3d2892b4`. Then browser Preview/Review/Send + DB content proof.
