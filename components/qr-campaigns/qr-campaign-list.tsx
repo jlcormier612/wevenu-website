@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { Archive, Copy, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ import { resolveArchiveToggle } from "@/lib/qr-campaigns/archive-ui-state";
 import type { QrCampaign, QrCampaignAnalytics, QrDestinationType } from "@/lib/qr-campaigns/types";
 
 const DESTINATION_LABELS: Record<QrDestinationType, string> = {
+  public_form: "Custom public form",
   inquiry_form: "Inquiry form",
   tour_booking: "Tour booking",
   wedding_website: "A couple's wedding website",
@@ -25,12 +27,13 @@ const DESTINATION_LABELS: Record<QrDestinationType, string> = {
 };
 
 function CampaignRow({
-  campaign, appUrl, analytics, onStatusChange,
+  campaign, appUrl, analytics, onStatusChange, publicFormLabel,
 }: {
   campaign: QrCampaign;
   appUrl: string;
   analytics: QrCampaignAnalytics | undefined;
   onStatusChange: (id: string, status: QrCampaign["status"]) => void;
+  publicFormLabel?: string | null;
 }) {
   const [pending, startTransition] = React.useTransition();
   const scanUrl = `${appUrl}/qr/${campaign.code}`;
@@ -52,6 +55,11 @@ function CampaignRow({
     });
   }
 
+  const destLabel =
+    campaign.destinationType === "public_form" && publicFormLabel
+      ? `${DESTINATION_LABELS.public_form}: ${publicFormLabel}`
+      : DESTINATION_LABELS[campaign.destinationType];
+
   return (
     <div className="flex items-start gap-4 rounded-lg border border-border p-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -62,7 +70,7 @@ function CampaignRow({
           {campaign.sourceMasterKey && <Badge variant="muted" className="text-[10px]">Starter</Badge>}
           {campaign.status === "archived" && <Badge variant="muted">Archived</Badge>}
         </div>
-        <p className="text-xs text-muted-foreground">{DESTINATION_LABELS[campaign.destinationType]}</p>
+        <p className="text-xs text-muted-foreground">{destLabel}</p>
         <div className="flex items-center gap-2">
           <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground truncate">{scanUrl}</code>
           <button type="button" onClick={() => { navigator.clipboard.writeText(scanUrl); toast.success("Copied!"); }} className="text-muted-foreground hover:text-foreground">
@@ -82,20 +90,23 @@ function CampaignRow({
 }
 
 export function QrCampaignList({
-  initialCampaigns, analytics, appUrl,
+  initialCampaigns, analytics, appUrl, publishedPublicForms = [],
 }: {
   initialCampaigns: QrCampaign[];
   analytics: QrCampaignAnalytics[];
   appUrl: string;
+  publishedPublicForms?: Array<{ id: string; internalName: string; publicTitle: string }>;
 }) {
   const [campaigns, setCampaigns] = React.useState(initialCampaigns);
   const [showForm, setShowForm] = React.useState(false);
   const [name, setName] = React.useState("");
   const [destinationType, setDestinationType] = React.useState<QrDestinationType>("inquiry_form");
   const [destinationUrl, setDestinationUrl] = React.useState("");
+  const [publicFormId, setPublicFormId] = React.useState("");
   const [pending, startTransition] = React.useTransition();
 
   const analyticsById = new Map(analytics.map((a) => [a.id, a]));
+  const formLabelById = new Map(publishedPublicForms.map((f) => [f.id, f.internalName]));
   const active = campaigns.filter((c) => c.status === "active");
   const archived = campaigns.filter((c) => c.status === "archived");
 
@@ -105,11 +116,15 @@ export function QrCampaignList({
 
   function handleCreate() {
     startTransition(async () => {
-      const result = await createQrCampaignAction({ name, destinationType, destinationUrl: destinationUrl || undefined });
+      const result = await createQrCampaignAction({
+        name,
+        destinationType,
+        destinationUrl: destinationUrl || undefined,
+        publicFormId: destinationType === "public_form" ? publicFormId || undefined : undefined,
+      });
       if (!result.ok) { toast.error(result.message ?? "Could not create campaign."); return; }
       toast.success("QR campaign created.");
-      setName(""); setDestinationUrl(""); setDestinationType("inquiry_form"); setShowForm(false);
-      // Reflected via server revalidation on next navigation; append optimistically for immediate feedback.
+      setName(""); setDestinationUrl(""); setDestinationType("inquiry_form"); setPublicFormId(""); setShowForm(false);
       setCampaigns((prev) => [{
         id: result.id ?? crypto.randomUUID(),
         venueId: "",
@@ -117,12 +132,18 @@ export function QrCampaignList({
         code: "",
         destinationType,
         destinationUrl: destinationUrl || null,
+        publicFormId: destinationType === "public_form" ? publicFormId || null : null,
         status: "active",
         sourceMasterKey: null,
         createdAt: new Date().toISOString(),
       }, ...prev]);
     });
   }
+
+  const canCreate =
+    name.trim() &&
+    (destinationType !== "public_form" || publicFormId) &&
+    ((destinationType !== "wedding_website" && destinationType !== "external_url") || destinationUrl.trim());
 
   return (
     <div className="space-y-6">
@@ -141,13 +162,51 @@ export function QrCampaignList({
             <select
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={destinationType}
-              onChange={(e) => setDestinationType(e.target.value as QrDestinationType)}
+              onChange={(e) => {
+                setDestinationType(e.target.value as QrDestinationType);
+                setPublicFormId("");
+              }}
             >
               {Object.entries(DESTINATION_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
           </div>
+          {destinationType === "public_form" && (
+            <div className="space-y-2 rounded-md border border-dashed border-border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">
+                Point this QR at an existing published Public Form, or create a new one first.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/library/public-forms"
+                  className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+                >
+                  Create new form
+                </Link>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Choose existing form</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={publicFormId}
+                  onChange={(e) => setPublicFormId(e.target.value)}
+                >
+                  <option value="">Select a published form…</option>
+                  {publishedPublicForms.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.internalName}
+                    </option>
+                  ))}
+                </select>
+                {publishedPublicForms.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    No published public forms yet. Create and publish one, then return here.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
           {(destinationType === "wedding_website" || destinationType === "external_url") && (
             <div className="space-y-1.5">
               <Label className="text-xs">Destination URL</Label>
@@ -155,7 +214,7 @@ export function QrCampaignList({
             </div>
           )}
           <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={handleCreate} disabled={pending || !name.trim()}>
+            <Button type="button" size="sm" onClick={handleCreate} disabled={pending || !canCreate}>
               {pending ? "Creating…" : "Create Campaign"}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -177,6 +236,7 @@ export function QrCampaignList({
               appUrl={appUrl}
               analytics={analyticsById.get(c.id)}
               onStatusChange={handleStatusChange}
+              publicFormLabel={c.publicFormId ? formLabelById.get(c.publicFormId) : null}
             />
           ))}
           {archived.length > 0 && (
@@ -190,6 +250,7 @@ export function QrCampaignList({
                     appUrl={appUrl}
                     analytics={analyticsById.get(c.id)}
                     onStatusChange={handleStatusChange}
+                    publicFormLabel={c.publicFormId ? formLabelById.get(c.publicFormId) : null}
                   />
                 ))}
               </div>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import {
-  BookOpen, Boxes, CalendarClock, FileSignature, FileText,
+  BookOpen, Boxes, CalendarClock, ClipboardList, FileSignature, FileText,
   Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
 } from "lucide-react";
 
@@ -18,6 +18,7 @@ import { getItemsForLibrary } from "@/lib/inventory/service";
 import { getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
 import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-templates/service";
 import { getQrCampaigns } from "@/lib/qr-campaigns/service";
+import { listPublicForms } from "@/lib/public-forms/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { getTemplates as getChoicesTemplates } from "@/lib/client-choices-templates/service";
 import { getBrochures } from "@/lib/brochures/service";
@@ -88,7 +89,7 @@ export default async function LibraryPage() {
   ]);
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
-    packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates, inventoryTemplates,
+    packagesAll, inventoryItemsAll, qrCampaigns, publicForms, messageTemplates, inventoryTemplates,
     questionnaireTemplates, eventOrderTemplatesAll, choicesTemplatesAll, brochuresAll, savedReports, offeringsAll,
   ] = await Promise.all([
     getContractTemplates(),
@@ -98,6 +99,7 @@ export default async function LibraryPage() {
     getPackages(true),
     getItemsForLibrary(),
     getQrCampaigns(),
+    listPublicForms(),
     getMessageTemplates(),
     getInventoryTemplates(),
     getQuestionnaireTemplates(),
@@ -126,6 +128,7 @@ export default async function LibraryPage() {
 
       <Group title="Agreements & Forms">
         <ToolboxCard title="Contract Templates" description="Reusable contracts with fill-in details, ready to send." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
+        <ToolboxCard title="Public Forms" description="Purpose-specific lead capture forms for expos, open houses, and campaigns." href="/library/public-forms" count={publicForms.length} icon={ClipboardList} />
         <ToolboxCard title="Questionnaires & Feedback" description="Client Planning Questionnaire, Final Details, and Post-Event Feedback starters." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
       </Group>
 

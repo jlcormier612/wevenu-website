@@ -16,6 +16,7 @@ function campaign(
     code: "abc123",
     destinationType: "inquiry_form",
     destinationUrl: null,
+    publicFormId: null,
     sourceMasterKey: null,
     createdAt: "2026-09-21T00:00:00.000Z",
     ...partial,
