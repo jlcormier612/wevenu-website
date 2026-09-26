@@ -13,6 +13,7 @@ import {
   MISSING_BALANCE_REMAINING,
   MISSING_CEREMONY_SUMMARY,
   MISSING_RECEPTION_SUMMARY,
+  MISSING_VENDORS_ON_FILE,
   MISSING_VENUE_ACCESS_HOURS,
 } from "@/lib/contracts/merge-extras";
 import { type MergeData } from "@/lib/shared-merge/tokens";
@@ -105,6 +106,8 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.ceremony_summary = ctx.ceremonySummary?.trim() || MISSING_CEREMONY_SUMMARY;
   data.reception_summary = ctx.receptionSummary?.trim() || MISSING_RECEPTION_SUMMARY;
   data.balance_remaining = ctx.balanceRemaining?.trim() || MISSING_BALANCE_REMAINING;
+  // Deferred: not a picker Smart Field and not vendor SoT — honest wording only.
+  data.vendors_on_file = MISSING_VENDORS_ON_FILE;
 
   return data;
 }

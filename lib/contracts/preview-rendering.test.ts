@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { resolveContractBrandPresentation } from "@/lib/contracts/branding";
-import { MERGE_FIELDS } from "@/lib/contracts/constants";
+import { DEFERRED_MERGE_FIELD_KEYS, MERGE_FIELDS } from "@/lib/contracts/constants";
 import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
 import {
   formatBalanceRemaining,
@@ -16,10 +16,17 @@ import {
   MISSING_BALANCE_REMAINING,
   MISSING_CEREMONY_SUMMARY,
   MISSING_RECEPTION_SUMMARY,
+  MISSING_VENDORS_ON_FILE,
   MISSING_VENUE_ACCESS_HOURS,
 } from "@/lib/contracts/merge-extras";
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
 import { contractTemplatePreviewMergeData } from "@/lib/contracts/preview";
+import {
+  assertCustomerSafeContractContent,
+  WEDDING_VENUE_AGREEMENT_CONTENT,
+} from "@/lib/contracts/starters";
+import { extractTokens } from "@/lib/shared-merge/tokens";
+import { formatPackageSection } from "@/lib/commercial-selections/constants";
 
 describe("contract branding presentation", () => {
   it("uses live venue branding when no snapshot (Preview path)", () => {
@@ -110,12 +117,14 @@ describe("deferred/operational token resolution", () => {
     assert.equal(data.ceremony_summary, MISSING_CEREMONY_SUMMARY);
     assert.equal(data.reception_summary, MISSING_RECEPTION_SUMMARY);
     assert.equal(data.balance_remaining, MISSING_BALANCE_REMAINING);
+    assert.equal(data.vendors_on_file, MISSING_VENDORS_ON_FILE);
 
     const body = mergeContent(
-      "{{balance_remaining}} {{venue_access_hours}} {{ceremony_summary}} {{reception_summary}}",
+      "{{balance_remaining}} {{venue_access_hours}} {{ceremony_summary}} {{reception_summary}} {{vendors_on_file}}",
       data,
     );
     assert.doesNotMatch(body, /\{\{/);
+    assert.doesNotMatch(body, /vendors_on_file/);
   });
 
   it("exposes the four fields in the Contract Builder picker", () => {
@@ -127,6 +136,66 @@ describe("deferred/operational token resolution", () => {
       "reception_summary",
     ]) {
       assert.ok(keys.includes(key), key);
+    }
+    assert.equal(keys.includes("vendors_on_file"), false);
+  });
+});
+
+describe("vendors_on_file deferred token safety", () => {
+  it("never leaves raw vendors_on_file in Preview materialization", () => {
+    const data = buildMergeData({
+      venueName: "Jen's Fancy Venue",
+      clientFirstName: "Rebecca",
+      clientLastName: "Sunshine",
+      eventDate: "2030-06-15",
+      eventType: "wedding",
+      guestCount: 100,
+      contractTitle: "Wedding Venue Agreement",
+    });
+    const body = mergeContent(
+      "VENDORS\nNo outside vendors.\n\n{{vendors_on_file}}\n\nFOOD",
+      data,
+    );
+    assert.doesNotMatch(body, /\{\{vendors_on_file\}\}/);
+    assert.doesNotMatch(body, /\{\{/);
+    assert.match(body, /Vendors on file are not listed yet/);
+  });
+
+  it("Send safety passes after materializing legacy vendors_on_file content", () => {
+    const data = buildMergeData({
+      venueName: "Jen's Fancy Venue",
+      clientFirstName: "Rebecca",
+      clientLastName: "Sunshine",
+      requiredClientSignerNames: ["Rebecca Sunshine", "Brian Friendly"],
+      eventDate: "2030-06-15",
+      eventType: "wedding",
+      guestCount: 100,
+      contractTitle: "Wedding Venue Agreement",
+      packageSection: "Selected package / services:\n• Full Service Wedding\n\nPackage total: $25,000.00",
+      contractTotal: "$25,000.00",
+    });
+    // Minimal customer-safe body after materialization (no starter policy placeholders).
+    const authored =
+      "This Agreement is between {{venue_name}} and {{client_name}}.\n" +
+      "{{package_section}}\n{{contract_total}}\n{{vendors_on_file}}\n{{today_date}}";
+    const merged = mergeContent(authored, data);
+    assert.doesNotMatch(merged, /\{\{/);
+    const safety = assertCustomerSafeContractContent(merged);
+    assert.equal(safety.ok, true);
+  });
+
+  it("code starter does not contain vendors_on_file", () => {
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{vendors_on_file\}\}/);
+    for (const key of DEFERRED_MERGE_FIELD_KEYS) {
+      assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, new RegExp(`\\{\\{${key}\\}\\}`));
+    }
+  });
+
+  it("starter tokens are only supported Smart Fields", () => {
+    const supported = new Set(MERGE_FIELDS.map((f) => f.key));
+    const tokens = extractTokens(WEDDING_VENUE_AGREEMENT_CONTENT);
+    for (const t of tokens) {
+      assert.ok(supported.has(t), `unsupported starter token {{${t}}}`);
     }
   });
 });
@@ -218,5 +287,19 @@ describe("Preview sample merge includes resolved operational fields", () => {
     assert.ok(sample.ceremony_summary);
     assert.ok(sample.reception_summary);
     assert.match(sample.client_name!, /Buppy Robicheaux & Joy Robicheaux/);
+  });
+});
+
+describe("package section currency formatting", () => {
+  it("uses the same canonical currency format as contract_total", () => {
+    const section = formatPackageSection("Full Service Wedding", 25000, [], {
+      depositAmount: 6250,
+    });
+    assert.match(section, /Package total: \$25,000\.00/);
+    assert.match(section, /Deposit: \$6,250\.00/);
+    assert.match(section, /Remaining: \$18,750\.00/);
+    assert.doesNotMatch(section, /\$25000\.00/);
+    assert.doesNotMatch(section, /\$6250\.00/);
+    assert.equal(formatContractTotalAmount(25000), "$25,000.00");
   });
 });

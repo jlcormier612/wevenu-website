@@ -35,10 +35,10 @@ describe("Selected Package money helpers", () => {
     assert.match(text, /Garden Package/);
     assert.match(text, /Ceremony space/);
     assert.match(text, /Tables × 10 ea/);
-    assert.match(text, /\$3200\.00/);
+    assert.match(text, /\$3,200\.00/);
     const withDeposit = formatPackageSection("Garden Package", 3200, [], { depositAmount: 800 });
     assert.match(withDeposit, /Deposit: \$800\.00/);
-    assert.match(withDeposit, /Remaining: \$2400\.00/);
+    assert.match(withDeposit, /Remaining: \$2,400\.00/);
     const noDeposit = formatPackageSection("Garden Package", 3200, [], { depositAmount: 0 });
     assert.doesNotMatch(noDeposit, /Deposit:/);
   });

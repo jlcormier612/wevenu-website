@@ -118,9 +118,9 @@ describe("L2 contract package section includes priced lines", () => {
     ], { depositAmount: 8000 });
     assert.match(section, /Signature Wedding/);
     assert.match(section, /Ceremony Package/);
-    assert.match(section, /\$34500\.00|\$34500/);
-    assert.match(section, /32000/);
-    assert.match(section, /Deposit: \$8000\.00/);
+    assert.match(section, /\$34,500\.00/);
+    assert.match(section, /\$32,000\.00/);
+    assert.match(section, /Deposit: \$8,000\.00/);
   });
 });
 

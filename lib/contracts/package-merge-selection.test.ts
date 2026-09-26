@@ -35,7 +35,13 @@ describe("resolveActiveCommercialSelection wiring", () => {
     const src = readFileSync(join(root, "lib/contracts/service.ts"), "utf8");
     assert.match(src, /if \(!packageFromSelection\)/);
     assert.match(src, /contractTotal = fmt\(detail\.totalAmount\)/);
-    assert.doesNotMatch(src, /balanceRemaining/);
+    // balanceRemaining is filled from the schedule when present; totals stay gated.
+    assert.match(src, /balanceRemaining = formatBalanceRemaining/);
+    const guardBlock = src.slice(
+      src.indexOf("if (!packageFromSelection)"),
+      src.indexOf("if (!packageFromSelection)") + 200,
+    );
+    assert.match(guardBlock, /contractTotal = fmt\(detail\.totalAmount\)/);
   });
 
   it("ensureCommercialCustomer resolves superseded selection ids", () => {

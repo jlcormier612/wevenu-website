@@ -10,6 +10,8 @@ export const MISSING_VENUE_ACCESS_HOURS = "Venue access hours are not listed yet
 export const MISSING_CEREMONY_SUMMARY = "Ceremony details are not listed yet.";
 export const MISSING_RECEPTION_SUMMARY = "Reception details are not listed yet.";
 export const MISSING_BALANCE_REMAINING = "Balance remaining is not listed yet.";
+/** Deferred token — no contract-time vendor SoT; honest wording only (never invents vendors). */
+export const MISSING_VENDORS_ON_FILE = "Vendors on file are not listed yet.";
 
 /** Join required client signer names for contract party wording. */
 export function formatRequiredClientPartyName(signerNames: string[]): string {

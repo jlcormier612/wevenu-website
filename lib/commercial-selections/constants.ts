@@ -1,4 +1,5 @@
 import type { CommercialSelectionItem } from "@/lib/commercial-selections/types";
+import { formatCurrency } from "@/lib/invoices/constants";
 
 /** Round money to cents (half-up). */
 export function roundMoney(amount: number): number {
@@ -35,8 +36,10 @@ export function formatPackageSection(
   name: string,
   totalAmount: number,
   items: CommercialSelectionItem[],
-  opts?: { depositAmount?: number },
+  opts?: { depositAmount?: number; currency?: string },
 ): string {
+  const currency = opts?.currency ?? "USD";
+  const money = (n: number) => formatCurrency(n, currency);
   const lines = [`Selected package / services:`, `• ${name}`];
   if (items.length > 0) {
     lines.push("");
@@ -46,19 +49,19 @@ export function formatPackageSection(
       const unit = item.unit ? ` ${item.unit}` : "";
       const price =
         item.lineTotal != null
-          ? ` — $${Number(item.lineTotal).toFixed(2)}`
+          ? ` — ${money(Number(item.lineTotal))}`
           : item.unitPrice != null
-            ? ` — $${Number(item.unitPrice).toFixed(2)}`
+            ? ` — ${money(Number(item.unitPrice))}`
             : "";
       lines.push(`• ${item.description}${qty}${unit}${price}`);
     }
   }
   lines.push("");
-  lines.push(`Package total: $${totalAmount.toFixed(2)}`);
+  lines.push(`Package total: ${money(totalAmount)}`);
   const deposit = opts?.depositAmount ?? 0;
   if (deposit > 0) {
-    lines.push(`Deposit: $${deposit.toFixed(2)}`);
-    lines.push(`Remaining: $${remainingAmount(totalAmount, deposit).toFixed(2)}`);
+    lines.push(`Deposit: ${money(deposit)}`);
+    lines.push(`Remaining: ${money(remainingAmount(totalAmount, deposit))}`);
   }
   return lines.join("\n");
 }

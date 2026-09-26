@@ -1,0 +1,66 @@
+{
+  "verdict": "NOT_GREEN",
+  "checked_at": "2026-09-26T18:15:00Z",
+  "production_untouched": true,
+  "code_changed_during_verification": false,
+  "fix_commit": "f7c8142332ff9c0c99bae4b860dd6886ff98897a",
+  "deploy": {
+    "f7c81423_run": 36260701220,
+    "f7c81423_run_url": "https://github.com/jlcormier612/wevenu-website/actions/runs/36260701220",
+    "f7c81423_conclusion": "success",
+    "f7c81423_task_definition": "htc-sandbox-venue-app:399",
+    "f7c81423_image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:f7c8142332ff9c0c99bae4b860dd6886ff98897a"
+  },
+  "runtime": {
+    "cluster": "htc-sandbox",
+    "service": "htc-sandbox-venue-app",
+    "taskDefinition": "htc-sandbox-venue-app:400",
+    "taskArn": "arn:aws:ecs:us-east-1:405254329873:task/htc-sandbox/cbe63443f8884c76bca536c945c6cfc3",
+    "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:9e0a56a24c771335a68f0db4640198fe0e45ece1",
+    "rolloutState": "COMPLETED",
+    "health_endpoint": { "ok": true },
+    "contract_files_identical_to_f7c81423": true
+  },
+  "tests": {
+    "focused_64": "64/64 pass"
+  },
+  "fixture": {
+    "name": "Rebecca Sunshine & Brian Friendly",
+    "lead_id": "a7d75c3e-6e3d-4e88-aa31-00f6fc9552b6",
+    "client_id": "8b7c6720-79ec-441a-b905-21c5620a507b",
+    "selection_id": "57a32231-03b2-458b-9db5-806312bdb9f0",
+    "package": "Full Service Wedding",
+    "total_amount": 25000,
+    "deposit_amount": 6250,
+    "event_date": "2027-06-26",
+    "space": "Barn",
+    "payment_schedules": 0,
+    "synthetic_data_created": false,
+    "draft_contract_id": "5a5f8117-4616-4935-82c7-ce58b75f721b",
+    "draft_status_after_send_attempt": "draft"
+  },
+  "scenarios": {
+    "builder_two_signers": { "pass": true },
+    "preview_branding": { "pass": true, "logo": true, "htc_green_absent": true, "primary": "#FF1493" },
+    "operational_tokens": { "pass": true },
+    "no_raw_tokens": { "pass": false, "leftover": ["{{vendors_on_file}}"] },
+    "two_client_party": { "pass": true, "line": "This Agreement is between Jen's Fancy Venue and Rebecca Sunshine & Brian Friendly for the celebration described below." },
+    "two_signature_blocks": { "pass": true },
+    "contract_total_currency": { "pass": true, "value": "$25,000.00" },
+    "balance_not_invented": { "pass": true, "value": "Balance remaining is not listed yet." },
+    "package_section_currency": { "pass": false, "values": ["$25000.00", "$6250.00", "$18750.00"] },
+    "event_details": { "pass": true },
+    "preview_display_only": { "pass": true },
+    "send": {
+      "pass": false,
+      "error": "Unresolved details still need values: {{vendors_on_file}}.",
+      "classification": "product_defect"
+    },
+    "lifecycle_sent": { "pass": false, "reason": "Send blocked; remained Draft. Client-first Sign Agreement stayed disabled on staff review." }
+  },
+  "blocking_defect": {
+    "classification": "product_defect",
+    "also": "source/data gap — Sandbox Library template still contains {{vendors_on_file}}",
+    "detail": "Deferred token has no honest fallback; mergeContent leaves raw {{vendors_on_file}} in Preview; sendContract safety refuses Send."
+  }
+}

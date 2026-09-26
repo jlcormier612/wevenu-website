@@ -54,7 +54,12 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "contract_title", label: "Contract Title", description: "Title of this agreement" },
 ];
 
-/** Deferred — not in the standard picker (no contract-time SoT). */
+/**
+ * Deferred — not in the standard picker (no contract-time SoT).
+ * Materialization still substitutes honest fallback wording so legacy
+ * Library / draft bodies that still contain these tokens never expose raw
+ * {{…}} to Preview or Send. Do not invent underlying domain data.
+ */
 export const DEFERRED_MERGE_FIELD_KEYS = [
   "vendors_on_file",
 ] as const;
