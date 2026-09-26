@@ -20,6 +20,16 @@ describe("Lead Workspace conversation recipient sync", () => {
     assert.match(fn, /relationship_id/);
   });
 
+  it("Lead contact edits update the existing linked client, not a new client", () => {
+    const start = leadsRepo.indexOf("export async function updateLeadInfo");
+    const end = leadsRepo.indexOf("export async function setPlannedEventSpace", start + 1);
+    const fn = leadsRepo.slice(start, end);
+    assert.match(fn, /linkedClientIdentityPatch/);
+    assert.match(fn, /convertedClient\.id/);
+    assert.doesNotMatch(fn, /insertClient/);
+    assert.doesNotMatch(fn, /\.from\("clients"\)[\s\S]*\.insert\(/);
+  });
+
   it("conversation recipient email prefers live client/lead over stale relationship row", () => {
     const start = conversationsRepo.indexOf("export async function getConversationRecipientEmail");
     const end = conversationsRepo.indexOf("function coupleDisplayName", start + 1);
@@ -38,7 +48,7 @@ describe("Lead Workspace conversation recipient sync", () => {
     assert.match(commercialUi, /What they booked/);
     assert.doesNotMatch(commercialUi, />\s*Commercial\s*</);
     assert.match(commercialFacts, /Choosing a package saves it for this opportunity/);
-    assert.match(commercialFacts, /Accepting a proposal does not execute the contract/);
+    assert.match(commercialFacts, /Accepting a package does not execute the contract/);
   });
 
   it("Create contract failures stay on the Lead with a useful message", () => {

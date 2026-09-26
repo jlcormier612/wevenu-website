@@ -5,7 +5,7 @@ import { NewContractForm } from "@/components/contracts/new-contract-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensure-commercial-customer";
-import { getClients } from "@/lib/clients/service";
+import { ensureContractPickerClient, getSelectableContractClients } from "@/lib/clients/service";
 import { resolveActiveCommercialSelection } from "@/lib/commercial-selections/service";
 import { getClientContacts } from "@/lib/contacts/service";
 import { getTemplates } from "@/lib/contracts/service";
@@ -42,7 +42,10 @@ export default async function NewContractPage({ searchParams }: Props) {
     }
   }
 
-  const [templates, clients] = await Promise.all([getTemplates(), getClients()]);
+  const [templates, selectableClients] = await Promise.all([
+    getTemplates(),
+    getSelectableContractClients(),
+  ]);
   const selection = await resolveActiveCommercialSelection({
     selectionId,
     clientId,
@@ -61,6 +64,10 @@ export default async function NewContractPage({ searchParams }: Props) {
     redirect(`/contracts/new?${params.toString()}`);
   }
 
+  const resolvedClientId = clientId || selection?.clientId || undefined;
+  const resolvedEventId = eventId || selection?.eventId || undefined;
+  const clients = await ensureContractPickerClient(selectableClients, resolvedClientId);
+
   const contactsByClientId: Record<string, ClientContact[]> = {};
   await Promise.all(clients.map(async (c) => {
     contactsByClientId[c.id] = await getClientContacts(c.id);
@@ -70,9 +77,6 @@ export default async function NewContractPage({ searchParams }: Props) {
     ? templates
     : [{ id: "__default__", venueId: "", name: DEFAULT_TEMPLATE_NAME, description: DEFAULT_TEMPLATE_DESCRIPTION,
          content: DEFAULT_TEMPLATE_CONTENT, isDefault: true, isArchived: false, sourceMasterKey: null, createdAt: "", updatedAt: "" }];
-
-  const resolvedClientId = clientId || selection?.clientId || undefined;
-  const resolvedEventId = eventId || selection?.eventId || undefined;
 
   return (
     <div className="space-y-6">

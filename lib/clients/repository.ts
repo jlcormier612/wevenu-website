@@ -12,6 +12,7 @@ import type {
   ClientWithDetails,
 } from "@/lib/clients/types";
 import { relationshipContactPatch } from "@/lib/clients/contact-edit";
+import { isSelectableForNewContract } from "@/lib/clients/contract-picker";
 import { identityRpcFields } from "@/lib/identity/decision";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
@@ -62,6 +63,71 @@ export async function getClients(client: DbClient, venueId: string, filters?: { 
   const { data, error } = await q.order("event_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
   return (data as ClientRow[]).map(mapClient);
+}
+
+/**
+ * Clients eligible for a NEW contract. State/relationship filter only —
+ * not a name-string hide. getClients() remains the unfiltered CRM list.
+ */
+export async function getSelectableContractClients(
+  client: DbClient,
+  venueId: string,
+): Promise<Client[]> {
+  const { data, error } = await client
+    .from("clients")
+    .select("*")
+    .eq("venue_id", venueId)
+    .order("event_date", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  const rows = (data as ClientRow[]).map(mapClient);
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r) => r.id);
+  const leadIds = [...new Set(rows.map((r) => r.leadId).filter((id): id is string => !!id))];
+
+  const [leadsRes, eventsRes, contractsRes, plansRes] = await Promise.all([
+    leadIds.length > 0
+      ? client.from("leads").select("id, sales_stage").eq("venue_id", venueId).in("id", leadIds)
+      : Promise.resolve({ data: [] as { id: string; sales_stage: string | null }[], error: null }),
+    client.from("events").select("client_id").eq("venue_id", venueId).in("client_id", ids),
+    client.from("contracts").select("client_id").eq("venue_id", venueId).in("client_id", ids),
+    client.from("payment_schedules").select("client_id").eq("venue_id", venueId).in("client_id", ids),
+  ]);
+  if (leadsRes.error) throw leadsRes.error;
+  if (eventsRes.error) throw eventsRes.error;
+  if (contractsRes.error) throw contractsRes.error;
+  if (plansRes.error) throw plansRes.error;
+
+  const leadStage = new Map(
+    ((leadsRes.data ?? []) as { id: string; sales_stage: string | null }[])
+      .map((l) => [l.id, l.sales_stage]),
+  );
+  const withEvent = new Set(
+    ((eventsRes.data ?? []) as { client_id: string | null }[])
+      .map((e) => e.client_id)
+      .filter((id): id is string => !!id),
+  );
+  const withContract = new Set(
+    ((contractsRes.data ?? []) as { client_id: string | null }[])
+      .map((c) => c.client_id)
+      .filter((id): id is string => !!id),
+  );
+  const withPlan = new Set(
+    ((plansRes.data ?? []) as { client_id: string | null }[])
+      .map((p) => p.client_id)
+      .filter((id): id is string => !!id),
+  );
+
+  return rows.filter((row) => isSelectableForNewContract({
+    id: row.id,
+    status: row.status,
+    excludeFromBusinessReporting: row.excludeFromBusinessReporting,
+    leadId: row.leadId,
+    leadSalesStage: row.leadId ? (leadStage.get(row.leadId) ?? null) : null,
+    hasEvent: withEvent.has(row.id),
+    hasContract: withContract.has(row.id),
+    hasPaymentSchedule: withPlan.has(row.id),
+  }));
 }
 
 /**

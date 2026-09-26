@@ -616,8 +616,8 @@ export async function updateLeadInfo(
   // to book an Event, it becomes the sole canonical writer for
   // guest_count/event_type/event_date. Defense-in-depth against a stale
   // form bypassing the read-only UI, same guard as updateClientInfo.
-  const { data: convertedClient } = await client.from("clients").select("id")
-    .eq("lead_id", leadId).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+  const { data: convertedClient } = await client.from("clients").select("id, relationship_id")
+    .eq("lead_id", leadId).eq("venue_id", venueId).maybeSingle<{ id: string; relationship_id: string | null }>();
   if (convertedClient) {
     const { data: linkedEvent } = await client.from("events").select("id")
       .eq("client_id", convertedClient.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
@@ -635,16 +635,40 @@ export async function updateLeadInfo(
     .eq("venue_id", venueId);
   if (error) throw error;
 
+  // Same customer after convert/ensure: keep the linked clients row on the
+  // current identity. Do not insert a second client. Event fields stay on
+  // the Event once one exists.
+  if (convertedClient) {
+    const { linkedClientIdentityPatch } = await import("@/lib/clients/contact-edit");
+    const { error: clientError } = await client
+      .from("clients")
+      .update(linkedClientIdentityPatch({
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        phone: input.phone,
+        partnerFirstName: input.partnerFirstName,
+        partnerLastName: input.partnerLastName,
+        partnerEmail: input.partnerEmail,
+      }))
+      .eq("id", convertedClient.id)
+      .eq("venue_id", venueId);
+    if (clientError) throw clientError;
+  }
+
   // Keep the enduring relationship contact in sync. Conversation email
   // resolves from venue_customer_relationships; leaving it stale after a
-  // Lead edit makes a saved address look "invalid" on send.
+  // Lead edit makes a saved address look "invalid" on send. After a quiet
+  // commercial ensure the relationship may live on the client while the
+  // lead.relationship_id is still null — use either, and heal the lead link.
   const { data: leadRel } = await client
     .from("leads")
     .select("relationship_id")
     .eq("id", leadId)
     .eq("venue_id", venueId)
     .maybeSingle<{ relationship_id: string | null }>();
-  if (leadRel?.relationship_id) {
+  const relationshipId = leadRel?.relationship_id ?? convertedClient?.relationship_id ?? null;
+  if (relationshipId) {
     const { relationshipContactPatch } = await import("@/lib/clients/contact-edit");
     const { error: relError } = await client
       .from("venue_customer_relationships")
@@ -653,9 +677,17 @@ export async function updateLeadInfo(
         lastName: input.lastName,
         email: input.email,
       }))
-      .eq("id", leadRel.relationship_id)
+      .eq("id", relationshipId)
       .eq("venue_id", venueId);
     if (relError) throw relError;
+    if (!leadRel?.relationship_id) {
+      const { error: healError } = await client
+        .from("leads")
+        .update({ relationship_id: relationshipId })
+        .eq("id", leadId)
+        .eq("venue_id", venueId);
+      if (healError) throw healError;
+    }
   }
 }
 

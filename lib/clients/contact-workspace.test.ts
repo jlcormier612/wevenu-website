@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { relationshipContactPatch } from "@/lib/clients/contact-edit";
+import { linkedClientIdentityPatch, relationshipContactPatch } from "@/lib/clients/contact-edit";
 
 function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
@@ -32,6 +32,30 @@ describe("client contact workspace", () => {
     assert.equal("source" in patch, false);
     assert.equal("event_date" in patch, false);
     assert.equal(relationshipContactPatch({ firstName: "A", lastName: "B", email: "  " }).email, null);
+  });
+
+  it("lead-linked client identity patch updates the same customer fields without event data", () => {
+    const patch = linkedClientIdentityPatch({
+      firstName: " Popeye ",
+      lastName: " Spinach ",
+      email: " jlcormier612@gmail.com ",
+      phone: " 5089896064 ",
+      partnerFirstName: " Olive ",
+      partnerLastName: " Oil ",
+      partnerEmail: " jyagnesak@yahoo.com ",
+    });
+    assert.deepEqual(patch, {
+      first_name: "Popeye",
+      last_name: "Spinach",
+      email: "jlcormier612@gmail.com",
+      phone: "5089896064",
+      partner_first_name: "Olive",
+      partner_last_name: "Oil",
+      partner_email: "jyagnesak@yahoo.com",
+    });
+    assert.equal("event_date" in patch, false);
+    assert.equal("lead_id" in patch, false);
+    assert.equal("id" in patch, false);
   });
 
   it("writes contact onto the existing client and relationship, not a new record or the lead", () => {

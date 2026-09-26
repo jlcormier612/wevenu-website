@@ -15,6 +15,19 @@ function read(path: string): string {
   return readFileSync(resolve(path), "utf8");
 }
 
+describe("client-picker fix does not regress client-first signing", () => {
+  it("still derives client-first states from required client signers", () => {
+    const sent = deriveContractSigningUiState({
+      status: "sent", venueSigned: false, requiredClientTotal: 2, requiredClientSigned: 0, expiresAt: null,
+    });
+    assert.equal(sent.state, "sent_to_client");
+    const awaiting = deriveContractSigningUiState({
+      status: "sent", venueSigned: false, requiredClientTotal: 2, requiredClientSigned: 2, expiresAt: null,
+    });
+    assert.equal(awaiting.state, "awaiting_venue_signature");
+  });
+});
+
 describe("progressive human-facing contract status (client-first)", () => {
   it("Draft before send", () => {
     const r = deriveContractSigningUiState({

@@ -115,6 +115,28 @@ export async function getClients(filters?: { q?: string; status?: string }): Pro
 }
 
 /**
+ * Contract Builder picker — eligible operational customers only.
+ * Does not replace getClients() for the Clients CRM list.
+ */
+export async function getSelectableContractClients(): Promise<Client[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getSelectableContractClients(await createClient(), venue.id);
+}
+
+/** Deep-link / selection preselect: keep that client in the picker unless cancelled. */
+export async function ensureContractPickerClient(
+  clients: Client[],
+  clientId: string | null | undefined,
+): Promise<Client[]> {
+  if (!clientId || clients.some((c) => c.id === clientId)) return clients;
+  const one = await getClient(clientId);
+  if (!one || one.status === "cancelled") return clients;
+  return [...clients, one];
+}
+
+/**
  * Needs Attention client ids: past-due payment, past-due required task,
  * or a conversation that still needs a response. Not unread, and not an
  * unsigned contract by itself.
