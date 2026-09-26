@@ -250,11 +250,27 @@ export async function ensureClientOwnedChoicesTask(
     .limit(1);
   if (existing && existing.length > 0) return;
 
+  // V1 due rules only allow relative_to_event (days from events.event_date).
+  // Prefer ~7 days from send; fall back to 30 days before the event.
+  const { data: eventRow } = await client.from("events")
+    .select("event_date")
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ event_date: string }>();
+
   const due = new Date();
   due.setDate(due.getDate() + 7);
   const dueDate = due.toISOString().slice(0, 10);
+  let daysOffset = -30;
+  if (eventRow?.event_date) {
+    const eventMs = Date.parse(`${eventRow.event_date}T12:00:00Z`);
+    const dueMs = Date.parse(`${dueDate}T12:00:00Z`);
+    if (Number.isFinite(eventMs) && Number.isFinite(dueMs)) {
+      daysOffset = Math.round((dueMs - eventMs) / 86_400_000);
+    }
+  }
 
-  await client.from("event_tasks").insert({
+  const { error } = await client.from("event_tasks").insert({
     venue_id: venueId,
     event_id: eventId,
     title,
@@ -262,8 +278,8 @@ export async function ensureClientOwnedChoicesTask(
     owner_type: "couple",
     visibility: "client_owned",
     due_date: dueDate,
-    days_offset: 0,
-    due_date_rule_kind: "fixed",
+    days_offset: daysOffset,
+    due_date_rule_kind: "relative_to_event",
     category: "planning",
     milestone_name: "Planning",
     is_required: true,
@@ -275,4 +291,5 @@ export async function ensureClientOwnedChoicesTask(
     notify_on_assign: true,
     notify_on_complete: true,
   });
+  if (error) throw error;
 }
