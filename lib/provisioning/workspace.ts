@@ -12,6 +12,7 @@
  * or starter content.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { accessTitleForLegacyRole } from "@/lib/authorization/membership";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveUserIdForEmail } from "@/lib/legal/service";
 import { seedWorkspaceStarters, type StarterSeedResult } from "@/lib/provisioning/starters";
@@ -46,6 +47,10 @@ type EnrollmentRow = {
   intake_token: string | null;
   white_glove_status: string | null;
 };
+
+// venue_staff.access_title / title_basis are NOT NULL, so the owner membership
+// this file creates must carry them or provisioning fails outright.
+const OWNER_ACCESS_TITLE = accessTitleForLegacyRole("owner");
 
 function newIntakeToken(): string {
   return `intake_${randomBytes(24).toString("hex")}`;
@@ -159,6 +164,8 @@ export async function provisionWorkspaceFromEnrollment(
       is_owner: true,
       accepted_at: new Date().toISOString(),
       is_active: true,
+      access_title: OWNER_ACCESS_TITLE,
+      title_basis: OWNER_ACCESS_TITLE,
     },
     { onConflict: "venue_id", ignoreDuplicates: false },
   );
@@ -192,6 +199,8 @@ export async function provisionWorkspaceFromEnrollment(
         is_owner: true,
         accepted_at: new Date().toISOString(),
         is_active: true,
+        access_title: OWNER_ACCESS_TITLE,
+        title_basis: OWNER_ACCESS_TITLE,
       });
       if (insertStaffErr && insertStaffErr.code !== "23505") {
         return { ok: false, error: insertStaffErr.message };

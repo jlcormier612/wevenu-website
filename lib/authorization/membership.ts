@@ -152,6 +152,32 @@ export function coerceAccessTitle(value: string | null | undefined): AccessTitle
   return "staff";
 }
 
+/**
+ * Access title for a legacy `venue_staff.role`, for the paths that still
+ * create memberships from a role alone.
+ *
+ * Mirrors the backfill in 20261405200000_team_permissions_access_model.sql
+ * exactly — in particular `owner` maps to `administrator`, because ownership
+ * is `is_owner` and is deliberately independent of the access title. Do not
+ * route this through `coerceAccessTitle`: "owner" is not an access title, so
+ * that helper would quietly downgrade a venue owner to `staff`.
+ *
+ * `access_title` and `title_basis` are both NOT NULL, so every insert into
+ * `venue_staff` must supply them or the write fails outright.
+ */
+export function accessTitleForLegacyRole(role: string | null | undefined): AccessTitle {
+  switch (role) {
+    case "owner":
+      return "administrator";
+    case "manager":
+      return "manager";
+    case "coordinator":
+      return "coordinator";
+    default:
+      return "staff";
+  }
+}
+
 export function coerceBasisTitle(
   accessTitle: AccessTitle,
   titleBasis: string | null | undefined,
