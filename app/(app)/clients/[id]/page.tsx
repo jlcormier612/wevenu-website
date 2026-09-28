@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
-import { PreparePlanningPanel } from "@/components/clients/prepare-planning-panel";
 import { EventTaskList } from "@/components/playbooks/event-task-list";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
@@ -166,14 +165,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
           clientId={client.id}
           eventDate={client.eventDate}
           venueTimezone={venue?.timezone ?? null}
-        />
-        <PreparePlanningPanel
-          eventId={null}
-          clientId={client.id}
-          eventDate={client.eventDate}
-          eventType={client.eventType}
-          templates={activePlaybookTemplates}
-          applications={applications}
         />
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-heading">Checklists</h2>

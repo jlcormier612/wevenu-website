@@ -850,20 +850,13 @@ export function TimelineView({
     .sort()
     .at(-1) ?? null;
 
-  // Empty state — no entries and no sections yet
+  // Empty state — no entries and no sections yet.
+  // One Use Template only (in the empty card with Add First Entry). Do not
+  // also mount a header TemplatePicker — that duplicated the same control.
   if (totalCount === 0 && sections.length === 0 && addFormOpenFor === null) {
     return (
       <div className="space-y-4">
         <TimelineSummaryBar itemCount={0} lastUpdated={lastUpdatedIso} />
-        <div className="flex items-center justify-end">
-          <TemplatePicker
-            eventId={eventId}
-            planningClientId={planningClientId}
-            eventStartTime={eventStartTime}
-            templates={timelineTemplates}
-            onApplied={() => router.refresh()}
-          />
-        </div>
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Clock className="h-5 w-5" />

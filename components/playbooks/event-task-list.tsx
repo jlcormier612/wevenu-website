@@ -859,7 +859,8 @@ export function PlaybookApplyRow({
           onOpenChange={setPreviewOpen}
           templateId={selectedTemplate}
           kind={kind}
-          eventId={eventId}
+          eventId={eventId || undefined}
+          clientId={clientId ?? undefined}
           eventDate={eventDate}
           onApplied={onApplied}
         />

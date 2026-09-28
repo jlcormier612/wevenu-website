@@ -25,6 +25,8 @@ describe("Phase 2 planning apply seams", () => {
     assert.doesNotMatch(panel, /Standard Wedding/);
     const sheet = readFileSync(resolve("components/playbooks/playbook-apply-preview-sheet.tsx"), "utf8");
     assert.match(sheet, /applyPlaybookAction/);
+    assert.match(sheet, /applyPlaybookToClientAction/);
+    assert.match(sheet, /!!eventId \|\| !!clientId/);
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
     assert.match(celebration, /PreparePlanningPanel/);
     assert.doesNotMatch(celebration, /applyPlaybookAction/);

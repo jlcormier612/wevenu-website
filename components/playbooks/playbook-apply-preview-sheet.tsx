@@ -61,7 +61,9 @@ export function PlaybookApplyPreviewSheet({
 
   const kindCopy = applyPreviewKindCopy(kind);
   const taskCount = groups.reduce((n, g) => n + g.taskTitles.length, 0);
-  const applyEnabled = canApply && !!eventId && !!eventDate;
+  // Pre-book prepare workspace applies to the client (clientId + preferred date);
+  // booked events apply to the event. Preview itself never mutates.
+  const applyEnabled = canApply && !!eventDate && (!!eventId || !!clientId);
 
   React.useEffect(() => {
     if (!open || !templateId) return;
@@ -183,11 +185,16 @@ export function PlaybookApplyPreviewSheet({
               onClick={handleApply}
               disabled={applying || loading || !!loadError || taskCount === 0}
               className="w-full"
+              data-testid="playbook-apply-confirm"
             >
               {applying ? (
                 <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Applying…</>
-              ) : (
+              ) : eventId ? (
                 "Apply to this event"
+              ) : kind === "client" ? (
+                "Apply Client Planning"
+              ) : (
+                "Apply Venue Planning"
               )}
             </Button>
           ) : (
