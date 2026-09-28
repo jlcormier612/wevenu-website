@@ -30,6 +30,24 @@ describe("token-preserving contract draft", () => {
     assert.match(send, /publishContractDocument\(supabase, customerFacing\)/);
   });
 
+  it("Preview, Review, and Send share materializeAuthoredContractContent", () => {
+    const preview = service.slice(service.indexOf("export async function previewContractContent"));
+    const send = service.slice(service.indexOf("export async function sendContract"));
+    const builder = readFileSync(resolve("components/contracts/contract-builder.tsx"), "utf8");
+    assert.match(preview, /materializeAuthoredContractContent/);
+    assert.match(send, /materializeAuthoredContractContent/);
+    assert.match(builder, /resolvePreview\(\)/);
+    assert.match(builder, /handleReviewAndSend/);
+    assert.match(builder, /setPreviewContent\(resolved\)/);
+  });
+
+  it("Send reconstructs signer ids from persisted rows, not client_contact_id only", () => {
+    const send = service.slice(service.indexOf("export async function sendContract"));
+    assert.match(send, /resolveSignerSelectionIdsFromContract/);
+    assert.doesNotMatch(send, /s\.clientContactId as string/);
+    assert.match(service, /selectedIdsFromExistingSigners/);
+  });
+
   it("preview is display-only and never writes authored content", () => {
     assert.match(builder, /previewContractContentAction/);
     assert.doesNotMatch(builder, /setContent\(result\.content\)/);

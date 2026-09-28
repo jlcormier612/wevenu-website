@@ -23,6 +23,7 @@ import {
   replaceEmptyEventSpacesLabel,
   resolveEventSpacesLabel,
 } from "@/lib/contracts/event-spaces-merge";
+import { pickPaymentScheduleForBooking } from "@/lib/contracts/payment-schedule-merge";
 import { getSpaces } from "@/lib/availability/service";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import { getEventIdForClient } from "@/lib/events/service";
@@ -100,6 +101,29 @@ async function resolveClientSignerSeeds(
   const contacts = await getClientContacts(clientId);
   const { resolveSignerSeedsFromSelection } = await import("@/lib/contracts/signer-candidates");
   return resolveSignerSeedsFromSelection(client, contacts, selectedContactIds);
+}
+
+/**
+ * Rebuild the same signer-candidate ids Preview uses, from persisted signer rows.
+ * client_contact_id is optional — relationship primary/partner rows use signer_ref_id / role / email.
+ */
+async function resolveSignerSelectionIdsFromContract(
+  clientId: string,
+  signers: Array<{
+    signerType: string;
+    isRequired: boolean;
+    clientContactId: string | null;
+    signerEmail: string | null;
+    signerRole: string | null;
+  }>,
+): Promise<string[] | undefined> {
+  const client = await getClient(clientId);
+  if (!client) return undefined;
+  const contacts = await getClientContacts(clientId);
+  const { buildSignerCandidates, selectedIdsFromExistingSigners } =
+    await import("@/lib/contracts/signer-candidates");
+  const ids = selectedIdsFromExistingSigners(buildSignerCandidates(client, contacts), signers);
+  return ids.length > 0 ? ids : undefined;
 }
 
 // ---- templates --------------------------------------------------------------
@@ -420,13 +444,11 @@ export async function createAmendmentFromContract(sourceContractId: string): Pro
     if (!source.clientId) {
       return { ok: false, message: "This contract has no client — cannot create an amendment." } as CreateContractResult;
     }
-    const priorContactIds = (source.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
-    const seeds = await resolveClientSignerSeeds(
+    const signerSelectionIds = await resolveSignerSelectionIdsFromContract(
       source.clientId,
-      priorContactIds.length > 0 ? priorContactIds : undefined,
+      source.signers ?? [],
     );
+    const seeds = await resolveClientSignerSeeds(source.clientId, signerSelectionIds);
     if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
 
     const newContractId = await repo.insertContract(supabase, venueId, {
@@ -605,32 +627,35 @@ export async function buildContractMergeData(opts: {
         }
       }
     } catch { /* Event Order may be disabled */ }
+  }
 
-    try {
-      const schedules = await getPaymentSchedules();
-      const forEvent = schedules.filter((s) => s.eventId === event.id);
-      if (forEvent.length > 0) {
-        const detail = await getPaymentSchedule(forEvent[0].id);
-        if (detail) {
-          const currency = detail.currency || "USD";
-          const fmt = (n: number) => formatCurrency(n, currency);
-          paymentScheduleSummary = detail.lineItems
-            .map((li) => {
-              const due = li.dueDate ? formatContractDate(li.dueDate) : "Date TBD";
-              return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
-            })
-            .join("\n");
-          const totals = computePortalScheduleTotals(detail.lineItems);
-          // Payment schedule remaining overrides selection projection once a plan exists
-          // (includes paid line status from the authoritative schedule totals).
-          balanceRemaining = formatBalanceRemaining(totals.remaining);
-          if (!packageFromSelection) {
-            contractTotal = fmt(detail.totalAmount);
-          }
+  try {
+    const schedules = await getPaymentSchedules();
+    const picked = pickPaymentScheduleForBooking(schedules, {
+      eventId: event?.id ?? resolvedEventId ?? opts.eventId,
+      clientId: opts.clientId,
+    });
+    if (picked) {
+      const detail = await getPaymentSchedule(picked.id);
+      if (detail) {
+        const currency = detail.currency || "USD";
+        const fmt = (n: number) => formatCurrency(n, currency);
+        paymentScheduleSummary = detail.lineItems
+          .map((li) => {
+            const due = li.dueDate ? formatContractDate(li.dueDate) : "Date TBD";
+            return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
+          })
+          .join("\n");
+        const totals = computePortalScheduleTotals(detail.lineItems);
+        // Payment schedule remaining overrides selection projection once a plan exists
+        // (includes paid line status from the authoritative schedule totals).
+        balanceRemaining = formatBalanceRemaining(totals.remaining);
+        if (!packageFromSelection) {
+          contractTotal = fmt(detail.totalAmount);
         }
       }
-    } catch { /* optional */ }
-  }
+    }
+  } catch { /* optional */ }
 
   const venueAccessHours = formatVenueAccessHours({
     setupTime: event?.setupTime ?? null,
@@ -923,15 +948,15 @@ export async function sendContract(id: string, customMessage?: string): Promise<
 
     // Client-first: venue signature is not required to issue the contract.
 
-    const priorContactIds = (contract.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
+    const signerSelectionIds = contract.clientId
+      ? await resolveSignerSelectionIdsFromContract(contract.clientId, contract.signers ?? [])
+      : undefined;
     const materialized = await materializeAuthoredContractContent({
       authoredContent: contract.content,
       clientId: contract.clientId ?? "",
       eventId: contract.eventId ?? "",
       contractTitle: contract.title,
-      clientSignerContactIds: priorContactIds.length > 0 ? priorContactIds : undefined,
+      clientSignerContactIds: signerSelectionIds,
     });
     if (!materialized.ok) {
       return { ok: false, message: materialized.message } as ContractActionResult;
@@ -1079,13 +1104,11 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
       return { ok: false, message: "This contract has no client — cannot create a new version." } as CreateContractResult;
     }
 
-    const priorContactIds = (source.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
-    const seeds = await resolveClientSignerSeeds(
+    const signerSelectionIds = await resolveSignerSelectionIdsFromContract(
       source.clientId,
-      priorContactIds.length > 0 ? priorContactIds : undefined,
+      source.signers ?? [],
     );
+    const seeds = await resolveClientSignerSeeds(source.clientId, signerSelectionIds);
     if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
 
     const newContractId = await repo.insertContract(supabase, venueId, {

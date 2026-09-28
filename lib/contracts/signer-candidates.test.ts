@@ -10,7 +10,10 @@ import {
   RELATIONSHIP_PARTNER_SIGNER_ID,
   RELATIONSHIP_PRIMARY_SIGNER_ID,
   resolveSignerSeedsFromSelection,
+  selectedIdsFromExistingSigners,
 } from "@/lib/contracts/signer-candidates";
+import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
+import { formatRequiredClientPartyName } from "@/lib/contracts/merge-extras";
 import { DEFERRED_MERGE_FIELD_KEYS, MERGE_FIELDS } from "@/lib/contracts/constants";
 import type { Client } from "@/lib/clients/types";
 import type { ClientContact } from "@/lib/contacts/types";
@@ -136,6 +139,59 @@ describe("signer candidates from client relationship", () => {
     const candidates = buildSignerCandidates(c, contacts);
     assert.ok(candidates.some((x) => x.id === "ct1"));
     assert.ok(!candidates.some((x) => x.id === RELATIONSHIP_PRIMARY_SIGNER_ID));
+  });
+
+  it("reconstructs Preview signer ids when client_contact_id is NULL", () => {
+    const c = client({
+      id: "fbb22b23-0745-4fba-90d4-4e8286fab582",
+      firstName: "Goldi",
+      lastName: "Locks",
+      email: "jlcormier612@gmail.com",
+      partnerFirstName: "Three",
+      partnerLastName: "Bears",
+      partnerEmail: "jyagnesak@yahoo.com",
+    });
+    const candidates = buildSignerCandidates(c, []);
+    const ids = selectedIdsFromExistingSigners(candidates, [
+      {
+        signerType: "client",
+        isRequired: true,
+        clientContactId: null,
+        signerEmail: "jlcormier612@gmail.com",
+        signerRole: "primary",
+      },
+      {
+        signerType: "client",
+        isRequired: true,
+        clientContactId: null,
+        signerEmail: "jyagnesak@yahoo.com",
+        signerRole: "partner",
+      },
+    ]);
+    assert.deepEqual(ids, [RELATIONSHIP_PRIMARY_SIGNER_ID, RELATIONSHIP_PARTNER_SIGNER_ID]);
+
+    const seeds = resolveSignerSeedsFromSelection(c, [], ids);
+    assert.equal(seeds.ok, true);
+    if (!seeds.ok) return;
+    const names = seeds.seeds.map((s) => s.signerName);
+    assert.equal(formatRequiredClientPartyName(names), "Goldi Locks & Three Bears");
+
+    const authored = "This Agreement is between {{venue_name}} and {{client_name}}.";
+    const mergeCtx = {
+      venueName: "Jen's Fancy Venue",
+      clientFirstName: "Goldi",
+      clientLastName: "Locks",
+      requiredClientSignerNames: names,
+      eventDate: null,
+      eventType: null,
+      guestCount: null,
+      contractTitle: "Wedding Venue Agreement",
+    };
+    const preview = mergeContent(authored, buildMergeData(mergeCtx));
+    const send = mergeContent(authored, buildMergeData(mergeCtx));
+    assert.equal(preview, send);
+    assert.match(preview, /Jen's Fancy Venue and Goldi Locks & Three Bears/);
+    assert.doesNotMatch(preview, /\{\{/);
   });
 });
 
