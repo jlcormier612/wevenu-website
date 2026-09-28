@@ -2,10 +2,13 @@
  * The venue's Booked transition.
  *
  * One database transaction (book_relationship):
- * lock the client, let the event trigger take the venue/date advisory
- * lock and validate availability, create or restore the Booked Event,
- * move the relationship to Booked, stamp booked timestamps, and attach
- * pre-booking planning. Any failure rolls all of that back.
+ * lock the client, convert this lead's overlapping active date holds
+ * (active → converted) so the own hold cannot block its own booking,
+ * let the event trigger take the venue/date advisory lock and validate
+ * availability (other leads' holds still block), create or restore the
+ * Booked Event, move the relationship to Booked, stamp booked
+ * timestamps, and attach pre-booking planning. Any failure rolls all
+ * of that back. Client creation does not consume holds.
  *
  * Canonical callers: confirmPipelineBookedMove, returnLeadToBooked,
  * returnClientToBooked, an import the venue marked already booked, and

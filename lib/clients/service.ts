@@ -380,18 +380,6 @@ export async function createClientForVenue(
   });
 }
 
-/** Convert a won lead to a client. Pre-populates from lead data. */
-// Imported lazily to avoid circular deps between client and availability modules
-async function convertLeadHolds(venueId: string, leadId: string, supabase: Parameters<typeof repo.insertClient>[0]) {
-  // Convert all active date holds for this lead to "converted" status
-  const { error } = await supabase.from("date_holds")
-    .update({ status: "converted" })
-    .eq("venue_id", venueId)
-    .eq("lead_id", leadId)
-    .eq("status", "active");
-  if (error) console.error("Could not convert holds:", error.message);
-}
-
 /** Workspace exists; Planning and pipeline Booked wait for commercial Booked. */
 async function markConvertedClientAsBookingFile(
   supabase: Parameters<typeof repo.insertClient>[0],
@@ -526,7 +514,7 @@ export async function convertLeadToClient(
     }
     await repo.insertClientActivity(supabase, venueId, clientId, "note_added",
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
-    await convertLeadHolds(venueId, lead.id, supabase);
+    // Date holds stay active until book_relationship (Booked). Client ≠ Booked.
 
     // Series exit and pipeline Booked happen only at commercial Booked.
 

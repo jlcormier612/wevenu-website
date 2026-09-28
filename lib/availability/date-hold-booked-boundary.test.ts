@@ -1,0 +1,85 @@
+/**
+ * Date hold lifecycle — Client ≠ Booked; holds consume only at book_relationship.
+ */
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, it } from "node:test";
+
+const root = resolve(process.cwd());
+const read = (p: string) => readFileSync(resolve(root, p), "utf8");
+
+const clients = read("lib/clients/service.ts");
+const convertFn = clients.slice(
+  clients.indexOf("export async function convertLeadToClient"),
+  clients.indexOf("export async function updateClientInfo"),
+);
+const bookSql = read(
+  "supabase/migrations/20261408300000_book_relationship_consumes_date_holds.sql",
+);
+const bookFn = bookSql.slice(
+  bookSql.indexOf("create or replace function public.book_relationship"),
+  bookSql.indexOf("$$;", bookSql.indexOf("create or replace function public.book_relationship")),
+);
+const commercial = read("lib/booking-journey/ensure-commercial-customer.ts");
+const startBooking = read("app/(app)/booking-journey/actions.ts");
+const enforce = read(
+  "supabase/migrations/20261407400000_hold_same_owner_exclusion.sql",
+);
+
+describe("date hold lifecycle — Client does not consume holds", () => {
+  it("convertLeadToClient does not convert date_holds", () => {
+    assert.doesNotMatch(convertFn, /convertLeadHolds/);
+    assert.doesNotMatch(convertFn, /date_holds/);
+    assert.doesNotMatch(convertFn, /status:\s*["']converted["']/);
+    assert.match(convertFn, /bookClient is the only pipeline-Booked write|Booked transition/);
+  });
+
+  it("start booking file and commercial ensure do not call bookClient", () => {
+    const start = startBooking.slice(startBooking.indexOf("export async function startBookingFileAction"));
+    assert.match(start, /convertLeadToClient/);
+    assert.doesNotMatch(start, /bookClient/);
+    assert.match(commercial, /commercialOnly:\s*true/);
+    assert.doesNotMatch(commercial, /bookClient/);
+  });
+});
+
+describe("date hold lifecycle — Booked consumes own hold", () => {
+  it("book_relationship converts this lead's overlapping active holds before Event occupancy", () => {
+    assert.match(bookFn, /update public\.date_holds/);
+    assert.match(bookFn, /status = 'converted'/);
+    assert.match(bookFn, /lead_id = v_lead_id/);
+    assert.match(bookFn, /status = 'active'/);
+    assert.match(bookFn, /hold_date >= v_event_date/);
+    // Convert before insert/update that stamps booked_at.
+    const convertAt = bookFn.indexOf("update public.date_holds");
+    const insertAt = bookFn.indexOf("insert into public.events");
+    const stampAt = bookFn.indexOf("booked_at = v_booked_on");
+    assert.ok(convertAt > 0);
+    assert.ok(insertAt > convertAt);
+    assert.ok(stampAt > convertAt);
+  });
+
+  it("does not rename hold statuses or invent a new status", () => {
+    const holdUpdates = bookFn.match(/update public\.date_holds[\s\S]*?where[\s\S]*?;/g) ?? [];
+    assert.ok(holdUpdates.length >= 1);
+    for (const u of holdUpdates) {
+      assert.match(u, /set status = 'converted'/);
+      assert.doesNotMatch(u, /'consumed'|'superseded'|set status = 'booked'/);
+    }
+    assert.doesNotMatch(bookSql, /alter table public\.date_holds/);
+  });
+
+  it("other leads' holds still block via events_enforce_availability", () => {
+    assert.match(enforce, /h\.status = 'active'/);
+    assert.match(enforce, /c\.lead_id = h\.lead_id/);
+    assert.match(enforce, /hold_blocks/);
+  });
+
+  it("does not bulk-restore historical converted holds", () => {
+    assert.doesNotMatch(
+      bookSql,
+      /update public\.date_holds[\s\S]*?set status = 'active'/,
+    );
+  });
+});

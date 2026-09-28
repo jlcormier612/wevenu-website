@@ -29,7 +29,8 @@ describe("Phase 3 invite-at-release seams", () => {
     const fn = src.slice(fnStart, fnEnd);
     assert.doesNotMatch(fn, /inviteClient\(/);
     assert.match(fn, /insertClient\(/);
-    assert.match(fn, /convertLeadHolds\(/);
+    assert.doesNotMatch(fn, /convertLeadHolds\(/);
+    assert.doesNotMatch(fn, /from\("date_holds"\)/);
     assert.doesNotMatch(fn, /exitEnrollmentsForBooking\(/);
     assert.doesNotMatch(fn, /autoCreateEvent\(/);
     assert.doesNotMatch(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
