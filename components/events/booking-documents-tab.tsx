@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { sendContractAction } from "@/app/(app)/contracts/actions";
+import { StarterPolicyPlaceholderDialog } from "@/components/contracts/starter-policy-placeholder-dialog";
 import { sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
 import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
@@ -91,18 +92,33 @@ function TemplatesSection({
 function SentRequestedSection({ contracts, questionnaire }: { contracts: Contract[]; questionnaire: Questionnaire | null }) {
   const router = useRouter();
   const [sendingContract, startSendContract] = React.useTransition();
+  const [placeholderWarningId, setPlaceholderWarningId] = React.useState<string | null>(null);
 
-  function handleSendContract(id: string) {
+  function handleSendContract(id: string, acknowledgePlaceholders = false) {
     startSendContract(async () => {
-      const result = await sendContractAction(id);
-      if (result.ok) { toast.success("Contract sent."); router.refresh(); }
-      else toast.error(result.message ?? "Could not send.");
+      const result = await sendContractAction(
+        id,
+        undefined,
+        acknowledgePlaceholders ? { acknowledgePlaceholders: true } : undefined,
+      );
+      if (result.ok) {
+        toast.success("Contract sent.");
+        setPlaceholderWarningId(null);
+        router.refresh();
+        return;
+      }
+      if (result.code === "STARTER_POLICY_PLACEHOLDERS") {
+        setPlaceholderWarningId(id);
+        return;
+      }
+      toast.error(result.message ?? "Could not send.");
     });
   }
 
   const hasAnything = contracts.length > 0 || (questionnaire && questionnaire.status !== "draft");
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Sent / Requested</CardTitle>
@@ -153,6 +169,15 @@ function SentRequestedSection({ contracts, questionnaire }: { contracts: Contrac
         )}
       </CardContent>
     </Card>
+      <StarterPolicyPlaceholderDialog
+        open={placeholderWarningId !== null}
+        pending={sendingContract}
+        onGoBack={() => setPlaceholderWarningId(null)}
+        onSendAnyway={() => {
+          if (placeholderWarningId) handleSendContract(placeholderWarningId, true);
+        }}
+      />
+    </>
   );
 }
 

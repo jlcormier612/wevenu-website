@@ -36,7 +36,7 @@ export async function finalizeContract(contractId: string): Promise<ContractActi
   }
 
   const { assertCustomerSafeContractContent } = await import("@/lib/contracts/starters");
-  const safety = assertCustomerSafeContractContent(contract.content);
+  const safety = assertCustomerSafeContractContent(contract.content, { allowPlaceholders: true });
   if (!safety.ok) {
     return { ok: false, message: safety.message };
   }

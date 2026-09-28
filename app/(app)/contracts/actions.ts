@@ -129,8 +129,12 @@ async function refreshContractLeadScore(contractId: string): Promise<void> {
   } catch { /* non-blocking */ }
 }
 
-export async function sendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
-  const result = await sendContract(id, customMessage);
+export async function sendContractAction(
+  id: string,
+  customMessage?: string,
+  options?: { acknowledgePlaceholders?: boolean },
+): Promise<ContractActionResult> {
+  const result = await sendContract(id, customMessage, options);
   if (result.ok) {
     revalidatePath(`/contracts/${id}`);
     void refreshContractLeadScore(id);

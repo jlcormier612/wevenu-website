@@ -25,7 +25,7 @@ describe("token-preserving contract draft", () => {
   it("sendContract is the only persist path that materializes tokens", () => {
     const send = service.slice(service.indexOf("export async function sendContract"));
     assert.match(send, /materializeAuthoredContractContent/);
-    assert.match(send, /assertCustomerSafeContractContent\(materialized\.content\)/);
+    assert.match(send, /assertCustomerSafeContractContent\(materialized\.content/);
     assert.match(send, /forceResolveContractContent/);
     assert.match(send, /publishContractDocument\(supabase, customerFacing\)/);
   });

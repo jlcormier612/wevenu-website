@@ -14,6 +14,7 @@ import {
 } from "@/app/(app)/contracts/actions";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { ContractSigningArtifact } from "@/components/contracts/contract-signing-artifact";
+import { StarterPolicyPlaceholderDialog } from "@/components/contracts/starter-policy-placeholder-dialog";
 import { SignForm } from "@/app/sign/[token]/sign-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -100,6 +101,7 @@ export function ContractBuilder({
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [releaseMessage, setReleaseMessage] = React.useState("");
   const [sendPending, startSend] = React.useTransition();
+  const [placeholderWarningOpen, setPlaceholderWarningOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (mode !== "create" || !initialClientId || title) return;
@@ -320,14 +322,23 @@ export function ContractBuilder({
     });
   }
 
-  function handleSend() {
+  function handleSend(acknowledgePlaceholders = false) {
     if (!draft) return;
     startSend(async () => {
-      const result = await sendContractAction(draft.contractId, releaseMessage);
+      const result = await sendContractAction(
+        draft.contractId,
+        releaseMessage,
+        acknowledgePlaceholders ? { acknowledgePlaceholders: true } : undefined,
+      );
       if (result.ok) {
         toast.success("Contract sent to the client for review.");
+        setPlaceholderWarningOpen(false);
         setReviewOpen(false);
         router.refresh();
+        return;
+      }
+      if (result.code === "STARTER_POLICY_PLACEHOLDERS") {
+        setPlaceholderWarningOpen(true);
         return;
       }
       toast.error(result.message ?? "Could not send to the client.");
@@ -545,7 +556,7 @@ export function ContractBuilder({
           title={title || draft.title}
           onBack={() => { setReviewOpen(false); }}
           primary={
-            <Button size="sm" onClick={handleSend} disabled={sendPending}>
+            <Button size="sm" onClick={() => handleSend()} disabled={sendPending}>
               {sendPending ? (
                 <>
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -579,6 +590,16 @@ export function ContractBuilder({
           />
         </ArtifactReviewOverlay>
       )}
+
+      <StarterPolicyPlaceholderDialog
+        open={placeholderWarningOpen}
+        pending={sendPending}
+        onGoBack={() => {
+          setPlaceholderWarningOpen(false);
+          setReviewOpen(false);
+        }}
+        onSendAnyway={() => handleSend(true)}
+      />
     </div>
   );
 }

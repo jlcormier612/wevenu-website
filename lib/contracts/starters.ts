@@ -27,7 +27,7 @@ export const WEDDING_VENUE_AGREEMENT_DESCRIPTION =
 /**
  * Starter body. Tokens use only the approved customer-facing Smart Field catalog.
  * Policy sections deliberately use the same "Add your venue's approved … here."
- * pattern so send-time safety can block untouched placeholders.
+ * pattern so send-time safety can warn on untouched placeholders.
  */
 export const WEDDING_VENUE_AGREEMENT_CONTENT = `Wedding Venue Agreement
 
@@ -245,13 +245,35 @@ export function findUntouchedPolicyPlaceholders(content: string): string[] {
   return matches ? [...new Set(matches.map((m) => m.trim()))] : [];
 }
 
+export const STARTER_POLICY_PLACEHOLDERS_CODE = "STARTER_POLICY_PLACEHOLDERS" as const;
+
+export const STARTER_POLICY_PLACEHOLDERS_MESSAGE =
+  "This agreement still contains starter policy placeholders. Replace them with your venue's approved language before sending to a client.";
+
+export type CustomerSafeContractContentOptions = {
+  /** Venue-acknowledged send: placeholders remain a warning, not a hard block. */
+  allowPlaceholders?: boolean;
+};
+
+export type CustomerSafeContractContentResult =
+  | { ok: true }
+  | {
+      ok: false;
+      message: string;
+      unresolvedTokens: string[];
+      placeholders: string[];
+      code?: typeof STARTER_POLICY_PLACEHOLDERS_CODE;
+    };
+
 export function assertCustomerSafeContractContent(
   content: string,
-): { ok: true } | { ok: false; message: string; unresolvedTokens: string[]; placeholders: string[] } {
+  options?: CustomerSafeContractContentOptions,
+): CustomerSafeContractContentResult {
   const unresolvedTokens = extractTokens(content);
   const placeholders = findUntouchedPolicyPlaceholders(content);
+  const allowPlaceholders = options?.allowPlaceholders === true;
 
-  if (unresolvedTokens.length === 0 && placeholders.length === 0) {
+  if (unresolvedTokens.length === 0 && (placeholders.length === 0 || allowPlaceholders)) {
     return { ok: true };
   }
 
@@ -259,15 +281,14 @@ export function assertCustomerSafeContractContent(
   if (unresolvedTokens.length > 0) {
     parts.push(`Unresolved details still need values: ${unresolvedTokens.map((t) => `{{${t}}}`).join(", ")}.`);
   }
-  if (placeholders.length > 0) {
-    parts.push(
-      "This agreement still contains starter policy placeholders. Replace them with your venue's approved language before sending to a client.",
-    );
+  if (placeholders.length > 0 && !allowPlaceholders) {
+    parts.push(STARTER_POLICY_PLACEHOLDERS_MESSAGE);
   }
   return {
     ok: false,
     message: parts.join(" "),
     unresolvedTokens,
     placeholders,
+    ...(unresolvedTokens.length === 0 ? { code: STARTER_POLICY_PLACEHOLDERS_CODE } : {}),
   };
 }

@@ -22,7 +22,7 @@ describe("Contract full-screen review", () => {
   it("Send for signature uses sendContractAction only after review", () => {
     assert.match(builder, /ArtifactReviewOverlay/);
     assert.match(builder, /handleSend/);
-    assert.match(builder, /sendContractAction\(draft\.contractId, releaseMessage\)/);
+    assert.match(builder, /sendContractAction\(\s*draft\.contractId,\s*releaseMessage/);
     assert.match(builder, /Send to Client/);
     const overlay = readFileSync(resolve("components/artifacts/artifact-review-overlay.tsx"), "utf8");
     assert.match(overlay, /Back to edit/);

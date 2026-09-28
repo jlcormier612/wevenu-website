@@ -857,7 +857,7 @@ export async function venueSignContract(
     const contract = await repo.getContract(supabase, venueId, id);
     if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
 
-    const safety = assertCustomerSafeContractContent(contract.content);
+    const safety = assertCustomerSafeContractContent(contract.content, { allowPlaceholders: true });
     if (!safety.ok) return { ok: false, message: safety.message } as ContractActionResult;
 
     const { headers } = await import("next/headers");
@@ -935,7 +935,11 @@ export async function withdrawVenueSignature(id: string): Promise<ContractAction
   return result as ContractActionResult;
 }
 
-export async function sendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
+export async function sendContract(
+  id: string,
+  customMessage?: string,
+  options?: { acknowledgePlaceholders?: boolean },
+): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const contract = await repo.getContract(supabase, venueId, id);
     if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
@@ -961,9 +965,15 @@ export async function sendContract(id: string, customMessage?: string): Promise<
     if (!materialized.ok) {
       return { ok: false, message: materialized.message } as ContractActionResult;
     }
-    const safety = assertCustomerSafeContractContent(materialized.content);
+    const safety = assertCustomerSafeContractContent(materialized.content, {
+      allowPlaceholders: options?.acknowledgePlaceholders === true,
+    });
     if (!safety.ok) {
-      return { ok: false, message: safety.message } as ContractActionResult;
+      return {
+        ok: false,
+        message: safety.message,
+        ...(safety.code ? { code: safety.code } : {}),
+      } as ContractActionResult;
     }
     await repo.forceResolveContractContent(supabase, venueId, id, materialized.content);
     const customerFacing = { ...contract, content: materialized.content };

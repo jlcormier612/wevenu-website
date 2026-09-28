@@ -28,10 +28,42 @@ describe("Wedding Venue Agreement starter", () => {
     assert.ok(hits.length > 5);
   });
 
-  it("blocks send-facing content that still has placeholders", () => {
+  it("warns on send-facing content that still has placeholders", () => {
     const result = assertCustomerSafeContractContent(WEDDING_VENUE_AGREEMENT_CONTENT);
     assert.equal(result.ok, false);
     if (!result.ok) assert.ok(result.placeholders.length > 0);
+  });
+
+  it("returns STARTER_POLICY_PLACEHOLDERS when only placeholders remain", () => {
+    const result = assertCustomerSafeContractContent(
+      "Add your venue's approved cancellation and rescheduling policy here.",
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.code, "STARTER_POLICY_PLACEHOLDERS");
+      assert.match(result.message, /starter policy placeholders/);
+      assert.equal(result.unresolvedTokens.length, 0);
+    }
+  });
+
+  it("allows placeholders when the venue acknowledges the warning", () => {
+    const result = assertCustomerSafeContractContent(
+      "Add your venue's approved cancellation and rescheduling policy here.",
+      { allowPlaceholders: true },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  it("still hard-blocks unresolved tokens even when placeholders are acknowledged", () => {
+    const result = assertCustomerSafeContractContent(
+      "Add your venue's approved cancellation and rescheduling policy here.\n{{unknown_token}}",
+      { allowPlaceholders: true },
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.code, undefined);
+      assert.match(result.message, /Unresolved details/);
+    }
   });
 
   it("allows content after placeholders are replaced and tokens merged", () => {

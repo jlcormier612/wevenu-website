@@ -133,7 +133,14 @@ export type ContractActionResult =
       updatedAt?: string;
     }
   /** reason:"stale" — Work Package D4's concurrency check — a save was rejected because someone else saved first; the UI should prompt a reload, never silently overwrite. */
-  | { ok: false; errors?: ContractErrors; message?: string; reason?: "stale" | "not_editable" | "not_found" };
+  | {
+      ok: false;
+      errors?: ContractErrors;
+      message?: string;
+      reason?: "stale" | "not_editable" | "not_found";
+      /** Structured send warning — currently only starter-policy placeholders. */
+      code?: "STARTER_POLICY_PLACEHOLDERS";
+    };
 
 export type CreateContractResult =
   | { ok: true; contractId: string }

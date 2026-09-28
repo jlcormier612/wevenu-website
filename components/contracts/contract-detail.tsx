@@ -36,6 +36,7 @@ import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-ov
 import { ContractBuilder } from "@/components/contracts/contract-builder";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
 import { ContractSigningArtifact } from "@/components/contracts/contract-signing-artifact";
+import { StarterPolicyPlaceholderDialog } from "@/components/contracts/starter-policy-placeholder-dialog";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
@@ -97,6 +98,7 @@ export function ContractDetail({
   const [reviewOpen, setReviewOpen] = React.useState(initialReview && contract.status !== "draft");
   const [releaseMessage, setReleaseMessage] = React.useState("");
   const [sendPending, startSend] = React.useTransition();
+  const [placeholderWarningOpen, setPlaceholderWarningOpen] = React.useState(false);
   const [editTitle, setEditTitle] = React.useState(contract.title);
   const [editContent, setEditContent] = React.useState(contract.content);
   const [savePending, startSave] = React.useTransition();
@@ -286,16 +288,25 @@ export function ContractDetail({
     });
   }
 
-  function handleSendToClient() {
+  function handleSendToClient(acknowledgePlaceholders = false) {
     startSend(async () => {
-      const result = await sendContractAction(contract.id, releaseMessage);
+      const result = await sendContractAction(
+        contract.id,
+        releaseMessage,
+        acknowledgePlaceholders ? { acknowledgePlaceholders: true } : undefined,
+      );
       if (result.ok) {
         toast.success("Contract sent to the client for review.");
+        setPlaceholderWarningOpen(false);
         setReviewOpen(false);
         router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not send to the client.");
+        return;
       }
+      if (result.code === "STARTER_POLICY_PLACEHOLDERS") {
+        setPlaceholderWarningOpen(true);
+        return;
+      }
+      toast.error(result.message ?? "Could not send to the client.");
     });
   }
 
@@ -699,7 +710,7 @@ export function ContractDetail({
         onBack={() => setReviewOpen(false)}
         primary={
           contract.status === "draft" ? (
-            <Button size="sm" onClick={handleSendToClient} disabled={sendPending}>
+            <Button size="sm" onClick={() => handleSendToClient()} disabled={sendPending}>
               {sendPending ? (
                 <>
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -739,6 +750,16 @@ export function ContractDetail({
           signatureSlot={contract.status === "signed" ? undefined : <SignForm preview />}
         />
       </ArtifactReviewOverlay>
+
+      <StarterPolicyPlaceholderDialog
+        open={placeholderWarningOpen}
+        pending={sendPending}
+        onGoBack={() => {
+          setPlaceholderWarningOpen(false);
+          setReviewOpen(false);
+        }}
+        onSendAnyway={() => handleSendToClient(true)}
+      />
     </div>
   );
 }
