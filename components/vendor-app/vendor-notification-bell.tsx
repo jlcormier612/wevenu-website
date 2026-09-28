@@ -7,6 +7,7 @@ import { Bell, Trash2 } from "lucide-react";
 
 import type { VendorNotification } from "@/lib/vendor-notifications/types";
 import { normalizeVendorTaskDeepLink } from "@/lib/vendor-luv/notifications";
+import { useBackoffPoll } from "@/lib/polling/use-backoff-poll";
 import { cn } from "@/lib/utils";
 
 const PANEL_WIDTH = 320;
@@ -62,28 +63,26 @@ export function VendorNotificationBell({
     setMounted(true);
   }, []);
 
-  async function fetchNotifications() {
+  async function fetchNotifications(): Promise<boolean> {
     try {
       const res = await fetch("/api/vendor/notifications");
-      if (!res.ok) return;
+      if (!res.ok) return false;
       const data = await res.json() as {
         notifications?: VendorNotification[];
         unreadCount?: number;
       };
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
+      return true;
     } catch {
       // never crash the shell over a failed fetch
+      return false;
     } finally {
       setLoading(false);
     }
   }
 
-  React.useEffect(() => {
-    fetchNotifications();
-    const id = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(id);
-  }, []);
+  useBackoffPoll(fetchNotifications);
 
   // Deep-link from Luv briefing rollups: /vendor/...?notifications=1
   React.useEffect(() => {

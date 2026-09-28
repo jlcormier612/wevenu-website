@@ -107,6 +107,45 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 /**
+ * Public routes need no session, so the only work the Auth round-trips below
+ * would do for them is refresh cookies those routes never read. Exact
+ * "/login" is the one exception: it reads the venue session to bounce
+ * already-signed-in staff to their home page.
+ */
+export function needsSessionResolution(pathname: string): boolean {
+  return !isPublicPath(pathname) || pathname === "/login";
+}
+
+/** Cookie name a scope's session lands under, including the venue default. */
+function sessionCookieNameForScope(
+  scope: AuthSessionScope,
+  projectRef: string | null,
+): string | null {
+  const explicit = cookieNameForScope(scope, projectRef);
+  if (explicit) return explicit;
+  return projectRef ? `sb-${projectRef}-auth-token` : null;
+}
+
+/**
+ * Whether the request actually carries a session cookie for this scope.
+ * @supabase/ssr splits large sessions across `<name>.0`, `<name>.1`, so a
+ * chunk suffix counts. When the name cannot be derived this returns true, so
+ * an unrecognised project ref falls back to asking Auth rather than silently
+ * treating a real session as absent.
+ */
+export function hasScopeSessionCookie(
+  cookieNames: readonly string[],
+  scope: AuthSessionScope,
+  projectRef: string | null,
+): boolean {
+  const name = sessionCookieNameForScope(scope, projectRef);
+  if (!name) return true;
+  return cookieNames.some(
+    (cookieName) => cookieName === name || cookieName.startsWith(`${name}.`),
+  );
+}
+
+/**
  * Same-origin relative redirect targets only (blocks //evil.com and external URLs).
  * Used for /login?next= after vendor invitation claim and similar flows.
  */
@@ -172,6 +211,14 @@ export async function updateSession(
     return NextResponse.redirect(loginUrl);
   }
 
+  // Nothing below this point applies to a public route, and every Auth call it
+  // would make is a network round-trip to Supabase. Health checks, portal token
+  // polling, webhooks and cron ticks all land here, and that traffic dominated
+  // the 2026-09-28 refresh storm. Short-circuit before touching Auth at all.
+  if (!needsSessionResolution(pathname)) {
+    return nextWithPathname(request, pathname);
+  }
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
 
@@ -228,16 +275,34 @@ export async function updateSession(
   // sign-in never collapses another.
   const venueSupabase = makeScopedClient("venue");
   const vendorSupabase = makeScopedClient("vendor");
-  const clientSupabase = makeScopedClient("client");
 
-  // IMPORTANT: getUser() revalidates the token with Supabase Auth.
-  const [{ data: { user: venueUser } }, { data: { user: vendorUser } }] =
-    await Promise.all([
-      venueSupabase.auth.getUser(),
-      vendorSupabase.auth.getUser(),
-    ]);
-  // Warm the client jar (writes refreshed cookies via setAll when present).
-  await clientSupabase.auth.getUser();
+  // IMPORTANT: getUser() revalidates the token against Supabase Auth over the
+  // network every time it is called, and a jar with no cookie can only ever
+  // resolve to a null user. Asking regardless cost three Auth round-trips on
+  // every matched request — link prefetches included — and let concurrent
+  // requests carrying one expired session all race the same refresh token,
+  // which Supabase rejects with 409 "Too many concurrent token refresh
+  // requests on the same session or refresh token".
+  const cookieNames = request.cookies.getAll().map((cookie) => cookie.name);
+  async function resolveUser(
+    client: ReturnType<typeof makeScopedClient>,
+    scope: AuthSessionScope,
+  ) {
+    if (!hasScopeSessionCookie(cookieNames, scope, projectRef)) return null;
+    const { data } = await client.auth.getUser();
+    return data.user;
+  }
+
+  const [venueUser, vendorUser] = await Promise.all([
+    resolveUser(venueSupabase, "venue"),
+    resolveUser(vendorSupabase, "vendor"),
+  ]);
+
+  // Warm the client jar only when it actually holds a session, so it writes
+  // refreshed cookies via setAll without costing a round-trip otherwise.
+  if (hasScopeSessionCookie(cookieNames, "client", projectRef)) {
+    await makeScopedClient("client").auth.getUser();
+  }
 
   const vendorPath = isVendorAppPath(pathname);
 

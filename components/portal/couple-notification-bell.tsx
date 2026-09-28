@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Bell, Trash2 } from "lucide-react";
 
 import type { CoupleNotification } from "@/lib/couple-notifications/types";
+import { useBackoffPoll } from "@/lib/polling/use-backoff-poll";
 import type { PortalSection } from "@/lib/portal/types";
 
 const PANEL_WIDTH = 320;
@@ -60,28 +61,26 @@ export function CoupleNotificationBell({
     setMounted(true);
   }, []);
 
-  async function fetchNotifications() {
+  async function fetchNotifications(): Promise<boolean> {
     try {
       const res = await fetch(`/api/portal/notifications?token=${encodeURIComponent(token)}`);
-      if (!res.ok) return;
+      if (!res.ok) return false;
       const data = await res.json() as {
         notifications?: CoupleNotification[];
         unreadCount?: number;
       };
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
+      return true;
     } catch {
       // never crash the portal shell over a failed fetch
+      return false;
     } finally {
       setLoading(false);
     }
   }
 
-  React.useEffect(() => {
-    fetchNotifications();
-    const id = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(id);
-  }, [token]);
+  useBackoffPoll(fetchNotifications, { restartKey: token });
 
   React.useEffect(() => {
     if (!open) {

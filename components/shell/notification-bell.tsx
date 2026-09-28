@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 
 import { normalizeVenueNotificationHref } from "@/lib/notifications/venue-deep-links";
+import { useBackoffPoll } from "@/lib/polling/use-backoff-poll";
 
 type VenueNotification = {
   id: string;
@@ -65,25 +66,24 @@ export function NotificationBell() {
   const [loading, setLoading]             = React.useState(true);
   const panelRef                          = React.useRef<HTMLDivElement>(null);
 
-  async function fetchNotifications() {
+  async function fetchNotifications(): Promise<boolean> {
     try {
       const res  = await fetch("/api/notifications");
+      if (!res.ok) return false;
       const data = await res.json() as NotificationsResponse;
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
+      return true;
     } catch {
       // silent — never crash the shell over a failed notification fetch
+      return false;
     } finally {
       setLoading(false);
     }
   }
 
-  // Initial fetch + 60s poll
-  React.useEffect(() => {
-    fetchNotifications();
-    const id = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(id);
-  }, []);
+  // Initial fetch, then a 60s cadence that backs off while the API is failing.
+  useBackoffPoll(fetchNotifications);
 
   // Close on outside click
   React.useEffect(() => {
