@@ -20,16 +20,11 @@ import { resolveTransitionKind } from "@/lib/leads/pipeline-stage-transition";
 import { SALES_STAGE_META, type SalesStage } from "@/lib/leads/sales-stages";
 import type { Lead } from "@/lib/leads/types";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
-import { salesStageForCanonical } from "@/lib/pipeline-templates/sales-stage-bridge";
-import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
-import type { PipelineStage } from "@/lib/pipeline-templates/types";
-
 type BoardColumn = {
   key: string;
   label: string;
   /** sales_stage key used for Booked / Lost guards when on fixed board */
   salesStage: SalesStage;
-  color?: string;
 };
 
 function fixedColumns(): BoardColumn[] {
@@ -40,36 +35,17 @@ function fixedColumns(): BoardColumn[] {
   }));
 }
 
-function venueColumns(stages: PipelineStage[]): BoardColumn[] {
-  const columns: BoardColumn[] = stages.map((s) => ({
-    key: s.id,
-    label: s.name,
-    salesStage: salesStageForCanonical(s.canonicalStage),
-    color: s.color,
-  }));
-  if (!columns.some((c) => c.salesStage === "booked")) {
-    columns.push({ key: "booked", label: "Booked", salesStage: "booked" });
-  }
-  if (!columns.some((c) => c.salesStage === "lost")) {
-    columns.push({ key: "lost", label: "Lost", salesStage: "lost" });
-  }
-  return columns;
-}
-
 /**
- * Pipeline board — venue-defined stages when an active Pipeline Template
- * exists; otherwise the fixed seven-stage Sales Pipeline.
+ * Pipeline board — fixed seven-stage Sales Pipeline from leads.sales_stage.
+ * Active venue templates do not drive live columns or labels.
  */
 export function PipelineBoard({
   leads,
-  venueStages = null,
 }: {
   leads: Lead[];
-  venueStages?: PipelineStage[] | null;
 }) {
   const router = useRouter();
-  const usingVenue = (venueStages?.length ?? 0) > 0;
-  const columnsMeta = usingVenue ? venueColumns(venueStages!) : fixedColumns();
+  const columnsMeta = fixedColumns();
 
   const [overrides, setOverrides] = React.useState<Record<string, string>>({});
   const [pendingLeadIds, setPendingLeadIds] = React.useState<Set<string>>(new Set());
@@ -86,30 +62,6 @@ export function PipelineBoard({
 
   const { columns, currentKeyByLead } = React.useMemo(() => {
     const currentByLead: Record<string, string> = {};
-    if (usingVenue && venueStages) {
-      const cols = new Map<string, Lead[]>();
-      for (const stage of venueStages) cols.set(stage.id, []);
-      if (!venueStages.some((s) => s.canonicalStage === "booked")) cols.set("booked", []);
-      if (!venueStages.some((s) => s.canonicalStage === "lost")) cols.set("lost", []);
-      for (const lead of leads) {
-        let key = overrides[lead.id]
-          ?? resolveVenuePipelineStageId(venueStages, {
-            pipelineStageId: lead.pipelineStageId,
-            salesStage: lead.salesStage ?? lead.status,
-          });
-        if (!key) {
-          const stage = String(lead.salesStage ?? lead.status);
-          if (stage === "booked" || stage === "won") key = "booked";
-          else if (stage === "lost") key = "lost";
-        }
-        if (key) {
-          currentByLead[lead.id] = key;
-          if (cols.has(key)) cols.get(key)!.push(lead);
-        }
-      }
-      return { columns: cols, currentKeyByLead: currentByLead };
-    }
-
     const cols = new Map<string, Lead[]>();
     for (const s of SALES_STAGE_META) cols.set(s.value, []);
     for (const lead of leads) {
@@ -120,7 +72,7 @@ export function PipelineBoard({
       }
     }
     return { columns: cols, currentKeyByLead: currentByLead };
-  }, [leads, overrides, usingVenue, venueStages]);
+  }, [leads, overrides]);
 
   function commitMove(leadId: string, targetKey: string) {
     setOverrides((p) => ({ ...p, [leadId]: targetKey }));
@@ -161,10 +113,7 @@ export function PipelineBoard({
       return;
     }
 
-    const kind = resolveTransitionKind({
-      targetKey,
-      venueStages: usingVenue ? venueStages : null,
-    });
+    const kind = resolveTransitionKind({ targetKey });
 
     if (kind === "booked") {
       setBookedMove({ leadId, targetKey, label: targetMeta.label });

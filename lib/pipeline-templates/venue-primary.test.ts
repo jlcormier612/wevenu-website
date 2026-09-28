@@ -19,12 +19,13 @@ describe("Pipeline Templates venue-primary UX", () => {
     assert.doesNotMatch(repo, /Stages are replaced wholesale/);
   });
 
-  it("wires the Leads board to the active template's venue stages", () => {
+  it("live Leads board uses fixed seven sales_stage labels, not active template columns", () => {
     const page = readFileSync(resolve("app/(app)/leads/pipeline/page.tsx"), "utf8");
     const board = readFileSync(resolve("components/leads/pipeline-board.tsx"), "utf8");
-    assert.match(page, /getActiveTemplate/);
-    assert.match(page, /venueStages/);
-    assert.match(board, /venueStages/);
-    assert.match(board, /salesStageForCanonical/);
+    assert.match(page, /seven sales lifecycle labels/);
+    assert.doesNotMatch(page, /venueStages=/);
+    assert.match(board, /fixed seven-stage Sales Pipeline/);
+    assert.doesNotMatch(board, /usingVenue/);
+    assert.doesNotMatch(board, /salesStageForCanonical/);
   });
 });

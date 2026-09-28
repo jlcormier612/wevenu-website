@@ -83,13 +83,15 @@ describe("Standard pipeline baseline", () => {
     assert.doesNotMatch(board, />Pipeline Templates</);
   });
 
-  it("Leads List and Board load the active Standard template", () => {
+  it("Leads List and Board do not drive live columns from the active template", () => {
     const leads = readFileSync(resolve("app/(app)/leads/page.tsx"), "utf8");
     const board = readFileSync(resolve("app/(app)/leads/pipeline/page.tsx"), "utf8");
-    assert.match(leads, /getActiveTemplate/);
-    assert.match(board, /getActiveTemplate/);
-    assert.match(leads, /activeTemplate\?\.stages/);
-    assert.match(board, /activeTemplate\?\.stages/);
+    assert.doesNotMatch(leads, /getActiveTemplate/);
+    assert.doesNotMatch(board, /getActiveTemplate/);
+    assert.doesNotMatch(leads, /activeTemplate\?\.stages/);
+    assert.doesNotMatch(board, /activeTemplate\?\.stages/);
+    assert.match(leads, /ensureStandardSalesPipelineForCurrentVenue/);
+    assert.match(board, /ensureStandardSalesPipelineForCurrentVenue/);
   });
 
   it("Customize Pipeline stays venue-scoped (no cross-venue overwrite)", () => {

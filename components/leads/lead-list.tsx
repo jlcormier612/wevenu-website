@@ -44,10 +44,6 @@ import { isOpenLeadLifecycle, isOpenLeadOpportunity } from "@/lib/leads/open-lif
 import type { Lead, LeadStatus } from "@/lib/leads/types";
 import { normalizeEventType } from "@/lib/event-types/canonical";
 import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
-import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
-import { transitionKindForCanonical } from "@/lib/leads/pipeline-stage-transition";
-import type { PipelineStage } from "@/lib/pipeline-templates/types";
-import type { SalesStage } from "@/lib/leads/sales-stages";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
 import {
   IDLE_CHIP,
@@ -94,19 +90,15 @@ function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
 export function LeadList({
   leads,
   initialAttention,
-  venueStages = null,
   initialOutcome = "active",
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
   initialAttention?: "stale_contact" | "open" | "active" | "unseen" | null;
-  /** Active Pipeline Template stages — when present, Stage chips use venue names. */
-  venueStages?: PipelineStage[] | null;
   /** lost = the Lost outcome list. Booked is a link to Clients, not a lead filter. */
   initialOutcome?: "active" | "lost";
 }) {
   const router = useRouter();
-  const usingVenueStages = (venueStages?.length ?? 0) > 0;
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>(initialOutcome === "lost" ? "lost" : "all");
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
@@ -125,13 +117,6 @@ export function LeadList({
     [leads],
   );
 
-  const workingVenueStages = venueStages?.length
-    ? venueStages.filter((s) => transitionKindForCanonical(s.canonicalStage) === "normal")
-    : null;
-  const usingWorkingVenueStages = (workingVenueStages?.length ?? 0) > 0;
-  const bookedStageName = venueStages?.find((s) => s.canonicalStage === "booked")?.name ?? "Booked";
-  const lostStageName = venueStages?.find((s) => s.canonicalStage === "lost")?.name ?? "Lost";
-
   function isLostLead(lead: Lead): boolean {
     return String(lead.salesStage ?? lead.status) === "lost";
   }
@@ -140,35 +125,12 @@ export function LeadList({
     return stage === "booked" || stage === "won";
   }
 
-  function venueStageIdFor(lead: Lead): string | null {
-    if (!workingVenueStages?.length) return null;
-    return resolveVenuePipelineStageId(workingVenueStages, {
-      pipelineStageId: lead.pipelineStageId,
-      salesStage: (lead.salesStage ?? lead.status) as SalesStage,
-    });
-  }
-
   /** Same open definition as Dashboard Lead Flow — reporting category, not exclude flag. */
   function leadIsOpenOpportunity(lead: Lead): boolean {
-    if (usingVenueStages && venueStages?.length) {
-      const id = venueStageIdFor(lead);
-      const stage = venueStages.find((s) => s.id === id);
-      if (stage) {
-        return isOpenLeadOpportunity({
-          salesStage: lead.salesStage ?? lead.status,
-          canonicalStage: stage.canonicalStage,
-        });
-      }
-    }
     return isOpenLeadOpportunity({ salesStage: lead.salesStage ?? lead.status });
   }
 
   function stageDisplayName(lead: Lead): string {
-    if (venueStages?.length) {
-      const id = venueStageIdFor(lead);
-      const named = venueStages.find((s) => s.id === id)?.name;
-      if (named) return named;
-    }
     return salesStageLabel(lead.salesStage ?? lead.status) || statusLabel(lead.salesStage ?? lead.status);
   }
 
@@ -178,9 +140,7 @@ export function LeadList({
     const base = (statusFilter === "lost" ? leads.filter(isLostLead) : queue).filter((l) => {
       const stage = l.salesStage ?? l.status;
       if (statusFilter !== "all" && statusFilter !== "lost") {
-        if (usingWorkingVenueStages) {
-          if (venueStageIdFor(l) !== statusFilter) return false;
-        } else if (stage !== statusFilter) {
+        if (stage !== statusFilter) {
           return false;
         }
       }
@@ -219,7 +179,7 @@ export function LeadList({
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, usingWorkingVenueStages]);
+  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter]);
 
   const statusCounts = React.useMemo(() => {
     const population = attentionFilter === "open" || attentionFilter === "unseen"
@@ -230,35 +190,29 @@ export function LeadList({
       })
       : queue;
     const map = new Map<string, number>([["all", population.length]]);
-    if (usingWorkingVenueStages && workingVenueStages) {
-      for (const s of workingVenueStages) map.set(s.id, 0);
-      for (const l of population) {
-        const id = resolveVenuePipelineStageId(workingVenueStages, {
-          pipelineStageId: l.pipelineStageId,
-          salesStage: (l.salesStage ?? l.status) as SalesStage,
-        });
-        if (id && map.has(id)) map.set(id, (map.get(id) ?? 0) + 1);
-      }
-    } else {
-      ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
-      population.forEach((l) => {
-        const stage = l.salesStage ?? l.status;
-        map.set(stage, (map.get(stage) ?? 0) + 1);
-      });
-    }
+    ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
+    population.forEach((l) => {
+      const stage = l.salesStage ?? l.status;
+      map.set(stage, (map.get(stage) ?? 0) + 1);
+    });
     map.set("booked", leads.filter(isBookedLead).length);
     map.set("lost", leads.filter(isLostLead).length);
     return map;
-  }, [queue, leads, usingWorkingVenueStages, workingVenueStages, attentionFilter]);
+  }, [queue, leads, attentionFilter]);
 
   type StageChip = { key: string; label: string; kind: "active" | "booked" | "lost" };
-  const activeChips: StageChip[] = usingWorkingVenueStages && workingVenueStages
-    ? [{ key: "all", label: "All", kind: "active" }, ...workingVenueStages.map((s) => ({ key: s.id, label: s.name, kind: "active" as const }))]
-    : [{ key: "all", label: "All", kind: "active" }, ...LEAD_STATUSES.filter((s) => (ACTIVE_STATUSES as readonly string[]).includes(s.value)).map((s) => ({ key: s.value, label: s.label, kind: "active" as const }))];
+  const activeChips: StageChip[] = [
+    { key: "all", label: "All", kind: "active" },
+    ...LEAD_STATUSES.filter((s) => (ACTIVE_STATUSES as readonly string[]).includes(s.value)).map((s) => ({
+      key: s.value,
+      label: s.label,
+      kind: "active" as const,
+    })),
+  ];
   const stageChips: StageChip[] = [
     ...activeChips,
-    { key: "booked", label: bookedStageName, kind: "booked" },
-    { key: "lost", label: lostStageName, kind: "lost" },
+    { key: "booked", label: "Booked", kind: "booked" },
+    { key: "lost", label: "Lost", kind: "lost" },
   ];
 
   const activeEventTypes = React.useMemo(() => {
@@ -390,7 +344,7 @@ export function LeadList({
         })}
       </div>
       <p className="text-xs text-muted-foreground">
-        All is active sales work. {bookedStageName} and {lostStageName} are outcomes and are not included in All.
+        All is active sales work. Booked and Lost are outcomes and are not included in All.
       </p>
 
       {activeEventTypes.length > 1 && (

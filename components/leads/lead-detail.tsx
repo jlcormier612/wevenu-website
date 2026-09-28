@@ -32,7 +32,6 @@ import {
   moveLeadBackToSalesPipelineAction,
   previewDeleteLeadAction,
   returnLeadToBookedAction,
-  updateLeadPipelineStageAction,
   updateLeadStatusAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
@@ -91,8 +90,6 @@ import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
 import type { Document } from "@/lib/documents/types";
 import type { LuvDraft } from "@/lib/luv/drafts";
-import { salesStageForCanonical } from "@/lib/pipeline-templates/sales-stage-bridge";
-import { resolveVenuePipelineStageId } from "@/lib/pipeline-templates/resolve-lead-stage";
 import type { PipelineStage } from "@/lib/pipeline-templates/types";
 import {
   INTERNAL_NOTES_LABEL,
@@ -243,13 +240,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   );
 
   function handleStatusChange(status: string) {
-    const kind = resolveTransitionKind({
-      targetKey: status,
-      venueStages: venueStages?.length ? venueStages : null,
-    });
-    const label = venueStages?.length
-      ? (venueStages.find((s) => s.id === status)?.name ?? status)
-      : (LEAD_STATUSES.find((s) => s.value === status)?.label ?? status);
+    const kind = resolveTransitionKind({ targetKey: status });
+    const label = LEAD_STATUSES.find((s) => s.value === status)?.label ?? status;
 
     if (kind === "booked") {
       if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
@@ -279,9 +271,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         setConfirmPreview(check.preview);
         return;
       }
-      const result = venueStages?.length
-        ? await updateLeadPipelineStageAction(lead.id, status)
-        : await updateLeadStatusAction(lead.id, status);
+      const result = await updateLeadStatusAction(lead.id, status);
       if (result.ok) {
         toast.success("Stage updated.");
         router.refresh();
@@ -293,9 +283,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
   function commitStageChange(stageKey: string) {
     startStatus(async () => {
-      const result = venueStages?.length
-        ? await updateLeadPipelineStageAction(lead.id, stageKey)
-        : await updateLeadStatusAction(lead.id, stageKey);
+      const result = await updateLeadStatusAction(lead.id, stageKey);
       if (result.ok) {
         toast.success("Stage updated.");
         router.refresh();
@@ -347,36 +335,15 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const isBookingStarted = currentStage === "booked";
   const relationshipCancelled = (lead.salesStage as string) === "cancelled";
   const previouslyConverted = !!lead.linkedClientId;
-  const currentVenueStageId = venueStages?.length
-    ? resolveVenuePipelineStageId(venueStages, {
-      pipelineStageId: lead.pipelineStageId,
-      salesStage: currentStage,
-    })
-    : null;
-  // Booked stages appear so users can confirm conversion; when already Booking
-  // Started, only Lost remains in the generic stage menu.
-  const assignableStages = venueStages?.length
-    ? venueStages
-      .filter((s) => {
-        const sales = salesStageForCanonical(s.canonicalStage, lead.salesStage);
-        if (isBookingStarted) return sales === "lost";
-        return true;
-      })
-      .map((s) => ({
-        value: s.id,
-        label: s.name,
-        description: `Reporting: ${s.canonicalStage}`,
-        current: s.id === currentVenueStageId,
-      }))
-    : LEAD_STATUSES.filter((s) => {
-      if (isBookingStarted) return s.value === "lost";
-      return true;
-    }).map((s) => ({
-      value: s.value,
-      label: s.label,
-      description: s.description,
-      current: s.value === currentStage,
-    }));
+  const assignableStages = LEAD_STATUSES.filter((s) => {
+    if (isBookingStarted) return s.value === "lost";
+    return true;
+  }).map((s) => ({
+    value: s.value,
+    label: s.label,
+    description: s.description,
+    current: s.value === currentStage,
+  }));
 
   const openTaskCount = lead.tasks.filter((t) => !t.completed).length;
 
@@ -528,13 +495,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
           <div className="text-right">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline stage</p>
-            {venueStages?.length && currentVenueStageId ? (
-              <p className="text-sm font-medium text-heading">
-                {venueStages.find((stage) => stage.id === currentVenueStageId)?.name ?? "Pipeline stage"}
-              </p>
-            ) : (
-              <LeadStatusBadge status={currentStage} />
-            )}
+            <LeadStatusBadge status={currentStage} />
           </div>
           {currentStage === "lost" && lead.lostReason && (
             <Badge variant="outline" className="max-w-[16rem] truncate" title={lead.lostReasonDetail ?? undefined}>
