@@ -6,8 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
-import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
-
 function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | "growing" | "early" | "quiet" } {
   if (status === "booked" || status === "won") return { tier: "hot" };
   if (status === "lost" || status === "cancelled") return { tier: "quiet" };
@@ -464,11 +462,7 @@ export function LeadList({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      {usingVenueStages ? (
-                        <Badge variant="outline">{stageDisplayName(lead)}</Badge>
-                      ) : (
-                        <LeadStatusBadge status={stage} />
-                      )}
+                      <Badge variant="outline">{stageDisplayName(lead)}</Badge>
                       {lead.commitmentScore > 0 && (() => {
                         const { tier } = momentumLabel(lead.commitmentScore, stage);
                         const dot = tier === "hot" ? "bg-success" : tier === "warm" ? "bg-[#C7A66A]" : tier === "growing" ? "bg-primary/50" : null;

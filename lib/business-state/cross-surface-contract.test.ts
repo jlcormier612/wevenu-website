@@ -31,6 +31,7 @@ function inv(partial: Partial<Invoice>): Invoice {
     clientId: "c",
     eventId: "e",
     invoiceNumber: "INV",
+    displayName: null,
     status: "sent",
     subtotal: 100,
     discountAmount: 0,

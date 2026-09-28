@@ -113,7 +113,10 @@ describe("lifecycle scenarios", () => {
   it("G: unread informational / dismissed does not appear as Needs Response", () => {
     const informational = row({ venueUnread: 1, needsResponse: false });
     assert.equal(conversationNeedsResponseFromSummary(informational), false);
-    assert.equal(inboxAttentionState(informational).unread, true);
+    assert.equal(
+      inboxAttentionState({ venueUnread: informational.venueUnread, needsResponse: false }).unread,
+      true,
+    );
   });
 });
 

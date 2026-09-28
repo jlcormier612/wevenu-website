@@ -201,13 +201,6 @@ export function PipelineBoard({
             >
               <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-2">
-                  {stage.color && (
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: stage.color }}
-                      aria-hidden
-                    />
-                  )}
                   {stage.salesStage === "booked" ? (
                     <a href="/clients?filter=all" className="truncate text-sm font-semibold text-heading hover:underline">
                       {stage.label}
