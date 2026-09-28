@@ -73,6 +73,27 @@ describe("tour send previews use the real email builders", () => {
     assert.match(src, /primaryColor/);
   });
 
+  it("confirmation preview greets with first name only for a full contact name", () => {
+    const preview = previewTourConfirmation({
+      ...params,
+      contactName: "Betty Rubble",
+    });
+    assert.match(preview.body, /^Hi Betty,/m);
+    assert.doesNotMatch(preview.body, /Hi Betty Rubble,/);
+  });
+
+  it("confirmation body does not duplicate the venue name as a Warmly owner line", () => {
+    const preview = previewTourConfirmation({
+      ...params,
+      contactName: "Betty Rubble",
+      venueName: "Jen's Fancy Venue",
+    });
+    assert.doesNotMatch(preview.body, /Warmly,\nJen's Fancy Venue\nJen's Fancy Venue/);
+    // System tour confirmation is not the MSG template path — venue appears in
+    // body copy but must not appear as a duplicated signature block.
+    assert.doesNotMatch(preview.body, /Warmly,/);
+  });
+
   it("a missing email does not claim the confirmation was sent", () => {
     const src = readFileSync(resolve("lib/tours/communication.ts"), "utf8");
     assert.match(src, /no confirmation email was sent/);

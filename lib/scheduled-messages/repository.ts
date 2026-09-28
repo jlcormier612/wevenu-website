@@ -9,6 +9,10 @@ import { createClient } from "@/integrations/supabase/server";
 import type { createAdminClient } from "@/integrations/supabase/admin";
 import type { MergeContext } from "@/lib/message-templates/merge";
 import type { ScheduledMessage, ScheduledMessageInput } from "@/lib/scheduled-messages/types";
+import {
+  formatCoordinatorDisplayName,
+  pickOwnerStaffForCoordinator,
+} from "@/lib/scheduled-messages/coordinator-display";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 type AnyDbClient = DbClient | ReturnType<typeof createAdminClient>;
@@ -133,8 +137,27 @@ export async function getMergeContextForRelationship(
   );
 
   const { data: venue } = await client.from("venues").select("name").eq("id", venueId).maybeSingle<{ name: string }>();
-  const { data: staff } = await client.from("venue_staff").select("full_name")
-    .eq("venue_id", venueId).eq("is_owner", true).maybeSingle<{ full_name: string }>();
+  // Multi-owner venues (pending owner invite + accepted owner) make bare
+  // maybeSingle fail (PGRST116) and previously fell through to venues.name —
+  // so Warmly signatures rendered the venue name twice. Prefer accepted owner
+  // with title, same ordering spirit as getVenueFullDetails.
+  const { data: ownerRows } = await client.from("venue_staff")
+    .select("full_name, title, accepted_at, owner_invite_pending, user_id")
+    .eq("venue_id", venueId)
+    .eq("is_owner", true)
+    .eq("is_active", true);
+  const owner = pickOwnerStaffForCoordinator(
+    (ownerRows ?? []) as Array<{
+      full_name: string;
+      title: string | null;
+      accepted_at: string | null;
+      owner_invite_pending: boolean | null;
+      user_id: string | null;
+    }>,
+  );
+  const ownerCoordinator = owner
+    ? formatCoordinatorDisplayName(owner.full_name, owner.title)
+    : "";
 
   type PersonRow = {
     first_name: string; last_name: string;
@@ -144,7 +167,7 @@ export async function getMergeContextForRelationship(
   const displayName = (p: PersonRow) => `${p.first_name} ${p.last_name}`.trim();
 
   const coordinatorName = (opts?.coordinatorName?.trim()
-    || staff?.full_name
+    || ownerCoordinator
     || venue?.name
     || "");
 

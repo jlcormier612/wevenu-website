@@ -44,6 +44,7 @@ import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue
 import { extractTokens, mergeContent, resolveForCustomerSend, assertCustomerSafeMergedContent, buildMergeData } from "@/lib/message-templates/merge";
 import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
 import { getCurrentStaffMember } from "@/lib/team/service";
+import { formatCoordinatorDisplayName } from "@/lib/scheduled-messages/coordinator-display";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { TEXTING_SETUP_PATH } from "@/lib/texting-registration/types";
 
@@ -246,7 +247,9 @@ export async function previewConversationSend(
   }
   const staff = await getCurrentStaffMember(venue.id);
   const ctx = await getMergeContextForRelationship(supabase, venue.id, relationshipId, {
-    coordinatorName: staff?.name ?? null,
+    coordinatorName: staff
+      ? formatCoordinatorDisplayName(staff.name, staff.jobTitle)
+      : null,
   });
   if (!ctx) {
     return {
@@ -327,7 +330,9 @@ export async function sendConversationMessage(
     const staff = venue ? await getCurrentStaffMember(venue.id) : null;
     const ctx = venue && relationshipId
       ? await getMergeContextForRelationship(supabase, venue.id, relationshipId, {
-          coordinatorName: staff?.name ?? null,
+          coordinatorName: staff
+            ? formatCoordinatorDisplayName(staff.name, staff.jobTitle)
+            : null,
         })
       : null;
     if (!ctx) {
