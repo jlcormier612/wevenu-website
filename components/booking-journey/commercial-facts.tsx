@@ -15,12 +15,12 @@ import {
 } from "@/components/ui/dialog";
 import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
-import { collectsInitialPayment } from "@/lib/booking-journey/venue-prefs";
 import { publicAppOrigin } from "@/lib/env";
 import { toast } from "sonner";
 
 export function CommercialFacts({
   journey,
+  today,
   contractPending,
   onSelectPackage,
   onCreateProposal,
@@ -35,6 +35,7 @@ export function CommercialFacts({
   onRecordDeposit,
 }: {
   journey: BookingJourneyModel;
+  today?: string;
   contractPending?: boolean;
   onSelectPackage: () => void;
   onCreateProposal?: () => void;
@@ -56,16 +57,16 @@ export function CommercialFacts({
     contract: journey.contract,
     paymentLines: journey.paymentLines,
     prefs: journey.prefs,
+    paymentRequestSent: journey.paymentRequestSent,
+    today,
   });
   const allowOffer = journey.prefs.agreementMethod === "offer" || journey.prefs.agreementMethod === "either";
   const allowContract = journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either";
   const allowSelectPackage =
     journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either";
-  const depositLine = journey.paymentLines.find(
-    (line) => line.obligationKind === "deposit" && line.status !== "cancelled",
-  );
+  const activePaymentLines = journey.paymentLines.filter((line) => line.status !== "cancelled");
+  const depositLine = activePaymentLines.find((line) => line.obligationKind === "deposit");
   const depositDue = Boolean(depositLine && depositLine.status !== "paid");
-  const collectPayment = collectsInitialPayment(journey.prefs);
   const [withdrawOpen, setWithdrawOpen] = React.useState(false);
   const waitingOnCouple = proposal?.status === "sent" || proposal?.status === "selected";
   const proposalWithdrawn = proposal?.status === "withdrawn";
@@ -126,7 +127,9 @@ export function CommercialFacts({
             <div className="min-w-0">
               <p className="text-sm font-medium text-heading">{row.title}</p>
               <p className="text-sm text-heading">{row.state}</p>
-              {row.detail ? <p className="mt-1 text-xs text-muted-foreground">{row.detail}</p> : null}
+              {row.detail ? (
+                <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{row.detail}</p>
+              ) : null}
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               {row.key === "package" && !selection && proposalWithdrawn ? (
@@ -193,19 +196,20 @@ export function CommercialFacts({
                   {journey.contract.status === "draft" ? "Preview and send" : "Open contract"}
                 </Button>
               )}
-              {row.key === "invoice" && selection?.invoiceId && (
-                <>
-                  <Button type="button" size="sm" variant="outline" render={<Link href={`/invoices/${selection.invoiceId}/print`} />}>
-                    Preview
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" render={<Link href={`/invoices/${selection.invoiceId}`} />}>
-                    Open invoice
-                  </Button>
-                </>
-              )}
-              {row.key === "payment_plan" && selection && journey.paymentLines.length === 0 && (
-                <Button type="button" size="sm" variant="outline" onClick={onSetupPayments}>
+              {row.key === "payment_plan" && selection && activePaymentLines.length === 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onSetupPayments}
+                  data-testid="setup-payments"
+                >
                   Set up payments
+                </Button>
+              )}
+              {row.key === "payment_plan" && selection?.invoiceId && activePaymentLines.length > 0 && (
+                <Button type="button" size="sm" variant="outline" render={<Link href={`/invoices/${selection.invoiceId}`} />}>
+                  Open invoice
                 </Button>
               )}
               {row.key === "deposit" && depositDue && journey.prefs.paymentCollection !== "online" && (
@@ -213,10 +217,24 @@ export function CommercialFacts({
                   Record deposit received
                 </Button>
               )}
-              {row.key === "deposit" && !depositLine && selection && collectPayment && selection.depositAmount > 0 && (
-                <Button type="button" size="sm" variant="outline" onClick={onSetupPayments}>
-                  Set up initial payment
-                </Button>
+              {row.key === "deposit" && depositLine && depositLine.status !== "paid" && selection?.invoiceId && (
+                journey.paymentRequestSent ? (
+                  <p
+                    className="self-center text-xs text-muted-foreground"
+                    data-testid="payment-request-already-sent"
+                  >
+                    Payment request already sent. A new request is not available for this invoice.
+                  </p>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    render={<Link href={`/invoices/${selection.invoiceId}`} />}
+                    data-testid="request-initial-payment"
+                  >
+                    Request initial payment
+                  </Button>
+                )
               )}
             </div>
           </li>

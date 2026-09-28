@@ -8,14 +8,9 @@
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { deriveContractSigningUiState } from "@/lib/contracts/signers";
 import { formatCurrency } from "@/lib/invoices/constants";
-import { STATUS_LABEL } from "@/lib/payments/constants";
 
 import type { JourneyContract, JourneyPaymentLine, JourneyProposal } from "@/lib/booking-journey/model";
-import {
-  collectsInitialPayment,
-  DEFAULT_COMMERCIAL_BOOKING_PREFS,
-  type VenueCommercialBookingPrefs,
-} from "@/lib/booking-journey/venue-prefs";
+import type { VenueCommercialBookingPrefs } from "@/lib/booking-journey/venue-prefs";
 
 export type CommercialFactKey =
   | "package"
@@ -177,21 +172,35 @@ export function invoiceFact(invoiceId: string | null | undefined): CommercialFac
   };
 }
 
-export function paymentPlanFact(lines: JourneyPaymentLine[]): CommercialFact {
+function formatInstallmentDue(dueDate: string | null | undefined, today?: string): string {
+  if (!dueDate) return "date not set";
+  if (today && dueDate === today) return "today";
+  const date = new Date(`${dueDate}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return dueDate;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+export function paymentPlanFact(
+  lines: JourneyPaymentLine[],
+  today?: string,
+): CommercialFact {
   const active = lines.filter((line) => line.status !== "cancelled");
   if (active.length === 0) {
     return {
       key: "payment_plan",
-      title: "Payment Plan",
+      title: "Payment plan",
       state: "Not configured",
-      detail: "An invoice or a package does not create installments.",
+      detail: null,
     };
   }
+  const installmentLines = active.map(
+    (line) => `${formatCurrency(line.amount)} due ${formatInstallmentDue(line.dueDate, today)}`,
+  );
   return {
     key: "payment_plan",
-    title: "Payment Plan",
-    state: "Configured",
-    detail: `${active.length} installment${active.length === 1 ? "" : "s"} on file. Configured is not the same as paid.`,
+    title: "Payment plan",
+    state: `${active.length} installment${active.length === 1 ? "" : "s"}`,
+    detail: installmentLines.join("\n"),
   };
 }
 
@@ -199,30 +208,13 @@ export function depositFact(input: {
   selection: CommercialSelection | null;
   lines: JourneyPaymentLine[];
   prefs?: VenueCommercialBookingPrefs | null;
-}): CommercialFact {
-  const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
-  if (!collectsInitialPayment(prefs)) {
-    return {
-      key: "deposit",
-      title: "Initial payment",
-      state: "Not collecting",
-      detail: "This venue's default is not to collect an initial payment. You can still set one up on a booking.",
-    };
-  }
+  paymentRequestSent?: boolean;
+  today?: string;
+}): CommercialFact | null {
   const line = input.lines.find(
     (item) => item.obligationKind === "deposit" && item.status !== "cancelled",
   );
-  if (!line) {
-    const configured = input.selection && input.selection.depositAmount > 0
-      ? ` ${formatCurrency(input.selection.depositAmount)} is configured on the package and has not been requested as a payment.`
-      : "";
-    return {
-      key: "deposit",
-      title: "Initial payment",
-      state: "Not set up",
-      detail: `No initial payment exists.${configured}`,
-    };
-  }
+  if (!line) return null;
   if (line.status === "paid") {
     return {
       key: "deposit",
@@ -231,11 +223,20 @@ export function depositFact(input: {
       detail: formatCurrency(line.amount),
     };
   }
+  const due = `${formatCurrency(line.amount)} due ${formatInstallmentDue(line.dueDate, input.today)}`;
+  if (input.paymentRequestSent) {
+    return {
+      key: "deposit",
+      title: "Initial payment",
+      state: due,
+      detail: null,
+    };
+  }
   return {
     key: "deposit",
     title: "Initial payment",
-    state: STATUS_LABEL[line.status] ?? line.status,
-    detail: `${formatCurrency(line.amount)} is due. Not paid.`,
+    state: due,
+    detail: "Ready to request",
   };
 }
 
@@ -258,6 +259,8 @@ export function describeCommercialFacts(input: {
   contract: JourneyContract | null;
   paymentLines: JourneyPaymentLine[];
   prefs?: VenueCommercialBookingPrefs | null;
+  paymentRequestSent?: boolean;
+  today?: string;
 }): CommercialFact[] {
   const rows: CommercialFact[] = [packageFact(input.selection)];
 
@@ -266,17 +269,18 @@ export function describeCommercialFacts(input: {
     rows.push(proposalFactFromL1(input.proposal));
   }
 
-  rows.push(
-    contractFact(input.contract),
-    invoiceFact(input.selection?.invoiceId),
-    paymentPlanFact(input.paymentLines),
-    depositFact({
-      selection: input.selection,
-      lines: input.paymentLines,
-      prefs: input.prefs,
-    }),
-    bookedFact(),
-  );
+  rows.push(contractFact(input.contract));
+  rows.push(paymentPlanFact(input.paymentLines, input.today));
 
+  const deposit = depositFact({
+    selection: input.selection,
+    lines: input.paymentLines,
+    prefs: input.prefs,
+    paymentRequestSent: input.paymentRequestSent,
+    today: input.today,
+  });
+  if (deposit) rows.push(deposit);
+
+  rows.push(bookedFact());
   return rows;
 }

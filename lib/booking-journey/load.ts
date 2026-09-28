@@ -12,6 +12,8 @@ import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service"
 import { getEventPlaybookApplications } from "@/lib/playbooks/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
+import { createAdminClient } from "@/integrations/supabase/admin";
+import { hasSuccessfulPaymentRequestSend } from "@/lib/invoices/outbound";
 
 async function paymentLinesForClient(clientId: string) {
   const schedules = (await getPaymentSchedules()).filter((s) => s.clientId === clientId);
@@ -26,6 +28,16 @@ async function paymentLinesForClient(clientId: string) {
       dueDate: line.dueDate,
     })),
   );
+}
+
+async function paymentRequestSentForInvoice(invoiceId: string | null | undefined): Promise<boolean> {
+  if (!invoiceId) return false;
+  const venue = await getCurrentVenue();
+  if (!venue) return false;
+  return hasSuccessfulPaymentRequestSend(createAdminClient(), {
+    venueId: venue.id,
+    invoiceId,
+  });
 }
 
 async function venuePrefs() {
@@ -92,13 +104,14 @@ export async function loadBookingJourneyForLead(input: {
   }
   const clientId = input.linkedClientId ?? clientSelection?.clientId ?? null;
   const eventId = input.linkedEventId ?? clientSelection?.eventId ?? null;
-  const [paymentLines, invitation, applications, prefs, brand, name] = await Promise.all([
+  const [paymentLines, invitation, applications, prefs, brand, name, paymentRequestSent] = await Promise.all([
     clientId ? paymentLinesForClient(clientId) : Promise.resolve([]),
     clientId ? getClientInvitation(clientId) : Promise.resolve(null),
     eventId ? getEventPlaybookApplications(eventId) : Promise.resolve([]),
     venuePrefs(),
     venueBrand(),
     venueName(),
+    paymentRequestSentForInvoice(clientSelection?.invoiceId),
   ]);
   return buildBookingJourney({
     leadId: input.leadId,
@@ -108,6 +121,7 @@ export async function loadBookingJourneyForLead(input: {
     proposal: toJourneyProposal(proposal),
     contract: bestContract(clientId, contracts),
     paymentLines,
+    paymentRequestSent,
     portalInvited: Boolean(invitation && invitation.status !== "revoked"),
     planningStarted: applications.some((a) => !!a.releasedAt),
     prefs,
@@ -146,6 +160,7 @@ export async function loadBookingJourneyForClient(input: {
     proposal: toJourneyProposal(proposal),
     contract: bestContract(input.clientId, contracts),
     paymentLines,
+    paymentRequestSent: await paymentRequestSentForInvoice(resolved?.invoiceId),
     portalInvited: Boolean(invitation && invitation.status !== "revoked"),
     planningStarted: applications.some((a) => !!a.releasedAt),
     prefs,

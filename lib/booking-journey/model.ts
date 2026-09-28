@@ -60,6 +60,8 @@ export type BookingJourneyModel = {
   remainingSummary: string | null;
   prefs: VenueCommercialBookingPrefs;
   paymentLines: JourneyPaymentLine[];
+  /** Existing payment-request send signal — presentation only on the overview. */
+  paymentRequestSent: boolean;
   brand: {
     primaryColor: string;
     secondaryColor: string;
@@ -94,6 +96,7 @@ export type JourneyInputs = {
   proposal?: JourneyProposal | null;
   contract: JourneyContract | null;
   paymentLines: JourneyPaymentLine[];
+  paymentRequestSent?: boolean;
   portalInvited: boolean;
   planningStarted: boolean;
   prefs?: VenueCommercialBookingPrefs | null;
@@ -457,6 +460,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       : null,
     prefs,
     paymentLines: input.paymentLines,
+    paymentRequestSent: input.paymentRequestSent === true,
     brand,
     venueName: input.venueName ?? null,
   };

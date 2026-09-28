@@ -222,6 +222,7 @@ export function BookingJourneyPanel({
     <div className="space-y-4">
       <CommercialFacts
         journey={journey}
+        today={businessToday}
         contractPending={pending}
         onSelectPackage={() => setSelectOpen(true)}
         onCreateProposal={() => setProposalOpen(true)}

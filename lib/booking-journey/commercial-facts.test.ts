@@ -126,17 +126,16 @@ describe("commercial artifact states", () => {
     assert.equal(executed?.state, "Fully Executed");
   });
 
-  it("does not treat an invoice or an unpaid deposit as paid", () => {
+  it("does not treat an unpaid deposit as paid", () => {
     const facts = describeCommercialFacts({
       selection: selection({ invoiceId: "inv-1" }),
       contract: null,
-      paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 3750 }],
+      paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 3750, dueDate: "2026-09-28" }],
+      today: "2026-09-28",
     });
-    assert.equal(facts.find((row) => row.key === "invoice")?.title, "Booking Invoice");
-    assert.equal(facts.find((row) => row.key === "invoice")?.state, "On file");
-    assert.match(facts.find((row) => row.key === "invoice")?.detail ?? "", /does not call it sent/);
+    assert.equal(facts.find((row) => row.key === "invoice"), undefined);
     assert.notEqual(facts.find((row) => row.key === "deposit")?.state, "Paid");
-    assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /Not paid/);
+    assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /Ready to request/);
     assert.equal(
       commercialStepsComplete({
         selection: selection({ status: "accepted", invoiceId: "inv-1" }),
@@ -147,19 +146,67 @@ describe("commercial artifact states", () => {
     );
   });
 
-  it("a paid deposit is distinct from a configured amount", () => {
+  it("a paid deposit is distinct from a configured package amount", () => {
     const unpaid = describeCommercialFacts({
       selection: selection(),
       contract: null,
       paymentLines: [],
     }).find((row) => row.key === "deposit");
-    assert.equal(unpaid?.state, "Not set up");
+    assert.equal(unpaid, undefined);
     const paid = describeCommercialFacts({
       selection: selection({ status: "accepted" }),
       contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 3750 }],
     }).find((row) => row.key === "deposit");
     assert.equal(paid?.state, "Paid");
+  });
+
+  it("before setup shows one payment-plan row and no invoice or initial-payment setup tasks", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ depositAmount: 4500 }),
+      contract: null,
+      paymentLines: [],
+    });
+    const keys = facts.map((row) => row.key);
+    assert.deepEqual(keys.filter((k) => k === "payment_plan" || k === "invoice" || k === "deposit"), ["payment_plan"]);
+    const plan = facts.find((row) => row.key === "payment_plan");
+    assert.equal(plan?.title, "Payment plan");
+    assert.equal(plan?.state, "Not configured");
+    assert.equal(facts.find((row) => row.key === "invoice"), undefined);
+    assert.equal(facts.find((row) => row.key === "deposit"), undefined);
+  });
+
+  it("after setup lists installments and shows initial payment as a request action", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ invoiceId: "inv-1" }),
+      contract: null,
+      paymentLines: [
+        { obligationKind: "deposit", status: "pending", amount: 4500, dueDate: "2026-09-28" },
+        { obligationKind: "final", status: "pending", amount: 13500, dueDate: "2027-09-11" },
+      ],
+      today: "2026-09-28",
+    });
+    const plan = facts.find((row) => row.key === "payment_plan");
+    assert.equal(plan?.state, "2 installments");
+    assert.match(plan?.detail ?? "", /\$4,500\.00 due today/);
+    assert.match(plan?.detail ?? "", /\$13,500\.00 due September 11, 2027/);
+    const deposit = facts.find((row) => row.key === "deposit");
+    assert.equal(deposit?.state, "$4,500.00 due today");
+    assert.equal(deposit?.detail, "Ready to request");
+    assert.equal(facts.find((row) => row.key === "invoice"), undefined);
+  });
+
+  it("after a successful payment request does not present another request setup", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ invoiceId: "inv-1" }),
+      contract: null,
+      paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 4500, dueDate: "2026-09-28" }],
+      paymentRequestSent: true,
+      today: "2026-09-28",
+    });
+    const deposit = facts.find((row) => row.key === "deposit");
+    assert.equal(deposit?.detail, null);
+    assert.match(deposit?.state ?? "", /\$4,500\.00 due today/);
   });
 
   it("Booked fact never derives Booked from payment", () => {
@@ -205,8 +252,21 @@ describe("workspaces do not render the old Booking Journey", () => {
     assert.doesNotMatch(inbox, /value="agreement"/);
     const invoice = readFileSync(resolve("components/invoices/invoice-detail.tsx"), "utf8");
     assert.match(invoice, /ArtifactReviewOverlay/);
-    assert.match(invoice, /Send by email/);
+    assert.match(invoice, /Request initial payment/);
     assert.match(invoice, /InvoicePrintDocument/);
     assert.doesNotMatch(invoice, /Mark as Sent/);
+  });
+
+  it("overview presents one payment setup action and no fake invoice/deposit setup", () => {
+    const factsUi = readFileSync(resolve("components/booking-journey/commercial-facts.tsx"), "utf8");
+    assert.match(factsUi, /data-testid="setup-payments"/);
+    assert.match(factsUi, /Set up payments/);
+    assert.doesNotMatch(factsUi, /Set up initial payment/);
+    assert.match(factsUi, /data-testid="request-initial-payment"/);
+    assert.match(factsUi, /href=\{\`\/invoices\/\$\{selection\.invoiceId\}`\}/);
+    assert.match(factsUi, /payment-request-already-sent/);
+    const describe = readFileSync(resolve("lib/booking-journey/commercial-facts.ts"), "utf8");
+    const fn = describe.slice(describe.indexOf("export function describeCommercialFacts"));
+    assert.doesNotMatch(fn, /invoiceFact\(/);
   });
 });
