@@ -30,6 +30,30 @@ Decide during the final hardening pass whether this must be fixed before
 production. The likely fix is a security-definer RPC for the email→id lookup
 rather than either the PostgREST read or the Admin API scan.
 
+## P1 — Deployment must verify actual target DB migration state
+
+Repository migration-file presence is insufficient.
+
+`20261408300000_book_relationship_consumes_date_holds.sql` was in the repo and
+the application image that called it was deployed, but the Sandbox database
+never received the migration: the apply workflow failed during the 2026-09-28
+Supabase outage (`psql` pooler timeout at 05:42 and 05:43 UTC) and nothing
+subsequently surfaced the drift. The deploy workflow also skipped its own
+database verification because `SANDBOX_DB_URL` is not set.
+
+Mandatory regression B (date-hold consumption at Booked) failed through the
+real UI until the missing migration was applied. The repo's source-assertion
+test passed the whole time because it reads the `.sql` file, not the target
+database.
+
+Release-readiness item: every Sandbox (and later production) deploy must verify
+the **actual applied** `schema_migrations` set against the repo, not merely that
+the files exist. Setting `SANDBOX_DB_URL` on the sandbox Environment is the
+immediate, existing hook.
+
+Do not redesign the migration system as part of the journey run. Recorded so
+the final readiness list includes it.
+
 ## P3 — ALB access logs disabled
 
 Sandbox ALB has access logging turned off, which is why the incident forensics had

@@ -33,6 +33,28 @@ NOT NULL constraint, so no venue, staff row, or auth user was created. Retained
 rather than deleted because it is the evidence that self-setup provisioning was
 broken, and deleting fixtures was out of scope.
 
+## Journey records (Robin Avery — post-migration Booked path)
+
+| Field | Value |
+| --- | --- |
+| Lead id | `0d151a4c-10ed-410d-94c6-f8d7f06aa828` |
+| Client id | `47c813ab-87a1-4f4a-ad24-fa3228f5c9d5` |
+| Event id | `b8c48297-f54f-4d3e-8a63-8f4e62a99f8a` |
+| Selected package | Essential Wedding · $18,000 · selection `0b223bb2-41a6-416a-955a-24ca2954de20` |
+| Contract id | `0f0cae7d-10d4-408f-bad6-935a4f00f637` (Fully Executed) |
+| Invoice id | `a09d3735-c669-4fc2-b887-d1d2465871e6` (`INV-2026-A09D37`) |
+| Date hold | `71eea892-aad2-4f72-8795-0ce190a02afb` · 2027-09-11 · `converted` |
+
+## Taylor Morgan — pre-migration leftover (do not hand-edit)
+
+| Field | Value |
+| --- | --- |
+| Lead id | `582ab281-9ea7-477d-a293-6f104b39d6bd` |
+| Client id | `3f5859eb-68fe-4d4c-a503-d97520678ff1` |
+| Date hold | `09b0ec92-7673-48f1-b7bd-ff2f68524d09` · 2027-06-19 · still `active` |
+
+Booked before `20261408300000` was applied. The hold is leftover evidence, not a defect in the current RPC. The already-Booked branch of `book_relationship` converts leftover active holds on the Event date on the next authoritative booking write. Proven by source assertion in `lib/availability/date-hold-booked-boundary.test.ts`. The row was not mutated by hand.
+
 ## Convention
 
 Follows the existing Sandbox E2E convention (`scripts/verify-crm-sandbox-e2e.mts`):

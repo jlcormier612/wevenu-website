@@ -82,4 +82,22 @@ describe("date hold lifecycle — Booked consumes own hold", () => {
       /update public\.date_holds[\s\S]*?set status = 'active'/,
     );
   });
+
+  it("already-Booked re-entry consumes leftover active holds on the Event date", () => {
+    // The 2026-09-28 incident left 20261408300000 unapplied. Relationships
+    // booked before that apply (e.g. Taylor Morgan) can still have an active
+    // hold. The RPC must self-heal those leftovers on the next authoritative
+    // book_relationship call — not invent a new status, and not require a
+    // hand-edit of the hold row.
+    const alreadyBooked = bookFn.slice(
+      bookFn.indexOf("v_event_id is not null and v_existing_booked_at is not null"),
+      bookFn.indexOf("elsif v_event_id is not null and v_existing_booked_at is null"),
+    );
+    assert.match(alreadyBooked, /leftover active holds/);
+    assert.match(alreadyBooked, /set status = 'converted'/);
+    assert.match(alreadyBooked, /status = 'active'/);
+    assert.match(alreadyBooked, /hold_date = v_existing_date/);
+    assert.match(alreadyBooked, /lead_id = v_lead_id/);
+    assert.doesNotMatch(alreadyBooked, /insert into public\.events/);
+  });
 });
