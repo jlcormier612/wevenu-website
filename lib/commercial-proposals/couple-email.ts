@@ -9,6 +9,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { sendEmail } from "@/lib/email/send";
 import { publicAppOrigin } from "@/lib/env";
+import { customerFacingVenueName } from "@/lib/venue/identity";
 
 export type ProposalEmailContent = {
   subject: string;
@@ -142,12 +143,12 @@ export async function submitProposalCoupleEmail(input: {
 }): Promise<ProposalEmailSubmitResult> {
   const { data: venue } = await input.supabase
     .from("venues")
-    .select("name, business_name, email")
+    .select("name, email")
     .eq("id", input.venueId)
     .maybeSingle();
-  const venueName = (venue?.business_name as string | null)?.trim()
-    || (venue?.name as string | null)?.trim()
-    || "Your venue";
+  const venueName = customerFacingVenueName({
+    name: (venue?.name as string | null) ?? null,
+  });
 
   const recipient = await resolveRecipient(input.supabase, input.venueId, input.leadId, input.clientId);
   const email = recipient.email?.trim() || "";
