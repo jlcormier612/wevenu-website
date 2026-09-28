@@ -43,6 +43,10 @@ export type InvoiceOutboundContext = {
 const sendingPaymentRequest = new Set<string>();
 const sendingDocumentCopy = new Set<string>();
 
+/** Persisted after a successful Resend payment-request send (not document copy). */
+export const PAYMENT_REQUEST_SOURCE_TYPE = "invoice_email";
+export const DOCUMENT_COPY_SOURCE_TYPE = "invoice_document_copy";
+
 export function beginOutboundSend(kind: "payment_request" | "document_copy", invoiceId: string): boolean {
   const lock = kind === "payment_request" ? sendingPaymentRequest : sendingDocumentCopy;
   if (lock.has(invoiceId)) return false;
@@ -52,6 +56,35 @@ export function beginOutboundSend(kind: "payment_request" | "document_copy", inv
 
 export function endOutboundSend(kind: "payment_request" | "document_copy", invoiceId: string): void {
   (kind === "payment_request" ? sendingPaymentRequest : sendingDocumentCopy).delete(invoiceId);
+}
+
+type AdminLike = { from: (table: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/**
+ * Authoritative persisted signal that this invoice's payment request was
+ * successfully sent via Resend. Distinct from invoice.status (shared with
+ * document-copy publication) and from in-flight process locks.
+ */
+export async function hasSuccessfulPaymentRequestSend(
+  supabase: AdminLike,
+  opts: { venueId: string; invoiceId: string },
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("conversation_messages")
+    .select("id")
+    .eq("venue_id", opts.venueId)
+    .contains("channel_metadata", {
+      sourceType: PAYMENT_REQUEST_SOURCE_TYPE,
+      sourceId: opts.invoiceId,
+    })
+    .eq("status", "accepted")
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("[hasSuccessfulPaymentRequestSend]", error);
+    return false;
+  }
+  return Boolean(data?.id);
 }
 
 export async function publishInvoiceForCustomerAccess(invoiceId: string): Promise<

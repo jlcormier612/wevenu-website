@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 
 import { InvoiceDetail } from "@/components/invoices/invoice-detail";
 import { isEmailConfigured } from "@/lib/email/send";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { resolveAmountDueNow } from "@/lib/invoices/amount-due-now";
+import { hasSuccessfulPaymentRequestSend } from "@/lib/invoices/outbound";
 import { getEventOrderDrift, getInvoice } from "@/lib/invoices/service";
 import { getPackages } from "@/lib/packages/service";
 import {
@@ -55,6 +57,10 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
   // Booking Financial Architecture Phase 3b — null for any invoice that
   // isn't sent+Event-Order-linked, or that has no undismissed drift.
   const eventOrderDrift = await getEventOrderDrift(id);
+  const paymentRequestAlreadySent = await hasSuccessfulPaymentRequestSend(
+    createAdminClient(),
+    { venueId: venue.id, invoiceId: invoice.id },
+  );
   return (
     <InvoiceDetail
       invoice={invoice}
@@ -66,6 +72,7 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       paidToDate={paidToDate}
       cancelledPlanAmount={cancelledPlanAmount}
       venue={venue}
+      paymentRequestAlreadySent={paymentRequestAlreadySent}
       linkedScheduleId={linked?.id ?? null}
       scheduleLines={
         linked

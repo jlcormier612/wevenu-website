@@ -18,6 +18,12 @@ import type { Invoice } from "@/lib/invoices/types";
 import {
   OBLIGATION_KIND_OPTIONS,
 } from "@/lib/payments/constants";
+import type { RemainingBalanceMode } from "@/lib/booking-journey/venue-prefs";
+import {
+  draftsFromCustomTemplate,
+  resolveConfiguredPlanSeed,
+} from "@/lib/payments/configured-plan-seed";
+import type { CustomScheduleTemplate } from "@/lib/payments/custom-default-schedule";
 import {
   PLAN_BUILDER_QUICK_PRESETS,
   PLAN_BUILDER_STRUCTURES,
@@ -49,15 +55,22 @@ type Step = "structure" | "build" | "preview";
 /**
  * Payment Plan Builder — builds the invoice-tied payment schedule.
  * Presets are builder options only (not Library assets).
+ * Venue Custom defaults hydrate via resolveConfiguredPlanSeed (same as booking journey).
  */
 export function NewScheduleForm({
   linkedInvoice,
   initialPresetId,
+  remainingBalanceMode = null,
+  customSchedule = null,
+  defaultDepositPercent = 25,
   executedAt = null,
   today,
 }: {
   linkedInvoice: Invoice;
   initialPresetId?: string | null;
+  remainingBalanceMode?: RemainingBalanceMode | null;
+  customSchedule?: CustomScheduleTemplate | null;
+  defaultDepositPercent?: number;
   /** YYYY-MM-DD — Fully Executed contract date for agreement-relative timing. */
   executedAt?: string | null;
   /** Venue-local today (YYYY-MM-DD). */
@@ -74,21 +87,20 @@ export function NewScheduleForm({
     today,
   };
 
-  const initialQuick =
-    initialPresetId === "thirds" ||
-    initialPresetId === "fifty_fifty" ||
-    initialPresetId === "wedding_four"
-      ? (initialPresetId as PlanBuilderQuickPresetId)
-      : "thirds";
+  const defaultDeposit =
+    Math.round((invoiceTotal * (defaultDepositPercent / 100) + Number.EPSILON) * 100) / 100;
+  const configured = resolveConfiguredPlanSeed({
+    remainingBalanceMode,
+    defaultSchedulePresetId: initialPresetId ?? null,
+    customSchedule,
+    invoiceTotal,
+    defaultDeposit,
+  });
 
-  const [step, setStep] = React.useState<Step>("structure");
-  const [structure, setStructure] = React.useState<PlanBuilderStructure>(
-    initialPresetId === "custom" ? "custom" : "percentage",
-  );
+  const [step, setStep] = React.useState<Step>(configured.startAt);
+  const [structure, setStructure] = React.useState<PlanBuilderStructure>(configured.structure);
   const [equalCount, setEqualCount] = React.useState(3);
-  const [lines, setLines] = React.useState<PlanBuilderLineDraft[]>(() =>
-    linesFromPreset(initialQuick, invoiceTotal),
-  );
+  const [lines, setLines] = React.useState<PlanBuilderLineDraft[]>(() => configured.lines);
   const [input, setInput] = React.useState<ScheduleInput>({
     title: linkedInvoice.clientName
       ? `Payment schedule — ${linkedInvoice.clientName}`
@@ -111,8 +123,17 @@ export function NewScheduleForm({
     setStructure(next);
     if (next === "equal") {
       setLines(defaultEqualLines(equalCount, invoiceTotal));
-    } else if (next === "custom" && lines.length === 0) {
-      setLines(defaultEqualLines(1, invoiceTotal));
+    } else if (next === "custom") {
+      const fromSaved = customSchedule
+        ? draftsFromCustomTemplate(customSchedule, invoiceTotal)
+        : null;
+      setLines((prev) =>
+        fromSaved && fromSaved.length > 0
+          ? fromSaved
+          : prev.length > 0
+            ? prev
+            : defaultEqualLines(4, invoiceTotal),
+      );
     } else if (next === "percentage") {
       setLines(syncAmountsFromPercentages(lines.length ? lines : defaultEqualLines(3, invoiceTotal), invoiceTotal));
     } else if (next === "dollar") {

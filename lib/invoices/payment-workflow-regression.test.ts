@@ -124,8 +124,20 @@ describe("E. send-once lock", () => {
     assert.equal(beginOutboundSend("payment_request", id), true);
     endOutboundSend("payment_request", id);
   });
-});
 
+  it("persisted payment-request send-once gates reopen after success", () => {
+    const actions = readFileSync("app/(app)/invoices/actions.ts", "utf8");
+    const outbound = readFileSync("lib/invoices/outbound.ts", "utf8");
+    assert.match(outbound, /hasSuccessfulPaymentRequestSend/);
+    assert.match(actions, /hasSuccessfulPaymentRequestSend/);
+    assert.match(actions, /PAYMENT_REQUEST_ALREADY_SENT/);
+    assert.match(actions, /already sent/i);
+    assert.doesNotMatch(
+      actions.slice(actions.indexOf("sendInvoiceDocumentCopyAction")),
+      /hasSuccessfulPaymentRequestSend/,
+    );
+  });
+});
 describe("F. payment link publication", () => {
   const outbound = readFileSync("lib/invoices/outbound.ts", "utf8");
   const actions = readFileSync("app/(app)/invoices/actions.ts", "utf8");
@@ -164,7 +176,8 @@ describe("G. full payment plan / invoice document", () => {
     assert.match(detail, /sendInvoiceDocumentCopyAction/);
     assert.match(detail, /invoice-document-review/);
     assert.match(actions, /beginOutboundSend\("document_copy"/);
-    assert.match(actions, /sourceType: "invoice_document_copy"/);
+    assert.match(actions, /sourceType: DOCUMENT_COPY_SOURCE_TYPE/);
+    assert.match(actions, /DOCUMENT_COPY_SOURCE_TYPE/);
   });
 
   it("ensures a couple Documents portal session for full-document delivery", () => {

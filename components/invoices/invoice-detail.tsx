@@ -70,6 +70,7 @@ export function InvoiceDetail({
   paidToDate = null,
   cancelledPlanAmount = 0,
   venue,
+  paymentRequestAlreadySent = false,
   linkedScheduleId = null,
   scheduleLines = null,
   scheduleNotes = null,
@@ -91,6 +92,8 @@ export function InvoiceDetail({
   /** Sum of cancelled schedule commitments still shown on the plan history. */
   cancelledPlanAmount?: number;
   venue: Venue;
+  /** Persisted successful payment-request send (conversation invoice_email). */
+  paymentRequestAlreadySent?: boolean;
   linkedScheduleId?: string | null;
   scheduleLines?: {
     label: string;
@@ -121,6 +124,10 @@ export function InvoiceDetail({
   const [paymentRequestPreview, setPaymentRequestPreview] = React.useState<PaymentRequestPreview | null>(null);
   const [documentCopyPreview, setDocumentCopyPreview] = React.useState<InvoiceDocumentPreview | null>(null);
   const [sendLock, setSendLock] = React.useState(false);
+  const [paymentRequestSent, setPaymentRequestSent] = React.useState(paymentRequestAlreadySent);
+  React.useEffect(() => {
+    setPaymentRequestSent(paymentRequestAlreadySent);
+  }, [paymentRequestAlreadySent]);
   const [editingPlan, setEditingPlan] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
   const humanTitle = invoiceHumanLabel({
@@ -155,10 +162,22 @@ export function InvoiceDetail({
   }
 
   function openPaymentRequestReview() {
+    if (paymentRequestSent) {
+      toast.message("This payment request was already sent.");
+      return;
+    }
     startEmail(async () => {
       const result = await previewPaymentRequestAction(invoice.id);
       if (!result.ok || !("preview" in result)) {
+        if (!result.ok && result.message?.includes("already sent")) {
+          setPaymentRequestSent(true);
+        }
         toast.error(!result.ok ? (result.message ?? "Could not prepare this payment request.") : "Could not prepare this payment request.");
+        return;
+      }
+      if ("alreadySent" in result && result.alreadySent) {
+        setPaymentRequestSent(true);
+        toast.message("This payment request was already sent.");
         return;
       }
       setPaymentRequestPreview(result.preview);
@@ -179,19 +198,28 @@ export function InvoiceDetail({
   }
 
   function sendPaymentRequest() {
-    if (sendLock || emailPending) return;
+    if (sendLock || emailPending || paymentRequestSent) return;
     setSendLock(true);
     startEmail(async () => {
       try {
         const result = await sendInvoiceEmailAction(invoice.id);
-        if (!result.ok) { toast.error(result.message ?? "Could not send."); return; }
+        if (!result.ok) {
+          if (result.message?.includes("already sent")) {
+            setPaymentRequestSent(true);
+            setPaymentRequestOpen(false);
+          }
+          toast.error(result.message ?? "Could not send.");
+          return;
+        }
         if ("method" in result && result.method === "mailto" && result.mailtoUrl) {
           window.open(result.mailtoUrl, "_blank");
           toast.success("Your email app opened. Hello to Cheers did not send this email.");
         } else {
+          setPaymentRequestSent(true);
           toast.success("Payment request sent.");
         }
         setPaymentRequestOpen(false);
+        router.refresh();
       } finally {
         setSendLock(false);
       }
@@ -514,14 +542,24 @@ export function InvoiceDetail({
                       </Button>
                     )}
                     {invoice.clientId && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={emailPending || planMismatch}
-                        onClick={openPaymentRequestReview}
-                      >
-                        Request initial payment
-                      </Button>
+                      paymentRequestSent ? (
+                        <p
+                          className="text-xs text-muted-foreground self-center"
+                          data-testid="payment-request-already-sent"
+                        >
+                          Payment request already sent. A new request is not available for this invoice.
+                        </p>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={emailPending || planMismatch}
+                          onClick={openPaymentRequestReview}
+                          data-testid="request-initial-payment"
+                        >
+                          Request initial payment
+                        </Button>
+                      )
                     )}
                     {invoice.clientId && (
                       <Button

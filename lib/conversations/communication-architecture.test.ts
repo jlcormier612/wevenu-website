@@ -63,7 +63,8 @@ describe("communication architecture locks", () => {
   it("invoice email send records into conversation history when Resend delivers", () => {
     const invoiceActions = readFileSync(resolve("app/(app)/invoices/actions.ts"), "utf8");
     assert.match(invoiceActions, /recordExternalClientOutbound/);
-    assert.match(invoiceActions, /sourceType: "invoice_email"/);
+    assert.match(invoiceActions, /sourceType: PAYMENT_REQUEST_SOURCE_TYPE/);
+    assert.match(invoiceActions, /PAYMENT_REQUEST_SOURCE_TYPE/);
     assert.match(invoiceActions, /method === "resend"/);
   });
 

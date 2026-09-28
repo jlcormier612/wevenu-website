@@ -27,11 +27,17 @@ import {
   beginOutboundSend,
   dueDateLabelFromContext,
   endOutboundSend,
+  DOCUMENT_COPY_SOURCE_TYPE,
+  hasSuccessfulPaymentRequestSend,
   loadInvoiceOutboundContext,
+  PAYMENT_REQUEST_SOURCE_TYPE,
   type InvoiceOutboundContext,
 } from "@/lib/invoices/outbound";
 import { buildPaymentRequestEmail } from "@/lib/invoices/payment-request-email";
 import { getCurrentVenue } from "@/lib/venue/service";
+
+const PAYMENT_REQUEST_ALREADY_SENT =
+  "This payment request was already sent. A new payment request is not available for this invoice.";
 
 export async function createInvoiceAction(input: InvoiceInput): Promise<CreateInvoiceResult> {
   const result = await createInvoice(input);
@@ -111,13 +117,39 @@ export type PaymentRequestPreview = {
   text: string;
 };
 
+export async function paymentRequestAlreadySentAction(
+  invoiceId: string,
+): Promise<{ ok: true; alreadySent: boolean } | InvoiceActionResult> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Invoice or venue not found." };
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const alreadySent = await hasSuccessfulPaymentRequestSend(createAdminClient(), {
+    venueId: venue.id,
+    invoiceId,
+  });
+  return { ok: true, alreadySent };
+}
+
 export async function previewPaymentRequestAction(
   invoiceId: string,
-): Promise<{ ok: true; preview: PaymentRequestPreview } | InvoiceActionResult> {
+): Promise<
+  | { ok: true; preview: PaymentRequestPreview; alreadySent: boolean }
+  | InvoiceActionResult
+> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Invoice or venue not found." };
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const alreadySent = await hasSuccessfulPaymentRequestSend(createAdminClient(), {
+    venueId: venue.id,
+    invoiceId,
+  });
+  if (alreadySent) {
+    return { ok: false, message: PAYMENT_REQUEST_ALREADY_SENT };
+  }
   const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: false });
   if (!loaded.ok) return loaded;
   const email = paymentRequestFromContext(loaded.ctx);
-  return { ok: true, preview: email };
+  return { ok: true, preview: email, alreadySent: false };
 }
 
 export async function sendInvoiceEmailAction(
@@ -127,6 +159,13 @@ export async function sendInvoiceEmailAction(
     return { ok: false, message: "This payment request is already sending." };
   }
   try {
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "Invoice or venue not found." };
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
+    const admin = createAdminClient();
+    if (await hasSuccessfulPaymentRequestSend(admin, { venueId: venue.id, invoiceId })) {
+      return { ok: false, message: PAYMENT_REQUEST_ALREADY_SENT };
+    }
     const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: true });
     if (!loaded.ok) return loaded;
     const email = paymentRequestFromContext(loaded.ctx);
@@ -138,16 +177,15 @@ export async function sendInvoiceEmailAction(
       replyTo: email.replyTo,
     });
     if (result.ok && result.method === "resend") {
-      const { createAdminClient } = await import("@/integrations/supabase/admin");
       const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
-      const recorded = await recordExternalClientOutbound(createAdminClient(), {
+      const recorded = await recordExternalClientOutbound(admin, {
         venueId: loaded.ctx.venueId,
         clientId: loaded.ctx.clientId,
         channel: "email",
         body: email.text,
         providerId: result.providerId ?? null,
         status: "accepted",
-        sourceType: "invoice_email",
+        sourceType: PAYMENT_REQUEST_SOURCE_TYPE,
         sourceId: invoiceId,
       });
       if (!recorded.ok) {
@@ -223,7 +261,7 @@ export async function sendInvoiceDocumentCopyAction(
         body: email.text,
         providerId: result.providerId ?? null,
         status: "accepted",
-        sourceType: "invoice_document_copy",
+        sourceType: DOCUMENT_COPY_SOURCE_TYPE,
         sourceId: invoiceId,
       });
       if (!recorded.ok) {

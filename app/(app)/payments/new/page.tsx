@@ -90,10 +90,19 @@ export default async function NewPaymentPage({ searchParams }: Props) {
   }
 
   const venue = await getCurrentVenue();
-  const today = venue
-    ? venueToday(venue.timezone)
-    : new Date().toISOString().slice(0, 10);
+  if (!venue) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="New payment schedule" description="Venue not found." />
+      </div>
+    );
+  }
+  const today = venueToday(venue.timezone);
   const executedAt = await latestExecutedContractDate(invoice.clientId);
+  const prefs = venue.commercialBookingPrefs;
+  // Prefer URL preset when present; otherwise use the venue configured default
+  // so Custom hydrates the same saved structure as Booking Journey.
+  const seedPresetId = preset?.trim() || prefs.defaultSchedulePresetId;
 
   return (
     <div className="space-y-6">
@@ -117,7 +126,10 @@ export default async function NewPaymentPage({ searchParams }: Props) {
         <CardContent>
           <NewScheduleForm
             linkedInvoice={invoice}
-            initialPresetId={preset}
+            initialPresetId={seedPresetId}
+            remainingBalanceMode={prefs.remainingBalanceMode}
+            customSchedule={prefs.defaultCustomSchedule}
+            defaultDepositPercent={prefs.defaultDepositPercent}
             executedAt={executedAt}
             today={today}
           />
