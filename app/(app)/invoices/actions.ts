@@ -174,7 +174,10 @@ export type InvoiceDocumentPreview = {
 export async function previewInvoiceDocumentCopyAction(
   invoiceId: string,
 ): Promise<{ ok: true; preview: InvoiceDocumentPreview } | InvoiceActionResult> {
-  const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: false });
+  const loaded = await loadInvoiceOutboundContext(invoiceId, {
+    publish: false,
+    ensureCoupleDocuments: true,
+  });
   if (!loaded.ok) return loaded;
   const email = documentCopyFromContext(loaded.ctx);
   return {
@@ -197,7 +200,10 @@ export async function sendInvoiceDocumentCopyAction(
     return { ok: false, message: "This document copy is already sending." };
   }
   try {
-    const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: true });
+    const loaded = await loadInvoiceOutboundContext(invoiceId, {
+      publish: true,
+      ensureCoupleDocuments: true,
+    });
     if (!loaded.ok) return loaded;
     const email = documentCopyFromContext(loaded.ctx);
     const result = await sendEmail({

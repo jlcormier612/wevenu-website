@@ -69,7 +69,15 @@ export async function publishInvoiceForCustomerAccess(invoiceId: string): Promis
 
 export async function loadInvoiceOutboundContext(
   invoiceId: string,
-  opts: { publish: boolean },
+  opts: {
+    publish: boolean;
+    /**
+     * Full-document delivery uses Client Portal Documents. Create a couple
+     * session when missing so documentsUrl is present — independent of the
+     * financial payment-link session.
+     */
+    ensureCoupleDocuments?: boolean;
+  },
 ): Promise<{ ok: true; ctx: InvoiceOutboundContext } | { ok: false; message: string }> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Invoice or venue not found." };
@@ -135,8 +143,11 @@ export async function loadInvoiceOutboundContext(
   try {
     const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
     const sessions = await getPortalSessions(clientId);
-    const coupleSession = sessions.find((s) => s.accessLevel === "couple");
+    let coupleSession = sessions.find((s) => s.accessLevel === "couple") ?? null;
     const financialSession = sessions.find((s) => s.accessLevel === "financial");
+    if (opts.ensureCoupleDocuments && !coupleSession) {
+      coupleSession = await createPortalSession(clientId, "Documents", "couple");
+    }
     let paySession = coupleSession ?? financialSession ?? null;
     if (!paySession) {
       paySession = await createPortalSession(clientId, "Payment", "financial");
@@ -147,9 +158,9 @@ export async function loadInvoiceOutboundContext(
         paySession.accessLevel === "financial"
           ? `${publicAppOrigin()}/p/${paySession.accessToken}${itemQs}`
           : `${publicAppOrigin()}/p/${paySession.accessToken}${itemQs}#payments`;
-      if (coupleSession?.accessToken) {
-        documentsUrl = `${publicAppOrigin()}/p/${coupleSession.accessToken}#documents`;
-      }
+    }
+    if (coupleSession?.accessToken) {
+      documentsUrl = `${publicAppOrigin()}/p/${coupleSession.accessToken}#documents`;
     }
   } catch {
     /* email still sends without link */

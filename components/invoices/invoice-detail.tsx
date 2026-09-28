@@ -138,7 +138,7 @@ export function InvoiceDetail({
     scheduleLines && scheduleLines.length > 0 && !planTotalsReconcile(scheduledTotal, invoice.total),
   );
   const planHasActivity = Boolean(
-    scheduleLines && scheduleHasPaymentActivity(scheduleLines),
+    scheduleLines && scheduleHasPaymentActivity(scheduleLines, status),
   );
 
   function saveDisplayName() {

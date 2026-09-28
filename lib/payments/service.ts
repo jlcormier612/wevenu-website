@@ -701,13 +701,17 @@ export async function deletePaymentSchedule(scheduleId: string): Promise<Payment
 // with nothing to compare against is never "Needs Review," it just has
 // nothing to check.
 
-async function scheduleInvoiceTotal(scheduleId: string): Promise<{ schedule: PaymentScheduleWithDetails; invoiceTotal: number } | PaymentActionResult> {
+async function scheduleInvoiceTotal(scheduleId: string): Promise<{
+  schedule: PaymentScheduleWithDetails;
+  invoiceTotal: number;
+  invoiceStatus: string;
+} | PaymentActionResult> {
   const schedule = await getPaymentSchedule(scheduleId);
   if (!schedule) return { ok: false, message: "Payment schedule not found." };
   if (!schedule.invoiceId) return { ok: false, message: "This payment plan isn't linked to an invoice." };
   const invoice = await getInvoice(schedule.invoiceId);
   if (!invoice) return { ok: false, message: "Linked invoice not found." };
-  return { schedule, invoiceTotal: invoice.total };
+  return { schedule, invoiceTotal: invoice.total, invoiceStatus: invoice.status };
 }
 
 /** "Keep Existing Schedule" — the plan is fine as-is; records which invoice total was reviewed so a later, real change still re-surfaces Needs Review. */
@@ -826,10 +830,10 @@ export async function replacePendingScheduleLines(
 ): Promise<PaymentActionResult> {
   const ctx = await scheduleInvoiceTotal(scheduleId);
   if ("ok" in ctx) return ctx;
-  const { schedule, invoiceTotal } = ctx;
+  const { schedule, invoiceTotal, invoiceStatus } = ctx;
   const { scheduleHasPaymentActivity, planTotalsReconcile, roundMoney } =
     await import("@/lib/payments/reconcile-commitment");
-  if (scheduleHasPaymentActivity(schedule.lineItems)) {
+  if (scheduleHasPaymentActivity(schedule.lineItems, invoiceStatus)) {
     return { ok: false, message: "Payments have already been requested or collected. Historical installments cannot be replaced." };
   }
   const scheduled = roundMoney(lines.reduce((s, l) => s + (parseFloat(l.amount.replace(/[$,]/g, "")) || 0), 0));
@@ -885,7 +889,7 @@ export async function syncPaymentPlanToInvoiceCommitment(invoiceId: string): Pro
       scheduleTotal: lineSum,
       commitmentTotal: invoice.total,
       lineAmounts: pending.map((l) => l.amount),
-      hasActivity: scheduleHasPaymentActivity(schedule.lineItems),
+      hasActivity: scheduleHasPaymentActivity(schedule.lineItems, invoice.status),
     });
     if (decision.kind === "current" && Math.abs(schedule.totalAmount - invoice.total) > 0.02) {
       await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, invoice.total);

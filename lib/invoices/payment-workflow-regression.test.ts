@@ -156,6 +156,7 @@ describe("F. payment link publication", () => {
 describe("G. full payment plan / invoice document", () => {
   const detail = readFileSync("components/invoices/invoice-detail.tsx", "utf8");
   const actions = readFileSync("app/(app)/invoices/actions.ts", "utf8");
+  const outbound = readFileSync("lib/invoices/outbound.ts", "utf8");
 
   it("exposes a distinct document-copy action with review before send", () => {
     assert.match(detail, /Send copy of payment plan and invoice/);
@@ -164,6 +165,21 @@ describe("G. full payment plan / invoice document", () => {
     assert.match(detail, /invoice-document-review/);
     assert.match(actions, /beginOutboundSend\("document_copy"/);
     assert.match(actions, /sourceType: "invoice_document_copy"/);
+  });
+
+  it("ensures a couple Documents portal session for full-document delivery", () => {
+    assert.match(actions, /ensureCoupleDocuments: true/);
+    assert.match(outbound, /ensureCoupleDocuments/);
+    assert.match(outbound, /createPortalSession\(clientId, "Documents", "couple"\)/);
+    assert.match(outbound, /#documents/);
+    // Payment-request path stays on its own financial/pay link — does not require Documents.
+    const paymentRequestBlock = actions.slice(
+      actions.indexOf("export async function previewPaymentRequestAction"),
+      actions.indexOf("export async function previewInvoiceDocumentCopyAction"),
+    );
+    assert.match(paymentRequestBlock, /loadInvoiceOutboundContext\(invoiceId, \{ publish: false \}\)/);
+    assert.match(paymentRequestBlock, /loadInvoiceOutboundContext\(invoiceId, \{ publish: true \}\)/);
+    assert.doesNotMatch(paymentRequestBlock, /ensureCoupleDocuments/);
   });
 
   it("document email includes the entire installment schedule and is not a payment request", () => {
@@ -205,6 +221,35 @@ describe("G. full payment plan / invoice document", () => {
   it("Preview payment plan no longer sends the payment-request email", () => {
     assert.match(detail, /Customer-facing invoice/);
     assert.doesNotMatch(detail, /Send by email/);
+  });
+
+  it("document-copy cancel path does not call send", () => {
+    assert.match(detail, /onBack=\{\(\) => setDocumentCopyOpen\(false\)\}/);
+    assert.match(detail, /sendDocumentCopy/);
+    assert.doesNotMatch(detail, /onBack=\{sendDocumentCopy\}/);
+  });
+});
+
+describe("Edit payment plan safety", () => {
+  const detail = readFileSync("components/invoices/invoice-detail.tsx", "utf8");
+  const scheduleDetail = readFileSync("components/payments/payment-schedule-detail.tsx", "utf8");
+  const service = readFileSync("lib/payments/service.ts", "utf8");
+
+  it("passes invoice status into scheduleHasPaymentActivity at the invoice-detail call site", () => {
+    assert.match(detail, /scheduleHasPaymentActivity\(scheduleLines, status\)/);
+    assert.doesNotMatch(detail, /scheduleHasPaymentActivity\(scheduleLines\)\s*,/);
+  });
+
+  it("keeps payment-schedule-detail and replacePendingScheduleLines on the same guard", () => {
+    assert.match(scheduleDetail, /scheduleHasPaymentActivity\(items, invoice\?\.status\)/);
+    assert.match(service, /scheduleHasPaymentActivity\(schedule\.lineItems, invoiceStatus\)/);
+    assert.match(service, /scheduleHasPaymentActivity\(schedule\.lineItems, invoice\.status\)/);
+  });
+
+  it("hides Edit behind planHasActivity and does not open the editor when locked", () => {
+    assert.match(detail, /\{!planHasActivity && \(/);
+    assert.match(detail, /Edit payment plan/);
+    assert.match(detail, /editingPlan && !planHasActivity/);
   });
 });
 

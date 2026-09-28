@@ -85,6 +85,17 @@ describe("classifyCommitmentReconcile", () => {
     );
   });
 
+  it("treats a non-draft invoice as payment activity even with unused lines", () => {
+    const unused = [
+      { status: "pending", paidAmount: 0 },
+      { status: "overdue", paidAmount: 0 },
+    ];
+    assert.equal(scheduleHasPaymentActivity(unused, "draft"), false);
+    assert.equal(scheduleHasPaymentActivity(unused, "sent"), true);
+    assert.equal(scheduleHasPaymentActivity(unused, "paid"), true);
+    assert.equal(scheduleHasPaymentActivity(unused, null), false);
+  });
+
   it("locks when payments have already been requested or paid", () => {
     const d = classifyCommitmentReconcile({
       scheduleTotal: 15000,

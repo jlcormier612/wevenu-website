@@ -161,16 +161,18 @@ export async function getInvoiceSummaryForSchedule(
   client: DbClient, venueId: string, invoiceId: string,
 ): Promise<{
   total: number;
+  status: string;
   clientId: string | null;
   eventId: string | null;
   eventDate: string | null;
   bookedAt: string | null;
 } | null> {
   const { data } = await client.from("invoices")
-    .select("total, client_id, event_id, events(event_date, booked_at)")
+    .select("total, status, client_id, event_id, events(event_date, booked_at)")
     .eq("id", invoiceId).eq("venue_id", venueId)
     .maybeSingle<{
       total: number;
+      status: string;
       client_id: string | null;
       event_id: string | null;
       events: { event_date: string | null; booked_at: string | null } | null;
@@ -178,6 +180,7 @@ export async function getInvoiceSummaryForSchedule(
   if (!data) return null;
   return {
     total: Number(data.total),
+    status: data.status,
     clientId: data.client_id,
     eventId: data.event_id,
     eventDate: data.events?.event_date ?? null,
