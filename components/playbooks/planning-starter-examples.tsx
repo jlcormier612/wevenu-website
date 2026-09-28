@@ -54,7 +54,7 @@ export function PlanningStarterExamples({ templates }: { templates: PlaybookTemp
 
       <LibraryAssetCard
         title="Standard Wedding — Client Planning"
-        description="A client-facing checklist from booking through post-event, ready for your venue to customize."
+        description="A client-facing checklist for after booking, through post-event, ready for your venue to customize."
         meta={`${STANDARD_CLIENT_PLANNING_TASKS.length} tasks · ${STANDARD_CLIENT_PLANNING_MILESTONES.length} milestones`}
         isStarter
         primaryActions={[{

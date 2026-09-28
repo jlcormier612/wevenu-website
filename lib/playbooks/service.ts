@@ -601,7 +601,7 @@ export async function createStandardClientPlanningTemplate(): Promise<CreatePlay
       // Add-again: venue copy without unique master key.
       const templateId = await createFromReference(
         c, venueId, "Standard Wedding — Client Planning (Copy)", "client", "wedding",
-        "Guides your client through their own to-dos, from booking through post-event.",
+        "Guides your client through their own to-dos after booking, through post-event.",
         STANDARD_CLIENT_PLANNING_MILESTONES, STANDARD_CLIENT_PLANNING_TASKS,
         null,
       );
@@ -609,7 +609,7 @@ export async function createStandardClientPlanningTemplate(): Promise<CreatePlay
     }
     const templateId = await createFromReference(
       c, venueId, "Standard Wedding — Client Planning", "client", "wedding",
-      "Guides your client through their own to-dos, from booking through post-event.",
+      "Guides your client through their own to-dos after booking, through post-event.",
       STANDARD_CLIENT_PLANNING_MILESTONES, STANDARD_CLIENT_PLANNING_TASKS,
       "PB-CLIENT-01",
     );

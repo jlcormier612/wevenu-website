@@ -15,7 +15,7 @@ export const PLAYBOOK_STARTER_MASTERS: readonly PlaybookStarterMaster[] = [
     key: "PB-CLIENT-01",
     kind: "client",
     name: "Standard Wedding — Client Planning",
-    description: "A client-facing checklist from booking through post-event, ready for your venue to customize.",
+    description: "A client-facing checklist for after booking, through post-event, ready for your venue to customize.",
   },
   {
     key: "PB-VENUE-01",
