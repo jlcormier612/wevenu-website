@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Calendar, Check, Loader2, Plus, X } from "lucide-react";
+import { Calendar, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -13,8 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatDate, HOLD_STATUS_LABEL } from "@/lib/availability/constants";
+import { formatDate } from "@/lib/availability/constants";
 import { defaultHoldDateFromDesiredEventDate } from "@/lib/availability/hold-defaults";
+import {
+  activeHolds as selectActiveHolds,
+  historicalHoldLabel,
+  historicalHolds as selectHistoricalHolds,
+  placeHoldCtaLabel,
+  shouldShowPlaceHoldCta,
+} from "@/lib/availability/hold-presentation";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { DateHold, DateHoldInput } from "@/lib/availability/types";
 import type { VenueSpace } from "@/lib/availability/types";
@@ -46,6 +53,9 @@ export function DateHoldsSection({
   const [releasingId, setReleasingId] = React.useState<string | null>(null);
 
   const desiredDefault = defaultHoldDateFromDesiredEventDate(desiredEventDate);
+  const activeHolds = selectActiveHolds(holds);
+  const pastHolds = selectHistoricalHolds(holds);
+  const showPlaceHold = shouldShowPlaceHoldCta(holds);
 
   function openForm() {
     setHoldDate(desiredDefault);
@@ -84,49 +94,76 @@ export function DateHoldsSection({
     } else toast.error(result.message ?? "Could not release hold.");
   }
 
-  const activeHolds = holds.filter((h) => h.status === "active");
-  const pastHolds = holds.filter((h) => h.status !== "active");
-
   return (
     <div className="space-y-3">
-      {/* Active holds */}
+      {/* Active holds — authoritative date_holds.status === "active" */}
       {activeHolds.length > 0 && (
         <div className="space-y-2">
           {activeHolds.map((hold) => (
-            <div key={hold.id} className="group flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
-              <Calendar className="h-4 w-4 shrink-0 text-warning-foreground mt-0.5" />
+            <div
+              key={hold.id}
+              className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"
+              data-testid="date-hold-active"
+            >
+              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
               <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
+                  Held
+                </p>
                 <p className="text-sm font-medium text-foreground">{formatDate(hold.holdDate)}</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {hold.spaceName && <span>{hold.spaceName}</span>}
-                  {hold.expiresAt && <span>Expires {new Date(hold.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+                  {hold.spaceName ? <span>{hold.spaceName}</span> : null}
+                  {hold.expiresAt ? (
+                    <span>
+                      Expires{" "}
+                      {new Date(hold.expiresAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  ) : null}
                 </div>
               </div>
-              <Button type="button" variant="ghost" size="sm" className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground"
-                disabled={releasingId === hold.id} onClick={() => handleRelease(hold.id)}>
-                {releasingId === hold.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-                Release
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                disabled={releasingId === hold.id}
+                onClick={() => handleRelease(hold.id)}
+                data-testid="date-hold-release"
+              >
+                {releasingId === hold.id ? (
+                  <>
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    Releasing…
+                  </>
+                ) : (
+                  "Release hold"
+                )}
               </Button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Past holds (collapsed) */}
+      {/* Historical holds — released / expired / converted; not active */}
       {pastHolds.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-1" data-testid="date-hold-history">
           {pastHolds.map((hold) => (
-            <div key={hold.id} className="flex items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground">
-              <Check className="h-3 w-3 shrink-0" />
-              <span>{formatDate(hold.holdDate)} — {HOLD_STATUS_LABEL[hold.status]}</span>
+            <div
+              key={hold.id}
+              className="px-1 py-0.5 text-xs text-muted-foreground"
+            >
+              {historicalHoldLabel(hold)}
             </div>
           ))}
         </div>
       )}
 
-      {/* Add form */}
+      {/* Place hold only when no active hold exists for this lead. */}
       {showForm ? (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Hold title</Label>
@@ -181,14 +218,18 @@ export function DateHoldsSection({
             </Button>
           </div>
         </div>
-      ) : (
-        <Button type="button" variant="outline" size="sm" onClick={openForm}>
+      ) : showPlaceHold ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={openForm}
+          data-testid="date-hold-place"
+        >
           <Plus className="mr-1 h-3.5 w-3.5" />
-          {desiredDefault
-            ? `Place hold on ${formatDate(desiredDefault)}`
-            : "Place Hold"}
+          {placeHoldCtaLabel(desiredDefault)}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }
