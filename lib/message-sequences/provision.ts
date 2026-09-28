@@ -34,6 +34,9 @@ async function insertStarterSequence(
       trigger_stage: input.triggerType === "lead_stage_changed" ? input.triggerStage : null,
       source_master_key: master.key,
       status: master.initialStatus,
+      // Never seed SEQ-01 (or any starter) with advance-on-enroll — lead_created
+      // must not silently leave New Inquiry. Default column is false; set explicitly.
+      update_pipeline_on_enroll: false,
     })
     .select("id").single<{ id: string }>();
   if (error) throw error;

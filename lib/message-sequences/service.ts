@@ -176,7 +176,11 @@ export async function triggerSequencesForRelationship(
     await repo.materializeEnrollmentSteps(supabase, venueId, enrollmentId, seq.id, relationshipId);
     enrollmentIds.push(enrollmentId);
     await maybeAdvanceLeadOnSequenceEnroll(
-      supabase, venueId, relationshipId, seq.updatePipelineOnEnroll === true,
+      supabase,
+      venueId,
+      relationshipId,
+      seq.updatePipelineOnEnroll === true,
+      triggerType,
     );
   }
   return enrollmentIds;
@@ -188,14 +192,19 @@ export async function triggerSequencesForRelationship(
  * Does not move Booked/Lost, does not wrap from the final stage, and does not
  * hard-code a destination such as "In Follow-Up". Does not re-fire stage
  * triggers here — avoids enrollment loops.
+ *
+ * lead_created enrollments never advance: New Inquiry Welcome must not kick a
+ * brand-new lead to the next Standard column (e.g. In Workflow).
  */
 async function maybeAdvanceLeadOnSequenceEnroll(
   supabase: AnyDbClient,
   venueId: string,
   relationshipId: string,
   updatePipelineOnEnroll: boolean,
+  triggerType?: SequenceTriggerType,
 ): Promise<void> {
   if (!updatePipelineOnEnroll) return;
+  if (triggerType === "lead_created") return;
   const { data: lead } = await supabase.from("leads")
     .select("id, sales_stage, pipeline_stage_id")
     .eq("venue_id", venueId)

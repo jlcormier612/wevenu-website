@@ -78,7 +78,12 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         lead.relationshipId
           ? getConversationIdForRelationship(lead.relationshipId)
           : Promise.resolve(null),
-        getSmsPermissionEvidenceForContact({ venueId: lead.venueId, phone: lead.phone }),
+        getSmsPermissionEvidenceForContact({
+          venueId: lead.venueId,
+          phone: lead.phone,
+          leadId: lead.id,
+          relationshipId: lead.relationshipId ?? null,
+        }),
         getDuplicateReviewForLead(id),
         venue ? getTeamMembers(venue.id) : Promise.resolve([]),
         venue ? getCurrentStaffMember(venue.id) : Promise.resolve(null),
