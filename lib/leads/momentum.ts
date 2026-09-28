@@ -37,6 +37,17 @@ export function generateMomentumLanguage(
   return null;
 }
 
+/** Discrete first-name + verb. Never rely on JSX whitespace next to `{firstName}`. */
+export function newLeadBeginningSentence(firstName: string): string {
+  const name = firstName.trim() || "This couple";
+  return `${name} is just beginning their planning journey. There isn't enough activity yet for me to draw any conclusions.`;
+}
+
+export function stillEarlySentence(firstName: string): string {
+  const name = firstName.trim() || "this couple";
+  return `It's still early. I'll share more as ${name} engages.`;
+}
+
 export type ConfidenceStage = "new" | "observing" | "insights";
 
 export function getConfidenceStage(

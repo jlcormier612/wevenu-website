@@ -14,7 +14,9 @@ import {
   generateMomentumLanguage,
   getConfidenceStage,
   getObservations,
+  newLeadBeginningSentence,
   scoreDescriptor,
+  stillEarlySentence,
 } from "@/lib/leads/momentum";
 
 const DUSTY_ROSE = "#D8A7AA";
@@ -66,7 +68,7 @@ function NewInquiryView({ firstName }: { firstName: string }) {
       <div className="space-y-1.5">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New Lead</p>
         <p className="text-sm text-heading leading-relaxed">
-          {firstName} is just beginning their planning journey. There isn&apos;t enough activity yet for me to draw any conclusions.
+          {newLeadBeginningSentence(firstName)}
         </p>
       </div>
 
@@ -111,7 +113,7 @@ function ObservingView({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed">
-            It&apos;s still early. I&apos;ll share more as {firstName} engages.
+            {stillEarlySentence(firstName)}
           </p>
         )}
       </div>

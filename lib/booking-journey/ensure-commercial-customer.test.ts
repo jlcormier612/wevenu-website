@@ -50,6 +50,7 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
       /router\.push\(result\.href\);\s*router\.refresh\(\)/,
     );
     assert.match(panel, /Failed to find Server Action/);
+    assert.match(panel, /Server Action \.\* was not found/);
   });
 
   it("Lead detail fails fast instead of infinite loading skeleton", () => {

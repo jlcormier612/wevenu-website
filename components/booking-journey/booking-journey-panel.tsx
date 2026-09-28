@@ -86,7 +86,7 @@ export function BookingJourneyPanel({
         window.location.assign(result.href);
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
-        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+        if (/Failed to find Server Action|Server Action .* was not found|older or newer deployment/i.test(message)) {
           toast.error("The app was updated. Stay on this page, reload once, then try Create contract again.");
         } else if (message.trim()) {
           toast.error(message);
@@ -203,7 +203,7 @@ export function BookingJourneyPanel({
         router.refresh();
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
-        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+        if (/Failed to find Server Action|Server Action .* was not found|older or newer deployment/i.test(message)) {
           toast.error("The app was updated — reload this page and try Create share link again.");
         } else {
           toast.error("Could not create the share link. Reload and try again.");
