@@ -9,6 +9,21 @@ import { isSupabaseConfigured } from "@/lib/env";
 
 export type AuthFormState = {
   error?: string;
+  /**
+   * Where the browser should go after a successful sign-in.
+   *
+   * This is returned to the client instead of being handled by `redirect()`
+   * because the venue workspace layout runs its own gates (ownership, intake,
+   * graduation, suspension) and redirects again. A `redirect()` from inside a
+   * Server Action whose destination redirects a second time leaves the App
+   * Router unable to reconcile the tree: it refetches the destination RSC
+   * payload forever — each response a valid 200 — and the customer is left on
+   * a permanently blank page. A full-document navigation turns that second
+   * gate back into an ordinary HTTP redirect, which works.
+   *
+   * It also guarantees every layout sees the freshly written session cookie.
+   */
+  redirectTo?: string;
 };
 
 /**
@@ -60,7 +75,7 @@ export async function signIn(
     (venueLock.access_disabled === true ||
       venueLock.account_status === "suspended")
   ) {
-    redirect("/billing/suspended");
+    return { redirectTo: "/billing/suspended" };
   }
 
   // Prefer ?next= (e.g. /vendor/accept?token=…) so invitation claimers return
@@ -69,12 +84,12 @@ export async function signIn(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/login");
+    return { redirectTo: "/login" };
   }
 
-  redirect(
-    await resolveAuthenticatedHomePath(supabase, user.id, { next }),
-  );
+  return {
+    redirectTo: await resolveAuthenticatedHomePath(supabase, user.id, { next }),
+  };
 }
 
 /**

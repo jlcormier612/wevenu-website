@@ -12,11 +12,14 @@ import { Label } from "@/components/ui/label";
 
 const INITIAL_STATE: AuthFormState = {};
 
-function SubmitButton() {
+function SubmitButton({ redirecting }: { redirecting: boolean }) {
   const { pending } = useFormStatus();
+  // Stay disabled through the handoff: the action has resolved by then, so
+  // `pending` is false while the browser is still navigating away.
+  const busy = pending || redirecting;
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? (
+    <Button type="submit" className="w-full" disabled={busy}>
+      {busy ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Signing in…
@@ -31,6 +34,14 @@ function SubmitButton() {
 export function LoginForm({ next }: { next?: string }) {
   const [state, formAction] = React.useActionState(signIn, INITIAL_STATE);
   const [showPassword, setShowPassword] = React.useState(false);
+
+  // Full-document navigation, not router.push: the workspace layout gates
+  // (ownership / intake / graduation / suspension) redirect again, and a
+  // client-side navigation into a route that redirects leaves the App Router
+  // refetching the destination forever on a blank page. See AuthFormState.
+  React.useEffect(() => {
+    if (state.redirectTo) window.location.assign(state.redirectTo);
+  }, [state.redirectTo]);
 
   // Defensive: an error message that isn't a real, readable string (empty,
   // or a stringified empty object from an unexpected upstream response)
@@ -90,7 +101,7 @@ export function LoginForm({ next }: { next?: string }) {
         </p>
       ) : null}
 
-      <SubmitButton />
+      <SubmitButton redirecting={Boolean(state.redirectTo)} />
     </form>
   );
 }
