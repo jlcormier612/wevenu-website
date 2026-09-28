@@ -52,13 +52,6 @@ describe("Wedding Venue Agreement starter", () => {
       eventDate: "2027-06-12",
       eventType: "wedding",
       guestCount: 120,
-      eventSpaces: "Ballroom",
-      coordinatorName: "Jordan",
-      packageSection: "Classic Wedding Package",
-      includedItemsSummary: "• Tables",
-      additionalItemsSummary: "• Extra hour",
-      paymentScheduleSummary: "• Deposit $1,000",
-      contractTotal: "$10,000",
       contractTitle: "Wedding Venue Agreement",
     });
     const merged = mergeContent(filledPolicies, data);
@@ -77,6 +70,10 @@ describe("Wedding Venue Agreement starter", () => {
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{balance_remaining\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{package_section\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{contract_total\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{payment_schedule_summary\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{vendors_on_file\}\}/);
   });
 

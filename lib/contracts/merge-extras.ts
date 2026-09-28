@@ -10,6 +10,12 @@ export const MISSING_VENUE_ACCESS_HOURS = "Venue access hours are not listed yet
 export const MISSING_CEREMONY_SUMMARY = "Ceremony details are not listed yet.";
 export const MISSING_RECEPTION_SUMMARY = "Reception details are not listed yet.";
 export const MISSING_BALANCE_REMAINING = "Balance remaining is not listed yet.";
+export const MISSING_CONTRACT_TOTAL = "Total contracted amount is not listed yet.";
+export const MISSING_PACKAGE_SECTION = "No package is currently selected for this booking.";
+export const MISSING_INCLUDED_ITEMS = "No included items are listed on this booking yet.";
+export const MISSING_ADDITIONAL_ITEMS = "No additional or optional items are listed on this booking yet.";
+export const MISSING_PAYMENT_SCHEDULE = "No payment schedule is on file for this celebration yet.";
+export const MISSING_COORDINATOR_NAME = "Your venue team";
 
 /** Join required client signer names for contract party wording. */
 export function formatRequiredClientPartyName(signerNames: string[]): string {

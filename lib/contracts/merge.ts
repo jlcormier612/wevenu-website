@@ -1,17 +1,25 @@
 /**
  * Contract merge-field resolution.
- * Tokens left out of the map when values are unknown — never silently blanked,
- * except known operational fields which always receive an honest fallback so
- * customer-facing Preview/Send never shows raw {{tokens}} for those keys.
+ *
+ * Advertised Smart Fields live in MERGE_FIELDS. Legacy operational tokens
+ * (removed from the picker) still always resolve with an honest value so
+ * older drafts never surface raw {{tokens}} at Preview/Review/Send.
  */
 import { formatContractDate } from "@/lib/contracts/constants";
+import { EMPTY_EVENT_SPACES_LABEL } from "@/lib/contracts/event-spaces-merge";
 import {
   formatBalanceRemaining,
   formatCeremonyOrReceptionSummary,
   formatRequiredClientPartyName,
   formatVenueAccessHours,
+  MISSING_ADDITIONAL_ITEMS,
   MISSING_BALANCE_REMAINING,
   MISSING_CEREMONY_SUMMARY,
+  MISSING_CONTRACT_TOTAL,
+  MISSING_COORDINATOR_NAME,
+  MISSING_INCLUDED_ITEMS,
+  MISSING_PACKAGE_SECTION,
+  MISSING_PAYMENT_SCHEDULE,
   MISSING_RECEPTION_SUMMARY,
   MISSING_VENUE_ACCESS_HOURS,
 } from "@/lib/contracts/merge-extras";
@@ -56,7 +64,7 @@ function setIfPresent(data: MergeData, key: string, value: string | null | undef
   if (value != null && value !== "") data[key] = value;
 }
 
-/** Build the MergeData map. Optional tokens are omitted when unknown. */
+/** Build the MergeData map. Legacy operational keys always receive a value. */
 export function buildMergeData(ctx: MergeContext): MergeData {
   const today = new Date().toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
@@ -77,7 +85,7 @@ export function buildMergeData(ctx: MergeContext): MergeData {
     venue_name: ctx.venueName,
     client_name: clientName,
     today_date: today,
-    contract_title: ctx.contractTitle,
+    contract_title: ctx.contractTitle || "Agreement",
   };
 
   setIfPresent(data, "first_name", ctx.clientFirstName);
@@ -92,15 +100,15 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.event_date = ctx.eventDate ? formatContractDate(ctx.eventDate) : "Date to be confirmed";
   data.event_type = eventTypePretty || "Celebration";
   data.guest_count = ctx.guestCount != null ? String(ctx.guestCount) : "To be confirmed";
-  setIfPresent(data, "event_spaces", ctx.eventSpaces);
-  setIfPresent(data, "coordinator_name", ctx.coordinatorName);
-  setIfPresent(data, "package_section", ctx.packageSection);
-  setIfPresent(data, "included_items_summary", ctx.includedItemsSummary);
-  setIfPresent(data, "additional_items_summary", ctx.additionalItemsSummary);
-  setIfPresent(data, "payment_schedule_summary", ctx.paymentScheduleSummary);
-  setIfPresent(data, "contract_total", ctx.contractTotal);
 
-  // Always resolve these keys so legacy Library templates never leave raw tokens.
+  // Legacy (removed from picker) — always resolve so older drafts never show raw tokens.
+  data.event_spaces = ctx.eventSpaces?.trim() || EMPTY_EVENT_SPACES_LABEL;
+  data.coordinator_name = ctx.coordinatorName?.trim() || MISSING_COORDINATOR_NAME;
+  data.package_section = ctx.packageSection?.trim() || MISSING_PACKAGE_SECTION;
+  data.included_items_summary = ctx.includedItemsSummary?.trim() || MISSING_INCLUDED_ITEMS;
+  data.additional_items_summary = ctx.additionalItemsSummary?.trim() || MISSING_ADDITIONAL_ITEMS;
+  data.payment_schedule_summary = ctx.paymentScheduleSummary?.trim() || MISSING_PAYMENT_SCHEDULE;
+  data.contract_total = ctx.contractTotal?.trim() || MISSING_CONTRACT_TOTAL;
   data.venue_access_hours = ctx.venueAccessHours?.trim() || MISSING_VENUE_ACCESS_HOURS;
   data.ceremony_summary = ctx.ceremonySummary?.trim() || MISSING_CEREMONY_SUMMARY;
   data.reception_summary = ctx.receptionSummary?.trim() || MISSING_RECEPTION_SUMMARY;

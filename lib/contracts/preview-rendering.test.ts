@@ -51,7 +51,7 @@ describe("contract branding presentation", () => {
   });
 });
 
-describe("deferred/operational token resolution", () => {
+describe("legacy operational token resolution (removed from picker)", () => {
   it("resolves balance_remaining, venue_access_hours, ceremony_summary, reception_summary when present", () => {
     const data = buildMergeData({
       venueName: "Jen's Fancy Venue",
@@ -118,15 +118,18 @@ describe("deferred/operational token resolution", () => {
     assert.doesNotMatch(body, /\{\{/);
   });
 
-  it("exposes the four fields in the Contract Builder picker", () => {
+  it("does not advertise removed operational fields in the Contract Builder picker", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
     for (const key of [
       "balance_remaining",
       "venue_access_hours",
       "ceremony_summary",
       "reception_summary",
+      "event_spaces",
+      "package_section",
+      "contract_total",
     ]) {
-      assert.ok(keys.includes(key), key);
+      assert.ok(!keys.includes(key), key);
     }
   });
 });

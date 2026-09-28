@@ -6,6 +6,10 @@
  * policy language. Venue-owned sections use explicit placeholders.
  *
  * Masters are code fixtures. Venue Library copies are independent rows.
+ *
+ * Smart Fields in this body must be a subset of MERGE_FIELDS (approved catalog).
+ * Operational package/payment/space tokens are intentionally NOT starter fields —
+ * venues describe those terms in policy placeholders until productized.
  */
 
 import { extractTokens } from "@/lib/shared-merge/tokens";
@@ -21,7 +25,7 @@ export const WEDDING_VENUE_AGREEMENT_DESCRIPTION =
   "A professionally structured starting point for your venue agreement. Add your venue's approved policies and terms, then customize it to make it your own.";
 
 /**
- * Starter body. Tokens use real supported merge fields.
+ * Starter body. Tokens use only the approved customer-facing Smart Field catalog.
  * Policy sections deliberately use the same "Add your venue's approved … here."
  * pattern so send-time safety can block untouched placeholders.
  */
@@ -50,17 +54,12 @@ Event
 Event Date: {{event_date}}
 Event Type: {{event_type}}
 Guest Count: {{guest_count}}
-Event Spaces: {{event_spaces}}
-Coordinator: {{coordinator_name}}
 
 ────────────────────────────────
 EVENT SCHEDULE
 ────────────────────────────────
 Event Date
 {{event_date}}
-
-Event Spaces
-{{event_spaces}}
 
 Venue Access / Event Hours
 Add your venue's approved access hours and event-day timing language here.
@@ -76,29 +75,22 @@ VENUE & EVENT SPACES
 ────────────────────────────────
 The event will take place at {{venue_name}} using the spaces included in the booking.
 
-{{event_spaces}}
+Add your venue's approved description of the event spaces and any space-use terms here.
 
 ────────────────────────────────
 SERVICES & PACKAGE
 ────────────────────────────────
-{{package_section}}
+Add your venue's approved description of the selected package, included services, and any package-specific terms here.
 
 ────────────────────────────────
 INCLUDED ITEMS & SERVICES
 ────────────────────────────────
-Included
-{{included_items_summary}}
-
-Additional / Optional
-{{additional_items_summary}}
+Add your venue's approved list of included items and services here, or reference the booking package on file.
 
 ────────────────────────────────
-PAYMENT SCHEDULE
+PAYMENT
 ────────────────────────────────
-{{payment_schedule_summary}}
-
-Total contracted amount
-{{contract_total}}
+Add your venue's approved payment schedule, deposit, balance due, and late-payment terms here.
 
 ────────────────────────────────
 VENUE POLICIES
@@ -228,7 +220,7 @@ export function getContractStarterMaster(key: string): ContractStarterMaster | u
   return CONTRACT_STARTER_MASTERS.find((m) => m.key === key);
 }
 
-/** Detect untouched venue-policy placeholder sentences. */
+/** Detect untouched venue-policy placeholders. */
 export function findUntouchedPolicyPlaceholders(content: string): string[] {
   const matches = content.match(
     new RegExp(`${VENUE_POLICY_PLACEHOLDER_MARKER}[^.\\n]*\\.`, "gi"),

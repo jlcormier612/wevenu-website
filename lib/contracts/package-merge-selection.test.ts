@@ -35,7 +35,9 @@ describe("resolveActiveCommercialSelection wiring", () => {
     const src = readFileSync(join(root, "lib/contracts/service.ts"), "utf8");
     assert.match(src, /if \(!packageFromSelection\)/);
     assert.match(src, /contractTotal = fmt\(detail\.totalAmount\)/);
-    assert.doesNotMatch(src, /balanceRemaining/);
+    // Selection remaining seeds balance; schedule remaining overrides when a plan exists.
+    assert.match(src, /remainingAmount\(selection\.totalAmount/);
+    assert.match(src, /balanceRemaining = formatBalanceRemaining\(totals\.remaining\)/);
   });
 
   it("ensureCommercialCustomer resolves superseded selection ids", () => {
@@ -59,8 +61,10 @@ describe("resolveActiveCommercialSelection wiring", () => {
 
 describe("package merge field semantics (source contracts)", () => {
   it("default no-package copy remains the empty-state message", () => {
-    const src = readFileSync(join(root, "lib/contracts/service.ts"), "utf8");
-    assert.match(src, /No package is currently selected for this booking\./);
+    const src = readFileSync(join(root, "lib/contracts/merge-extras.ts"), "utf8");
+    assert.match(src, /MISSING_PACKAGE_SECTION = "No package is currently selected for this booking\."/);
+    const service = readFileSync(join(root, "lib/contracts/service.ts"), "utf8");
+    assert.match(service, /MISSING_PACKAGE_SECTION/);
   });
 
   it("formatPackageSection includes totals used by contract merge", () => {

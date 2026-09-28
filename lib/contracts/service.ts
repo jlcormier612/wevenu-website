@@ -12,6 +12,11 @@ import {
   formatCeremonyOrReceptionSummary,
   formatContractTotalAmount,
   formatVenueAccessHours,
+  MISSING_ADDITIONAL_ITEMS,
+  MISSING_COORDINATOR_NAME,
+  MISSING_INCLUDED_ITEMS,
+  MISSING_PACKAGE_SECTION,
+  MISSING_PAYMENT_SCHEDULE,
 } from "@/lib/contracts/merge-extras";
 import {
   EMPTY_EVENT_SPACES_LABEL,
@@ -19,6 +24,7 @@ import {
   resolveEventSpacesLabel,
 } from "@/lib/contracts/event-spaces-merge";
 import { getSpaces } from "@/lib/availability/service";
+import { remainingAmount } from "@/lib/commercial-selections/constants";
 import { getEventIdForClient } from "@/lib/events/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getQuestionnaire } from "@/lib/events/questionnaire";
@@ -479,10 +485,11 @@ export async function buildContractMergeData(opts: {
 
   let eventSpaces = EMPTY_EVENT_SPACES_LABEL;
   // Package / payment contractual fields — filled only from existing SoT at contract time.
-  let packageSection = "No package is currently selected for this booking.";
-  let includedItemsSummary = "No included items are listed on this booking yet.";
-  let additionalItemsSummary = "No additional or optional items are listed on this booking yet.";
-  let paymentScheduleSummary = "No payment schedule is on file for this celebration yet.";
+  // (Legacy merge keys — removed from the customer-facing picker/catalog.)
+  let packageSection = MISSING_PACKAGE_SECTION;
+  let includedItemsSummary = MISSING_INCLUDED_ITEMS;
+  let additionalItemsSummary = MISSING_ADDITIONAL_ITEMS;
+  let paymentScheduleSummary = MISSING_PAYMENT_SCHEDULE;
   let contractTotal: string | null = null;
   let balanceRemaining: string | null = null;
   let coordinatorName: string | null = null;
@@ -491,6 +498,8 @@ export async function buildContractMergeData(opts: {
   let receptionSpaceLabel: string | null = null;
 
   // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
+  // Financial SoT for total / deposit / remaining when no payment schedule exists:
+  // commercial_selections.total_amount and deposit_amount (same numbers as formatPackageSection).
   try {
     const { resolveActiveCommercialSelection } =
       await import("@/lib/commercial-selections/service");
@@ -511,6 +520,10 @@ export async function buildContractMergeData(opts: {
           .join("\n");
       }
       contractTotal = formatContractTotalAmount(selection.totalAmount);
+      // Same remaining as package_section Remaining line — one calculation path.
+      balanceRemaining = formatBalanceRemaining(
+        remainingAmount(selection.totalAmount, selection.depositAmount ?? 0),
+      );
     }
   } catch { /* selection optional */ }
 
@@ -560,10 +573,7 @@ export async function buildContractMergeData(opts: {
       plannedEventSpaceId,
       assignments,
     });
-    // Venue has no space concepts configured / assigned — omit empty chrome.
-    if (eventSpaces === EMPTY_EVENT_SPACES_LABEL) {
-      eventSpaces = "";
-    }
+    // Keep EMPTY_EVENT_SPACES_LABEL when unset — legacy {{event_spaces}} always resolves.
 
     const ceremonyAsg = assignments.find((a) => a.useKey === "ceremony");
     const receptionAsg = assignments.find((a) => a.useKey === "reception");
@@ -612,6 +622,8 @@ export async function buildContractMergeData(opts: {
             })
             .join("\n");
           const totals = computePortalScheduleTotals(detail.lineItems);
+          // Payment schedule remaining overrides selection projection once a plan exists
+          // (includes paid line status from the authoritative schedule totals).
           balanceRemaining = formatBalanceRemaining(totals.remaining);
           if (!packageFromSelection) {
             contractTotal = fmt(detail.totalAmount);
@@ -679,12 +691,12 @@ export async function buildContractMergeData(opts: {
     eventType: event?.eventType ?? client?.eventType ?? null,
     guestCount: event?.guestCount ?? client?.guestCount ?? null,
     eventSpaces,
-    coordinatorName: coordinatorName || "Your venue team",
+    coordinatorName: coordinatorName || MISSING_COORDINATOR_NAME,
     packageSection,
     includedItemsSummary,
     additionalItemsSummary,
     paymentScheduleSummary,
-    contractTotal: contractTotal ?? "See payment schedule",
+    contractTotal,
     contractTitle: opts.contractTitle ?? "",
     venueAccessHours,
     ceremonySummary,

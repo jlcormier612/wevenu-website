@@ -5,6 +5,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { REMOVED_MERGE_FIELD_KEYS } from "@/lib/contracts/constants";
 import {
   CONTRACT_STARTER_MASTERS,
   getContractStarterMaster,
@@ -13,6 +14,11 @@ import {
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
+
+/** True when template content still advertises removed Smart Field tokens. */
+export function starterContentHasRemovedSmartFields(content: string): boolean {
+  return REMOVED_MERGE_FIELD_KEYS.some((key) => content.includes(`{{${key}}}`));
+}
 
 async function insertStarter(client: DbClient, venueId: string, name: string, description: string, content: string, sourceMasterKey: string, isDefault: boolean) {
   if (isDefault) {
@@ -33,15 +39,29 @@ async function insertStarter(client: DbClient, venueId: string, name: string, de
 export async function provisionContractStarters(
   client: DbClient,
   venueId: string,
-): Promise<{ created: string[]; skipped: string[] }> {
+): Promise<{ created: string[]; skipped: string[]; refreshed: string[] }> {
   const created: string[] = [];
   const skipped: string[] = [];
+  const refreshed: string[] = [];
 
   for (const master of CONTRACT_STARTER_MASTERS) {
     const { data: byKey } = await client.from("contract_templates")
-      .select("id").eq("venue_id", venueId).eq("source_master_key", master.key).limit(1).maybeSingle();
+      .select("id, content").eq("venue_id", venueId).eq("source_master_key", master.key).limit(1).maybeSingle();
     if (byKey) {
-      skipped.push(master.key);
+      // System starter still polluted with removed catalog tokens → refresh from master.
+      // Does not touch customer-authored templates (source_master_key null).
+      if (starterContentHasRemovedSmartFields(byKey.content ?? "")) {
+        const { error } = await client
+          .from("contract_templates")
+          .update({ content: master.content })
+          .eq("id", byKey.id)
+          .eq("venue_id", venueId)
+          .eq("source_master_key", master.key);
+        if (error) throw error;
+        refreshed.push(master.key);
+      } else {
+        skipped.push(master.key);
+      }
       continue;
     }
 
@@ -60,7 +80,7 @@ export async function provisionContractStarters(
     await insertStarter(client, venueId, master.name, master.description, master.content, master.key, makeDefault);
     created.push(master.key);
   }
-  return { created, skipped };
+  return { created, skipped, refreshed };
 }
 
 export async function seedContractStarters(venueId: string): Promise<void> {
@@ -69,11 +89,13 @@ export async function seedContractStarters(venueId: string): Promise<void> {
 }
 
 export async function ensureContractStartersForCurrentVenue(): Promise<{
-  ok: boolean; created: string[]; skipped: string[]; message?: string;
+  ok: boolean; created: string[]; skipped: string[]; refreshed: string[]; message?: string;
 }> {
-  if (!isSupabaseConfigured) return { ok: false, created: [], skipped: [], message: "Backend not configured." };
+  if (!isSupabaseConfigured) {
+    return { ok: false, created: [], skipped: [], refreshed: [], message: "Backend not configured." };
+  }
   const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, created: [], skipped: [], message: "No venue found." };
+  if (!venue) return { ok: false, created: [], skipped: [], refreshed: [], message: "No venue found." };
   const result = await provisionContractStarters(await createClient(), venue.id);
   return { ok: true, ...result };
 }

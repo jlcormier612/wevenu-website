@@ -16,9 +16,11 @@ export type MergeFieldMeta = {
 };
 
 /**
- * Standard Contract Builder Smart Fields — values with a legitimate
- * source of truth at contract author/send time (or an honest fallback when
- * that source is not yet filled). Vendor lists remain deferred.
+ * Customer-facing Contract Builder Smart Fields.
+ *
+ * Only intentionally supported, authoritative, useful fields belong here.
+ * Resolvers may still materialize legacy tokens for older drafts — those keys
+ * must NOT reappear in this picker catalog.
  */
 export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "venue_name", label: "Venue Name", description: "Your venue's name" },
@@ -39,20 +41,24 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "event_date", label: "Event Date", description: "Formatted event date" },
   { key: "event_type", label: "Event Type", description: "Type of event" },
   { key: "guest_count", label: "Guest Count", description: "Number of guests" },
-  { key: "event_spaces", label: "Event Spaces", description: "Spaces already chosen for this booking" },
-  { key: "venue_access_hours", label: "Venue Access Hours", description: "Event setup / start / end / teardown when on file" },
-  { key: "ceremony_summary", label: "Ceremony Summary", description: "Ceremony location and time from Final Details or space assignments" },
-  { key: "reception_summary", label: "Reception Summary", description: "Reception location and time from Final Details or space assignments" },
-  { key: "coordinator_name", label: "Coordinator", description: "Venue coordinator / owner name" },
-  { key: "package_section", label: "Package", description: "Selected package summary" },
-  { key: "included_items_summary", label: "Included Items", description: "Package-defined included services/items" },
-  { key: "additional_items_summary", label: "Additional Items", description: "Additional / optional items already on the order" },
-  { key: "payment_schedule_summary", label: "Payment Schedule", description: "Payment plan lines on file" },
-  { key: "contract_total", label: "Contract Total", description: "Total contracted amount" },
-  { key: "balance_remaining", label: "Balance Remaining", description: "Remaining balance on the payment plan when on file" },
   { key: "today_date", label: "Today's Date", description: "Date the agreement is generated" },
   { key: "contract_title", label: "Contract Title", description: "Title of this agreement" },
 ];
+
+/** Keys intentionally removed from the customer-facing catalog (legacy resolve only). */
+export const REMOVED_MERGE_FIELD_KEYS = [
+  "event_spaces",
+  "venue_access_hours",
+  "ceremony_summary",
+  "reception_summary",
+  "coordinator_name",
+  "package_section",
+  "included_items_summary",
+  "additional_items_summary",
+  "payment_schedule_summary",
+  "contract_total",
+  "balance_remaining",
+] as const;
 
 /** Deferred — not in the standard picker (no contract-time SoT). */
 export const DEFERRED_MERGE_FIELD_KEYS = [

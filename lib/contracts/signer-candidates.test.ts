@@ -140,18 +140,21 @@ describe("signer candidates from client relationship", () => {
 });
 
 describe("contract-time Smart Fields", () => {
-  it("excludes vendors_on_file from the standard picker; includes payment/event schedule fields", () => {
+  it("excludes vendors_on_file and removed operational fields from the standard picker", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
     for (const deferred of DEFERRED_MERGE_FIELD_KEYS) {
       assert.ok(!keys.includes(deferred), deferred);
     }
-    assert.ok(keys.includes("package_section"));
-    assert.ok(keys.includes("contract_total"));
-    assert.ok(keys.includes("balance_remaining"));
-    assert.ok(keys.includes("venue_access_hours"));
-    assert.ok(keys.includes("ceremony_summary"));
-    assert.ok(keys.includes("reception_summary"));
+    assert.ok(!keys.includes("package_section"));
+    assert.ok(!keys.includes("contract_total"));
+    assert.ok(!keys.includes("balance_remaining"));
+    assert.ok(!keys.includes("venue_access_hours"));
+    assert.ok(!keys.includes("ceremony_summary"));
+    assert.ok(!keys.includes("reception_summary"));
+    assert.ok(!keys.includes("event_spaces"));
     assert.ok(keys.includes("client_name"));
+    assert.ok(keys.includes("venue_name"));
+    assert.ok(keys.includes("event_date"));
     assert.ok(!keys.includes("couple_name"));
     assert.ok(!keys.includes("partner_name"));
     assert.ok(!keys.includes("full_name"));
