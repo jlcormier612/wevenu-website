@@ -17,7 +17,10 @@ import {
   MISSING_BALANCE_REMAINING,
   MISSING_PAYMENT_SCHEDULE,
 } from "@/lib/contracts/merge-extras";
-import { starterContentHasRemovedSmartFields } from "@/lib/contracts/provision";
+import {
+  starterContentHasRemovedSmartFields,
+  starterContentNeedsSupportedSmartFieldRestore,
+} from "@/lib/contracts/provision";
 import { WEDDING_VENUE_AGREEMENT_CONTENT } from "@/lib/contracts/starters";
 
 describe("balance / package Remaining consistency", () => {
@@ -102,8 +105,16 @@ describe("starter catalog hygiene", () => {
 
   it("detects polluted starter content", () => {
     assert.equal(
-      starterContentHasRemovedSmartFields("Balance {{balance_remaining}}\n{{event_spaces}}"),
+      starterContentHasRemovedSmartFields("Hours {{venue_access_hours}}\n{{ceremony_summary}}"),
       true,
     );
+  });
+
+  it("detects the stripped 078 starter that is missing booking-backed tokens", () => {
+    assert.equal(
+      starterContentNeedsSupportedSmartFieldRestore("Venue {{venue_name}}\nClient {{client_name}}"),
+      true,
+    );
+    assert.equal(starterContentNeedsSupportedSmartFieldRestore(WEDDING_VENUE_AGREEMENT_CONTENT), false);
   });
 });

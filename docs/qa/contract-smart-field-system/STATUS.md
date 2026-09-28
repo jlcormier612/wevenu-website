@@ -1,29 +1,37 @@
 # Contract Smart Field System — Status
 
 **Date:** 2026-09-28  
-**STATUS:** NOT GREEN — NOT READY FOR JENNIFER
+**STATUS:** NOT GREEN — forensic restore in progress (not ready for Jennifer)
 
-## Prior claim
+## Product decision (locked)
 
-Voided by Jennifer browser acceptance (Remaining $11,250 vs Balance “not listed yet”; polluted starter/picker).
+A Contract Smart Field is allowed when a real authoritative source exists.  
+Do **not** remove event space / package / amount / payment because a sibling field had a bug.
 
-## Implementation (commit `22f09ea4`)
+Full table: `docs/qa/contract-smart-field-system/RECONCILIATION.md`
 
-- Forensic audit: `docs/qa/contract-smart-field-system/AUDIT.md`
-- Approved picker catalog only: venue/client/event identity + `today_date` + `contract_title`
-- Removed from picker + CTR-01 starter: `event_spaces`, `venue_access_hours`, `ceremony_summary`, `reception_summary`, `coordinator_name`, `package_section`, `included_items_summary`, `additional_items_summary`, `payment_schedule_summary`, `contract_total`, `balance_remaining`
-- Legacy resolve retained for old drafts; `balance_remaining` now uses selection `remainingAmount(total, deposit)` when no payment schedule (same SoT as package Remaining)
-- Idempotent migration `20261407800000_contract_starter_ctr01_approved_smart_fields.sql` + provision refresh for polluted `source_master_key = CTR-01` rows
-- Automated tests: 132/132 contract suite pass
+## `22f09ea4` overcorrection
+
+Removed booking-backed fields that already have SoT (`event_spaces`, `package_section`, included/additional items, `payment_schedule_summary`, `contract_total`, `balance_remaining`) and stripped Sandbox CTR-01 via `202614078`.
+
+## Restore (this pass)
+
+- Picker KEEP list restored (spaces, package, items, payment, total, balance)
+- REMOVED catalog is only `venue_access_hours`, `ceremony_summary`, `reception_summary`, `coordinator_name`
+- CTR-01 master + migration `20261408100000_contract_starter_ctr01_restore_booking_smart_fields.sql`
+- Provision refreshes stripped `source_master_key = CTR-01` rows; customer-authored (`NULL`) untouched
+- Dual-source `balance_remaining` preserved (schedule remaining, else selection remaining; never invent)
 
 ## In flight
 
 | Gate | Status |
 | --- | --- |
-| Deploy Sandbox | https://github.com/jlcormier612/wevenu-website/actions/runs/36367405258 (`22f09ea4`) |
-| Apply CTR-01 migration | https://github.com/jlcormier612/wevenu-website/actions/runs/36367421090 |
-| Exact image / PRIMARY / health | pending deploy |
-| Human-facing Preview/Review/Send/picker/persistence | blocked on exact image |
+| Reconciliation table | done — `RECONCILIATION.md` |
+| Code + tests | in progress |
+| Deploy Sandbox | pending |
+| Apply CTR-01 restore migration | pending |
+| Exact image / PRIMARY / health | pending |
+| Human-facing Preview/Review/Send/picker/persistence | pending |
 
 ## Handoff rule
 

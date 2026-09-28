@@ -69,11 +69,13 @@ describe("Wedding Venue Agreement starter", () => {
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{venue_access_hours\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{balance_remaining\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{package_section\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{contract_total\}\}/);
-    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{payment_schedule_summary\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{coordinator_name\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{package_section\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{contract_total\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{payment_schedule_summary\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{balance_remaining\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{included_items_summary\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{vendors_on_file\}\}/);
   });
 

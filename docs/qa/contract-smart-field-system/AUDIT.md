@@ -164,3 +164,13 @@ Code master (`starters.ts` at audit time) already diverged: ceremony/hours are p
 4. Legacy resolution: keep resolving removed keys in `buildMergeData` / `buildContractMergeData` for old drafts; **fix `balance_remaining` SoT** to use selection remaining (`total − deposit`) when no payment schedule exists so in-flight polluted content is not contradictory.  
 5. Tests: catalog/picker/starter/migration/balance consistency + signer regressions.  
 6. Deploy + human-facing proof on exact image — only then GREEN.
+
+---
+
+## 2026-09-28 product correction (supersedes KEEP/REMOVE matrix above)
+
+Jennifer locked: remove only fields with **no reliable source**. Preserve and repair fields with real booking/proposal SoT.
+
+`22f09ea4` overcorrected. The matrix rows that marked `event_spaces`, `package_section`, included/additional items, `payment_schedule_summary`, `contract_total`, and `balance_remaining` as **REMOVE** are **void**.
+
+Authoritative table and A/B/C/D: `docs/qa/contract-smart-field-system/RECONCILIATION.md`.

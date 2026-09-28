@@ -8,8 +8,8 @@
  * Masters are code fixtures. Venue Library copies are independent rows.
  *
  * Smart Fields in this body must be a subset of MERGE_FIELDS (approved catalog).
- * Operational package/payment/space tokens are intentionally NOT starter fields —
- * venues describe those terms in policy placeholders until productized.
+ * Booking-backed fields (spaces, package, totals, payment) stay as tokens.
+ * Ceremony / access-hour summaries are policy placeholders — no reliable SoT.
  */
 
 import { extractTokens } from "@/lib/shared-merge/tokens";
@@ -54,6 +54,7 @@ Event
 Event Date: {{event_date}}
 Event Type: {{event_type}}
 Guest Count: {{guest_count}}
+Event Spaces: {{event_spaces}}
 
 ────────────────────────────────
 EVENT SCHEDULE
@@ -75,22 +76,38 @@ VENUE & EVENT SPACES
 ────────────────────────────────
 The event will take place at {{venue_name}} using the spaces included in the booking.
 
-Add your venue's approved description of the event spaces and any space-use terms here.
+{{event_spaces}}
 
 ────────────────────────────────
 SERVICES & PACKAGE
 ────────────────────────────────
-Add your venue's approved description of the selected package, included services, and any package-specific terms here.
+{{package_section}}
+
+Total contracted amount
+{{contract_total}}
 
 ────────────────────────────────
 INCLUDED ITEMS & SERVICES
 ────────────────────────────────
-Add your venue's approved list of included items and services here, or reference the booking package on file.
+Included
+{{included_items_summary}}
+
+Additional / Optional
+{{additional_items_summary}}
 
 ────────────────────────────────
 PAYMENT
 ────────────────────────────────
-Add your venue's approved payment schedule, deposit, balance due, and late-payment terms here.
+{{payment_schedule_summary}}
+
+Total contracted amount
+{{contract_total}}
+
+Balance remaining
+{{balance_remaining}}
+
+Balance remaining (confirmation)
+{{balance_remaining}}
 
 ────────────────────────────────
 VENUE POLICIES

@@ -484,8 +484,7 @@ export async function buildContractMergeData(opts: {
   const venueAddress = addressParts.length > 0 ? addressParts.join("\n") : null;
 
   let eventSpaces = EMPTY_EVENT_SPACES_LABEL;
-  // Package / payment contractual fields — filled only from existing SoT at contract time.
-  // (Legacy merge keys — removed from the customer-facing picker/catalog.)
+  // Package / payment / space fields — filled only from existing SoT at contract time.
   let packageSection = MISSING_PACKAGE_SECTION;
   let includedItemsSummary = MISSING_INCLUDED_ITEMS;
   let additionalItemsSummary = MISSING_ADDITIONAL_ITEMS;

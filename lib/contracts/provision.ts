@@ -15,9 +15,29 @@ import { getCurrentVenue } from "@/lib/venue/service";
 
 type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
 
+/** Booking-backed tokens the CTR-01 master must contain after the 22f09ea4 restore. */
+export const REQUIRED_CTR01_SMART_FIELDS = [
+  "event_spaces",
+  "package_section",
+  "included_items_summary",
+  "additional_items_summary",
+  "payment_schedule_summary",
+  "contract_total",
+  "balance_remaining",
+] as const;
+
 /** True when template content still advertises removed Smart Field tokens. */
 export function starterContentHasRemovedSmartFields(content: string): boolean {
   return REMOVED_MERGE_FIELD_KEYS.some((key) => content.includes(`{{${key}}}`));
+}
+
+/** True when a system CTR-01 row is still the stripped 078 / 22f09ea4 body. */
+export function starterContentNeedsSupportedSmartFieldRestore(content: string): boolean {
+  return REQUIRED_CTR01_SMART_FIELDS.some((key) => !content.includes(`{{${key}}}`));
+}
+
+export function starterContentShouldRefreshFromMaster(content: string): boolean {
+  return starterContentHasRemovedSmartFields(content) || starterContentNeedsSupportedSmartFieldRestore(content);
 }
 
 async function insertStarter(client: DbClient, venueId: string, name: string, description: string, content: string, sourceMasterKey: string, isDefault: boolean) {
@@ -48,9 +68,9 @@ export async function provisionContractStarters(
     const { data: byKey } = await client.from("contract_templates")
       .select("id, content").eq("venue_id", venueId).eq("source_master_key", master.key).limit(1).maybeSingle();
     if (byKey) {
-      // System starter still polluted with removed catalog tokens → refresh from master.
+      // System starter still stripped (078) or still has removed tokens → refresh from master.
       // Does not touch customer-authored templates (source_master_key null).
-      if (starterContentHasRemovedSmartFields(byKey.content ?? "")) {
+      if (starterContentShouldRefreshFromMaster(byKey.content ?? "")) {
         const { error } = await client
           .from("contract_templates")
           .update({ content: master.content })

@@ -51,7 +51,7 @@ describe("contract branding presentation", () => {
   });
 });
 
-describe("legacy operational token resolution (removed from picker)", () => {
+describe("operational token resolution (advertised + legacy)", () => {
   it("resolves balance_remaining, venue_access_hours, ceremony_summary, reception_summary when present", () => {
     const data = buildMergeData({
       venueName: "Jen's Fancy Venue",
@@ -118,19 +118,43 @@ describe("legacy operational token resolution (removed from picker)", () => {
     assert.doesNotMatch(body, /\{\{/);
   });
 
-  it("does not advertise removed operational fields in the Contract Builder picker", () => {
+  it("advertises booking-backed fields and omits unsupported hour/ceremony fields", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
     for (const key of [
-      "balance_remaining",
-      "venue_access_hours",
-      "ceremony_summary",
-      "reception_summary",
       "event_spaces",
       "package_section",
+      "included_items_summary",
+      "additional_items_summary",
+      "payment_schedule_summary",
       "contract_total",
+      "balance_remaining",
     ]) {
+      assert.ok(keys.includes(key), key);
+    }
+    for (const key of ["venue_access_hours", "ceremony_summary", "reception_summary", "coordinator_name"]) {
       assert.ok(!keys.includes(key), key);
     }
+  });
+
+  it("resolves the same Smart Field identically when it appears more than once", () => {
+    const data = buildMergeData({
+      venueName: "Jen's Fancy Venue",
+      clientFirstName: "Betty",
+      clientLastName: "Rubble",
+      eventDate: "2030-06-15",
+      eventType: "wedding",
+      guestCount: 80,
+      contractTitle: "Wedding Venue Agreement",
+      eventSpaces: "Garden Lawn",
+      packageSection: "Classic Wedding Package",
+      contractTotal: formatContractTotalAmount(15000)!,
+      balanceRemaining: formatBalanceRemaining(11250),
+    });
+    const body = mergeContent(
+      "Spaces {{event_spaces}} / {{event_spaces}}. Total {{contract_total}} / {{contract_total}}. Balance {{balance_remaining}} / {{balance_remaining}}.",
+      data,
+    );
+    assert.equal(body, "Spaces Garden Lawn / Garden Lawn. Total $15,000.00 / $15,000.00. Balance $11,250.00 / $11,250.00.");
   });
 });
 

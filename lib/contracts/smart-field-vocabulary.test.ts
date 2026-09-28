@@ -44,6 +44,13 @@ const APPROVED_CONTRACT_KEYS = [
   "event_date",
   "event_type",
   "guest_count",
+  "event_spaces",
+  "package_section",
+  "included_items_summary",
+  "additional_items_summary",
+  "payment_schedule_summary",
+  "contract_total",
+  "balance_remaining",
   "today_date",
   "contract_title",
 ] as const;
@@ -71,12 +78,13 @@ describe("supported Smart Field registries", () => {
 
   it("contract picker is exactly the approved catalog", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
+    const advertised = new Set<string>(keys);
     assert.deepEqual(keys, [...APPROVED_CONTRACT_KEYS]);
     for (const deferred of DEFERRED_MERGE_FIELD_KEYS) {
-      assert.ok(!keys.includes(deferred), deferred);
+      assert.ok(!advertised.has(deferred), deferred);
     }
     for (const removed of REMOVED_MERGE_FIELD_KEYS) {
-      assert.ok(!keys.includes(removed), `picker still advertises ${removed}`);
+      assert.ok(!advertised.has(removed), `picker still advertises ${removed}`);
     }
   });
 
@@ -120,14 +128,19 @@ describe("starter / default templates", () => {
     }
   });
 
-  it("CTR-01 migration SQL matches approved starter and strips removed fields", () => {
+  it("CTR-01 restore migration matches approved starter and omits removed fields", () => {
     const sql = readFileSync(
-      resolve("supabase/migrations/20261407800000_contract_starter_ctr01_approved_smart_fields.sql"),
+      resolve("supabase/migrations/20261408100000_contract_starter_ctr01_restore_booking_smart_fields.sql"),
       "utf8",
     );
     assert.match(sql, /source_master_key = 'CTR-01'/);
     assert.match(sql, /Wedding Venue Agreement/);
     assert.match(sql, /\{\{client_name\}\}/);
+    assert.match(sql, /\{\{event_spaces\}\}/);
+    assert.match(sql, /\{\{package_section\}\}/);
+    assert.match(sql, /\{\{contract_total\}\}/);
+    assert.match(sql, /\{\{balance_remaining\}\}/);
+    assert.match(sql, /\{\{payment_schedule_summary\}\}/);
     for (const key of REMOVED_MERGE_FIELD_KEYS) {
       assert.doesNotMatch(sql, new RegExp(`\\{\\{${key}\\}\\}`), key);
     }

@@ -41,23 +41,27 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "event_date", label: "Event Date", description: "Formatted event date" },
   { key: "event_type", label: "Event Type", description: "Type of event" },
   { key: "guest_count", label: "Guest Count", description: "Number of guests" },
+  { key: "event_spaces", label: "Event Spaces", description: "Spaces already chosen for this booking" },
+  { key: "package_section", label: "Package", description: "Selected package summary from the booking" },
+  { key: "included_items_summary", label: "Included Items", description: "Included items on the selected package or order" },
+  { key: "additional_items_summary", label: "Additional Items", description: "Additional / optional items already on the order" },
+  { key: "payment_schedule_summary", label: "Payment Schedule", description: "Payment plan lines on file when a schedule exists" },
+  { key: "contract_total", label: "Contract Total", description: "Total contracted / selected package amount" },
+  { key: "balance_remaining", label: "Balance Remaining", description: "Remaining balance from the payment plan, or selected amount minus deposit" },
   { key: "today_date", label: "Today's Date", description: "Date the agreement is generated" },
   { key: "contract_title", label: "Contract Title", description: "Title of this agreement" },
 ];
 
-/** Keys intentionally removed from the customer-facing catalog (legacy resolve only). */
+/**
+ * Removed from the customer-facing catalog because the promised data is not
+ * reliably present at contract time. Resolvers still materialize these for
+ * older drafts so Preview/Send never emit raw tokens.
+ */
 export const REMOVED_MERGE_FIELD_KEYS = [
-  "event_spaces",
   "venue_access_hours",
   "ceremony_summary",
   "reception_summary",
   "coordinator_name",
-  "package_section",
-  "included_items_summary",
-  "additional_items_summary",
-  "payment_schedule_summary",
-  "contract_total",
-  "balance_remaining",
 ] as const;
 
 /** Deferred — not in the standard picker (no contract-time SoT). */

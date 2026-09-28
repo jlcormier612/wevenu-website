@@ -1,9 +1,10 @@
 /**
  * Contract merge-field resolution.
  *
- * Advertised Smart Fields live in MERGE_FIELDS. Legacy operational tokens
- * (removed from the picker) still always resolve with an honest value so
- * older drafts never surface raw {{tokens}} at Preview/Review/Send.
+ * Advertised Smart Fields live in MERGE_FIELDS. Booking-backed operational
+ * keys (spaces, package, totals, payment, balance) always resolve from SoT.
+ * Removed keys (hours / ceremony / reception / coordinator) still always
+ * resolve with an honest value so older drafts never surface raw {{tokens}}.
  */
 import { formatContractDate } from "@/lib/contracts/constants";
 import { EMPTY_EVENT_SPACES_LABEL } from "@/lib/contracts/event-spaces-merge";
@@ -101,7 +102,7 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.event_type = eventTypePretty || "Celebration";
   data.guest_count = ctx.guestCount != null ? String(ctx.guestCount) : "To be confirmed";
 
-  // Legacy (removed from picker) — always resolve so older drafts never show raw tokens.
+  // Always resolve advertised + legacy keys so drafts never show raw tokens.
   data.event_spaces = ctx.eventSpaces?.trim() || EMPTY_EVENT_SPACES_LABEL;
   data.coordinator_name = ctx.coordinatorName?.trim() || MISSING_COORDINATOR_NAME;
   data.package_section = ctx.packageSection?.trim() || MISSING_PACKAGE_SECTION;
