@@ -165,6 +165,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
           leadId={client.leadId ?? undefined}
           clientId={client.id}
           eventDate={client.eventDate}
+          venueTimezone={venue?.timezone ?? null}
         />
         <PreparePlanningPanel
           eventId={null}
@@ -544,6 +545,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       selectedPackage={selectedPackage}
       openSetupPayments={sp.setupPayments === "1"}
       photoUrl={photo?.displayedPhotoUrl ?? null}
+      venueTimezone={venue?.timezone ?? null}
     />
     </div>
   );

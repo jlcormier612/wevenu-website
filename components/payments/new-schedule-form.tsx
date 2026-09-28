@@ -7,6 +7,7 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createScheduleAction } from "@/app/(app)/payments/actions";
+import { TimingFields } from "@/components/payments/timing-fields";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,6 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import {
   OBLIGATION_KIND_OPTIONS,
-  type PaymentTiming,
 } from "@/lib/payments/constants";
 import {
   PLAN_BUILDER_QUICK_PRESETS,
@@ -45,137 +45,6 @@ import {
 import { cn } from "@/lib/utils";
 
 type Step = "structure" | "build" | "preview";
-
-type TimingUiMode =
-  | "due_today"
-  | "after_execution"
-  | "before_event"
-  | "on_event"
-  | "fixed"
-  /** Legacy — only shown when the line already uses this rule. */
-  | "at_booking"
-  | "after_booking";
-
-function TimingFields({
-  line,
-  onChange,
-}: {
-  line: PlanBuilderLineDraft;
-  onChange: (timing: PaymentTiming, dueDate: string) => void;
-}) {
-  const mode: TimingUiMode = line.dueDate.trim()
-    ? "fixed"
-    : line.timing.type === "due_today"
-      ? "due_today"
-      : line.timing.type === "after_execution"
-        ? "after_execution"
-        : line.timing.type === "on_event"
-          ? "on_event"
-          : line.timing.type === "at_booking"
-            ? "at_booking"
-            : line.timing.type === "after_booking"
-              ? "after_booking"
-              : line.timing.type === "before_event" && line.timing.days === 0
-                ? "on_event"
-                : "before_event";
-
-  return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      <div className="space-y-1">
-        <label className="text-xs text-muted-foreground">Due date rule</label>
-        <select
-          className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          value={mode}
-          onChange={(e) => {
-            const v = e.target.value as TimingUiMode;
-            if (v === "fixed") {
-              onChange(line.timing, line.dueDate || new Date().toISOString().slice(0, 10));
-              return;
-            }
-            if (v === "due_today") {
-              onChange({ type: "due_today" }, "");
-              return;
-            }
-            if (v === "after_execution") {
-              onChange({ type: "after_execution", days: 0 }, "");
-              return;
-            }
-            if (v === "on_event") {
-              onChange({ type: "on_event" }, "");
-              return;
-            }
-            if (v === "at_booking") {
-              onChange({ type: "at_booking" }, "");
-              return;
-            }
-            if (v === "after_booking") {
-              onChange({ type: "after_booking", days: 7 }, "");
-              return;
-            }
-            onChange({ type: "before_event", days: 30 }, "");
-          }}
-        >
-          <option value="due_today">Due today</option>
-          <option value="after_execution">Days after contract is fully executed</option>
-          <option value="before_event">Days before event</option>
-          <option value="on_event">On event date</option>
-          <option value="fixed">Specific date</option>
-          {(mode === "at_booking" || mode === "after_booking") && (
-            <>
-              <option value="at_booking">At booking (legacy)</option>
-              <option value="after_booking">Days after booking (legacy)</option>
-            </>
-          )}
-        </select>
-      </div>
-      {mode === "before_event" || mode === "after_execution" || mode === "after_booking" ? (
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Days</label>
-          <Input
-            type="number"
-            min={0}
-            value={
-              line.timing.type === "before_event"
-                || line.timing.type === "after_execution"
-                || line.timing.type === "after_booking"
-                ? line.timing.days
-                : 0
-            }
-            onChange={(e) => {
-              const days = Math.max(0, Number(e.target.value) || 0);
-              if (mode === "after_execution") {
-                onChange({ type: "after_execution", days }, "");
-              } else if (mode === "after_booking") {
-                onChange({ type: "after_booking", days }, "");
-              } else {
-                onChange({ type: "before_event", days }, "");
-              }
-            }}
-          />
-        </div>
-      ) : mode === "fixed" ? (
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Date</label>
-          <Input
-            type="date"
-            value={line.dueDate}
-            onChange={(e) => onChange(line.timing, e.target.value)}
-          />
-        </div>
-      ) : (
-        <div className="flex items-end text-xs text-muted-foreground pb-2">
-          {mode === "due_today"
-            ? "Uses today’s date"
-            : mode === "on_event"
-              ? "Uses the event date"
-              : mode === "at_booking"
-                ? "Uses the Event booking date (legacy)"
-                : null}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /**
  * Payment Plan Builder — builds the invoice-tied payment schedule.
@@ -561,6 +430,7 @@ export function NewScheduleForm({
                 </div>
                 <TimingFields
                   line={line}
+                  today={today}
                   onChange={(timing, dueDate) => updateLine(line.id, { timing, dueDate })}
                 />
                 {validation.lineErrors[line.id] && (

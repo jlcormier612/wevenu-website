@@ -49,6 +49,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatContractDate } from "@/lib/contracts/constants";
+import { venueCalendarDateFromValue } from "@/lib/venue/timezone";
 import { resolveContractBrandPresentation, type ContractBrandingSnapshot } from "@/lib/contracts/branding";
 import { renderExecutedContractContent } from "@/lib/contracts/executed-content";
 import {
@@ -74,6 +75,7 @@ export function ContractDetail({
   contract,
   finalized,
   venueName,
+  venueTimezone = null,
   venueBrand = null,
   versionFamily = [],
   initialReview = false,
@@ -83,6 +85,7 @@ export function ContractDetail({
   contract: ContractWithDetails;
   finalized: boolean;
   venueName: string;
+  venueTimezone?: string | null;
   venueBrand?: ContractBrandingSnapshot | null;
   versionFamily?: ContractVersionEntry[];
   initialReview?: boolean;
@@ -474,7 +477,7 @@ export function ContractDetail({
                 <span>{s.signerName ?? "Client"}{s.signerEmail ? ` (${s.signerEmail})` : ""}</span>
                 <span className="text-muted-foreground">
                   {s.signedAt
-                    ? `Signed ${formatContractDate(s.signedAt.slice(0, 10))}`
+                    ? `Signed ${formatContractDate(venueCalendarDateFromValue(s.signedAt, venueTimezone))}`
                     : contract.status === "sent" ? "Awaiting signature" : "Not yet sent"}
                 </span>
               </div>
@@ -484,7 +487,7 @@ export function ContractDetail({
                 <span>Venue{venueSigner.signerName ? ` — ${venueSigner.signerName}` : ""}</span>
                 <span className="text-muted-foreground">
                   {venueSigner.signedAt
-                    ? `Signed ${formatContractDate(venueSigner.signedAt.slice(0, 10))}`
+                    ? `Signed ${formatContractDate(venueCalendarDateFromValue(venueSigner.signedAt, venueTimezone))}`
                     : awaitingVenueSignature
                       ? "Awaiting venue signature"
                       : contract.status === "sent"
@@ -582,7 +585,7 @@ export function ContractDetail({
               <div>
                 <p className="text-sm font-medium text-foreground">
                   Fully Executed{contract.signerName ? ` — last signature by ${contract.signerName}` : ""}
-                  {contract.signedAt ? ` on ${formatContractDate(contract.signedAt.slice(0, 10))}` : ""}
+                  {contract.signedAt ? ` on ${formatContractDate(venueCalendarDateFromValue(contract.signedAt, venueTimezone))}` : ""}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Agreement fully signed. Next: collect the deposit if you haven&apos;t already. Booking isn&apos;t complete until the deposit is paid.

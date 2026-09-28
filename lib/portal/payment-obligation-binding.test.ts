@@ -7,7 +7,7 @@ import { pickNextOpenPaymentLine } from "@/lib/invoices/amount-due-now";
 
 describe("payment-access obligation binding", () => {
   it("invoice email CTA embeds the due-now payment_line_item id", () => {
-    const source = readFileSync(resolve("app/(app)/invoices/actions.ts"), "utf8");
+    const source = readFileSync(resolve("lib/invoices/outbound.ts"), "utf8");
     assert.match(source, /pickNextOpenPaymentLine/);
     assert.match(source, /\?item=\$\{encodeURIComponent\(dueNowLine\.id\)\}/);
     assert.match(source, /dueNowLine/);

@@ -8,6 +8,7 @@ import {
   formatVenueLocalShortDate,
   formatVenueLocalTourDisplay,
   utcToVenueLocalParts,
+  venueCalendarDateFromValue,
   venueLocalToUtcIso,
   venueToday,
 } from "@/lib/venue/timezone";
@@ -81,6 +82,23 @@ describe("venueToday", () => {
 
   it("matches UTC on a UTC noon instant", () => {
     assert.equal(venueToday("America/New_York", new Date("2026-08-31T16:00:00Z")), "2026-08-31");
+  });
+
+  it("Sep 28 02:00Z is Sep 27 in America/New_York", () => {
+    assert.equal(venueToday("America/New_York", new Date("2026-09-28T02:00:00Z")), "2026-09-27");
+  });
+});
+
+describe("venueCalendarDateFromValue", () => {
+  it("converts a signed_at timestamp to the venue calendar date", () => {
+    assert.equal(
+      venueCalendarDateFromValue("2026-09-28T02:00:00.000Z", "America/New_York"),
+      "2026-09-27",
+    );
+  });
+
+  it("leaves a date-only due_date unchanged", () => {
+    assert.equal(venueCalendarDateFromValue("2026-09-27", "America/New_York"), "2026-09-27");
   });
 });
 

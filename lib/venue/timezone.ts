@@ -83,6 +83,20 @@ export function formatVenueLocalClock(time24: string | null | undefined): string
   return `${hour}:${minute} ${ampm}`;
 }
 
+/**
+ * Calendar date (YYYY-MM-DD) for a stored timestamptz, in the venue zone.
+ * Date-only values ("YYYY-MM-DD") are returned unchanged — do not timezone-shift them.
+ */
+export function venueCalendarDateFromValue(
+  value: string | null | undefined,
+  timezone: string | null,
+): string {
+  if (!value?.trim()) return "";
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return utcToVenueLocalParts(trimmed, timezone).date;
+}
+
 /** Short human date for venue-local calendar dates ("Sep 27, 2026"). */
 export function formatVenueLocalShortDate(isoDate: string | null | undefined): string {
   if (!isoDate) return "";

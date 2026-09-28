@@ -47,6 +47,7 @@ export default async function ContractDetailPage({ params, searchParams }: Props
       contract={contract}
       finalized={finalized}
       venueName={venue?.name ?? "Your venue"}
+      venueTimezone={venue?.timezone ?? null}
       venueBrand={venue ? captureContractBrandingSnapshot(venue) : null}
       versionFamily={versionFamily}
       initialReview={review === "1"}

@@ -41,6 +41,9 @@ type CoupleDocument = {
 
 type PaidLineItem = { id: string; label: string; amount: number; paidAt: string; paidAmount: number | null; paymentMethod: string | null; scheduleTitle: string };
 
+type PortalScheduleLine = { id: string; label: string; amount: number; dueDate: string | null; status: string };
+type PortalSchedule = { id: string; title: string; invoiceId?: string | null; lineItems: PortalScheduleLine[] };
+
 type QuestionnaireSummary = { status: string };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -130,7 +133,7 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
 
 // ── Invoice card — real line items + balance due ───────────────────────────────
 
-function InvoiceCard({ doc }: { doc: CoupleDocument }) {
+function InvoiceCard({ doc, schedule }: { doc: CoupleDocument; schedule?: PortalSchedule | null }) {
   const [expanded, setExpanded] = useState(false);
   const hasBalance = (doc.balanceDue ?? 0) > 0;
 
@@ -155,14 +158,34 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
           {expanded ? "Hide" : "Details"}
         </button>
       </div>
-      {expanded && doc.lineItems && (
-        <div className="px-3 pb-3 border-t border-border/40 pt-3 space-y-1.5">
-          {doc.lineItems.map((li) => (
-            <div key={li.id} className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{li.description} {li.quantity !== 1 && <span className="opacity-70">× {li.quantity}</span>}</span>
-              <span className="font-mono">{fmtCurrency(li.amount)}</span>
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-border/40 pt-3 space-y-3">
+          {doc.lineItems && doc.lineItems.length > 0 && (
+            <div className="space-y-1.5">
+              {doc.lineItems.map((li) => (
+                <div key={li.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{li.description} {li.quantity !== 1 && <span className="opacity-70">× {li.quantity}</span>}</span>
+                  <span className="font-mono">{fmtCurrency(li.amount)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          {schedule && schedule.lineItems.length > 0 && (
+            <div className="space-y-1.5" data-testid="invoice-installment-schedule">
+              <p className="text-[11px] font-medium text-heading">Payment plan</p>
+              {schedule.lineItems.map((li) => (
+                <div key={li.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {li.label}
+                    {li.dueDate ? ` · due ${fmtDate(li.dueDate + "T12:00:00")}` : ""}
+                    {" · "}
+                    <span className="capitalize">{li.status.replace(/_/g, " ")}</span>
+                  </span>
+                  <span className="font-mono">{fmtCurrency(li.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {hasBalance && (
@@ -397,6 +420,7 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
 export default function CoupleDocumentsSection({ token, onNavigate }: { token: string; onNavigate?: (s: "questionnaire") => void }) {
   const [documents, setDocuments] = useState<CoupleDocument[]>([]);
   const [receipts, setReceipts] = useState<PaidLineItem[]>([]);
+  const [schedules, setSchedules] = useState<PortalSchedule[]>([]);
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -417,9 +441,21 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       // should never need to find these through emails," but Hello to
       // Cheers has no first-class Receipt record, so this reuses the same
       // payment data the Payments tab already reads.
-      type Schedule = { title: string; lineItems: { id: string; label: string; amount: number; status: string; paidAt: string | null; paidAmount: number | null; paymentMethod: string | null }[] };
-      const schedules = (paymentsJson.schedules ?? []) as Schedule[];
-      const paid: PaidLineItem[] = schedules.flatMap((s) =>
+      type Schedule = { id: string; title: string; invoiceId?: string | null; lineItems: { id: string; label: string; amount: number; dueDate?: string | null; status: string; paidAt: string | null; paidAmount: number | null; paymentMethod: string | null }[] };
+      const nextSchedules = (paymentsJson.schedules ?? []) as Schedule[];
+      setSchedules(nextSchedules.map((s) => ({
+        id: s.id,
+        title: s.title,
+        invoiceId: s.invoiceId ?? null,
+        lineItems: s.lineItems.map((li) => ({
+          id: li.id,
+          label: li.label,
+          amount: li.amount,
+          dueDate: li.dueDate ?? null,
+          status: li.status,
+        })),
+      })));
+      const paid: PaidLineItem[] = nextSchedules.flatMap((s) =>
         s.lineItems.filter((li) => li.status === "paid" && li.paidAt).map((li) => ({
           id: li.id, label: li.label, amount: li.amount, paidAt: li.paidAt!, paidAmount: li.paidAmount,
           paymentMethod: li.paymentMethod, scheduleTitle: s.title,
@@ -491,7 +527,13 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       {invoices.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Invoices</h3>
-          <div className="space-y-2">{invoices.map((doc) => <InvoiceCard key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{invoices.map((doc) => (
+            <InvoiceCard
+              key={doc.id}
+              doc={doc}
+              schedule={schedules.find((s) => s.invoiceId === doc.id) ?? null}
+            />
+          ))}</div>
         </section>
       )}
 

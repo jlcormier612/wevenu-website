@@ -34,6 +34,7 @@ import { publicAppOrigin } from "@/lib/env";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { PackageWithItems } from "@/lib/packages/types";
+import { venueToday } from "@/lib/venue/timezone";
 
 export function BookingJourneyPanel({
   journey,
@@ -45,6 +46,8 @@ export function BookingJourneyPanel({
   spaceId,
   eventType,
   guestCount,
+  today,
+  venueTimezone = null,
 }: {
   journey: BookingJourneyModel;
   packages: PackageWithItems[];
@@ -56,6 +59,8 @@ export function BookingJourneyPanel({
   spaceId?: string;
   eventType?: string | null;
   guestCount?: number | null;
+  today?: string;
+  venueTimezone?: string | null;
 }) {
   const router = useRouter();
   const [selectOpen, setSelectOpen] = React.useState(false);
@@ -67,6 +72,7 @@ export function BookingJourneyPanel({
   const [acceptUrl, setAcceptUrl] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
   const selection = journey.selection;
+  const businessToday = today ?? venueToday(venueTimezone);
 
   function handleCreateContract() {
     if (!selection) return;
@@ -272,13 +278,11 @@ export function BookingJourneyPanel({
           eventDate={eventDate}
           leadId={leadId}
           spaceId={spaceId}
-          defaultScheduleStructure={
-            journey.prefs.remainingBalanceMode === "final"
-              ? "deposit_remaining"
-              : journey.prefs.defaultSchedulePresetId ?? "deposit_remaining"
-          }
+          defaultScheduleStructure={journey.prefs.defaultSchedulePresetId ?? "deposit_remaining"}
+          remainingBalanceMode={journey.prefs.remainingBalanceMode}
           customSchedule={journey.prefs.defaultCustomSchedule}
           paymentCollection={journey.prefs.paymentCollection}
+          today={businessToday}
         />
       )}
 

@@ -48,6 +48,7 @@ import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
+import { venueToday } from "@/lib/venue/timezone";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
@@ -301,6 +302,7 @@ export function EventDetail({
   selectedPackage = null,
   openSetupPayments = false,
   photoUrl = null,
+  venueTimezone = null,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -387,6 +389,7 @@ export function EventDetail({
   selectedPackage?: CommercialSelection | null;
   openSetupPayments?: boolean;
   photoUrl?: string | null;
+  venueTimezone?: string | null;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -637,6 +640,7 @@ export function EventDetail({
               clientId={event.clientId ?? undefined}
               eventId={event.id}
               eventDate={event.eventDate}
+              venueTimezone={venueTimezone}
             />
           )}
           <EventReadinessCard
@@ -995,7 +999,14 @@ export function EventDetail({
                         selection={selectedPackage}
                         clientId={event.clientId ?? undefined}
                         eventId={event.id}
+                        eventDate={event.eventDate}
                         leadId={originatingLeadId ?? undefined}
+                        remainingBalanceMode={bookingJourney?.prefs.remainingBalanceMode ?? null}
+                        defaultScheduleStructure={
+                          bookingJourney?.prefs.defaultSchedulePresetId ?? "deposit_remaining"
+                        }
+                        customSchedule={bookingJourney?.prefs.defaultCustomSchedule ?? null}
+                        today={venueToday(venueTimezone)}
                       />
                     </>
                   ) : (

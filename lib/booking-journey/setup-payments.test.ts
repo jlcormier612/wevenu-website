@@ -208,17 +208,21 @@ describe("runSetupPaymentsFromSelection — failure / retry safety", () => {
   it("booking journey sheet exposes Custom payment plan and no booking-date picker", () => {
     const src = readFileSync("components/booking-journey/setup-payments-sheet.tsx", "utf8");
     assert.match(src, /PaymentPlanBuilder/);
+    assert.match(src, /customSchedule=\{customSchedule\}/);
+    assert.match(src, /remainingBalanceMode=\{remainingBalanceMode\}/);
     assert.match(src, /requestDeposit: false/);
     assert.match(src, /bookingDate: null/);
     assert.doesNotMatch(src, /Booked date|Booking date/);
     const builder = readFileSync("components/payments/payment-plan-builder.tsx", "utf8");
+    const timing = readFileSync("components/payments/timing-fields.tsx", "utf8");
     assert.match(builder, /Custom payment plan/);
-    assert.match(builder, /Due today/);
-    assert.match(builder, /Days after contract is fully executed/);
-    assert.match(builder, /Days before event/);
-    assert.match(builder, /On event date/);
-    assert.match(builder, /Specific date/);
+    assert.match(timing, /Due today/);
+    assert.match(timing, /Days after contract is fully executed/);
+    assert.match(timing, /Days before event/);
+    assert.match(timing, /On event date/);
+    assert.match(timing, /Specific date/);
     assert.doesNotMatch(builder, /Booked date|Booking date/);
+    assert.doesNotMatch(timing, /Booked date|Booking date/);
   });
 
   it("happy path returns ids only after link succeeds", async () => {

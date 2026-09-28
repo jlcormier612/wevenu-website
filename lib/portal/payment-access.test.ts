@@ -5,12 +5,12 @@ import { describe, it } from "node:test";
 
 describe("pre-portal payment access", () => {
   it("invoice email creates financial sessions when couple portal is not invited", () => {
-    const source = readFileSync(resolve("app/(app)/invoices/actions.ts"), "utf8");
+    const source = readFileSync(resolve("lib/invoices/outbound.ts"), "utf8");
     assert.match(source, /accessLevel === "couple"/);
     assert.match(source, /createPortalSession\(clientId, "Payment", "financial"\)/);
     assert.doesNotMatch(
       source,
-      /createPortalSession\(clientId, "Payment", "couple"\)/,
+      /createPortalSession\([^,]+, "Payment", "couple"\)/,
     );
   });
 

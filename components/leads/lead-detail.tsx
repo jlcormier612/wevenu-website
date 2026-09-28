@@ -643,6 +643,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               spaceId={bookingSpaceId || undefined}
               eventType={lead.eventType ?? undefined}
               guestCount={lead.guestCount ?? undefined}
+              venueTimezone={venueTimezone}
             />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

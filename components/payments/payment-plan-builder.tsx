@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
+import { TimingFields } from "@/components/payments/timing-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -11,8 +12,12 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import {
   OBLIGATION_KIND_OPTIONS,
   SCHEDULE_PRESETS,
-  type PaymentTiming,
 } from "@/lib/payments/constants";
+import type { CustomScheduleTemplate } from "@/lib/payments/custom-default-schedule";
+import {
+  draftsFromCustomTemplate,
+  resolveConfiguredPlanSeed,
+} from "@/lib/payments/configured-plan-seed";
 import {
   createLineId,
   defaultEqualLines,
@@ -36,136 +41,6 @@ import { cn } from "@/lib/utils";
 
 type Step = "structure" | "build" | "preview";
 
-type TimingUiMode =
-  | "due_today"
-  | "after_execution"
-  | "before_event"
-  | "on_event"
-  | "fixed"
-  | "at_booking"
-  | "after_booking";
-
-function TimingFields({
-  line,
-  onChange,
-}: {
-  line: PlanBuilderLineDraft;
-  onChange: (timing: PaymentTiming, dueDate: string) => void;
-}) {
-  const mode: TimingUiMode = line.dueDate.trim()
-    ? "fixed"
-    : line.timing.type === "due_today"
-      ? "due_today"
-      : line.timing.type === "after_execution"
-        ? "after_execution"
-        : line.timing.type === "on_event"
-          ? "on_event"
-          : line.timing.type === "at_booking"
-            ? "at_booking"
-            : line.timing.type === "after_booking"
-              ? "after_booking"
-              : line.timing.type === "before_event" && line.timing.days === 0
-                ? "on_event"
-                : "before_event";
-
-  return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      <div className="space-y-1">
-        <label className="text-xs text-muted-foreground">Due date rule</label>
-        <select
-          className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          value={mode}
-          onChange={(e) => {
-            const v = e.target.value as TimingUiMode;
-            if (v === "fixed") {
-              onChange(line.timing, line.dueDate || new Date().toISOString().slice(0, 10));
-              return;
-            }
-            if (v === "due_today") {
-              onChange({ type: "due_today" }, "");
-              return;
-            }
-            if (v === "after_execution") {
-              onChange({ type: "after_execution", days: 0 }, "");
-              return;
-            }
-            if (v === "on_event") {
-              onChange({ type: "on_event" }, "");
-              return;
-            }
-            if (v === "at_booking") {
-              onChange({ type: "at_booking" }, "");
-              return;
-            }
-            if (v === "after_booking") {
-              onChange({ type: "after_booking", days: 7 }, "");
-              return;
-            }
-            onChange({ type: "before_event", days: 30 }, "");
-          }}
-        >
-          <option value="due_today">Due today</option>
-          <option value="after_execution">Days after contract is fully executed</option>
-          <option value="before_event">Days before event</option>
-          <option value="on_event">On event date</option>
-          <option value="fixed">Specific date</option>
-          {(mode === "at_booking" || mode === "after_booking") && (
-            <>
-              <option value="at_booking">At booking (legacy)</option>
-              <option value="after_booking">Days after booking (legacy)</option>
-            </>
-          )}
-        </select>
-      </div>
-      {mode === "before_event" || mode === "after_execution" || mode === "after_booking" ? (
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Days</label>
-          <Input
-            type="number"
-            min={0}
-            value={
-              line.timing.type === "before_event"
-                || line.timing.type === "after_execution"
-                || line.timing.type === "after_booking"
-                ? line.timing.days
-                : 0
-            }
-            onChange={(e) => {
-              const days = Math.max(0, Number(e.target.value) || 0);
-              if (mode === "after_execution") {
-                onChange({ type: "after_execution", days }, "");
-              } else if (mode === "after_booking") {
-                onChange({ type: "after_booking", days }, "");
-              } else {
-                onChange({ type: "before_event", days }, "");
-              }
-            }}
-          />
-        </div>
-      ) : mode === "fixed" ? (
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Date</label>
-          <Input
-            type="date"
-            value={line.dueDate}
-            onChange={(e) => onChange(line.timing, e.target.value)}
-          />
-        </div>
-      ) : (
-        <div className="flex items-end pb-2 text-xs text-muted-foreground">
-          {mode === "due_today"
-            ? "Uses today’s date"
-            : mode === "on_event"
-              ? "Uses the event date"
-              : mode === "at_booking"
-                ? "Uses the Event booking date (legacy)"
-                : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
 const FAST_PRESETS = SCHEDULE_PRESETS.filter((p) => p.items.length > 0);
 
 export function PaymentPlanBuilder({
@@ -174,7 +49,9 @@ export function PaymentPlanBuilder({
   initialPresetId = null,
   initialLines,
   defaultDeposit = 0,
-  startAt = "structure",
+  startAt,
+  remainingBalanceMode = null,
+  customSchedule = null,
   commitLabel = "Create payment plan",
   pending = false,
   onCommit,
@@ -186,36 +63,55 @@ export function PaymentPlanBuilder({
   initialLines?: PlanBuilderLineDraft[];
   defaultDeposit?: number;
   startAt?: Step;
+  remainingBalanceMode?: "final" | "plan" | "varies" | null;
+  customSchedule?: CustomScheduleTemplate | null;
   commitLabel?: string;
   pending?: boolean;
   onCommit: (lines: CommitBuilderLine[]) => void;
   onCancel?: () => void;
 }) {
-  const seededFromPreset =
-    initialPresetId && initialPresetId !== "custom" && FAST_PRESETS.some((p) => p.id === initialPresetId);
-
-  const [step, setStep] = React.useState<Step>(startAt);
-  const [structure, setStructure] = React.useState<PlanBuilderStructure>(
-    initialLines || initialPresetId === "custom" ? "custom" : seededFromPreset ? "percentage" : "custom",
+  const configured = resolveConfiguredPlanSeed({
+    remainingBalanceMode,
+    defaultSchedulePresetId: initialPresetId,
+    customSchedule,
+    invoiceTotal,
+    defaultDeposit,
+  });
+  const [step, setStep] = React.useState<Step>(
+    initialLines && initialLines.length > 0 ? (startAt ?? "build") : (startAt ?? configured.startAt),
   );
-  const [equalCount, setEqualCount] = React.useState(4);
+  const [structure, setStructure] = React.useState<PlanBuilderStructure>(
+    initialLines ? "custom" : configured.structure,
+  );
+  const [selectedKey, setSelectedKey] = React.useState(configured.selectedKey);
+  const [selectedPresetId, setSelectedPresetId] = React.useState<string | null>(
+    configured.selectedKey === "preset" ? configured.initialPresetId : null,
+  );
   const [lines, setLines] = React.useState<PlanBuilderLineDraft[]>(() => {
     if (initialLines && initialLines.length > 0) return initialLines;
-    if (seededFromPreset) return linesFromPreset(initialPresetId!, invoiceTotal);
-    return defaultEqualLines(4, invoiceTotal);
+    return configured.lines;
   });
 
   const validation = validatePlanBuilderLines(lines, invoiceTotal, timingCtx);
 
   function applyPreset(id: string) {
     setStructure("percentage");
+    setSelectedKey("preset");
+    setSelectedPresetId(id);
     setLines(linesFromPreset(id, invoiceTotal));
     setStep("build");
   }
 
   function applyCustom() {
+    const fromSaved = customSchedule
+      ? draftsFromCustomTemplate(customSchedule, invoiceTotal)
+      : null;
     setStructure("custom");
-    setLines((prev) => (prev.length > 0 ? prev : defaultEqualLines(4, invoiceTotal)));
+    setSelectedKey("custom");
+    setSelectedPresetId(null);
+    setLines((prev) => (fromSaved && fromSaved.length > 0
+      ? fromSaved
+      : (prev.length > 0 ? prev : defaultEqualLines(4, invoiceTotal))));
     setStep("build");
   }
 
@@ -288,7 +184,13 @@ export function PaymentPlanBuilder({
                   key={p.id}
                   type="button"
                   onClick={() => applyPreset(p.id)}
-                  className="rounded-lg border border-border p-3 text-left hover:border-primary/40 hover:bg-muted/40"
+                  data-selected={selectedKey === "preset" && selectedPresetId === p.id ? "true" : "false"}
+                  className={cn(
+                    "rounded-lg border p-3 text-left hover:border-primary/40 hover:bg-muted/40",
+                    selectedKey === "preset" && selectedPresetId === p.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border",
+                  )}
                 >
                   <p className="text-sm font-medium text-foreground">{p.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
@@ -324,10 +226,14 @@ export function PaymentPlanBuilder({
                   });
                 }
                 setStructure("custom");
+                setSelectedKey("deposit_remaining");
                 setLines(next);
                 setStep("build");
               }}
-              className="rounded-lg border border-border p-3 text-left hover:border-primary/40 hover:bg-muted/40"
+              className={cn(
+                "rounded-lg border p-3 text-left hover:border-primary/40 hover:bg-muted/40",
+                selectedKey === "deposit_remaining" ? "border-primary bg-primary/10" : "border-border",
+              )}
             >
               <p className="text-sm font-medium text-foreground">Deposit + final balance</p>
               <p className="text-xs text-muted-foreground mt-0.5">Deposit due today; remaining on the event date.</p>
@@ -357,7 +263,13 @@ export function PaymentPlanBuilder({
             type="button"
             onClick={applyCustom}
             data-testid="custom-payment-plan"
-            className="w-full rounded-lg border border-primary/40 bg-primary/5 p-3 text-left hover:border-primary"
+            data-selected={selectedKey === "custom" ? "true" : "false"}
+            className={cn(
+              "w-full rounded-lg border p-3 text-left hover:border-primary",
+              selectedKey === "custom"
+                ? "border-primary bg-primary/10"
+                : "border-primary/40 bg-primary/5",
+            )}
           >
             <p className="text-sm font-medium text-heading">Custom payment plan</p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -375,6 +287,17 @@ export function PaymentPlanBuilder({
               <p className="text-xs text-muted-foreground">
                 {formatCurrency(invoiceTotal)} commitment. Customize amounts and due-date rules for this client, then preview.
               </p>
+              {selectedKey === "preset" && selectedPresetId && (
+                <p className="text-xs text-heading mt-1" data-testid="configured-preset-label">
+                  {FAST_PRESETS.find((p) => p.id === selectedPresetId)?.label ?? selectedPresetId}
+                </p>
+              )}
+              {selectedKey === "custom" && (
+                <p className="text-xs text-heading mt-1" data-testid="configured-preset-label">Custom payment plan</p>
+              )}
+              {selectedKey === "deposit_remaining" && (
+                <p className="text-xs text-heading mt-1" data-testid="configured-preset-label">Deposit + final balance</p>
+              )}
             </div>
             <Button type="button" size="sm" variant="outline" onClick={() => setStep("structure")}>
               Change structure
@@ -437,6 +360,7 @@ export function PaymentPlanBuilder({
                 </div>
                 <TimingFields
                   line={line}
+                  today={timingCtx.today}
                   onChange={(timing, dueDate) => updateLine(line.id, { timing, dueDate })}
                 />
                 {validation.lineErrors[line.id] && (

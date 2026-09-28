@@ -30,6 +30,7 @@ export function SetupPaymentsSheet({
   leadId,
   spaceId,
   defaultScheduleStructure = "deposit_remaining",
+  remainingBalanceMode = null,
   paymentCollection = "either",
   customSchedule = null,
   executedAt = null,
@@ -44,6 +45,7 @@ export function SetupPaymentsSheet({
   leadId?: string;
   spaceId?: string;
   defaultScheduleStructure?: string;
+  remainingBalanceMode?: "final" | "plan" | "varies" | null;
   paymentCollection?: "online" | "external" | "either";
   customSchedule?: CustomScheduleTemplate | null;
   executedAt?: string | null;
@@ -62,10 +64,11 @@ export function SetupPaymentsSheet({
           leadId={leadId}
           spaceId={spaceId}
           defaultScheduleStructure={defaultScheduleStructure}
+          remainingBalanceMode={remainingBalanceMode}
           paymentCollection={paymentCollection}
           customSchedule={customSchedule}
           executedAt={executedAt}
-          today={today ?? new Date().toISOString().slice(0, 10)}
+          today={today!}
         />
       ) : null}
     </Sheet>
@@ -81,6 +84,8 @@ function SetupPaymentsSheetBody({
   leadId,
   spaceId,
   defaultScheduleStructure,
+  remainingBalanceMode,
+  customSchedule,
   executedAt,
   today,
 }: {
@@ -92,7 +97,8 @@ function SetupPaymentsSheetBody({
   leadId?: string;
   spaceId?: string;
   defaultScheduleStructure: string;
-  paymentCollection: "online" | "external" | "either";
+  remainingBalanceMode: "final" | "plan" | "varies" | null;
+  paymentCollection?: "online" | "external" | "either";
   customSchedule: CustomScheduleTemplate | null;
   executedAt: string | null;
   today: string;
@@ -164,7 +170,8 @@ function SetupPaymentsSheetBody({
           invoiceTotal={selection.totalAmount}
           defaultDeposit={selection.depositAmount}
           initialPresetId={defaultScheduleStructure}
-          startAt="structure"
+          remainingBalanceMode={remainingBalanceMode}
+          customSchedule={customSchedule}
           timingCtx={{
             eventDate: eventDate ?? null,
             bookingDate: null,
