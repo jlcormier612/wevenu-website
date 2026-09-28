@@ -17,11 +17,14 @@ export function LibraryArchivedSection({
   children,
   className,
   defaultOpen = false,
+  hint = "Archived items stay available for history. Restore one before using it on a new event or client.",
 }: {
   count: number;
   children: React.ReactNode;
   className?: string;
   defaultOpen?: boolean;
+  /** Optional override for the collapsed-section helper copy. */
+  hint?: string;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   if (count <= 0) return null;
@@ -42,9 +45,7 @@ export function LibraryArchivedSection({
       </button>
       {open && (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            Archived items stay available for history. Restore one before using it on a new event or client.
-          </p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
           {children}
         </div>
       )}

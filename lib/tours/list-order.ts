@@ -3,6 +3,7 @@
  *
  * Upcoming scheduled activities: soonest first (scheduled_at ascending).
  * Past: most recently past first (scheduled_at descending).
+ * Archived tours are excluded from Upcoming/Past (list hygiene).
  *
  * Do not reuse for Inbox (most-recent activity) or conversation messages
  * (newest-first within a thread) — those have different semantics.
@@ -16,6 +17,7 @@ export function compareTourScheduledAtAsc(a: TourAppointment, b: TourAppointment
 }
 
 export function isUpcomingTourAppointment(a: TourAppointment, now: Date): boolean {
+  if (a.isArchived) return false;
   return (
     a.status !== "cancelled" &&
     a.status !== "completed" &&
@@ -25,6 +27,7 @@ export function isUpcomingTourAppointment(a: TourAppointment, now: Date): boolea
 }
 
 export function isPastTourAppointment(a: TourAppointment, now: Date): boolean {
+  if (a.isArchived) return false;
   return (
     a.status === "completed" ||
     a.status === "no_show" ||

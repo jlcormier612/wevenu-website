@@ -14,6 +14,7 @@ import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 import { loadVenueProtectionByTourKey, startProtectedTour, venueRequiresPublicProtection } from "@/lib/tours/protection";
 import { isConnectEligible, type TourProtectionMode } from "@/lib/tours/protection-rules";
+import { canHardDeleteTourAppointment } from "@/lib/tours/delete-guard";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -45,6 +46,7 @@ export async function getTourCalendarEntries(
   const { data } = await client.from("tour_appointments")
       .select("id, scheduled_at, status, lead_id, event_type, leads(first_name, last_name, partner_first_name)")
       .eq("venue_id", venueId)
+      .eq("is_archived", false)
       .not("status", "in", "(cancelled,no_show)")
       .gte("scheduled_at", windowStart)
       .lt("scheduled_at", windowEnd);
@@ -402,6 +404,22 @@ export async function removeTourAvailabilityException(id: string): Promise<{ ok:
   return { ok: !error };
 }
 
+function enrichAppointmentContact(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  r: any,
+): import("@/lib/tours/types").TourAppointment {
+  const appt = mapAppointment(r);
+  if (!appt.contactName && r.leads) {
+    appt.contactName = leadDisplayName(
+      r.leads.first_name,
+      r.leads.last_name,
+      r.leads.partner_first_name,
+      null,
+    );
+  }
+  return appt;
+}
+
 export async function getTourAppointments(): Promise<import("@/lib/tours/types").TourAppointment[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
@@ -409,6 +427,7 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
   const supabase = await createClient();
   // Upcoming = soonest-first (scheduled_at asc). Past history is fetched
   // separately so a long past cannot push upcoming out of a single limit.
+  // Archived tours are excluded here — list hygiene, not status change.
   const nowIso = new Date().toISOString();
   const select = "*, leads(first_name,last_name,partner_first_name)";
   const [{ data: upcomingRows }, { data: completedRows }, { data: overdueRows }] = await Promise.all([
@@ -416,6 +435,7 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
       .from("tour_appointments")
       .select(select)
       .eq("venue_id", venue.id)
+      .eq("is_archived", false)
       .in("status", ["scheduled", "confirmed"])
       .gte("scheduled_at", nowIso)
       .order("scheduled_at", { ascending: true })
@@ -424,6 +444,7 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
       .from("tour_appointments")
       .select(select)
       .eq("venue_id", venue.id)
+      .eq("is_archived", false)
       .in("status", ["completed", "no_show"])
       .order("scheduled_at", { ascending: false })
       .limit(50),
@@ -431,6 +452,7 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
       .from("tour_appointments")
       .select(select)
       .eq("venue_id", venue.id)
+      .eq("is_archived", false)
       .in("status", ["scheduled", "confirmed"])
       .lt("scheduled_at", nowIso)
       .order("scheduled_at", { ascending: false })
@@ -443,13 +465,24 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
   // was right there — the query already joined it, mapAppointment just
   // never read it. Same name the Lead's own page already shows.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((r) => {
-    const appt = mapAppointment(r);
-    if (!appt.contactName && r.leads) {
-      appt.contactName = leadDisplayName(r.leads.first_name, r.leads.last_name, r.leads.partner_first_name, null);
-    }
-    return appt;
-  });
+  return ((data ?? []) as any[]).map(enrichAppointmentContact);
+}
+
+/** Archived Tours workspace section — recoverable history, not reporting exclusion. */
+export async function getArchivedTourAppointments(): Promise<import("@/lib/tours/types").TourAppointment[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tour_appointments")
+    .select("*, leads(first_name,last_name,partner_first_name)")
+    .eq("venue_id", venue.id)
+    .eq("is_archived", true)
+    .order("scheduled_at", { ascending: false })
+    .limit(100);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map(enrichAppointmentContact);
 }
 
 export async function getTourAppointmentsForLead(leadId: string): Promise<import("@/lib/tours/types").TourAppointment[]> {
@@ -457,14 +490,101 @@ export async function getTourAppointmentsForLead(leadId: string): Promise<import
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
+  // Lead panel shows full tour history including archived rows.
   const { data } = await supabase.from("tour_appointments").select("*").eq("venue_id", venue.id).eq("lead_id", leadId).order("scheduled_at");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map(mapAppointment);
 }
 
+export type TourArchiveActionResult = { ok: true } | { ok: false; message: string };
+
+/** Soft-archive / restore — only flips is_archived; never mutates status or relationships. */
+export async function setTourAppointmentArchived(
+  appointmentId: string,
+  isArchived: boolean,
+): Promise<TourArchiveActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Database is not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue session." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tour_appointments")
+    .update({ is_archived: isArchived })
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: "Tour not found." };
+  return { ok: true };
+}
+
+export type TourDeleteActionResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Guarded hard delete. Server enforces disposable/orphan criteria.
+ * Never deletes leads/clients/events — only the tour_appointments row
+ * (task_reminders CASCADE; protection/merge pointers SET NULL).
+ */
+export async function deleteTourAppointment(
+  appointmentId: string,
+): Promise<TourDeleteActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Database is not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue session." };
+  const supabase = await createClient();
+  const { data: row, error: loadErr } = await supabase
+    .from("tour_appointments")
+    .select("id, lead_id, contact_email, contact_name")
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id)
+    .maybeSingle();
+  if (loadErr) return { ok: false, message: loadErr.message };
+  if (!row) return { ok: false, message: "Tour not found." };
+
+  const guard = canHardDeleteTourAppointment({
+    leadId: row.lead_id,
+    contactEmail: row.contact_email,
+    contactName: row.contact_name,
+  });
+  if (!guard.allowed) return { ok: false, message: guard.reason };
+
+  const { error } = await supabase
+    .from("tour_appointments")
+    .delete()
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
-  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id ?? null, scheduledAt: r.scheduled_at, durationMinutes: r.duration_minutes, status: r.status, contactName: r.contact_name ?? null, contactEmail: r.contact_email ?? null, contactPhone: r.contact_phone ?? null, eventType: r.event_type ?? null, eventDate: r.event_date ?? null, guestCount: r.guest_count ?? null, notes: r.notes ?? null, assignedTo: r.assigned_to ?? null, confirmedAt: r.confirmed_at ?? null, completedAt: r.completed_at ?? null, followUpSentAt: r.follow_up_sent_at ?? null, outcome: r.outcome ?? null, cancellationReason: r.cancellation_reason ?? null, createdAt: r.created_at, confirmationRequestedAt: r.confirmation_requested_at ?? null, confirmationSource: r.confirmation_source ?? null };
+  return {
+    id: r.id,
+    venueId: r.venue_id,
+    leadId: r.lead_id ?? null,
+    scheduledAt: r.scheduled_at,
+    durationMinutes: r.duration_minutes,
+    status: r.status,
+    contactName: r.contact_name ?? null,
+    contactEmail: r.contact_email ?? null,
+    contactPhone: r.contact_phone ?? null,
+    eventType: r.event_type ?? null,
+    eventDate: r.event_date ?? null,
+    guestCount: r.guest_count ?? null,
+    notes: r.notes ?? null,
+    assignedTo: r.assigned_to ?? null,
+    confirmedAt: r.confirmed_at ?? null,
+    completedAt: r.completed_at ?? null,
+    followUpSentAt: r.follow_up_sent_at ?? null,
+    outcome: r.outcome ?? null,
+    cancellationReason: r.cancellation_reason ?? null,
+    createdAt: r.created_at,
+    confirmationRequestedAt: r.confirmation_requested_at ?? null,
+    confirmationSource: r.confirmation_source ?? null,
+    isArchived: Boolean(r.is_archived),
+  };
 }
 
 // ── Coordinator Tour Scheduling — schedule/reschedule/cancel from a Lead -------

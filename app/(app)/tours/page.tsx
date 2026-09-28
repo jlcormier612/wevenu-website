@@ -3,12 +3,12 @@ import Link from "next/link";
 import { CalendarCheck, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { TourList } from "@/components/tours/tour-list";
+import { TourArchivedSection, TourList } from "@/components/tours/tour-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { markVenueToursSeen } from "@/lib/navigation/attention-service";
 import { partitionTourAppointmentsForVenueList } from "@/lib/tours/list-order";
-import { getTourAppointments, getTourSettings } from "@/lib/tours/service";
+import { getArchivedTourAppointments, getTourAppointments, getTourSettings } from "@/lib/tours/service";
 import { listUnresolvedProtectionRequests } from "@/lib/tours/protection";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { PaidUnbookedProtectionList } from "@/components/tours/paid-unbooked-protection-list";
@@ -17,8 +17,9 @@ import { canRefundTourFee } from "@/lib/tours/protection-rules";
 export const metadata: Metadata = { title: "Tours" };
 
 export default async function ToursPage() {
-  const [appointments, tourSettings, unresolvedProtection, role, venue] = await Promise.all([
+  const [appointments, archivedAppointments, tourSettings, unresolvedProtection, role, venue] = await Promise.all([
     getTourAppointments(),
+    getArchivedTourAppointments(),
     getTourSettings(),
     listUnresolvedProtectionRequests(),
     getCurrentUserRole(),
@@ -30,6 +31,8 @@ export default async function ToursPage() {
   void markVenueToursSeen();
 
   const { upcoming, past } = partitionTourAppointmentsForVenueList(appointments);
+  const hasWorking = upcoming.length > 0 || past.length > 0;
+  const hasAny = hasWorking || archivedAppointments.length > 0;
 
   return (
     <div className="space-y-6">
@@ -56,7 +59,7 @@ export default async function ToursPage() {
         </Card>
       )}
 
-      {appointments.length === 0 ? (
+      {!hasAny ? (
         <Card>
           <CardContent className="py-12 text-center space-y-3">
             <CalendarCheck className="h-10 w-10 text-muted-foreground mx-auto" />
@@ -94,6 +97,15 @@ export default async function ToursPage() {
               </CardContent>
             </Card>
           )}
+          {!hasWorking && archivedAppointments.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              No active tours in Upcoming or Past. Open Archived below to restore one.
+            </p>
+          )}
+          <TourArchivedSection
+            appointments={archivedAppointments}
+            venueTimezone={venue?.timezone ?? null}
+          />
         </div>
       )}
     </div>

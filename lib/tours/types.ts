@@ -103,6 +103,11 @@ export type TourAppointment = {
   confirmationRequestedAt: string | null;
   /** How the tour became Confirmed. Null until confirmed. */
   confirmationSource: "manual" | "prospect_link" | null;
+  /**
+   * List hygiene for the Tours workspace. Orthogonal to status —
+   * a completed archived tour is still status=completed.
+   */
+  isArchived: boolean;
 };
 
 export type BookingResult = {

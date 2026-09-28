@@ -3,15 +3,24 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  deleteTourAction,
+  setTourArchivedAction,
+} from "@/app/(app)/tours/actions";
+import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
+import { LibraryOverflowMenu } from "@/components/library/library-overflow-menu";
+import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { canHardDeleteTourAppointment } from "@/lib/tours/delete-guard";
 import type { TourAppointment, TourOutcome } from "@/lib/tours/types";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 import {
@@ -43,8 +52,22 @@ const STATUS_COLORS: Record<TourAppointment["status"], string> = {
   no_show:   "red",
 };
 
-function TourRow({ appt, venueTimezone, onStatusChange }: { appt: TourAppointment; venueTimezone: string | null; onStatusChange: (id: string, status: TourAppointment["status"]) => void }) {
+function TourRow({
+  appt,
+  venueTimezone,
+  onStatusChange,
+  archivedView = false,
+}: {
+  appt: TourAppointment;
+  venueTimezone: string | null;
+  onStatusChange: (id: string, status: TourAppointment["status"]) => void;
+  archivedView?: boolean;
+}) {
+  const router = useRouter();
   const [updating, setUpdating] = React.useState(false);
+  const [overflowPending, setOverflowPending] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deletePending, setDeletePending] = React.useState(false);
   const [showOutcomeForm, setShowOutcomeForm] = React.useState(false);
   const [outcome, setOutcome] = React.useState<string>(appt.outcome ?? "");
   const [notes, setNotes] = React.useState(appt.notes ?? "");
@@ -53,6 +76,8 @@ function TourRow({ appt, venueTimezone, onStatusChange }: { appt: TourAppointmen
   const venueParts = utcToVenueLocalParts(appt.scheduledAt, venueTimezone);
   const dayNum = Number(venueParts.date.slice(8, 10));
   const monthShort = new Date(`${venueParts.date}T12:00:00`).toLocaleDateString("en-US", { month: "short" });
+  const deleteGuard = canHardDeleteTourAppointment(appt);
+  const displayName = appt.contactName ?? "Unknown";
 
   async function handleSaveOutcome() {
     setSavingOutcome(true);
@@ -117,67 +142,123 @@ function TourRow({ appt, venueTimezone, onStatusChange }: { appt: TourAppointmen
     finally { setUpdating(false); }
   }
 
+  async function handleArchiveToggle() {
+    setOverflowPending(true);
+    const next = !appt.isArchived;
+    const result = await setTourArchivedAction(appt.id, next);
+    setOverflowPending(false);
+    if (result.ok) {
+      toast.success(next ? "Tour archived." : "Tour restored.");
+      router.refresh();
+    } else {
+      toast.error(result.message ?? "Could not update archive state.");
+    }
+  }
+
+  async function handleDeleteConfirmed() {
+    setDeletePending(true);
+    const result = await deleteTourAction(appt.id);
+    setDeletePending(false);
+    setDeleting(false);
+    if (result.ok) {
+      toast.success("Tour deleted.");
+      router.refresh();
+    } else {
+      toast.error(result.message ?? "Could not delete tour.");
+    }
+  }
+
+  const overflowItems = [
+    {
+      id: "archive",
+      label: archiveToggleLabel(appt.isArchived),
+      onClick: () => void handleArchiveToggle(),
+      icon: appt.isArchived
+        ? <ArchiveRestore className="mr-2 h-3.5 w-3.5" />
+        : <Archive className="mr-2 h-3.5 w-3.5" />,
+    },
+    ...(deleteGuard.allowed
+      ? [{
+          id: "delete",
+          label: LIBRARY_LABELS.delete,
+          onClick: () => setDeleting(true),
+          destructive: true as const,
+          separatorBefore: true,
+          icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+        }]
+      : []),
+  ];
+
   return (
-    <div className="flex items-start gap-3 py-4 border-b border-border/50 last:border-0">
-      {/* Date block */}
-      <div className="shrink-0 w-12 text-center">
-        <p className="text-lg font-bold text-heading leading-none">{dayNum}</p>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{monthShort}</p>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-heading truncate">{appt.contactName ?? "Unknown"}</p>
-          <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[appt.status] === "amber" ? "border-amber-300 text-amber-700 bg-amber-50" : STATUS_COLORS[appt.status] === "green" ? "border-green-300 text-green-700 bg-green-50" : "border-border text-muted-foreground"}`}>
-            {STATUS_LABELS[appt.status]}
-          </Badge>
+    <>
+    <div className="py-4 border-b border-border/50 last:border-0">
+      <div className="flex items-start gap-3">
+        {/* Date block */}
+        <div className="shrink-0 w-12 text-center">
+          <p className="text-lg font-bold text-heading leading-none">{dayNum}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{monthShort}</p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {timeLabel} · {appt.durationMinutes} min
-          {appt.eventType && ` · ${appt.eventType}`}
-        </p>
-        {appt.contactEmail && <p className="text-xs text-muted-foreground">{appt.contactEmail}</p>}
-      </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        {updating ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        ) : (
-          <>
-            {appt.status === "scheduled" && (
-              <>
-                <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleRequestConfirmation()}>
-                  Send Confirmation Request
-                </Button>
-                <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleMarkConfirmed()}>
-                  Mark as Confirmed
-                </Button>
-              </>
+        {/* Content */}
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-heading truncate">{displayName}</p>
+            <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[appt.status] === "amber" ? "border-amber-300 text-amber-700 bg-amber-50" : STATUS_COLORS[appt.status] === "green" ? "border-green-300 text-green-700 bg-green-50" : "border-border text-muted-foreground"}`}>
+              {STATUS_LABELS[appt.status]}
+            </Badge>
+            {archivedView && (
+              <Badge variant="muted" className="text-[10px] shrink-0">{LIBRARY_LABELS.archived}</Badge>
             )}
-            {/* Confirmed is never a free-pick option here — see handleMarkConfirmed above. */}
-            <Select value={appt.status} onValueChange={handleStatus} items={STATUS_LABELS}>
-              <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="no_show">No Show</SelectItem>
-              </SelectContent>
-            </Select>
-          </>
-        )}
-        {appt.leadId && (
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" render={<Link href={`/leads/${appt.leadId}`} />}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {timeLabel} · {appt.durationMinutes} min
+            {appt.eventType && ` · ${appt.eventType}`}
+          </p>
+          {appt.contactEmail && <p className="text-xs text-muted-foreground">{appt.contactEmail}</p>}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {!archivedView && (
+            updating ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                {appt.status === "scheduled" && (
+                  <>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleRequestConfirmation()}>
+                      Send Confirmation Request
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleMarkConfirmed()}>
+                      Mark as Confirmed
+                    </Button>
+                  </>
+                )}
+                {/* Confirmed is never a free-pick option here — see handleMarkConfirmed above. */}
+                <Select value={appt.status} onValueChange={handleStatus} items={STATUS_LABELS}>
+                  <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="no_show">No Show</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )
+          )}
+          {appt.leadId && (
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" render={<Link href={`/leads/${appt.leadId}`} />}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
+          <LibraryOverflowMenu items={overflowItems} pending={overflowPending} />
+        </div>
       </div>
 
       {/* Completed tour: outcome + notes + follow-up */}
-      {appt.status === "completed" && (
-        <div className="mt-2 ml-15 pl-1 space-y-2">
+      {!archivedView && appt.status === "completed" && (
+        <div className="mt-2 ml-12 space-y-2">
           {appt.outcome && (
             <p className="text-xs text-muted-foreground">
               Outcome: <span className="font-medium text-heading">{OUTCOME_LABELS[appt.outcome as TourOutcome]}</span>
@@ -222,12 +303,32 @@ function TourRow({ appt, venueTimezone, onStatusChange }: { appt: TourAppointmen
         </div>
       )}
     </div>
+    <LibraryDeleteConfirmDialog
+      open={deleting}
+      itemName={displayName}
+      itemLabel="tour"
+      permanent
+      consequenceNote="Leads, clients, and events are not deleted. Tour reminders for this appointment are removed."
+      pending={deletePending}
+      onConfirm={() => void handleDeleteConfirmed()}
+      onCancel={() => setDeleting(false)}
+    />
+    </>
   );
 }
 
-export function TourList({ appointments, venueTimezone = null }: { appointments: TourAppointment[]; venueTimezone?: string | null }) {
+export function TourList({
+  appointments,
+  venueTimezone = null,
+  archivedView = false,
+}: {
+  appointments: TourAppointment[];
+  venueTimezone?: string | null;
+  archivedView?: boolean;
+}) {
   const router = useRouter();
   const [appts, setAppts] = React.useState(appointments);
+  React.useEffect(() => { setAppts(appointments); }, [appointments]);
 
   function handleStatusChange(id: string, status: TourAppointment["status"]) {
     setAppts((p) => p.map((a) => a.id === id ? { ...a, status } : a));
@@ -237,8 +338,31 @@ export function TourList({ appointments, venueTimezone = null }: { appointments:
   return (
     <div className="divide-y divide-border/50">
       {appts.map((appt) => (
-        <TourRow key={appt.id} appt={appt} venueTimezone={venueTimezone} onStatusChange={handleStatusChange} />
+        <TourRow
+          key={appt.id}
+          appt={appt}
+          venueTimezone={venueTimezone}
+          onStatusChange={handleStatusChange}
+          archivedView={archivedView}
+        />
       ))}
     </div>
+  );
+}
+
+export function TourArchivedSection({
+  appointments,
+  venueTimezone = null,
+}: {
+  appointments: TourAppointment[];
+  venueTimezone?: string | null;
+}) {
+  return (
+    <LibraryArchivedSection
+      count={appointments.length}
+      hint="Archived tours stay in reporting and history. Restore one to return it to Upcoming or Past."
+    >
+      <TourList appointments={appointments} venueTimezone={venueTimezone} archivedView />
+    </LibraryArchivedSection>
   );
 }
