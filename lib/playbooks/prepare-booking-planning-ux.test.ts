@@ -83,4 +83,10 @@ describe("Prepare Booking / Planning UX — single checklist entry + pre-book Ap
     assert.match(picker, /applyClientStarterTimelineAction/);
     assert.match(picker, /existingEntryCount/);
   });
+
+  it("library timeline apply maps legacy 'venue' audience before insert", () => {
+    const apply = readFileSync(resolve("lib/timeline-templates/apply.ts"), "utf8");
+    assert.match(apply, /mapTemplateAudiencesForVenueOwnedApply/);
+    assert.match(apply, /a !== "venue"/);
+  });
 });

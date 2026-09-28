@@ -14,8 +14,23 @@
 
 import { addEntry } from "@/lib/timeline/service";
 import { resolveEntryTimeFromOffset } from "@/lib/timeline/constants";
-import type { TimelineActionResult } from "@/lib/timeline/types";
+import type { TimelineActionResult, TimelineAudience } from "@/lib/timeline/types";
 import { getItems } from "@/lib/timeline-templates/service";
+
+/**
+ * Library template items historically stored audience tag "venue" to mean
+ * venue-internal / not shared with the couple. Venue-owned working entries
+ * express that as an empty audience list (venue-private). The "venue" share
+ * tag is only valid on client-owned items (couple sharing with the venue).
+ *
+ * Returns undefined when the template omitted audiences so insert defaults apply.
+ */
+export function mapTemplateAudiencesForVenueOwnedApply(
+  audiences: TimelineAudience[] | undefined,
+): TimelineAudience[] | undefined {
+  if (audiences === undefined) return undefined;
+  return audiences.filter((a) => a !== "venue");
+}
 
 export async function applyTimelineTemplateToEvent(
   eventId: string, templateId: string, eventStartTime: string | null,
@@ -36,7 +51,7 @@ export async function applyTimelineTemplateToEvent(
       notes: item.notes ?? "",
       entryTime,
       dayOffset: item.dayOffset ?? 0,
-      audiences: item.audiences,
+      audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
     });
     if (!result.ok) return { ok: false, message: result.message ?? `Could not add "${item.title}".` };
   }
@@ -60,7 +75,7 @@ export async function applyTimelineTemplateToClient(
       notes: item.notes ?? "",
       entryTime,
       dayOffset: item.dayOffset ?? 0,
-      audiences: item.audiences,
+      audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
     });
     if (!result.ok) return { ok: false, message: result.message ?? `Could not add "${item.title}".` };
   }
