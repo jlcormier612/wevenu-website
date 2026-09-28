@@ -25,6 +25,7 @@ import { describe, it } from "node:test";
 
 const ACTIONS = readFileSync("app/auth/actions.ts", "utf8");
 const FORM = readFileSync("components/auth/login-form.tsx", "utf8");
+const APP_LAYOUT = readFileSync("app/(app)/layout.tsx", "utf8");
 
 /** Body of `export async function signIn(...)` up to the next top-level export. */
 function signInBody(): string {
@@ -63,6 +64,32 @@ describe("signIn hands its destination to the client", () => {
       ACTIONS,
       /redirectTo\?:\s*string/,
       "AuthFormState must carry redirectTo so the client can navigate",
+    );
+  });
+});
+
+describe("the hazard the login handoff exists to avoid is still real", () => {
+  // These assertions are the other half of the contract. The login fix is only
+  // necessary because the workspace layout redirects post-login; if that ever
+  // stops being true these tests should be revisited together, rather than
+  // someone finding a lone "don't call redirect()" rule with no stated reason.
+  it("the (app) layout still redirects to a different entry point", () => {
+    for (const gate of ["/onboarding/intake", "/setup-hub", "/billing/suspended"]) {
+      assert.ok(
+        APP_LAYOUT.includes(`redirect("${gate}")`),
+        `app/(app)/layout.tsx no longer redirects to ${gate}`,
+      );
+    }
+  });
+
+  it("the resolved post-login home is inside that gated tree", () => {
+    // resolveAuthenticatedHomePath sends venue staff to /dashboard, which the
+    // layout above immediately redirects away from for a venue still in setup.
+    // That is the exact collision that hung the router.
+    assert.match(
+      readFileSync("lib/auth/portal-home.ts", "utf8"),
+      /"\/dashboard"/,
+      "venue home is no longer /dashboard; re-check the login handoff",
     );
   });
 });
