@@ -767,6 +767,26 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 )}
               </CardContent>
             </Card>
+
+            {/* Date Hold belongs with the preferred date — not under Tasks.
+                Hold date defaults from lead.eventDate (desired/preferred). */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Date hold</CardTitle>
+                <CardDescription>
+                  Temporarily reserve their preferred date (or another date you choose) without converting this lead to a booking. Holds appear on the calendar and follow your availability settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DateHoldsSection
+                  leadId={lead.id}
+                  leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+                  desiredEventDate={lead.eventDate}
+                  initialHolds={holds}
+                  spaces={spaces}
+                />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Coordinator Tour Scheduling — always visible, not just when a
@@ -801,30 +821,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           </Card>
         </TabsContent>
 
-        {/* ── Date Holds ────────────────────────────────────────────── */}
+        {/* ── Tasks (work to do — not date holds) ───────────────────── */}
         <TabsContent value="tasks">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Date Holds</CardTitle>
-                <CardDescription>
-                  Reserve a date for this lead without committing to a booking. Holds appear on the calendar and can be released or converted to an event.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DateHoldsSection
-                  leadId={lead.id}
-                  leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-                  initialHolds={holds}
-                  spaces={spaces}
-                />
-              </CardContent>
-            </Card>
-            <Card>
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">Venue tasks</CardTitle>
               <CardDescription>
-                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates.
+                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Date hold on Overview.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -836,7 +839,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               />
             </CardContent>
           </Card>
-          </div>
         </TabsContent>
 
         {/* ── Activity ──────────────────────────────────────────────── */}

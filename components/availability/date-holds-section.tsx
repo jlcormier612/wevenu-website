@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate, HOLD_STATUS_LABEL } from "@/lib/availability/constants";
+import { defaultHoldDateFromDesiredEventDate } from "@/lib/availability/hold-defaults";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { DateHold, DateHoldInput } from "@/lib/availability/types";
 import type { VenueSpace } from "@/lib/availability/types";
@@ -21,18 +22,20 @@ import type { VenueSpace } from "@/lib/availability/types";
 export function DateHoldsSection({
   leadId,
   leadName,
+  desiredEventDate = null,
   initialHolds,
   spaces,
 }: {
   leadId: string;
   leadName: string;
+  /** Authoritative preferred/desired event date (YYYY-MM-DD). Hold date defaults from this. */
+  desiredEventDate?: string | null;
   initialHolds: DateHold[];
   spaces: VenueSpace[];
 }) {
   const router = useRouter();
-  // See lib/hooks/use-synced-state.ts — TasksSection is a true sibling on
-  // this same tab and calls router.refresh() on its own task actions,
-  // which would otherwise leave this list stale without a full reload.
+  // See lib/hooks/use-synced-state.ts — TasksSection may refresh siblings
+  // on the same page and would otherwise leave this list stale.
   const [holds, setHolds] = useSyncedState(initialHolds);
   const [showForm, setShowForm] = React.useState(false);
   const [holdDate, setHoldDate] = React.useState("");
@@ -41,6 +44,16 @@ export function DateHoldsSection({
   const [expiresAt, setExpiresAt] = React.useState("");
   const [addPending, startAdd] = React.useTransition();
   const [releasingId, setReleasingId] = React.useState<string | null>(null);
+
+  const desiredDefault = defaultHoldDateFromDesiredEventDate(desiredEventDate);
+
+  function openForm() {
+    setHoldDate(desiredDefault);
+    setHoldTitle(`Hold — ${leadName}`);
+    setSpaceId("");
+    setExpiresAt("");
+    setShowForm(true);
+  }
 
   function handleAdd() {
     if (!holdDate || !holdTitle.trim()) return;
@@ -121,7 +134,21 @@ export function DateHoldsSection({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Hold date *</Label>
-              <Input type="date" value={holdDate} onChange={(e) => setHoldDate(e.target.value)} />
+              <Input
+                type="date"
+                value={holdDate}
+                onChange={(e) => setHoldDate(e.target.value)}
+                data-testid="date-hold-hold-date"
+              />
+              {desiredDefault ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Defaults to their preferred event date ({formatDate(desiredDefault)}). Change only if you intend to hold a different day.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  No preferred event date on this lead — enter the date to hold.
+                </p>
+              )}
             </div>
             {spaces.length > 0 && (
               <div className="space-y-1.5">
@@ -136,6 +163,9 @@ export function DateHoldsSection({
             <div className="space-y-1.5">
               <Label className="text-xs">Auto-release date <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">
+                When this temporary hold should stop protecting the hold date — not the event date itself.
+              </p>
             </div>
           </div>
           <div className="space-y-1">
@@ -152,8 +182,11 @@ export function DateHoldsSection({
           </div>
         </div>
       ) : (
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowForm(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Place Hold
+        <Button type="button" variant="outline" size="sm" onClick={openForm}>
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          {desiredDefault
+            ? `Place hold on ${formatDate(desiredDefault)}`
+            : "Place Hold"}
         </Button>
       )}
     </div>
