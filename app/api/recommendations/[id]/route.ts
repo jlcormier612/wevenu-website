@@ -13,11 +13,15 @@ export async function PATCH(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("update_recommendation_status", {
+  const { data, error } = await supabase.rpc("update_recommendation_status", {
     p_recommendation_id: id,
     p_action:            action,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const payload = data as { ok?: boolean } | null;
+  if (payload?.ok !== true) {
+    return NextResponse.json({ error: "recommendation not updated" }, { status: 409 });
+  }
   return NextResponse.json({ ok: true });
 }

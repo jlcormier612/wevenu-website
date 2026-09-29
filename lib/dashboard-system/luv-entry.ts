@@ -15,6 +15,7 @@
  */
 import type { ClassifiedItem } from "@/lib/dashboard-system/decision-engine";
 import type { VenueRecommendation } from "@/lib/luv/recommendation-types";
+import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
 import type { LuvObservation } from "@/lib/luv/types";
 
 export type LuvDashboardEntry = {
@@ -146,6 +147,7 @@ export function selectLuvDashboardEntry({
   // 1. A recommendation is already interpretation plus an action, so it leads —
   //    unless it points at a Focus row or merely opens the Leads stale filter.
   for (const rec of recommendations) {
+    if (!isRecommendationActiveForDisplay(rec)) continue;
     if (isLeadsFilterDuplicateRecommendation(rec)) continue;
     const cta = firstCta(rec);
     if (!cta) continue;

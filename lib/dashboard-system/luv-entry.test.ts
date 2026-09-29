@@ -98,6 +98,20 @@ describe("Luv does not restate Today's Focus", () => {
     assert.equal(entry?.actionLabel, "View report");
   });
 
+  it("skips a recently dismissed recommendation so refresh cannot resurrect it", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [],
+      observations: [],
+      recommendations: [recommendation({
+        type: "client_ask_gap_exotic_animal_policy",
+        title: "Clients have asked about exotic animals 3 times in the last 30 days.",
+        dismissedAt: "2026-09-29T11:59:00.000Z",
+        ctas: [{ type: "navigate", target: "/guide", label: "Open Venue Guide" }] as never,
+      })],
+    });
+    assert.equal(entry, null);
+  });
+
   it("skips the Leads stale-contact filter recommendation instead of duplicating Leads", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [focusItem({ href: "/leads/sara" })],

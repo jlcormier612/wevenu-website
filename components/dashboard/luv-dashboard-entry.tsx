@@ -16,13 +16,19 @@ export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
   if (hidden) return null;
 
   async function dismiss() {
-    setHidden(true);
-    if (entry.dismissRecommendationId) {
-      await fetch(`/api/recommendations/${entry.dismissRecommendationId}`, {
+    if (!entry.dismissRecommendationId) {
+      setHidden(true);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/recommendations/${entry.dismissRecommendationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "dismiss" }),
-      }).catch(() => undefined);
+      });
+      if (res.ok) setHidden(true);
+    } catch {
+      // Persist failed — keep the card so refresh cannot invent a dismissal.
     }
   }
 

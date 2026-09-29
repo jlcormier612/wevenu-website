@@ -210,6 +210,16 @@ describe("wiring — reuse luv_recommendations, no second system", () => {
     assert.match(activeVenue, /current_user_venue_id\(\)/);
     assert.doesNotMatch(activeVenue, /from venue_users where user_id = auth\.uid\(\) limit 1/);
 
+    const preserveDismiss = read(
+      "supabase/migrations/20261408800000_luv_ask_gap_preserve_dismissal.sql",
+    );
+    assert.match(preserveDismiss, /current_user_venue_id\(\)/);
+    const conflict = preserveDismiss.slice(preserveDismiss.indexOf("on conflict"));
+    assert.doesNotMatch(
+      conflict.slice(0, conflict.indexOf("v_upserted")),
+      /dismissed_at\s*=\s*null/,
+    );
+
     const service = read("lib/luv/recommendation-service.ts");
     assert.match(service, /syncClientAskGapRecommendations/);
     assert.match(service, /generate_venue_recommendations/);
