@@ -47,7 +47,7 @@ describe("Library dependency guidance — source + direct links + how used", () 
     assert.match(src, /LibraryDependencyNote/);
     assert.match(src, /href: "\/library\/inventory"/);
     assert.match(src, /Manage Available Inventory/);
-    assert.match(src, /Checklist lines/);
+    assert.match(src, /Built from your Available Inventory catalog/);
     assert.doesNotMatch(src, /All templates/);
     assert.doesNotMatch(src, /href: "\/library"/);
   });
@@ -57,7 +57,7 @@ describe("Library dependency guidance — source + direct links + how used", () 
     assert.match(src, /LibraryDependencyNote/);
     assert.match(src, /href: "\/library\/offerings"/);
     assert.match(src, /Manage Offerings/);
-    assert.match(src, /select offerings/);
+    assert.match(src, /select offerings from your catalog first/i);
     assert.doesNotMatch(src, /All templates/);
   });
 
@@ -65,7 +65,7 @@ describe("Library dependency guidance — source + direct links + how used", () 
     const page = readFileSync(resolve("app/(app)/library/choices-templates/page.tsx"), "utf8");
     assert.match(page, /href: "\/library\/offerings"/);
     assert.match(page, /Manage Offerings/);
-    assert.match(page, /attach offerings/);
+    assert.match(page, /select offerings as choice options first/i);
     const list = readFileSync(resolve("components/client-choices-templates/choices-template-list.tsx"), "utf8");
     assert.match(list, /LIBRARY_LABELS\.preview/);
     assert.match(list, /LIBRARY_LABELS\.edit/);

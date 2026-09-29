@@ -218,7 +218,7 @@ export function EventOrderTemplateDetail({
         You are building a reusable Event Order template. Add as much detail as you need — from simple sections to fully priced offerings. Applying this to an event creates that event’s own copy.
       </p>
       <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground max-w-2xl">
-        Select offerings from your catalog below, or add custom lines. Need to create or update sellable items first?{" "}
+        Select offerings from your catalog first. Add a custom line only when needed. Need to create sellable items?{" "}
         <Link href="/library/offerings" className="font-medium text-heading hover:underline">
           Manage Offerings →
         </Link>
@@ -281,12 +281,15 @@ export function EventOrderTemplateDetail({
               <div className="mt-4 space-y-3">
                 <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">Offerings</p>
                 {offerings.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No offerings yet. Add a priced item or a simple note with no price.</p>
+                  <p className="text-sm text-muted-foreground">No offerings yet. Select from your Offerings catalog, or add a custom line.</p>
                 ) : (
                   offerings.map((line, lineIndex) => (
                     <div key={line.id} className="rounded-md border border-border/80 p-3">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-heading">{line.description}</p>
+                        <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
+                          {line.offeringId ? "From catalog" : "Custom"}
+                        </p>
                         {line.descriptionDetail ? (
                           <p className="mt-1 text-sm text-muted-foreground">{line.descriptionDetail}</p>
                         ) : null}
@@ -320,7 +323,7 @@ export function EventOrderTemplateDetail({
                   onClick={() => { setEditingLine(null); setEditorSectionId(section.id); setEditorOpen(true); }}
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add offering
+                  Add from Offerings
                 </Button>
               </div>
             </section>

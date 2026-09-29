@@ -19,21 +19,31 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { InventoryItemInput, InventoryTemplateWithItems } from "@/lib/event-inventory/types";
-import type { InventoryItem } from "@/lib/inventory/types";
+import {
+  catalogItemDisplayName,
+  isCatalogBackedTemplateItem,
+  templateItemInputFromCatalog,
+  customTemplateItemInput,
+} from "@/lib/event-inventory/template-catalog";
+import type { InventoryTemplateWithItems } from "@/lib/event-inventory/types";
+import type { InventoryItemWithCategory } from "@/lib/inventory/types";
 
 function formatMoney(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
+type AddMode = "idle" | "catalog" | "custom";
+
 function AddTemplateItemInline({
-  templateId, onPersist,
+  templateId, catalogItems, onPersist,
 }: {
   templateId: string;
-  catalogItems: InventoryItem[];
+  catalogItems: InventoryItemWithCategory[];
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
 }) {
-  const [adding, setAdding] = React.useState(false);
+  const available = catalogItems.filter((i) => !i.isArchived);
+  const [mode, setMode] = React.useState<AddMode>("idle");
+  const [catalogItemId, setCatalogItemId] = React.useState("");
   const [name, setName] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
@@ -41,11 +51,30 @@ function AddTemplateItemInline({
   const [isIncluded, setIsIncluded] = React.useState(true);
   const [pending, startTransition] = React.useTransition();
 
-  function reset() { setName(""); setCategory(""); setQuantity("1"); setUnitPrice(""); setIsIncluded(true); setAdding(false); }
+  function reset() {
+    setMode("idle");
+    setCatalogItemId("");
+    setName("");
+    setCategory("");
+    setQuantity("1");
+    setUnitPrice("");
+    setIsIncluded(true);
+  }
 
-  function handleAdd() {
-    if (!name.trim()) return;
-    const input: InventoryItemInput = { name, category, quantity, unitPrice, isIncluded };
+  function pickCatalog(id: string) {
+    const item = available.find((i) => i.id === id);
+    setCatalogItemId(id);
+    if (!item) return;
+    const prefilled = templateItemInputFromCatalog(item, { quantity, unitPrice, isIncluded });
+    setName(prefilled.name);
+    setCategory(prefilled.category ?? "");
+  }
+
+  function handleAddCatalog() {
+    if (!catalogItemId) return;
+    const item = available.find((i) => i.id === catalogItemId);
+    if (!item) return;
+    const input = templateItemInputFromCatalog(item, { quantity, unitPrice, isIncluded });
     startTransition(async () => {
       onPersist("saving");
       const result = await addInventoryTemplateItemAction(templateId, input);
@@ -54,12 +83,100 @@ function AddTemplateItemInline({
     });
   }
 
-  if (!adding) {
-    return <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>+ Add Item</Button>;
+  function handleAddCustom() {
+    if (!name.trim()) return;
+    const input = customTemplateItemInput({ name, category, quantity, unitPrice, isIncluded });
+    startTransition(async () => {
+      onPersist("saving");
+      const result = await addInventoryTemplateItemAction(templateId, input);
+      if (result.ok) { reset(); onPersist("saved"); }
+      else { onPersist("error", result.message); toast.error(result.message ?? "Could not add item."); }
+    });
+  }
+
+  if (mode === "idle") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={available.length === 0}
+          onClick={() => setMode("catalog")}
+        >
+          + Add from Available Inventory
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setMode("custom")}>
+          + Add custom item
+        </Button>
+        {available.length === 0 ? (
+          <p className="w-full text-xs text-muted-foreground">
+            No Available Inventory yet.{" "}
+            <Link href="/library/inventory" className="font-medium text-heading hover:underline">
+              Add catalog items →
+            </Link>
+            {" "}or add a custom line.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (mode === "catalog") {
+    return (
+      <div className="rounded-sm border border-border p-4 space-y-3">
+        <p className="text-sm font-medium text-heading">Add from Available Inventory</p>
+        <div className="space-y-1.5">
+          <Label className="text-sm">Catalog item</Label>
+          <select
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={catalogItemId}
+            onChange={(e) => pickCatalog(e.target.value)}
+            autoFocus
+          >
+            <option value="">Select an item…</option>
+            {available.map((i) => (
+              <option key={i.id} value={i.id}>
+                {catalogItemDisplayName(i)}
+                {i.categoryName ? ` · ${i.categoryName}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        {catalogItemId ? (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Quantity</Label>
+                <Input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Price each (optional)</Label>
+                <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} placeholder="Optional" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="tmpl-cat-included" checked={isIncluded} onCheckedChange={(v) => setIsIncluded(v === true)} />
+              <Label htmlFor="tmpl-cat-included" className="text-sm font-normal cursor-pointer">Included in the base package</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Name and category come from Available Inventory. Quantity and price are saved on this template (snapshot when applied).
+            </p>
+          </>
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={reset} disabled={pending}>Cancel</Button>
+          <Button type="button" size="sm" disabled={!catalogItemId || pending} onClick={handleAddCatalog}>
+            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="rounded-sm border border-border p-4 space-y-3">
+      <p className="text-sm font-medium text-heading">Add custom item</p>
+      <p className="text-xs text-muted-foreground">For one-offs that are not in Available Inventory.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Item name" autoFocus />
         <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" />
@@ -69,12 +186,12 @@ function AddTemplateItemInline({
         <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} placeholder="Price each (optional)" />
       </div>
       <div className="flex items-center gap-2">
-        <Checkbox id="tmpl-included" checked={isIncluded} onCheckedChange={(v) => setIsIncluded(v === true)} />
-        <Label htmlFor="tmpl-included" className="text-sm font-normal cursor-pointer">Included in the base package</Label>
+        <Checkbox id="tmpl-custom-included" checked={isIncluded} onCheckedChange={(v) => setIsIncluded(v === true)} />
+        <Label htmlFor="tmpl-custom-included" className="text-sm font-normal cursor-pointer">Included in the base package</Label>
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={reset} disabled={pending}>Cancel</Button>
-        <Button type="button" size="sm" disabled={!name.trim() || pending} onClick={handleAdd}>
+        <Button type="button" size="sm" disabled={!name.trim() || pending} onClick={handleAddCustom}>
           {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
         </Button>
       </div>
@@ -82,7 +199,13 @@ function AddTemplateItemInline({
   );
 }
 
-export function InventoryTemplateDetail({ template, catalogItems }: { template: InventoryTemplateWithItems; catalogItems: InventoryItem[] }) {
+export function InventoryTemplateDetail({
+  template,
+  catalogItems,
+}: {
+  template: InventoryTemplateWithItems;
+  catalogItems: InventoryItemWithCategory[];
+}) {
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [deleting, startDelete] = React.useTransition();
   const router = useRouter();
@@ -131,10 +254,11 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
       {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
 
       <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-        Checklist lines are authored below. Physical stock lives in{" "}
+        Add items from{" "}
         <Link href="/library/inventory" className="font-medium text-heading hover:underline">
-          Available Inventory →
+          Available Inventory
         </Link>
+        {" "}first. Use a custom line only when something is not already in your catalog. Applying this template copies a snapshot onto the event.
       </p>
 
       <Card>
@@ -148,22 +272,28 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
             <p className="text-sm text-muted-foreground py-4 text-center">No items yet.</p>
           ) : (
             <div>
-              {template.items.map((item) => (
-                <div key={item.id} className="group grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 py-2 border-b border-border last:border-0 text-sm">
-                  <div className="min-w-0">
-                    <span className="text-foreground">{item.name}</span>
-                    {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
+              {template.items.map((item) => {
+                const fromCatalog = isCatalogBackedTemplateItem(item);
+                return (
+                  <div key={item.id} className="group grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 py-2 border-b border-border last:border-0 text-sm">
+                    <div className="min-w-0">
+                      <span className="text-foreground">{item.name}</span>
+                      {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
+                      <span className="ml-2 text-[0.7rem] text-muted-foreground">
+                        {fromCatalog ? "From catalog" : "Custom"}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
+                    <span className="text-right w-24 font-medium text-foreground">{item.unitPrice != null ? formatMoney(item.unitPrice) : "—"}</span>
+                    <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">{item.isIncluded ? "Included" : "Additional"}</Badge>
+                    <TemplateItemEditSheet templateId={template.id} item={item} onPersist={onPersist} />
+                    <button type="button" onClick={() => handleRemove(item.id, item.name)} disabled={removingId === item.id}
+                      className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity justify-self-end">
+                      {removingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </button>
                   </div>
-                  <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
-                  <span className="text-right w-24 font-medium text-foreground">{item.unitPrice != null ? formatMoney(item.unitPrice) : "—"}</span>
-                  <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">{item.isIncluded ? "Included" : "Additional"}</Badge>
-                  <TemplateItemEditSheet templateId={template.id} item={item} onPersist={onPersist} />
-                  <button type="button" onClick={() => handleRemove(item.id, item.name)} disabled={removingId === item.id}
-                    className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity justify-self-end">
-                    {removingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           <AddTemplateItemInline templateId={template.id} catalogItems={catalogItems} onPersist={onPersist} />

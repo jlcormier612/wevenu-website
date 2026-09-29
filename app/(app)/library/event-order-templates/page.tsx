@@ -28,10 +28,10 @@ export default async function EventOrderTemplatesPage() {
         Assemble a reusable order once. Use Template on an event to snapshot those lines into that event&apos;s Event Order.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Need to add or change what you sell? Manage offerings in Offerings. When you edit this template, you can select offerings to include (or add custom lines)."
+        detail="When you edit a template, select offerings from your catalog first. Add a custom line only when something is not already in Offerings. Applying copies a snapshot into the event — later catalog price changes do not rewrite existing event orders."
         action={{ href: "/library/offerings", label: "Manage Offerings" }}
       >
-        Uses offerings from your Offerings catalog.
+        Built from your Offerings catalog.
       </LibraryDependencyNote>
       <EventOrderTemplateList
         templates={templates}

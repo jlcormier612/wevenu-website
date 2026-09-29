@@ -20,10 +20,10 @@ export default async function ChoicesTemplatesPage() {
         Build the questions and options once. Use Template on an event to create that event&apos;s client choices from this template.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Need to add or change sellable options? Manage them in Offerings. When you edit this template, you can attach offerings as options (or write custom option labels)."
+        detail="When you edit a template, select offerings as choice options first. Customize the customer-facing label if needed. Add a custom option only for one-offs. Applying freezes a snapshot into that event&apos;s client choices."
         action={{ href: "/library/offerings", label: "Manage Offerings" }}
       >
-        Options can use offerings from your Offerings catalog.
+        Built from your Offerings catalog.
       </LibraryDependencyNote>
       <ChoicesTemplateList
         templates={templates}

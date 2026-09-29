@@ -18,8 +18,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  choicesOptionDraftFromOffering,
+  customChoicesOptionDraft,
+  isCatalogBackedChoicesOption,
+} from "@/lib/client-choices-templates/option-catalog";
 import type { ChoicesTemplateWithDetails } from "@/lib/client-choices-templates/types";
 import type { Offering } from "@/lib/offerings/types";
+
+type OptionMode = "idle" | "catalog" | "custom";
 
 export function ChoicesTemplateDetail({
   template,
@@ -36,15 +43,64 @@ export function ChoicesTemplateDetail({
   const [sectionName, setSectionName] = React.useState("");
   const [groupName, setGroupName] = React.useState("");
   const [groupSectionId, setGroupSectionId] = React.useState<string>("");
-  const [optionLabel, setOptionLabel] = React.useState("");
+
+  const available = offerings.filter((o) => !o.isArchived);
+  const [optionMode, setOptionMode] = React.useState<OptionMode>("idle");
   const [optionGroupId, setOptionGroupId] = React.useState<string>("");
   const [optionOfferingId, setOptionOfferingId] = React.useState<string>("");
+  const [optionLabel, setOptionLabel] = React.useState("");
   const [optionIncluded, setOptionIncluded] = React.useState(true);
   const [optionPrice, setOptionPrice] = React.useState("");
 
   function refresh() {
     router.refresh();
   }
+
+  function resetOptionForm() {
+    setOptionMode("idle");
+    setOptionOfferingId("");
+    setOptionLabel("");
+    setOptionPrice("");
+    setOptionIncluded(true);
+  }
+
+  function pickOffering(id: string) {
+    const off = available.find((o) => o.id === id);
+    setOptionOfferingId(id);
+    if (!off) return;
+    const draft = choicesOptionDraftFromOffering(off);
+    setOptionLabel(draft.label);
+    setOptionIncluded(draft.isIncluded);
+    setOptionPrice(draft.unitPrice != null ? String(draft.unitPrice) : "");
+  }
+
+  function submitOption(offeringId: string | null) {
+    if (!optionGroupId || !optionLabel.trim()) return;
+    const price = optionIncluded ? 0 : (optionPrice.trim() === "" ? null : Number(optionPrice.replace(/[$,]/g, "")));
+    if (!optionIncluded && price != null && (Number.isNaN(price) || price < 0)) {
+      toast.error("Enter a valid price.");
+      return;
+    }
+    startTransition(async () => {
+      const r = await addChoicesTemplateOptionAction(template.id, {
+        groupId: optionGroupId,
+        offeringId,
+        label: optionLabel,
+        isIncluded: optionIncluded,
+        unitPrice: optionIncluded ? 0 : price,
+      });
+      if (!r.ok) toast.error(r.message ?? "Failed");
+      else {
+        resetOptionForm();
+        refresh();
+      }
+    });
+  }
+
+  const offeringNameById = React.useMemo(() => {
+    const map = new Map(offerings.map((o) => [o.id, o.name]));
+    return map;
+  }, [offerings]);
 
   return (
     <div className="space-y-8">
@@ -70,6 +126,10 @@ export function ChoicesTemplateDetail({
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
         </Button>
       </div>
+
+      <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+        Select offerings as options first. You can customize the customer-facing label without losing the Offering link. Use a custom option only for one-offs.
+      </p>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-heading">Sections</h2>
@@ -124,27 +184,35 @@ export function ChoicesTemplateDetail({
                   </Button>
                 </div>
                 <ul className="space-y-1 pl-2">
-                  {opts.map((o) => (
-                    <li key={o.id} className="flex items-center justify-between text-sm">
-                      <span>
-                        {o.label}
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {o.isIncluded ? "Included" : o.unitPrice != null ? `$${o.unitPrice.toFixed(2)}` : "Priced"}
+                  {opts.map((o) => {
+                    const catalogName = o.offeringId ? offeringNameById.get(o.offeringId) : null;
+                    return (
+                      <li key={o.id} className="flex items-center justify-between text-sm gap-2">
+                        <span className="min-w-0">
+                          <span className="font-medium">{o.label}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {o.isIncluded ? "Included" : o.unitPrice != null ? `$${o.unitPrice.toFixed(2)}` : "Priced"}
+                          </span>
+                          <span className="block text-[0.7rem] text-muted-foreground">
+                            {isCatalogBackedChoicesOption(o)
+                              ? (catalogName ? `From catalog · ${catalogName}` : "From catalog")
+                              : "Custom"}
+                          </span>
                         </span>
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => startTransition(async () => {
-                          await removeChoicesTemplateOptionAction(template.id, o.id);
-                          refresh();
-                        })}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </li>
-                  ))}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startTransition(async () => {
+                            await removeChoicesTemplateOptionAction(template.id, o.id);
+                            refresh();
+                          })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </li>
             );
@@ -197,63 +265,115 @@ export function ChoicesTemplateDetail({
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
-          <Input placeholder="Label" value={optionLabel} onChange={(e) => setOptionLabel(e.target.value)} />
-          <select
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            value={optionOfferingId}
-            onChange={(e) => {
-              setOptionOfferingId(e.target.value);
-              const off = offerings.find((o) => o.id === e.target.value);
-              if (off) {
-                setOptionLabel(off.name);
-                if (off.defaultUnitPrice != null) {
-                  setOptionIncluded(false);
-                  setOptionPrice(String(off.defaultUnitPrice));
-                }
-              }
-            }}
-          >
-            <option value="">Optional: link Offering…</option>
-            {offerings.map((o) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={optionIncluded} onChange={(e) => setOptionIncluded(e.target.checked)} />
-            Included (no additional cost)
-          </label>
-          {!optionIncluded ? (
-            <Input placeholder="Unit price" value={optionPrice} onChange={(e) => setOptionPrice(e.target.value)} />
+
+          {optionMode === "idle" ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={!optionGroupId || available.length === 0}
+                onClick={() => setOptionMode("catalog")}
+              >
+                + Select Offering
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!optionGroupId}
+                onClick={() => setOptionMode("custom")}
+              >
+                + Add custom option
+              </Button>
+              {available.length === 0 ? (
+                <p className="w-full text-xs text-muted-foreground">No Offerings yet — add a custom option, or create Offerings first.</p>
+              ) : null}
+            </div>
           ) : null}
-          <Button
-            type="button"
-            size="sm"
-            disabled={pending || !optionGroupId || !optionLabel.trim()}
-            onClick={() => startTransition(async () => {
-              const price = optionIncluded ? 0 : (optionPrice.trim() === "" ? null : Number(optionPrice.replace(/[$,]/g, "")));
-              if (!optionIncluded && price != null && (Number.isNaN(price) || price < 0)) {
-                toast.error("Enter a valid price.");
-                return;
-              }
-              const r = await addChoicesTemplateOptionAction(template.id, {
-                groupId: optionGroupId,
-                offeringId: optionOfferingId || null,
-                label: optionLabel,
-                isIncluded: optionIncluded,
-                unitPrice: optionIncluded ? 0 : price,
-              });
-              if (!r.ok) toast.error(r.message ?? "Failed");
-              else {
-                setOptionLabel("");
-                setOptionOfferingId("");
-                setOptionPrice("");
-                setOptionIncluded(true);
-                refresh();
-              }
-            })}
-          >
-            Add option
-          </Button>
+
+          {optionMode === "catalog" ? (
+            <div className="space-y-2">
+              <Label className="text-sm">Select Offering</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={optionOfferingId}
+                onChange={(e) => pickOffering(e.target.value)}
+                autoFocus
+              >
+                <option value="">Choose an offering…</option>
+                {available.map((o) => (
+                  <option key={o.id} value={o.id}>{o.name}</option>
+                ))}
+              </select>
+              {optionOfferingId ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Customer-facing label</Label>
+                    <Input
+                      value={optionLabel}
+                      onChange={(e) => setOptionLabel(e.target.value)}
+                      placeholder="Shown to the client"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      You can shorten the label; the Offering link stays.
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={optionIncluded} onChange={(e) => setOptionIncluded(e.target.checked)} />
+                    Included (no additional cost)
+                  </label>
+                  {!optionIncluded ? (
+                    <Input placeholder="Unit price" value={optionPrice} onChange={(e) => setOptionPrice(e.target.value)} />
+                  ) : null}
+                </>
+              ) : null}
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={resetOptionForm} disabled={pending}>Cancel</Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={pending || !optionOfferingId || !optionLabel.trim()}
+                  onClick={() => submitOption(optionOfferingId)}
+                >
+                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add option"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {optionMode === "custom" ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Custom option — not linked to Offerings.</p>
+              <Input
+                placeholder="Label"
+                value={optionLabel}
+                onChange={(e) => setOptionLabel(e.target.value)}
+                autoFocus
+              />
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={optionIncluded} onChange={(e) => setOptionIncluded(e.target.checked)} />
+                Included (no additional cost)
+              </label>
+              {!optionIncluded ? (
+                <Input placeholder="Unit price" value={optionPrice} onChange={(e) => setOptionPrice(e.target.value)} />
+              ) : null}
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={resetOptionForm} disabled={pending}>Cancel</Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={pending || !optionLabel.trim()}
+                  onClick={() => {
+                    const draft = customChoicesOptionDraft(optionLabel);
+                    setOptionLabel(draft.label);
+                    submitOption(null);
+                  }}
+                >
+                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add option"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     </div>

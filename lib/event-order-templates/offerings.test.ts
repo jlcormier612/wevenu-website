@@ -309,7 +309,7 @@ describe("Catalog, isolation, and preview labels", () => {
     const preview = readFileSync(join(root, "components/event-order-templates/event-order-template-preview.tsx"), "utf8");
     const apply = readFileSync(join(root, "components/event-order-templates/apply-event-order-template-sheet.tsx"), "utf8");
     assert.match(editor, /overflow-x-hidden/);
-    assert.match(editor, /Add offering/);
+    assert.match(editor, /Add from Offerings/);
     assert.match(editor, /Add section/);
     assert.match(preview, /overflow-x-hidden/);
     assert.match(preview, /not itself a client commitment/);

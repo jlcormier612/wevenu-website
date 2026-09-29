@@ -28,10 +28,10 @@ export default async function InventoryTemplatesLibraryPage() {
         Build a reusable packing/checklist once. Use Template on an event to create that event&apos;s inventory list from this template.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Checklist lines (name, quantity, price) are authored when you edit this template. Available Inventory is your separate physical stock catalog — used when adding items on an event and when placing items on floor plans."
+        detail="Add items from Available Inventory when you edit a template. Use a custom line only for one-offs that are not already in your catalog. Applying a template copies a snapshot onto the event."
         action={{ href: "/library/inventory", label: "Manage Available Inventory" }}
       >
-        Related to your Available Inventory catalog (physical stock).
+        Built from your Available Inventory catalog.
       </LibraryDependencyNote>
       <InventoryTemplateList
         templates={templates}
