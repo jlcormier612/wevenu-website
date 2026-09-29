@@ -162,6 +162,9 @@ describe("seating release-completion D1–D4", () => {
     assert.match(daySeating, /named plus-one/);
     assert.match(daySeating, /will not\s+appear as a seatable guest/);
     assert.match(printPage, /stats\.unconvertedPlusOnes > 0/);
+    const service = readFileSync(resolve("lib/seating/service.ts"), "utf8");
+    assert.match(service, /countUnconvertedNamedPlusOnesForEvent/);
+    assert.match(service, /unconvertedPlusOnes: livePlusOnes/);
   });
 
   it("D4: manage page role-gates with canEditSeatingWhenDelegated and redirects unauthorized staff", () => {
