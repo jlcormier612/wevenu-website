@@ -242,9 +242,10 @@ function lineageFamilyHasCycle(
     while (cursor && family.has(cursor)) {
       if (seen.has(cursor)) return true;
       seen.add(cursor);
-      const parent = byId.get(cursor)?.amendsContractId ?? null;
-      if (!parent || !family.has(parent)) break;
-      cursor = parent;
+      const node = byId.get(cursor);
+      const parentId: string | null = node?.amendsContractId ?? null;
+      if (!parentId || !family.has(parentId)) break;
+      cursor = parentId;
     }
   }
   return false;
