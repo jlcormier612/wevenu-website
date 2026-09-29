@@ -150,6 +150,31 @@ describe("Luv does not restate Today's Focus", () => {
   it("says nothing at all when there is nothing to add", () => {
     assert.equal(selectLuvDashboardEntry({ focusItems: [], observations: [], recommendations: [] }), null);
   });
+
+  it("still surfaces tour_followup_pattern when Focus Calendar also links to /tours", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [
+        focusItem({
+          id: "cal-1",
+          domain: "Calendar",
+          href: "/tours",
+          label: "Tour today",
+        }),
+      ],
+      observations: [],
+      recommendations: [
+        recommendation({
+          type: "tour_followup_pattern",
+          title: "3 recent tours still need follow-up",
+          body: "These are completed tours with no recorded follow-up.",
+          ctas: [{ type: "navigate", target: "/tours", label: "Open Tours" }] as never,
+        }),
+      ],
+    });
+    assert.equal(entry?.message, "3 recent tours still need follow-up");
+    assert.equal(entry?.actionHref, "/tours");
+    assert.equal(entry?.dismissRecommendationId, "rec-1");
+  });
 });
 
 describe("Luv interprets Today's Focus when it has nothing new", () => {

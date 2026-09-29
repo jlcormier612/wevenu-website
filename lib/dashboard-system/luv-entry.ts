@@ -16,6 +16,7 @@
 import type { ClassifiedItem } from "@/lib/dashboard-system/decision-engine";
 import type { VenueRecommendation } from "@/lib/luv/recommendation-types";
 import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
+import { TOUR_FOLLOWUP_PATTERN_TYPE } from "@/lib/luv/tour-followup-pattern";
 import type { LuvObservation } from "@/lib/luv/types";
 
 export type LuvDashboardEntry = {
@@ -105,6 +106,20 @@ export function isLeadsFilterDuplicateRecommendation(rec: VenueRecommendation): 
 }
 
 /**
+ * V2 tour follow-up pattern CTA is /tours (Past completed tours). Today's Focus
+ * Calendar items also link to /tours for *today's upcoming* schedule — that is
+ * not the same actionable work, so do not treat them as Focus duplicates.
+ */
+export function isTourFollowupPatternRecommendation(rec: VenueRecommendation): boolean {
+  return rec.type === TOUR_FOLLOWUP_PATTERN_TYPE;
+}
+
+/** Individual V1 tour-no-followup cards — superseded by the venue-level pattern when active. */
+export function isTourNoFollowupObservation(obs: LuvObservation): boolean {
+  return obs.id.startsWith("tour-no-followup-");
+}
+
+/**
  * The insight layer over Today's Focus: reads the largest group of work in it
  * and says what it means, rather than repeating its rows.
  */
@@ -145,6 +160,10 @@ export function selectLuvDashboardEntry({
   recommendations: VenueRecommendation[];
 }): LuvDashboardEntry | null {
   const focusSubjects = new Set(focusItems.map((i) => subject(i.href)));
+  const patternActive = recommendations.some(
+    (rec) =>
+      isTourFollowupPatternRecommendation(rec) && isRecommendationActiveForDisplay(rec),
+  );
 
   // 1. A recommendation is already interpretation plus an action, so it leads —
   //    unless it points at a Focus row or merely opens the Leads stale filter.
@@ -153,7 +172,14 @@ export function selectLuvDashboardEntry({
     if (isLeadsFilterDuplicateRecommendation(rec)) continue;
     const cta = firstCta(rec);
     if (!cta) continue;
-    if (focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))) continue;
+    // Cross-lead tour follow-up pattern must not be suppressed by Calendar Focus
+    // rows that also navigate to /tours for today's upcoming schedule.
+    if (
+      !isTourFollowupPatternRecommendation(rec) &&
+      focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))
+    ) {
+      continue;
+    }
     return {
       message: rec.title,
       suggestion: rec.body || null,
@@ -164,7 +190,10 @@ export function selectLuvDashboardEntry({
   }
 
   // 2. An observation, but only about something Today's Focus is not covering.
+  //    When the venue-level tour follow-up pattern is active, skip individual
+  //    tour-no-followup observations so Luv does not restate the same work.
   for (const obs of observations) {
+    if (patternActive && isTourNoFollowupObservation(obs)) continue;
     if (focusSubjects.has(subject(obs.link))) continue;
     return {
       message: obs.message,

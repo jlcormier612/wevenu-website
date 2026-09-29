@@ -3,6 +3,7 @@ import { syncClientAskGapRecommendations } from "./ask-gap-recommendations";
 import { isObservationDismissType } from "./observation-dismiss";
 import { filterVisibleRecommendations } from "./recommendation-visibility";
 import type { RawRecommendationRow, VenueRecommendation } from "./recommendation-types";
+import { syncTourFollowupPatternRecommendation } from "./tour-followup-pattern";
 
 export async function getVenueRecommendations(): Promise<VenueRecommendation[]> {
   try {
@@ -11,6 +12,8 @@ export async function getVenueRecommendations(): Promise<VenueRecommendation[]> 
     // Guide-gap layer: Couple Ask information_gap aggregates → luv_recommendations.
     // Classification + published client Guide coverage run in app code; RPC writes.
     await syncClientAskGapRecommendations(supabase);
+    // Luv V2: venue-level recurring incomplete tour follow-up pattern.
+    await syncTourFollowupPatternRecommendation(supabase);
     const { data, error } = await supabase.rpc("get_venue_recommendations");
     if (error || !data) return [];
     return filterVisibleRecommendations(
