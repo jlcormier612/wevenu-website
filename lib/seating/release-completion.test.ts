@@ -162,9 +162,13 @@ describe("seating release-completion D1–D4", () => {
     assert.match(daySeating, /named plus-one/);
     assert.match(daySeating, /will not\s+appear as a seatable guest/);
     assert.match(printPage, /stats\.unconvertedPlusOnes > 0/);
-    const service = readFileSync(resolve("lib/seating/service.ts"), "utf8");
-    assert.match(service, /countUnconvertedNamedPlusOnesForEvent/);
-    assert.match(service, /unconvertedPlusOnes: livePlusOnes/);
+    const migration = readFileSync(
+      resolve("supabase/migrations/20261409400000_seating_operational_live_unconverted_plus_ones.sql"),
+      "utf8",
+    );
+    assert.match(migration, /get_operational_seating_plan/);
+    assert.match(migration, /jsonb_set\(v_result, '\{stats,unconvertedPlusOnes\}'/);
+    assert.match(migration, /plus_one_name is not null/);
   });
 
   it("D4: manage page role-gates with canEditSeatingWhenDelegated and redirects unauthorized staff", () => {

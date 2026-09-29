@@ -205,10 +205,8 @@ export type OperationalSeatingPlan = SeatingData & {
 /**
  * The venue's operational read for one floor plan — venue-authenticated.
  * Private Until Committed: latest submission unless actively delegated.
- *
- * Overlay live unconverted named plus-one count onto stats. Submitted
- * snapshots are immutable for seating layout, but day-of operators still
- * need the current guest-list caveat (same signal Assist/Couple already show).
+ * Live unconvertedPlusOnes overlay is applied inside get_operational_seating_plan
+ * (SECURITY DEFINER) — venue RLS cannot read couple_guests directly.
  */
 export async function getOperationalSeatingPlan(
   eventId: string,
@@ -223,46 +221,7 @@ export async function getOperationalSeatingPlan(
     p_floor_plan_id: floorPlanId,
   });
   if (error || !data || (data as { error?: string }).error) return null;
-  const plan = data as OperationalSeatingPlan;
-
-  const livePlusOnes = await countUnconvertedNamedPlusOnesForEvent(eventId);
-  if (livePlusOnes != null) {
-    plan.stats = {
-      ...(plan.stats ?? {
-        totalAttending: 0,
-        totalAssigned: 0,
-        tableCount: 0,
-        totalCapacity: 0,
-        unconvertedPlusOnes: 0,
-      }),
-      unconvertedPlusOnes: livePlusOnes,
-    };
-  }
-  return plan;
-}
-
-/** Live guest-list count of attending guests with a named, unconverted +1. */
-async function countUnconvertedNamedPlusOnesForEvent(eventId: string): Promise<number | null> {
-  const venue = await getCurrentVenue();
-  if (!venue) return null;
-  const supabase = await createClient();
-  const { data: event } = await supabase
-    .from("events")
-    .select("client_id")
-    .eq("id", eventId)
-    .eq("venue_id", venue.id)
-    .maybeSingle();
-  if (!event?.client_id) return null;
-
-  const { count, error } = await supabase
-    .from("couple_guests")
-    .select("id", { count: "exact", head: true })
-    .eq("client_id", event.client_id)
-    .eq("venue_id", venue.id)
-    .eq("rsvp_status", "attending")
-    .not("plus_one_name", "is", null);
-  if (error) return null;
-  return count ?? 0;
+  return data as OperationalSeatingPlan;
 }
 
 export { buildVenueSeatingFloorPlanSummaries, SEATING_VIEW_DENIED };
