@@ -6,9 +6,14 @@
  * filter the owner can already open — the Dashboard has spent two sections on
  * one fact and Luv has contributed nothing.
  *
+ * Product Lock (attention model): Dashboard may surface only Level-1 —
+ * globally pertinent, timely, actionable intelligence. Single-record /
+ * lead-specific (Level-3) observations remain computed for lower surfaces;
+ * they must not win the one global Dashboard card.
+ *
  * So this picks, in order of how much interpretation it adds:
- *   1. a recommendation that is not a Leads stale-contact filter duplicate,
- *   2. an observation about something NOT already in Today's Focus,
+ *   1. a Level-1 recommendation that is not a Leads stale-contact filter duplicate,
+ *   2. a Level-1 observation about something NOT already in Today's Focus,
  *   3. failing both, an aggregate read of Today's Focus — except when that
  *      aggregate would only restate lead follow-ups already listed (and the
  *      Leads page already owns that queue).
@@ -119,6 +124,55 @@ export function isTourNoFollowupObservation(obs: LuvObservation): boolean {
   return obs.id.startsWith("tour-no-followup-");
 }
 
+/** Single-lead upcoming-tour prep — lead/tour context, never the global Dashboard card. */
+export function isTourUpcomingObservation(obs: LuvObservation): boolean {
+  return obs.id.startsWith("tour-upcoming-");
+}
+
+/**
+ * Href that addresses one lead / event / client / contract / invoice / payment /
+ * request record. Those destinations are Level-3 workflow/record context.
+ */
+const RECORD_SCOPED_PATH =
+  /^\/(leads|events|clients|contracts|invoices|payments|requests)\/[0-9a-f-]{8,}/i;
+
+export function isRecordScopedHref(href: string): boolean {
+  return RECORD_SCOPED_PATH.test(subject(href));
+}
+
+/**
+ * Level-1 observations are globally pertinent for the one Dashboard card.
+ * Level-3 (single-record) observations stay available elsewhere — they are
+ * not deleted; they simply cannot occupy the Dashboard slot.
+ */
+export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
+  if (isTourUpcomingObservation(obs)) return false;
+  if (isTourNoFollowupObservation(obs)) return false;
+  if (obs.id.startsWith("tour-no-show-")) return false;
+
+  // Known venue-wide families (explicit allowlist).
+  if (obs.id.startsWith("setup-gap-")) return true;
+  if (obs.id.startsWith("insight_")) return true;
+  if (obs.id === "comm-all-delivered" || obs.id === "comm-recent-failures") return true;
+
+  const primaryHref = obs.recommendation?.link ?? obs.link;
+  if (isRecordScopedHref(primaryHref) || isRecordScopedHref(obs.link)) return false;
+  return true;
+}
+
+/**
+ * Level-1 recommendations: venue-wide patterns and setup/guide gaps.
+ * A recommendation whose only navigate CTA is a single record is Level-3.
+ */
+export function isDashboardLevel1Recommendation(rec: VenueRecommendation): boolean {
+  if (isTourFollowupPatternRecommendation(rec)) return true;
+  if (rec.type.startsWith("client_ask_gap_")) return true;
+  const cta = firstCta(rec);
+  if (!cta) return false;
+  if (isRecordScopedHref(cta.href)) return false;
+  return true;
+}
+
 /**
  * While the venue-level pattern is visible OR recently dismissed, individual
  * tour-no-followup observations are the same actionable work. Surfacing them
@@ -180,11 +234,12 @@ export function selectLuvDashboardEntry({
   const focusSubjects = new Set(focusItems.map((i) => subject(i.href)));
   const suppressTourNoFollowup = shouldSuppressTourNoFollowupObservations(recommendations);
 
-  // 1. A recommendation is already interpretation plus an action, so it leads —
-  //    unless it points at a Focus row or merely opens the Leads stale filter.
+  // 1. A Level-1 recommendation is already interpretation plus an action, so it
+  //    leads — unless it points at a Focus row or merely opens the Leads stale filter.
   for (const rec of recommendations) {
     if (!isRecommendationActiveForDisplay(rec)) continue;
     if (isLeadsFilterDuplicateRecommendation(rec)) continue;
+    if (!isDashboardLevel1Recommendation(rec)) continue;
     const cta = firstCta(rec);
     if (!cta) continue;
     // Cross-lead tour follow-up pattern must not be suppressed by Calendar Focus
@@ -204,10 +259,12 @@ export function selectLuvDashboardEntry({
     };
   }
 
-  // 2. An observation, but only about something Today's Focus is not covering.
+  // 2. A Level-1 observation, but only about something Today's Focus is not covering.
   //    Suppress individual tour-no-followup cards while the venue-level pattern
   //    is active or recently dismissed (same work as the V2 recommendation).
+  //    Level-3 / single-record observations never win this slot.
   for (const obs of observations) {
+    if (!isDashboardLevel1Observation(obs)) continue;
     if (suppressTourNoFollowup && isTourNoFollowupObservation(obs)) continue;
     if (focusSubjects.has(subject(obs.link))) continue;
     return {

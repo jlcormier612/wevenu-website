@@ -79,18 +79,35 @@ describe("Luv observation dismiss identity", () => {
     );
   });
 
-  it("dashboard entry exposes the observation id so X can persist", () => {
+  it("dashboard entry exposes the observation id so X can persist for Level-1 observations", () => {
+    // Product Lock: tour-no-followup is Level-3 and cannot win the Dashboard.
+    // Persistable X still applies to Level-1 observations that do win the slot.
+    const setupGap = observation({
+      id: "setup-gap-public_website",
+      kind: "recommendation",
+      message: "Your public website isn't collecting inquiries yet.",
+      link: "/setup",
+      actionLabel: "Open setup →",
+      recommendation: { label: "Open setup", link: "/setup", type: "navigate" },
+    });
+    const entry = selectLuvDashboardEntry({
+      focusItems: [],
+      observations: [setupGap],
+      recommendations: [],
+    });
+    assert.equal(entry?.dismissObservationId, "setup-gap-public_website");
+    assert.equal(entry?.dismissRecommendationId, undefined);
+    assert.equal(entry?.message, "Your public website isn't collecting inquiries yet.");
+  });
+
+  it("Level-3 tour-no-followup cannot occupy the Dashboard slot (intelligence relocates, dismiss identity unchanged)", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [observation()],
       recommendations: [],
     });
-    assert.equal(entry?.dismissObservationId, TOUR_OBS_ID);
-    assert.equal(entry?.dismissRecommendationId, undefined);
-    assert.equal(
-      entry?.message,
-      "SweepQA JourneyOne completed their tour 15h ago — follow up while it's fresh.",
-    );
+    assert.equal(entry, null);
+    assert.equal(observationDismissType(TOUR_OBS_ID), `observation:${TOUR_OBS_ID}`);
   });
 
   it("does not treat a Guide-gap recommendation as an observation dismiss type", () => {

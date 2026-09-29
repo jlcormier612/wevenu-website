@@ -376,17 +376,16 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
     assert.equal(entry?.dismissObservationId, undefined);
   });
 
-  it("without a V2 pattern row, V1 tour-no-followup observation still surfaces", () => {
+  it("without a V2 pattern row, V1 tour-no-followup stays Level-3 and cannot win Dashboard", () => {
+    // Product Lock: individual tour-no-followup is lead/tour intelligence, not
+    // the global Dashboard card. It remains available on lower surfaces; the
+    // old behavior of promoting it to Dashboard when V2 is absent is retired.
     const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [observation()],
       recommendations: [],
     });
-    assert.equal(
-      entry?.message,
-      "Alex completed their tour 15h ago — follow up while it's fresh.",
-    );
-    assert.equal(entry?.dismissObservationId, "tour-no-followup-t1");
+    assert.equal(entry, null);
   });
 });
 
