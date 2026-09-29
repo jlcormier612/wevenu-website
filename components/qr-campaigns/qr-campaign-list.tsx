@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveArchiveToggle } from "@/lib/qr-campaigns/archive-ui-state";
 import type { QrCampaign, QrCampaignAnalytics, QrDestinationType } from "@/lib/qr-campaigns/types";
-import Link from "next/link";
 
 const DESTINATION_LABELS: Record<QrDestinationType, string> = {
   public_form: "Custom public form",
