@@ -178,6 +178,7 @@ export function EventOrderPanel({
   eventId, planningClientId = null, clientId, clientName, clientEmail, venueName, eventOrder, packages, packagesWithItems = [],
   selectedPackageName = null, offerings = [], inventoryItems, invoices, bookingCommitmentInvoiceIds = [], floorPlans, overview,
   templates = [],
+  linkedScheduleId = null,
 }: {
   eventId: string;
   planningClientId?: string | null;
@@ -196,6 +197,8 @@ export function EventOrderPanel({
   floorPlans: FloorPlan[];
   overview?: EventOrderOverview | null;
   templates?: EventOrderTemplate[];
+  /** Payment schedule already attached to the EO-linked invoice, if any. */
+  linkedScheduleId?: string | null;
 }) {
   const router = useRouter();
   const scopeId = eventId || planningClientId || "";
@@ -506,7 +509,7 @@ export function EventOrderPanel({
               invoices={invoices}
               bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
               hasPricedContent={eventOrder.total > 0}
-              linkedScheduleId={null}
+              linkedScheduleId={linkedScheduleId}
             />
             )}
           </div>

@@ -39,6 +39,7 @@ import {
   packageBookingCommitmentInvoiceIds,
 } from "@/lib/invoices/booking-commitment";
 import { buildSelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
+import { getPaymentSchedules } from "@/lib/payments/service";
 import {
   getEventPlaybookApplications, getClientPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
   getEventTasks, getTaskContactsByStaffIds, getTemplatesForLibrary,
@@ -434,7 +435,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   ]);
 
   // Event Order is always available (optional by use). No feature gate.
-  const [eventOrder, packages, eventOrderTemplates, choicesTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings] = await Promise.all([
+  const [eventOrder, packages, eventOrderTemplates, choicesTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules] = await Promise.all([
     getEventOrder(eventId),
     getPackages(),
     getEventOrderTemplates(),
@@ -448,7 +449,16 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       leadId: client.leadId,
     }),
     listActiveOfferings(),
+    getPaymentSchedules(),
   ]);
+  const eoLinkedInvoice = eventOrder
+    ? eventInvoices.find((inv) => inv.eventOrderId === eventOrder.id && inv.status === "draft")
+      ?? eventInvoices.find((inv) => inv.eventOrderId === eventOrder.id && inv.status !== "void")
+      ?? null
+    : null;
+  const eoLinkedScheduleId = eoLinkedInvoice
+    ? (paymentSchedules.find((s) => s.invoiceId === eoLinkedInvoice.id)?.id ?? null)
+    : null;
   const clientChoices = (
     await Promise.all(clientChoicesList.map((c) => getClientChoices(c.id)))
   ).filter((c): c is NonNullable<typeof c> => !!c);
@@ -531,6 +541,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       clientChoices={clientChoices}
       financialImpact={financialImpact}
       bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+      linkedScheduleId={eoLinkedScheduleId}
       packagesWithItems={packagesWithItems}
       bookingJourney={bookingJourney}
       selectedPackage={selectedPackage}

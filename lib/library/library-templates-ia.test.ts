@@ -209,6 +209,16 @@ describe("Applyable template grammar + apply semantics preserved", () => {
     assert.doesNotMatch(src, /Advanced: link or create/);
   });
 
+  it("EO panel wires linkedScheduleId so Create Payment Plan hides when a plan exists", () => {
+    const panel = readFileSync(resolve("components/event-orders/event-order-panel.tsx"), "utf8");
+    assert.match(panel, /linkedScheduleId=\{linkedScheduleId\}/);
+    assert.doesNotMatch(panel, /linkedScheduleId=\{null\}/);
+    const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+    assert.match(page, /getPaymentSchedules/);
+    assert.match(page, /eoLinkedScheduleId/);
+    assert.match(page, /linkedScheduleId=\{eoLinkedScheduleId\}/);
+  });
+
   it("Client/Venue Planning Library row grammar remains shared TemplateCard", () => {
     const section = readFileSync(resolve("components/settings/playbooks-section.tsx"), "utf8");
     assert.match(section, /LIBRARY_LABELS\.useTemplate/);

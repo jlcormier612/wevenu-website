@@ -291,6 +291,7 @@ export function EventDetail({
   clientChoices = [],
   financialImpact = null,
   bookingCommitmentInvoiceIds = [],
+  linkedScheduleId = null,
   requestsByTaskId = {},
   requests = [],
   readinessSummary,
@@ -363,6 +364,8 @@ export function EventDetail({
   clientChoices?: import("@/lib/client-choices/types").ClientChoicesWithHistory[];
   financialImpact?: SelectionsFinancialImpact | null;
   bookingCommitmentInvoiceIds?: string[];
+  /** Payment schedule already attached to the EO-linked invoice, if any. */
+  linkedScheduleId?: string | null;
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
@@ -938,6 +941,7 @@ export function EventDetail({
             inventoryItems={inventoryItems}
             invoices={invoices}
             bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+            linkedScheduleId={linkedScheduleId}
             floorPlans={event.floorPlans}
             templates={eventOrderTemplates}
             overview={{
