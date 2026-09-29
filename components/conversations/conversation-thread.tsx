@@ -431,7 +431,7 @@ const NO_ASSIGNEE = "__none__";
 
 export function ConversationThread({
   conversationId, onBack, showHeader = true, summary, teamMembers = [], initialBody, initialSubject,
-  onInboxOpened, onInboxSent, onNeedsResponseCleared, flow = "contained",
+  onInboxOpened, onInboxSent, onNeedsResponseCleared, onAuthoritativeSendSuccess, flow = "contained",
 }: {
   conversationId: string;
   onBack?: () => void;
@@ -463,6 +463,11 @@ export function ConversationThread({
   onInboxSent?: (latestMessage: ConversationMessagePreview, needsResponse: boolean) => void;
   /** Called after explicit "No response needed" succeeds. */
   onNeedsResponseCleared?: () => void;
+  /**
+   * After ConversationCompose confirms an authoritative send (not failure /
+   * indeterminate). Lead Luv drafts use this to leave PENDING REVIEW.
+   */
+  onAuthoritativeSendSuccess?: () => Promise<void> | void;
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
   /** Older messages the venue explicitly expanded; latest is always expanded. */
@@ -622,6 +627,11 @@ export function ConversationThread({
   }, [messages, scrollMessagesToNewest]);
 
   async function handleSent(ack?: SentMessageAck) {
+    try {
+      await onAuthoritativeSendSuccess?.();
+    } catch {
+      // Draft completion must not block conversation refresh after a real send.
+    }
     try {
       const detail = await getConversationAction(conversationId);
       const next = detail?.messages ?? [];
