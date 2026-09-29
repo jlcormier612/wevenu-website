@@ -33,14 +33,18 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { VenueSpace } from "@/lib/availability/types";
-import { EVENT_TYPES, eventTypeLabel, formatRelative } from "@/lib/leads/constants";
+import { eventTypeLabel, formatRelative } from "@/lib/leads/constants";
+import {
+  FLOOR_PLAN_TEMPLATE_ANY_EVENT_TYPE,
+  buildFloorPlanTemplateFilterEventTypeOptions,
+} from "@/lib/floor-plan-templates/event-type-options";
 import {
   FLOOR_PLAN_STARTER_MASTERS,
   type FloorPlanStarterMasterKey,
 } from "@/lib/floor-plan-templates/starters";
 import type { FloorPlanTemplateWithStats } from "@/lib/floor-plan-templates/types";
 
-const ANY_EVENT_TYPE = "__any__";
+const ANY_EVENT_TYPE = FLOOR_PLAN_TEMPLATE_ANY_EVENT_TYPE;
 
 function sortTemplates(templates: FloorPlanTemplateWithStats[]): FloorPlanTemplateWithStats[] {
   return [...templates].sort((a, b) => {
@@ -284,12 +288,15 @@ function TemplateCard({
 
 export function FloorPlanTemplatesSection({
   initialTemplates, spaces, venueId, events = [],
+  acceptedEventTypes = [],
   canEdit = true, canDelete = true,
 }: {
   initialTemplates: FloorPlanTemplateWithStats[];
   spaces: VenueSpace[];
   venueId: string;
   events?: FloorPlanEventOption[];
+  /** venues.accepted_inquiry_event_types (parsed) — drives filter + create selects. */
+  acceptedEventTypes?: string[];
   canEdit?: boolean;
   canDelete?: boolean;
 }) {
@@ -297,6 +304,10 @@ export function FloorPlanTemplatesSection({
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [eventTypeFilter, setEventTypeFilter] = React.useState(ANY_EVENT_TYPE);
+  const filterEventTypeOptions = React.useMemo(
+    () => buildFloorPlanTemplateFilterEventTypeOptions(acceptedEventTypes),
+    [acceptedEventTypes],
+  );
   const [using, setUsing] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -388,7 +399,12 @@ export function FloorPlanTemplatesSection({
         {canEdit && (
           <div className="flex justify-center gap-2 pt-1 flex-wrap">
             <StarterMenu missingKeys={missingStarterKeys} />
-            <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
+            <FloorPlanTemplateStarterPicker
+              existingTemplates={activeTemplates}
+              spaces={spaces}
+              venueId={venueId}
+              acceptedEventTypes={acceptedEventTypes}
+            />
           </div>
         )}
       </div>
@@ -424,12 +440,13 @@ export function FloorPlanTemplatesSection({
           <Select
             value={eventTypeFilter}
             onValueChange={setEventTypeFilter}
-            items={[{ value: ANY_EVENT_TYPE, label: "All event types" }, ...EVENT_TYPES]}
+            items={filterEventTypeOptions}
           >
             <SelectTrigger className="h-9 w-44 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY_EVENT_TYPE}>All event types</SelectItem>
-              {EVENT_TYPES.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+              {filterEventTypeOptions.map((e) => (
+                <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -437,7 +454,12 @@ export function FloorPlanTemplatesSection({
           {canEdit && (
             <>
               <StarterMenu missingKeys={missingStarterKeys} />
-              <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
+              <FloorPlanTemplateStarterPicker
+                existingTemplates={activeTemplates}
+                spaces={spaces}
+                venueId={venueId}
+                acceptedEventTypes={acceptedEventTypes}
+              />
             </>
           )}
         </div>

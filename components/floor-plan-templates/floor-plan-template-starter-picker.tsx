@@ -31,26 +31,38 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { prepareFloorPlanSourceUpload } from "@/lib/floor-plans/client-background-upload";
 import type { VenueSpace } from "@/lib/availability/types";
-import { EVENT_TYPES } from "@/lib/leads/constants";
+import {
+  FLOOR_PLAN_TEMPLATE_ANY_EVENT_TYPE,
+  buildFloorPlanTemplateCreateEventTypeOptions,
+  buildFloorPlanTemplateEditEventTypeOptions,
+} from "@/lib/floor-plan-templates/event-type-options";
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
 
-const ANY_EVENT_TYPE = "__any__";
+const ANY_EVENT_TYPE = FLOOR_PLAN_TEMPLATE_ANY_EVENT_TYPE;
 const NO_SPACE = "__none__";
 
 type Flow = "blank" | "duplicate" | "upload" | "paste";
 
 function EventTypeSpaceFields({
-  eventType, setEventType, spaceId, setSpaceId, spaces,
-}: { eventType: string; setEventType: (v: string) => void; spaceId: string; setSpaceId: (v: string) => void; spaces: VenueSpace[] }) {
+  eventType, setEventType, spaceId, setSpaceId, spaces, eventTypeOptions,
+}: {
+  eventType: string;
+  setEventType: (v: string) => void;
+  spaceId: string;
+  setSpaceId: (v: string) => void;
+  spaces: VenueSpace[];
+  eventTypeOptions: { value: string; label: string }[];
+}) {
   return (
     <>
       <div className="space-y-1.5">
         <Label className="text-xs">Event type</Label>
-        <Select value={eventType} onValueChange={setEventType} items={[{ value: ANY_EVENT_TYPE, label: "Any event type" }, ...EVENT_TYPES]}>
+        <Select value={eventType} onValueChange={setEventType} items={eventTypeOptions}>
           <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY_EVENT_TYPE}>Any event type</SelectItem>
-            {EVENT_TYPES.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+            {eventTypeOptions.map((e) => (
+              <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -82,8 +94,14 @@ function DefaultTemplateField({
 }
 
 export function FloorPlanTemplateStarterPicker({
-  existingTemplates = [], spaces = [], venueId,
-}: { existingTemplates?: FloorPlanTemplate[]; spaces?: VenueSpace[]; venueId: string }) {
+  existingTemplates = [], spaces = [], venueId, acceptedEventTypes = [],
+}: {
+  existingTemplates?: FloorPlanTemplate[];
+  spaces?: VenueSpace[];
+  venueId: string;
+  /** venues.accepted_inquiry_event_types (parsed). */
+  acceptedEventTypes?: string[];
+}) {
   const router = useRouter();
   const [flow, setFlow] = React.useState<Flow | null>(null);
   // Which flow to open once the dropdown menu has fully finished closing —
@@ -97,6 +115,18 @@ export function FloorPlanTemplateStarterPicker({
   const [file, setFile] = React.useState<File | null>(null);
   const [isDefault, setIsDefault] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
+
+  // Create uses accepted types only. Edit helper retains a legacy currentValue
+  // when the selected value is outside the accepted set (Leads convention).
+  const eventTypeOptions = React.useMemo(() => {
+    const current =
+      eventType !== ANY_EVENT_TYPE && !acceptedEventTypes.includes(eventType)
+        ? eventType
+        : null;
+    return current
+      ? buildFloorPlanTemplateEditEventTypeOptions(acceptedEventTypes, current)
+      : buildFloorPlanTemplateCreateEventTypeOptions(acceptedEventTypes);
+  }, [acceptedEventTypes, eventType]);
 
   function reset() {
     setName(""); setEventType(ANY_EVENT_TYPE); setSpaceId(NO_SPACE);
@@ -231,7 +261,14 @@ export function FloorPlanTemplateStarterPicker({
                     <Label className="text-xs">Template name</Label>
                     <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ceremony Layout" className="h-9 text-sm" />
                   </div>
-                  <EventTypeSpaceFields eventType={eventType} setEventType={setEventType} spaceId={spaceId} setSpaceId={setSpaceId} spaces={spaces} />
+                  <EventTypeSpaceFields
+                    eventType={eventType}
+                    setEventType={setEventType}
+                    spaceId={spaceId}
+                    setSpaceId={setSpaceId}
+                    spaces={spaces}
+                    eventTypeOptions={eventTypeOptions}
+                  />
                   <DefaultTemplateField isDefault={isDefault} setIsDefault={setIsDefault} />
                 </div>
               )}
@@ -272,7 +309,14 @@ export function FloorPlanTemplateStarterPicker({
                     <Label className="text-xs">Template name</Label>
                     <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Reception Layout" className="h-9 text-sm" />
                   </div>
-                  <EventTypeSpaceFields eventType={eventType} setEventType={setEventType} spaceId={spaceId} setSpaceId={setSpaceId} spaces={spaces} />
+                  <EventTypeSpaceFields
+                    eventType={eventType}
+                    setEventType={setEventType}
+                    spaceId={spaceId}
+                    setSpaceId={setSpaceId}
+                    spaces={spaces}
+                    eventTypeOptions={eventTypeOptions}
+                  />
                   <DefaultTemplateField isDefault={isDefault} setIsDefault={setIsDefault} />
                 </div>
               )}
@@ -283,7 +327,14 @@ export function FloorPlanTemplateStarterPicker({
                     <Label className="text-xs">Template name</Label>
                     <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Reception Layout" className="h-9 text-sm" />
                   </div>
-                  <EventTypeSpaceFields eventType={eventType} setEventType={setEventType} spaceId={spaceId} setSpaceId={setSpaceId} spaces={spaces} />
+                  <EventTypeSpaceFields
+                    eventType={eventType}
+                    setEventType={setEventType}
+                    spaceId={spaceId}
+                    setSpaceId={setSpaceId}
+                    spaces={spaces}
+                    eventTypeOptions={eventTypeOptions}
+                  />
                   <DefaultTemplateField isDefault={isDefault} setIsDefault={setIsDefault} />
                   <div className="space-y-1.5">
                     <Label className="text-xs">Paste your layout</Label>
