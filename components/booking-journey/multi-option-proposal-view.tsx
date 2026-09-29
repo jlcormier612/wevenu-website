@@ -97,17 +97,18 @@ export function MultiOptionProposalView({
         Your proposal
       </p>
       {brand.logoUrl || offer.venueName ? (
-        <div className="mt-2 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-3">
           {brand.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={brand.logoUrl}
-              alt={offer.venueName ?? ""}
-              className="h-9 w-9 shrink-0 rounded-full object-cover"
+              alt={offer.venueName ?? "Venue logo"}
+              data-testid="proposal-venue-logo"
+              className="h-14 w-14 shrink-0 rounded-lg object-contain bg-white/80 p-1 shadow-sm"
             />
           ) : null}
           {offer.venueName ? (
-            <p className="text-sm" style={{ color: "var(--venue-secondary)" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--venue-secondary)" }}>
               {offer.venueName}
             </p>
           ) : null}

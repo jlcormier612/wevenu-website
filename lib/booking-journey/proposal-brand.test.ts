@@ -103,6 +103,8 @@ describe("shared proposal renderers paint the live logo", () => {
       }),
     );
     assert.match(accepted, new RegExp(`src="${LOGO}"`));
+    assert.match(accepted, /data-testid="proposal-venue-logo"/);
+    assert.match(accepted, /h-14 w-14/);
     assert.match(accepted, /You approved this selection/);
   });
 
@@ -122,7 +124,31 @@ describe("shared proposal renderers paint the live logo", () => {
       }),
     );
     assert.doesNotMatch(html, /<img/);
+    assert.doesNotMatch(html, /data-testid="proposal-venue-logo"/);
     assert.match(html, /Jen&#x27;s Fancy Venue|Jen's Fancy Venue/);
+  });
+
+  it("ProposalArtifact accepted state still paints the live logo", () => {
+    const html = renderToStaticMarkup(
+      createElement(ProposalArtifact, {
+        context: "couple",
+        proposal: {
+          name: "Essential",
+          venueName: "Jen's Fancy Venue",
+          totalAmount: 15000,
+          depositAmount: 0,
+          remainingAmount: 15000,
+          includedItems: [],
+          status: "accepted",
+          offerMessage: null,
+          brand,
+        },
+      }),
+    );
+    assert.match(html, new RegExp(`src="${LOGO}"`));
+    assert.match(html, /data-testid="proposal-venue-logo"/);
+    assert.match(html, /h-14 w-14/);
+    assert.match(html, /You&#x27;ve accepted this package|You've accepted this package/);
   });
 
   it("ProposalArtifact uses the same logo contract", () => {

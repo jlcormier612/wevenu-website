@@ -30,7 +30,7 @@ export function StarterPolicyPlaceholderDialog({
         data-testid="starter-policy-placeholder-warning"
       >
         <DialogHeader>
-          <DialogTitle>This agreement still contains starter policy placeholders</DialogTitle>
+          <DialogTitle>Starter policy placeholders remain</DialogTitle>
           <DialogDescription>{STARTER_POLICY_PLACEHOLDERS_MESSAGE}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">

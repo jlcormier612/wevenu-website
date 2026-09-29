@@ -111,6 +111,21 @@ describe("starter-policy placeholder send warning", () => {
     assert.match(dialog, /starter-policy-placeholder-warning/);
   });
 
+  it("heading identifies the issue once; body explains without repeating the heading", () => {
+    assert.match(dialog, /<DialogTitle>Starter policy placeholders remain<\/DialogTitle>/);
+    assert.match(dialog, /DialogDescription>\{STARTER_POLICY_PLACEHOLDERS_MESSAGE\}/);
+    assert.equal(
+      STARTER_POLICY_PLACEHOLDERS_MESSAGE,
+      "This agreement still contains starter policy placeholders. Replace them with your venue's approved language before sending to a client.",
+    );
+    assert.notEqual("Starter policy placeholders remain", STARTER_POLICY_PLACEHOLDERS_MESSAGE);
+    assert.doesNotMatch(dialog, /<DialogTitle>This agreement still contains starter policy placeholders<\/DialogTitle>/);
+    const renderedTitles = [...dialog.matchAll(/<DialogTitle>([^<]*)<\/DialogTitle>/g)].map((m) => m[1]);
+    assert.deepEqual(renderedTitles, ["Starter policy placeholders remain"]);
+    assert.match(dialog, /Go Back & Edit/);
+    assert.match(dialog, /Send Anyway/);
+  });
+
   it("starter-policy warning dialog stacks above ArtifactReviewOverlay so Send is not trapped", () => {
     const overlay = read("components/artifacts/artifact-review-overlay.tsx");
     const uiDialog = read("components/ui/dialog.tsx");

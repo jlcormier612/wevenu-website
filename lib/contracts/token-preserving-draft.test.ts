@@ -74,4 +74,34 @@ describe("token-preserving contract draft", () => {
     assert.match(builder, /onBack=\{closePreview\}/);
     assert.match(builder, /Save draft/);
   });
+
+  it("new contracts can Review & send without a prior manual Save draft", () => {
+    assert.match(builder, /mode === "create"/);
+    assert.match(builder, /Review &amp; send to client/);
+    assert.match(builder, /persistedContractId/);
+    const createReview = builder.slice(
+      builder.indexOf("function handleReviewAndSend"),
+      builder.indexOf("function handleSend"),
+    );
+    assert.match(createReview, /mode === "create"/);
+    assert.match(createReview, /resolvePreview\(\)/);
+    assert.doesNotMatch(
+      createReview.slice(createReview.indexOf('if (mode === "create")'), createReview.indexOf("if (!draft)")),
+      /createContractAction|updateContractContentAction/,
+    );
+    const send = builder.slice(builder.indexOf("function handleSend"));
+    assert.match(send, /createContractAction/);
+    assert.match(send, /sendContractAction/);
+    assert.match(send, /setPersistedContractId/);
+    assert.match(send, /STARTER_POLICY_PLACEHOLDERS/);
+  });
+
+  it("create-mode Send reuses sendContract after create and does not resolve tokens on insert", () => {
+    const create = service.slice(service.indexOf("export async function createContract"));
+    assert.doesNotMatch(
+      create.slice(0, create.indexOf("export async function materializeAuthoredContractContent")),
+      /mergeContent\(resolvedInput\.content/,
+    );
+    assert.match(builder, /createContractAction\([\s\S]*?sendContractAction/);
+  });
 });

@@ -175,10 +175,7 @@ export function RelationshipCard({
               <DisplayRow
                 icon={Clock}
                 label="Next action"
-                value={
-                  lead.nextActionText +
-                  (lead.nextActionDue ? ` — by ${formatDate(lead.nextActionDue)}` : "")
-                }
+                value={lead.nextActionText}
               />
             ) : null}
             <DisplayRow icon={Calendar} label="Follow-up" value={formatDate(lead.followUpDate)} />
@@ -201,52 +198,43 @@ export function RelationshipCard({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-              <EditRow label="Next action">
-                {nextActionMode === "preset" ? (
-                  <Select
-                    value={input.nextActionText || undefined}
-                    onValueChange={(v) => {
-                      if (v === CUSTOM_ACTION) {
-                        setNextActionMode("custom");
-                        set("nextActionText", "");
-                      } else {
-                        set("nextActionText", v);
-                      }
-                    }}
-                    items={[...NEXT_ACTION_PRESETS.map((p) => ({ value: p, label: p })), { value: CUSTOM_ACTION, label: "Custom…" }]}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Choose a next step…" /></SelectTrigger>
-                    <SelectContent>
-                      {NEXT_ACTION_PRESETS.map((preset) => (
-                        <SelectItem key={preset} value={preset}>{preset}</SelectItem>
-                      ))}
-                      <SelectItem value={CUSTOM_ACTION}>Custom…</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex gap-1.5">
-                    <Input
-                      value={input.nextActionText}
-                      onChange={(e) => set("nextActionText", e.target.value)}
-                      placeholder="What's the next step?"
-                      autoFocus
-                    />
-                    <Button type="button" variant="ghost" size="sm"
-                      onClick={() => { setNextActionMode("preset"); set("nextActionText", ""); }}>
-                      Use list
-                    </Button>
-                  </div>
-                )}
-              </EditRow>
-              <EditRow label="Due date">
-                <Input
-                  type="date"
-                  value={input.nextActionDue}
-                  onChange={(e) => set("nextActionDue", e.target.value)}
-                />
-              </EditRow>
-            </div>
+            <EditRow label="Next action">
+              {nextActionMode === "preset" ? (
+                <Select
+                  value={input.nextActionText || undefined}
+                  onValueChange={(v) => {
+                    if (v === CUSTOM_ACTION) {
+                      setNextActionMode("custom");
+                      set("nextActionText", "");
+                    } else {
+                      set("nextActionText", v);
+                    }
+                  }}
+                  items={[...NEXT_ACTION_PRESETS.map((p) => ({ value: p, label: p })), { value: CUSTOM_ACTION, label: "Custom…" }]}
+                >
+                  <SelectTrigger><SelectValue placeholder="Choose a next step…" /></SelectTrigger>
+                  <SelectContent>
+                    {NEXT_ACTION_PRESETS.map((preset) => (
+                      <SelectItem key={preset} value={preset}>{preset}</SelectItem>
+                    ))}
+                    <SelectItem value={CUSTOM_ACTION}>Custom…</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={input.nextActionText}
+                    onChange={(e) => set("nextActionText", e.target.value)}
+                    placeholder="What's the next step?"
+                    autoFocus
+                  />
+                  <Button type="button" variant="ghost" size="sm"
+                    onClick={() => { setNextActionMode("preset"); set("nextActionText", ""); }}>
+                    Use list
+                  </Button>
+                </div>
+              )}
+            </EditRow>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <EditRow label="Follow-up date">

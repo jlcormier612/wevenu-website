@@ -102,6 +102,10 @@ export function ContractBuilder({
   const [releaseMessage, setReleaseMessage] = React.useState("");
   const [sendPending, startSend] = React.useTransition();
   const [placeholderWarningOpen, setPlaceholderWarningOpen] = React.useState(false);
+  /** Create-mode send: draft id once created so Send Anyway / retry does not insert again. */
+  const [persistedContractId, setPersistedContractId] = React.useState<string | null>(
+    draft?.contractId ?? null,
+  );
 
   React.useEffect(() => {
     if (mode !== "create" || !initialClientId || title) return;
@@ -291,11 +295,22 @@ export function ContractBuilder({
   }
 
   function handleReviewAndSend() {
-    if (!draft) return;
     if (selectedSignerIds.length === 0) {
       toast.error("Select at least one required client signer with an email.");
       return;
     }
+    if (mode === "create") {
+      // Preview only — no draft write. Persistence happens on Send.
+      startPreview(async () => {
+        const resolved = await resolvePreview();
+        if (resolved == null) return;
+        setPreviewContent(resolved);
+        setReleaseMessage("");
+        setReviewOpen(true);
+      });
+      return;
+    }
+    if (!draft) return;
     startPreview(async () => {
       const save = await updateContractContentAction(
         draft.contractId,
@@ -323,10 +338,34 @@ export function ContractBuilder({
   }
 
   function handleSend(acknowledgePlaceholders = false) {
-    if (!draft) return;
     startSend(async () => {
+      let contractId = persistedContractId ?? draft?.contractId ?? null;
+
+      if (!contractId) {
+        if (selectedSignerIds.length === 0) {
+          toast.error("Select at least one required client signer with an email.");
+          return;
+        }
+        const created = await createContractAction({
+          templateId,
+          clientId,
+          eventId,
+          title,
+          content,
+          clientSignerContactIds: selectedSignerIds,
+          selectionId,
+        });
+        if (!created.ok) {
+          if (created.errors) setErrors(created.errors);
+          toast.error(created.message ?? "Could not create the contract.");
+          return;
+        }
+        contractId = created.contractId;
+        setPersistedContractId(contractId);
+      }
+
       const result = await sendContractAction(
-        draft.contractId,
+        contractId,
         releaseMessage,
         acknowledgePlaceholders ? { acknowledgePlaceholders: true } : undefined,
       );
@@ -334,7 +373,7 @@ export function ContractBuilder({
         toast.success("Contract sent to the client for review.");
         setPlaceholderWarningOpen(false);
         setReviewOpen(false);
-        router.refresh();
+        router.push(`/contracts/${contractId}`);
         return;
       }
       if (result.code === "STARTER_POLICY_PLACEHOLDERS") {
@@ -342,6 +381,10 @@ export function ContractBuilder({
         return;
       }
       toast.error(result.message ?? "Could not send to the client.");
+      // Create succeeded but send failed — open the draft so retry uses sendContract only.
+      if (mode === "create" && contractId) {
+        router.push(`/contracts/${contractId}`);
+      }
     });
   }
 
@@ -525,14 +568,12 @@ export function ContractBuilder({
         <Button type="button" variant="outline" onClick={handlePreview} disabled={previewPending || !clientId}>
           {previewPending && !reviewOpen ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Previewing…</> : "Preview"}
         </Button>
-        <Button type="button" onClick={handleSaveDraft} disabled={pending}>
+        <Button type="button" variant="outline" onClick={handleSaveDraft} disabled={pending}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : "Save draft"}
         </Button>
-        {mode === "draft" && (
-          <Button type="button" onClick={handleReviewAndSend} disabled={previewPending || sendPending}>
-            {previewPending && reviewOpen ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Preparing…</> : <><Send className="mr-1 h-3.5 w-3.5" />Review &amp; send to client</>}
-          </Button>
-        )}
+        <Button type="button" onClick={handleReviewAndSend} disabled={previewPending || sendPending || !clientId}>
+          {previewPending && reviewOpen ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Preparing…</> : <><Send className="mr-1 h-3.5 w-3.5" />Review &amp; send to client</>}
+        </Button>
       </div>
 
       <ArtifactReviewOverlay
@@ -549,11 +590,11 @@ export function ContractBuilder({
         />
       </ArtifactReviewOverlay>
 
-      {mode === "draft" && draft && (
+      {(mode === "draft" || mode === "create") && (
         <ArtifactReviewOverlay
           open={reviewOpen}
           eyebrow="Customer-facing agreement"
-          title={title || draft.title}
+          title={title || draft?.title || "Contract"}
           onBack={() => { setReviewOpen(false); }}
           primary={
             <Button size="sm" onClick={() => handleSend()} disabled={sendPending}>
@@ -583,7 +624,7 @@ export function ContractBuilder({
           }
         >
           <ContractSigningArtifact
-            title={title || draft.title}
+            title={title || draft?.title || "Contract"}
             content={previewContent ?? ""}
             brand={brand}
             signatureSlot={<SignForm preview />}

@@ -62,17 +62,18 @@ export function ProposalArtifact({
         {eyebrow}
       </p>
       {brand.logoUrl || proposal.venueName ? (
-        <div className="mt-2 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-3">
           {brand.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={brand.logoUrl}
-              alt={proposal.venueName ?? ""}
-              className="h-9 w-9 shrink-0 rounded-full object-cover"
+              alt={proposal.venueName ?? "Venue logo"}
+              data-testid="proposal-venue-logo"
+              className="h-14 w-14 shrink-0 rounded-lg object-contain bg-white/80 p-1 shadow-sm"
             />
           ) : null}
           {proposal.venueName ? (
-            <p className="text-sm" style={{ color: "var(--venue-secondary)" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--venue-secondary)" }}>
               {proposal.venueName}
             </p>
           ) : null}
