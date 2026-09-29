@@ -110,4 +110,15 @@ describe("starter-policy placeholder send warning", () => {
     assert.match(documentsTab, /StarterPolicyPlaceholderDialog/);
     assert.match(dialog, /starter-policy-placeholder-warning/);
   });
+
+  it("starter-policy warning dialog stacks above ArtifactReviewOverlay so Send is not trapped", () => {
+    const overlay = read("components/artifacts/artifact-review-overlay.tsx");
+    const uiDialog = read("components/ui/dialog.tsx");
+    assert.match(overlay, /z-\[200\]/);
+    assert.match(uiDialog, /z-\[250\]/);
+    assert.doesNotMatch(
+      uiDialog.replace(/z-\[250\]/g, ""),
+      /fixed inset-0 z-50 |fixed top-1\/2 left-1\/2 z-50 /,
+    );
+  });
 });

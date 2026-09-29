@@ -106,9 +106,6 @@ Total contracted amount
 Balance remaining
 {{balance_remaining}}
 
-Balance remaining (confirmation)
-{{balance_remaining}}
-
 ────────────────────────────────
 VENUE POLICIES
 ────────────────────────────────

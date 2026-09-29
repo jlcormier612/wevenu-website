@@ -103,6 +103,31 @@ describe("starter catalog hygiene", () => {
     assert.equal(starterContentHasRemovedSmartFields(WEDDING_VENUE_AGREEMENT_CONTENT), false);
   });
 
+  it("renders exactly one customer-facing Balance remaining label", () => {
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\nBalance remaining\n\{\{balance_remaining\}\}\n/);
+    assert.equal(
+      (WEDDING_VENUE_AGREEMENT_CONTENT.match(/^Balance remaining$/gm) ?? []).length,
+      1,
+    );
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /Balance remaining \(confirmation\)/);
+    const data = buildMergeData({
+      venueName: "Jen's Fancy Venue",
+      clientFirstName: "Lorelei",
+      clientLastName: "Gilmore",
+      eventDate: "2027-06-01",
+      eventType: "wedding",
+      guestCount: 100,
+      contractTitle: "Venue Rental Agreement",
+      contractTotal: formatContractTotalAmount(32000)!,
+      balanceRemaining: formatBalanceRemaining(24000),
+      paymentScheduleSummary: MISSING_PAYMENT_SCHEDULE,
+    });
+    const merged = mergeContent(WEDDING_VENUE_AGREEMENT_CONTENT, data);
+    assert.equal((merged.match(/^Balance remaining$/gm) ?? []).length, 1);
+    assert.doesNotMatch(merged, /Balance remaining \(confirmation\)/);
+    assert.match(merged, /Balance remaining\n\$24,000\.00/);
+  });
+
   it("detects polluted starter content", () => {
     assert.equal(
       starterContentHasRemovedSmartFields("Hours {{venue_access_hours}}\n{{ceremony_summary}}"),
