@@ -96,6 +96,8 @@ export type PaymentScheduleSummary = PaymentSchedule & {
   totalPaid: number;
   balance: number;
   overdueCount: number;
+  refundedCount: number;
+  partiallyRefundedCount: number;
   pendingCount: number;
   scheduleStatus: "complete" | "attention" | "on_track" | "no_payments";
 };

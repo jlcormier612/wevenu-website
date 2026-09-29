@@ -13,6 +13,8 @@ import {
   type PaymentAttentionSchedule,
   type TaskAttentionRow,
 } from "@/lib/navigation/attention";
+import { countVenueActionRequiredContracts } from "@/lib/contracts/list-filters";
+import { getContracts } from "@/lib/contracts/service";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import { getCurrentStaffMember } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -37,6 +39,7 @@ export async function getNavAttentionCounts(): Promise<NavAttentionCounts> {
     leadTasksRes,
     schedules,
     lineItems,
+    contracts,
   ] = await Promise.all([
     supabase.rpc("get_conversation_unread_count"),
     supabase
@@ -64,6 +67,7 @@ export async function getNavAttentionCounts(): Promise<NavAttentionCounts> {
       .eq("completed", false),
     getSchedules(supabase, venue.id),
     getAllLineItems(supabase, venue.id),
+    getContracts(),
   ]);
 
   const unreadPayload = unreadRes.data as { count?: number } | null;
@@ -115,8 +119,9 @@ export async function getNavAttentionCounts(): Promise<NavAttentionCounts> {
     lineItems: lineItems.filter((i) => i.scheduleId === s.id),
   }));
   const payments = countPaymentAttention(paymentSchedules);
+  const contractsCount = countVenueActionRequiredContracts(contracts);
 
-  return { leads, tours, inbox, tasks, payments };
+  return { leads, tours, inbox, tasks, payments, contracts: contractsCount };
 }
 
 export async function markLeadVenueSeen(leadId: string): Promise<void> {

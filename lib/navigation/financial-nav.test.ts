@@ -50,11 +50,19 @@ describe("financial nav role filter", () => {
     );
   });
 
-  it("does not change Financials for coordinator", () => {
+  it("does not hide remaining Financials destinations for coordinator", () => {
     const filtered = filterNavSectionsForRole(NAV_SECTIONS, "coordinator");
     const financials = filtered.find((s) => s.id === "financials");
     assert.ok(financials);
-    assert.ok(financials!.items.some((i) => i.href === "/invoices"));
-    assert.ok(financials!.items.some((i) => i.href === "/payments"));
+    assert.deepEqual(
+      financials!.items.map((i) => i.href),
+      ["/contracts", "/payments"],
+    );
+    assert.equal(canAccessFinancialNavHref("coordinator", "/invoices"), true);
+  });
+
+  it("hides payments even when the href carries an attention query", () => {
+    assert.equal(canAccessFinancialNavHref("staff", "/payments?filter=attention"), false);
+    assert.equal(canAccessFinancialNavHref("staff", "/payments?filter=all"), false);
   });
 });

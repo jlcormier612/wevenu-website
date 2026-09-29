@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { paymentAttentionReasons } from "@/lib/payments/attention-reasons";
 import { formatMoney } from "@/lib/payments/constants";
 import type { PaymentScheduleSummary } from "@/lib/payments/types";
 
@@ -69,11 +70,11 @@ export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleS
                     {s.clientName && (
                       <p className="text-xs text-muted-foreground">{s.clientName}</p>
                     )}
-                    {s.overdueCount > 0 && (
-                      <p className="text-xs font-medium text-destructive mt-0.5">
-                        {s.overdueCount} overdue payment{s.overdueCount > 1 ? "s" : ""}
+                    {paymentAttentionReasons(s).map((reason) => (
+                      <p key={reason} className="text-xs font-medium text-destructive mt-0.5">
+                        {reason}
                       </p>
-                    )}
+                    ))}
                   </TableCell>
                   <TableCell className="text-sm font-medium">{formatMoney(s.totalAmount)}</TableCell>
                   <TableCell className="text-sm text-success font-medium">{formatMoney(s.totalPaid)}</TableCell>

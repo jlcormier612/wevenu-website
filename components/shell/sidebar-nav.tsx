@@ -36,6 +36,7 @@ export function SidebarNav({
           inbox: Number(d.inbox) || 0,
           tasks: Number(d.tasks) || 0,
           payments: Number(d.payments) || 0,
+          contracts: Number(d.contracts) || 0,
         });
       })
       .catch(() => {});
@@ -56,10 +57,11 @@ export function SidebarNav({
             // would light both Library items at once. Templates still owns its
             // own sub-pages (/library/contracts, /library/offerings, …); it just
             // hands /library/documents to Documents.
+            const itemPath = item.href.split("?")[0];
             const isActive = item.id === "templates"
-              ? pathname === item.href ||
-                (pathname.startsWith(`${item.href}/`) && !pathname.startsWith("/library/documents"))
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              ? pathname === itemPath ||
+                (pathname.startsWith(`${itemPath}/`) && !pathname.startsWith("/library/documents"))
+              : pathname === itemPath || pathname.startsWith(`${itemPath}/`);
             const Icon = item.icon;
             const badgeCount = badgeCountForNavItem(item.id, counts);
             const badgeLabel = formatAttentionBadge(badgeCount);

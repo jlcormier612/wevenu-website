@@ -20,6 +20,7 @@ export type NavAttentionCounts = {
   inbox: number;
   tasks: number;
   payments: number;
+  contracts: number;
 };
 
 export const NAV_ATTENTION_BADGE_IDS = [
@@ -28,6 +29,7 @@ export const NAV_ATTENTION_BADGE_IDS = [
   "inbox",
   "task-center",
   "payments",
+  "contracts",
 ] as const;
 
 export type NavAttentionBadgeId = (typeof NAV_ATTENTION_BADGE_IDS)[number];
@@ -37,7 +39,7 @@ export const NAV_ATTENTION_BADGE_CLASS =
   "ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground";
 
 export function emptyNavAttentionCounts(): NavAttentionCounts {
-  return { leads: 0, tours: 0, inbox: 0, tasks: 0, payments: 0 };
+  return { leads: 0, tours: 0, inbox: 0, tasks: 0, payments: 0, contracts: 0 };
 }
 
 export function badgeCountForNavItem(
@@ -55,6 +57,8 @@ export function badgeCountForNavItem(
       return counts.tasks;
     case "payments":
       return counts.payments;
+    case "contracts":
+      return counts.contracts;
     default:
       return 0;
   }
@@ -75,6 +79,8 @@ export function navAttentionHref(itemId: string, baseHref: string, count: number
       return "/leads?attention=unseen";
     case "payments":
       return "/payments?filter=attention";
+    case "contracts":
+      return "/contracts?filter=action_required";
     case "task-center":
       // Badge is staff-scoped past-due; land on My Work so the overdue list matches.
       return "/tasks?perspective=my-work";

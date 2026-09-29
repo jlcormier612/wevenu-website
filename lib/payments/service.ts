@@ -86,6 +86,8 @@ export async function getPaymentSchedules(): Promise<PaymentScheduleSummary[]> {
       totalPaid,
       balance: s.totalAmount - totalPaid,
       overdueCount,
+      refundedCount: items.filter((i) => i.status === "refunded").length,
+      partiallyRefundedCount: items.filter((i) => i.status === "partially_refunded").length,
       pendingCount: items.filter((i) => i.status === "pending").length,
       scheduleStatus: deriveScheduleStatus(items),
     } as PaymentScheduleSummary;

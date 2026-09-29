@@ -244,7 +244,7 @@ describe("Badge presentation", () => {
   it("hides badge when count is zero", () => {
     assert.equal(formatAttentionBadge(0), null);
     assert.equal(badgeCountForNavItem("inbox", {
-      leads: 0, tours: 0, inbox: 0, tasks: 0, payments: 0,
+      leads: 0, tours: 0, inbox: 0, tasks: 0, payments: 0, contracts: 0,
     }), 0);
   });
 

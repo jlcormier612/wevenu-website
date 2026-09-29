@@ -8,13 +8,16 @@ import { getContracts } from "@/lib/contracts/service";
 
 export const metadata: Metadata = { title: "Contracts" };
 
-export default async function ContractsPage() {
+type Props = { searchParams: Promise<{ filter?: string }> };
+
+export default async function ContractsPage({ searchParams }: Props) {
+  const { filter } = await searchParams;
   const contracts = await getContracts();
   return (
     <div className="space-y-6">
       <PageHeader
         title="Contracts"
-        description="Prepare, send, and track agreements with your clients."
+        description="Which contracts need something from me?"
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" render={<Link href="/contracts/templates" />}>
@@ -24,7 +27,7 @@ export default async function ContractsPage() {
           </div>
         }
       />
-      <ContractList contracts={contracts} />
+      <ContractList contracts={contracts} initialFilter={filter} />
     </div>
   );
 }

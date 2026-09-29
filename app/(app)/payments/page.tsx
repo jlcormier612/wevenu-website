@@ -13,7 +13,7 @@ type Props = { searchParams: Promise<{ filter?: string }> };
 export default async function PaymentsPage({ searchParams }: Props) {
   const { filter } = await searchParams;
   const schedules = await getPaymentSchedules();
-  const attentionOnly = filter === "attention";
+  const attentionOnly = filter !== "all";
   const visible = attentionOnly
     ? schedules.filter((s) => s.scheduleStatus === "attention" && !s.excludeFromBusinessReporting)
     : schedules;
@@ -24,7 +24,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
         title="Payments"
         description={
           attentionOnly
-            ? "Schedules that need attention — overdue or refunded payments."
+            ? "Schedules that need attention — overdue, refunded, or partially refunded."
             : "Track deposits, installments, and outstanding balances."
         }
         actions={<Button render={<Link href="/payments/new" />}>+ New Schedule</Button>}
@@ -33,7 +33,14 @@ export default async function PaymentsPage({ searchParams }: Props) {
         <p className="text-sm text-muted-foreground">
           Showing {visible.length} schedule{visible.length === 1 ? "" : "s"} that need attention.
           {" "}
-          <Link href="/payments" className="text-primary hover:underline">Show all</Link>
+          <Link href="/payments?filter=all" className="text-primary hover:underline">Show all</Link>
+        </p>
+      )}
+      {!attentionOnly && (
+        <p className="text-sm text-muted-foreground">
+          Showing every schedule.
+          {" "}
+          <Link href="/payments?filter=attention" className="text-primary hover:underline">Show attention</Link>
         </p>
       )}
       <PaymentScheduleList schedules={visible} />

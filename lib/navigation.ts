@@ -5,7 +5,6 @@ import {
   ClipboardList,
   CreditCard,
   FileSignature,
-  FileText,
   GraduationCap,
   FolderOpen,
   Inbox as InboxIcon,
@@ -116,7 +115,6 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Financials",
     items: [
       { id: "contracts", title: "Contracts", href: "/contracts", icon: FileSignature },
-      { id: "invoices", title: "Invoices", href: "/invoices", icon: FileText },
       { id: "payments", title: "Payments", href: "/payments", icon: CreditCard },
     ],
   },

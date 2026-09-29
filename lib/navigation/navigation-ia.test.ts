@@ -51,7 +51,7 @@ describe("venue navigation IA", () => {
       scheduling: ["Calendar", "Tours"],
       communication: ["Inbox", "Automations"],
       library: ["Templates", "Documents"],
-      financials: ["Contracts", "Invoices", "Payments"],
+      financials: ["Contracts", "Payments"],
       "to-dos": ["Task Center", "Requests"],
       "your-venue": ["Setup", "Settings", "Guidance", "Venue Guide", "Help & Feedback"],
     });

@@ -6,14 +6,18 @@
 
 import type { NavItem, NavSection } from "@/lib/navigation";
 
-const STAFF_HIDDEN_FINANCIAL_HREFS = new Set(["/invoices", "/payments"]);
+const STAFF_HIDDEN_FINANCIAL_PATHS = new Set(["/invoices", "/payments"]);
+
+function financialPath(href: string): string {
+  return href.split("?")[0];
+}
 
 export function canAccessFinancialNavHref(
   role: string | null | undefined,
   href: string,
 ): boolean {
   if (role !== "staff") return true;
-  return !STAFF_HIDDEN_FINANCIAL_HREFS.has(href);
+  return !STAFF_HIDDEN_FINANCIAL_PATHS.has(financialPath(href));
 }
 
 export function filterNavSectionsForRole(
