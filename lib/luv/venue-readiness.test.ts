@@ -31,11 +31,11 @@ function readyVenue(overrides: Partial<VenueReadinessFacts> = {}): VenueReadines
     leadCapturePath: "automated",
     tourSchedulingEnabled: true,
     tourWindowCount: 2,
-    authoredPackageCount: 1,
-    authoredContractTemplateCount: 1,
-    authoredMessageTemplateCount: 1,
+    activePackageCount: 1,
+    contractTemplateCount: 1,
+    messageTemplateCount: 1,
     playbookCount: 1,
-    authoredInventoryCount: 1,
+    inventoryItemCount: 1,
     stripeChargesEnabled: true,
     spaceOperatingMode: "multi",
     spaceCount: 1,
@@ -59,19 +59,19 @@ describe("venue readiness — authoritative detection", () => {
     const assessment = assessVenueReadiness(readyVenue({
       hasEmail: false,
       hasPhone: false,
-      authoredPackageCount: 0,
+      activePackageCount: 0,
     }));
     const blockers = assessment.findings.filter((f) => f.importance === "blocker");
     assert.deepEqual(blockers.map((f) => f.key), ["profile_contact", "own_package"]);
     assert.match(blockers[0].why, /email or phone/i);
     assert.equal(blockers[0].href, "/settings");
-    assert.match(blockers[1].why, /Starter examples don't count/);
+    assert.match(blockers[1].why, /nothing to book/);
     assert.equal(blockers[1].href, "/library/packages");
   });
 
   it("classifies contract, card payments, and tour hours as recommended", () => {
     const assessment = assessVenueReadiness(readyVenue({
-      authoredContractTemplateCount: 0,
+      contractTemplateCount: 0,
       stripeChargesEnabled: false,
       tourWindowCount: 0,
     }));
@@ -86,9 +86,9 @@ describe("venue readiness — authoritative detection", () => {
   it("classifies logo, message templates, planning, and inventory as optional", () => {
     const found = assessVenueReadiness(readyVenue({
       hasLogo: false,
-      authoredMessageTemplateCount: 0,
+      messageTemplateCount: 0,
       playbookCount: 0,
-      authoredInventoryCount: 0,
+      inventoryItemCount: 0,
     })).findings;
     assert.deepEqual(found.map((f) => f.importance), ["optional", "optional", "optional", "optional"]);
     assert.equal(found[0].href, "/settings");
@@ -197,16 +197,16 @@ describe("venue readiness — lead intake is not a click", () => {
 describe("venue readiness — resolution, dismissal, dashboard quietness", () => {
   it("drops a blocker once the underlying count changes", () => {
     assert.equal(profileContactReady(readyVenue({ hasAddress: false })), false);
-    const missing = assessVenueReadiness(readyVenue({ authoredPackageCount: 0 }));
+    const missing = assessVenueReadiness(readyVenue({ activePackageCount: 0 }));
     assert.equal(missing.findings.some((f) => f.key === "own_package"), true);
-    const fixed = assessVenueReadiness(readyVenue({ authoredPackageCount: 1 }));
+    const fixed = assessVenueReadiness(readyVenue({ activePackageCount: 1 }));
     assert.equal(fixed.findings.some((f) => f.key === "own_package"), false);
   });
 
   it("does not put recommended or optional findings on the dashboard", () => {
     const assessment = assessVenueReadiness(readyVenue({
       hasLogo: false,
-      authoredContractTemplateCount: 0,
+      contractTemplateCount: 0,
       stripeChargesEnabled: false,
     }));
     assert.deepEqual(readinessDashboardObservations(assessment), []);
@@ -215,7 +215,7 @@ describe("venue readiness — resolution, dismissal, dashboard quietness", () =>
   it("offers only the first blocker to the dashboard, and dismissal hides it", () => {
     const assessment = assessVenueReadiness(readyVenue({
       hasAddress: false,
-      authoredPackageCount: 0,
+      activePackageCount: 0,
     }));
     const observations = readinessDashboardObservations(assessment);
     assert.equal(observations.length, 1);
@@ -226,7 +226,7 @@ describe("venue readiness — resolution, dismissal, dashboard quietness", () =>
   });
 
   it("lets an existing Level-1 recommendation keep the dashboard card", () => {
-    const readiness = readinessDashboardObservations(assessVenueReadiness(readyVenue({ authoredPackageCount: 0 })));
+    const readiness = readinessDashboardObservations(assessVenueReadiness(readyVenue({ activePackageCount: 0 })));
     const recommendation = {
       id: "rec-1",
       type: "tour_followup_pattern",
@@ -250,7 +250,7 @@ describe("venue readiness — resolution, dismissal, dashboard quietness", () =>
 
   it("does not praise every remaining checkbox when a blocker is still open", () => {
     const assessment = assessVenueReadiness(readyVenue({
-      authoredPackageCount: 0,
+      activePackageCount: 0,
       hasLogo: false,
       playbookCount: 0,
     }));
@@ -269,7 +269,8 @@ describe("venue readiness — tenant scoping and no second system", () => {
     assert.doesNotMatch(source, /configured_at/);
     assert.doesNotMatch(source, /verified_at/);
     assert.match(source, /stripe_charges_enabled/);
-    assert.match(source, /source_master_key/);
+    assert.match(source, /\.eq\("is_active", true\)/);
+    assert.doesNotMatch(source, /source_master_key/);
   });
 
   it("appends dashboard readiness after existing observations and does not add a table", () => {

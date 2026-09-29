@@ -78,15 +78,15 @@ async function loadVenueReadinessFacts(venueId: string): Promise<VenueReadinessF
       .maybeSingle<{ lead_capture_path: "automated" | "manual_external" | null }>(),
     supabase.from("tour_availability_windows").select("id", { count: "exact", head: true }).eq("venue_id", venueId),
     supabase.from("packages").select("id", { count: "exact", head: true })
-      .eq("venue_id", venueId).eq("is_active", true).is("source_master_key", null),
+      .eq("venue_id", venueId).eq("is_active", true),
     supabase.from("contract_templates").select("id", { count: "exact", head: true })
-      .eq("venue_id", venueId).eq("is_archived", false).is("source_master_key", null),
+      .eq("venue_id", venueId).eq("is_archived", false),
     supabase.from("message_templates").select("id", { count: "exact", head: true })
-      .eq("venue_id", venueId).eq("is_archived", false).is("source_master_key", null),
+      .eq("venue_id", venueId).eq("is_archived", false),
     supabase.from("playbook_templates").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_archived", false),
     supabase.from("venue_spaces").select("id", { count: "exact", head: true }).eq("venue_id", venueId),
-    supabase.from("inventory_items").select("id, inventory_categories(source_master_key)")
+    supabase.from("inventory_items").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_archived", false),
     getConnection(supabase, venueId),
     getLeadForms(supabase, venueId),
@@ -108,16 +108,6 @@ async function loadVenueReadinessFacts(venueId: string): Promise<VenueReadinessF
         : "incomplete";
   }
 
-  type InventoryRow = { id: string; inventory_categories: { source_master_key: string | null } | { source_master_key: string | null }[] | null };
-  const inventoryUnknown = Boolean(inventoryRows.error);
-  const inventoryData = (inventoryRows.data ?? []) as unknown as InventoryRow[];
-  const authoredInventoryCount = inventoryUnknown
-    ? null
-    : inventoryData.filter((item) => {
-        const category = Array.isArray(item.inventory_categories) ? item.inventory_categories[0] : item.inventory_categories;
-        return !category?.source_master_key;
-      }).length;
-
   const filled = (value: string | null | undefined) => Boolean(value && value.trim());
 
   return {
@@ -136,11 +126,11 @@ async function loadVenueReadinessFacts(venueId: string): Promise<VenueReadinessF
     leadCapturePathKnown: !hubState.error,
     tourSchedulingEnabled: row.tour_scheduling_enabled === true,
     tourWindowCount: countOrUnknown(tourWindows),
-    authoredPackageCount: countOrUnknown(packages),
-    authoredContractTemplateCount: countOrUnknown(contracts),
-    authoredMessageTemplateCount: countOrUnknown(messages),
+    activePackageCount: countOrUnknown(packages),
+    contractTemplateCount: countOrUnknown(contracts),
+    messageTemplateCount: countOrUnknown(messages),
     playbookCount: countOrUnknown(playbooks),
-    authoredInventoryCount,
+    inventoryItemCount: countOrUnknown(inventoryRows),
     stripeChargesEnabled: row.stripe_charges_enabled === true,
     spaceOperatingMode: row.space_operating_mode === "multi" ? "multi" : "single",
     spaceCount: countOrUnknown(spaces),

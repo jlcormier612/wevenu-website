@@ -48,11 +48,18 @@ export type VenueReadinessFacts = {
   leadCapturePathKnown: boolean;
   tourSchedulingEnabled: boolean;
   tourWindowCount: number | null;
-  authoredPackageCount: number | null;
-  authoredContractTemplateCount: number | null;
-  authoredMessageTemplateCount: number | null;
+  /**
+   * Active packages. A starter the venue kept and priced is still an offering —
+   * source_master_key is not cleared when they edit it in place.
+   */
+  activePackageCount: number | null;
+  /** Non-archived contract templates, including a starter they use as their agreement. */
+  contractTemplateCount: number | null;
+  /** Non-archived message templates, including starters they can send. */
+  messageTemplateCount: number | null;
   playbookCount: number | null;
-  authoredInventoryCount: number | null;
+  /** Non-archived inventory items. Starter-category items are still inventory. */
+  inventoryItemCount: number | null;
   stripeChargesEnabled: boolean;
   spaceOperatingMode: "single" | "multi";
   spaceCount: number | null;
@@ -92,11 +99,11 @@ const EMPTY: VenueReadinessFacts = {
   leadCapturePathKnown: true,
   tourSchedulingEnabled: false,
   tourWindowCount: 0,
-  authoredPackageCount: 0,
-  authoredContractTemplateCount: 0,
-  authoredMessageTemplateCount: 0,
+  activePackageCount: 0,
+  contractTemplateCount: 0,
+  messageTemplateCount: 0,
   playbookCount: 0,
-  authoredInventoryCount: 0,
+  inventoryItemCount: 0,
   stripeChargesEnabled: false,
   spaceOperatingMode: "single",
   spaceCount: 0,
@@ -173,15 +180,15 @@ export function assessVenueReadiness(facts: VenueReadinessFacts): VenueReadiness
     ));
   }
 
-  if (knownCount(facts.authoredPackageCount) && facts.authoredPackageCount === 0) {
+  if (knownCount(facts.activePackageCount) && facts.activePackageCount === 0) {
     findings.push(finding(
       "own_package",
       "blocker",
-      "You don't have a package of your own yet.",
-      "A package is what a couple can choose. Starter examples don't count — until you add what you actually sell, an inquiry has nothing to book.",
+      "You don't have a package yet.",
+      "A package is what a couple can choose. Until one is active, an inquiry has nothing to book.",
       "Create a package",
       "/library/packages",
-      "At least one active package authored by this venue (not a starter).",
+      "At least one active package exists for this venue.",
     ));
   }
 
@@ -240,15 +247,15 @@ export function assessVenueReadiness(facts: VenueReadinessFacts): VenueReadiness
     ));
   }
 
-  if (knownCount(facts.authoredContractTemplateCount) && facts.authoredContractTemplateCount === 0) {
+  if (knownCount(facts.contractTemplateCount) && facts.contractTemplateCount === 0) {
     findings.push(finding(
       "own_contract",
       "recommended",
-      "You don't have a contract template of your own yet.",
+      "You don't have a contract template yet.",
       "When a couple is ready to book, you'll be writing the agreement from scratch instead of sending one you've already prepared.",
       "Prepare a contract",
       "/library/contracts",
-      "At least one contract template authored by this venue (not a starter).",
+      "At least one contract template exists for this venue.",
     ));
   }
 
@@ -312,15 +319,15 @@ export function assessVenueReadiness(facts: VenueReadinessFacts): VenueReadiness
     ));
   }
 
-  if (knownCount(facts.authoredMessageTemplateCount) && facts.authoredMessageTemplateCount === 0) {
+  if (knownCount(facts.messageTemplateCount) && facts.messageTemplateCount === 0) {
     findings.push(finding(
       "own_message_templates",
       "optional",
-      "You haven't written your own message templates.",
+      "You don't have a message template yet.",
       "You can still write each note yourself. A template saves you from retyping the ones you send often.",
-      "Write a message template",
+      "Add a message template",
       "/communication/templates",
-      "At least one message template authored by this venue (not a starter).",
+      "At least one message template exists for this venue.",
     ));
   }
 
@@ -336,15 +343,15 @@ export function assessVenueReadiness(facts: VenueReadinessFacts): VenueReadiness
     ));
   }
 
-  if (knownCount(facts.authoredInventoryCount) && facts.authoredInventoryCount === 0) {
+  if (knownCount(facts.inventoryItemCount) && facts.inventoryItemCount === 0) {
     findings.push(finding(
       "own_inventory",
       "optional",
-      "You haven't added your own inventory.",
+      "You don't have inventory yet.",
       "You only need this if you track specific items — tables, chairs, rentals — with a booking.",
       "Review inventory",
       "/library/inventory",
-      "At least one inventory item in a category this venue owns (not a starter category).",
+      "At least one inventory item exists for this venue.",
     ));
   }
 
@@ -367,8 +374,8 @@ export function assessVenueReadiness(facts: VenueReadinessFacts): VenueReadiness
 function readyNotesFor(facts: VenueReadinessFacts): string[] {
   const notes: string[] = [];
   if (profileContactReady(facts)) notes.push("your venue profile");
-  if (knownCount(facts.authoredPackageCount) && facts.authoredPackageCount > 0) notes.push("your packages");
-  if (knownCount(facts.authoredContractTemplateCount) && facts.authoredContractTemplateCount > 0) notes.push("your contract template");
+  if (knownCount(facts.activePackageCount) && facts.activePackageCount > 0) notes.push("your packages");
+  if (knownCount(facts.contractTemplateCount) && facts.contractTemplateCount > 0) notes.push("your contract template");
   if (facts.stripeChargesEnabled) notes.push("card payments");
   if (intakeReady(facts)) {
     notes.push(facts.leadCapturePath === "manual_external" ? "manual lead entry" : "lead intake");
