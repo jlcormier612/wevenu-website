@@ -132,7 +132,9 @@ describe("Ask Luv prompt layering", () => {
     assert.match(prompt, /sign/i);
     assert.match(prompt, /status: not_provided_in_phase_1/);
     assert.match(prompt, /Never say "Typically, couples/);
-    assert.match(prompt, /available HTC guidance does not cover/);
+    assert.match(prompt, /Do not invent product capabilities/);
+    assert.match(prompt, /information_gap/);
+    assert.match(prompt, /outcome/);
 
     // Staff Settings path from can-couples-pay-online staff body must not leak
     // when retrieving a contract question.

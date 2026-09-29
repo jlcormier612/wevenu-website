@@ -3082,7 +3082,15 @@ function TimelinePortalSection({
 // the panel rather than loaded on every dashboard visit.
 // ── Ask Luv FAB — deeper entry only; Home card stays non-chat (Impl 6).
 // Mounted once at PortalShell root. Does not auto-open over Next Steps.
-function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavigateToGuide: () => void }) {
+function FloatingLuvWidget({
+  token,
+  onNavigateToGuide,
+  onNavigate,
+}: {
+  token: string;
+  onNavigateToGuide: () => void;
+  onNavigate: (section: PortalSection) => void;
+}) {
   const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -3118,9 +3126,25 @@ function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavi
           <div className="flex-1 overflow-y-auto">
             {(() => {
               const { LuvAskSection } = require("@/components/portal/luv-ask-section") as {
-                LuvAskSection: React.ComponentType<{ token: string; onNavigateToGuide?: () => void }>;
+                LuvAskSection: React.ComponentType<{
+                  token: string;
+                  onNavigateToGuide?: () => void;
+                  onNavigate?: (target: "guide" | "payments" | "documents") => void;
+                }>;
               };
-              return <LuvAskSection token={token} onNavigateToGuide={() => { onNavigateToGuide(); setOpen(false); }} />;
+              return (
+                <LuvAskSection
+                  token={token}
+                  onNavigateToGuide={() => {
+                    onNavigateToGuide();
+                    setOpen(false);
+                  }}
+                  onNavigate={(target) => {
+                    onNavigate(target);
+                    setOpen(false);
+                  }}
+                />
+              );
             })()}
           </div>
         </div>
@@ -4974,7 +4998,11 @@ export function PortalShell({
       </footer>
 
       {/* Persistent across every tab, not just Overview — Program 5. */}
-      <FloatingLuvWidget token={token} onNavigateToGuide={() => navigateTo("guide")} />
+      <FloatingLuvWidget
+        token={token}
+        onNavigateToGuide={() => navigateTo("guide")}
+        onNavigate={(section) => navigateTo(section)}
+      />
     </div>
   );
 }
