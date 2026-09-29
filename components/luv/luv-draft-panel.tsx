@@ -26,8 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   pendingReviewDrafts,
   withDraftStatus,
-  type LuvDraft,
-} from "@/lib/luv/drafts";
+} from "@/lib/luv/draft-status";
+import type { LuvDraft } from "@/lib/luv/drafts";
 import type { Lead } from "@/lib/leads/types";
 
 const DUSTY_ROSE = "#D8A7AA";

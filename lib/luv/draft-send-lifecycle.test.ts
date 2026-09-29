@@ -9,12 +9,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
+import type { LuvDraft } from "@/lib/luv/drafts";
 import {
   draftStatusAfterSuccessfulSend,
   pendingReviewDrafts,
   withDraftStatus,
-  type LuvDraft,
-} from "@/lib/luv/drafts";
+} from "@/lib/luv/draft-status";
 
 function draft(partial: Partial<LuvDraft> & Pick<LuvDraft, "id" | "status">): LuvDraft {
   return {
@@ -116,6 +116,8 @@ describe("Luv→Messages send wiring contracts", () => {
   it("authoritative send success completes the Luv draft; click alone does not", () => {
     assert.match(detail, /updateDraftStatusAction\(id, lead\.id, draftStatusAfterSuccessfulSend\(\)\)/);
     assert.match(detail, /onAuthoritativeSendSuccess=\{handleLuvDraftSendSuccess\}/);
+    assert.match(detail, /draftStatusAfterSuccessfulSend \} from "@\/lib\/luv\/draft-status"/);
+    assert.doesNotMatch(detail, /draftStatusAfterSuccessfulSend[^;]*from "@\/lib\/luv\/drafts"/);
     // "Send this →" must not call updateDraftStatusAction inline
     const sendButtonBlock = panel.slice(
       panel.indexOf("Send this"),

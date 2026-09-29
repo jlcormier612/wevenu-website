@@ -77,7 +77,7 @@ import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { TourPanel } from "@/components/leads/tour-panel";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
-import { draftStatusAfterSuccessfulSend } from "@/lib/luv/drafts";
+import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
 import {
   LEAD_STATUSES,
   eventTypeLabel,

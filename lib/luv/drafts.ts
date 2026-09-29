@@ -199,30 +199,8 @@ export async function updateDraftStatus(
   await (supabase.from("luv_drafts") as any).update({ status }).eq("id", draftId).eq("venue_id", venue.id);
 }
 
-/**
- * Pending-review list for the lead Luv panel.
- * Only `pending_review` drafts appear; accepted (copied or successfully sent)
- * and discarded drafts move to draft history.
- */
-export function pendingReviewDrafts(drafts: LuvDraft[]): LuvDraft[] {
-  return drafts.filter((d) => d.status === "pending_review");
-}
-
-/**
- * After an authoritative Messages send that originated from "Send this →",
- * the draft is complete — same terminal status as Copy ("accepted").
- * Do not call this on a failed send, or merely because the venue opened the
- * composer from a draft.
- */
-export function draftStatusAfterSuccessfulSend(): "accepted" {
-  return "accepted";
-}
-
-/** Apply a terminal status to one draft without mutating other drafts. */
-export function withDraftStatus(
-  drafts: LuvDraft[],
-  draftId: string,
-  status: LuvDraft["status"],
-): LuvDraft[] {
-  return drafts.map((d) => (d.id === draftId ? { ...d, status } : d));
-}
+export {
+  draftStatusAfterSuccessfulSend,
+  pendingReviewDrafts,
+  withDraftStatus,
+} from "@/lib/luv/draft-status";
