@@ -84,7 +84,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select coalesce(array_agg(substring(type from 14)), '{}'::text[])
+  select coalesce(array_agg(substring(type from char_length('observation:') + 1)), '{}'::text[])
   from public.luv_recommendations
   where venue_id = public.current_user_venue_id()
     and type like 'observation:%'

@@ -34,9 +34,23 @@ function observation(overrides: Partial<LuvObservation> = {}): LuvObservation {
 describe("Luv observation dismiss identity", () => {
   it("namespaces observation dismiss rows so Guide-gap types stay distinct", () => {
     assert.equal(observationDismissType(TOUR_OBS_ID), `observation:${TOUR_OBS_ID}`);
+    assert.equal("observation:".length, 12);
     assert.equal(isObservationDismissType("observation:tour-no-followup-1"), true);
     assert.equal(isObservationDismissType("client_ask_gap_exotic_animal_policy"), false);
     assert.equal(observationIdFromDismissType(`observation:${TOUR_OBS_ID}`), TOUR_OBS_ID);
+  });
+
+  it("list RPC extracts the full observation id after the 12-char prefix", () => {
+    const extract = readFileSync(
+      resolve("supabase/migrations/20261409000000_luv_observation_dismiss_id_extract.sql"),
+      "utf8",
+    );
+    assert.match(extract, /char_length\('observation:'\) \+ 1/);
+    const fnBody = extract.slice(extract.indexOf("create or replace function"));
+    assert.doesNotMatch(fnBody, /substring\(type from 14\)/);
+    const liveType = observationDismissType("tour-no-followup-0068ef45-02ac-4bee-9730-9080abae32a6");
+    assert.equal(liveType.slice("observation:".length), "tour-no-followup-0068ef45-02ac-4bee-9730-9080abae32a6");
+    assert.notEqual(liveType.slice(13), "tour-no-followup-0068ef45-02ac-4bee-9730-9080abae32a6");
   });
 
   it("hides a dismissed observation on a fresh read and keeps an unrelated one", () => {
