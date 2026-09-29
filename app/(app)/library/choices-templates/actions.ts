@@ -8,12 +8,13 @@ import {
   addSection,
   createTemplate,
   deleteTemplate,
+  getTemplate,
   removeGroup,
   removeOption,
   setTemplateArchived,
   updateTemplate,
 } from "@/lib/client-choices-templates/service";
-import type { ChoicesTemplateInput } from "@/lib/client-choices-templates/types";
+import type { ChoicesTemplateInput, ChoicesTemplateWithDetails } from "@/lib/client-choices-templates/types";
 
 const LIBRARY = "/library/choices-templates";
 
@@ -21,6 +22,13 @@ export async function createChoicesTemplateAction(input: ChoicesTemplateInput) {
   const result = await createTemplate(input);
   if (result.ok) revalidatePath(LIBRARY);
   return result;
+}
+
+/** Library Use Template readiness — groups/options for unfinished warning. */
+export async function getChoicesTemplateDetailAction(
+  templateId: string,
+): Promise<ChoicesTemplateWithDetails | null> {
+  return getTemplate(templateId);
 }
 
 export async function updateChoicesTemplateAction(id: string, input: ChoicesTemplateInput) {

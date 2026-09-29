@@ -164,6 +164,8 @@ describe("Applyable template grammar + apply semantics preserved", () => {
     assert.match(list, /LIBRARY_LABELS\.useTemplate/);
     assert.match(list, /duplicateInventoryTemplateAction/);
     assert.match(list, /ensureEventInventoryAction/);
+    assert.match(list, /TemplateApplyTargetPicker/);
+    assert.match(list, /IncompleteTemplateWarningDialog/);
   });
 
   it("Choices apply still creates event-scoped client_choices via existing action", () => {
@@ -172,12 +174,39 @@ describe("Applyable template grammar + apply semantics preserved", () => {
     const service = readFileSync(resolve("lib/client-choices/service.ts"), "utf8");
     assert.match(service, /insertInstance/);
     assert.match(service, /templateId: template\.id/);
+    const list = readFileSync(resolve("components/client-choices-templates/choices-template-list.tsx"), "utf8");
+    assert.match(list, /TemplateApplyTargetPicker/);
+    assert.match(list, /IncompleteTemplateWarningDialog/);
   });
 
   it("Event Order apply still snapshots into event_orders without mutating template", () => {
     const service = readFileSync(resolve("lib/event-orders/service.ts"), "utf8");
     assert.match(service, /applyTemplateToEventOrder/);
     assert.match(service, /copyTemplateSnapshotsIntoOrder/);
+    const list = readFileSync(resolve("components/event-order-templates/event-order-template-list.tsx"), "utf8");
+    assert.match(list, /TemplateApplyTargetPicker/);
+    assert.match(list, /IncompleteTemplateWarningDialog/);
+    assert.match(list, /isEventOrderTemplateUnfinished/);
+  });
+
+  it("Use Template pages load client-first targets (not raw getEvents)", () => {
+    for (const page of [
+      "app/(app)/library/event-order-templates/page.tsx",
+      "app/(app)/library/inventory-templates/page.tsx",
+      "app/(app)/library/choices-templates/page.tsx",
+    ]) {
+      const src = readFileSync(resolve(page), "utf8");
+      assert.match(src, /getTemplateApplyClientGroups/, page);
+      assert.doesNotMatch(src, /getEvents\(\)/, page);
+    }
+  });
+
+  it("EO invoice path is primary when priced (not buried under Advanced)", () => {
+    const src = readFileSync(resolve("components/event-orders/event-order-invoice-link.tsx"), "utf8");
+    assert.match(src, /Create Invoice/);
+    assert.match(src, /Create Payment Plan/);
+    assert.match(src, /hasPricedContent/);
+    assert.doesNotMatch(src, /Advanced: link or create/);
   });
 
   it("Client/Venue Planning Library row grammar remains shared TemplateCard", () => {

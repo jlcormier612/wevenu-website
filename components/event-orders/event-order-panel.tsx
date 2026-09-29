@@ -505,6 +505,8 @@ export function EventOrderPanel({
               clientId={clientId}
               invoices={invoices}
               bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+              hasPricedContent={eventOrder.total > 0}
+              linkedScheduleId={null}
             />
             )}
           </div>

@@ -12,21 +12,29 @@ import {
   deleteInventoryTemplateAction,
   duplicateInventoryTemplateAction,
   ensureEventInventoryAction,
+  getInventoryTemplateDetailAction,
   setInventoryTemplateArchivedAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { IncompleteTemplateWarningDialog } from "@/components/library/incomplete-template-warning-dialog";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
+import {
+  TemplateApplyTargetPicker,
+  type TemplateApplyClientGroup,
+  type TemplateApplyEventTarget,
+} from "@/components/library/template-apply-target-picker";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import type { InventoryTemplate } from "@/lib/event-inventory/types";
+import { isInventoryTemplateUnfinished } from "@/lib/library/template-readiness";
 import { INVENTORY_TEMPLATE_STARTER_MASTERS, type InventoryTemplateStarterKey } from "@/lib/inventory/starters";
 import { formatRelative } from "@/lib/leads/constants";
 
@@ -113,29 +121,53 @@ type UseStep = "pick" | "confirm";
 
 function UseInventoryTemplateSheet({
   template,
-  events,
+  clientGroups,
   open,
   onOpenChange,
 }: {
   template: InventoryTemplate | null;
-  events: { id: string; name: string; eventDate: string }[];
+  clientGroups: TemplateApplyClientGroup[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [q, setQ] = React.useState("");
   const [step, setStep] = React.useState<UseStep>("pick");
-  const [selected, setSelected] = React.useState<{ id: string; name: string; eventDate: string } | null>(null);
+  const [selected, setSelected] = React.useState<TemplateApplyEventTarget | null>(null);
   const [pending, startTransition] = React.useTransition();
+  const [itemCount, setItemCount] = React.useState<number | null>(null);
+  const [warnOpen, setWarnOpen] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) { setStep("pick"); setSelected(null); setQ(""); }
+    if (open) {
+      setStep("pick");
+      setSelected(null);
+      setItemCount(null);
+      setWarnOpen(false);
+    }
   }, [open]);
 
-  const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
+  function pickEvent(ev: TemplateApplyEventTarget) {
+    if (!template) return;
+    setSelected(ev);
+    setStep("confirm");
+    startTransition(async () => {
+      const detail = await getInventoryTemplateDetailAction(template.id);
+      setItemCount(detail?.items.length ?? 0);
+    });
+  }
 
-  function apply() {
+  function requestApply() {
+    if (!selected || !template || itemCount == null) return;
+    if (isInventoryTemplateUnfinished(itemCount)) {
+      setWarnOpen(true);
+      return;
+    }
+    runApply();
+  }
+
+  function runApply() {
     if (!selected || !template) return;
+    setWarnOpen(false);
     startTransition(async () => {
       const result = await ensureEventInventoryAction(selected.id, template.id);
       if (result.ok) {
@@ -155,7 +187,7 @@ function UseInventoryTemplateSheet({
           <SheetTitle>Use Template</SheetTitle>
           {step === "pick" ? (
             <p className="text-sm text-muted-foreground">
-              Choose an event. This starts that event&apos;s inventory list from
+              Choose a client. This starts that booking&apos;s inventory list from
               &ldquo;{template?.name}&rdquo;.
             </p>
           ) : (
@@ -164,33 +196,17 @@ function UseInventoryTemplateSheet({
         </SheetHeader>
 
         {step === "pick" ? (
-          <>
-            <Input placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3" />
-            {filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No events found.</p>
-            ) : (
-              <ul className="space-y-1">
-                {filtered.map((ev) => (
-                  <li key={ev.id}>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => { setSelected(ev); setStep("confirm"); }}
-                      className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40 disabled:opacity-50"
-                    >
-                      <p className="text-sm font-medium text-heading">{ev.name}</p>
-                      <p className="text-xs text-muted-foreground">{ev.eventDate}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <TemplateApplyTargetPicker
+            groups={clientGroups}
+            disabled={pending}
+            onSelectEvent={pickEvent}
+          />
         ) : selected && template && (
           <div className="space-y-4">
             <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
-              <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
+              <p><span className="text-muted-foreground">Client</span> · {selected.clientDisplayName}</p>
+              <p><span className="text-muted-foreground">Event</span> · {selected.name} · {selected.eventDate}</p>
             </div>
             <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
               <li>Starts this event&apos;s inventory list from this template&apos;s items.</li>
@@ -199,12 +215,18 @@ function UseInventoryTemplateSheet({
             </ul>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
-              <Button type="button" disabled={pending} onClick={apply}>
+              <Button type="button" disabled={pending || itemCount == null} onClick={requestApply}>
                 {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Setting up…</> : "Use Template"}
               </Button>
             </div>
           </div>
         )}
+        <IncompleteTemplateWarningDialog
+          open={warnOpen}
+          pending={pending}
+          onGoBack={() => setWarnOpen(false)}
+          onApplyAnyway={runApply}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -278,11 +300,11 @@ function TemplateCard({
 export function InventoryTemplateList({
   templates,
   missingStarterKeys = [],
-  events = [],
+  clientGroups = [],
 }: {
   templates: InventoryTemplate[];
   missingStarterKeys?: InventoryTemplateStarterKey[];
-  events?: { id: string; name: string; eventDate: string }[];
+  clientGroups?: TemplateApplyClientGroup[];
 }) {
   const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
@@ -356,7 +378,7 @@ export function InventoryTemplateList({
       )}
       <UseInventoryTemplateSheet
         template={using}
-        events={events}
+        clientGroups={clientGroups}
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
       />

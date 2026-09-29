@@ -15,11 +15,13 @@ import type { Invoice } from "@/lib/invoices/types";
 
 /**
  * Financial boundary: Invoice owns what they owe.
- * Primary action is Open Invoice when one exists.
- * Creating/linking from EO is secondary/advanced only.
+ * When the Event Order has priced content, Create Invoice is a primary path —
+ * not buried under Advanced. Payment Plan follows from the invoice (never EO-native).
  */
 export function EventOrderInvoiceLink({
   eventOrderId, eventId, clientId, invoices, bookingCommitmentInvoiceIds = [],
+  hasPricedContent = false,
+  linkedScheduleId = null,
 }: {
   eventOrderId: string;
   eventId: string;
@@ -27,25 +29,53 @@ export function EventOrderInvoiceLink({
   invoices: Invoice[];
   /** Package booking-commitment invoices. Never treated as this Event Order's amount due. */
   bookingCommitmentInvoiceIds?: string[];
+  /** True when Event Order lines carry a commercial amount (priced total > 0). */
+  hasPricedContent?: boolean;
+  /** Existing payment schedule for the EO-linked invoice, if any. */
+  linkedScheduleId?: string | null;
 }) {
   const [pending, startTransition] = React.useTransition();
-  const [showAdvanced, setShowAdvanced] = React.useState(false);
   const commitment = new Set(bookingCommitmentInvoiceIds);
 
   const linked = invoices.find((inv) => inv.eventOrderId === eventOrderId && inv.status === "draft")
     ?? invoices.find((inv) => inv.eventOrderId === eventOrderId && inv.status !== "void");
 
   if (linked) {
+    const showCreatePlan = linked.total > 0 && !linkedScheduleId;
     return (
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Amount due lives on</span>
-        <Link href={`/invoices/${linked.id}`} className="font-medium text-primary hover:underline">
-          {linked.displayName?.trim() || "Invoice"} {linked.invoiceNumber}
-        </Link>
-        <InvoiceStatusBadge status={linked.status} />
-        <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${linked.id}`} />}>
-          Open Invoice
-        </Button>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Amount due lives on</span>
+          <Link href={`/invoices/${linked.id}`} className="font-medium text-primary hover:underline">
+            {linked.displayName?.trim() || "Invoice"} {linked.invoiceNumber}
+          </Link>
+          <InvoiceStatusBadge status={linked.status} />
+          <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${linked.id}`} />}>
+            Open Invoice
+          </Button>
+          {showCreatePlan ? (
+            <Button
+              type="button"
+              size="sm"
+              render={<Link href={`/payments/new?invoiceId=${linked.id}`} />}
+              data-testid="eo-create-payment-plan"
+            >
+              Create Payment Plan
+            </Button>
+          ) : linkedScheduleId ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              render={<Link href={`/payments/${linkedScheduleId}`} />}
+            >
+              Open Payment Plan
+            </Button>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Event Order is not an invoice. The payment plan total always follows this invoice.
+        </p>
       </div>
     );
   }
@@ -73,15 +103,21 @@ export function EventOrderInvoiceLink({
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Event Order is not an invoice. Create or open an Invoice when you are ready to collect what they owe.
+        Event Order is not an invoice. Create an Invoice when you are ready to collect what they owe — a payment plan attaches to that invoice, not to the Event Order.
       </p>
-      {!showAdvanced ? (
-        <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" onClick={() => setShowAdvanced(true)}>
-          Advanced: link or create a draft Invoice…
-        </Button>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          {linkableDraft ? (
+      <div className="flex flex-wrap items-center gap-2">
+        {hasPricedContent ? (
+          linkableDraft ? (
+            <Button type="button" size="sm" disabled={pending} onClick={() => handleLink(linkableDraft.id)} data-testid="eo-link-draft-invoice">
+              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `Link draft ${linkableDraft.invoiceNumber}`}
+            </Button>
+          ) : (
+            <Button type="button" size="sm" disabled={pending} onClick={handleCreate} data-testid="eo-create-draft-invoice">
+              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create Invoice"}
+            </Button>
+          )
+        ) : (
+          linkableDraft ? (
             <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => handleLink(linkableDraft.id)}>
               {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `Link draft ${linkableDraft.invoiceNumber}`}
             </Button>
@@ -89,9 +125,9 @@ export function EventOrderInvoiceLink({
             <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleCreate}>
               {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create draft Invoice"}
             </Button>
-          )}
-        </div>
-      )}
+          )
+        )}
+      </div>
     </div>
   );
 }

@@ -32,6 +32,9 @@ export const LIBRARY_LABELS = {
   saving: "Saving…",
   saved: "Saved",
   savedJustNow: "Saved just now",
+  /** Durable autosave completion — must not fade into a blank state. */
+  allChangesSaved: "All changes saved",
+  autosaveTeaching: "Changes save as you work. You can leave anytime.",
   unableToSave: "Unable to save changes. Please try again.",
   cancel: "Cancel",
   optionsAria: "More actions",

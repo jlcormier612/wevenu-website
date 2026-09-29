@@ -11,12 +11,19 @@ import {
   createChoicesTemplateAction,
   deleteChoicesTemplateAction,
   duplicateChoicesTemplateAction,
+  getChoicesTemplateDetailAction,
   setChoicesTemplateArchivedAction,
 } from "@/app/(app)/library/choices-templates/actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { IncompleteTemplateWarningDialog } from "@/components/library/incomplete-template-warning-dialog";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
+import {
+  TemplateApplyTargetPicker,
+  type TemplateApplyClientGroup,
+  type TemplateApplyEventTarget,
+} from "@/components/library/template-apply-target-picker";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChoicesTemplate } from "@/lib/client-choices-templates/types";
+import { isChoicesTemplateUnfinished } from "@/lib/library/template-readiness";
 import { formatRelative } from "@/lib/leads/constants";
 
 export type ChoicesEventOption = { id: string; name: string; eventDate: string };
@@ -32,29 +40,56 @@ type UseStep = "pick" | "confirm";
 
 function UseChoicesTemplateSheet({
   template,
-  events,
+  clientGroups,
   open,
   onOpenChange,
 }: {
   template: ChoicesTemplate | null;
-  events: ChoicesEventOption[];
+  clientGroups: TemplateApplyClientGroup[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [q, setQ] = React.useState("");
   const [step, setStep] = React.useState<UseStep>("pick");
-  const [selected, setSelected] = React.useState<ChoicesEventOption | null>(null);
+  const [selected, setSelected] = React.useState<TemplateApplyEventTarget | null>(null);
   const [pending, startTransition] = React.useTransition();
+  const [readiness, setReadiness] = React.useState<{ groups: number; options: number } | null>(null);
+  const [warnOpen, setWarnOpen] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) { setStep("pick"); setSelected(null); setQ(""); }
+    if (open) {
+      setStep("pick");
+      setSelected(null);
+      setReadiness(null);
+      setWarnOpen(false);
+    }
   }, [open]);
 
-  const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
+  function pickEvent(ev: TemplateApplyEventTarget) {
+    if (!template) return;
+    setSelected(ev);
+    setStep("confirm");
+    startTransition(async () => {
+      const detail = await getChoicesTemplateDetailAction(template.id);
+      setReadiness({
+        groups: detail?.groups.length ?? 0,
+        options: detail?.options.length ?? 0,
+      });
+    });
+  }
 
-  function handleApply() {
+  function requestApply() {
+    if (!template || !selected || !readiness) return;
+    if (isChoicesTemplateUnfinished(readiness.groups, readiness.options)) {
+      setWarnOpen(true);
+      return;
+    }
+    runApply();
+  }
+
+  function runApply() {
     if (!template || !selected) return;
+    setWarnOpen(false);
     startTransition(async () => {
       const result = await createClientChoicesFromTemplateAction(selected.id, template.id);
       if (!result.ok) {
@@ -73,44 +108,36 @@ function UseChoicesTemplateSheet({
         <SheetHeader className="mb-4">
           <SheetTitle>{LIBRARY_LABELS.useTemplate}</SheetTitle>
           <p className="text-sm text-muted-foreground">
-            Choose an event. This creates that event&apos;s own Client Choices from &ldquo;{template?.name}&rdquo; — the Library template stays unchanged.
+            Choose a client. This creates that booking&apos;s own Client Choices from &ldquo;{template?.name}&rdquo; — the Library template stays unchanged.
           </p>
         </SheetHeader>
         {step === "pick" ? (
-          <>
-            <Input placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3" />
-            {filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No events found.</p>
-            ) : (
-              <ul className="space-y-1">
-                {filtered.map((ev) => (
-                  <li key={ev.id}>
-                    <button
-                      type="button"
-                      onClick={() => { setSelected(ev); setStep("confirm"); }}
-                      className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40"
-                    >
-                      <p className="text-sm font-medium text-heading">{ev.name}</p>
-                      <p className="text-xs text-muted-foreground">{ev.eventDate}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <TemplateApplyTargetPicker
+            groups={clientGroups}
+            disabled={pending}
+            onSelectEvent={pickEvent}
+          />
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Apply to <span className="font-medium text-heading">{selected?.name}</span>?
-            </p>
+            <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
+              <p><span className="text-muted-foreground">Template</span> · {template?.name}</p>
+              <p><span className="text-muted-foreground">Client</span> · {selected?.clientDisplayName}</p>
+              <p><span className="text-muted-foreground">Event</span> · {selected?.name} · {selected?.eventDate}</p>
+            </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => setStep("pick")} disabled={pending}>Back</Button>
-              <Button type="button" onClick={handleApply} disabled={pending}>
+              <Button type="button" onClick={requestApply} disabled={pending || !readiness}>
                 {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Creating…</> : LIBRARY_LABELS.useTemplate}
               </Button>
             </div>
           </div>
         )}
+        <IncompleteTemplateWarningDialog
+          open={warnOpen}
+          pending={pending}
+          onGoBack={() => setWarnOpen(false)}
+          onApplyAnyway={runApply}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -160,10 +187,10 @@ function TemplateCard({
 
 export function ChoicesTemplateList({
   templates,
-  events = [],
+  clientGroups = [],
 }: {
   templates: ChoicesTemplate[];
-  events?: ChoicesEventOption[];
+  clientGroups?: TemplateApplyClientGroup[];
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -276,7 +303,7 @@ export function ChoicesTemplateList({
 
       <UseChoicesTemplateSheet
         template={using}
-        events={events}
+        clientGroups={clientGroups}
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
       />

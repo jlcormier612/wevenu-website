@@ -4,12 +4,15 @@ import { ChoicesTemplateList } from "@/components/client-choices-templates/choic
 import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getTemplates } from "@/lib/client-choices-templates/service";
-import { getEvents } from "@/lib/events/service";
+import { getTemplateApplyClientGroups } from "@/lib/library/template-apply-targets-service";
 
 export const metadata: Metadata = { title: "Choices Templates" };
 
 export default async function ChoicesTemplatesPage() {
-  const [templates, events] = await Promise.all([getTemplates(true), getEvents()]);
+  const [templates, clientGroups] = await Promise.all([
+    getTemplates(true),
+    getTemplateApplyClientGroups(),
+  ]);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -17,7 +20,7 @@ export default async function ChoicesTemplatesPage() {
         description="Reusable client choice forms — menus, bar, linens, rentals, and other post-booking decisions."
       />
       <LibraryHowItWorks>
-        Build the questions and options once. Use Template on an event to create that event&apos;s client choices from this template.
+        Build the questions and options once. Use Template on a client booking to create that event&apos;s client choices from this template.
       </LibraryHowItWorks>
       <LibraryDependencyNote
         detail="When you edit a template, select offerings as choice options first. Customize the customer-facing label if needed. Add a custom option only for one-offs. Applying freezes a snapshot into that event&apos;s client choices."
@@ -27,7 +30,7 @@ export default async function ChoicesTemplatesPage() {
       </LibraryDependencyNote>
       <ChoicesTemplateList
         templates={templates}
-        events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate }))}
+        clientGroups={clientGroups}
       />
     </div>
   );

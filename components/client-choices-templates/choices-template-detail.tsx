@@ -14,6 +14,7 @@ import {
   removeChoicesTemplateOptionAction,
   updateChoicesTemplateAction,
 } from "@/app/(app)/library/choices-templates/actions";
+import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,8 @@ export function ChoicesTemplateDetail({
   const [name, setName] = React.useState(template.name);
   const [description, setDescription] = React.useState(template.description ?? "");
   const [pending, startTransition] = React.useTransition();
+  const saveUi = useLibrarySaveStatus();
+  const metaTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sectionName, setSectionName] = React.useState("");
   const [groupName, setGroupName] = React.useState("");
@@ -55,6 +58,32 @@ export function ChoicesTemplateDetail({
   function refresh() {
     router.refresh();
   }
+
+  function onPersist(phase: "saving" | "saved" | "error", message?: string) {
+    if (phase === "saving") saveUi.markSaving();
+    else if (phase === "saved") saveUi.markSaved();
+    else { saveUi.markError(); if (message) toast.error(message); }
+  }
+
+  function queueMetadataSave(nextName: string, nextDescription: string) {
+    saveUi.markDirty();
+    if (metaTimer.current) clearTimeout(metaTimer.current);
+    metaTimer.current = setTimeout(() => {
+      startTransition(async () => {
+        onPersist("saving");
+        const result = await updateChoicesTemplateAction(template.id, {
+          name: nextName,
+          description: nextDescription,
+        });
+        if (!result.ok) onPersist("error", result.message ?? "Could not save.");
+        else { onPersist("saved"); refresh(); }
+      });
+    }, 400);
+  }
+
+  React.useEffect(() => () => {
+    if (metaTimer.current) clearTimeout(metaTimer.current);
+  }, []);
 
   function resetOptionForm() {
     setOptionMode("idle");
@@ -82,6 +111,7 @@ export function ChoicesTemplateDetail({
       return;
     }
     startTransition(async () => {
+      onPersist("saving");
       const r = await addChoicesTemplateOptionAction(template.id, {
         groupId: optionGroupId,
         offeringId,
@@ -89,8 +119,9 @@ export function ChoicesTemplateDetail({
         isIncluded: optionIncluded,
         unitPrice: optionIncluded ? 0 : price,
       });
-      if (!r.ok) toast.error(r.message ?? "Failed");
+      if (!r.ok) onPersist("error", r.message ?? "Failed");
       else {
+        onPersist("saved");
         resetOptionForm();
         refresh();
       }
@@ -104,27 +135,35 @@ export function ChoicesTemplateDetail({
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <LibraryAutosaveHint />
+        <LibrarySaveStatus status={saveUi.status} model="autosave" />
+      </div>
+
       <div className="space-y-3 rounded-sm border border-border p-4">
         <div className="space-y-1.5">
           <Label>Template name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            value={name}
+            onChange={(e) => {
+              const v = e.target.value;
+              setName(v);
+              queueMetadataSave(v, description);
+            }}
+          />
         </div>
         <div className="space-y-1.5">
           <Label>Description</Label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+          <Textarea
+            value={description}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDescription(v);
+              queueMetadataSave(name, v);
+            }}
+            rows={2}
+          />
         </div>
-        <Button
-          type="button"
-          size="sm"
-          disabled={pending}
-          onClick={() => startTransition(async () => {
-            const result = await updateChoicesTemplateAction(template.id, { name, description });
-            if (!result.ok) toast.error(result.message ?? "Could not save.");
-            else { toast.success("Saved."); refresh(); }
-          })}
-        >
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-        </Button>
       </div>
 
       <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
@@ -145,9 +184,10 @@ export function ChoicesTemplateDetail({
             size="sm"
             disabled={pending || !sectionName.trim()}
             onClick={() => startTransition(async () => {
+              onPersist("saving");
               const r = await addChoicesTemplateSectionAction(template.id, sectionName);
-              if (!r.ok) toast.error(r.message ?? "Failed");
-              else { setSectionName(""); refresh(); }
+              if (!r.ok) onPersist("error", r.message ?? "Failed");
+              else { onPersist("saved"); setSectionName(""); refresh(); }
             })}
           >
             <Plus className="h-4 w-4" /> Add
@@ -176,8 +216,10 @@ export function ChoicesTemplateDetail({
                     variant="ghost"
                     size="sm"
                     onClick={() => startTransition(async () => {
-                      await removeChoicesTemplateGroupAction(template.id, g.id);
-                      refresh();
+                      onPersist("saving");
+                      const r = await removeChoicesTemplateGroupAction(template.id, g.id);
+                      if (!r.ok) onPersist("error", "message" in r ? r.message : "Failed");
+                      else { onPersist("saved"); refresh(); }
                     })}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -204,8 +246,10 @@ export function ChoicesTemplateDetail({
                           variant="ghost"
                           size="sm"
                           onClick={() => startTransition(async () => {
-                            await removeChoicesTemplateOptionAction(template.id, o.id);
-                            refresh();
+                            onPersist("saving");
+                            const r = await removeChoicesTemplateOptionAction(template.id, o.id);
+                            if (!r.ok) onPersist("error", "message" in r ? r.message : "Failed");
+                            else { onPersist("saved"); refresh(); }
                           })}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -237,6 +281,7 @@ export function ChoicesTemplateDetail({
             size="sm"
             disabled={pending || !groupName.trim()}
             onClick={() => startTransition(async () => {
+              onPersist("saving");
               const r = await addChoicesTemplateGroupAction(template.id, {
                 sectionId: groupSectionId || null,
                 name: groupName,
@@ -245,8 +290,8 @@ export function ChoicesTemplateDetail({
                 maxSelect: 1,
                 allowQuantity: false,
               });
-              if (!r.ok) toast.error(r.message ?? "Failed");
-              else { setGroupName(""); refresh(); }
+              if (!r.ok) onPersist("error", r.message ?? "Failed");
+              else { onPersist("saved"); setGroupName(""); refresh(); }
             })}
           >
             Add group

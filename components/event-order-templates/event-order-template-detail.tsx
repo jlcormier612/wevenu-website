@@ -22,7 +22,7 @@ import {
 import { OfferingEditorSheet } from "@/components/event-order-templates/offering-editor-sheet";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { LIBRARY_LABELS } from "@/components/library/labels";
-import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -225,10 +225,11 @@ export function EventOrderTemplateDetail({
       </p>
       {template.description ? <p className="text-sm text-foreground">{template.description}</p> : null}
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">Sections</h2>
         <LibrarySaveStatus status={saveUi.status} model="autosave" />
       </div>
+      <LibraryAutosaveHint />
 
       {sections.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">

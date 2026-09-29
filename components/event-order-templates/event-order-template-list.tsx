@@ -14,9 +14,15 @@ import {
 } from "@/app/(app)/library/event-order-templates/actions";
 import { startOrApplyEventOrderTemplateAction } from "@/app/(app)/events/[id]/event-order-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { IncompleteTemplateWarningDialog } from "@/components/library/incomplete-template-warning-dialog";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
+import {
+  TemplateApplyTargetPicker,
+  type TemplateApplyClientGroup,
+  type TemplateApplyEventTarget,
+} from "@/components/library/template-apply-target-picker";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +36,7 @@ import { formatRelative } from "@/lib/leads/constants";
 import { TemplateApplyChooser } from "@/components/event-order-templates/apply-event-order-template-sheet";
 import { defaultApplySelections, type TemplateApplySelection } from "@/lib/event-order-templates/offerings";
 import { EVENT_ORDER_STARTER_MASTERS, type EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
+import { isEventOrderTemplateUnfinished } from "@/lib/library/template-readiness";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 
 function NewTemplateSheet() {
@@ -117,42 +124,39 @@ function StarterMenu({ missingKeys }: { missingKeys: EventOrderStarterMasterKey[
 
 export type EventOrderEventOption = { id: string; name: string; eventDate: string };
 
-
 type UseStep = "pick" | "confirm";
 
 function UseEventOrderSheet({
   template,
-  events,
+  clientGroups,
   open,
   onOpenChange,
 }: {
   template: EventOrderTemplate | null;
-  events: EventOrderEventOption[];
+  clientGroups: TemplateApplyClientGroup[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [q, setQ] = React.useState("");
   const [step, setStep] = React.useState<UseStep>("pick");
-  const [selected, setSelected] = React.useState<EventOrderEventOption | null>(null);
+  const [selected, setSelected] = React.useState<TemplateApplyEventTarget | null>(null);
   const [loading, startLoading] = React.useTransition();
   const [pending, startTransition] = React.useTransition();
   const [detail, setDetail] = React.useState<EventOrderTemplateWithDetails | null>(null);
   const [selections, setSelections] = React.useState<TemplateApplySelection[]>([]);
+  const [warnOpen, setWarnOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
       setStep("pick");
       setSelected(null);
-      setQ("");
       setDetail(null);
       setSelections([]);
+      setWarnOpen(false);
     }
   }, [open]);
 
-  const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
-
-  function pickEvent(ev: EventOrderEventOption) {
+  function pickEvent(ev: TemplateApplyEventTarget) {
     if (!template) return;
     setSelected(ev);
     setStep("confirm");
@@ -163,8 +167,18 @@ function UseEventOrderSheet({
     });
   }
 
-  function apply() {
+  function requestApply() {
+    if (!selected || !template || !detail) return;
+    if (isEventOrderTemplateUnfinished(detail.lines.length)) {
+      setWarnOpen(true);
+      return;
+    }
+    runApply();
+  }
+
+  function runApply() {
     if (!selected || !template) return;
+    setWarnOpen(false);
     startTransition(async () => {
       const result = await startOrApplyEventOrderTemplateAction(selected.id, template.id, selections);
       if (result.ok) {
@@ -184,7 +198,7 @@ function UseEventOrderSheet({
           <SheetTitle>Use Template</SheetTitle>
           {step === "pick" ? (
             <p className="text-sm text-muted-foreground">
-              Choose an event. This starts that event&apos;s Event Order from
+              Choose a client. This starts that booking&apos;s Event Order from
               &ldquo;{template?.name}&rdquo;.
             </p>
           ) : (
@@ -195,33 +209,17 @@ function UseEventOrderSheet({
         </SheetHeader>
 
         {step === "pick" ? (
-          <>
-            <Input placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3" />
-            {filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No events found.</p>
-            ) : (
-              <ul className="space-y-1">
-                {filtered.map((ev) => (
-                  <li key={ev.id}>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => pickEvent(ev)}
-                      className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40 disabled:opacity-50"
-                    >
-                      <p className="text-sm font-medium text-heading">{ev.name}</p>
-                      <p className="text-xs text-muted-foreground">{ev.eventDate}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <TemplateApplyTargetPicker
+            groups={clientGroups}
+            disabled={pending || loading}
+            onSelectEvent={pickEvent}
+          />
         ) : selected && template && (
           <div className="space-y-4">
             <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
-              <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
+              <p><span className="text-muted-foreground">Client</span> · {selected.clientDisplayName}</p>
+              <p><span className="text-muted-foreground">Event</span> · {selected.name} · {selected.eventDate}</p>
             </div>
             {detail ? (
               <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} />
@@ -233,12 +231,18 @@ function UseEventOrderSheet({
             </p>
             <div className="flex flex-wrap justify-end gap-2 pt-2">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
-              <Button type="button" disabled={pending || !detail} onClick={apply}>
+              <Button type="button" disabled={pending || !detail} onClick={requestApply}>
                 {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Applying…</> : "Apply to event"}
               </Button>
             </div>
           </div>
         )}
+        <IncompleteTemplateWarningDialog
+          open={warnOpen}
+          pending={pending}
+          onGoBack={() => setWarnOpen(false)}
+          onApplyAnyway={runApply}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -315,11 +319,11 @@ function TemplateCard({
 export function EventOrderTemplateList({
   templates,
   missingStarterKeys = [],
-  events = [],
+  clientGroups = [],
 }: {
   templates: EventOrderTemplate[];
   missingStarterKeys?: EventOrderStarterMasterKey[];
-  events?: EventOrderEventOption[];
+  clientGroups?: TemplateApplyClientGroup[];
 }) {
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [using, setUsing] = React.useState<EventOrderTemplate | null>(null);
@@ -378,7 +382,7 @@ export function EventOrderTemplateList({
       </LibraryArchivedSection>
       <UseEventOrderSheet
         template={using}
-        events={events}
+        clientGroups={clientGroups}
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
       />

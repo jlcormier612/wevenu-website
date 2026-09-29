@@ -11,7 +11,7 @@ import {
   addInventoryTemplateItemAction, deleteInventoryTemplateAction, removeInventoryTemplateItemAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
-import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { TemplateItemEditSheet } from "@/components/event-inventory/template-item-edit-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -267,7 +267,7 @@ export function InventoryTemplateDetail({
           <LibrarySaveStatus status={saveUi.status} model="autosave" />
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">Items save as soon as you add or remove them.</p>
+          <LibraryAutosaveHint />
           {template.items.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No items yet.</p>
           ) : (
