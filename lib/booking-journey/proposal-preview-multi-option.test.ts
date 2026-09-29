@@ -58,10 +58,12 @@ describe("multi-option proposal preview draft", () => {
         secondaryColor: "#222",
         accentColor: "#333",
         neutralColor: "#fff",
+        logoUrl: "https://cdn.example.com/logo.png",
       },
     });
     assert.equal(view.kind, "proposal");
     assert.equal(view.venueName, "Jen's Fancy Venue");
+    assert.equal(view.brand?.logoUrl, "https://cdn.example.com/logo.png");
     assert.equal(view.offerMessage, "Looking forward to hosting you.");
     assert.equal(view.options?.length, 4);
     assert.equal(view.options?.filter((o) => o.offerRole === "primary").length, 3);

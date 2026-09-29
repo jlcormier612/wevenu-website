@@ -9,6 +9,7 @@ const DEFAULT_BRAND: ProposalBrand = {
   secondaryColor: "#4F5F4F",
   accentColor: "#B8AEA1",
   neutralColor: "#F7F5F1",
+  logoUrl: null,
 };
 
 /**
@@ -60,10 +61,22 @@ export function ProposalArtifact({
       >
         {eyebrow}
       </p>
-      {proposal.venueName ? (
-        <p className="mt-2 text-sm" style={{ color: "var(--venue-secondary)" }}>
-          {proposal.venueName}
-        </p>
+      {brand.logoUrl || proposal.venueName ? (
+        <div className="mt-2 flex items-center gap-3">
+          {brand.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.logoUrl}
+              alt={proposal.venueName ?? ""}
+              className="h-9 w-9 shrink-0 rounded-full object-cover"
+            />
+          ) : null}
+          {proposal.venueName ? (
+            <p className="text-sm" style={{ color: "var(--venue-secondary)" }}>
+              {proposal.venueName}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       <h1
         className="mt-2 font-heading text-3xl text-foreground"

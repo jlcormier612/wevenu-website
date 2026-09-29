@@ -1,4 +1,5 @@
 import { buildBookingJourney, type BookingJourneyModel, type JourneyContract, type JourneyProposal } from "@/lib/booking-journey/model";
+import { proposalBrand } from "@/lib/booking-journey/proposal-view";
 import {
   getActiveSelectedPackageForClient,
   getActiveSelectedPackageForLead,
@@ -47,12 +48,13 @@ async function venuePrefs() {
 
 async function venueBrand() {
   const venue = await getCurrentVenue();
-  return {
-    primaryColor: venue?.primaryColor || "#5D6F5D",
-    secondaryColor: venue?.secondaryColor || "#4F5F4F",
-    accentColor: venue?.accentColor || "#B8AEA1",
-    neutralColor: venue?.neutralColor || "#F7F5F1",
-  };
+  return proposalBrand({
+    primaryColor: venue?.primaryColor,
+    secondaryColor: venue?.secondaryColor,
+    accentColor: venue?.accentColor,
+    neutralColor: venue?.neutralColor,
+    logoUrl: venue?.logoUrl,
+  });
 }
 
 async function venueName(): Promise<string | null> {

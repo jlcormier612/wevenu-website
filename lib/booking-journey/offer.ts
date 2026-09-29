@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { publicAppOrigin } from "@/lib/env";
-import type { ProposalBrand } from "@/lib/booking-journey/proposal-view";
+import { proposalBrand, type ProposalBrand } from "@/lib/booking-journey/proposal-view";
+import { versionedVenueAssetUrl } from "@/lib/venue/branding-assets";
 import {
   approveProposalByToken,
   getProposalByToken,
@@ -161,21 +162,24 @@ async function enrichBrand(venueId: string | null, offer: OfferView): Promise<Of
     const admin = createAdminClient();
     const { data: venue } = await admin
       .from("venues")
-      .select("primary_color, secondary_color, accent_color, neutral_color")
+      .select("primary_color, secondary_color, accent_color, neutral_color, logo_url, updated_at")
       .eq("id", venueId)
       .maybeSingle<{
         primary_color: string | null;
         secondary_color: string | null;
         accent_color: string | null;
         neutral_color: string | null;
+        logo_url: string | null;
+        updated_at: string | null;
       }>();
     if (venue) {
-      offer.brand = {
-        primaryColor: venue.primary_color || "#5D6F5D",
-        secondaryColor: venue.secondary_color || "#4F5F4F",
-        accentColor: venue.accent_color || "#B8AEA1",
-        neutralColor: venue.neutral_color || "#F7F5F1",
-      };
+      offer.brand = proposalBrand({
+        primaryColor: venue.primary_color,
+        secondaryColor: venue.secondary_color,
+        accentColor: venue.accent_color,
+        neutralColor: venue.neutral_color,
+        logoUrl: versionedVenueAssetUrl(venue.logo_url, venue.updated_at),
+      });
     }
   } catch {
     /* defaults */

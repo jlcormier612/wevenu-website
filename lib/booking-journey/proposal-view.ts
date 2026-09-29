@@ -5,13 +5,43 @@
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
-/** Venue Brand Colors snapshot for the proposal renderer (existing venue columns). */
+/**
+ * Live venue brand for the proposal renderer.
+ * Colors and logo are read from the venue at view time. They are not stored on the proposal.
+ */
 export type ProposalBrand = {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
   neutralColor: string;
+  /** Current venues.logo_url. Null when the venue has no logo. */
+  logoUrl: string | null;
 };
+
+const BRAND_FALLBACK = {
+  primaryColor: "#5D6F5D",
+  secondaryColor: "#4F5F4F",
+  accentColor: "#B8AEA1",
+  neutralColor: "#F7F5F1",
+} as const;
+
+/** Live brand from venue columns. Empty logo becomes null so the renderer omits the image. */
+export function proposalBrand(input: {
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  accentColor?: string | null;
+  neutralColor?: string | null;
+  logoUrl?: string | null;
+}): ProposalBrand {
+  const logo = input.logoUrl?.trim() ?? "";
+  return {
+    primaryColor: input.primaryColor || BRAND_FALLBACK.primaryColor,
+    secondaryColor: input.secondaryColor || BRAND_FALLBACK.secondaryColor,
+    accentColor: input.accentColor || BRAND_FALLBACK.accentColor,
+    neutralColor: input.neutralColor || BRAND_FALLBACK.neutralColor,
+    logoUrl: logo || null,
+  };
+}
 
 export type ProposalView = {
   name: string;

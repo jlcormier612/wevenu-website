@@ -16,6 +16,7 @@ const DEFAULT_BRAND: ProposalBrand = {
   secondaryColor: "#4F5F4F",
   accentColor: "#B8AEA1",
   neutralColor: "#F7F5F1",
+  logoUrl: null,
 };
 
 /**
@@ -95,10 +96,22 @@ export function MultiOptionProposalView({
       >
         Your proposal
       </p>
-      {offer.venueName ? (
-        <p className="mt-2 text-sm" style={{ color: "var(--venue-secondary)" }}>
-          {offer.venueName}
-        </p>
+      {brand.logoUrl || offer.venueName ? (
+        <div className="mt-2 flex items-center gap-3">
+          {brand.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.logoUrl}
+              alt={offer.venueName ?? ""}
+              className="h-9 w-9 shrink-0 rounded-full object-cover"
+            />
+          ) : null}
+          {offer.venueName ? (
+            <p className="text-sm" style={{ color: "var(--venue-secondary)" }}>
+              {offer.venueName}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       <h1
         className="mt-2 font-heading text-3xl text-foreground"

@@ -7,6 +7,7 @@
 
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
+import { proposalBrand, type ProposalBrand } from "@/lib/booking-journey/proposal-view";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { ContractStatus } from "@/lib/contracts/types";
 import type { PaymentItemStatus, PaymentObligationKind } from "@/lib/payments/types";
@@ -62,12 +63,7 @@ export type BookingJourneyModel = {
   paymentLines: JourneyPaymentLine[];
   /** Existing payment-request send signal — presentation only on the overview. */
   paymentRequestSent: boolean;
-  brand: {
-    primaryColor: string;
-    secondaryColor: string;
-    accentColor: string;
-    neutralColor: string;
-  };
+  brand: ProposalBrand;
   venueName: string | null;
 };
 
@@ -100,12 +96,7 @@ export type JourneyInputs = {
   portalInvited: boolean;
   planningStarted: boolean;
   prefs?: VenueCommercialBookingPrefs | null;
-  brand?: {
-    primaryColor: string;
-    secondaryColor: string;
-    accentColor: string;
-    neutralColor: string;
-  } | null;
+  brand?: ProposalBrand | null;
   venueName?: string | null;
 };
 
@@ -229,12 +220,7 @@ export function commercialStepsComplete(input: {
 
 export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
   const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
-  const brand = input.brand ?? {
-    primaryColor: "#5D6F5D",
-    secondaryColor: "#4F5F4F",
-    accentColor: "#B8AEA1",
-    neutralColor: "#F7F5F1",
-  };
+  const brand = input.brand ?? proposalBrand({});
   const selection = input.selection && input.selection.status !== "superseded" ? input.selection : null;
   const proposal = input.proposal ?? null;
   const hasPackage = !!selection;
