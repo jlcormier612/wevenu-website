@@ -144,6 +144,7 @@ describe("ask-gap sync preserves dismissal (088)", () => {
     assert.match(service, /filterVisibleRecommendations/);
     assert.match(service, /syncClientAskGapRecommendations/);
     assert.match(service, /generate_venue_recommendations/);
+    assert.match(service, /isObservationDismissType/);
   });
 
   it("PATCH dismiss requires RPC ok, not just a missing PostgREST error", () => {
@@ -158,6 +159,18 @@ describe("ask-gap sync preserves dismissal (088)", () => {
     assert.match(card, /canPersistDismiss/);
     assert.match(card, /router\.refresh\(\)/);
     assert.match(card, /payload\.ok !== true/);
+    assert.match(card, /dismissObservationId/);
+    assert.match(card, /\/api\/recommendations\/observation/);
     assert.doesNotMatch(card, /if \(!entry\.dismissRecommendationId\) \{\s*setHidden\(true\)/);
+  });
+
+  it("observation dismiss reuses luv_recommendations and current_user_venue_id", () => {
+    const sql = read("supabase/migrations/20261408900000_luv_observation_dismiss.sql");
+    assert.match(sql, /dismiss_luv_dashboard_observation/);
+    assert.match(sql, /current_user_venue_id\(\)/);
+    assert.match(sql, /type not like 'observation:%'/);
+    assert.match(sql, /on conflict \(venue_id, type\) do update/);
+    assert.match(sql, /set dismissed_at = now\(\)/);
+    assert.doesNotMatch(sql, /from venue_users where user_id = auth\.uid\(\) limit 1/);
   });
 });

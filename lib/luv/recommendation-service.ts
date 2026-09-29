@@ -1,5 +1,6 @@
 import { createClient } from "@/integrations/supabase/server";
 import { syncClientAskGapRecommendations } from "./ask-gap-recommendations";
+import { isObservationDismissType } from "./observation-dismiss";
 import { filterVisibleRecommendations } from "./recommendation-visibility";
 import type { RawRecommendationRow, VenueRecommendation } from "./recommendation-types";
 
@@ -13,7 +14,9 @@ export async function getVenueRecommendations(): Promise<VenueRecommendation[]> 
     const { data, error } = await supabase.rpc("get_venue_recommendations");
     if (error || !data) return [];
     return filterVisibleRecommendations(
-      (data as RawRecommendationRow[]).map(row => ({
+      (data as RawRecommendationRow[])
+        .filter((row) => !isObservationDismissType(row.type))
+        .map(row => ({
         id:          row.id,
         insightId:   row.insight_id,
         type:        row.type,
@@ -30,5 +33,17 @@ export async function getVenueRecommendations(): Promise<VenueRecommendation[]> 
     );
   } catch {
     return [];
+  }
+}
+
+/** Observation ids dismissed in the last 7 days for the active venue. */
+export async function getDismissedObservationIds(): Promise<Set<string>> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("list_dismissed_luv_observation_ids");
+    if (error || !data) return new Set();
+    return new Set(data as string[]);
+  } catch {
+    return new Set();
   }
 }

@@ -27,6 +27,8 @@ export type LuvDashboardEntry = {
   actionHref: string;
   /** When set, the Dashboard card can permanently dismiss this recommendation. */
   dismissRecommendationId?: string;
+  /** When set, the Dashboard card can permanently dismiss this computed observation. */
+  dismissObservationId?: string;
 };
 
 type Aggregate = { summary: (count: number) => string; suggestion: string; actionLabel: string; href: string };
@@ -169,6 +171,7 @@ export function selectLuvDashboardEntry({
       suggestion: obs.recommendation?.label ?? obs.detail ?? null,
       actionLabel: obs.actionLabel ?? "View",
       actionHref: obs.recommendation?.link ?? obs.link,
+      dismissObservationId: obs.id,
     };
   }
 

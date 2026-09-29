@@ -10,23 +10,32 @@ import type { LuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
 /**
  * Restrained Dashboard Luv card — interpretation only, not a second task list.
- * Dismiss is only offered when a luv_recommendations row can persist it.
+ * Dismiss is only offered when luv_recommendations can persist it:
+ * a Guide-gap / recommendation id, or a computed observation's stable id.
  */
 export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
   const router = useRouter();
   const [hidden, setHidden] = React.useState(false);
   if (hidden) return null;
 
-  const canPersistDismiss = Boolean(entry.dismissRecommendationId);
+  const canPersistDismiss = Boolean(entry.dismissRecommendationId || entry.dismissObservationId);
 
   async function dismiss() {
-    if (!entry.dismissRecommendationId) return;
     try {
-      const res = await fetch(`/api/recommendations/${entry.dismissRecommendationId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "dismiss" }),
-      });
+      const res = entry.dismissRecommendationId
+        ? await fetch(`/api/recommendations/${entry.dismissRecommendationId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "dismiss" }),
+          })
+        : entry.dismissObservationId
+          ? await fetch("/api/recommendations/observation", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "dismiss", observationId: entry.dismissObservationId }),
+            })
+          : null;
+      if (!res) return;
       if (!res.ok) return;
       const payload = (await res.json()) as { ok?: boolean };
       if (payload.ok !== true) return;

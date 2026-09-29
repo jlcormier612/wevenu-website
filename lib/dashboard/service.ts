@@ -15,7 +15,8 @@ import { getVenueTrends, computeTrendObservations, computeStoryMode } from "@/li
 import { getVenueMemories, computeMemoryObservations } from "@/lib/luv/memory-service";
 import { getVenueInsights, computeInsightObservations } from "@/lib/luv/insights-service";
 import { getVenueHealthScore } from "@/lib/luv/health-service";
-import { getVenueRecommendations } from "@/lib/luv/recommendation-service";
+import { getDismissedObservationIds, getVenueRecommendations } from "@/lib/luv/recommendation-service";
+import { filterVisibleObservations } from "@/lib/luv/observation-dismiss";
 import { getLuvActionObservations, getPendingLuvActions, getLuvPerformanceObservations } from "@/lib/luv/action-service";
 import { getActivationScore, getNextPendingMilestone } from "@/lib/activation/service";
 import type { ActivationScore } from "@/lib/activation/types";
@@ -341,7 +342,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
   const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, briefing] = await Promise.all([
+  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, dismissedObservationIds, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, briefing] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
@@ -349,6 +350,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     getVenueInsights().catch(() => null),
     getVenueHealthScore().catch(() => null),
     getVenueRecommendations().catch(() => []),
+    getDismissedObservationIds().catch(() => new Set<string>()),
     getLuvActionObservations().catch(() => []),
     getPendingLuvActions().catch(() => []),
     getLuvPerformanceObservations().catch(() => []),
@@ -363,14 +365,19 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
   const observationsOn = luvSettings?.observationsEnabled !== false;
   const luvObservations = observationsOn
-    ? [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations]
+    ? filterVisibleObservations(
+        [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations],
+        dismissedObservationIds,
+      )
     : [];
   const trendObservations  = observationsOn && rawTrends   ? computeTrendObservations(rawTrends) : [];
   const storyObservation   = observationsOn && rawTrends   ? computeStoryMode(rawTrends) : null;
   const memoryObservations = observationsOn && rawMemories
     ? computeMemoryObservations(rawMemories, new Date().getMonth() + 1)
     : [];
-  const insightObservations = observationsOn && rawInsights ? computeInsightObservations(rawInsights) : [];
+  const insightObservations = observationsOn && rawInsights
+    ? filterVisibleObservations(computeInsightObservations(rawInsights), dismissedObservationIds)
+    : [];
   const recommendations = observationsOn ? recommendationsRaw : [];
   const actionObservations = observationsOn ? actionObservationsRaw : [];
   const pendingActionObservations = observationsOn ? pendingActionObservationsRaw : [];

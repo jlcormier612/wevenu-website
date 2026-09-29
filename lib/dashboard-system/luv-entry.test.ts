@@ -74,6 +74,7 @@ describe("Luv does not restate Today's Focus", () => {
 
     assert.equal(entry?.message, "Dana has gone quiet for 10 days.");
     assert.equal(entry?.actionHref, "/leads/dana");
+    assert.equal(entry?.dismissObservationId, "obs-2");
   });
 
   it("ignores query strings and fragments when deciding what is a repeat", () => {
@@ -98,13 +99,14 @@ describe("Luv does not restate Today's Focus", () => {
     assert.equal(entry?.actionLabel, "View report");
   });
 
-  it("observations do not carry a persistable dismiss id", () => {
+  it("observations carry a persistable observation dismiss id, not a recommendation id", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [observation()],
       recommendations: [],
     });
     assert.equal(entry?.dismissRecommendationId, undefined);
+    assert.equal(entry?.dismissObservationId, "obs-1");
   });
 
   it("skips a recently dismissed recommendation so refresh cannot resurrect it", () => {
