@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import type { Contract } from "@/lib/contracts/types";
 import {
   contractMatchesListFilter,
+  contractMatchesWorkflowSearch,
   contractSigningFilterKey,
   countVenueActionRequiredContracts,
   isVenueActionRequiredContract,
@@ -182,5 +183,84 @@ describe("contract list rollup — explicit amends_contract_id only", () => {
       ),
       1,
     );
+  });
+
+  it("uses the latest descendant of a three-version chain as the list row", () => {
+    const rows = rollupContractsToCurrentAgreements([
+      contract({ id: "a", status: "signed", createdAt: "2026-01-01T00:00:00.000Z", venueSigned: true, requiredClientSigned: 1 }),
+      contract({ id: "b", status: "signed", amendsContractId: "a", createdAt: "2026-02-01T00:00:00.000Z", venueSigned: true, requiredClientSigned: 1 }),
+      contract({ id: "c", status: "draft", amendsContractId: "b", createdAt: "2026-03-01T00:00:00.000Z" }),
+    ]);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "c");
+    assert.equal(rows[0].listVersionNumber, 3);
+    assert.equal(rows[0].listFamilySize, 3);
+  });
+
+  it("keeps a dangling amends pointer as its own current row", () => {
+    const rows = rollupContractsToCurrentAgreements([
+      contract({ id: "orphan", amendsContractId: "missing-parent", status: "draft" }),
+    ]);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "orphan");
+    assert.equal(rows[0].listFamilySize, 1);
+  });
+
+  it("does not hide cyclic lineage", () => {
+    const rows = rollupContractsToCurrentAgreements([
+      contract({ id: "loop-a", amendsContractId: "loop-b", status: "draft", createdAt: "2026-01-01T00:00:00.000Z" }),
+      contract({ id: "loop-b", amendsContractId: "loop-a", status: "sent", createdAt: "2026-01-02T00:00:00.000Z" }),
+    ]);
+    assert.equal(rows.length, 2);
+    assert.deepEqual(new Set(rows.map((r) => r.id)), new Set(["loop-a", "loop-b"]));
+  });
+
+  it("search finds the current agreement by a historical family title", () => {
+    const rows = rollupContractsToCurrentAgreements([
+      contract({ id: "a", title: "Original Rental", status: "signed", createdAt: "2026-01-01T00:00:00.000Z" }),
+      contract({ id: "b", title: "Revised Rental", status: "draft", amendsContractId: "a", createdAt: "2026-02-01T00:00:00.000Z" }),
+    ]);
+    assert.equal(rows.length, 1);
+    assert.ok(contractMatchesWorkflowSearch(rows[0], "Original Rental"));
+    assert.ok(contractMatchesWorkflowSearch(rows[0], "Revised Rental"));
+    assert.ok(!contractMatchesWorkflowSearch(rows[0], "Rebecca"));
+  });
+
+  it("does not count a superseded fully executed parent as action required", () => {
+    const parent = contract({
+      id: "signed-parent",
+      status: "signed",
+      venueSigned: true,
+      requiredClientSigned: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    const child = contract({
+      id: "draft-child",
+      status: "draft",
+      amendsContractId: "signed-parent",
+      createdAt: "2026-02-01T00:00:00.000Z",
+    });
+    const rows = rollupContractsToCurrentAgreements([parent, child]);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "draft-child");
+    assert.equal(countVenueActionRequiredContracts(rows), 1);
+    assert.ok(!contractMatchesListFilter(rows[0], "fully_signed"));
+  });
+});
+
+describe("contract list deep links remain instance-level", () => {
+  it("detail page still loads a contract by id, including historical versions", () => {
+    const page = readFileSync(resolve("app/(app)/contracts/[id]/page.tsx"), "utf8");
+    assert.match(page, /getContractDetail\(id\)/);
+    assert.match(page, /getContractVersionFamily\(id\)/);
+    const svc = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
+    assert.match(svc, /export async function getContractDetail/);
+    assert.match(svc, /repo.getContract\(/);
+    const getContractsFn = svc.slice(
+      svc.indexOf("export async function getContracts()"),
+      svc.indexOf("export async function getContractsForWorkflowList"),
+    );
+    assert.doesNotMatch(getContractsFn, /rollupContractsToCurrentAgreements/);
+    assert.match(svc, /export async function getContractsForWorkflowList/);
   });
 });

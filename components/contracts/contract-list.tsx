@@ -15,6 +15,7 @@ import { formatContractDate } from "@/lib/contracts/constants";
 import {
   CONTRACT_LIST_FILTERS,
   contractMatchesListFilter,
+  contractMatchesWorkflowSearch,
   parseContractListFilter,
   type ContractListFilterKey,
   type ContractWorkflowListRow,
@@ -37,8 +38,7 @@ export function ContractList({
     const q = query.toLowerCase();
     return contracts.filter((c) => {
       if (!contractMatchesListFilter(c, filter)) return false;
-      if (!q) return true;
-      return [c.title, c.clientName].some((s) => s?.toLowerCase().includes(q));
+      return contractMatchesWorkflowSearch(c, q);
     });
   }, [contracts, query, filter]);
 

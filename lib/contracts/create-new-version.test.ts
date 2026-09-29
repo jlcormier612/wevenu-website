@@ -80,6 +80,15 @@ describe("contract version lineage (amends_contract_id)", () => {
     assert.deepEqual(new Set(current[0].familyIds), new Set(["a", "b", "c"]));
   });
 
+  it("fails safely on cyclic amends pointers by keeping every instance visible", () => {
+    const cyclic = selectCurrentAgreements([
+      { id: "x", amendsContractId: "y", createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: "y", amendsContractId: "x", createdAt: "2026-01-02T00:00:00.000Z" },
+    ]);
+    assert.equal(cyclic.length, 2);
+    assert.deepEqual(new Set(cyclic.map((s) => s.currentId)), new Set(["x", "y"]));
+  });
+
   it("formats human labels", () => {
     assert.equal(formatVersionLabel(2), "Version 2");
     assert.equal(statusLabelForVersion({ status: "draft", finalized: false, locked: false }), "Draft");

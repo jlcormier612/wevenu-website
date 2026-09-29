@@ -2,9 +2,9 @@
 
 ## Status
 
-IMPLEMENTATION committed. Sandbox proof pending running ECS image.
+Implementation + cycle fail-safe committed. Sandbox image/browser gate pending.
 
-Production untouched. Rebecca Sunshine & Brian Friendly records not mutated.
+Production untouched. No Rebecca records deleted, merged, or repointed.
 
 ## Product rule
 

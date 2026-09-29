@@ -5,6 +5,7 @@ import type { Contract } from "@/lib/contracts/types";
 export type ContractWorkflowListRow = Contract & {
   listVersionNumber: number;
   listFamilySize: number;
+  listFamilyTitles: string[];
 };
 
 /** List/badge population: one row per amends_contract_id family (current tip). */
@@ -27,6 +28,9 @@ export function rollupContractsToCurrentAgreements(
         ...current,
         listVersionNumber: s.versionNumber,
         listFamilySize: s.familyIds.length,
+        listFamilyTitles: s.familyIds
+          .map((id) => byId.get(id)?.title)
+          .filter((title): title is string => Boolean(title)),
       };
     })
     .filter((row): row is ContractWorkflowListRow => row != null)
@@ -88,6 +92,18 @@ export function contractMatchesListFilter(c: Contract, filter: ContractListFilte
 
 export function countVenueActionRequiredContracts(contracts: readonly Contract[]): number {
   return contracts.filter(isVenueActionRequiredContract).length;
+}
+
+/** Search current rows, including titles from explicit family members. */
+export function contractMatchesWorkflowSearch(
+  row: Pick<ContractWorkflowListRow, "title" | "clientName" | "listFamilyTitles">,
+  query: string,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [row.title, row.clientName, ...(row.listFamilyTitles ?? [])].some((s) =>
+    s?.toLowerCase().includes(q),
+  );
 }
 
 export function parseContractListFilter(raw: string | undefined): ContractListFilterKey {

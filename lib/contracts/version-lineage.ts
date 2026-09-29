@@ -201,6 +201,13 @@ export function selectCurrentAgreements(
     }
     for (const id of familyIds) processed.add(id);
 
+    if (lineageFamilyHasCycle(familyIds, byId)) {
+      for (const id of familyIds) {
+        selections.push({ currentId: id, familyIds: [id], versionNumber: 1 });
+      }
+      continue;
+    }
+
     let currentId = familyIds[0]!;
     let bestVersion = deriveVersionNumber(currentId, byId);
     let bestCreated = byId.get(currentId)?.createdAt ?? "";
@@ -222,6 +229,25 @@ export function selectCurrentAgreements(
   }
 
   return selections;
+}
+
+function lineageFamilyHasCycle(
+  familyIds: string[],
+  byId: Map<string, { amendsContractId: string | null }>,
+): boolean {
+  const family = new Set(familyIds);
+  for (const start of familyIds) {
+    const seen = new Set<string>();
+    let cursor: string | null = start;
+    while (cursor && family.has(cursor)) {
+      if (seen.has(cursor)) return true;
+      seen.add(cursor);
+      const parent = byId.get(cursor)?.amendsContractId ?? null;
+      if (!parent || !family.has(parent)) break;
+      cursor = parent;
+    }
+  }
+  return false;
 }
 
 export function formatVersionLabel(versionNumber: number): string {
