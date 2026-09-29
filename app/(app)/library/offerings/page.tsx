@@ -23,24 +23,25 @@ export default async function OfferingsLibraryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Offerings"
-        description="Menus, bar, services, and rentals you provide — a catalog, not a template."
+        description="Menus, bar, services, and rentals you provide — create and edit them here."
         actions={
           <Button variant="outline" render={<Link href="/library/inventory" />}>
-            Physical Inventory
+            Available Inventory
           </Button>
         }
       />
       <LibraryHowItWorks>
-        These are reusable sellable items. Edit them here; Event Order Templates and Choices Templates select from this catalog when you build those templates.
+        Create sellable offerings here. Event Order Templates and Choices Templates select from this catalog when you build those templates.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        links={[
-          { href: "/library/event-order-templates", label: "Event Order Templates →" },
-          { href: "/library/choices-templates", label: "Choices Templates →" },
-          { href: "/library/inventory", label: "Available Inventory →" },
+        detail="After you add or update offerings here, open a template and select which offerings to include. You can optionally link an offering to a physical inventory item."
+        action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
+        secondaryActions={[
+          { href: "/library/choices-templates", label: "Open Choices Templates" },
+          { href: "/library/inventory", label: "Manage Available Inventory" },
         ]}
       >
-        Used by Event Order Templates and Choices Templates. You can optionally link an offering to a physical inventory item.
+        Used by Event Order Templates and Choices Templates.
       </LibraryDependencyNote>
       <OfferingsLibrarySection
         initialOfferings={offerings}

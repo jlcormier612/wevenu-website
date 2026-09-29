@@ -37,7 +37,7 @@ export default async function PlaybooksLibraryPage() {
         description="Reusable checklists you refine once, then apply to each event. Preview any template to see what's inside — applying always creates that event's own editable copy."
       />
       <LibraryHowItWorks>
-        Client Planning is what your clients see; Venue Planning is your internal team checklist. Both use Preview, Edit, and Use Template the same way.
+        Client Planning is what your clients see; Venue Planning is your internal team checklist. Checklist items are authored in the template editor — there is no separate catalog to manage. Both use Preview, Edit, and Use Template the same way.
       </LibraryHowItWorks>
       <Card>
         <CardHeader>

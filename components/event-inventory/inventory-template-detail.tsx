@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -128,6 +129,13 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
         lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
       />
       {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
+
+      <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+        Checklist lines are authored below. Physical stock lives in{" "}
+        <Link href="/library/inventory" className="font-medium text-heading hover:underline">
+          Available Inventory →
+        </Link>
+      </p>
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-2">

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { TimelineTemplatesSection } from "@/components/timeline-templates/timeline-templates-section";
 import { getSpaces } from "@/lib/availability/service";
@@ -24,6 +25,15 @@ export default async function TimelineTemplatesPage() {
         title="Timeline Templates"
         description="Reusable day-of schedules a venue builds once and applies to any booking."
       />
+      <LibraryHowItWorks>
+        Schedule blocks (times and labels) are authored in the timeline editor. You can optionally assign a template to a space.
+      </LibraryHowItWorks>
+      <LibraryDependencyNote
+        detail="Need to add or rename rooms? Manage spaces under Availability. When you edit a timeline template, you can assign it to a space."
+        action={{ href: "/settings/availability", label: "Manage Spaces (Availability)" }}
+      >
+        Can optionally use spaces from Availability.
+      </LibraryDependencyNote>
       <TimelineTemplatesSection
         initialTemplates={templates}
         spaces={spaces}

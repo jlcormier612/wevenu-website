@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { MessageTemplateList } from "@/components/communication/message-template-list";
 import { MessageTemplateStarterPicker } from "@/components/communication/message-template-starter-picker";
 import { AddHelloToCheersStarters } from "@/components/communication/add-hello-to-cheers-starters";
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getTemplates } from "@/lib/message-templates/service";
 import { ensureStarterMessageTemplatesForCurrentVenue } from "@/lib/message-templates/provision";
@@ -29,6 +30,9 @@ export default async function MessageTemplatesPage() {
           </div>
         }
       />
+      <LibraryHowItWorks>
+        Message subject and body are authored in the template editor. There is no separate catalog these templates select from — pick a template when composing a message.
+      </LibraryHowItWorks>
 
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">

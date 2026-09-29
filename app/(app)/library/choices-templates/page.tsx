@@ -17,13 +17,11 @@ export default async function ChoicesTemplatesPage() {
         description="Reusable client choice forms — menus, bar, linens, rentals, and other post-booking decisions."
       />
       <LibraryHowItWorks>
-        Build the choices your clients can make, then use a template on an event and send it through the client portal. Finalizing can update the Event Order.
+        Build the questions and options once. Use Template on an event to create that event&apos;s client choices from this template.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        links={[
-          { href: "/library/offerings", label: "Manage offerings →" },
-          { href: "/library", label: "All templates →" },
-        ]}
+        detail="Need to add or change sellable options? Manage them in Offerings. When you edit this template, you can attach offerings as options (or write custom option labels)."
+        action={{ href: "/library/offerings", label: "Manage Offerings" }}
       >
         Options can use offerings from your Offerings catalog.
       </LibraryDependencyNote>

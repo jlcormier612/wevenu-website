@@ -25,15 +25,13 @@ export default async function EventOrderTemplatesPage() {
         description="Reusable Event Order structure — sections and optional priced offerings. Applying copies a snapshot into the event; it is not an invoice."
       />
       <LibraryHowItWorks>
-        Build a reusable event-order structure using your offerings, then apply it to an event. The Library template stays unchanged.
+        Assemble a reusable order once. Use Template on an event to snapshot those lines into that event&apos;s Event Order.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        links={[
-          { href: "/library/offerings", label: "Manage offerings →" },
-          { href: "/library", label: "All templates →" },
-        ]}
+        detail="Need to add or change what you sell? Manage offerings in Offerings. When you edit this template, you can select offerings to include (or add custom lines)."
+        action={{ href: "/library/offerings", label: "Manage Offerings" }}
       >
-        Uses offerings from your Offerings catalog when you add priced lines.
+        Uses offerings from your Offerings catalog.
       </LibraryDependencyNote>
       <EventOrderTemplateList
         templates={templates}

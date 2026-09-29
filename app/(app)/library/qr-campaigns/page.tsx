@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
 import { QrStarterExamples } from "@/components/qr-campaigns/qr-starter-examples";
@@ -26,13 +27,15 @@ export default async function QrCampaignsPage() {
         title="QR Campaigns"
         description="Printable QR codes for bridal shows, open houses, brochures, and signs — with scan tracking."
       />
-      <p className="rounded-sm border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Create a QR code that sends guests to a Public Form, website, tour, or other destination. Download the image for print materials.
-        {" "}
-        <a href="/library/public-forms" className="font-medium text-heading hover:underline">
-          Manage Public Forms →
-        </a>
-      </p>
+      <LibraryHowItWorks>
+        Create the form first, then point a QR campaign at it. Download the PNG to print or share.
+      </LibraryHowItWorks>
+      <LibraryDependencyNote
+        detail="Need to create or edit the form a QR opens? Manage Public Forms. When you create or edit a campaign, choose that form (or enter another destination URL)."
+        action={{ href: "/library/public-forms", label: "Manage Public Forms" }}
+      >
+        QR campaigns can open a Public Form from your venue.
+      </LibraryDependencyNote>
       <QrStarterExamples existingMasterKeys={existingMasterKeys} />
       <QrCampaignList
         initialCampaigns={campaigns}

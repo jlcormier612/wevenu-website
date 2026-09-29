@@ -35,7 +35,10 @@ export default async function ChoicesTemplatePreviewPage({ params }: { params: P
           }
         />
       </div>
-      <LibraryDependencyNote links={[{ href: "/library/offerings", label: "Manage offerings →" }]}>
+      <LibraryDependencyNote
+        detail="When you edit this template, you can attach offerings as options (or write custom labels)."
+        action={{ href: "/library/offerings", label: "Manage Offerings" }}
+      >
         Options can use offerings from your Offerings catalog.
       </LibraryDependencyNote>
       {template.description ? (

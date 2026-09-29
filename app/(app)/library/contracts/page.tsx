@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ContractTemplateList } from "@/components/contracts/contract-template-list";
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { ensureContractStartersForCurrentVenue } from "@/lib/contracts/provision";
@@ -23,6 +24,9 @@ export default async function ContractTemplatesLibraryPage() {
           <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
         }
       />
+      <LibraryHowItWorks>
+        Agreement text and fields are authored in the contract template editor. When you apply a template to an event, event details fill in automatically — there is no separate catalog to manage for contract content.
+      </LibraryHowItWorks>
 
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">

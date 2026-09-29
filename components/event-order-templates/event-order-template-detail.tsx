@@ -217,6 +217,12 @@ export function EventOrderTemplateDetail({
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
         You are building a reusable Event Order template. Add as much detail as you need — from simple sections to fully priced offerings. Applying this to an event creates that event’s own copy.
       </p>
+      <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground max-w-2xl">
+        Select offerings from your catalog below, or add custom lines. Need to create or update sellable items first?{" "}
+        <Link href="/library/offerings" className="font-medium text-heading hover:underline">
+          Manage Offerings →
+        </Link>
+      </p>
       {template.description ? <p className="text-sm text-foreground">{template.description}</p> : null}
 
       <div className="flex items-center justify-between gap-2">

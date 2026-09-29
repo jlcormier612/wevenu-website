@@ -41,23 +41,31 @@ describe("Library Templates IA — templates vs catalogs", () => {
   });
 });
 
-describe("Library dependency visibility", () => {
-  it("Event Order Templates link to Offerings", () => {
+describe("Library dependency guidance — source + direct links + how used", () => {
+  it("Inventory Templates explain authorship and link Available Inventory (no All templates hub)", () => {
+    const src = readFileSync(resolve("app/(app)/library/inventory-templates/page.tsx"), "utf8");
+    assert.match(src, /LibraryDependencyNote/);
+    assert.match(src, /href: "\/library\/inventory"/);
+    assert.match(src, /Manage Available Inventory/);
+    assert.match(src, /Checklist lines/);
+    assert.doesNotMatch(src, /All templates/);
+    assert.doesNotMatch(src, /href: "\/library"/);
+  });
+
+  it("Event Order Templates link Manage Offerings and explain selection", () => {
     const src = readFileSync(resolve("app/(app)/library/event-order-templates/page.tsx"), "utf8");
     assert.match(src, /LibraryDependencyNote/);
-    assert.match(src, /\/library\/offerings/);
-    assert.match(src, /Uses offerings/);
+    assert.match(src, /href: "\/library\/offerings"/);
+    assert.match(src, /Manage Offerings/);
+    assert.match(src, /select offerings/);
+    assert.doesNotMatch(src, /All templates/);
   });
 
-  it("Inventory Templates link to Available Inventory", () => {
-    const src = readFileSync(resolve("app/(app)/library/inventory-templates/page.tsx"), "utf8");
-    assert.match(src, /\/library\/inventory/);
-    assert.match(src, /Available Inventory/);
-  });
-
-  it("Choices Templates link to Offerings and expose Preview/Edit/Use", () => {
+  it("Choices Templates link Manage Offerings and explain attachment", () => {
     const page = readFileSync(resolve("app/(app)/library/choices-templates/page.tsx"), "utf8");
-    assert.match(page, /\/library\/offerings/);
+    assert.match(page, /href: "\/library\/offerings"/);
+    assert.match(page, /Manage Offerings/);
+    assert.match(page, /attach offerings/);
     const list = readFileSync(resolve("components/client-choices-templates/choices-template-list.tsx"), "utf8");
     assert.match(list, /LIBRARY_LABELS\.preview/);
     assert.match(list, /LIBRARY_LABELS\.edit/);
@@ -66,12 +74,64 @@ describe("Library dependency visibility", () => {
     assert.match(list, /duplicateChoicesTemplateAction/);
   });
 
-  it("Offerings and Inventory catalogs do not expose Use Template", () => {
-    const offerings = readFileSync(resolve("components/offerings/offerings-library-section.tsx"), "utf8");
+  it("QR Campaigns link Manage Public Forms", () => {
+    const src = readFileSync(resolve("app/(app)/library/qr-campaigns/page.tsx"), "utf8");
+    assert.match(src, /href: "\/library\/public-forms"/);
+    assert.match(src, /Manage Public Forms/);
+    assert.doesNotMatch(src, /All templates/);
+  });
+
+  it("Public Forms reverse-link QR Campaigns and explain in-form editing", () => {
+    const src = readFileSync(resolve("app/(app)/library/public-forms/page.tsx"), "utf8");
+    assert.match(src, /href: "\/library\/qr-campaigns"/);
+    assert.match(src, /Open QR Campaigns/);
+    assert.match(src, /Questions and fields are edited on the form itself/);
+  });
+
+  it("Floor Plan Templates link Available Inventory and Availability spaces", () => {
+    const src = readFileSync(resolve("app/(app)/library/floor-plan-templates/page.tsx"), "utf8");
+    assert.match(src, /href: "\/library\/inventory"/);
+    assert.match(src, /Manage Available Inventory/);
+    assert.match(src, /href: "\/settings\/availability"/);
+    assert.match(src, /Manage Spaces/);
+  });
+
+  it("Timeline Templates optionally link Availability spaces", () => {
+    const src = readFileSync(resolve("app/(app)/library/timeline-templates/page.tsx"), "utf8");
+    assert.match(src, /href: "\/settings\/availability"/);
+    assert.match(src, /authored in the timeline editor/);
+  });
+
+  it("Offerings and Inventory catalogs reverse-link consumers without Use Template", () => {
+    const offerings = readFileSync(resolve("app/(app)/library/offerings/page.tsx"), "utf8");
+    assert.match(offerings, /Open Event Order Templates/);
+    assert.match(offerings, /Open Choices Templates/);
     assert.doesNotMatch(offerings, /Use Template/);
-    const inventory = readFileSync(resolve("components/inventory/inventory-library-section.tsx"), "utf8");
+    const inventory = readFileSync(resolve("app/(app)/library/inventory/page.tsx"), "utf8");
+    assert.match(inventory, /Open Floor Plan Templates/);
+    assert.match(inventory, /Open Inventory Templates/);
     assert.doesNotMatch(inventory, /Use Template/);
-    assert.match(inventory, /LIBRARY_LABELS\.edit/);
+    const inventorySection = readFileSync(resolve("components/inventory/inventory-library-section.tsx"), "utf8");
+    assert.match(inventorySection, /LIBRARY_LABELS\.edit/);
+  });
+
+  it("Contract / Planning / Message / Packages do not invent false catalog links", () => {
+    const contracts = readFileSync(resolve("app/(app)/library/contracts/page.tsx"), "utf8");
+    assert.match(contracts, /no separate catalog/);
+    assert.doesNotMatch(contracts, /Manage Offerings/);
+    const playbooks = readFileSync(resolve("app/(app)/library/playbooks/page.tsx"), "utf8");
+    assert.match(playbooks, /no separate catalog/);
+    const messages = readFileSync(resolve("app/(app)/communication/templates/page.tsx"), "utf8");
+    assert.match(messages, /no separate catalog/);
+    const packages = readFileSync(resolve("app/(app)/packages/page.tsx"), "utf8");
+    assert.match(packages, /not selected from the Offerings catalog/);
+  });
+
+  it("LibraryDependencyNote supports action + detail", () => {
+    const src = readFileSync(resolve("components/library/library-guidance.tsx"), "utf8");
+    assert.match(src, /action\?:/);
+    assert.match(src, /detail\?:/);
+    assert.doesNotMatch(src, /All templates/);
   });
 });
 

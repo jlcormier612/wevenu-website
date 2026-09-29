@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import { ChoicesTemplateDetail } from "@/components/client-choices-templates/choices-template-detail";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { Button } from "@/components/ui/button";
 import { getTemplate } from "@/lib/client-choices-templates/service";
 import { listOfferings } from "@/lib/offerings/service";
 
@@ -24,18 +26,22 @@ export default async function ChoicesTemplateDetailPage({ params }: { params: Pr
         <Link href="/library/choices-templates" className="text-xs text-muted-foreground hover:underline">
           ← Choices Templates
         </Link>
-        <PageHeader title={template.name} description="Define choice groups and options. Clients select after you send; you finalize into Event Order." />
+        <PageHeader
+          title={template.name}
+          description="Define choice groups and options. Clients select after you send; you finalize into Event Order."
+          actions={
+            <Button variant="outline" render={<Link href={`/library/choices-templates/${template.id}/preview`} />}>
+              Preview
+            </Button>
+          }
+        />
       </div>
-      <p className="rounded-sm border border-border bg-card px-3 py-2.5 text-xs text-muted-foreground">
-        Options can use offerings from your Offerings catalog.{" "}
-        <Link href="/library/offerings" className="font-medium text-heading hover:underline">
-          Manage offerings →
-        </Link>
-        {" · "}
-        <Link href={`/library/choices-templates/${template.id}/preview`} className="font-medium text-heading hover:underline">
-          Preview →
-        </Link>
-      </p>
+      <LibraryDependencyNote
+        detail="Select offerings as options below, or write custom option labels. Need new sellable items first? Manage them in Offerings."
+        action={{ href: "/library/offerings", label: "Manage Offerings" }}
+      >
+        Options can use offerings from your Offerings catalog.
+      </LibraryDependencyNote>
       <ChoicesTemplateDetail template={template} offerings={offerings} />
     </div>
   );

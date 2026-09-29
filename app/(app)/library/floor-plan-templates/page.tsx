@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { FloorPlanTemplatesSection } from "@/components/floor-plan-templates/floor-plan-templates-section";
 import { getSpaces } from "@/lib/availability/service";
@@ -25,6 +26,18 @@ export default async function FloorPlanTemplatesPage() {
         title="Floor Plan Templates"
         description="Reusable room layouts a venue builds once and applies to any booking."
       />
+      <LibraryHowItWorks>
+        Layout, background image, and placed objects are edited in the floor plan editor. Assign a space and place inventory items marked for floor plans.
+      </LibraryHowItWorks>
+      <LibraryDependencyNote
+        detail="Need to add tables, chairs, or other placeable items? Create them in Available Inventory and mark them for floor plans. Spaces are managed under Availability."
+        action={{ href: "/library/inventory", label: "Manage Available Inventory" }}
+        secondaryActions={[
+          { href: "/settings/availability", label: "Manage Spaces (Availability)" },
+        ]}
+      >
+        Uses spaces from Availability and inventory items marked for floor plans.
+      </LibraryDependencyNote>
       <FloorPlanTemplatesSection
         initialTemplates={templates}
         spaces={spaces}

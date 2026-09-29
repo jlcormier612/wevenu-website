@@ -25,15 +25,13 @@ export default async function InventoryTemplatesLibraryPage() {
         description="What you typically use for a kind of event. Customize a starter, then apply it to create Working Inventory for a booking."
       />
       <LibraryHowItWorks>
-        Build a reusable inventory setup, then apply it to an event. Applying creates that event’s inventory copy — this template stays unchanged.
+        Build a reusable packing/checklist once. Use Template on an event to create that event&apos;s inventory list from this template.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        links={[
-          { href: "/library/inventory", label: "Manage inventory →" },
-          { href: "/library", label: "All templates →" },
-        ]}
+        detail="Checklist lines (name, quantity, price) are authored when you edit this template. Available Inventory is your separate physical stock catalog — used when adding items on an event and when placing items on floor plans."
+        action={{ href: "/library/inventory", label: "Manage Available Inventory" }}
       >
-        Uses items from your Available Inventory catalog.
+        Related to your Available Inventory catalog (physical stock).
       </LibraryDependencyNote>
       <InventoryTemplateList
         templates={templates}

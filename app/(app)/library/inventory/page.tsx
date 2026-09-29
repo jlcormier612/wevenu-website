@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { InventoryLibrarySection } from "@/components/inventory/inventory-library-section";
@@ -16,11 +17,11 @@ export default async function InventoryLibraryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Available Inventory"
-        description="Physical stock your venue owns — a catalog, not a template."
+        description="Physical stock your venue owns — create and edit items here."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" render={<Link href="/library/inventory-templates" />}>
-              Inventory Templates
+            <Button variant="outline" render={<Link href="/library/inventory/new" />}>
+              Add inventory item
             </Button>
             <Button variant="outline" render={<Link href="/settings/import?type=inventory" />}>
               Import Inventory
@@ -28,13 +29,18 @@ export default async function InventoryLibraryPage() {
           </div>
         }
       />
-      <p className="rounded-sm border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        These are reusable inventory items. Inventory Templates pull from this catalog; floor plans can place items marked for floor plans.
-        {" "}
-        <Link href="/library/inventory-templates" className="font-medium text-heading hover:underline">
-          Manage inventory templates →
-        </Link>
-      </p>
+      <LibraryHowItWorks>
+        Create inventory items here. Floor Plan Templates can place items marked for floor plans. On an event, you can select these items when building that event&apos;s inventory list.
+      </LibraryHowItWorks>
+      <LibraryDependencyNote
+        detail="Mark items for floor plans when they should appear in the floor-plan editor. Inventory Templates are reusable checklists authored separately — apply them to an event, then add catalog items on the event if needed."
+        action={{ href: "/library/floor-plan-templates", label: "Open Floor Plan Templates" }}
+        secondaryActions={[
+          { href: "/library/inventory-templates", label: "Open Inventory Templates" },
+        ]}
+      >
+        Used when placing furniture on floor plans and when adding stock to an event&apos;s inventory.
+      </LibraryDependencyNote>
       <InventoryLibrarySection initialItems={items} />
     </div>
   );
