@@ -338,20 +338,55 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
       entry?.message,
       "Clients have asked about exotic animals 3 times in the last 30 days.",
     );
+  });
 
-    // Pattern dismissed → individuals still work (V1).
-    const afterPatternDismiss = selectLuvDashboardEntry({
+  it("CREATE → DISMISS → SYNC/refresh-equivalent → V2 still not visible", () => {
+    const created = recommendation({ id: "stable-pattern-id" });
+    assert.equal(
+      selectLuvDashboardEntry({
+        focusItems: [],
+        observations: [],
+        recommendations: [created],
+      })?.dismissRecommendationId,
+      "stable-pattern-id",
+    );
+
+    // Same durable id after dismiss (sync must not mint a new visible row).
+    const afterDismissSync = recommendation({
+      id: "stable-pattern-id",
+      dismissedAt: "2026-09-29T11:00:00.000Z",
+      title: "4 recent tours still need follow-up",
+    });
+    // Visible list after get_venue_recommendations would exclude it; selection
+    // may still receive the cooldown row so individuals stay suppressed.
+    const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [observation()],
-      recommendations: [
-        recommendation({ dismissedAt: "2026-09-29T11:00:00.000Z" }),
-      ],
+      recommendations: [afterDismissSync],
     });
-    assert.equal(
-      afterPatternDismiss?.message,
+    assert.notEqual(entry?.message, "4 recent tours still need follow-up");
+    assert.notEqual(entry?.dismissRecommendationId, "stable-pattern-id");
+    assert.doesNotMatch(entry?.message ?? "", /recent tours still need follow-up/);
+    // Must not fall through to the individual tour-no-followup card either —
+    // that is what made Jennifer's dismiss feel resurrected on refresh.
+    assert.notEqual(
+      entry?.message,
       "Alex completed their tour 15h ago — follow up while it's fresh.",
     );
-    assert.equal(afterPatternDismiss?.dismissObservationId, "tour-no-followup-t1");
+    assert.equal(entry?.dismissObservationId, undefined);
+  });
+
+  it("without a V2 pattern row, V1 tour-no-followup observation still surfaces", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [],
+      observations: [observation()],
+      recommendations: [],
+    });
+    assert.equal(
+      entry?.message,
+      "Alex completed their tour 15h ago — follow up while it's fresh.",
+    );
+    assert.equal(entry?.dismissObservationId, "tour-no-followup-t1");
   });
 });
 
@@ -378,6 +413,26 @@ describe("tour follow-up pattern — wiring / venue safety / V1 Ask-gap unchange
       conflict.slice(0, conflict.indexOf("v_upserted")),
       /dismissed_at\s*=\s*null/,
     );
+  });
+
+  it("harden migration refuses ON CONFLICT update while recently dismissed", () => {
+    const harden = read(
+      "supabase/migrations/20261409200000_luv_tour_followup_pattern_dismiss_harden.sql",
+    );
+    assert.match(harden, /skipped',\s*'recently_dismissed'/);
+    assert.match(
+      harden,
+      /where luv_recommendations\.dismissed_at is null\s+or luv_recommendations\.dismissed_at <= now\(\) - interval '7 days'/,
+    );
+    assert.doesNotMatch(harden, /dismissed_at\s*=\s*null/);
+    assert.doesNotMatch(harden, /venue_users/);
+  });
+
+  it("recommendation-service keeps dismissed pattern for selection cooldown only", () => {
+    const service = read("lib/luv/recommendation-service.ts");
+    assert.match(service, /loadRecentlyDismissedTourFollowupPattern/);
+    assert.match(service, /syncTourFollowupPatternRecommendation/);
+    assert.match(service, /filterVisibleRecommendations/);
   });
 
   it("recommendation-service syncs after Ask-gap and before get", () => {

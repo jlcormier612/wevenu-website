@@ -120,6 +120,24 @@ export function isTourNoFollowupObservation(obs: LuvObservation): boolean {
 }
 
 /**
+ * While the venue-level pattern is visible OR recently dismissed, individual
+ * tour-no-followup observations are the same actionable work. Surfacing them
+ * after X makes the V2 dismiss feel like it failed on refresh.
+ */
+export function shouldSuppressTourNoFollowupObservations(
+  recommendations: readonly VenueRecommendation[],
+): boolean {
+  return recommendations.some((rec) => {
+    if (!isTourFollowupPatternRecommendation(rec)) return false;
+    // Active pattern, or same row still in the 7-day dismiss cooldown.
+    return (
+      isRecommendationActiveForDisplay(rec) ||
+      Boolean(rec.dismissedAt && !isRecommendationActiveForDisplay(rec))
+    );
+  });
+}
+
+/**
  * The insight layer over Today's Focus: reads the largest group of work in it
  * and says what it means, rather than repeating its rows.
  */
@@ -160,10 +178,7 @@ export function selectLuvDashboardEntry({
   recommendations: VenueRecommendation[];
 }): LuvDashboardEntry | null {
   const focusSubjects = new Set(focusItems.map((i) => subject(i.href)));
-  const patternActive = recommendations.some(
-    (rec) =>
-      isTourFollowupPatternRecommendation(rec) && isRecommendationActiveForDisplay(rec),
-  );
+  const suppressTourNoFollowup = shouldSuppressTourNoFollowupObservations(recommendations);
 
   // 1. A recommendation is already interpretation plus an action, so it leads —
   //    unless it points at a Focus row or merely opens the Leads stale filter.
@@ -190,10 +205,10 @@ export function selectLuvDashboardEntry({
   }
 
   // 2. An observation, but only about something Today's Focus is not covering.
-  //    When the venue-level tour follow-up pattern is active, skip individual
-  //    tour-no-followup observations so Luv does not restate the same work.
+  //    Suppress individual tour-no-followup cards while the venue-level pattern
+  //    is active or recently dismissed (same work as the V2 recommendation).
   for (const obs of observations) {
-    if (patternActive && isTourNoFollowupObservation(obs)) continue;
+    if (suppressTourNoFollowup && isTourNoFollowupObservation(obs)) continue;
     if (focusSubjects.has(subject(obs.link))) continue;
     return {
       message: obs.message,
