@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 
@@ -23,5 +24,6 @@ export async function PATCH(
   if (payload?.ok !== true) {
     return NextResponse.json({ error: "recommendation not updated" }, { status: 409 });
   }
+  revalidatePath("/dashboard");
   return NextResponse.json({ ok: true });
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronRight, X } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,24 +10,28 @@ import type { LuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
 /**
  * Restrained Dashboard Luv card — interpretation only, not a second task list.
- * Optional dismiss: recommendation dismiss persists; other entries hide for the session.
+ * Dismiss is only offered when a luv_recommendations row can persist it.
  */
 export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
+  const router = useRouter();
   const [hidden, setHidden] = React.useState(false);
   if (hidden) return null;
 
+  const canPersistDismiss = Boolean(entry.dismissRecommendationId);
+
   async function dismiss() {
-    if (!entry.dismissRecommendationId) {
-      setHidden(true);
-      return;
-    }
+    if (!entry.dismissRecommendationId) return;
     try {
       const res = await fetch(`/api/recommendations/${entry.dismissRecommendationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "dismiss" }),
       });
-      if (res.ok) setHidden(true);
+      if (!res.ok) return;
+      const payload = (await res.json()) as { ok?: boolean };
+      if (payload.ok !== true) return;
+      setHidden(true);
+      router.refresh();
     } catch {
       // Persist failed — keep the card so refresh cannot invent a dismissal.
     }
@@ -40,14 +45,16 @@ export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
             <CardTitle className="flex items-center gap-2 text-sm">
               <span aria-hidden>💗</span> Luv
             </CardTitle>
-            <button
-              type="button"
-              onClick={() => void dismiss()}
-              aria-label="Dismiss Luv note"
-              className="rounded-md p-1 text-muted-foreground transition-opacity hover:opacity-70"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            {canPersistDismiss ? (
+              <button
+                type="button"
+                onClick={() => void dismiss()}
+                aria-label="Dismiss Luv note"
+                className="rounded-md p-1 text-muted-foreground transition-opacity hover:opacity-70"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-2 pt-0">

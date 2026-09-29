@@ -98,6 +98,15 @@ describe("Luv does not restate Today's Focus", () => {
     assert.equal(entry?.actionLabel, "View report");
   });
 
+  it("observations do not carry a persistable dismiss id", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [],
+      observations: [observation()],
+      recommendations: [],
+    });
+    assert.equal(entry?.dismissRecommendationId, undefined);
+  });
+
   it("skips a recently dismissed recommendation so refresh cannot resurrect it", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [],

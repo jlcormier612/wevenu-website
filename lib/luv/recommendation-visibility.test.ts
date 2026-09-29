@@ -93,6 +93,27 @@ describe("recommendation visibility after dismiss", () => {
     assert.equal(isRecommendationActiveForDisplay(old, now), true);
   });
 
+  it("8–9: Fancy dismiss cannot hide another venue row; unrelated rec stays visible", () => {
+    const otherVenue = exoticRec({
+      id: "other-venue-rec",
+      metadata: { topic: "exotic_animal_policy", venue_id: "not-fancy" },
+    });
+    const unrelated = exoticRec({
+      id: "unrelated-pets",
+      type: "client_ask_gap_pet_policy",
+      title: "Clients have asked about pets 3 times in the last 30 days.",
+      dismissedAt: null,
+    });
+    const dismissedFancy = exoticRec({ dismissedAt: "2026-09-29T11:59:00.000Z" });
+    const visible = filterVisibleRecommendations([dismissedFancy, otherVenue, unrelated], now);
+    assert.deepEqual(
+      visible.map((r) => r.id),
+      ["other-venue-rec", "unrelated-pets"],
+    );
+    const status = read("supabase/migrations/20261408700000_luv_recommendations_active_venue.sql");
+    assert.match(status, /where id = p_recommendation_id and venue_id = v_venue_id/);
+  });
+
   it("completed recommendations stay hidden", () => {
     assert.equal(
       isRecommendationActiveForDisplay(
@@ -129,5 +150,14 @@ describe("ask-gap sync preserves dismissal (088)", () => {
     const route = read("app/api/recommendations/[id]/route.ts");
     assert.match(route, /update_recommendation_status/);
     assert.match(route, /ok !== true/);
+    assert.match(route, /revalidatePath\("\/dashboard"\)/);
+  });
+
+  it("Dashboard X only persists a recommendation id and refreshes the server read", () => {
+    const card = read("components/dashboard/luv-dashboard-entry.tsx");
+    assert.match(card, /canPersistDismiss/);
+    assert.match(card, /router\.refresh\(\)/);
+    assert.match(card, /payload\.ok !== true/);
+    assert.doesNotMatch(card, /if \(!entry\.dismissRecommendationId\) \{\s*setHidden\(true\)/);
   });
 });
