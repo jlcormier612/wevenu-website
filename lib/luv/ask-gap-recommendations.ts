@@ -139,7 +139,8 @@ export async function syncClientAskGapRecommendations(
       Date.now() - ASK_GAP_WINDOW_DAYS * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    const [{ data: signals }, { data: opRow }] = await Promise.all([
+    const [{ data: signals, error: signalsError }, { data: opRow, error: guideError }] =
+      await Promise.all([
       supabase
         .from("luv_ask_signals")
         .select("question, outcome")
@@ -154,6 +155,17 @@ export async function syncClientAskGapRecommendations(
         .eq("venue_id", venue.id)
         .maybeSingle<OperationalInfoRow>(),
     ]);
+
+    // Never sync an empty payload when reads failed — the RPC would clear
+    // pending client_ask_gap_* rows (including ones the venue just dismissed).
+    if (signalsError) {
+      console.error("ask-gap signals read failed:", signalsError.message);
+      return;
+    }
+    if (guideError) {
+      console.error("ask-gap guide read failed:", guideError.message);
+      return;
+    }
 
     const projected = projectGuideForAudience(
       opRow ? mapOperationalRowToGuideRaw(opRow) : null,

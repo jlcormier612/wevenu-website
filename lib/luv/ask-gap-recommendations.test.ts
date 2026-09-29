@@ -185,6 +185,17 @@ describe("wiring — reuse luv_recommendations, no second system", () => {
     assert.deepEqual(ASK_GAP_TOPIC_GUIDE_SECTIONS.pet_policy, ["policies", "faqs"]);
   });
 
+  it("sync aborts without clearing when signal or guide reads fail", () => {
+    const src = read("lib/luv/ask-gap-recommendations.ts");
+    assert.match(src, /if \(signalsError\)/);
+    assert.match(src, /if \(guideError\)/);
+    assert.match(src, /ask-gap signals read failed/);
+    const syncFn = src.slice(src.indexOf("export async function syncClientAskGapRecommendations"));
+    const abortIdx = syncFn.indexOf("if (signalsError)");
+    const rpcIdx = syncFn.indexOf("sync_client_ask_gap_recommendations");
+    assert.ok(abortIdx >= 0 && rpcIdx > abortIdx, "must return before RPC on read failure");
+  });
+
   it("migration adds sync RPC only; recommendation-service calls it after generate", () => {
     const migration = read(
       "supabase/migrations/20261408600000_luv_client_ask_gap_recommendations.sql",
@@ -192,6 +203,12 @@ describe("wiring — reuse luv_recommendations, no second system", () => {
     assert.match(migration, /sync_client_ask_gap_recommendations/);
     assert.match(migration, /client_ask_gap_%/);
     assert.doesNotMatch(migration, /create table.*luv_ask_gap/i);
+
+    const activeVenue = read(
+      "supabase/migrations/20261408700000_luv_recommendations_active_venue.sql",
+    );
+    assert.match(activeVenue, /current_user_venue_id\(\)/);
+    assert.doesNotMatch(activeVenue, /from venue_users where user_id = auth\.uid\(\) limit 1/);
 
     const service = read("lib/luv/recommendation-service.ts");
     assert.match(service, /syncClientAskGapRecommendations/);
