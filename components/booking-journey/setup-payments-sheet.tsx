@@ -130,7 +130,7 @@ function SetupPaymentsSheetBody({
         toast.error(result.message);
         return;
       }
-      toast.success("Payment plan created. Preview it, then request the initial payment when ready.");
+      toast.success("Invoice and payment plan saved. Preview it, then Send.");
       onOpenChange(false);
       router.push(`/invoices/${result.invoiceId}`);
       router.refresh();
@@ -142,8 +142,8 @@ function SetupPaymentsSheetBody({
       <SheetHeader className="mb-6">
         <SheetTitle>Set up payments</SheetTitle>
         <p className="text-sm text-muted-foreground">
-          Create the {formatCurrency(selection.totalAmount)} commitment and payment plan.
-          Requesting the initial payment is a separate step after you preview.
+          Create the {formatCurrency(selection.totalAmount)} invoice and payment plan.
+          After you save, preview it and send. Sending requests the initial payment when it is due now.
         </p>
       </SheetHeader>
 

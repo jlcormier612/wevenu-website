@@ -606,15 +606,15 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
                 size="sm"
                 render={<Link href={`/invoices/${invoice.id}/print`} target="_blank" />}
               >
-                Preview payment plan
+                Preview
               </Button>
               <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}`} />}>
-                View Invoice →
+                Preview and send →
               </Button>
             </div>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            After you create a plan, preview the complete schedule on the invoice. Requesting the initial payment is a separate deliberate action from the invoice page.
+            After you create a plan, preview and send it from the Invoice & Payment Plan. Sending includes the initial payment when it is due now.
           </p>
         </div>
       )}

@@ -209,32 +209,13 @@ export function CommercialFacts({
               )}
               {row.key === "payment_plan" && selection?.invoiceId && activePaymentLines.length > 0 && (
                 <Button type="button" size="sm" variant="outline" render={<Link href={`/invoices/${selection.invoiceId}`} />}>
-                  Open invoice
+                  {journey.paymentRequestSent ? "Open invoice" : "Preview and send"}
                 </Button>
               )}
               {row.key === "deposit" && depositDue && journey.prefs.paymentCollection !== "online" && (
                 <Button type="button" size="sm" variant="outline" onClick={onRecordDeposit}>
                   Record deposit received
                 </Button>
-              )}
-              {row.key === "deposit" && depositLine && depositLine.status !== "paid" && selection?.invoiceId && (
-                journey.paymentRequestSent ? (
-                  <p
-                    className="self-center text-xs text-muted-foreground"
-                    data-testid="payment-request-already-sent"
-                  >
-                    Payment request already sent. A new request is not available for this invoice.
-                  </p>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    render={<Link href={`/invoices/${selection.invoiceId}`} />}
-                    data-testid="request-initial-payment"
-                  >
-                    Request initial payment
-                  </Button>
-                )
               )}
             </div>
           </li>

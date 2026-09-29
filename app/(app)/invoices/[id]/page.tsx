@@ -51,6 +51,7 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
           sortOrder: i.sortOrder,
         }))
       : null,
+    today: venueToday(venue.timezone),
   });
   const paidToDate = linked ? computeNetPaid(linked.lineItems) : null;
   const cancelledPlanAmount = linked ? computeCancelledPlanAmount(linked.lineItems) : 0;

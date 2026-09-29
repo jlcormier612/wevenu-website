@@ -411,7 +411,7 @@ export function PaymentPlanBuilder({
               Back
             </Button>
             <Button type="button" disabled={!validation.ok} onClick={() => setStep("preview")}>
-              Preview payment plan
+              Review schedule
             </Button>
           </div>
         </div>
@@ -420,9 +420,9 @@ export function PaymentPlanBuilder({
       {step === "preview" && (
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-heading">Preview payment plan</p>
+            <p className="text-sm font-medium text-heading">Review schedule</p>
             <p className="text-xs text-muted-foreground">
-              Review the complete schedule. You can edit again without losing this work. Creating the plan does not send or request payment.
+              Review the complete schedule. You can edit again without losing this work. Saving does not send.
             </p>
           </div>
           <div className="space-y-2 rounded-lg border border-border bg-muted/20 px-4 py-3">

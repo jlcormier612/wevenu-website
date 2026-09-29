@@ -135,7 +135,7 @@ describe("commercial artifact states", () => {
     });
     assert.equal(facts.find((row) => row.key === "invoice"), undefined);
     assert.notEqual(facts.find((row) => row.key === "deposit")?.state, "Paid");
-    assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /Ready to request/);
+    assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /Included when you send/);
     assert.equal(
       commercialStepsComplete({
         selection: selection({ status: "accepted", invoiceId: "inv-1" }),
@@ -192,7 +192,7 @@ describe("commercial artifact states", () => {
     assert.match(plan?.detail ?? "", /\$13,500\.00 due September 11, 2027/);
     const deposit = facts.find((row) => row.key === "deposit");
     assert.equal(deposit?.state, "$4,500.00 due today");
-    assert.equal(deposit?.detail, "Ready to request");
+    assert.equal(deposit?.detail, "Included when you send");
     assert.equal(facts.find((row) => row.key === "invoice"), undefined);
   });
 
@@ -252,8 +252,9 @@ describe("workspaces do not render the old Booking Journey", () => {
     assert.doesNotMatch(inbox, /value="agreement"/);
     const invoice = readFileSync(resolve("components/invoices/invoice-detail.tsx"), "utf8");
     assert.match(invoice, /ArtifactReviewOverlay/);
-    assert.match(invoice, /Request initial payment/);
+    assert.match(invoice, /send-invoice-and-payment-plan/);
     assert.match(invoice, /InvoicePrintDocument/);
+    assert.doesNotMatch(invoice, /Request initial payment/);
     assert.doesNotMatch(invoice, /Mark as Sent/);
   });
 
@@ -262,9 +263,9 @@ describe("workspaces do not render the old Booking Journey", () => {
     assert.match(factsUi, /data-testid="setup-payments"/);
     assert.match(factsUi, /Set up payments/);
     assert.doesNotMatch(factsUi, /Set up initial payment/);
-    assert.match(factsUi, /data-testid="request-initial-payment"/);
+    assert.doesNotMatch(factsUi, /data-testid="request-initial-payment"/);
+    assert.match(factsUi, /Preview and send/);
     assert.match(factsUi, /href=\{\`\/invoices\/\$\{selection\.invoiceId\}`\}/);
-    assert.match(factsUi, /payment-request-already-sent/);
     const describe = readFileSync(resolve("lib/booking-journey/commercial-facts.ts"), "utf8");
     const fn = describe.slice(describe.indexOf("export function describeCommercialFacts"));
     assert.doesNotMatch(fn, /invoiceFact\(/);

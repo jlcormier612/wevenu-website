@@ -159,11 +159,17 @@ export async function loadInvoiceOutboundContext(
     }
   }
 
+  const { venueToday } = await import("@/lib/venue/timezone");
+  const today = venueToday(venue.timezone);
   const dueNow = resolveAmountDueNow({
     balanceDue: invoice.balanceDue,
     scheduleLines,
+    today,
   });
-  const dueNowLine = scheduleLines.length > 0 ? pickNextOpenPaymentLine(scheduleLines) : null;
+  const dueNowLine =
+    dueNow.kind === "next_installment" && scheduleLines.length > 0
+      ? pickNextOpenPaymentLine(scheduleLines)
+      : null;
   const paidToDate = Math.max(0, invoice.total - invoice.balanceDue);
   const remainingAfter =
     dueNow.kind === "next_installment"
@@ -177,20 +183,17 @@ export async function loadInvoiceOutboundContext(
     const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
     const sessions = await getPortalSessions(clientId);
     let coupleSession = sessions.find((s) => s.accessLevel === "couple") ?? null;
-    const financialSession = sessions.find((s) => s.accessLevel === "financial");
+    let financialSession = sessions.find((s) => s.accessLevel === "financial") ?? null;
     if (opts.ensureCoupleDocuments && !coupleSession) {
       coupleSession = await createPortalSession(clientId, "Documents", "couple");
     }
-    let paySession = coupleSession ?? financialSession ?? null;
-    if (!paySession) {
-      paySession = await createPortalSession(clientId, "Payment", "financial");
+    // Payment CTA must be a financial-token destination — never couple portal login.
+    if (dueNow.kind === "next_installment" && !financialSession) {
+      financialSession = await createPortalSession(clientId, "Payment", "financial");
     }
-    if (paySession?.accessToken) {
+    if (dueNow.kind === "next_installment" && financialSession?.accessToken) {
       const itemQs = dueNowLine?.id ? `?item=${encodeURIComponent(dueNowLine.id)}` : "";
-      portalPayUrl =
-        paySession.accessLevel === "financial"
-          ? `${publicAppOrigin()}/p/${paySession.accessToken}${itemQs}`
-          : `${publicAppOrigin()}/p/${paySession.accessToken}${itemQs}#payments`;
+      portalPayUrl = `${publicAppOrigin()}/p/${financialSession.accessToken}${itemQs}`;
     }
     if (coupleSession?.accessToken) {
       documentsUrl = `${publicAppOrigin()}/p/${coupleSession.accessToken}#documents`;

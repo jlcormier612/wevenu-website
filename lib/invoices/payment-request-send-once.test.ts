@@ -1,5 +1,6 @@
 /**
  * Payment-request send-once: persisted conversation outbound, not in-flight lock only.
+ * Canonical send is sendInvoiceAndPaymentPlanAction; it records sourceType invoice_email.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -8,7 +9,6 @@ import { resolve } from "node:path";
 
 import {
   beginOutboundSend,
-  DOCUMENT_COPY_SOURCE_TYPE,
   endOutboundSend,
   PAYMENT_REQUEST_SOURCE_TYPE,
 } from "@/lib/invoices/outbound";
@@ -16,7 +16,7 @@ import {
 const root = resolve(process.cwd());
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 
-describe("payment request send-once (persisted)", () => {
+describe("invoice and payment plan send-once (persisted)", () => {
   const actions = read("app/(app)/invoices/actions.ts");
   const outbound = read("lib/invoices/outbound.ts");
   const detail = read("components/invoices/invoice-detail.tsx");
@@ -29,31 +29,29 @@ describe("payment request send-once (persisted)", () => {
     assert.match(outbound, /sourceType: PAYMENT_REQUEST_SOURCE_TYPE/);
     assert.match(outbound, /sourceId: opts\.invoiceId/);
     assert.match(outbound, /status", "accepted"/);
-    // Must not treat draft→sent publication as payment-request sent.
     assert.doesNotMatch(
       outbound.slice(outbound.indexOf("hasSuccessfulPaymentRequestSend")),
       /invoice\.status === ["']sent["']/,
     );
   });
 
-  it("send rejects a second sequential payment request after success", () => {
+  it("send rejects a second sequential send after success", () => {
     const send = actions.slice(
+      actions.indexOf("export async function sendInvoiceAndPaymentPlanAction"),
       actions.indexOf("export async function sendInvoiceEmailAction"),
-      actions.indexOf("export async function previewInvoiceDocumentCopyAction"),
     );
     assert.match(send, /hasSuccessfulPaymentRequestSend/);
-    assert.match(send, /PAYMENT_REQUEST_ALREADY_SENT/);
+    assert.match(send, /INVOICE_ALREADY_SENT/);
     assert.match(actions, /already sent/i);
     assert.match(send, /sourceType: PAYMENT_REQUEST_SOURCE_TYPE/);
-    // In-flight lock remains for concurrency; persisted check is also required.
     assert.match(send, /beginOutboundSend\("payment_request"/);
+    assert.equal(PAYMENT_REQUEST_SOURCE_TYPE, "invoice_email");
   });
 
   it("preview / page load expose already-sent so reload keeps protection", () => {
     assert.match(actions, /hasSuccessfulPaymentRequestSend/);
-    assert.match(actions, /previewPaymentRequestAction/);
-    assert.match(actions, /PAYMENT_REQUEST_ALREADY_SENT/);
-    assert.match(actions, /already sent/i);
+    assert.match(actions, /previewInvoiceAndPaymentPlanAction/);
+    assert.match(actions, /INVOICE_ALREADY_SENT/);
     assert.match(page, /paymentRequestAlreadySent/);
     assert.match(page, /hasSuccessfulPaymentRequestSend/);
     assert.match(detail, /paymentRequestAlreadySent/);
@@ -63,32 +61,20 @@ describe("payment request send-once (persisted)", () => {
 
   it("failed send does not invent a permanent sent mark before Resend success", () => {
     const send = actions.slice(
+      actions.indexOf("export async function sendInvoiceAndPaymentPlanAction"),
       actions.indexOf("export async function sendInvoiceEmailAction"),
-      actions.indexOf("export async function previewInvoiceDocumentCopyAction"),
     );
-    // Record only after Resend success — same as before.
     assert.match(send, /result\.ok && result\.method === "resend"/);
     assert.match(send, /recordExternalClientOutbound/);
-    // No optimistic write before sendEmail.
     const recordAt = send.indexOf("recordExternalClientOutbound");
     const sendAt = send.indexOf("sendEmail(");
     assert.ok(sendAt > 0 && recordAt > sendAt);
   });
 
-  it("document copy stays independently resendable", () => {
-    const doc = actions.slice(actions.indexOf("export async function sendInvoiceDocumentCopyAction"));
-    assert.match(doc, /sourceType: DOCUMENT_COPY_SOURCE_TYPE/);
-    assert.equal(DOCUMENT_COPY_SOURCE_TYPE, "invoice_document_copy");
-    assert.equal(PAYMENT_REQUEST_SOURCE_TYPE, "invoice_email");
-    assert.notEqual(DOCUMENT_COPY_SOURCE_TYPE, PAYMENT_REQUEST_SOURCE_TYPE);
-    assert.doesNotMatch(doc, /hasSuccessfulPaymentRequestSend/);
-    assert.match(detail, /Send copy of payment plan and invoice/);
-    // Document copy button is not gated by paymentRequestSent.
-    const docBtn = detail.slice(
-      detail.indexOf("Send copy of payment plan and invoice") - 200,
-      detail.indexOf("Send copy of payment plan and invoice") + 80,
-    );
-    assert.doesNotMatch(docBtn, /paymentRequestSent/);
+  it("legacy send aliases share the same send-once gate", () => {
+    assert.match(actions, /export async function sendInvoiceEmailAction/);
+    assert.match(actions, /return sendInvoiceAndPaymentPlanAction/);
+    assert.match(actions, /export async function sendInvoiceDocumentCopyAction/);
   });
 
   it("in-flight lock still blocks concurrent duplicates; end clears for retry after failure path", () => {

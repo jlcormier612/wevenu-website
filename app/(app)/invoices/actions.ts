@@ -22,22 +22,20 @@ import type {
   InvoiceStatus,
 } from "@/lib/invoices/types";
 import { sendEmail } from "@/lib/email/send";
-import { buildInvoiceDocumentEmail } from "@/lib/invoices/invoice-document-email";
+import { buildInvoiceAndPaymentPlanEmail } from "@/lib/invoices/invoice-and-payment-plan-email";
 import {
   beginOutboundSend,
   dueDateLabelFromContext,
   endOutboundSend,
-  DOCUMENT_COPY_SOURCE_TYPE,
   hasSuccessfulPaymentRequestSend,
   loadInvoiceOutboundContext,
   PAYMENT_REQUEST_SOURCE_TYPE,
   type InvoiceOutboundContext,
 } from "@/lib/invoices/outbound";
-import { buildPaymentRequestEmail } from "@/lib/invoices/payment-request-email";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-const PAYMENT_REQUEST_ALREADY_SENT =
-  "This payment request was already sent. A new payment request is not available for this invoice.";
+const INVOICE_ALREADY_SENT =
+  "This invoice and payment plan was already sent."
 
 export async function createInvoiceAction(input: InvoiceInput): Promise<CreateInvoiceResult> {
   const result = await createInvoice(input);
@@ -103,18 +101,19 @@ export async function createAmendedInvoiceAction(originalInvoiceId: string): Pro
   return result;
 }
 
-export type PaymentRequestPreview = {
+export type InvoiceAndPaymentPlanPreview = {
   recipient: string;
   clientName: string;
-  amountDueNow: string;
+  venueName: string;
+  subject: string;
+  amountDueNow: string | null;
   dueDate: string | null;
   totalContracted: string;
   paidToDate: string;
   remainingBalance: string;
-  venueName: string;
   paymentUrl: string | null;
-  subject: string;
-  text: string;
+  documentsUrl: string | null;
+  payableNow: boolean;
 };
 
 export async function paymentRequestAlreadySentAction(
@@ -130,10 +129,53 @@ export async function paymentRequestAlreadySentAction(
   return { ok: true, alreadySent };
 }
 
-export async function previewPaymentRequestAction(
+function emailFromContext(ctx: InvoiceOutboundContext) {
+  return buildInvoiceAndPaymentPlanEmail({
+    clientFirstName: ctx.clientFirstName,
+    clientEmail: ctx.clientEmail,
+    clientName: `${ctx.clientFirstName} ${ctx.clientLastName}`.trim(),
+    venueName: ctx.venueName,
+    venueEmail: ctx.venueEmail,
+    invoiceLabel: ctx.invoiceLabel,
+    invoiceNumber: ctx.invoice.invoiceNumber,
+    eventDate: ctx.invoice.eventDate,
+    eventName: ctx.invoice.eventName,
+    totalContracted: ctx.invoice.total,
+    paidToDate: ctx.paidToDate,
+    balanceDue: ctx.invoice.balanceDue,
+    dueNow: ctx.dueNow,
+    dueDateLabel: dueDateLabelFromContext(ctx),
+    remainingAfter: ctx.remainingAfter,
+    scheduleLines: ctx.scheduleLines,
+    payUrl: ctx.portalPayUrl,
+    documentsUrl: ctx.documentsUrl,
+  });
+}
+
+function previewFromEmail(
+  ctx: InvoiceOutboundContext,
+  email: ReturnType<typeof buildInvoiceAndPaymentPlanEmail>,
+): InvoiceAndPaymentPlanPreview {
+  return {
+    recipient: email.recipient,
+    clientName: email.clientName,
+    venueName: email.venueName,
+    subject: email.subject,
+    amountDueNow: email.amountDueNow,
+    dueDate: email.dueDate,
+    totalContracted: email.totalContracted,
+    paidToDate: email.paidToDate,
+    remainingBalance: email.remainingBalance,
+    paymentUrl: email.paymentUrl,
+    documentsUrl: email.documentsUrl,
+    payableNow: ctx.dueNow.kind === "next_installment",
+  };
+}
+
+export async function previewInvoiceAndPaymentPlanAction(
   invoiceId: string,
 ): Promise<
-  | { ok: true; preview: PaymentRequestPreview; alreadySent: boolean }
+  | { ok: true; preview: InvoiceAndPaymentPlanPreview; alreadySent: boolean }
   | InvoiceActionResult
 > {
   const venue = await getCurrentVenue();
@@ -144,19 +186,22 @@ export async function previewPaymentRequestAction(
     invoiceId,
   });
   if (alreadySent) {
-    return { ok: false, message: PAYMENT_REQUEST_ALREADY_SENT };
+    return { ok: false, message: INVOICE_ALREADY_SENT };
   }
-  const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: false });
+  const loaded = await loadInvoiceOutboundContext(invoiceId, {
+    publish: false,
+    ensureCoupleDocuments: true,
+  });
   if (!loaded.ok) return loaded;
-  const email = paymentRequestFromContext(loaded.ctx);
-  return { ok: true, preview: email, alreadySent: false };
+  const email = emailFromContext(loaded.ctx);
+  return { ok: true, preview: previewFromEmail(loaded.ctx, email), alreadySent: false };
 }
 
-export async function sendInvoiceEmailAction(
+export async function sendInvoiceAndPaymentPlanAction(
   invoiceId: string,
 ): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
   if (!beginOutboundSend("payment_request", invoiceId)) {
-    return { ok: false, message: "This payment request is already sending." };
+    return { ok: false, message: "This invoice and payment plan is already sending." };
   }
   try {
     const venue = await getCurrentVenue();
@@ -164,11 +209,14 @@ export async function sendInvoiceEmailAction(
     const { createAdminClient } = await import("@/integrations/supabase/admin");
     const admin = createAdminClient();
     if (await hasSuccessfulPaymentRequestSend(admin, { venueId: venue.id, invoiceId })) {
-      return { ok: false, message: PAYMENT_REQUEST_ALREADY_SENT };
+      return { ok: false, message: INVOICE_ALREADY_SENT };
     }
-    const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: true });
+    const loaded = await loadInvoiceOutboundContext(invoiceId, {
+      publish: true,
+      ensureCoupleDocuments: true,
+    });
     if (!loaded.ok) return loaded;
-    const email = paymentRequestFromContext(loaded.ctx);
+    const email = emailFromContext(loaded.ctx);
     const result = await sendEmail({
       to: email.to,
       subject: email.subject,
@@ -189,10 +237,12 @@ export async function sendInvoiceEmailAction(
         sourceId: invoiceId,
       });
       if (!recorded.ok) {
-        console.error("[sendInvoiceEmailAction] conversation record failed", recorded);
+        console.error("[sendInvoiceAndPaymentPlanAction] conversation record failed", recorded);
       }
       revalidatePath(`/invoices/${invoiceId}`);
       revalidatePath(`/clients/${loaded.ctx.clientId}`);
+      revalidatePath("/payments");
+      revalidatePath("/documents");
     }
     return result;
   } finally {
@@ -200,114 +250,38 @@ export async function sendInvoiceEmailAction(
   }
 }
 
-export type InvoiceDocumentPreview = {
-  recipient: string;
-  clientName: string;
-  venueName: string;
-  subject: string;
-  text: string;
-  documentsUrl: string | null;
-};
-
-export async function previewInvoiceDocumentCopyAction(
+/** @deprecated Canonical send is sendInvoiceAndPaymentPlanAction. */
+export async function sendInvoiceEmailAction(
   invoiceId: string,
-): Promise<{ ok: true; preview: InvoiceDocumentPreview } | InvoiceActionResult> {
-  const loaded = await loadInvoiceOutboundContext(invoiceId, {
-    publish: false,
-    ensureCoupleDocuments: true,
-  });
-  if (!loaded.ok) return loaded;
-  const email = documentCopyFromContext(loaded.ctx);
-  return {
-    ok: true,
-    preview: {
-      recipient: loaded.ctx.clientEmail,
-      clientName: `${loaded.ctx.clientFirstName} ${loaded.ctx.clientLastName}`.trim(),
-      venueName: loaded.ctx.venueName,
-      subject: email.subject,
-      text: email.text,
-      documentsUrl: loaded.ctx.documentsUrl,
-    },
-  };
+): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
+  return sendInvoiceAndPaymentPlanAction(invoiceId);
 }
 
+/** @deprecated Canonical send is sendInvoiceAndPaymentPlanAction. */
 export async function sendInvoiceDocumentCopyAction(
   invoiceId: string,
 ): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
-  if (!beginOutboundSend("document_copy", invoiceId)) {
-    return { ok: false, message: "This document copy is already sending." };
-  }
-  try {
-    const loaded = await loadInvoiceOutboundContext(invoiceId, {
-      publish: true,
-      ensureCoupleDocuments: true,
-    });
-    if (!loaded.ok) return loaded;
-    const email = documentCopyFromContext(loaded.ctx);
-    const result = await sendEmail({
-      to: email.to,
-      subject: email.subject,
-      text: email.text,
-      html: email.html,
-      replyTo: email.replyTo,
-    });
-    if (result.ok && result.method === "resend") {
-      const { createAdminClient } = await import("@/integrations/supabase/admin");
-      const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
-      const recorded = await recordExternalClientOutbound(createAdminClient(), {
-        venueId: loaded.ctx.venueId,
-        clientId: loaded.ctx.clientId,
-        channel: "email",
-        body: email.text,
-        providerId: result.providerId ?? null,
-        status: "accepted",
-        sourceType: DOCUMENT_COPY_SOURCE_TYPE,
-        sourceId: invoiceId,
-      });
-      if (!recorded.ok) {
-        console.error("[sendInvoiceDocumentCopyAction] conversation record failed", recorded);
-      }
-      revalidatePath(`/invoices/${invoiceId}`);
-      revalidatePath(`/clients/${loaded.ctx.clientId}`);
-    }
-    return result;
-  } finally {
-    endOutboundSend("document_copy", invoiceId);
-  }
+  return sendInvoiceAndPaymentPlanAction(invoiceId);
 }
 
-function paymentRequestFromContext(ctx: InvoiceOutboundContext) {
-  return buildPaymentRequestEmail({
-    clientFirstName: ctx.clientFirstName,
-    clientEmail: ctx.clientEmail,
-    venueName: ctx.venueName,
-    venueEmail: ctx.venueEmail,
-    invoiceLabel: ctx.invoiceLabel,
-    invoiceNumber: ctx.invoice.invoiceNumber,
-    dueNow: ctx.dueNow,
-    dueDate: dueDateLabelFromContext(ctx),
-    totalContracted: ctx.invoice.total,
-    paidToDate: ctx.paidToDate,
-    remainingAfter: ctx.remainingAfter,
-    balanceDue: ctx.invoice.balanceDue,
-    portalPayUrl: ctx.portalPayUrl,
-  });
+/** @deprecated Canonical preview is previewInvoiceAndPaymentPlanAction. */
+export async function previewPaymentRequestAction(
+  invoiceId: string,
+): Promise<
+  | { ok: true; preview: InvoiceAndPaymentPlanPreview; alreadySent: boolean }
+  | InvoiceActionResult
+> {
+  return previewInvoiceAndPaymentPlanAction(invoiceId);
 }
 
-function documentCopyFromContext(ctx: InvoiceOutboundContext) {
-  return buildInvoiceDocumentEmail({
-    clientFirstName: ctx.clientFirstName,
-    clientEmail: ctx.clientEmail,
-    clientName: `${ctx.clientFirstName} ${ctx.clientLastName}`.trim(),
-    venueName: ctx.venueName,
-    venueEmail: ctx.venueEmail,
-    invoiceLabel: ctx.invoiceLabel,
-    invoiceNumber: ctx.invoice.invoiceNumber,
-    eventDate: ctx.invoice.eventDate,
-    totalContracted: ctx.invoice.total,
-    paidToDate: ctx.paidToDate,
-    balanceDue: ctx.invoice.balanceDue,
-    scheduleLines: ctx.scheduleLines,
-    documentsUrl: ctx.documentsUrl,
-  });
+/** @deprecated Canonical preview is previewInvoiceAndPaymentPlanAction. */
+export async function previewInvoiceDocumentCopyAction(
+  invoiceId: string,
+): Promise<{ ok: true; preview: InvoiceAndPaymentPlanPreview } | InvoiceActionResult> {
+  const result = await previewInvoiceAndPaymentPlanAction(invoiceId);
+  if (!result.ok) return result;
+  if (!("preview" in result)) {
+    return { ok: false, message: "Could not prepare this invoice and payment plan." };
+  }
+  return { ok: true, preview: result.preview };
 }

@@ -109,7 +109,7 @@ export function InvoicePrintDocument({
                 style={{ background: "rgba(255,255,255,0.15)" }} />
             )}
             <div className="text-white">
-              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Invoice</p>
+              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Invoice & Payment Plan</p>
               <p className="mt-0.5 text-2xl font-bold">{displayName}</p>
             </div>
           </div>
@@ -138,7 +138,19 @@ export function InvoicePrintDocument({
           )}
         </div>
       )}
-      {!showDueNowHero && invoice.balanceDue > 0 && (
+      {!showDueNowHero && amountDueNow?.kind === "scheduled_future" && (
+        <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Next payment</p>
+          <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(amountDueNow.amount)}</p>
+          <p className="text-sm text-gray-600 mt-1">
+            Not due yet
+            {amountDueNow.dueDate
+              ? ` · ${new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+              : ""}
+          </p>
+        </div>
+      )}
+      {!showDueNowHero && amountDueNow?.kind !== "scheduled_future" && invoice.balanceDue > 0 && (
         <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Balance Remaining</p>
           <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(invoice.balanceDue)}</p>
@@ -250,11 +262,13 @@ export function InvoicePrintDocument({
             </div>
             <div className={`flex justify-between font-semibold pt-1 ${dueNowAmount != null && dueNowAmount > 0 ? "" : invoice.balanceDue <= 0 ? "text-green-700" : ""}`}
               style={dueNowAmount != null && dueNowAmount > 0 ? { color: accentColor } : undefined}>
-              <span>{dueNowAmount != null ? "Amount Due Now" : invoice.balanceDue > 0 ? "Outstanding" : "Amount Due Now"}</span>
+              <span>{dueNowAmount != null ? "Amount Due Now" : amountDueNow?.kind === "scheduled_future" ? "Amount Due Now" : invoice.balanceDue > 0 ? "Outstanding" : "Amount Due Now"}</span>
               <span>
                 {dueNowAmount != null && dueNowAmount > 0
                   ? formatCurrency(dueNowAmount)
-                  : invoice.balanceDue <= 0
+                  : amountDueNow?.kind === "scheduled_future"
+                    ? "None due now"
+                    : invoice.balanceDue <= 0
                     ? "Paid in Full"
                     : formatCurrency(invoice.balanceDue)}
               </span>

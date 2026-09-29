@@ -8,14 +8,11 @@ import { Mail, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  previewInvoiceDocumentCopyAction,
-  previewPaymentRequestAction,
-  sendInvoiceDocumentCopyAction,
-  sendInvoiceEmailAction,
+  previewInvoiceAndPaymentPlanAction,
+  sendInvoiceAndPaymentPlanAction,
   updateInvoiceDisplayNameAction,
   updateInvoiceStatusAction,
-  type InvoiceDocumentPreview,
-  type PaymentRequestPreview,
+  type InvoiceAndPaymentPlanPreview,
 } from "@/app/(app)/invoices/actions";
 import { venueToday } from "@/lib/venue/timezone";
 import { invoiceHumanLabel } from "@/lib/invoices/display-name";
@@ -119,10 +116,8 @@ export function InvoiceDetail({
   const [emailPending, startEmail] = React.useTransition();
   const [namePending, startName] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
-  const [paymentRequestOpen, setPaymentRequestOpen] = React.useState(false);
-  const [documentCopyOpen, setDocumentCopyOpen] = React.useState(false);
-  const [paymentRequestPreview, setPaymentRequestPreview] = React.useState<PaymentRequestPreview | null>(null);
-  const [documentCopyPreview, setDocumentCopyPreview] = React.useState<InvoiceDocumentPreview | null>(null);
+  const [sendOpen, setSendOpen] = React.useState(false);
+  const [sendPreview, setSendPreview] = React.useState<InvoiceAndPaymentPlanPreview | null>(null);
   const [sendLock, setSendLock] = React.useState(false);
   const [paymentRequestSent, setPaymentRequestSent] = React.useState(paymentRequestAlreadySent);
   React.useEffect(() => {
@@ -161,52 +156,40 @@ export function InvoiceDetail({
     });
   }
 
-  function openPaymentRequestReview() {
+  function openSendReview() {
     if (paymentRequestSent) {
-      toast.message("This payment request was already sent.");
+      toast.message("This invoice and payment plan was already sent.");
       return;
     }
     startEmail(async () => {
-      const result = await previewPaymentRequestAction(invoice.id);
+      const result = await previewInvoiceAndPaymentPlanAction(invoice.id);
       if (!result.ok || !("preview" in result)) {
-        if (!result.ok && result.message?.includes("already sent")) {
+        if (!result.ok && result.message?.toLowerCase().includes("already sent")) {
           setPaymentRequestSent(true);
         }
-        toast.error(!result.ok ? (result.message ?? "Could not prepare this payment request.") : "Could not prepare this payment request.");
+        toast.error(!result.ok ? (result.message ?? "Could not prepare this invoice and payment plan.") : "Could not prepare this invoice and payment plan.");
         return;
       }
       if ("alreadySent" in result && result.alreadySent) {
         setPaymentRequestSent(true);
-        toast.message("This payment request was already sent.");
+        toast.message("This invoice and payment plan was already sent.");
         return;
       }
-      setPaymentRequestPreview(result.preview);
-      setPaymentRequestOpen(true);
+      setSendPreview(result.preview);
+      setSendOpen(true);
     });
   }
 
-  function openDocumentCopyReview() {
-    startEmail(async () => {
-      const result = await previewInvoiceDocumentCopyAction(invoice.id);
-      if (!result.ok || !("preview" in result)) {
-        toast.error(!result.ok ? (result.message ?? "Could not prepare this payment plan copy.") : "Could not prepare this payment plan copy.");
-        return;
-      }
-      setDocumentCopyPreview(result.preview);
-      setDocumentCopyOpen(true);
-    });
-  }
-
-  function sendPaymentRequest() {
+  function sendInvoiceAndPaymentPlan() {
     if (sendLock || emailPending || paymentRequestSent) return;
     setSendLock(true);
     startEmail(async () => {
       try {
-        const result = await sendInvoiceEmailAction(invoice.id);
+        const result = await sendInvoiceAndPaymentPlanAction(invoice.id);
         if (!result.ok) {
-          if (result.message?.includes("already sent")) {
+          if (result.message?.toLowerCase().includes("already sent")) {
             setPaymentRequestSent(true);
-            setPaymentRequestOpen(false);
+            setSendOpen(false);
           }
           toast.error(result.message ?? "Could not send.");
           return;
@@ -216,30 +199,10 @@ export function InvoiceDetail({
           toast.success("Your email app opened. Hello to Cheers did not send this email.");
         } else {
           setPaymentRequestSent(true);
-          toast.success("Payment request sent.");
+          toast.success("Invoice and payment plan sent.");
         }
-        setPaymentRequestOpen(false);
+        setSendOpen(false);
         router.refresh();
-      } finally {
-        setSendLock(false);
-      }
-    });
-  }
-
-  function sendDocumentCopy() {
-    if (sendLock || emailPending) return;
-    setSendLock(true);
-    startEmail(async () => {
-      try {
-        const result = await sendInvoiceDocumentCopyAction(invoice.id);
-        if (!result.ok) { toast.error(result.message ?? "Could not send."); return; }
-        if ("method" in result && result.method === "mailto" && result.mailtoUrl) {
-          window.open(result.mailtoUrl, "_blank");
-          toast.success("Your email app opened. Hello to Cheers did not send this email.");
-        } else {
-          toast.success("Payment plan and invoice copy sent.");
-        }
-        setDocumentCopyOpen(false);
       } finally {
         setSendLock(false);
       }
@@ -259,7 +222,7 @@ export function InvoiceDetail({
       <BusinessAssetHeader
         backHref="/invoices"
         backLabel="Invoices"
-        whatIsThis="Invoice"
+        whatIsThis="Invoice & Payment Plan"
         title={humanTitle}
         status={<>
           <InvoiceStatusBadge status={status} />
@@ -268,11 +231,15 @@ export function InvoiceDetail({
         waitingOn={INVOICE_WAITING_ON[status]}
         lastUpdated={new Date(invoice.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         relationship={invoice.clientName ? { name: invoice.clientName, href: `/clients/${invoice.clientId}` } : null}
-        primaryAction={transition && (
+        primaryAction={
+          status === "draft" && invoice.clientId && linkedScheduleId && !paymentRequestSent
+            ? null
+            : transition && (
           <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
             {pending ? "Updating…" : transition.label}
           </Button>
-        )}
+            )
+        }
       />
 
       <div className="space-y-2">
@@ -331,10 +298,27 @@ export function InvoiceDetail({
         secondary={<>
           {invoice.clientId && status !== "void" && (
             <Button type="button" variant="outline" size="sm"
-              title="Full-page preview of the invoice the client would receive. Preview does not send it."
+              title="What the client will receive. Preview does not send."
               onClick={() => setPreviewOpen(true)}>
               <Mail className="mr-1 h-3.5 w-3.5" /> Preview
             </Button>
+          )}
+          {invoice.clientId && status !== "void" && linkedScheduleId && (
+            paymentRequestSent ? (
+              <p className="text-xs text-muted-foreground self-center" data-testid="payment-request-already-sent">
+                Sent. A new send is not available for this invoice.
+              </p>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                disabled={emailPending || planMismatch}
+                onClick={openSendReview}
+                data-testid="send-invoice-and-payment-plan"
+              >
+                Send
+              </Button>
+            )
           )}
           {linkedScheduleId && (
             <Button
@@ -343,7 +327,7 @@ export function InvoiceDetail({
               size="sm"
               render={<Link href={`/payments/${linkedScheduleId}`} />}
             >
-              View payment plan
+              Open in Payments
             </Button>
           )}
           {status !== "void" && status !== "paid" && (
@@ -408,6 +392,17 @@ export function InvoiceDetail({
                       Due {new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                     </p>
                   )}
+                </>
+              ) : amountDueNow?.kind === "scheduled_future" ? (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Next payment</p>
+                  <p className="text-2xl font-semibold text-heading">{formatCurrency(amountDueNow.amount)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Not due yet
+                    {amountDueNow.dueDate
+                      ? ` · ${new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                      : ""}
+                  </p>
                 </>
               ) : (
                 <>
@@ -504,33 +499,10 @@ export function InvoiceDetail({
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium text-heading">Payment plan</p>
                     <p className="text-xs text-muted-foreground">
-                      Complete schedule for this booking. Preview does not send. Requesting the initial payment is a separate action.
+                      Complete schedule for this booking. Preview shows what the client will receive. Send issues it and emails them — including a pay-now link when a payment is due now.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {/*
-                      Preview = customer InvoicePrintDocument overlay (non-destructive).
-                      View = persisted plan on /payments/{id}.
-                      Edit = replace pending schedule lines.
-                      Request initial payment = payment-request email review, then send.
-                      Send copy = full payment-plan/invoice document email review, then send.
-                    */}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPreviewOpen(true)}
-                    >
-                      Preview payment plan
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      render={<Link href={`/payments/${linkedScheduleId}`} />}
-                    >
-                      View payment plan
-                    </Button>
                     {!planHasActivity && (
                       <Button
                         type="button"
@@ -539,37 +511,6 @@ export function InvoiceDetail({
                         onClick={() => setEditingPlan(true)}
                       >
                         Edit payment plan
-                      </Button>
-                    )}
-                    {invoice.clientId && (
-                      paymentRequestSent ? (
-                        <p
-                          className="text-xs text-muted-foreground self-center"
-                          data-testid="payment-request-already-sent"
-                        >
-                          Payment request already sent. A new request is not available for this invoice.
-                        </p>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={emailPending || planMismatch}
-                          onClick={openPaymentRequestReview}
-                          data-testid="request-initial-payment"
-                        >
-                          Request initial payment
-                        </Button>
-                      )
-                    )}
-                    {invoice.clientId && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={emailPending}
-                        onClick={openDocumentCopyReview}
-                      >
-                        Send copy of payment plan and invoice
                       </Button>
                     )}
                   </div>
@@ -684,7 +625,7 @@ export function InvoiceDetail({
 
       <ArtifactReviewOverlay
         open={previewOpen}
-        eyebrow="Customer-facing invoice"
+        eyebrow="Customer-facing invoice and payment plan"
         title={humanTitle}
         onBack={() => setPreviewOpen(false)}
       >
@@ -702,80 +643,46 @@ export function InvoiceDetail({
       </ArtifactReviewOverlay>
 
       <ArtifactReviewOverlay
-        open={paymentRequestOpen}
-        eyebrow="Payment request email"
-        title="Review payment request"
-        onBack={() => setPaymentRequestOpen(false)}
+        open={sendOpen}
+        eyebrow="Invoice and payment plan"
+        title="Preview and send"
+        onBack={() => setSendOpen(false)}
         primary={
           <Button
             type="button"
             size="sm"
             disabled={emailPending || sendLock}
-            onClick={sendPaymentRequest}
-            data-testid="send-payment-request"
+            onClick={sendInvoiceAndPaymentPlan}
+            data-testid="confirm-send-invoice-and-payment-plan"
           >
             {emailPending || sendLock
               ? "Sending…"
               : emailConfigured
-                ? "Send payment request"
-                : "Open payment request in email"}
+                ? "Send"
+                : "Open in email"}
           </Button>
         }
       >
-        {paymentRequestPreview && (
-          <div className="mx-auto max-w-xl space-y-4 bg-white p-6 text-sm" data-testid="payment-request-review">
-            <p><span className="text-muted-foreground">To</span> {paymentRequestPreview.recipient}</p>
-            <p><span className="text-muted-foreground">Subject</span> {paymentRequestPreview.subject}</p>
-            <p><span className="text-muted-foreground">Client</span> {paymentRequestPreview.clientName}</p>
-            <p><span className="text-muted-foreground">Amount due now</span> {paymentRequestPreview.amountDueNow}</p>
-            {paymentRequestPreview.dueDate && (
-              <p><span className="text-muted-foreground">Due date</span> {paymentRequestPreview.dueDate}</p>
-            )}
-            <p><span className="text-muted-foreground">Total</span> {paymentRequestPreview.totalContracted}</p>
-            <p><span className="text-muted-foreground">Paid to date</span> {paymentRequestPreview.paidToDate}</p>
-            <p><span className="text-muted-foreground">Remaining</span> {paymentRequestPreview.remainingBalance}</p>
-            <p><span className="text-muted-foreground">Venue</span> {paymentRequestPreview.venueName}</p>
-            {paymentRequestPreview.paymentUrl && (
-              <p className="break-all"><span className="text-muted-foreground">Payment link</span> {paymentRequestPreview.paymentUrl}</p>
-            )}
-            <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted/20 p-3 text-xs">{paymentRequestPreview.text}</pre>
+        <div className="space-y-4">
+          {sendPreview && (
+            <p className="mx-auto max-w-3xl text-sm text-muted-foreground px-4">
+              {sendPreview.payableNow
+                ? `This sends to ${sendPreview.recipient} and includes a pay-now action for ${sendPreview.amountDueNow}. The client does not need to sign in.`
+                : `This sends to ${sendPreview.recipient} with the full schedule. Nothing is presented as payable now.`}
+            </p>
+          )}
+          <div className="bg-white py-8">
+            <InvoicePrintDocument
+              invoice={invoice}
+              venue={venue}
+              amountDueNow={amountDueNow}
+              paidToDateOverride={paidToDate}
+              cancelledPlanAmount={cancelledPlanAmount}
+              scheduleLines={scheduleLines}
+              paymentInstructions={scheduleNotes ?? invoice.notes}
+            />
           </div>
-        )}
-      </ArtifactReviewOverlay>
-
-      <ArtifactReviewOverlay
-        open={documentCopyOpen}
-        eyebrow="Payment plan and invoice"
-        title="Review payment plan copy"
-        onBack={() => setDocumentCopyOpen(false)}
-        primary={
-          <Button
-            type="button"
-            size="sm"
-            disabled={emailPending || sendLock}
-            onClick={sendDocumentCopy}
-            data-testid="send-invoice-document-copy"
-          >
-            {emailPending || sendLock
-              ? "Sending…"
-              : emailConfigured
-                ? "Send payment plan and invoice"
-                : "Open payment plan copy in email"}
-          </Button>
-        }
-      >
-        {documentCopyPreview && (
-          <div className="mx-auto max-w-xl space-y-4 bg-white p-6 text-sm" data-testid="invoice-document-review">
-            <p><span className="text-muted-foreground">To</span> {documentCopyPreview.recipient}</p>
-            <p><span className="text-muted-foreground">Subject</span> {documentCopyPreview.subject}</p>
-            <p><span className="text-muted-foreground">Client</span> {documentCopyPreview.clientName}</p>
-            <p><span className="text-muted-foreground">Venue</span> {documentCopyPreview.venueName}</p>
-            {documentCopyPreview.documentsUrl && (
-              <p className="break-all"><span className="text-muted-foreground">Documents</span> {documentCopyPreview.documentsUrl}</p>
-            )}
-            <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted/20 p-3 text-xs">{documentCopyPreview.text}</pre>
-          </div>
-        )}
+        </div>
       </ArtifactReviewOverlay>
     </div>
   );

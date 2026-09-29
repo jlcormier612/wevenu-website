@@ -236,7 +236,7 @@ export function depositFact(input: {
     key: "deposit",
     title: "Initial payment",
     state: due,
-    detail: "Ready to request",
+    detail: "Included when you send",
   };
 }
 

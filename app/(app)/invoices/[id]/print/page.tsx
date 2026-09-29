@@ -10,6 +10,7 @@ import {
 } from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 
 // No sidebar — use the root layout override
 export const dynamic = "force-dynamic";
@@ -40,6 +41,7 @@ export default async function InvoicePrintPage({ params }: Props) {
   const amountDueNow = resolveAmountDueNow({
     balanceDue: invoice.balanceDue,
     scheduleLines,
+    today: venueToday(venue.timezone),
   });
   const nextOpen =
     amountDueNow.kind === "next_installment"

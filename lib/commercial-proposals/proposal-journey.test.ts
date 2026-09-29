@@ -128,6 +128,7 @@ describe("deposit amount due now (email gate)", () => {
   it("uses schedule deposit line not invoice total", () => {
     const r = resolveAmountDueNow({
       balanceDue: 32000,
+      today: "2026-10-01",
       scheduleLines: [
         { amount: 8000, dueDate: "2026-10-01", status: "pending", label: "Initial Payment", obligationKind: "deposit" },
         { amount: 24000, dueDate: "2027-05-01", status: "pending", label: "Remaining", obligationKind: "final" },
