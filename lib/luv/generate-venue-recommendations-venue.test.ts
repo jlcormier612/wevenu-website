@@ -131,4 +131,39 @@ describe("generate_venue_recommendations — authoritative venue (no LIMIT 1)", 
       /from venue_users where user_id = auth\.uid\(\) limit 1/,
     );
   });
+
+  /**
+   * Multi-venue isolation contract (same user ∈ Venue A + Venue B):
+   * venue is resolved once via current_user_venue_id(); every subsequent
+   * read/write uses that v_venue_id only. A regenerate while active on A
+   * cannot insert/update/delete B rows (including the lead_followup CTA
+   * alignment UPDATE).
+   */
+  it("multi-venue isolation: single venue assignment; no unscoped writes", () => {
+    const { sql } = latestGenerateVenueRecommendationsMigration();
+    const body = functionBody(sql);
+
+    const assignments = body.match(/v_venue_id\s*:=/g) ?? [];
+    assert.equal(assignments.length, 1, "venue must be assigned exactly once");
+    assert.match(body, /v_venue_id\s*:=\s*public\.current_user_venue_id\(\)/);
+
+    // No membership-table resolution of any form.
+    assert.doesNotMatch(body, /from\s+venue_users/i);
+    assert.doesNotMatch(body, /from\s+venue_staff\s+where\s+user_id/i);
+
+    // Every mutating statement that targets luv_recommendations is venue-scoped.
+    const mutations = [
+      ...body.matchAll(
+        /(?:insert into|delete from|update)\s+luv_recommendations[\s\S]*?(?=insert into|delete from|update\s+luv_recommendations|return jsonb_build_object|-- ──|$)/gi,
+      ),
+    ].map((m) => m[0]);
+    assert.ok(mutations.length >= 4, "expected lead_followup / inquiry / seasonal / CTA mutations");
+    for (const chunk of mutations) {
+      assert.match(
+        chunk,
+        /v_venue_id/,
+        `unscoped luv_recommendations mutation:\n${chunk.slice(0, 200)}`,
+      );
+    }
+  });
 });
