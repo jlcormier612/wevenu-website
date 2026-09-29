@@ -134,6 +134,44 @@ describe("assistance terminology in UI", () => {
   });
 });
 
+describe("seating release-completion D1–D4", () => {
+  const workspace = readFileSync(resolve("components/events/floor-plan-workspace.tsx"), "utf8");
+  const daySeating = readFileSync(resolve("components/events/wedding-day-seating.tsx"), "utf8");
+  const managePage = readFileSync(resolve("app/(app)/events/[id]/seating/manage/page.tsx"), "utf8");
+  const printPage = readFileSync(resolve("app/(app)/events/[id]/seating-print/page.tsx"), "utf8");
+
+  it("D1: floor-plan workspace never claims only the most recently updated shared plan is visible", () => {
+    assert.doesNotMatch(workspace, /most recently\s+updated/i);
+    assert.doesNotMatch(workspace, /only ever sees the most recently/i);
+    assert.match(workspace, /Each plan is independent/);
+    assert.match(workspace, /does not replace another/);
+    assert.match(workspace, /couple chooses which plan/i);
+  });
+
+  it("D2: Floor Plans workspace links to existing Event Day Seating route when a plan is shared", () => {
+    assert.match(workspace, /Open Event Day Seating/);
+    assert.match(workspace, /href=\{`\/events\/\$\{eventId\}\/seating`\}/);
+    assert.match(workspace, /sharedPlans\.length > 0/);
+    // Must reuse the existing seating surface — no parallel route inventing a second UI.
+    assert.doesNotMatch(workspace, /\/events\/\$\{eventId\}\/seating\/day/);
+    assert.doesNotMatch(workspace, /\/wedding-day-seating/);
+  });
+
+  it("D3: Event Day Seating warns about unconverted named plus-ones when count > 0", () => {
+    assert.match(daySeating, /stats\.unconvertedPlusOnes > 0/);
+    assert.match(daySeating, /named plus-one/);
+    assert.match(daySeating, /will not\s+appear as a seatable guest/);
+    assert.match(printPage, /stats\.unconvertedPlusOnes > 0/);
+  });
+
+  it("D4: manage page role-gates with canEditSeatingWhenDelegated and redirects unauthorized staff", () => {
+    assert.match(managePage, /canEditSeatingWhenDelegated/);
+    assert.match(managePage, /getCurrentUserRole/);
+    assert.match(managePage, /redirect\(`\/events\/\$\{id\}\/seating\?plan=\$\{plan\}`\)/);
+    assert.match(managePage, /VenueSeatingEditor/);
+  });
+});
+
 describe("seating HTTP + summary contracts", () => {
   it("maps floor_plan_required to 400", () => {
     assert.equal(seatingRpcHttpResult({ error: "floor_plan_required" }).status, 400);

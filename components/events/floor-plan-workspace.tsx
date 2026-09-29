@@ -64,11 +64,11 @@ function spaceName(spaces: VenueSpace[], spaceId: string | null): string | null 
 }
 
 /**
- * Seating Experience — Phase 1 resolves its one Floor Plan by
- * clientAccess != 'hidden'. This toggle is the only UI that ever sets it —
- * sharing here is what makes a Floor Plan's tables available to the
- * couple's Seating experience at all. Independent of Share Floor Plan
- * (layout view — shared_with_couple).
+ * Seating Experience — each floor plan with clientAccess != 'hidden' is
+ * independently seatable. This toggle is the only UI that sets seating
+ * share — sharing here makes this plan's tables available to the couple's
+ * Seating experience. Independent of Share Floor Plan (layout view —
+ * shared_with_couple). Sharing one plan does not replace another.
  */
 function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
   const router = useRouter();
@@ -532,9 +532,9 @@ export function FloorPlanWorkspace({
   const submitLabel = method === "apply" ? "Apply" : method === "duplicate" ? "Duplicate" : "Create Floor Plan";
   const preBooking = Boolean(planningClientId) && !eventId;
 
-  // Seating always resolves to exactly one shared plan (whichever was most
-  // recently updated) — a coordinator who shares more than one at once has
-  // no other signal telling them which one the couple is actually seeing.
+  // Each shared plan is independently seatable (keyed by floor_plan_id).
+  // Sharing multiple plans does not replace one with another — the couple
+  // picks which plan they are working on when more than one is shared.
   const sharedPlans = floorPlans.filter((p) => p.clientAccess !== "hidden");
 
   return (
@@ -552,11 +552,17 @@ export function FloorPlanWorkspace({
           )}
       </p>
 
-      {canEdit ? (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {!preBooking && sharedPlans.length > 0 && (
+          <Button type="button" variant="outline" render={<Link href={`/events/${eventId}/seating`} />}>
+            Open Event Day Seating
+          </Button>
+        )}
+        {canEdit ? (
           <Button type="button" onClick={() => { reset(); setOpen(true); }}>+ New Floor Plan</Button>
-        </div>
-      ) : (
+        ) : null}
+      </div>
+      {!canEdit && (
         <p className="text-xs text-muted-foreground">
           View-only — ask an Owner, Manager, or Coordinator to create or edit floor plans.
         </p>
@@ -565,10 +571,10 @@ export function FloorPlanWorkspace({
       {canEdit && !preBooking && <OfferLayoutsPanel eventId={eventId} templates={templates} offers={offers} />}
 
       {sharedPlans.length > 1 && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
-          {sharedPlans.length} floor plans are shared for Seating at once — the couple only ever sees the most recently
-          updated one ({[...sharedPlans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0].name}). Unshare the
-          others if that&apos;s not the one they should be seating against.
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground">
+          {sharedPlans.length} floor plans are shared for Seating. Each plan is independent — Ceremony,
+          Reception, and backup seating stay separate. The couple chooses which plan they are working
+          on; sharing one does not replace another.
         </div>
       )}
 

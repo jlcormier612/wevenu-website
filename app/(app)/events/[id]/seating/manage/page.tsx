@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -7,6 +7,8 @@ import { VenueSeatingEditor } from "@/components/events/venue-seating-editor";
 import { getEvent } from "@/lib/events/service";
 import { getClient } from "@/lib/clients/service";
 import { clientDisplayName } from "@/lib/clients/constants";
+import { getCurrentUserRole } from "@/lib/venue/service";
+import { canEditSeatingWhenDelegated } from "@/lib/seating/authorize";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ plan?: string }> };
 
@@ -22,6 +24,13 @@ export default async function ManageSeatingPage({ params, searchParams }: Props)
   const { plan } = await searchParams;
   const event = await getEvent(id);
   if (!event || !event.clientId || !plan) notFound();
+
+  const role = await getCurrentUserRole();
+  // UI gate only — SECURITY DEFINER RPCs remain the authoritative write gate.
+  // Unauthorized staff must not land on a misleading edit surface.
+  if (!canEditSeatingWhenDelegated(role)) {
+    redirect(`/events/${id}/seating?plan=${plan}`);
+  }
 
   const client = await getClient(event.clientId);
   const coupleName = client

@@ -149,6 +149,14 @@ export default async function SeatingPrintPage({ params, searchParams }: Props) 
                   <span><strong>{data.stats.tableCount}</strong> tables</span>
                 </div>
 
+                {data.stats.unconvertedPlusOnes > 0 && (
+                  <p style={{ fontSize: 12, color: "#8B6914", marginBottom: 16, padding: "8px 12px", background: "#FFF8E7", borderRadius: 8 }}>
+                    Note: {data.stats.unconvertedPlusOnes} named plus-one{data.stats.unconvertedPlusOnes === 1 ? "" : "s"}{" "}
+                    {data.stats.unconvertedPlusOnes === 1 ? "is" : "are"} not yet converted to a full guest and
+                    {data.stats.unconvertedPlusOnes === 1 ? " is" : " are"} not listed below as seatable.
+                  </p>
+                )}
+
                 {[...data.tables].sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "")).map((t) => (
                   <div key={t.id} className="seating-table" style={{ borderTop: "1px solid #DED6CA", padding: "12px 0" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
