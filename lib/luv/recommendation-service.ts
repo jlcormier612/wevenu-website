@@ -1,10 +1,14 @@
 import { createClient } from "@/integrations/supabase/server";
+import { syncClientAskGapRecommendations } from "./ask-gap-recommendations";
 import type { RawRecommendationRow, VenueRecommendation } from "./recommendation-types";
 
 export async function getVenueRecommendations(): Promise<VenueRecommendation[]> {
   try {
     const supabase = await createClient();
     await supabase.rpc("generate_venue_recommendations");
+    // Guide-gap layer: Couple Ask information_gap aggregates → luv_recommendations.
+    // Classification + published client Guide coverage run in app code; RPC writes.
+    await syncClientAskGapRecommendations(supabase);
     const { data, error } = await supabase.rpc("get_venue_recommendations");
     if (error || !data) return [];
     return (data as RawRecommendationRow[]).map(row => ({
