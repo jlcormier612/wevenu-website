@@ -22,6 +22,8 @@ import { getActivationScore, getNextPendingMilestone } from "@/lib/activation/se
 import type { ActivationScore } from "@/lib/activation/types";
 import { GAP_COPY } from "@/lib/dashboard/gap-copy";
 import { computeSetupGapObservations } from "@/lib/luv/setup-observations";
+import { loadVenueReadiness } from "@/lib/luv/venue-readiness-load";
+import { readinessDashboardObservations } from "@/lib/luv/venue-readiness";
 import { getDailyBriefing } from "@/lib/luv/briefing-service";
 import { getArticlesForGapKeys } from "@/lib/success-library/service";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
@@ -342,7 +344,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
   const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, dismissedObservationIds, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, briefing] = await Promise.all([
+  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, dismissedObservationIds, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, venueReadiness, nextPendingMilestone, briefing] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
@@ -355,6 +357,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     getPendingLuvActions().catch(() => []),
     getLuvPerformanceObservations().catch(() => []),
     getActivationScore(venue.id).catch(() => null),
+    loadVenueReadiness().catch(() => null),
     getNextPendingMilestone(venue.id).catch(() => null),
     getDailyBriefing(venue.id).catch(() => emptyBriefing),
   ]);
@@ -363,10 +366,15 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // one voice, not two. When off, return nothing so the Dashboard Luv
   // card stays hidden (it also gates on luvObservationsEnabled below).
   const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
+  // Readiness is appended after existing observations so a setup gap never
+  // outranks tour intelligence, communication health, or the activation gaps
+  // the Dashboard already shows. Only one blocker is eligible, and dismissal
+  // uses the same observation id filter.
+  const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
   const observationsOn = luvSettings?.observationsEnabled !== false;
   const luvObservations = observationsOn
     ? filterVisibleObservations(
-        [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations],
+        [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations, ...readinessObservations],
         dismissedObservationIds,
       )
     : [];

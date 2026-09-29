@@ -19,7 +19,7 @@ import { STAGE_COPY } from "@/lib/setup-hub/stage-copy";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
-import type { OperationalReadiness } from "@/lib/operational-readiness/types";
+import type { VenueReadinessAssessment } from "@/lib/luv/venue-readiness";
 
 type StageRow = {
   key: keyof typeof STAGE_COPY;
@@ -50,7 +50,7 @@ export function SetupHubOverview({
   activeTeamCount,
   stripeConnected,
   quickbooksConnected,
-  operationalReadiness,
+  venueReadiness,
   maxSimultaneousEvents,
 }: {
   venueName: string;
@@ -67,7 +67,7 @@ export function SetupHubOverview({
   activeTeamCount: number;
   stripeConnected: boolean;
   quickbooksConnected: boolean;
-  operationalReadiness?: OperationalReadiness | null;
+  venueReadiness?: VenueReadinessAssessment | null;
   maxSimultaneousEvents?: number | null;
 }) {
   const yourVenueDone = !!hubState?.yourVenueReviewedAt;
@@ -296,7 +296,7 @@ export function SetupHubOverview({
         readyToInviteCouples={hubState?.readyToInviteCouples ?? false}
         readyToInviteCouplesAt={hubState?.readyToInviteCouplesAt ?? null}
       />
-      <OperationalReadinessCard readiness={operationalReadiness ?? null} />
+      <OperationalReadinessCard assessment={venueReadiness ?? null} />
     </div>
   );
 }

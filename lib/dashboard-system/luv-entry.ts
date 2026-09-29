@@ -152,6 +152,7 @@ export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
 
   // Known venue-wide families (explicit allowlist).
   if (obs.id.startsWith("setup-gap-")) return true;
+  if (obs.id.startsWith("venue-readiness-")) return true;
   if (obs.id.startsWith("insight_")) return true;
   if (obs.id === "comm-all-delivered" || obs.id === "comm-recent-failures") return true;
 
