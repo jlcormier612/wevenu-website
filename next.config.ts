@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // Produces a minimal, self-contained .next/standalone server instead of
   // requiring the full node_modules tree in the container image.
   output: "standalone",
+  // Version skew protection. The venue-app image build sets NEXT_DEPLOYMENT_ID
+  // to the git SHA. Unset locally, so `next dev` does not invent an id.
+  deploymentId: process.env.NEXT_DEPLOYMENT_ID || undefined,
   // Local Playwright/acceptance often hits 127.0.0.1 while Next serves as localhost.
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   images: {

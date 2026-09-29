@@ -32,6 +32,10 @@ ARG NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
 ARG NEXT_PUBLIC_NOTIFICATIONS_SECRET
 ARG NEXT_PUBLIC_WEVENU_ADMIN
+# Git SHA of this image. Next bakes it into the client as deploymentId so a
+# browser that hits a different task during a rollout reloads instead of
+# failing a Server Action. Must match the runtime env of the same name.
+ARG NEXT_DEPLOYMENT_ID
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
@@ -42,21 +46,25 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY \
     NEXT_PUBLIC_NOTIFICATIONS_SECRET=$NEXT_PUBLIC_NOTIFICATIONS_SECRET \
     NEXT_PUBLIC_WEVENU_ADMIN=$NEXT_PUBLIC_WEVENU_ADMIN \
+    NEXT_DEPLOYMENT_ID=$NEXT_DEPLOYMENT_ID \
     NEXT_TELEMETRY_DISABLED=1
 # Fail the image build rather than shipping a client bundle that inlined "".
 # Also write .env.production so Next/Turbopack inlines NEXT_PUBLIC_* from an
 # env file during `next build` (process.env alone was compiling to empty).
 RUN test -n "$NEXT_PUBLIC_SUPABASE_URL" \
     && test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+    && test -n "$NEXT_DEPLOYMENT_ID" \
     && printf '%s\n' \
       "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" \
       "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+      "NEXT_DEPLOYMENT_ID=${NEXT_DEPLOYMENT_ID}" \
       > .env.production
 RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_DEPLOYMENT_ID
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NEXT_DEPLOYMENT_ID=$NEXT_DEPLOYMENT_ID
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 
 COPY --from=builder /app/.next/standalone ./
