@@ -30,8 +30,9 @@ export type VenueReadinessFacts = {
   /** Public inquiry form can be opened (/form/{embed_key}). */
   inquiryFormReady: boolean;
   /**
-   * A lead row with source website_form exists. Null when that lookup failed —
-   * never treated as "no leads."
+   * A lead from the website inquiry channel exists.
+   * The live public form writes source `website`. `website_form` is the older value and still counts.
+   * Null when that lookup failed — never treated as "no leads."
    */
   inquiryFormReceivedLead: boolean | null;
   /**
@@ -219,7 +220,7 @@ export function assessVenueReadiness(facts: VenueReadinessFacts): VenueReadiness
       "The form is live in Hello to Cheers. Sharing it — or embedding it — is what lets a couple on your website become a lead here automatically. Hello to Cheers can't see your website, so this stays open until an inquiry actually arrives.",
       "Share your inquiry form",
       "/setup-hub/lead-capture",
-      "A lead with source website_form exists. Marking the channel configured does not count.",
+      "A lead from the website inquiry form exists (source website, or the older website_form). Marking the channel configured does not count.",
     ));
   }
 

@@ -71,7 +71,7 @@ async function loadVenueReadinessFacts(venueId: string): Promise<VenueReadinessF
     facebookForms,
   ] = await Promise.all([
     venueQuery,
-    supabase.from("leads").select("id", { count: "exact", head: true }).eq("venue_id", venueId).eq("source", "website_form"),
+    supabase.from("leads").select("id", { count: "exact", head: true }).eq("venue_id", venueId).in("source", ["website", "website_form"]),
     supabase.from("lead_intake_attempts").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("source", "email_parsed_generic").eq("status", "accepted"),
     supabase.from("venue_setup_hub_state").select("lead_capture_path").eq("venue_id", venueId)

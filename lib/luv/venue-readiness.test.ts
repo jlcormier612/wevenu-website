@@ -271,6 +271,8 @@ describe("venue readiness — tenant scoping and no second system", () => {
     assert.match(source, /stripe_charges_enabled/);
     assert.match(source, /\.eq\("is_active", true\)/);
     assert.doesNotMatch(source, /source_master_key/);
+    assert.match(source, /\.in\("source", \["website", "website_form"\]\)/);
+    assert.doesNotMatch(source, /\.eq\("source", "website_form"\)/);
   });
 
   it("appends dashboard readiness after existing observations and does not add a table", () => {
