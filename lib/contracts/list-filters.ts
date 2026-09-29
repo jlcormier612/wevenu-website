@@ -1,5 +1,37 @@
 import { deriveContractSigningUiState } from "@/lib/contracts/signers";
+import { selectCurrentAgreements } from "@/lib/contracts/version-lineage";
 import type { Contract } from "@/lib/contracts/types";
+
+export type ContractWorkflowListRow = Contract & {
+  listVersionNumber: number;
+  listFamilySize: number;
+};
+
+/** List/badge population: one row per amends_contract_id family (current tip). */
+export function rollupContractsToCurrentAgreements(
+  contracts: readonly Contract[],
+): ContractWorkflowListRow[] {
+  const selections = selectCurrentAgreements(
+    contracts.map((c) => ({
+      id: c.id,
+      amendsContractId: c.amendsContractId,
+      createdAt: c.createdAt,
+    })),
+  );
+  const byId = new Map(contracts.map((c) => [c.id, c]));
+  return selections
+    .map((s) => {
+      const current = byId.get(s.currentId);
+      if (!current) return null;
+      return {
+        ...current,
+        listVersionNumber: s.versionNumber,
+        listFamilySize: s.familyIds.length,
+      };
+    })
+    .filter((row): row is ContractWorkflowListRow => row != null)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
 
 export type ContractListFilterKey =
   | "action_required"

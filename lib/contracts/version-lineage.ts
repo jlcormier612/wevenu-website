@@ -144,6 +144,86 @@ export function buildContractVersionFamily(
   return entries;
 }
 
+export type AgreementLineagePointer = {
+  id: string;
+  amendsContractId: string | null;
+  createdAt: string;
+};
+
+export type CurrentAgreementSelection = {
+  currentId: string;
+  familyIds: string[];
+  versionNumber: number;
+};
+
+/**
+ * Roll up contract instances into agreement families using ONLY
+ * amends_contract_id. Same client/title/event is never a family.
+ * Current = highest version ordinal in the family (then latest created_at).
+ */
+export function selectCurrentAgreements(
+  nodes: AgreementLineagePointer[],
+): CurrentAgreementSelection[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const children = new Map<string, string[]>();
+  for (const n of nodes) {
+    if (!n.amendsContractId || !byId.has(n.amendsContractId)) continue;
+    const list = children.get(n.amendsContractId) ?? [];
+    list.push(n.id);
+    children.set(n.amendsContractId, list);
+  }
+
+  const processed = new Set<string>();
+  const selections: CurrentAgreementSelection[] = [];
+
+  for (const n of nodes) {
+    if (processed.has(n.id)) continue;
+
+    let root = n.id;
+    const seenUp = new Set<string>();
+    while (true) {
+      if (seenUp.has(root)) break;
+      seenUp.add(root);
+      const parent = byId.get(root)?.amendsContractId ?? null;
+      if (!parent || !byId.has(parent)) break;
+      root = parent;
+    }
+
+    const familyIds: string[] = [];
+    const queue = [root];
+    const seen = new Set<string>();
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      familyIds.push(id);
+      for (const child of children.get(id) ?? []) queue.push(child);
+    }
+    for (const id of familyIds) processed.add(id);
+
+    let currentId = familyIds[0]!;
+    let bestVersion = deriveVersionNumber(currentId, byId);
+    let bestCreated = byId.get(currentId)?.createdAt ?? "";
+    for (const id of familyIds) {
+      const version = deriveVersionNumber(id, byId);
+      const created = byId.get(id)?.createdAt ?? "";
+      if (version > bestVersion || (version === bestVersion && created > bestCreated)) {
+        currentId = id;
+        bestVersion = version;
+        bestCreated = created;
+      }
+    }
+
+    selections.push({
+      currentId,
+      familyIds,
+      versionNumber: bestVersion,
+    });
+  }
+
+  return selections;
+}
+
 export function formatVersionLabel(versionNumber: number): string {
   return `Version ${versionNumber}`;
 }

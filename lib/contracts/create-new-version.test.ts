@@ -6,6 +6,7 @@ import {
   deriveVersionNumber,
   formatVersionLabel,
   isContractContentLocked,
+  selectCurrentAgreements,
   statusLabelForVersion,
   type ContractLineageNode,
 } from "@/lib/contracts/version-lineage";
@@ -63,6 +64,20 @@ describe("contract version lineage (amends_contract_id)", () => {
     assert.equal(family[1].current, true);
     assert.equal(family[1].amendsContractId, "a");
     assert.equal(family[2].versionNumber, 3);
+  });
+
+  it("selects only the current tip of an amends family", () => {
+    const current = selectCurrentAgreements(
+      nodes.map((n) => ({
+        id: n.id,
+        amendsContractId: n.amendsContractId,
+        createdAt: n.createdAt,
+      })),
+    );
+    assert.equal(current.length, 1);
+    assert.equal(current[0].currentId, "c");
+    assert.equal(current[0].versionNumber, 3);
+    assert.deepEqual(new Set(current[0].familyIds), new Set(["a", "b", "c"]));
   });
 
   it("formats human labels", () => {
@@ -341,6 +356,8 @@ describe("Create New Version service wiring", () => {
     assert.doesNotMatch(detail, /Create Amendment/);
     assert.match(detail, /const canReopen = false/);
     assert.match(detail, /Version history/);
+    assert.match(detail, /Created /);
+    assert.match(detail, /v.signedAt/);
   });
 
   it("actions expose createNewVersionFromContractAction", () => {

@@ -13,7 +13,10 @@ import {
   type PaymentAttentionSchedule,
   type TaskAttentionRow,
 } from "@/lib/navigation/attention";
-import { countVenueActionRequiredContracts } from "@/lib/contracts/list-filters";
+import {
+  countVenueActionRequiredContracts,
+  rollupContractsToCurrentAgreements,
+} from "@/lib/contracts/list-filters";
 import { getContracts } from "@/lib/contracts/service";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import { getCurrentStaffMember } from "@/lib/team/service";
@@ -119,7 +122,9 @@ export async function getNavAttentionCounts(): Promise<NavAttentionCounts> {
     lineItems: lineItems.filter((i) => i.scheduleId === s.id),
   }));
   const payments = countPaymentAttention(paymentSchedules);
-  const contractsCount = countVenueActionRequiredContracts(contracts);
+  const contractsCount = countVenueActionRequiredContracts(
+    rollupContractsToCurrentAgreements(contracts),
+  );
 
   return { leads, tours, inbox, tasks, payments, contracts: contractsCount };
 }

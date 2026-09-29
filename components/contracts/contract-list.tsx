@@ -17,14 +17,15 @@ import {
   contractMatchesListFilter,
   parseContractListFilter,
   type ContractListFilterKey,
+  type ContractWorkflowListRow,
 } from "@/lib/contracts/list-filters";
-import type { Contract } from "@/lib/contracts/types";
+import { formatVersionLabel } from "@/lib/contracts/version-lineage";
 
 export function ContractList({
   contracts,
   initialFilter,
 }: {
-  contracts: Contract[];
+  contracts: ContractWorkflowListRow[];
   initialFilter?: string;
 }) {
   const [query, setQuery] = React.useState("");
@@ -101,7 +102,14 @@ export function ContractList({
               {filtered.map((contract) => (
                 <TableRow key={contract.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/contracts/${contract.id}`} className="hover:text-primary">{contract.title}</Link>
+                    <div className="flex flex-col gap-0.5">
+                      <Link href={`/contracts/${contract.id}`} className="hover:text-primary">{contract.title}</Link>
+                      {contract.listFamilySize > 1 ? (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {formatVersionLabel(contract.listVersionNumber)}
+                        </span>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {contract.clientName

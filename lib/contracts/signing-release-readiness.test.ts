@@ -68,10 +68,12 @@ describe("progressive human-facing contract status", () => {
 
   it("list and badge use progressive labels, not Sent/Signed jargon", () => {
     const list = read("components/contracts/contract-list.tsx");
+    const filters = read("lib/contracts/list-filters.ts");
     const badge = read("components/contracts/contract-status-badge.tsx");
-    assert.match(list, /Sent to Client/);
-    assert.match(list, /Awaiting Venue Signature/);
-    assert.match(list, /Fully Executed/);
+    assert.match(list, /CONTRACT_LIST_FILTERS/);
+    assert.match(filters, /Sent to Client/);
+    assert.match(filters, /Awaiting Venue Signature/);
+    assert.match(filters, /Fully Executed/);
     assert.match(badge, /deriveContractSigningUiState/);
     assert.doesNotMatch(badge, /STATUS_LABEL/);
   });

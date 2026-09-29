@@ -67,6 +67,10 @@ import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/cont
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
 import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
 import type { ClientSignerSeed } from "@/lib/contracts/repository";
+import {
+  rollupContractsToCurrentAgreements,
+  type ContractWorkflowListRow,
+} from "@/lib/contracts/list-filters";
 
 export { hashContractContent } from "@/lib/contracts/signers";
 
@@ -190,6 +194,11 @@ export async function getContracts(): Promise<Contract[]> {
   const venue = await getCurrentVenue();
   if (!venue) return [];
   return repo.getContracts(await createClient(), venue.id);
+}
+
+/** Financials Contracts list — current agreement tip per amends_contract_id family. */
+export async function getContractsForWorkflowList(): Promise<ContractWorkflowListRow[]> {
+  return rollupContractsToCurrentAgreements(await getContracts());
 }
 
 export async function getContractDetail(id: string): Promise<ContractWithDetails | null> {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ContractList } from "@/components/contracts/contract-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
-import { getContracts } from "@/lib/contracts/service";
+import { getContractsForWorkflowList } from "@/lib/contracts/service";
 
 export const metadata: Metadata = { title: "Contracts" };
 
@@ -12,7 +12,7 @@ type Props = { searchParams: Promise<{ filter?: string }> };
 
 export default async function ContractsPage({ searchParams }: Props) {
   const { filter } = await searchParams;
-  const contracts = await getContracts();
+  const contracts = await getContractsForWorkflowList();
   return (
     <div className="space-y-6">
       <PageHeader

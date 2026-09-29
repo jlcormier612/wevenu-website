@@ -544,6 +544,13 @@ export function ContractDetail({
                         {formatVersionLabel(v.versionNumber)} · {statusLabelForVersion(v)}
                       </a>
                     )}
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      Created {formatContractDate(v.createdAt.slice(0, 10))}
+                      {v.signedAt
+                        ? ` · Signed ${formatContractDate(venueCalendarDateFromValue(v.signedAt, venueTimezone))}`
+                        : null}
+                      {v.finalized ? " · Finalized" : null}
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {v.locked && <Badge variant="muted"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}
