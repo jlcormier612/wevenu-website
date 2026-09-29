@@ -17,6 +17,8 @@ import { Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  createStandardClientPlanningTemplateAction,
+  createStandardVenueWorkflowTemplateAction,
   deleteTemplateAction, duplicateTemplateAction, renameTemplateAction,
   setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/playbooks/actions";
@@ -34,6 +36,7 @@ import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply
 import { PlaybookStarterPicker } from "@/components/playbooks/playbook-starter-picker";
 import { EVENT_TYPES, eventTypeLabel, formatRelative } from "@/lib/leads/constants";
 import { PLAYBOOK_KINDS, playbookKindLabel } from "@/lib/playbooks/constants";
+import { isStandardPlanningMasterKey } from "@/lib/playbooks/planning-starter-visibility";
 import type { PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 
 const OTHER_EVENT_TYPE = { value: "__other__", label: "Other" };
@@ -132,12 +135,13 @@ function UsePlaybookFlow({
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
+  template, busy, onRename, onDuplicate, onAddAnotherCopy, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
 }: {
   template: PlaybookTemplateWithStats;
   busy: boolean;
   onRename: () => void;
   onDuplicate: () => void;
+  onAddAnotherCopy?: () => void;
   onSetDefault: () => void;
   onArchiveToggle: () => void;
   onDelete: () => void;
@@ -175,6 +179,9 @@ function TemplateCard({
       overflowPending={busy}
       overflowItems={archivedView ? [] : [
         { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
+        ...(onAddAnotherCopy
+          ? [{ id: "add-another-copy", label: LIBRARY_LABELS.addAnotherCopy, onClick: onAddAnotherCopy }]
+          : []),
         { id: "rename", label: "Rename", onClick: onRename },
         ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
         { id: "archive", label: archiveToggleLabel(template.isArchived), onClick: onArchiveToggle, separatorBefore: true },
@@ -226,6 +233,20 @@ export function PlaybooksSection({
     const result = await withBusy(id, () => duplicateTemplateAction(id, `${name} (Copy)`));
     if (result.ok) {
       toast.success("Template duplicated.");
+      router.push(`/library/playbooks/${(result as { templateId?: string }).templateId}`);
+    }
+  }
+
+  async function handleAddAnotherCopy(template: PlaybookTemplateWithStats) {
+    if (!isStandardPlanningMasterKey(template.sourceMasterKey)) return;
+    const masterKey = template.sourceMasterKey;
+    const result = await withBusy(template.id, () =>
+      masterKey === "PB-CLIENT-01"
+        ? createStandardClientPlanningTemplateAction()
+        : createStandardVenueWorkflowTemplateAction(),
+    );
+    if (result.ok) {
+      toast.success("Another copy created — opening the editor.");
       router.push(`/library/playbooks/${(result as { templateId?: string }).templateId}`);
     }
   }
@@ -329,6 +350,11 @@ export function PlaybooksSection({
                     key={t.id} template={t} busy={busyId === t.id}
                     onRename={() => handleRename(t.id, t.name)}
                     onDuplicate={() => handleDuplicate(t.id, t.name)}
+                    onAddAnotherCopy={
+                      isStandardPlanningMasterKey(t.sourceMasterKey)
+                        ? () => handleAddAnotherCopy(t)
+                        : undefined
+                    }
                     onSetDefault={() => handleSetDefault(t.id, t)}
                     onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
                     onDelete={() => setDeleting(t)}

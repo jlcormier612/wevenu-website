@@ -17,14 +17,14 @@ import {
   STANDARD_VENUE_WORKFLOW_MILESTONES,
   STANDARD_VENUE_WORKFLOW_TASKS,
 } from "@/lib/playbooks/constants";
+import { visiblePlanningStarterKinds } from "@/lib/playbooks/planning-starter-visibility";
 import type { PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 
 export function PlanningStarterExamples({ templates }: { templates: PlaybookTemplateWithStats[] }) {
   const router = useRouter();
   const [pending, setPending] = React.useState<"client" | "venue" | null>(null);
 
-  const hasClientMaster = templates.some((t) => t.sourceMasterKey === "PB-CLIENT-01");
-  const hasVenueMaster = templates.some((t) => t.sourceMasterKey === "PB-VENUE-01");
+  const { showClient, showVenue } = visiblePlanningStarterKinds(templates);
 
   async function create(kind: "client" | "venue") {
     setPending(kind);
@@ -40,6 +40,8 @@ export function PlanningStarterExamples({ templates }: { templates: PlaybookTemp
     router.push(`/library/playbooks/${result.templateId}`);
   }
 
+  if (!showClient && !showVenue) return null;
+
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2">
@@ -52,41 +54,37 @@ export function PlanningStarterExamples({ templates }: { templates: PlaybookTemp
         </div>
       </div>
 
-      <LibraryAssetCard
-        title="Standard Wedding — Client Planning"
-        description="A client-facing checklist for after booking, through post-event, ready for your venue to customize."
-        meta={`${STANDARD_CLIENT_PLANNING_TASKS.length} tasks · ${STANDARD_CLIENT_PLANNING_MILESTONES.length} milestones`}
-        isStarter
-        primaryActions={[{
-          id: "use-client",
-          label: pending === "client"
-            ? "Creating…"
-            : hasClientMaster
-              ? "Add again"
-              : "Use this starter",
-          onClick: () => create("client"),
-          emphasis: "use",
-          disabled: pending !== null,
-        }]}
-      />
+      {showClient && (
+        <LibraryAssetCard
+          title="Standard Wedding — Client Planning"
+          description="A client-facing checklist for after booking, through post-event, ready for your venue to customize."
+          meta={`${STANDARD_CLIENT_PLANNING_TASKS.length} tasks · ${STANDARD_CLIENT_PLANNING_MILESTONES.length} milestones`}
+          isStarter
+          primaryActions={[{
+            id: "use-client",
+            label: pending === "client" ? "Creating…" : "Use this starter",
+            onClick: () => create("client"),
+            emphasis: "use",
+            disabled: pending !== null,
+          }]}
+        />
+      )}
 
-      <LibraryAssetCard
-        title="Standard Wedding — Venue Planning"
-        description="An internal team checklist from booking through post-event, ready for your venue to customize."
-        meta={`${STANDARD_VENUE_WORKFLOW_TASKS.length} tasks · ${STANDARD_VENUE_WORKFLOW_MILESTONES.length} milestones`}
-        isStarter
-        primaryActions={[{
-          id: "use-venue",
-          label: pending === "venue"
-            ? "Creating…"
-            : hasVenueMaster
-              ? "Add again"
-              : "Use this starter",
-          onClick: () => create("venue"),
-          emphasis: "use",
-          disabled: pending !== null,
-        }]}
-      />
+      {showVenue && (
+        <LibraryAssetCard
+          title="Standard Wedding — Venue Planning"
+          description="An internal team checklist from booking through post-event, ready for your venue to customize."
+          meta={`${STANDARD_VENUE_WORKFLOW_TASKS.length} tasks · ${STANDARD_VENUE_WORKFLOW_MILESTONES.length} milestones`}
+          isStarter
+          primaryActions={[{
+            id: "use-venue",
+            label: pending === "venue" ? "Creating…" : "Use this starter",
+            onClick: () => create("venue"),
+            emphasis: "use",
+            disabled: pending !== null,
+          }]}
+        />
+      )}
 
       {pending && <Button variant="ghost" size="sm" disabled><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Creating starter…</Button>}
     </section>

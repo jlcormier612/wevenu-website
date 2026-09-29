@@ -24,6 +24,7 @@ export const LIBRARY_LABELS = {
   useQrCampaign: "Use QR Campaign",
   openReport: "Open report",
   duplicate: "Duplicate",
+  addAnotherCopy: "Add another copy",
   archive: "Archive",
   restore: "Restore",
   delete: "Delete",
