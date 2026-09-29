@@ -15,8 +15,15 @@ export default async function PublicFormsLibraryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Public Forms"
-        description="Purpose-specific lead capture forms you can share by link or QR — separate from your main inquiry form."
+        description="Purpose-specific lead capture forms — separate from your main inquiry form."
       />
+      <p className="rounded-sm border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        Create a form once, then share it directly or use it as the destination for a QR campaign (bridal show, open house, brochure, sign).
+        {" "}
+        <a href="/library/qr-campaigns" className="font-medium text-heading hover:underline">
+          QR Campaigns →
+        </a>
+      </p>
       <PublicFormList
         initialForms={forms}
         appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}

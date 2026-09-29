@@ -3,13 +3,14 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookPlus, Loader2, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   addInventoryTemplateStarterAgainAction,
   createInventoryTemplateAction,
   deleteInventoryTemplateAction,
+  duplicateInventoryTemplateAction,
   ensureEventInventoryAction,
   setInventoryTemplateArchivedAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
@@ -210,12 +211,13 @@ function UseInventoryTemplateSheet({
 }
 
 function TemplateCard({
-  template, archivedView, onUse, onDelete,
+  template, archivedView, onUse, onDelete, onDuplicate,
 }: {
   template: InventoryTemplate;
   archivedView?: boolean;
   onUse: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }) {
   const [pending, startTransition] = React.useTransition();
   function toggleArchive() {
@@ -247,6 +249,12 @@ function TemplateCard({
       overflowPending={pending}
       overflowItems={archivedView ? [] : [
         {
+          id: "duplicate",
+          label: LIBRARY_LABELS.duplicate,
+          onClick: onDuplicate,
+          icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+        },
+        {
           id: "archive",
           label: archiveToggleLabel(template.isArchived),
           onClick: toggleArchive,
@@ -276,6 +284,7 @@ export function InventoryTemplateList({
   missingStarterKeys?: InventoryTemplateStarterKey[];
   events?: { id: string; name: string; eventDate: string }[];
 }) {
+  const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [using, setUsing] = React.useState<InventoryTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<InventoryTemplate | null>(null);
@@ -300,6 +309,17 @@ export function InventoryTemplateList({
         key={t.id} template={t} archivedView={archivedView}
         onUse={() => setUsing(t)}
         onDelete={() => setDeleting(t)}
+        onDuplicate={() => {
+          void (async () => {
+            const result = await duplicateInventoryTemplateAction(t.id, `${t.name} (Copy)`);
+            if (result.ok) {
+              toast.success("Template duplicated.");
+              router.push(`/library/inventory-templates/${result.templateId}`);
+            } else {
+              toast.error(result.message ?? result.errors?.name ?? "Could not duplicate.");
+            }
+          })();
+        }}
       />
     );
   }

@@ -151,7 +151,7 @@ describe("Wave 2 — QR + lead visibility", () => {
     assert.match(service, /export async function listQrCampaignsForPublicForm/);
     assert.match(service, /from\("qr_campaigns"\)/);
     const builder = readFileSync(join(root, "components/public-forms/public-form-builder.tsx"), "utf8");
-    assert.match(builder, /Create QR code/);
+    assert.match(builder, /Create QR campaign/);
     assert.match(builder, /createQrForPublicFormAction/);
     const actions = readFileSync(join(root, "app/(app)/library/public-forms/actions.ts"), "utf8");
     assert.match(actions, /createQrCampaign/);

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { InventoryTemplateList } from "@/components/event-inventory/inventory-template-list";
+import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getEvents } from "@/lib/events/service";
 import { ensureInventoryStartersForCurrentVenue } from "@/lib/inventory/provision";
@@ -23,6 +24,17 @@ export default async function InventoryTemplatesLibraryPage() {
         title="Inventory Templates"
         description="What you typically use for a kind of event. Customize a starter, then apply it to create Working Inventory for a booking."
       />
+      <LibraryHowItWorks>
+        Build a reusable inventory setup, then apply it to an event. Applying creates that event’s inventory copy — this template stays unchanged.
+      </LibraryHowItWorks>
+      <LibraryDependencyNote
+        links={[
+          { href: "/library/inventory", label: "Manage inventory →" },
+          { href: "/library", label: "All templates →" },
+        ]}
+      >
+        Uses items from your Available Inventory catalog.
+      </LibraryDependencyNote>
       <InventoryTemplateList
         templates={templates}
         missingStarterKeys={missingStarterKeys}

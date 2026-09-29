@@ -434,7 +434,8 @@ export function PublicFormBuilder({
       <div className="space-y-3 rounded-lg border border-border p-4">
         <p className="text-sm font-medium text-heading">QR codes</p>
         <p className="text-xs text-muted-foreground">
-          Several QR codes can point to this same form. Each keeps its own name and scan history.
+          This form can be shared directly or used as the destination for a QR campaign
+          (bridal show, open house, brochure, sign). Each QR keeps its own name and scan history.
         </p>
         {qrCodes.length === 0 ? (
           <p className="text-xs text-muted-foreground">No QR codes point to this form yet.</p>
@@ -469,7 +470,7 @@ export function PublicFormBuilder({
               />
             </div>
             <Button type="button" variant="outline" size="sm" onClick={handleCreateQr} disabled={pending}>
-              Create QR code
+              Create QR campaign
             </Button>
           </div>
         )}

@@ -272,3 +272,23 @@ export async function applyTemplateItems(client: DbClient, venueId: string, even
   const { error } = await client.from("event_inventory_items").insert(rows);
   if (error) throw error;
 }
+
+export async function duplicateTemplate(
+  client: DbClient, venueId: string, sourceId: string, newName: string,
+): Promise<string> {
+  const source = await getTemplate(client, venueId, sourceId);
+  if (!source) throw new Error("Template not found.");
+  const newId = await insertTemplate(client, venueId, newName, source.description ?? "");
+  for (const [i, item] of source.items.entries()) {
+    await insertTemplateItem(client, venueId, newId, {
+      inventoryItemId: item.inventoryItemId,
+      name: item.name,
+      category: item.category ?? "",
+      quantity: String(item.quantity),
+      unitPrice: item.unitPrice != null ? String(item.unitPrice) : "",
+      isIncluded: item.isIncluded,
+      notes: item.notes ?? "",
+    }, i);
+  }
+  return newId;
+}

@@ -26,6 +26,16 @@ export default async function ChoicesTemplateDetailPage({ params }: { params: Pr
         </Link>
         <PageHeader title={template.name} description="Define choice groups and options. Clients select after you send; you finalize into Event Order." />
       </div>
+      <p className="rounded-sm border border-border bg-card px-3 py-2.5 text-xs text-muted-foreground">
+        Options can use offerings from your Offerings catalog.{" "}
+        <Link href="/library/offerings" className="font-medium text-heading hover:underline">
+          Manage offerings →
+        </Link>
+        {" · "}
+        <Link href={`/library/choices-templates/${template.id}/preview`} className="font-medium text-heading hover:underline">
+          Preview →
+        </Link>
+      </p>
       <ChoicesTemplateDetail template={template} offerings={offerings} />
     </div>
   );

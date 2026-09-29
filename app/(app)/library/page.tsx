@@ -6,6 +6,7 @@ import {
   Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
 } from "lucide-react";
 
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { getTemplates as getContractTemplates } from "@/lib/contracts/service";
@@ -30,28 +31,26 @@ import { listOfferings } from "@/lib/offerings/service";
 
 export const metadata: Metadata = { title: "Templates" };
 
-// Work Package BA4, Step 1B — the Library landing page. Organizes the
-// existing template destinations. Work Package D7 replaced the "Coming
-// later" placeholders with real capabilities one at a time as each one
-// actually shipped — see docs/library-remaining-capabilities-implementation.md.
-
 type LibraryCard = {
   title: string;
   description: string;
   href?: string;
   count?: number;
   icon: React.ElementType;
+  kind?: "template" | "catalog";
 };
 
-function ToolboxCard({ title, description, href, count, icon: Icon }: LibraryCard) {
+function ToolboxCard({ title, description, href, count, icon: Icon, kind }: LibraryCard) {
   const body = (
     <div className="flex h-full items-start gap-3 rounded-sm border border-border bg-card p-4 transition-colors hover:bg-muted/20">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-heading">{title}</p>
+          {kind === "template" && <Badge variant="accent" className="text-[10px]">Template</Badge>}
+          {kind === "catalog" && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
           {count !== undefined && <Badge variant="muted">{count}</Badge>}
         </div>
         <p className="text-xs text-muted-foreground">{description}</p>
@@ -61,27 +60,27 @@ function ToolboxCard({ title, description, href, count, icon: Icon }: LibraryCar
   return href ? <Link href={href}>{body}</Link> : body;
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({
+  title,
+  guidance,
+  children,
+}: {
+  title: string;
+  guidance: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <div className="space-y-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+        <LibraryHowItWorks>{guidance}</LibraryHowItWorks>
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
 
 export default async function LibraryPage() {
-  // Work Package D2, Step 8 — counts must reflect active, reusable
-  // templates only. This page originally passed includeArchived=true for
-  // Contracts/Messages/QR (fixed by omitting the flag, its default is
-  // false), and — a second, separate bug found this pass — the "for
-  // library" fetchers for Playbooks/Timeline/Floor Plan Templates and
-  // Inventory never filter archived at all (confirmed against their real
-  // repository queries: no archived predicate exists in any of the four).
-  // They're used unfiltered elsewhere for pages with their own "show
-  // archived" toggle (e.g. contract-template-list.tsx's own pattern), so
-  // the fix belongs here — filtering client-side for the count — not in
-  // the shared fetcher, which other real callers still need unfiltered.
   await Promise.all([
     ensureBrochureStartersForCurrentVenue(),
     ensureSavedReportStartersForCurrentVenue(),
@@ -123,41 +122,35 @@ export default async function LibraryPage() {
     <div className="space-y-8">
       <PageHeader
         title="Templates"
-        description="Your venue's toolbox — the things you set up once and use again and again: agreements, packages, planning tools, marketing, and more."
+        description="Reusable things you create once and use again — templates you apply to events, plus catalogs and assets those templates pull from."
       />
 
-      <Group title="Agreements & Forms">
-        <ToolboxCard title="Contract Templates" description="Reusable contracts with fill-in details, ready to send." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
-        <ToolboxCard title="Public Forms" description="Purpose-specific lead capture forms for expos, open houses, and campaigns." href="/library/public-forms" count={publicForms.length} icon={ClipboardList} />
-        <ToolboxCard title="Questionnaires & Feedback" description="Client Planning Questionnaire, Final Details, and Post-Event Feedback starters." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
+      <Group
+        title="Applyable templates"
+        guidance="Templates are reusable starting points. Create one here, then use it when setting up an event. Applying always creates that event’s own editable copy."
+      >
+        <ToolboxCard kind="template" title="Contract Templates" description="Reusable agreements with fill-in details. Use creates a draft contract — send and sign later." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
+        <ToolboxCard kind="template" title="Planning Templates" description="Client Planning and Venue Planning checklists you refine once, then apply per booking." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
+        <ToolboxCard kind="template" title="Timeline Templates" description="Reusable day-of schedules. Use adds entries to an event timeline." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
+        <ToolboxCard kind="template" title="Floor Plan Templates" description="Reusable room layouts. Use creates an event floor plan." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
+        <ToolboxCard kind="template" title="Event Order Templates" description="Reusable event-order structure built from your offerings." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
+        <ToolboxCard kind="template" title="Choices Templates" description="Reusable client selection forms (menus, bar, rentals). Use creates choices for an event." href="/library/choices-templates" count={choicesTemplates.length} icon={LayoutGrid} />
+        <ToolboxCard kind="template" title="Inventory Templates" description="Reusable inventory setups built from Available Inventory. Use creates event inventory." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
+        <ToolboxCard kind="template" title="Questionnaires & Feedback" description="Client questionnaires and post-event feedback you can send per booking." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
+        <ToolboxCard kind="template" title="Message Templates" description="Emails and texts you send often — pick one when composing." href="/communication/templates" count={messageTemplates.length} icon={Mail} />
       </Group>
 
-      <Group title="Pricing &amp; Packages">
-        <ToolboxCard title="Packages" description="What you sell commercially — customize inclusions and set your price." href="/packages" count={packages.length} icon={Boxes} />
-        <ToolboxCard title="Offerings" description="Menus, bar, services, and rentals you provide." href="/library/offerings" count={offerings.length} icon={Package} />
-      </Group>
-
-      <Group title="Planning">
-        <ToolboxCard title="Planning Templates" description="The task checklists you've refined over the years." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
-        <ToolboxCard title="Timeline Templates" description="Reusable day-of schedules for any booking." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
-        <ToolboxCard title="Floor Plan Templates" description="Reusable room layouts for any booking." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
-        <ToolboxCard title="Event Order Templates" description="Reusable Event Order structure — sections and optional priced offerings." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
-        <ToolboxCard title="Choices Templates" description="Menus, bar, rentals, and other client choices after booking." href="/library/choices-templates" count={choicesTemplates.length} icon={LayoutGrid} />
-        <ToolboxCard title="Available Inventory Items" description="Physical stock your venue owns — chairs, tables, linens, equipment." href="/library/inventory" count={inventoryItems.length} icon={Package} />
-        <ToolboxCard title="Inventory Templates" description="What you typically allocate for a wedding — Ceremony + Reception or Reception Only." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
-      </Group>
-
-      <Group title="Communication">
-        <ToolboxCard title="Message Templates" description="Emails and texts you send often, ready to reuse." href="/communication/templates" count={messageTemplates.length} icon={Mail} />
-      </Group>
-
-      <Group title="Marketing">
-        <ToolboxCard title="QR Campaigns" description="Trackable QR codes for print materials and signage." href="/library/qr-campaigns" count={qrCampaigns.length} icon={QrCode} />
-        <ToolboxCard title="Brochures" description="Reusable, brandable overviews of your venue to share with prospects." href="/library/brochures" count={brochures.length} icon={Megaphone} />
-      </Group>
-
-      <Group title="Reports">
-        <ToolboxCard title="Saved Reports" description="Reports you've saved to return to quickly, or have delivered to you." href="/reporting/saved" count={savedReports.length} icon={FileText} />
+      <Group
+        title="Reusable assets & catalogs"
+        guidance="These are reusable items your templates can pull from, or shareable assets (forms, QR codes, brochures). They are not applied like templates."
+      >
+        <ToolboxCard kind="catalog" title="Offerings" description="Menus, bar, services, and rentals. Event Order and Choices templates select from here." href="/library/offerings" count={offerings.length} icon={Package} />
+        <ToolboxCard kind="catalog" title="Packages" description="What you sell commercially — priced packages with inclusions." href="/packages" count={packages.length} icon={Boxes} />
+        <ToolboxCard kind="catalog" title="Available Inventory" description="Physical stock your venue owns. Inventory templates and floor plans use these items." href="/library/inventory" count={inventoryItems.length} icon={Package} />
+        <ToolboxCard kind="catalog" title="Public Forms" description="Lead-capture forms for expos and open houses. Share by link or as a QR destination." href="/library/public-forms" count={publicForms.length} icon={ClipboardList} />
+        <ToolboxCard kind="catalog" title="QR Campaigns" description="Printable QR codes that send people to a Public Form, tour, website, or URL — with scan tracking." href="/library/qr-campaigns" count={qrCampaigns.length} icon={QrCode} />
+        <ToolboxCard kind="catalog" title="Brochures" description="Brandable venue overviews. Download PDF or share a hosted link with a lead." href="/library/brochures" count={brochures.length} icon={Megaphone} />
+        <ToolboxCard title="Saved Reports" description="Reports you’ve saved to reopen quickly or have delivered." href="/reporting/saved" count={savedReports.length} icon={FileText} />
       </Group>
     </div>
   );

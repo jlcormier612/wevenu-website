@@ -76,6 +76,13 @@ export async function createInventoryTemplateAction(name: string, description: s
   return result;
 }
 
+export async function duplicateInventoryTemplateAction(id: string, newName: string): Promise<CreateTemplateResult> {
+  const { duplicateTemplate } = await import("@/lib/event-inventory/service");
+  const result = await duplicateTemplate(id, newName);
+  if (result.ok) revalidatePath("/library/inventory-templates");
+  return result;
+}
+
 export async function setInventoryTemplateArchivedAction(id: string, isArchived: boolean): Promise<EventInventoryActionResult> {
   const result = await setTemplateArchived(id, isArchived);
   if (result.ok) revalidatePath("/library/inventory-templates");

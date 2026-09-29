@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { Archive, Copy, Plus, RotateCcw } from "lucide-react";
+import { Archive, Copy, Download, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveArchiveToggle } from "@/lib/qr-campaigns/archive-ui-state";
 import type { QrCampaign, QrCampaignAnalytics, QrDestinationType } from "@/lib/qr-campaigns/types";
+import Link from "next/link";
 
 const DESTINATION_LABELS: Record<QrDestinationType, string> = {
   public_form: "Custom public form",
@@ -38,6 +39,11 @@ function CampaignRow({
   const [pending, startTransition] = React.useTransition();
   const scanUrl = `${appUrl}/qr/${campaign.code}`;
   const imageUrl = `/api/qr-campaigns/image?url=${encodeURIComponent(scanUrl)}`;
+  const pngUrl = `${imageUrl}&format=png`;
+  const formHref =
+    campaign.destinationType === "public_form" && campaign.publicFormId
+      ? `/library/public-forms/${campaign.publicFormId}`
+      : null;
 
   function toggleArchive() {
     startTransition(async () => {
@@ -71,9 +77,17 @@ function CampaignRow({
           {campaign.status === "archived" && <Badge variant="muted">Archived</Badge>}
         </div>
         <p className="text-xs text-muted-foreground">{destLabel}</p>
+        {formHref && (
+          <p className="text-xs text-muted-foreground">
+            Destination form:{" "}
+            <Link href={formHref} className="font-medium text-heading hover:underline">
+              View form →
+            </Link>
+          </p>
+        )}
         <div className="flex items-center gap-2">
           <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground truncate">{scanUrl}</code>
-          <button type="button" onClick={() => { navigator.clipboard.writeText(scanUrl); toast.success("Copied!"); }} className="text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={() => { navigator.clipboard.writeText(scanUrl); toast.success("Copied!"); }} className="text-muted-foreground hover:text-foreground" aria-label="Copy QR scan URL">
             <Copy className="h-3 w-3" />
           </button>
         </div>
@@ -82,9 +96,24 @@ function CampaignRow({
           <span><span className="font-medium text-heading">{analytics?.conversions ?? 0}</span> leads created</span>
         </div>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={toggleArchive} disabled={pending}>
-        {campaign.status === "active" ? <><Archive className="mr-1 h-3.5 w-3.5" />Archive</> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Reactivate</>}
-      </Button>
+      <div className="flex flex-col gap-2 shrink-0">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          render={
+            <a
+              href={pngUrl}
+              download={`${campaign.name.replace(/[^\w\-]+/g, "-") || "qr-code"}.png`}
+            />
+          }
+        >
+          <Download className="mr-1 h-3.5 w-3.5" />Download PNG
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={toggleArchive} disabled={pending}>
+          {campaign.status === "active" ? <><Archive className="mr-1 h-3.5 w-3.5" />Archive</> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Reactivate</>}
+        </Button>
+      </div>
     </div>
   );
 }

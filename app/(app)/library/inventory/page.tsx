@@ -15,8 +15,8 @@ export default async function InventoryLibraryPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Your Inventory"
-        description="Keep a list of the items and amenities your venue provides, then use them to build event-specific inventory."
+        title="Available Inventory"
+        description="Physical stock your venue owns — a catalog, not a template."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" render={<Link href="/library/inventory-templates" />}>
@@ -28,6 +28,13 @@ export default async function InventoryLibraryPage() {
           </div>
         }
       />
+      <p className="rounded-sm border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        These are reusable inventory items. Inventory Templates pull from this catalog; floor plans can place items marked for floor plans.
+        {" "}
+        <Link href="/library/inventory-templates" className="font-medium text-heading hover:underline">
+          Manage inventory templates →
+        </Link>
+      </p>
       <InventoryLibrarySection initialItems={items} />
     </div>
   );

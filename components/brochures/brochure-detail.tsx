@@ -252,6 +252,30 @@ export function BrochureDetail({
             there is no separate revoke action. Archive hides the brochure from your Library list; previously shared
             links keep working until you delete the brochure.
           </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+              /brochure/{brochure.shareToken}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/brochure/${brochure.shareToken}`;
+                void navigator.clipboard.writeText(url).then(
+                  () => toast.success("Public link copied."),
+                  () => toast.error("Could not copy."),
+                );
+              }}
+            >
+              Copy link
+            </Button>
+            <a href={`/api/brochures/${brochure.id}/pdf`} download>
+              <Button type="button" variant="outline" size="sm">
+                <Download className="mr-1.5 h-3.5 w-3.5" />Download PDF
+              </Button>
+            </a>
+          </div>
           {leads.filter((l) => l.email).length === 0 ? (
             <p className="text-sm text-muted-foreground">No leads with an email address yet.</p>
           ) : (

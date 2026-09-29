@@ -197,6 +197,12 @@ export function PublicFormList({
                   {canEdit && (
                     <div className="flex flex-wrap gap-1">
                       <Link
+                        href={`/library/public-forms/${f.id}/preview`}
+                        className="inline-flex h-7 items-center rounded-lg px-2.5 text-[0.8rem] hover:bg-muted"
+                      >
+                        Preview
+                      </Link>
+                      <Link
                         href={`/library/public-forms/${f.id}`}
                         className="inline-flex h-7 items-center rounded-lg px-2.5 text-[0.8rem] hover:bg-muted"
                       >
@@ -206,6 +212,14 @@ export function PublicFormList({
                         <Button type="button" variant="ghost" size="sm" onClick={() => handleCopy(url)}>
                           Copy link
                         </Button>
+                      )}
+                      {f.status === "published" && (
+                        <Link
+                          href={`/library/public-forms/${f.id}`}
+                          className="inline-flex h-7 items-center rounded-lg px-2.5 text-[0.8rem] hover:bg-muted"
+                        >
+                          Create QR
+                        </Link>
                       )}
                       <Button type="button" variant="ghost" size="sm" onClick={() => handleDuplicate(f.id)} disabled={pending}>
                         Duplicate

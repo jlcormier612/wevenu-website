@@ -255,6 +255,19 @@ export async function createTemplate(name: string, description: string): Promise
   return result as CreateTemplateResult;
 }
 
+export async function duplicateTemplate(sourceId: string, newName: string): Promise<CreateTemplateResult> {
+  if (!newName.trim()) return { ok: false, errors: { name: "Name is required." } };
+  const result = await withVenue(async (supabase, venueId) => {
+    try {
+      const templateId = await repo.duplicateTemplate(supabase, venueId, sourceId, newName.trim());
+      return { ok: true, templateId } as CreateTemplateResult;
+    } catch {
+      return { ok: false, message: "Could not duplicate template." } as CreateTemplateResult;
+    }
+  });
+  return result as CreateTemplateResult;
+}
+
 export async function setTemplateArchived(id: string, isArchived: boolean): Promise<EventInventoryActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.setTemplateArchived(supabase, venueId, id, isArchived);

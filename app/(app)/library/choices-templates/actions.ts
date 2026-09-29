@@ -44,6 +44,13 @@ export async function deleteChoicesTemplateAction(id: string) {
   return result;
 }
 
+export async function duplicateChoicesTemplateAction(id: string, newName: string) {
+  const { duplicateTemplate } = await import("@/lib/client-choices-templates/service");
+  const result = await duplicateTemplate(id, newName);
+  if (result.ok) revalidatePath(LIBRARY);
+  return result;
+}
+
 export async function addChoicesTemplateSectionAction(templateId: string, name: string) {
   const result = await addSection(templateId, name);
   if (result.ok) revalidatePath(`${LIBRARY}/${templateId}`);

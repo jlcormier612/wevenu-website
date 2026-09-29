@@ -24,8 +24,15 @@ export default async function QrCampaignsPage() {
     <div className="space-y-6">
       <PageHeader
         title="QR Campaigns"
-        description="Generate a QR code for a bridal show, brochure, or front-gate sign — every scan can become a lead automatically."
+        description="Printable QR codes for bridal shows, open houses, brochures, and signs — with scan tracking."
       />
+      <p className="rounded-sm border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        Create a QR code that sends guests to a Public Form, website, tour, or other destination. Download the image for print materials.
+        {" "}
+        <a href="/library/public-forms" className="font-medium text-heading hover:underline">
+          Manage Public Forms →
+        </a>
+      </p>
       <QrStarterExamples existingMasterKeys={existingMasterKeys} />
       <QrCampaignList
         initialCampaigns={campaigns}

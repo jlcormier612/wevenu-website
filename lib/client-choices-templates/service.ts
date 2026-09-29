@@ -136,3 +136,52 @@ export async function removeOption(optionId: string): Promise<ChoicesTemplateAct
   });
   return result as ChoicesTemplateActionResult;
 }
+
+export async function duplicateTemplate(
+  sourceId: string,
+  newName: string,
+): Promise<CreateChoicesTemplateResult> {
+  if (!newName.trim()) return { ok: false, errors: { name: "Name is required." } };
+  const result = await withVenue(async (supabase, venueId) => {
+    const source = await repo.getTemplateWithDetails(supabase, venueId, sourceId);
+    if (!source) return { ok: false, message: "Template not found." } as CreateChoicesTemplateResult;
+    const templateId = await repo.insertTemplate(supabase, venueId, {
+      name: newName.trim(),
+      description: source.description ?? "",
+    });
+    const sectionIdMap = new Map<string, string>();
+    for (const s of [...source.sections].sort((a, b) => a.sortOrder - b.sortOrder)) {
+      const created = await repo.insertSection(supabase, venueId, templateId, s.name, s.sortOrder);
+      sectionIdMap.set(s.id, created.id);
+    }
+    const groupIdMap = new Map<string, string>();
+    for (const g of [...source.groups].sort((a, b) => a.sortOrder - b.sortOrder)) {
+      const created = await repo.insertGroup(supabase, venueId, templateId, {
+        sectionId: g.sectionId ? sectionIdMap.get(g.sectionId) ?? null : null,
+        name: g.name,
+        instructions: g.instructions ?? undefined,
+        selectionMode: g.selectionMode,
+        minSelect: g.minSelect,
+        maxSelect: g.maxSelect,
+        allowQuantity: g.allowQuantity,
+        sortOrder: g.sortOrder,
+      });
+      groupIdMap.set(g.id, created.id);
+    }
+    for (const o of [...source.options].sort((a, b) => a.sortOrder - b.sortOrder)) {
+      const groupId = groupIdMap.get(o.groupId);
+      if (!groupId) continue;
+      await repo.insertOption(supabase, venueId, templateId, {
+        groupId,
+        offeringId: o.offeringId,
+        label: o.label,
+        description: o.description ?? undefined,
+        isIncluded: o.isIncluded,
+        unitPrice: o.unitPrice,
+        sortOrder: o.sortOrder,
+      });
+    }
+    return { ok: true, templateId } as CreateChoicesTemplateResult;
+  });
+  return result as CreateChoicesTemplateResult;
+}
