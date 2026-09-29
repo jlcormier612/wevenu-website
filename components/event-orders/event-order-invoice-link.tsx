@@ -41,7 +41,9 @@ export function EventOrderInvoiceLink({
     ?? invoices.find((inv) => inv.eventOrderId === eventOrderId && inv.status !== "void");
 
   if (linked) {
-    const showCreatePlan = linked.total > 0 && !linkedScheduleId;
+    // Draft EO invoices store total=0; live amount is projected from the Event Order on read.
+    // hasPricedContent keeps Create Payment Plan visible when the EO commercial amount > 0.
+    const showCreatePlan = (linked.total > 0 || hasPricedContent) && !linkedScheduleId;
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2 text-sm">
