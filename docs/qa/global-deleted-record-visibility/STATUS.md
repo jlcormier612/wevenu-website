@@ -93,4 +93,12 @@ No giant abstraction. No soft-delete. No reporting redesign.
 
 ## Deploy / browser proof
 
-_(filled after Sandbox deploy)_
+| Item | Value |
+|---|---|
+| Commit | `431cb4773a88d11c330028667204318d99af1870` |
+| Deploy (this commit) | https://github.com/jlcormier612/wevenu-website/actions/runs/36663813300 (queued behind prior Sandbox deploy) |
+| Prior deploy still running | https://github.com/jlcormier612/wevenu-website/actions/runs/36663296990 (`0ade8153`) |
+| Task definition / digest / health | pending |
+| Browser verification | **pending** — not GREEN until exact `431cb477` image is proven |
+
+**Production:** untouched
