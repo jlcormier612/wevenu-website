@@ -166,7 +166,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
     supabase
       .from("lead_tasks")
-      .select("*, leads(first_name, last_name)")
+      // Active Focus must never present a task for a missing lead (CASCADE should
+      // already remove them; !inner is the shared active-entity read rule).
+      .select("*, leads!inner(first_name, last_name)")
       .eq("venue_id", venue.id)
       .eq("completed", false)
       .order("due_date", { ascending: true, nullsFirst: false })
@@ -175,7 +177,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
     supabase
       .from("lead_activities")
-      .select("*, leads(first_name, last_name)")
+      .select("*, leads!inner(first_name, last_name)")
       .eq("venue_id", venue.id)
       .order("created_at", { ascending: false })
       .limit(15),

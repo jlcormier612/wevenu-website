@@ -65,7 +65,7 @@ export async function getNavAttentionCounts(): Promise<NavAttentionCounts> {
       .in("status", ["pending", "overdue", "blocked"]),
     supabase
       .from("lead_tasks")
-      .select("due_date, completed, assigned_to_staff_id")
+      .select("due_date, completed, assigned_to_staff_id, leads!inner(id)")
       .eq("venue_id", venue.id)
       .eq("completed", false),
     getSchedules(supabase, venue.id),

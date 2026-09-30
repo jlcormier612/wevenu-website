@@ -325,6 +325,8 @@ export async function deleteLeadRecordAction(leadId: string) {
   const result = await deleteLeadRecord(leadId);
   if (result.ok) {
     revalidatePath("/leads");
+    revalidatePath("/dashboard");
+    revalidatePath("/tours");
     revalidatePath("/reporting");
     revalidatePath("/reporting/sales");
     revalidatePath("/reporting/bookings");

@@ -45,7 +45,8 @@ export function DeleteRecordButton({
     const result = await deleteAction(recordId);
     setPending(false);
     if (!result.ok) {
-      toast.error(result.message);
+      // Keep dialog open and record intact — never imply success.
+      toast.error(result.message || "Could not delete. The record was not removed.");
       return;
     }
     setOpen(false);

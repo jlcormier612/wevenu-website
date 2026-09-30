@@ -58,6 +58,8 @@ export async function deleteClientRecordAction(clientId: string) {
   if (result.ok) {
     revalidatePath("/clients");
     revalidatePath("/leads");
+    revalidatePath("/dashboard");
+    revalidatePath("/tours");
     revalidatePath("/reporting");
     revalidatePath("/reporting/sales");
     revalidatePath("/reporting/bookings");
