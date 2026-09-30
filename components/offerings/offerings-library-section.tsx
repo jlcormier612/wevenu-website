@@ -19,18 +19,27 @@ import { formatOptionalMoney } from "@/lib/event-orders/constants";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { OfferingCategory, OfferingInput, OfferingWithCategory } from "@/lib/offerings/types";
 
-export function OfferingsLibrarySection({
-  initialOfferings, categories, inventoryItems,
-}: {
-  initialOfferings: OfferingWithCategory[];
-  categories: OfferingCategory[];
-  inventoryItems: InventoryItem[];
-}) {
+export const OfferingsLibrarySection = React.forwardRef<
+  { openCreate: () => void },
+  {
+    initialOfferings: OfferingWithCategory[];
+    categories: OfferingCategory[];
+    inventoryItems: InventoryItem[];
+    /** When false, PageHeader owns + New Offering. */
+    headerCreate?: boolean;
+  }
+>(function OfferingsLibrarySection({
+  initialOfferings, categories, inventoryItems, headerCreate = true,
+}, ref) {
   const [offerings, setOfferings] = React.useState(initialOfferings);
   const [cats, setCats] = React.useState(categories);
   const [editing, setEditing] = React.useState<OfferingWithCategory | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [showArchived, setShowArchived] = React.useState(false);
+
+  React.useImperativeHandle(ref, () => ({
+    openCreate: () => { setEditing(null); setCreating(true); },
+  }));
 
   const visible = offerings.filter((o) => showArchived || !o.isArchived);
 
@@ -44,9 +53,11 @@ export function OfferingsLibrarySection({
           <Button type="button" variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Hide archived" : "Show archived"}
           </Button>
-          <Button type="button" size="sm" onClick={() => { setEditing(null); setCreating(true); }}>
-            Add offering
-          </Button>
+          {headerCreate ? (
+            <Button type="button" size="sm" onClick={() => { setEditing(null); setCreating(true); }}>
+              + New Offering
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -123,7 +134,7 @@ export function OfferingsLibrarySection({
       </p>
     </div>
   );
-}
+});
 
 function OfferingFormSheet({
   open, onOpenChange, offering, categories, inventoryItems, onSaved, onCategoryCreated,

@@ -117,14 +117,19 @@ function CampaignRow({
   );
 }
 
-export function QrCampaignList({
-  initialCampaigns, analytics, appUrl, publishedPublicForms = [],
-}: {
-  initialCampaigns: QrCampaign[];
-  analytics: QrCampaignAnalytics[];
-  appUrl: string;
-  publishedPublicForms?: Array<{ id: string; internalName: string; publicTitle: string }>;
-}) {
+export const QrCampaignList = React.forwardRef<
+  { openCreate: () => void },
+  {
+    initialCampaigns: QrCampaign[];
+    analytics: QrCampaignAnalytics[];
+    appUrl: string;
+    publishedPublicForms?: Array<{ id: string; internalName: string; publicTitle: string }>;
+    /** When false, PageHeader owns New QR Campaign. */
+    headerCreate?: boolean;
+  }
+>(function QrCampaignList({
+  initialCampaigns, analytics, appUrl, publishedPublicForms = [], headerCreate = true,
+}, ref) {
   const [campaigns, setCampaigns] = React.useState(initialCampaigns);
   const [showForm, setShowForm] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -132,6 +137,10 @@ export function QrCampaignList({
   const [destinationUrl, setDestinationUrl] = React.useState("");
   const [publicFormId, setPublicFormId] = React.useState("");
   const [pending, startTransition] = React.useTransition();
+
+  React.useImperativeHandle(ref, () => ({
+    openCreate: () => setShowForm(true),
+  }));
 
   const analyticsById = new Map(analytics.map((a) => [a.id, a]));
   const formLabelById = new Map(publishedPublicForms.map((f) => [f.id, f.internalName]));
@@ -176,9 +185,11 @@ export function QrCampaignList({
   return (
     <div className="space-y-6">
       {!showForm ? (
-        <Button type="button" onClick={() => setShowForm(true)}>
-          <Plus className="mr-1 h-4 w-4" /> New QR Campaign
-        </Button>
+        headerCreate ? (
+          <Button type="button" onClick={() => setShowForm(true)}>
+            <Plus className="mr-1 h-4 w-4" /> New QR Campaign
+          </Button>
+        ) : null
       ) : (
         <div className="space-y-3 rounded-lg border border-border p-4">
           <div className="space-y-1.5">
@@ -288,4 +299,4 @@ export function QrCampaignList({
       )}
     </div>
   );
-}
+});

@@ -284,19 +284,11 @@ function Legend({ tastingEnabled }: { tastingEnabled: boolean }) {
 
 // ---- Main CalendarView ------------------------------------------------------
 
-export function CalendarView({
-  view = "month",
-  year,
-  month,
-  weekStart,
-  dayDate,
-  items,
-  today,
-  scheduleCatalog = [],
-  bookingEventTypeOptions = [],
-  spaceOperatingMode = "single",
-  venueSpaces = [],
-}: {
+export type CalendarViewHandle = {
+  toggleScheduleForm: () => void;
+};
+
+export const CalendarView = React.forwardRef<CalendarViewHandle, {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
   month: number;
@@ -315,7 +307,22 @@ export function CalendarView({
   spaceOperatingMode?: "single" | "multi";
   /** Configured physical spaces — filter lists these, not only spaces with items this month. */
   venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
-}) {
+  /** When true, toolbar omits Add Schedule Item (header owns the primary CTA). */
+  hideToolbarCreate?: boolean;
+}>(function CalendarView({
+  view = "month",
+  year,
+  month,
+  weekStart,
+  dayDate,
+  items,
+  today,
+  scheduleCatalog = [],
+  bookingEventTypeOptions = [],
+  spaceOperatingMode = "single",
+  venueSpaces = [],
+  hideToolbarCreate = false,
+}, ref) {
   const router = useRouter();
   const activeSpaceCount = venueSpaces.filter((s) => s.isActive !== false).length;
   const showSpaceFilter = shouldShowCalendarSpaceFilter(spaceOperatingMode, activeSpaceCount);
@@ -470,6 +477,20 @@ export function CalendarView({
     setBlockEventType(defaultHoldEventType); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
     setEditingBlockId(null);
   }
+
+  const showBlockFormRef = React.useRef(showBlockForm);
+  showBlockFormRef.current = showBlockForm;
+  React.useImperativeHandle(ref, () => ({
+    toggleScheduleForm: () => {
+      if (showBlockFormRef.current) {
+        setShowBlockForm(false);
+        resetBlockForm();
+      } else {
+        resetBlockForm();
+        setShowBlockForm(true);
+      }
+    },
+  }));
 
   /** The recurrence half of the payload, shared by create and update. */
   function recurrencePayload() {
@@ -721,15 +742,18 @@ export function CalendarView({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ViewSwitcher current={view} onChange={switchView} />
-        <Button
-          type="button" variant="outline" size="sm"
-          onClick={() => {
-            if (showBlockForm) { setShowBlockForm(false); resetBlockForm(); }
-            else { resetBlockForm(); setShowBlockForm(true); }
-          }}
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
-        </Button>
+        {!hideToolbarCreate && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              if (showBlockForm) { setShowBlockForm(false); resetBlockForm(); }
+              else { resetBlockForm(); setShowBlockForm(true); }
+            }}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
+          </Button>
+        )}
       </div>
 
       {/* Add/Edit Schedule Item — lives above every view so Edit from Week/
@@ -1183,4 +1207,5 @@ export function CalendarView({
       )}
     </div>
   );
-}
+});
+

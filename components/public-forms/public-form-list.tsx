@@ -31,15 +31,21 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function PublicFormList({
+export const PublicFormList = React.forwardRef<
+  { openCreate: () => void },
+  {
+    initialForms: PublicFormListItem[];
+    appUrl: string;
+    canEdit?: boolean;
+    /** When false, PageHeader owns Create form. */
+    headerCreate?: boolean;
+  }
+>(function PublicFormList({
   initialForms,
   appUrl,
   canEdit = true,
-}: {
-  initialForms: PublicFormListItem[];
-  appUrl: string;
-  canEdit?: boolean;
-}) {
+  headerCreate = true,
+}, ref) {
   const router = useRouter();
   const [forms, setForms] = React.useState(initialForms);
   const [showCreate, setShowCreate] = React.useState(false);
@@ -47,6 +53,10 @@ export function PublicFormList({
   const [publicTitle, setPublicTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [pending, startTransition] = React.useTransition();
+
+  React.useImperativeHandle(ref, () => ({
+    openCreate: () => setShowCreate(true),
+  }));
 
   React.useEffect(() => {
     setForms(initialForms);
@@ -108,7 +118,7 @@ export function PublicFormList({
 
   return (
     <div className="space-y-6">
-      {canEdit && !showCreate && (
+      {canEdit && headerCreate && !showCreate && (
         <Button type="button" onClick={() => setShowCreate(true)}>
           <Plus className="mr-1 h-4 w-4" /> Create form
         </Button>
@@ -262,4 +272,4 @@ export function PublicFormList({
       )}
     </div>
   );
-}
+});

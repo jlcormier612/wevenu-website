@@ -105,9 +105,11 @@ describe("Calendar Slice 2A.2.2 — picker from catalog", () => {
 
   it("Calendar page loads catalog for the picker; CTA remains Add Schedule Item", () => {
     assert.match(pageSrc, /getScheduleItemTypesForPicker/);
-    assert.match(pageSrc, /scheduleCatalog/);
+    assert.match(pageSrc, /CalendarPageClient|scheduleCatalog/);
     assert.match(calendarViewSrc, /buildScheduleItemPickerGroups/);
     assert.match(calendarViewSrc, /Add Schedule Item/);
+    const clientSrc = readFileSync(resolve("components/calendar/calendar-page-client.tsx"), "utf8");
+    assert.match(clientSrc, /Add Schedule Item/);
     assert.doesNotMatch(calendarViewSrc, /MANUAL_SCHEDULE_TYPE_GROUPS/);
   });
 });

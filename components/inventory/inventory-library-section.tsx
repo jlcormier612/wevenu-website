@@ -4,13 +4,12 @@
  * The Inventory Library — a card grid, one card per item (Inventory
  * Foundation task). Mirrors the Floor Plan Template Library's card shape.
  * No multi-flow starter picker (Blank/Duplicate/Upload) — inventory items
- * don't have "starter flows," so "+ New Inventory Item" is a plain link to
- * a dedicated create page, same pattern as Pipeline Templates.
+ * don't have "starter flows," so create lives in the PageHeader as a plain
+ * link to a dedicated create page, same pattern as Pipeline Templates.
  */
 
 import * as React from "react";
 
-import Link from "next/link";
 import { Package } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,7 +19,6 @@ import { LibraryArchivedSection } from "@/components/library/library-archived-se
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import type { InventoryItemWithCategory } from "@/lib/inventory/types";
 
 function dimensions(item: InventoryItemWithCategory): string | null {
@@ -107,18 +105,12 @@ export function InventoryLibrarySection({ initialItems }: { initialItems: Invent
         <Package className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No inventory yet</p>
         <p className="text-xs text-muted-foreground">Tables, chairs, decor, and anything else you reuse across bookings.</p>
-        <div className="flex justify-center pt-1">
-          <Button render={<Link href="/library/inventory/new" />}>+ New Inventory Item</Button>
-        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button render={<Link href="/library/inventory/new" />}>+ New Inventory Item</Button>
-      </div>
       <p className="text-xs text-muted-foreground">
         Catalog items are venue inventory — editing never sends anything to a client.
       </p>

@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
-import { PageHeader } from "@/components/shell/module-placeholder";
-import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
-import { QrStarterExamples } from "@/components/qr-campaigns/qr-starter-examples";
+import { QrCampaignsPageClient } from "@/components/qr-campaigns/qr-campaigns-page-client";
 import { ensureQrStartersForCurrentVenue } from "@/lib/qr-campaigns/provision";
 import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { listPublishedPublicFormsForPicker } from "@/lib/public-forms/service";
@@ -22,27 +19,12 @@ export default async function QrCampaignsPage() {
     .filter((k): k is string => Boolean(k));
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="QR Campaigns"
-        description="Printable QR codes for bridal shows, open houses, brochures, and signs — with scan tracking."
-      />
-      <LibraryHowItWorks>
-        Create the form first, then point a QR campaign at it. Download the PNG to print or share.
-      </LibraryHowItWorks>
-      <LibraryDependencyNote
-        detail="Need to create or edit the form a QR opens? Manage Public Forms. When you create or edit a campaign, choose that form (or enter another destination URL)."
-        action={{ href: "/library/public-forms", label: "Manage Public Forms" }}
-      >
-        QR campaigns can open a Public Form from your venue.
-      </LibraryDependencyNote>
-      <QrStarterExamples existingMasterKeys={existingMasterKeys} />
-      <QrCampaignList
-        initialCampaigns={campaigns}
-        analytics={analytics}
-        appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
-        publishedPublicForms={publishedPublicForms}
-      />
-    </div>
+    <QrCampaignsPageClient
+      campaigns={campaigns}
+      analytics={analytics}
+      appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
+      publishedPublicForms={publishedPublicForms}
+      existingMasterKeys={existingMasterKeys}
+    />
   );
 }

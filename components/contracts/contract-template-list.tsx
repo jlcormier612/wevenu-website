@@ -143,7 +143,7 @@ export function ContractTemplateList({
             })}
           >
             {addingStarter ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <BookPlus className="mr-1.5 h-4 w-4" />}
-            Add Wedding Venue Agreement again
+            Add another copy of Wedding Venue Agreement
           </Button>
         )}
       </div>

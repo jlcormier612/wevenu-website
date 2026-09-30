@@ -50,3 +50,11 @@ export const LIBRARY_LABELS = {
 export function archiveToggleLabel(isArchived: boolean): string {
   return isArchived ? LIBRARY_LABELS.restore : LIBRARY_LABELS.archive;
 }
+
+/**
+ * Hello to Cheers starter insertion labels — distinct from Duplicate.
+ * Repeated insertion is allowed (fresh venue-owned copy; prior customizations stay).
+ */
+export function starterInsertLabel(name: string, alreadyPresent: boolean): string {
+  return alreadyPresent ? `Add another copy of ${name}` : `Add ${name}`;
+}

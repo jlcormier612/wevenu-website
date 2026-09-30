@@ -2,9 +2,8 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addPackageStarterAgainAction } from "@/app/(app)/library/packages/actions";
@@ -123,9 +122,6 @@ export function PackageList({
           <p className="text-xs text-muted-foreground mt-1">
             Add your venue offerings, or restore Hello to Cheers starters to customize.
           </p>
-          <Button type="button" size="sm" className="mt-4" render={<Link href="/packages/new" />}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add Package
-          </Button>
         </div>
       </div>
     );

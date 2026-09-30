@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PackageList } from "@/components/packages/package-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -25,15 +25,16 @@ export default async function PackagesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader
-          title="Packages"
-          description="Define package tiers and inclusions. Customize starters, set pricing, then use them on invoices and Event Orders."
-        />
-        <Button type="button" render={<Link href="/packages/new" />} className="shrink-0">
-          <Plus className="mr-1 h-4 w-4" /> Add Package
-        </Button>
-      </div>
+      <CollectionBackLink href="/library" label="Templates" />
+      <PageHeader
+        title="Packages"
+        description="Define package tiers and inclusions. Customize starters, set pricing, then use them on invoices and Event Orders."
+        actions={
+          <Button type="button" render={<Link href="/packages/new" />}>
+            + New Package
+          </Button>
+        }
+      />
       <LibraryHowItWorks>
         Package names, pricing, and inclusion lines are authored here. Inclusions are written on the package itself — they are not selected from the Offerings catalog.
       </LibraryHowItWorks>

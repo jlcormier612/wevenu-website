@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -15,13 +16,14 @@ export default async function InventoryLibraryPage() {
   const items = await getItemsForLibrary();
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Available Inventory"
         description="Physical stock your venue owns — create and edit items here."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" render={<Link href="/library/inventory/new" />}>
-              Add inventory item
+            <Button render={<Link href="/library/inventory/new" />}>
+              + New Inventory Item
             </Button>
             <Button variant="outline" render={<Link href="/settings/import?type=inventory" />}>
               Import Inventory

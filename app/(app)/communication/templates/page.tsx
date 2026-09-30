@@ -29,7 +29,10 @@ export default async function MessageTemplatesPage() {
           <div className="flex flex-wrap items-center gap-2">
             <MessageTemplateStarterPicker existingTemplates={active} />
             <MessageTemplateStarterPicker existingTemplates={active} variant="import" />
-            <AddHelloToCheersStarters missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))} />
+            <AddHelloToCheersStarters
+              missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))}
+              presentKeys={[...presentKeys].filter((k): k is string => Boolean(k))}
+            />
           </div>
         }
       />

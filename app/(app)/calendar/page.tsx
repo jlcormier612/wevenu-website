@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Printer } from "lucide-react";
 
-import { ShareAvailability } from "@/components/calendar/share-availability";
-import { ShareTourAvailability } from "@/components/calendar/share-tour-availability";
-import { CalendarView } from "@/components/calendar/calendar-view";
-import { PageHeader } from "@/components/shell/module-placeholder";
+import { CalendarPageClient } from "@/components/calendar/calendar-page-client";
 import { getSpaces } from "@/lib/availability/service";
 import { getScheduleItemTypesForPicker } from "@/lib/calendar/schedule-item-catalog-service";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
@@ -54,45 +49,21 @@ export default async function CalendarPage({ searchParams }: Props) {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader
-          title="Calendar"
-          description="Your venue’s schedule — events, appointments, holds, and blocked time."
-        />
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <Link
-            href={printHref}
-            target="_blank"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-          >
-            <Printer className="h-3.5 w-3.5" /> Print / Export
-          </Link>
-        </div>
-      </div>
-      <div className="grid items-stretch gap-3 md:grid-cols-2">
-        {availabilityUrl ? <ShareAvailability url={availabilityUrl} /> : null}
-        <ShareTourAvailability url={tourUrl} />
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Availability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date.{" "}
-        <Link href="/help/how-does-date-availability-work" className="font-medium text-foreground underline underline-offset-4">
-          Learn how availability works
-        </Link>
-      </p>
-      <CalendarView
-        view={view}
-        year={year}
-        month={month}
-        weekStart={weekStart}
-        dayDate={dayDate}
-        items={items}
-        today={today}
-        scheduleCatalog={scheduleCatalog}
-        bookingEventTypeOptions={bookingEventTypeOptions}
-        spaceOperatingMode={venue?.spaceOperatingMode ?? "single"}
-        venueSpaces={spaces.map((s) => ({ id: s.id, name: s.name, isActive: s.isActive }))}
-      />
-    </div>
+    <CalendarPageClient
+      view={view}
+      year={year}
+      month={month}
+      weekStart={weekStart}
+      dayDate={dayDate}
+      items={items}
+      today={today}
+      scheduleCatalog={scheduleCatalog}
+      bookingEventTypeOptions={bookingEventTypeOptions}
+      spaceOperatingMode={venue?.spaceOperatingMode ?? "single"}
+      venueSpaces={spaces.map((s) => ({ id: s.id, name: s.name, isActive: s.isActive }))}
+      printHref={printHref}
+      availabilityUrl={availabilityUrl}
+      tourUrl={tourUrl}
+    />
   );
 }
