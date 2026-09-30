@@ -248,11 +248,12 @@ export async function requestClientChoicesChanges(
  */
 export async function finalizeClientChoices(
   choicesId: string,
+  opts?: { venueUse?: boolean },
 ): Promise<FinalizeClientChoicesResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const row = await repo.getById(supabase, venueId, choicesId);
     if (!row) return { ok: false, message: "Choices not found." } as FinalizeClientChoicesResult;
-    const blocked = finalizeBlocked(row.status);
+    const blocked = finalizeBlocked(row.status, opts);
     if (blocked) return blocked as FinalizeClientChoicesResult;
 
     const lines = resolveSelectedOptions(row.definition, row.answers);

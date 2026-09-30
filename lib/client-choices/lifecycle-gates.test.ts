@@ -47,8 +47,15 @@ describe("Client Choices lifecycle gates", () => {
   it("allows finalize only on venue-review statuses", () => {
     assert.ok(finalizeBlocked("sent"));
     assert.ok(finalizeBlocked("finalized"));
+    assert.ok(finalizeBlocked("draft"));
     assert.equal(finalizeBlocked("submitted"), null);
     assert.equal(finalizeBlocked("resubmitted"), null);
+  });
+
+  it("allows draft finalize for venue Use (no client round-trip)", () => {
+    assert.equal(finalizeBlocked("draft", { venueUse: true }), null);
+    assert.ok(finalizeBlocked("sent", { venueUse: true }));
+    assert.ok(finalizeBlocked("finalized", { venueUse: true }));
   });
 
   it("allows request changes only while reviewing", () => {

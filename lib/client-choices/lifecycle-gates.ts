@@ -58,9 +58,17 @@ export function requestChangesBlocked(status: string): ClientChoicesActionResult
   return null;
 }
 
-export function finalizeBlocked(status: string): ClientChoicesActionResult | null {
+export function finalizeBlocked(
+  status: string,
+  opts?: { venueUse?: boolean },
+): ClientChoicesActionResult | null {
   if (status === "finalized") {
     return { ok: false, message: CLIENT_CHOICES_ALREADY_FINALIZED_MESSAGE };
+  }
+  // EO Template Use fills answers on the venue side and finalizes without a
+  // client round-trip — draft is the expected status for that path.
+  if (opts?.venueUse && status === "draft") {
+    return null;
   }
   if (!isClientChoicesNeedsVenueReview(status)) {
     return { ok: false, message: CLIENT_CHOICES_FINALIZE_NOT_READY_MESSAGE };

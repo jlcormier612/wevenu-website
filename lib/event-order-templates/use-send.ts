@@ -86,7 +86,7 @@ export async function useEventOrderTemplate(
     };
   }
 
-  const finalized = await finalizeClientChoices(created.choicesId);
+  const finalized = await finalizeClientChoices(created.choicesId, { venueUse: true });
   if (!finalized.ok) {
     return {
       ok: false,

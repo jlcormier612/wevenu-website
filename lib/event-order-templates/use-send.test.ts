@@ -12,7 +12,7 @@ describe("useEventOrderTemplate / sendEventOrderTemplate", () => {
   it("wires Use to createClientChoicesFromEventOrderTemplate + finalize", () => {
     const src = readFileSync(join(root, "lib/event-order-templates/use-send.ts"), "utf8");
     assert.match(src, /createClientChoicesFromEventOrderTemplate/);
-    assert.match(src, /finalizeClientChoices/);
+    assert.match(src, /finalizeClientChoices\(created\.choicesId, \{ venueUse: true \}\)/);
     assert.match(src, /startOrApplyEventOrderTemplate/);
     assert.match(src, /templateHasSelectableGroups/);
     assert.match(src, /export async function useEventOrderTemplate/);
