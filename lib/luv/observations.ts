@@ -27,11 +27,22 @@ import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
 import { generateMomentumLanguage } from "@/lib/leads/momentum";
 import { computeEventTaskReadinessByKind } from "@/lib/playbooks/repository";
-import { computePlanningReadiness, computeTimelineReadiness } from "@/lib/readiness/compute";
+import { computePaymentsReadiness, computePlanningReadiness, computeTimelineReadiness } from "@/lib/readiness/compute";
 import { getRequests } from "@/lib/requests/service";
 import type { Request as PlatformRequest } from "@/lib/requests/types";
 import { computeWebsiteReadiness } from "@/lib/wedding-website/readiness";
 import type { TimelineEntry } from "@/lib/timeline/types";
+import { paymentsAttentionHref } from "@/lib/luv/briefing-attention-links";
+import {
+  applyContextualSupersession,
+  buildS1EventContractObservation,
+  buildS2EventPaymentObservation,
+  buildS3UnattendedInquiryObservation,
+  buildS4TourPrepObservation,
+} from "@/lib/luv/contextual-signals";
+import { getInvoices } from "@/lib/invoices/repository";
+import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
+import type { Invoice } from "@/lib/invoices/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -79,6 +90,7 @@ export async function getLuvObservations(
   const soon30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
   const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const twoDaysAgo   = new Date(Date.now() - 2 * 86_400_000).toISOString();
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 3_600_000).toISOString();
 
   const soon7  = new Date(Date.now() + 7  * 86_400_000).toISOString().slice(0, 10);
   const soon90 = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
@@ -98,11 +110,16 @@ export async function getLuvObservations(
     completedNoFollowUpRes,
     noShowRes,
     venueTimezone,
+    sentContractsRes,
+    unattendedInquiryRes,
+    paymentInvoices,
+    paymentSchedules,
+    paymentLineItems,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
     onlyBusinessReporting(
       supabase.from("events")
-        .select("id, name, event_date")
+        .select("id, name, event_date, client_id, status")
         .eq("venue_id", venueId)
         .not("status", "in", "(cancelled,complete)")
         .gte("event_date", today)
@@ -208,6 +225,30 @@ export async function getLuvObservations(
     // timestamptz, so rendering it without this reports the *server's* wall
     // clock — UTC in every deployment — rather than the venue's.
     getVenueTimezone(supabase, venueId),
+
+    // S1: sent contracts (any age) with event linkage — venue scoped
+    supabase.from("contracts")
+      .select("id, title, status, sent_at, event_id, client_id, clients(first_name, last_name)")
+      .eq("venue_id", venueId)
+      .eq("status", "sent")
+      .not("sent_at", "is", null)
+      .not("event_id", "is", null),
+
+    // S3: new inquiries ≥48h with no recorded contact
+    onlyBusinessReporting(
+      supabase.from("leads")
+        .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at")
+        .eq("venue_id", venueId)
+        .eq("sales_stage", "new_inquiry")
+        .is("last_contacted_at", null)
+        .lte("created_at", fortyEightHoursAgo)
+        .order("created_at"),
+    ),
+
+    // S2: same payment sources Daily Briefing / Event Readiness use
+    getInvoices(supabase, venueId),
+    getSchedules(supabase, venueId),
+    getAllLineItems(supabase, venueId),
   ]);
 
   // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
@@ -222,7 +263,7 @@ export async function getLuvObservations(
     (floorPlansRes.data ?? []).map((r: { event_id: string }) => r.event_id),
   );
 
-  for (const ev of (upcomingEventsRes.data ?? []) as { id: string; name: string; event_date: string }[]) {
+  for (const ev of (upcomingEventsRes.data ?? []) as { id: string; name: string; event_date: string; client_id: string | null; status: string }[]) {
     const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
     const hasTimeline = eventsWithTimelines.has(ev.id);
     const hasFloorPlan = eventsWithFloorPlans.has(ev.id);
@@ -652,14 +693,67 @@ export async function getLuvObservations(
   }
 
   // ── Upcoming tour appointments ───────────────────────────────────────────
-  // Tours are high-intent moments. Coordinator should know what's coming up.
-  for (const tour of (upcomingToursRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null }[]) {
+  // Tours are high-intent moments. Generic schedule notice stays L3.
+  // S4 upgrades the same id only when evidence shows a real prep gap.
+  const upcomingTours = (upcomingToursRes.data ?? []) as {
+    id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null;
+  }[];
+  const tourLeadIds = [...new Set(upcomingTours.map((t) => t.lead_id).filter(Boolean))] as string[];
+  const tourLeadPrepById = new Map<string, {
+    id: string; next_action_text: string | null; next_action_due: string | null;
+    last_contacted_at: string | null; sales_stage: string;
+  }>();
+  if (tourLeadIds.length > 0) {
+    const { data: tourLeads } = await onlyBusinessReporting(
+      supabase.from("leads")
+        .select("id, next_action_text, next_action_due, last_contacted_at, sales_stage")
+        .eq("venue_id", venueId)
+        .in("id", tourLeadIds),
+    );
+    for (const row of (tourLeads ?? []) as {
+      id: string; next_action_text: string | null; next_action_due: string | null;
+      last_contacted_at: string | null; sales_stage: string;
+    }[]) {
+      tourLeadPrepById.set(row.id, row);
+    }
+  }
+
+  for (const tour of upcomingTours) {
     const tourDate = new Date(tour.scheduled_at);
     const du = Math.ceil((tourDate.getTime() - Date.now()) / 86_400_000);
     const timeStr = venueLocalLabel(tour.scheduled_at, venueTimezone, {
       weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
     });
     const name = tour.contact_name ?? "A prospective client";
+    const leadRow = tour.lead_id ? tourLeadPrepById.get(tour.lead_id) ?? null : null;
+    const s4 = buildS4TourPrepObservation(
+      {
+        id: tour.id,
+        venueId,
+        scheduledAt: tour.scheduled_at,
+        contactName: tour.contact_name,
+        durationMinutes: tour.duration_minutes,
+        leadId: tour.lead_id,
+      },
+      leadRow
+        ? {
+            leadId: leadRow.id,
+            venueId,
+            nextActionText: leadRow.next_action_text,
+            nextActionDue: leadRow.next_action_due,
+            lastContactedAt: leadRow.last_contacted_at,
+            salesStage: leadRow.sales_stage,
+          }
+        : null,
+      { venueId },
+      du === 0
+        ? `today at ${venueLocalLabel(tour.scheduled_at, venueTimezone, { hour: "numeric", minute: "2-digit" })}`
+        : timeStr,
+    );
+    if (s4) {
+      observations.push(s4);
+      continue;
+    }
     observations.push({
       id: `tour-upcoming-${tour.id}`,
       kind: "fact",
@@ -958,9 +1052,128 @@ export async function getLuvObservations(
     }
   }
 
-  // Sort by priority (high → medium → low), cap at 8
+  // ── Contextual intelligence S1–S3 (S4 handled in tour loop) ───────────────
+  // L3 only — record-scoped hrefs fail Dashboard L1 gate by design.
+  const upcomingEvents = (upcomingEventsRes.data ?? []) as {
+    id: string; name: string; event_date: string; client_id: string | null; status: string;
+  }[];
+  const eventById = new Map(upcomingEvents.map((e) => [e.id, e]));
+
+  // S1 — approaching event + sent contract
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (sentContractsRes.data ?? []) as any[]) {
+    if (!row.event_id) continue;
+    const ev = eventById.get(row.event_id);
+    if (!ev) continue;
+    const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
+    const s1 = buildS1EventContractObservation(
+      {
+        id: ev.id,
+        venueId,
+        name: ev.name,
+        eventDate: ev.event_date,
+        status: ev.status,
+        clientId: ev.client_id,
+      },
+      {
+        id: row.id,
+        venueId,
+        title: row.title,
+        status: row.status,
+        sentAt: row.sent_at,
+        eventId: row.event_id,
+        clientId: row.client_id,
+        clientFirstName: client?.first_name ?? null,
+        clientLastName: client?.last_name ?? null,
+      },
+      { venueId },
+    );
+    if (s1) observations.push(s1);
+  }
+
+  // S2 — approaching event + authoritative payment needs_attention
+  const linesByScheduleId = new Map<string, typeof paymentLineItems>();
+  for (const line of paymentLineItems) {
+    const list = linesByScheduleId.get(line.scheduleId) ?? [];
+    list.push(line);
+    linesByScheduleId.set(line.scheduleId, list);
+  }
+  const scheduleLinesByEventId = new Map<string, { status: string; dueDate: string | null; amount: number }[]>();
+  for (const schedule of paymentSchedules) {
+    if (!schedule.eventId) continue;
+    const lines = (linesByScheduleId.get(schedule.id) ?? []).map((l) => ({
+      status: l.status,
+      dueDate: l.dueDate,
+      amount: l.amount,
+    }));
+    const existing = scheduleLinesByEventId.get(schedule.eventId) ?? [];
+    scheduleLinesByEventId.set(schedule.eventId, existing.concat(lines));
+  }
+  const invoicesByEventId = new Map<string, Invoice[]>();
+  for (const inv of paymentInvoices) {
+    if (!inv.eventId) continue;
+    const list = invoicesByEventId.get(inv.eventId) ?? [];
+    list.push(inv);
+    invoicesByEventId.set(inv.eventId, list);
+  }
+  for (const ev of upcomingEvents) {
+    if (!ev.client_id) continue;
+    const eventInvoices = invoicesByEventId.get(ev.id) ?? [];
+    const eventScheduleLines = scheduleLinesByEventId.get(ev.id) ?? [];
+    if (eventInvoices.length === 0 && eventScheduleLines.length === 0) continue;
+    const section = computePaymentsReadiness(eventInvoices, eventScheduleLines);
+    const s2 = buildS2EventPaymentObservation(
+      {
+        id: ev.id,
+        venueId,
+        name: ev.name,
+        eventDate: ev.event_date,
+        status: ev.status,
+        clientId: ev.client_id,
+      },
+      {
+        eventId: ev.id,
+        venueId,
+        status: section.status,
+        detail: section.detail,
+        href: paymentsAttentionHref(eventInvoices, ev.client_id),
+      },
+      { venueId },
+    );
+    if (s2) observations.push(s2);
+  }
+
+  // S3 — unattended new inquiry (≥48h, never contacted)
+  for (const row of (unattendedInquiryRes.data ?? []) as {
+    id: string; first_name: string; last_name: string; sales_stage: string;
+    created_at: string; last_contacted_at: string | null;
+  }[]) {
+    const s3 = buildS3UnattendedInquiryObservation(
+      {
+        id: row.id,
+        venueId,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        salesStage: row.sales_stage,
+        createdAt: row.created_at,
+        lastContactedAt: row.last_contacted_at,
+      },
+      { venueId },
+    );
+    if (s3) observations.push(s3);
+  }
+
+  // Sort by priority (high → medium → low), prefer contextual L3 signals under the cap
   const order: Record<LuvObservation["priority"], number> = { high: 0, medium: 1, low: 2 };
-  return observations
-    .sort((a, b) => order[a.priority] - order[b.priority])
-    .slice(0, 8);
+  const superseded = applyContextualSupersession(observations);
+  const sorted = superseded.sort((a, b) => order[a.priority] - order[b.priority]);
+  const isContextual = (o: LuvObservation) =>
+    o.id.startsWith("event-contract-unsigned-") ||
+    o.id.startsWith("event-payment-attention-") ||
+    o.id.startsWith("inquiry-unattended-") ||
+    // S4 upgrades tour-upcoming in place when evidence exists
+    (o.id.startsWith("tour-upcoming-") && o.kind === "recommendation");
+  const contextual = sorted.filter(isContextual);
+  const rest = sorted.filter((o) => !isContextual(o));
+  return [...contextual, ...rest].slice(0, 8);
 }

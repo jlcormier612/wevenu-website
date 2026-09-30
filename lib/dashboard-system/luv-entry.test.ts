@@ -445,3 +445,74 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
     assert.equal(entry?.actionHref, "/tasks");
   });
 });
+
+describe("Contextual intelligence S1–S4 stay off Dashboard L1", () => {
+  const contextual: LuvObservation[] = [
+    observation({
+      id: "event-contract-unsigned-aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+      message: "Wedding is in 12 days, and the contract is still awaiting signature.",
+      link: "/contracts/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+      recommendation: {
+        label: "Follow up",
+        link: "/contracts/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+        type: "navigate",
+      },
+    }),
+    observation({
+      id: "event-payment-attention-aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002",
+      message: "Wedding is in 10 days, and a payment still needs attention.",
+      link: "/invoices/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003",
+      recommendation: {
+        label: "Review",
+        link: "/invoices/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003",
+        type: "navigate",
+      },
+    }),
+    observation({
+      id: "inquiry-unattended-aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004",
+      message: "Jordan reached out over 48 hours ago and has not been contacted yet.",
+      link: "/leads/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004",
+      recommendation: {
+        label: "Reach out",
+        link: "/leads/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004",
+        type: "draft",
+      },
+    }),
+    observation({
+      id: "tour-upcoming-aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0005",
+      kind: "recommendation",
+      message: "Casey's tour is Fri — preparation is still incomplete.",
+      link: "/leads/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006",
+      recommendation: {
+        label: "Complete next action",
+        link: "/leads/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006",
+        type: "navigate",
+      },
+    }),
+  ];
+
+  it("each S1–S4 observation fails the Level-1 gate", () => {
+    for (const obs of contextual) {
+      assert.equal(isDashboardLevel1Observation(obs), false, obs.id);
+    }
+  });
+
+  it("S1–S4 alone never occupy the Dashboard Luv card", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [],
+      observations: contextual,
+      recommendations: [],
+    });
+    assert.equal(entry, null);
+  });
+
+  it("Level-1 setup still wins when contextual L3 signals are present", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [],
+      observations: [...contextual, level1SetupObservation()],
+      recommendations: [],
+    });
+    assert.equal(entry?.dismissObservationId, "setup-gap-public_website");
+    assert.doesNotMatch(entry!.message, /awaiting signature|payment still needs|not been contacted|preparation is still incomplete/);
+  });
+});

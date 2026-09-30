@@ -150,6 +150,11 @@ export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
   if (isTourNoFollowupObservation(obs)) return false;
   if (obs.id.startsWith("tour-no-show-")) return false;
 
+  // Contextual intelligence S1–S4 — record/workflow L3 only (never Dashboard L1).
+  if (obs.id.startsWith("event-contract-unsigned-")) return false;
+  if (obs.id.startsWith("event-payment-attention-")) return false;
+  if (obs.id.startsWith("inquiry-unattended-")) return false;
+
   // Known venue-wide families (explicit allowlist).
   if (obs.id.startsWith("setup-gap-")) return true;
   if (obs.id.startsWith("venue-readiness-")) return true;
