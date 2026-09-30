@@ -288,7 +288,8 @@ export function evaluateInquiryVolumeIncrease(
     title: "Inquiry volume is picking up",
     body: `You received ${current} inquiries in the last ${windowDays} days, compared with ${prior} in the previous ${windowDays} days.`,
     priority: SPOT_PATTERN_PRIORITY - 5,
-    ctas: [{ label: "View inquiries", target: "/leads", type: "navigate" }],
+    // Informational on /leads — a same-surface navigate CTA would only reload this page.
+    ctas: [],
     metadata: {
       current_count: current,
       prior_count: prior,

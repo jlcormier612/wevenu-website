@@ -229,6 +229,7 @@ describe("Phase 6 P-P1 context", () => {
     assert.equal(active!.metadata.percent_increase, 40);
     // Context keys present but empty when secondary floors fail / omitted
     assert.deepEqual(active!.metadata.context, []);
+    assert.deepEqual(active!.ctas, []);
   });
 
   it("8. sustained context appears when floor passes", () => {

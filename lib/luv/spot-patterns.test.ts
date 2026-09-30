@@ -393,6 +393,41 @@ describe("P-P1 — inquiry volume increase", () => {
     );
     assert.equal(active!.metadata.percent_increase, 40);
     assert.equal(active!.metadata.absolute_increase, 2);
+    // P-P1 lives on /leads — no redundant "View inquiries" CTA, and no replacement invented.
+    assert.deepEqual(active!.ctas, []);
+  });
+
+  it("P-P1 on /leads is informational — no /leads CTA and no View inquiries", () => {
+    const active = evaluateInquiryVolumeIncrease({
+      venueId: VENUE_A,
+      currentCount: 20,
+      priorCount: 5,
+      priorPriorCount: 3,
+      tourCurrentCount: 5,
+      tourPriorCount: 2,
+    });
+    assert.ok(active);
+    assert.equal(active!.type, INQUIRY_VOLUME_INCREASE_TYPE);
+    assert.equal(active!.title, "Inquiry volume is picking up");
+    assert.match(
+      active!.body,
+      /^You received 20 inquiries in the last 14 days, compared with 5 in the previous 14 days\./,
+    );
+    assert.match(active!.body, /previous 14-day window|tours/i);
+    assert.equal(active!.ctas.length, 0);
+    assert.equal(
+      active!.ctas.some((cta) => cta.target === "/leads" || /view inquiries/i.test(cta.label)),
+      false,
+    );
+    const src = read("lib/luv/spot-patterns.ts");
+    const fnStart = src.indexOf("export function evaluateInquiryVolumeIncrease");
+    const fnEnd = src.indexOf("export function countLeadsCreatedInRange", fnStart);
+    const fn = src.slice(fnStart, fnEnd);
+    assert.match(fn, /ctas:\s*\[\]/);
+    assert.doesNotMatch(fn, /View inquiries/);
+    assert.doesNotMatch(fn, /target:\s*"\/leads"/);
+    const panel = read("components/dashboard/recommendations-panel.tsx");
+    assert.match(panel, /rec\.ctas\.length > 0 &&/);
   });
 
   it("correct current/prior 14-day counts + venue isolation", () => {
