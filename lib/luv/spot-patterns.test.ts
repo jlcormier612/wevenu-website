@@ -563,6 +563,15 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     assert.doesNotMatch(dashPage, /SpotPatternRecommendationsPanel/);
   });
 
+  it("tour volume for P-P1 does not use exclude_from_business_reporting", () => {
+    const src = read("lib/luv/spot-patterns.ts");
+    const start = src.lastIndexOf('.from("tour_appointments")');
+    const tourBlock = src.slice(start, src.indexOf("priorStart),", start) + "priorStart),".length);
+    assert.match(tourBlock, /scheduled_at/);
+    assert.doesNotMatch(tourBlock, /onlyBusinessReporting/);
+    assert.doesNotMatch(tourBlock, /exclude_from_business_reporting/);
+  });
+
   it("manual and automation Lead→Booked share first_booked_at clock", () => {
     const bookSql = read("supabase/migrations/20261408300000_book_relationship_consumes_date_holds.sql");
     assert.match(bookSql, /first_booked_at = coalesce\(first_booked_at, now\(\)\)/);

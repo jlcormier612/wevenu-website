@@ -466,13 +466,11 @@ export async function syncPhase5SpotPatternRecommendations(
           .not("first_booked_at", "is", null)
           .gte("first_booked_at", priorStart),
       ),
-      onlyBusinessReporting(
-        supabase
-          .from("tour_appointments")
-          .select("id, scheduled_at")
-          .eq("venue_id", venueId)
-          .gte("scheduled_at", priorStart),
-      ),
+      supabase
+        .from("tour_appointments")
+        .select("id, scheduled_at")
+        .eq("venue_id", venueId)
+        .gte("scheduled_at", priorStart),
       onlyBusinessReporting(
         supabase
           .from("events")
