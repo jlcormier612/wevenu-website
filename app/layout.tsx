@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Inter, Source_Sans_3 } from "next/font/google";
 import localFont from "next/font/local";
 
+import { DeploySkewRecovery } from "@/components/providers/deploy-skew-recovery";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -56,6 +57,7 @@ export default function RootLayout({
       className={`${inter.variable} ${sourceSans.variable} ${cormorant.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
+        <DeploySkewRecovery />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
