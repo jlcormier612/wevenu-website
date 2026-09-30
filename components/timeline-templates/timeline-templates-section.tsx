@@ -257,11 +257,14 @@ function TemplateCard({
 
 export function TimelineTemplatesSection({
   initialTemplates, spaces, missingStarterKeys = [], events = [],
+  headerCreate = true,
 }: {
   initialTemplates: TimelineTemplateWithStats[];
   spaces: VenueSpace[];
   missingStarterKeys?: TimelineStarterMasterKey[];
   events?: TimelineEventOption[];
+  /** When false, PageHeader owns + New Template — only show StarterMenu here. */
+  headerCreate?: boolean;
 }) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -342,7 +345,9 @@ export function TimelineTemplatesSection({
         <p className="text-xs text-muted-foreground">Reusable day-of schedules a venue builds once and applies to any booking.</p>
         <div className="flex justify-center gap-2 pt-1 flex-wrap">
           <StarterMenu missingKeys={missingStarterKeys} />
-          <TimelineTemplateStarterPicker existingTemplates={templates} spaces={spaces} />
+          {headerCreate ? (
+            <TimelineTemplateStarterPicker existingTemplates={templates} spaces={spaces} />
+          ) : null}
         </div>
       </div>
     );
@@ -366,7 +371,9 @@ export function TimelineTemplatesSection({
     <div className="space-y-4">
       <div className="flex justify-end gap-2 flex-wrap">
         <StarterMenu missingKeys={missingStarterKeys} />
-        <TimelineTemplateStarterPicker existingTemplates={active} spaces={spaces} />
+        {headerCreate ? (
+          <TimelineTemplateStarterPicker existingTemplates={active} spaces={spaces} />
+        ) : null}
       </div>
       <p className="text-xs text-muted-foreground">
         Edit reusable timelines here. Applying a timeline to a booking happens on the event — never as a client send from the Library.

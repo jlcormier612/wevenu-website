@@ -183,7 +183,7 @@ export function TimelineTemplateStarterPicker({
         }
       }}>
         <DropdownMenuTrigger render={<Button type="button" />}>
-          New Template<ChevronDown className="ml-1.5 h-3.5 w-3.5" />
+          + New Template<ChevronDown className="ml-1.5 h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => openFlow("blank")}>Blank Timeline</DropdownMenuItem>

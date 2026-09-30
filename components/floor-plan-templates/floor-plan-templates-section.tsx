@@ -290,6 +290,7 @@ export function FloorPlanTemplatesSection({
   initialTemplates, spaces, venueId, events = [],
   acceptedEventTypes = [],
   canEdit = true, canDelete = true,
+  headerCreate = true,
 }: {
   initialTemplates: FloorPlanTemplateWithStats[];
   spaces: VenueSpace[];
@@ -299,6 +300,8 @@ export function FloorPlanTemplatesSection({
   acceptedEventTypes?: string[];
   canEdit?: boolean;
   canDelete?: boolean;
+  /** When false, PageHeader owns + New Template. */
+  headerCreate?: boolean;
 }) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -396,7 +399,7 @@ export function FloorPlanTemplatesSection({
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No floor plan templates yet</p>
         <p className="text-xs text-muted-foreground">Reusable room layouts a venue builds once and applies to any booking.</p>
-        {canEdit && (
+        {canEdit && headerCreate && (
           <div className="flex justify-center gap-2 pt-1 flex-wrap">
             <StarterMenu missingKeys={missingStarterKeys} />
             <FloorPlanTemplateStarterPicker
@@ -451,7 +454,7 @@ export function FloorPlanTemplatesSection({
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canEdit && (
+          {canEdit && headerCreate && (
             <>
               <StarterMenu missingKeys={missingStarterKeys} />
               <FloorPlanTemplateStarterPicker
@@ -461,6 +464,9 @@ export function FloorPlanTemplatesSection({
                 acceptedEventTypes={acceptedEventTypes}
               />
             </>
+          )}
+          {canEdit && !headerCreate && (
+            <StarterMenu missingKeys={missingStarterKeys} />
           )}
         </div>
       </div>

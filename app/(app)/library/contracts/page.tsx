@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ContractTemplateList } from "@/components/contracts/contract-template-list";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export default async function ContractTemplatesLibraryPage() {
   const templates = await getTemplates(true);
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Contract Templates"
         description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."

@@ -104,8 +104,16 @@ export async function ensureTimelineStartersForCurrentVenue(): Promise<{
   if (!isSupabaseConfigured) return { ok: false, created: [], skipped: [], message: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, created: [], skipped: [], message: "No venue found." };
-  const result = await provisionTimelineStarters(await createClient(), venue.id);
-  return { ok: true, ...result };
+  try {
+    const result = await provisionTimelineStarters(await createClient(), venue.id);
+    return { ok: true, ...result };
+  } catch (e) {
+    // Never take down the Timeline Templates collection page if starter
+    // provision races or hits a transient DB error — list still loads.
+    const message = e instanceof Error ? e.message : "Could not ensure timeline starters.";
+    console.error("[ensureTimelineStartersForCurrentVenue]", message);
+    return { ok: false, created: [], skipped: [], message };
+  }
 }
 
 export async function addTimelineStarterAgain(

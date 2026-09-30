@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { FloorPlanTemplateStarterPicker } from "@/components/floor-plan-templates/floor-plan-template-starter-picker";
 import { FloorPlanTemplatesSection } from "@/components/floor-plan-templates/floor-plan-templates-section";
 import { getSpaces } from "@/lib/availability/service";
 import { getEvents } from "@/lib/events/service";
@@ -26,13 +28,26 @@ export default async function FloorPlanTemplatesPage() {
     getCurrentUserRole(),
     getInquiryFormSettings(),
   ]);
-  // Same accepted inquiry set as Leads / Calendar / Inbox — not global EVENT_TYPES.
   const acceptedEventTypes = inquirySettings?.acceptedEventTypes ?? [];
+  const canEdit = canEditFloorPlans(role);
+  const activeTemplates = templates.filter((t) => !t.isArchived);
+
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Floor Plan Templates"
         description="Reusable room layouts a venue builds once and applies to any booking."
+        actions={
+          canEdit ? (
+            <FloorPlanTemplateStarterPicker
+              existingTemplates={activeTemplates}
+              spaces={spaces}
+              venueId={venue?.id ?? ""}
+              acceptedEventTypes={acceptedEventTypes}
+            />
+          ) : undefined
+        }
       />
       <LibraryHowItWorks>
         Layout, background image, and placed objects are edited in the floor plan editor. Assign a space and place inventory items marked for floor plans.
@@ -52,8 +67,9 @@ export default async function FloorPlanTemplatesPage() {
         venueId={venue?.id ?? ""}
         events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate }))}
         acceptedEventTypes={acceptedEventTypes}
-        canEdit={canEditFloorPlans(role)}
+        canEdit={canEdit}
         canDelete={canDeleteFloorPlanRows(role)}
+        headerCreate={false}
       />
     </div>
   );

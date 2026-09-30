@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
-import { InventoryTemplateList } from "@/components/event-inventory/inventory-template-list";
+import {
+  InventoryTemplateList,
+  NewInventoryTemplateButton,
+} from "@/components/event-inventory/inventory-template-list";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { ensureInventoryStartersForCurrentVenue } from "@/lib/inventory/provision";
@@ -23,12 +27,14 @@ export default async function InventoryTemplatesLibraryPage() {
 
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Inventory Templates"
         description="What you typically use for a kind of event. Customize a starter, then apply it to create Working Inventory for a booking."
+        actions={<NewInventoryTemplateButton />}
       />
       <LibraryHowItWorks>
-        Build a reusable packing/checklist once. Use Template on a client booking to create that event&apos;s inventory list from this template.
+        Build a reusable packing/checklist once. Use on a client booking to create that event&apos;s inventory list from this template.
       </LibraryHowItWorks>
       <LibraryDependencyNote
         detail="Add items from Available Inventory when you edit a template. Use a custom line only for one-offs that are not already in your catalog. Applying a template copies a snapshot onto the event."
@@ -40,6 +46,7 @@ export default async function InventoryTemplatesLibraryPage() {
         templates={templates}
         missingStarterKeys={missingStarterKeys}
         clientGroups={clientGroups}
+        headerCreate={false}
       />
     </div>
   );

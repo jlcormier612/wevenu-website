@@ -48,7 +48,7 @@ import { isEventOrderTemplateUnfinished } from "@/lib/library/template-readiness
 import type { ChoicesAnswers } from "@/lib/client-choices/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 
-function NewTemplateSheet() {
+export function NewEventOrderTemplateButton() {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -374,10 +374,13 @@ export function EventOrderTemplateList({
   templates,
   missingStarterKeys = [],
   clientGroups = [],
+  headerCreate = true,
 }: {
   templates: EventOrderTemplate[];
   missingStarterKeys?: EventOrderStarterMasterKey[];
   clientGroups?: TemplateApplyClientGroup[];
+  /** When false, PageHeader owns + New Template. */
+  headerCreate?: boolean;
 }) {
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [using, setUsing] = React.useState<EventOrderTemplate | null>(null);
@@ -418,7 +421,7 @@ export function EventOrderTemplateList({
         </p>
         <div className="flex items-center gap-2">
           <StarterMenu missingKeys={missingStarterKeys} />
-          <NewTemplateSheet />
+          {headerCreate ? <NewEventOrderTemplateButton /> : null}
         </div>
       </div>
       {active.length === 0 ? (

@@ -156,7 +156,7 @@ describe("Public Form ↔ QR Campaign relationship", () => {
 });
 
 describe("Applyable template grammar + apply semantics preserved", () => {
-  it("Inventory Templates keep Use Template and add Duplicate", () => {
+  it("Inventory Templates keep Use and add Duplicate", () => {
     const list = readFileSync(resolve("components/event-inventory/inventory-template-list.tsx"), "utf8");
     assert.match(list, /LIBRARY_LABELS\.useTemplate/);
     assert.match(list, /duplicateInventoryTemplateAction/);

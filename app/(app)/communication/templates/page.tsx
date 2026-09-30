@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { MessageTemplateList } from "@/components/communication/message-template-list";
 import { MessageTemplateStarterPicker } from "@/components/communication/message-template-starter-picker";
 import { AddHelloToCheersStarters } from "@/components/communication/add-hello-to-cheers-starters";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getTemplates } from "@/lib/message-templates/service";
@@ -16,17 +17,19 @@ export default async function MessageTemplatesPage() {
   const templates = await getTemplates(true);
   const presentKeys = new Set(templates.map((t) => t.sourceMasterKey).filter(Boolean));
   const missingMasters = STARTER_MESSAGE_MASTERS.filter((m) => !presentKeys.has(m.key));
+  const active = templates.filter((t) => !t.isArchived);
 
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Message Templates"
         description="Reusable email and text messages for couples — including Hello to Cheers starters you can edit to sound like your venue."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <MessageTemplateStarterPicker existingTemplates={active} />
+            <MessageTemplateStarterPicker existingTemplates={active} variant="import" />
             <AddHelloToCheersStarters missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))} />
-            <MessageTemplateStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} variant="import" />
-            <MessageTemplateStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} />
           </div>
         }
       />
@@ -41,8 +44,8 @@ export default async function MessageTemplatesPage() {
             Create a reusable email or text message, or bring in one you already send.
           </p>
           <div className="flex items-center gap-2">
-            <MessageTemplateStarterPicker existingTemplates={[]} variant="import" />
             <MessageTemplateStarterPicker existingTemplates={[]} />
+            <MessageTemplateStarterPicker existingTemplates={[]} variant="import" />
           </div>
         </div>
       ) : (

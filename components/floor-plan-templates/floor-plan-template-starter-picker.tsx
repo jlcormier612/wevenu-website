@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The "+ New Floor Plan Template" menu — Blank, Duplicate an existing
+ * The "+ New Template" menu — Blank, Duplicate an existing
  * template, Upload an existing floor plan (PDF/image), or Paste a text
  * layout (Floor Plan Template Library task). Upload/Paste both create the
  * template first, then populate it (document-backed floor plan file, or
@@ -235,7 +235,7 @@ export function FloorPlanTemplateStarterPicker({
         }
       }}>
         <DropdownMenuTrigger render={<Button type="button" />}>
-          + New Floor Plan Template<ChevronDown className="ml-1.5 h-3.5 w-3.5" />
+          + New Template<ChevronDown className="ml-1.5 h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => openFlow("blank")}>Build from Scratch</DropdownMenuItem>

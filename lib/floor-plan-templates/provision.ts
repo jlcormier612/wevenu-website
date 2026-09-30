@@ -112,8 +112,14 @@ export async function ensureFloorPlanStartersForCurrentVenue(): Promise<{
   if (!isSupabaseConfigured) return { ok: false, created: [], skipped: [], message: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, created: [], skipped: [], message: "No venue found." };
-  const result = await provisionFloorPlanStarters(await createClient(), venue.id);
-  return { ok: true, ...result };
+  try {
+    const result = await provisionFloorPlanStarters(await createClient(), venue.id);
+    return { ok: true, ...result };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not ensure floor plan starters.";
+    console.error("[ensureFloorPlanStartersForCurrentVenue]", message);
+    return { ok: false, created: [], skipped: [], message };
+  }
 }
 
 export async function addFloorPlanStarterAgain(

@@ -195,8 +195,13 @@ function TemplateCard({
 }
 
 export function PlaybooksSection({
-  initialTemplates, events = [],
-}: { initialTemplates: PlaybookTemplateWithStats[]; events?: PlaybookEventOption[] }) {
+  initialTemplates, events = [], headerCreate = true,
+}: {
+  initialTemplates: PlaybookTemplateWithStats[];
+  events?: PlaybookEventOption[];
+  /** When false, PageHeader owns + New Template / Import. */
+  headerCreate?: boolean;
+}) {
   const router = useRouter();
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -295,10 +300,12 @@ export function PlaybooksSection({
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No planning templates yet</p>
         <p className="text-xs text-muted-foreground">Client Planning and Venue Planning are two separate checklists — start with whichever you need first.</p>
-        <div className="flex justify-center gap-2 pt-1">
-          <PlaybookStarterPicker existingTemplates={templates} />
-          <PlaybookStarterPicker existingTemplates={templates} variant="import" />
-        </div>
+        {headerCreate ? (
+          <div className="flex justify-center gap-2 pt-1">
+            <PlaybookStarterPicker existingTemplates={templates} />
+            <PlaybookStarterPicker existingTemplates={templates} variant="import" />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -382,10 +389,12 @@ export function PlaybooksSection({
         );
       })()}
 
-      <div className="flex gap-2 pt-2 border-t border-border/60">
-        <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact />
-        <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact variant="import" />
-      </div>
+      {headerCreate ? (
+        <div className="flex gap-2 pt-2 border-t border-border/60">
+          <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact />
+          <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact variant="import" />
+        </div>
+      ) : null}
 
       <UsePlaybookFlow
         template={using}

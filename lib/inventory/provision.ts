@@ -140,8 +140,14 @@ export async function ensureInventoryStartersForCurrentVenue(): Promise<{
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
-  const result = await provisionInventoryStarters(await createClient(), venue.id);
-  return { ok: true, ...result };
+  try {
+    const result = await provisionInventoryStarters(await createClient(), venue.id);
+    return { ok: true, ...result };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not ensure inventory starters.";
+    console.error("[ensureInventoryStartersForCurrentVenue]", message);
+    return { ok: false, message };
+  }
 }
 
 export async function addInventoryTemplateStarterAgain(

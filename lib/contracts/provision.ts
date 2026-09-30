@@ -116,8 +116,14 @@ export async function ensureContractStartersForCurrentVenue(): Promise<{
   }
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, created: [], skipped: [], refreshed: [], message: "No venue found." };
-  const result = await provisionContractStarters(await createClient(), venue.id);
-  return { ok: true, ...result };
+  try {
+    const result = await provisionContractStarters(await createClient(), venue.id);
+    return { ok: true, ...result };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not ensure contract starters.";
+    console.error("[ensureContractStartersForCurrentVenue]", message);
+    return { ok: false, created: [], skipped: [], refreshed: [], message };
+  }
 }
 
 export async function addContractStarterAgain(

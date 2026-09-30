@@ -39,7 +39,7 @@ import { isInventoryTemplateUnfinished } from "@/lib/library/template-readiness"
 import { INVENTORY_TEMPLATE_STARTER_MASTERS, type InventoryTemplateStarterKey } from "@/lib/inventory/starters";
 import { formatRelative } from "@/lib/leads/constants";
 
-function CreateTemplateSheet() {
+export function NewInventoryTemplateButton() {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -331,10 +331,13 @@ export function InventoryTemplateList({
   templates,
   missingStarterKeys = [],
   clientGroups = [],
+  headerCreate = true,
 }: {
   templates: InventoryTemplate[];
   missingStarterKeys?: InventoryTemplateStarterKey[];
   clientGroups?: TemplateApplyClientGroup[];
+  /** When false, PageHeader owns + New Template. */
+  headerCreate?: boolean;
 }) {
   const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
@@ -382,7 +385,7 @@ export function InventoryTemplateList({
     <div className="space-y-4">
       <div className="flex justify-end gap-2 flex-wrap">
         <StarterMenu missingKeys={missingStarterKeys} />
-        <CreateTemplateSheet />
+        {headerCreate ? <NewInventoryTemplateButton /> : null}
       </div>
       <p className="text-xs text-muted-foreground">
         Reusable packing lists. Use applies on the venue side; Send applies and shares for client portal review.

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { TimelineTemplateStarterPicker } from "@/components/timeline-templates/timeline-template-starter-picker";
 import { TimelineTemplatesSection } from "@/components/timeline-templates/timeline-templates-section";
 import { getSpaces } from "@/lib/availability/service";
 import { getEvents } from "@/lib/events/service";
@@ -18,12 +20,17 @@ export default async function TimelineTemplatesPage() {
   const missingStarterKeys = TIMELINE_STARTER_MASTERS
     .filter((m) => !presentKeys.has(m.key))
     .map((m) => m.key);
+  const activeTemplates = templates.filter((t) => !t.isArchived);
 
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Timeline Templates"
         description="Reusable day-of schedules a venue builds once and applies to any booking."
+        actions={
+          <TimelineTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} />
+        }
       />
       <LibraryHowItWorks>
         Schedule blocks (times and labels) are authored in the timeline editor. You can optionally assign a template to a space.
@@ -39,6 +46,7 @@ export default async function TimelineTemplatesPage() {
         spaces={spaces}
         missingStarterKeys={missingStarterKeys}
         events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate, startTime: e.startTime }))}
+        headerCreate={false}
       />
     </div>
   );

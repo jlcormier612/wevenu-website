@@ -20,7 +20,7 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -140,7 +140,7 @@ export function PlaybookStarterPicker({
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <SheetTrigger render={<Button type="button" variant={variant === "import" || compact ? "outline" : "default"} size={compact ? "sm" : "default"} />}>
-        {variant === "import" ? "Import a checklist" : <><Wand2 className="mr-1.5 h-4 w-4" />New template</>}
+        {variant === "import" ? "Import" : "+ New Template"}
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         {!kind ? (
