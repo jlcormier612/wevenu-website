@@ -150,6 +150,29 @@ describe("P-A1 — unattended inquiry cluster", () => {
     assert.match(active!.title, /3 recent inquiries/);
   });
 
+  it("P-A1 Help on Leads — no same-surface /leads CTA and no replacement CTA", () => {
+    const leads = [lead("a"), lead("b"), lead("c")];
+    const active = evaluateUnattendedInquiryPattern(leads, {
+      venueId: VENUE_A,
+      nowMs: NOW,
+      venueLeadHistoryCount: 20,
+    });
+    assert.ok(active);
+    assert.equal(active!.type, UNATTENDED_INQUIRY_PATTERN_TYPE);
+    assert.deepEqual(active!.ctas, []);
+    assert.equal(
+      active!.ctas.some((cta) => cta.target === "/leads" || /review inquiries/i.test(cta.label)),
+      false,
+    );
+    const src = read("lib/luv/spot-patterns.ts");
+    const fnStart = src.indexOf("export function evaluateUnattendedInquiryPattern");
+    const fnEnd = src.indexOf("export type PaymentAttentionEventInput", fnStart);
+    const fn = src.slice(fnStart, fnEnd);
+    assert.match(fn, /ctas:\s*\[\]/);
+    assert.doesNotMatch(fn, /Review inquiries/);
+    assert.doesNotMatch(fn, /target:\s*"\/leads"/);
+  });
+
   it("insufficient venue history → no pattern even at cluster size", () => {
     const leads = [lead("a"), lead("b"), lead("c")];
     assert.equal(
@@ -397,7 +420,7 @@ describe("P-P1 — inquiry volume increase", () => {
     assert.deepEqual(active!.ctas, []);
   });
 
-  it("P-P1 on /leads is informational — no /leads CTA and no View inquiries", () => {
+  it("P-P1 still qualifies as Inform L2 — no CTA invented; suppressed from Leads panel", () => {
     const active = evaluateInquiryVolumeIncrease({
       venueId: VENUE_A,
       currentCount: 20,
@@ -414,7 +437,7 @@ describe("P-P1 — inquiry volume increase", () => {
       /^You received 20 inquiries in the last 14 days, compared with 5 in the previous 14 days\./,
     );
     assert.match(active!.body, /previous 14-day window|tours/i);
-    assert.equal(active!.ctas.length, 0);
+    assert.deepEqual(active!.ctas, []);
     assert.equal(
       active!.ctas.some((cta) => cta.target === "/leads" || /view inquiries/i.test(cta.label)),
       false,
@@ -426,6 +449,17 @@ describe("P-P1 — inquiry volume increase", () => {
     assert.match(fn, /ctas:\s*\[\]/);
     assert.doesNotMatch(fn, /View inquiries/);
     assert.doesNotMatch(fn, /target:\s*"\/leads"/);
+    // Leads "Recommended next steps" must not mount Inform P-P1.
+    const leadsTypes = read("components/luv/spot-pattern-recommendations.tsx");
+    assert.match(leadsTypes, /LEADS_SPOT_PATTERN_TYPES/);
+    assert.doesNotMatch(
+      leadsTypes.slice(
+        leadsTypes.indexOf("LEADS_SPOT_PATTERN_TYPES"),
+        leadsTypes.indexOf("PAYMENTS_SPOT_PATTERN_TYPES"),
+      ),
+      /INQUIRY_VOLUME_INCREASE_TYPE/,
+    );
+    assert.equal(isDashboardLevel1Recommendation(patternRec(INQUIRY_VOLUME_INCREASE_TYPE)), false);
     const panel = read("components/dashboard/recommendations-panel.tsx");
     assert.match(panel, /rec\.ctas\.length > 0 &&/);
   });
@@ -483,7 +517,7 @@ describe("Phase 5 — Dashboard L1 exclusion + supersession", () => {
         patternRec(UNATTENDED_INQUIRY_PATTERN_TYPE, {
           title: "3 recent inquiries still need a first response",
           body: "Cluster",
-          ctas: [{ label: "Review inquiries", target: "/leads", type: "navigate" }],
+          ctas: [],
         }),
       ],
     });
@@ -580,7 +614,7 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     assert.match(insights, /current_user_venue_id\(\)/);
   });
 
-  it("wiring syncs Phase 5 patterns; L1 gate excludes them", () => {
+  it("wiring syncs Phase 5 patterns; L1 gate excludes them; Leads omits Inform P-P1", () => {
     const service = read("lib/luv/recommendation-service.ts");
     assert.match(service, /syncPhase5SpotPatternRecommendations/);
     const entry = read("lib/dashboard-system/luv-entry.ts");
@@ -591,11 +625,27 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     const leadsPage = read("app/(app)/leads/page.tsx");
     assert.match(leadsPage, /SpotPatternRecommendationsPanel/);
     assert.match(leadsPage, /LEADS_SPOT_PATTERN_TYPES/);
+    const spotPanel = read("components/luv/spot-pattern-recommendations.tsx");
+    const leadsBlock = spotPanel.slice(
+      spotPanel.indexOf("LEADS_SPOT_PATTERN_TYPES"),
+      spotPanel.indexOf("PAYMENTS_SPOT_PATTERN_TYPES"),
+    );
+    assert.match(leadsBlock, /UNATTENDED_INQUIRY_PATTERN_TYPE/);
+    assert.doesNotMatch(leadsBlock, /INQUIRY_VOLUME_INCREASE_TYPE/);
+    assert.doesNotMatch(leadsBlock, /PAYMENT_ATTENTION_PATTERN_TYPE/);
+    const paymentsBlock = spotPanel.slice(spotPanel.indexOf("PAYMENTS_SPOT_PATTERN_TYPES"));
+    assert.match(paymentsBlock, /PAYMENT_ATTENTION_PATTERN_TYPE/);
+    assert.match(paymentsBlock, /filter=attention|PAYMENT_ATTENTION/);
     const paymentsPage = read("app/(app)/payments/page.tsx");
     assert.match(paymentsPage, /SpotPatternRecommendationsPanel/);
     assert.match(paymentsPage, /PAYMENTS_SPOT_PATTERN_TYPES/);
     const dashPage = read("app/(app)/dashboard/page.tsx");
     assert.doesNotMatch(dashPage, /SpotPatternRecommendationsPanel/);
+    // P-A4 CTA destination unchanged in evaluator.
+    const patterns = read("lib/luv/spot-patterns.ts");
+    const pa4Start = patterns.indexOf("export function evaluatePaymentAttentionPattern");
+    const pa4End = patterns.indexOf("export function evaluateInquiryVolumeIncrease", pa4Start);
+    assert.match(patterns.slice(pa4Start, pa4End), /\/payments\?filter=attention/);
   });
 
   it("tour volume for P-P1 does not use exclude_from_business_reporting", () => {

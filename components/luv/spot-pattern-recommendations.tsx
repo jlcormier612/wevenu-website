@@ -2,16 +2,18 @@ import { RecommendationsPanel } from "@/components/dashboard/recommendations-pan
 import { getVenueRecommendations } from "@/lib/luv/recommendation-service";
 import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
 import {
-  INQUIRY_VOLUME_INCREASE_TYPE,
   PAYMENT_ATTENTION_PATTERN_TYPE,
   UNATTENDED_INQUIRY_PATTERN_TYPE,
   type Phase5SpotPatternType,
 } from "@/lib/luv/spot-patterns";
 
-/** Inquiry workflow L2 patterns (Leads). */
+/**
+ * Inquiry workflow L2 patterns (Leads).
+ * P-P1 (inquiry_volume_increase) is Inform with no useful Leads action —
+ * keep it out of "Recommended next steps" rather than inventing a surface/CTA.
+ */
 export const LEADS_SPOT_PATTERN_TYPES: Phase5SpotPatternType[] = [
   UNATTENDED_INQUIRY_PATTERN_TYPE,
-  INQUIRY_VOLUME_INCREASE_TYPE,
 ];
 
 /** Payments workflow L2 patterns. */

@@ -137,7 +137,8 @@ export function evaluateUnattendedInquiryPattern(
     title: `${count} recent inquiries still need a first response`,
     body: `These new inquiries have had no recorded contact for over 48 hours (last ${windowDays} days).`,
     priority: SPOT_PATTERN_PRIORITY,
-    ctas: [{ label: "Review inquiries", target: "/leads", type: "navigate" }],
+    // Help on /leads — a same-surface navigate CTA is not a next action.
+    ctas: [],
     metadata: {
       lead_count: count,
       window_days: windowDays,
