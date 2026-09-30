@@ -444,7 +444,13 @@ async function assertSchedulePlanEditable(scheduleId: string): Promise<PaymentAc
   const ctx = await scheduleInvoiceTotal(scheduleId);
   if ("ok" in ctx) {
     // Unlinked schedules remain editable (no issued invoice activity signal).
-    if (ctx.message === "This payment plan isn't linked to an invoice.") return null;
+    if (
+      ctx.ok === false &&
+      "message" in ctx &&
+      ctx.message === "This payment plan isn't linked to an invoice."
+    ) {
+      return null;
+    }
     return ctx;
   }
   const { scheduleHasPaymentActivity } = await import("@/lib/payments/reconcile-commitment");
