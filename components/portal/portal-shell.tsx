@@ -1737,6 +1737,12 @@ function OverviewSection({
   const venueName = context.venue.name;
   const accessLevel = context.accessLevel;
   const canSeeFinancial = accessLevel !== "view_only";
+  const planningCapabilities =
+    context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES;
+  const timelineEnabled = isPortalSectionEnabledByCapabilities(
+    "timeline",
+    planningCapabilities,
+  );
 
   const [p1Count, setP1Count] = React.useState<number | null>(null);
   const nextStepsRef = React.useRef<HTMLDivElement | null>(null);
@@ -1838,11 +1844,13 @@ function OverviewSection({
               style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
               Message {venueName}
             </button>
-            <button type="button" onClick={() => onNavigate("timeline")}
-              className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
-              style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
-              View Timeline
-            </button>
+            {timelineEnabled && (
+              <button type="button" onClick={() => onNavigate("timeline")}
+                className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
+                style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
+                View Timeline
+              </button>
+            )}
           </div>
           </div>
         </div>
@@ -1871,7 +1879,7 @@ function OverviewSection({
         token={token}
         venueName={venueName}
         canSeeFinancial={canSeeFinancial}
-        planningCapabilities={context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES}
+        planningCapabilities={planningCapabilities}
         onNavigate={onNavigate}
       />
 
@@ -2005,7 +2013,9 @@ function WorkingWithYourVenue({
         <VenueTeamCard token={token} venueName={venueName} onNavigate={onNavigate} />
         <div className="space-y-3">
           {canSeeFinancial && <PaymentsCard token={token} onNavigate={onNavigate} />}
-          <TimelineCard token={token} onNavigate={onNavigate} />
+          {isPortalSectionEnabledByCapabilities("timeline", planningCapabilities) && (
+            <TimelineCard token={token} onNavigate={onNavigate} />
+          )}
         </div>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-0.5">

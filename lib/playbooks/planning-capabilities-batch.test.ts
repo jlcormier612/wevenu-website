@@ -113,6 +113,32 @@ describe("PLAN-02/03 planning capabilities", () => {
     assert.equal(isPortalSectionEnabledByCapabilities("tasks", ALL_OFF), true);
   });
 
+  it("Timeline OFF → Home must not render Timeline CTA / TimelineCard", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const shell = readFileSync(resolve("components/portal/portal-shell.tsx"), "utf8");
+
+    // Capability helper is the single gate for portal Timeline surfaces.
+    assert.equal(isPortalSectionEnabledByCapabilities("timeline", { ...ALL_ON, timeline: false }), false);
+    assert.equal(isPortalSectionEnabledByCapabilities("timeline", ALL_ON), true);
+
+    // Overview derives timelineEnabled from the shared capability helper.
+    assert.match(
+      shell,
+      /const timelineEnabled = isPortalSectionEnabledByCapabilities\(\s*"timeline",\s*planningCapabilities,\s*\)/,
+    );
+    // Hero "View Timeline" is wrapped in timelineEnabled (not hard-coded).
+    assert.match(shell, /\{timelineEnabled && \(/);
+    assert.match(shell, /onNavigate\("timeline"\)[\s\S]{0,200}View Timeline/);
+
+    // WorkingWithYourVenue TimelineCard is capability-gated (🕒 Timeline + View Timeline).
+    assert.match(
+      shell,
+      /\{isPortalSectionEnabledByCapabilities\("timeline", planningCapabilities\) && \(\s*<TimelineCard/,
+    );
+    assert.match(shell, /🕒 Timeline/);
+  });
+
   it("omits disabled capabilities from Event Readiness sections", () => {
     const summary = buildEventReadiness({
       eventId: "e1",
