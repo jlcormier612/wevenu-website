@@ -97,7 +97,12 @@ describe("contracts page operational job", () => {
     assert.match(list, /parseContractListFilter/);
     assert.match(list, /listFamilySize/);
     const attention = readFileSync(resolve("lib/navigation/attention-service.ts"), "utf8");
-    assert.match(attention, /rollupContractsToCurrentAgreements\(contracts\)/);
+    assert.match(attention, /rollupContractsToCurrentAgreements/);
+    assert.match(attention, /countActionRequiredContracts|countVenueActionRequiredContracts/);
+    // Must not load full contract catalog helpers for badge counts.
+    assert.doesNotMatch(attention, /\bgetContracts\s*\(/);
+    assert.doesNotMatch(attention, /\bgetAllLineItems\b/);
+    assert.doesNotMatch(attention, /\bgetSchedules\s*\(/);
   });
 });
 

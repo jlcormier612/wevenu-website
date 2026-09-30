@@ -140,10 +140,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  // Canonical graduation: ready_to_invite_couples only.
-  const readyToInviteCouples = await isVenueReadyToInviteCouples(venue.id);
+
+  // Ready-gate and client creation are independent — run together.
+  const [readyToInviteCouples, supabase] = await Promise.all([
+    isVenueReadyToInviteCouples(venue.id),
+    createClient(),
+  ]);
   if (!readyToInviteCouples) return null;
-  const supabase = await createClient();
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
   // on this string, so an Eastern venue checking the dashboard after 8pm
@@ -158,7 +161,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, eventsRes, paymentsRes, staffRes, clientListCounts] = await Promise.all([
+  // Core dashboard facts + Luv settings in parallel (settings not needed for the core queries).
+  const [
+    leadsRes, tasksRes, activityRes, eventsRes, paymentsRes, staffRes, clientListCounts, luvSettings,
+  ] = await Promise.all([
     supabase
       .from("leads")
       .select("id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, commitment_score, responsiveness_score, interest_score, exclude_from_business_reporting")
@@ -219,6 +225,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     // Coming up is today through the next 30 days — not every future booking.
     getClientListFilterCounts(),
 
+    getLuvSettings().catch(() => null),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -356,10 +363,14 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Refresh all three lead scores (commitment, responsiveness, interest) — non-blocking
   void refreshAllLeadScores(supabase, venue.id).catch(() => {});
 
-  // Luv observations + trend intelligence — non-blocking; return [] on error
-  const luvSettings = await getLuvSettings().catch(() => null);
+  // Luv intelligence + momentum scores — independent of each other; run together.
+  // Documented: Luv observations remain on the first paint (customer-visible);
+  // they are not deferred. Only sequential waits that were unnecessary are removed.
   const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, dismissedObservationIds, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, venueReadiness, nextPendingMilestone, briefing] = await Promise.all([
+  const [
+    luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, dismissedObservationIds, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, venueReadiness, nextPendingMilestone, briefing,
+    scoredLeadsRes,
+  ] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
@@ -375,6 +386,14 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     loadVenueReadiness().catch(() => null),
     getNextPendingMilestone(venue.id).catch(() => null),
     getDailyBriefing(venue.id).catch(() => emptyBriefing),
+    onlyBusinessReporting(
+      supabase.from("leads")
+        .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
+        .eq("venue_id", venue.id)
+        .not("sales_stage", "in", `(${[...TERMINAL_LEAD_LIFECYCLE_STATES].join(",")})`)
+        .order("commitment_score", { ascending: false })
+        .limit(30),
+    ),
   ]);
   // Communication and setup-gap observations respect the same
   // observationsEnabled setting as every other Luv observation — Luv is
@@ -414,14 +433,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const performanceObservations = observationsOn ? performanceObservationsRaw : [];
 
   // Compute momentum segments from lead scores (post-refresh)
-  const { data: scoredLeads } = await onlyBusinessReporting(
-    supabase.from("leads")
-      .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
-      .eq("venue_id", venue.id)
-      .not("sales_stage", "in", `(${[...TERMINAL_LEAD_LIFECYCLE_STATES].join(",")})`)
-      .order("commitment_score", { ascending: false })
-      .limit(30),
-  );
+  const scoredLeads = scoredLeadsRes.data;
 
   const heatingUp: { leadId: string; name: string; reason: string }[] = [];
   const coolingOff: { leadId: string; name: string; reason: string }[] = [];
