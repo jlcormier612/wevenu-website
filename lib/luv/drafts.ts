@@ -7,6 +7,10 @@
  *
  * The coordinator reviews, edits, and sends manually.
  * Luv never sends anything.
+ *
+ * Factuality: pipeline/stage is workflow context only. Completed-action
+ * language requires authoritative verified facts (e.g. commercial_proposals
+ * status=sent + offered_at), never sales_stage alone.
  */
 
 import { createClient } from "@/integrations/supabase/server";
@@ -27,6 +31,11 @@ export type LuvDraft = {
   createdAt: string;
 };
 
+export type FollowUpVerifiedFacts = {
+  /** commercial_proposals.status = sent AND offered_at set */
+  proposalSent: boolean;
+};
+
 type DraftRow = {
   id: string; entity_type: string; entity_id: string; draft_type: string;
   subject: string | null; content: string; status: string; created_at: string;
@@ -45,9 +54,24 @@ function mapDraft(r: DraftRow): LuvDraft {
   };
 }
 
+/** Authoritative proposal-send: status sent + offered_at (markProposalSent). */
+export function isAuthoritativeProposalSent(row: {
+  status: string | null | undefined;
+  offeredAt: string | null | undefined;
+} | null | undefined): boolean {
+  if (!row) return false;
+  return row.status === "sent" && Boolean(row.offeredAt);
+}
+
 // ---- Prompt builder --------------------------------------------------------
 
-function buildFollowUpPrompt(lead: Lead, venueName: string, ownerName: string | null, tone = "warm"): string {
+export function buildFollowUpPrompt(
+  lead: Lead,
+  venueName: string,
+  ownerName: string | null,
+  tone = "warm",
+  verified: FollowUpVerifiedFacts = { proposalSent: false },
+): string {
   const coupleName = [lead.firstName, lead.partnerFirstName].filter(Boolean).join(" and ");
   const daysSinceContact = lead.lastContactedAt
     ? Math.floor((Date.now() - new Date(lead.lastContactedAt).getTime()) / 86_400_000)
@@ -55,6 +79,15 @@ function buildFollowUpPrompt(lead: Lead, venueName: string, ownerName: string | 
   const daysSinceInquiry = lead.inquiryDate
     ? Math.floor((Date.now() - new Date(lead.inquiryDate).getTime()) / 86_400_000)
     : null;
+  const pipelineStage = (lead.salesStage ?? lead.status).replace(/_/g, " ");
+
+  const verifiedLines: string[] = [];
+  if (verified.proposalSent) {
+    verifiedLines.push("- The proposal was sent to this client.");
+  }
+  const verifiedBlock = verifiedLines.length > 0
+    ? `**Verified facts (actions proven in the system — you may state these):**\n${verifiedLines.join("\n")}`
+    : "**Verified facts:** none for completed actions on this lead.";
 
   return `You are helping a venue coordinator at ${venueName} write a warm, personal follow-up email to a prospective client.
 
@@ -66,20 +99,23 @@ The coordinator signing the email is: ${ownerName ?? "the team at " + venueName}
 - Event date: ${lead.eventDate ?? "not yet confirmed"}
 - Guest count: ${lead.guestCount ?? "not specified"}
 - Estimated budget: ${lead.estimatedBudget ? "$" + lead.estimatedBudget.toLocaleString() : "not specified"}
-- Pipeline status: ${lead.status.replace(/_/g, " ")}
+- Pipeline stage (venue workflow context; not proof that a document or message was sent): ${pipelineStage}
 ${daysSinceInquiry != null ? `- Days since initial inquiry: ${daysSinceInquiry}` : ""}
 ${daysSinceContact != null ? `- Days since last contact: ${daysSinceContact}` : ""}
 ${lead.inquiryMessage ? `- Their original message: "${lead.inquiryMessage}"` : ""}
+
+${verifiedBlock}
 
 **Tone:** ${luvToneInstruction(tone)}
 
 **How to write this email:**
 - Address them by first name(s) — like you know them a little
 - Keep it short: 2–3 paragraphs maximum
-- Acknowledge where they are in the process naturally
+- Acknowledge where they are in the process naturally using workflow context, without inventing completed actions
 - Offer one gentle, specific next step (schedule a tour, answer questions, arrange a call)
 - Do NOT be pushy, salesy, or use corporate/template-sounding language
 - The subject line should be friendly, not promotional
+- Do not tell the client that the venue has sent, completed, confirmed, received, or otherwise performed an action unless that action appears under Verified facts. Pipeline stage alone is not proof. In particular: do not say a proposal was sent merely because the lead is in proposal_sent; do not claim a contract/invoice was sent, a payment was received, a tour was confirmed, or a message was sent from workflow position alone.
 
 Format your response EXACTLY as:
 Subject: [subject line]
@@ -117,6 +153,27 @@ function parseEmailDraft(raw: string): { subject: string | null; body: string } 
   return { subject, body };
 }
 
+async function loadProposalSentFact(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("commercial_proposals")
+    .select("status, offered_at")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .eq("status", "sent")
+    .not("offered_at", "is", null)
+    .order("offered_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ status: string; offered_at: string }>();
+  return isAuthoritativeProposalSent({
+    status: data?.status,
+    offeredAt: data?.offered_at ?? null,
+  });
+}
+
 // ---- Public service functions ---------------------------------------------
 
 export async function generateFollowUpDraft(lead: Lead): Promise<
@@ -146,7 +203,14 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const prompt = buildFollowUpPrompt(lead, venue.name, ownerName, settings.preferredTone);
+    const proposalSent = await loadProposalSentFact(supabase, venue.id, lead.id);
+    const prompt = buildFollowUpPrompt(
+      lead,
+      venue.name,
+      ownerName,
+      settings.preferredTone,
+      { proposalSent },
+    );
     const raw = await generateDraftText(prompt);
     const { subject, body } = parseEmailDraft(raw);
 
@@ -159,7 +223,11 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
         draft_type: "follow_up_email",
         subject,
         content: body,
-        context: { leadStatus: lead.status, leadName: `${lead.firstName} ${lead.lastName}` },
+        context: {
+          leadStatus: lead.salesStage ?? lead.status,
+          leadName: `${lead.firstName} ${lead.lastName}`,
+          verifiedProposalSent: proposalSent,
+        },
         status: "pending_review",
       })
       .select()

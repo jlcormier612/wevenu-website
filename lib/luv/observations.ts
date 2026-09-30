@@ -320,7 +320,7 @@ export async function getLuvObservations(
       kind: "recommendation",
       priority: "medium",
       message: `${name} may be ready to schedule a tour.`,
-      detail: `${lead.sales_stage === "proposal_sent" ? "Proposal sent" : "Tour scheduled"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
+      detail: `${lead.sales_stage === "proposal_sent" ? "In Proposal Sent stage" : "Tour scheduled"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
       link: `/leads/${lead.id}`,
       actionLabel: "View Lead →",
       recommendation: { label: "Invite them to schedule a tour", link: `/leads/${lead.id}`, type: "navigate" },
