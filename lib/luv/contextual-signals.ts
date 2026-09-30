@@ -311,3 +311,40 @@ export function applyContextualSupersession(
       !shouldSuppressLegacyFollowupObservation(obs.id, s3LeadIds),
   );
 }
+
+/** Record-surface filter: keep observations that address this lead/event/contract/invoice. */
+export function filterObservationsForRecord(
+  observations: readonly LuvObservation[],
+  record: {
+    leadId?: string;
+    eventId?: string;
+    contractId?: string;
+    contractIds?: readonly string[];
+    clientId?: string;
+    invoiceId?: string;
+  },
+): LuvObservation[] {
+  const contractIds = new Set<string>([
+    ...(record.contractId ? [record.contractId] : []),
+    ...(record.contractIds ?? []),
+  ]);
+  return observations.filter((obs) => {
+    const href = `${obs.link} ${obs.recommendation?.link ?? ""}`;
+    if (record.leadId) {
+      if (obs.id === `inquiry-unattended-${record.leadId}`) return true;
+      if (obs.id.startsWith("tour-upcoming-") && href.includes(`/leads/${record.leadId}`)) return true;
+      if (href.includes(`/leads/${record.leadId}`)) return true;
+    }
+    if (record.eventId) {
+      if (obs.id === `event-payment-attention-${record.eventId}`) return true;
+      if (href.includes(`/events/${record.eventId}`)) return true;
+    }
+    for (const contractId of contractIds) {
+      if (obs.id === `event-contract-unsigned-${contractId}`) return true;
+      if (href.includes(`/contracts/${contractId}`)) return true;
+    }
+    if (record.clientId && href.includes(`/clients/${record.clientId}`)) return true;
+    if (record.invoiceId && href.includes(`/invoices/${record.invoiceId}`)) return true;
+    return false;
+  });
+}

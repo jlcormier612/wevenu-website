@@ -38,6 +38,8 @@ import { ContractStatusBadge } from "@/components/contracts/contract-status-badg
 import { ContractSigningArtifact } from "@/components/contracts/contract-signing-artifact";
 import { StarterPolicyPlaceholderDialog } from "@/components/contracts/starter-policy-placeholder-dialog";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
+import type { LuvObservation } from "@/lib/luv/types";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { ShareDialog } from "@/components/sharing/share-dialog";
@@ -82,6 +84,7 @@ export function ContractDetail({
   initialReview = false,
   draftClients = [],
   contactsByClientId = {},
+  contextualObservations = [],
 }: {
   contract: ContractWithDetails;
   finalized: boolean;
@@ -92,6 +95,7 @@ export function ContractDetail({
   initialReview?: boolean;
   draftClients?: Client[];
   contactsByClientId?: Record<string, ClientContact[]>;
+  contextualObservations?: LuvObservation[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
@@ -318,6 +322,7 @@ export function ContractDetail({
 
   return (
     <div className="space-y-6">
+      <ContextualLuvObservationsPanel observations={contextualObservations} />
       {contract.executionOrigin === "external" ? (
         <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
           This agreement was executed outside Hello to Cheers. It is recorded as signed for operations, but Hello to Cheers did not collect e-signatures for it. Use the attached Event document as the original signed file.

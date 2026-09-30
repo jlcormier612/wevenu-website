@@ -32,6 +32,8 @@ import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
+import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
+import type { LuvObservation } from "@/lib/luv/types";
 import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
@@ -303,6 +305,7 @@ export function EventDetail({
   openSetupPayments = false,
   photoUrl = null,
   venueTimezone = null,
+  contextualObservations = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -391,6 +394,7 @@ export function EventDetail({
   openSetupPayments?: boolean;
   photoUrl?: string | null;
   venueTimezone?: string | null;
+  contextualObservations?: LuvObservation[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -644,6 +648,8 @@ export function EventDetail({
               venueTimezone={venueTimezone}
             />
           )}
+          <ContextualLuvObservationsPanel observations={contextualObservations} />
+
           <EventReadinessCard
             summary={readinessSummary}
             portalToken={portalToken}

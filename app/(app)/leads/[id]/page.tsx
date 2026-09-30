@@ -9,6 +9,7 @@ import { loadBookingJourneyForLead } from "@/lib/booking-journey/load";
 import { getDocuments } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getDraftsForLead } from "@/lib/luv/drafts";
+import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
 import { getActiveTemplate } from "@/lib/pipeline-templates/service";
@@ -94,6 +95,9 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         linkedClientId: lead.linkedClientId,
         linkedEventId: lead.linkedEventId ?? null,
       });
+      const contextualObservations = venue
+        ? await getContextualObservationsForRecord(venue.id, venue.timezone, { leadId: lead.id })
+        : [];
       return {
         lead,
         holds,
@@ -111,6 +115,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         textingConfigured,
         duplicateReview,
         bookingJourney,
+        contextualObservations,
         venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
         staffOptions: teamMembers.map((m) => ({ id: m.id, name: m.name })),
         currentStaffId: currentStaff?.id ?? null,
@@ -160,6 +165,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       currentStaffId={page.currentStaffId}
       photoUrl={photo?.displayedPhotoUrl ?? null}
       venueTimezone={page.venueTimezone}
+      contextualObservations={page.contextualObservations}
     />
   );
 }

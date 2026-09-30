@@ -78,6 +78,7 @@ import { getItems as getInventoryItems } from "@/lib/inventory/service";
 import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
 import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
+import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -490,6 +491,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const photo = client.relationshipId
     ? await getRelationshipPhotoForVenue(client.relationshipId)
     : null;
+  const contextualObservations = venue
+    ? await getContextualObservationsForRecord(venue.id, venue.timezone, {
+        eventId,
+        clientId: id,
+        contractIds: contracts.map((c) => c.id),
+      })
+    : [];
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -545,6 +553,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       openSetupPayments={sp.setupPayments === "1"}
       photoUrl={photo?.displayedPhotoUrl ?? null}
       venueTimezone={venue?.timezone ?? null}
+      contextualObservations={contextualObservations}
     />
     </div>
   );

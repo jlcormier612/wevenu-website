@@ -11,6 +11,7 @@ import { getClient } from "@/lib/clients/service";
 import { getClientContacts } from "@/lib/contacts/service";
 import type { Client } from "@/lib/clients/types";
 import type { ClientContact } from "@/lib/contacts/types";
+import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ review?: string }> };
 
@@ -42,6 +43,14 @@ export default async function ContractDetailPage({ params, searchParams }: Props
     }
   }
 
+  const contextualObservations = venue
+    ? await getContextualObservationsForRecord(venue.id, venue.timezone, {
+        contractId: contract.id,
+        eventId: contract.eventId ?? undefined,
+        clientId: contract.clientId ?? undefined,
+      })
+    : [];
+
   return (
     <ContractDetail
       contract={contract}
@@ -53,6 +62,7 @@ export default async function ContractDetailPage({ params, searchParams }: Props
       initialReview={review === "1"}
       draftClients={draftClients}
       contactsByClientId={contactsByClientId}
+      contextualObservations={contextualObservations}
     />
   );
 }

@@ -12,6 +12,7 @@ import {
   buildS2EventPaymentObservation,
   buildS3UnattendedInquiryObservation,
   buildS4TourPrepObservation,
+  filterObservationsForRecord,
   isUnattendedInquiryAge,
   isWithinEventWindow,
   shouldSuppressLegacyContractObservation,
@@ -389,5 +390,69 @@ describe("duplicate suppression + Dashboard exclusion", () => {
       filtered.map((o) => o.id),
       ["event-contract-unsigned-c1", "inquiry-unattended-L1", "briefing-ev1"],
     );
+  });
+});
+
+describe("filterObservationsForRecord — L3 placement", () => {
+  const s1: LuvObservation = {
+    id: "event-contract-unsigned-c1",
+    kind: "risk",
+    priority: "medium",
+    message: "s1",
+    link: "/contracts/c1",
+  };
+  const s2: LuvObservation = {
+    id: "event-payment-attention-ev1",
+    kind: "risk",
+    priority: "medium",
+    message: "s2",
+    link: "/clients/cl1#invoice",
+  };
+  const s3: LuvObservation = {
+    id: "inquiry-unattended-L1",
+    kind: "risk",
+    priority: "medium",
+    message: "s3",
+    link: "/leads/L1",
+  };
+  const s4: LuvObservation = {
+    id: "tour-upcoming-t1",
+    kind: "recommendation",
+    priority: "medium",
+    message: "s4",
+    link: "/leads/L1",
+  };
+  const other: LuvObservation = {
+    id: "inquiry-unattended-OTHER",
+    kind: "risk",
+    priority: "medium",
+    message: "other",
+    link: "/leads/OTHER",
+  };
+
+  it("lead record keeps S3/S4 for that lead only", () => {
+    const filtered = filterObservationsForRecord([s1, s2, s3, s4, other], { leadId: "L1" });
+    assert.deepEqual(filtered.map((o) => o.id), ["inquiry-unattended-L1", "tour-upcoming-t1"]);
+  });
+
+  it("contract record keeps S1 for that contract", () => {
+    const filtered = filterObservationsForRecord([s1, s2, s3], { contractId: "c1" });
+    assert.deepEqual(filtered.map((o) => o.id), ["event-contract-unsigned-c1"]);
+  });
+
+  it("event/client record keeps S2 via event id and client href", () => {
+    const byEvent = filterObservationsForRecord([s1, s2, s3], { eventId: "ev1" });
+    assert.deepEqual(byEvent.map((o) => o.id), ["event-payment-attention-ev1"]);
+    const byClient = filterObservationsForRecord([s1, s2, s3], { clientId: "cl1" });
+    assert.deepEqual(byClient.map((o) => o.id), ["event-payment-attention-ev1"]);
+  });
+
+  it("wrong venue record ids are excluded", () => {
+    const filtered = filterObservationsForRecord([s1, s2, s3], {
+      leadId: "L2",
+      contractId: "c2",
+      eventId: "ev2",
+    });
+    assert.deepEqual(filtered.map((o) => o.id), []);
   });
 });
