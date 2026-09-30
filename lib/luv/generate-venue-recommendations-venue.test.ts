@@ -117,9 +117,13 @@ describe("generate_venue_recommendations — authoritative venue (no LIMIT 1)", 
     const generateIdx = fn.indexOf('rpc("generate_venue_recommendations")');
     const askIdx = fn.indexOf("syncClientAskGapRecommendations");
     const tourIdx = fn.indexOf("syncTourFollowupPatternRecommendation");
+    const spotIdx = fn.indexOf("syncPhase5SpotPatternRecommendations");
+    const getIdx = fn.indexOf('rpc("get_venue_recommendations")');
     assert.ok(generateIdx >= 0);
     assert.ok(askIdx > generateIdx);
     assert.ok(tourIdx > askIdx);
+    assert.ok(spotIdx > tourIdx);
+    assert.ok(getIdx > spotIdx);
   });
 
   it("prior defining migration still documents the defect we fixed (history lock)", () => {

@@ -21,6 +21,7 @@
 import type { ClassifiedItem } from "@/lib/dashboard-system/decision-engine";
 import type { VenueRecommendation } from "@/lib/luv/recommendation-types";
 import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
+import { isPhase5SpotPatternRecommendation } from "@/lib/luv/spot-patterns";
 import { TOUR_FOLLOWUP_PATTERN_TYPE } from "@/lib/luv/tour-followup-pattern";
 import type { LuvObservation } from "@/lib/luv/types";
 
@@ -171,6 +172,8 @@ export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
  * A recommendation whose only navigate CTA is a single record is Level-3.
  */
 export function isDashboardLevel1Recommendation(rec: VenueRecommendation): boolean {
+  // Phase 5 Spot Patterns are L2 workflow intelligence only — never Dashboard L1.
+  if (isPhase5SpotPatternRecommendation(rec)) return false;
   if (isTourFollowupPatternRecommendation(rec)) return true;
   if (rec.type.startsWith("client_ask_gap_")) return true;
   const cta = firstCta(rec);

@@ -4,6 +4,10 @@ import { isObservationDismissType } from "./observation-dismiss";
 import { filterVisibleRecommendations } from "./recommendation-visibility";
 import type { RawRecommendationRow, VenueRecommendation } from "./recommendation-types";
 import {
+  PHASE5_SPOT_PATTERN_TYPES,
+  syncPhase5SpotPatternRecommendations,
+} from "./spot-patterns";
+import {
   TOUR_FOLLOWUP_PATTERN_TYPE,
   syncTourFollowupPatternRecommendation,
 } from "./tour-followup-pattern";
@@ -26,26 +30,26 @@ function mapRecommendationRow(row: RawRecommendationRow): VenueRecommendation {
 }
 
 /**
- * Recently dismissed tour_followup_pattern rows are excluded from
- * get_venue_recommendations (correct — they must not render). We still load
- * them here so Dashboard selection can suppress redundant individual
- * tour-no-followup observations during the same 7-day cooldown.
+ * Recently dismissed pattern rows are excluded from get_venue_recommendations
+ * (correct — they must not render). We still load them so global observation
+ * lists can suppress redundant individual S2/S3 / tour-no-followup cards
+ * during the same 7-day cooldown.
  */
-async function loadRecentlyDismissedTourFollowupPattern(
+async function loadRecentlyDismissedPatternRows(
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<VenueRecommendation | null> {
+  types: readonly string[],
+): Promise<VenueRecommendation[]> {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("luv_recommendations")
     .select(
       "id, insight_id, type, title, body, priority, ctas, metadata, dismissed_at, completed_at, expires_at, created_at",
     )
-    .eq("type", TOUR_FOLLOWUP_PATTERN_TYPE)
+    .in("type", [...types])
     .not("dismissed_at", "is", null)
-    .gt("dismissed_at", since)
-    .maybeSingle();
-  if (error || !data) return null;
-  return mapRecommendationRow(data as RawRecommendationRow);
+    .gt("dismissed_at", since);
+  if (error || !data) return [];
+  return (data as RawRecommendationRow[]).map(mapRecommendationRow);
 }
 
 export async function getVenueRecommendations(): Promise<VenueRecommendation[]> {
@@ -57,6 +61,8 @@ export async function getVenueRecommendations(): Promise<VenueRecommendation[]> 
     await syncClientAskGapRecommendations(supabase);
     // Luv V2: venue-level recurring incomplete tour follow-up pattern.
     await syncTourFollowupPatternRecommendation(supabase);
+    // Phase 5 Spot Patterns (L2 only — never Dashboard L1).
+    await syncPhase5SpotPatternRecommendations(supabase);
     const { data, error } = await supabase.rpc("get_venue_recommendations");
     if (error || !data) return [];
     const visible = filterVisibleRecommendations(
@@ -64,14 +70,14 @@ export async function getVenueRecommendations(): Promise<VenueRecommendation[]> 
         .filter((row) => !isObservationDismissType(row.type))
         .map(mapRecommendationRow),
     );
-    const dismissedPattern = await loadRecentlyDismissedTourFollowupPattern(supabase);
-    if (
-      dismissedPattern &&
-      !visible.some((rec) => rec.id === dismissedPattern.id)
-    ) {
-      return [...visible, dismissedPattern];
-    }
-    return visible;
+    const dismissedPatterns = await loadRecentlyDismissedPatternRows(supabase, [
+      TOUR_FOLLOWUP_PATTERN_TYPE,
+      ...PHASE5_SPOT_PATTERN_TYPES,
+    ]);
+    const extras = dismissedPatterns.filter(
+      (rec) => !visible.some((v) => v.id === rec.id),
+    );
+    return extras.length > 0 ? [...visible, ...extras] : visible;
   } catch {
     return [];
   }

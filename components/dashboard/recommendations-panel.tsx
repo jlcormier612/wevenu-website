@@ -6,6 +6,7 @@ import { ArrowRight, ChevronDown, X } from "lucide-react";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { LuvDraftSheet } from "@/components/dashboard/luv-draft-sheet";
 import type { VenueRecommendation, RecommendationCta } from "@/lib/luv/recommendation-types";
+import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
 
 const DUSTY_ROSE = "#D8A7AA";
 
@@ -162,15 +163,23 @@ export function RecommendationsPanel({
 }: {
   recommendations: VenueRecommendation[];
 }) {
+  const activeRecommendations = React.useMemo(
+    () => recommendations.filter((r) => isRecommendationActiveForDisplay(r)),
+    [recommendations],
+  );
   const [visible, setVisible] = React.useState<string[]>(
-    () => recommendations.map(r => r.id)
+    () => activeRecommendations.map(r => r.id)
   );
   const [draft, setDraft] = React.useState<DraftState>({
     open: false, action: "", context: {}, title: "", actionId: null, recId: "",
   });
   const pendingCompleteRef = React.useRef(false);
 
-  const shown = recommendations.filter(r => visible.includes(r.id));
+  React.useEffect(() => {
+    setVisible(activeRecommendations.map((r) => r.id));
+  }, [activeRecommendations]);
+
+  const shown = activeRecommendations.filter(r => visible.includes(r.id));
   if (shown.length === 0) return null;
 
   function openDraft(action: string, context: Record<string, unknown>, title: string, recId: string) {

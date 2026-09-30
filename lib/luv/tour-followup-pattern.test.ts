@@ -429,7 +429,8 @@ describe("tour follow-up pattern — wiring / venue safety / V1 Ask-gap unchange
 
   it("recommendation-service keeps dismissed pattern for selection cooldown only", () => {
     const service = read("lib/luv/recommendation-service.ts");
-    assert.match(service, /loadRecentlyDismissedTourFollowupPattern/);
+    assert.match(service, /loadRecentlyDismissedPatternRows/);
+    assert.match(service, /TOUR_FOLLOWUP_PATTERN_TYPE/);
     assert.match(service, /syncTourFollowupPatternRecommendation/);
     assert.match(service, /filterVisibleRecommendations/);
   });

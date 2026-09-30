@@ -17,6 +17,7 @@ import { getVenueInsights, computeInsightObservations } from "@/lib/luv/insights
 import { getVenueHealthScore } from "@/lib/luv/health-service";
 import { getDismissedObservationIds, getVenueRecommendations } from "@/lib/luv/recommendation-service";
 import { filterVisibleObservations } from "@/lib/luv/observation-dismiss";
+import { filterGlobalObservationsForSpotPatterns } from "@/lib/luv/spot-patterns";
 import { getLuvActionObservations, getPendingLuvActions, getLuvPerformanceObservations } from "@/lib/luv/action-service";
 import { getActivationScore, getNextPendingMilestone } from "@/lib/activation/service";
 import type { ActivationScore } from "@/lib/activation/types";
@@ -372,10 +373,14 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // uses the same observation id filter.
   const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
   const observationsOn = luvSettings?.observationsEnabled !== false;
+  const recommendationsForSuppression = observationsOn ? recommendationsRaw : [];
   const luvObservations = observationsOn
-    ? filterVisibleObservations(
-        [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations, ...readinessObservations],
-        dismissedObservationIds,
+    ? filterGlobalObservationsForSpotPatterns(
+        filterVisibleObservations(
+          [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations, ...readinessObservations],
+          dismissedObservationIds,
+        ),
+        recommendationsForSuppression,
       )
     : [];
   const trendObservations  = observationsOn && rawTrends   ? computeTrendObservations(rawTrends) : [];
@@ -386,7 +391,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const insightObservations = observationsOn && rawInsights
     ? filterVisibleObservations(computeInsightObservations(rawInsights), dismissedObservationIds)
     : [];
-  const recommendations = observationsOn ? recommendationsRaw : [];
+  // Includes recently-dismissed pattern rows so L1 / observation supersession
+  // can suppress redundant individual cards during the 7-day cooldown.
+  // RecommendationsPanel filters to active-only for display.
+  const recommendations = recommendationsForSuppression;
   const actionObservations = observationsOn ? actionObservationsRaw : [];
   const pendingActionObservations = observationsOn ? pendingActionObservationsRaw : [];
   const performanceObservations = observationsOn ? performanceObservationsRaw : [];
