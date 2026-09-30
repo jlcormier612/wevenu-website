@@ -25,8 +25,8 @@ export function formatLeadDeleteBlockedMessage(blocker: LeadDeleteBlocker): stri
   if (blocker.kind === "tour_protection") {
     const n = blocker.count;
     return n === 1
-      ? "This lead cannot be deleted because a tour protection request is still linked to it. Resolve or remove that tour protection record first."
-      : `This lead cannot be deleted because ${n} tour protection requests are still linked to it. Resolve or remove those tour protection records first.`;
+      ? "This lead cannot be deleted because a tour protection request is still linked to it. Resolve or remove that tour protection record first. The lead was not removed."
+      : `This lead cannot be deleted because ${n} tour protection requests are still linked to it. Resolve or remove those tour protection records first. The lead was not removed.`;
   }
   return "This lead cannot be deleted because related records still depend on it.";
 }

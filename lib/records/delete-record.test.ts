@@ -73,6 +73,15 @@ describe("Global deleted-record visibility — deletion contract", () => {
     assert.match(svc, /count: "exact"/);
   });
 
+  it("lead preview does not swallow RESTRICT so the confirm dialog can open", () => {
+    const previewFn = svc.slice(
+      svc.indexOf("export async function previewDeleteLead"),
+      svc.indexOf("export async function applyLeadRecordDeletion"),
+    );
+    assert.doesNotMatch(previewFn, /formatLeadDeleteBlockedMessage/);
+    assert.match(svc, /The client was not deleted/);
+  });
+
   it("failed delete UX keeps the dialog open and does not claim success", () => {
     const confirmFn = dialog.slice(dialog.indexOf("async function confirm"), dialog.indexOf("const name ="));
     assert.match(confirmFn, /Keep dialog open and record intact/);
@@ -100,7 +109,7 @@ describe("Global deleted-record visibility — deletion contract", () => {
   it("formats RESTRICT / FK failures as non-success venue copy", () => {
     assert.match(
       formatLeadDeleteBlockedMessage({ kind: "tour_protection", count: 2 }),
-      /cannot be deleted/,
+      /cannot be deleted[\s\S]*was not removed/,
     );
     assert.match(
       formatLeadDeleteFailureMessage({ code: "23503", message: "foreign key", details: "tour_protection_requests" }),

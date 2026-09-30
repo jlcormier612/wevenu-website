@@ -147,21 +147,6 @@ export async function previewDeleteLead(leadId: string): Promise<DeletePreview> 
       .eq("event_kind", "first_booked")
       .maybeSingle<{ id: string }>();
 
-    const { count: protectionCount } = await supabase
-      .from("tour_protection_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("venue_id", venueId)
-      .eq("lead_id", leadId);
-    if ((protectionCount ?? 0) > 0) {
-      return {
-        ok: false,
-        message: formatLeadDeleteBlockedMessage({
-          kind: "tour_protection",
-          count: protectionCount ?? 0,
-        }),
-      } as const;
-    }
-
     const hasFinancials = client
       ? await clientHasFinancialHistory(supabase, venueId, client.id)
       : false;
@@ -355,10 +340,10 @@ export async function deleteClientRecord(clientId: string): Promise<DeleteResult
       if ((protectionCount ?? 0) > 0) {
         return {
           ok: false as const,
-          message: formatLeadDeleteBlockedMessage({
+          message: `${formatLeadDeleteBlockedMessage({
             kind: "tour_protection",
             count: protectionCount ?? 0,
-          }),
+          })} The client was not deleted.`,
         };
       }
     }
@@ -392,7 +377,10 @@ export async function deleteClientRecord(clientId: string): Promise<DeleteResult
       // Same active-visibility side effects as lead delete (tours + drafts).
       const leadDelete = await applyLeadRecordDeletion(supabase, venueId, client.lead_id);
       if (!leadDelete.ok) {
-        return { ok: false as const, message: leadDelete.message };
+        return {
+          ok: false as const,
+          message: `${leadDelete.message} The client was not deleted.`,
+        };
       }
     }
 
