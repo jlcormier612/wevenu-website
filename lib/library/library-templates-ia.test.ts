@@ -21,11 +21,11 @@ describe("Library Templates IA — templates vs catalogs", () => {
       "Timeline Templates",
       "Floor Plan Templates",
       "Event Order Templates",
-      "Choices Templates",
       "Inventory Templates",
     ]) {
       assert.match(page, new RegExp(`kind="template"[\\s\\S]*?title="${title}"`));
     }
+    assert.doesNotMatch(page, /title="Choices Templates"/);
   });
 
   it("lists catalog/source assets without Use Template on the hub cards", () => {
@@ -58,20 +58,17 @@ describe("Library dependency guidance — source + direct links + how used", () 
     assert.match(src, /href: "\/library\/offerings"/);
     assert.match(src, /Manage Offerings/);
     assert.match(src, /select offerings from your catalog first/i);
+    assert.match(src, /selectable choice groups|fixed offerings and selectable/i);
     assert.doesNotMatch(src, /All templates/);
   });
 
-  it("Choices Templates link Manage Offerings and explain attachment", () => {
+  it("Choices Templates product is removed from Library (redirect only)", () => {
     const page = readFileSync(resolve("app/(app)/library/choices-templates/page.tsx"), "utf8");
-    assert.match(page, /href: "\/library\/offerings"/);
-    assert.match(page, /Manage Offerings/);
-    assert.match(page, /select offerings as choice options first/i);
-    const list = readFileSync(resolve("components/client-choices-templates/choices-template-list.tsx"), "utf8");
-    assert.match(list, /LIBRARY_LABELS\.preview/);
-    assert.match(list, /LIBRARY_LABELS\.edit/);
-    assert.match(list, /LIBRARY_LABELS\.useTemplate/);
-    assert.match(list, /createClientChoicesFromTemplateAction/);
-    assert.match(list, /duplicateChoicesTemplateAction/);
+    assert.match(page, /redirect\("\/library\/event-order-templates"\)/);
+    assert.doesNotMatch(page, /ChoicesTemplateList/);
+    const hub = readFileSync(resolve("app/(app)/library/page.tsx"), "utf8");
+    assert.doesNotMatch(hub, /title="Choices Templates"/);
+    assert.doesNotMatch(hub, /href="\/library\/choices-templates"/);
   });
 
   it("QR Campaigns link Manage Public Forms", () => {
@@ -105,7 +102,7 @@ describe("Library dependency guidance — source + direct links + how used", () 
   it("Offerings and Inventory catalogs reverse-link consumers without Use Template", () => {
     const offerings = readFileSync(resolve("app/(app)/library/offerings/page.tsx"), "utf8");
     assert.match(offerings, /Open Event Order Templates/);
-    assert.match(offerings, /Open Choices Templates/);
+    assert.doesNotMatch(offerings, /Open Choices Templates/);
     assert.doesNotMatch(offerings, /Use Template/);
     const inventory = readFileSync(resolve("app/(app)/library/inventory/page.tsx"), "utf8");
     assert.match(inventory, /Open Floor Plan Templates/);
@@ -168,15 +165,16 @@ describe("Applyable template grammar + apply semantics preserved", () => {
     assert.match(list, /IncompleteTemplateWarningDialog/);
   });
 
-  it("Choices apply still creates event-scoped client_choices via existing action", () => {
+  it("EO selectable selections create client_choices via Event Order Template action", () => {
     const actions = readFileSync(resolve("app/(app)/events/[id]/client-choices-actions.ts"), "utf8");
-    assert.match(actions, /createClientChoicesFromTemplate/);
+    assert.match(actions, /createClientChoicesFromEventOrderTemplate/);
     const service = readFileSync(resolve("lib/client-choices/service.ts"), "utf8");
     assert.match(service, /insertInstance/);
-    assert.match(service, /templateId: template\.id/);
-    const list = readFileSync(resolve("components/client-choices-templates/choices-template-list.tsx"), "utf8");
-    assert.match(list, /TemplateApplyTargetPicker/);
-    assert.match(list, /IncompleteTemplateWarningDialog/);
+    assert.match(service, /eventOrderTemplateId: template\.id/);
+    const panel = readFileSync(resolve("components/client-choices/client-choices-panel.tsx"), "utf8");
+    assert.match(panel, /createClientChoicesFromEventOrderTemplateAction/);
+    assert.match(panel, /eventOrderTemplates/);
+    assert.doesNotMatch(panel, /library\/choices-templates/);
   });
 
   it("Event Order apply still snapshots into event_orders without mutating template", () => {
@@ -193,7 +191,6 @@ describe("Applyable template grammar + apply semantics preserved", () => {
     for (const page of [
       "app/(app)/library/event-order-templates/page.tsx",
       "app/(app)/library/inventory-templates/page.tsx",
-      "app/(app)/library/choices-templates/page.tsx",
     ]) {
       const src = readFileSync(resolve(page), "utf8");
       assert.match(src, /getTemplateApplyClientGroups/, page);

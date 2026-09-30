@@ -19,11 +19,10 @@ describe("Library autosave labels — durable save certainty", () => {
     assert.match(src, /LibraryAutosaveHint/);
   });
 
-  it("EO / Inventory / Choices editors teach autosave", () => {
+  it("EO / Inventory editors teach autosave", () => {
     for (const file of [
       "components/event-order-templates/event-order-template-detail.tsx",
       "components/event-inventory/inventory-template-detail.tsx",
-      "components/client-choices-templates/choices-template-detail.tsx",
     ]) {
       const src = readFileSync(resolve(file), "utf8");
       assert.match(src, /LibraryAutosaveHint/, file);

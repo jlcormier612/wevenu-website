@@ -24,6 +24,11 @@ import type {
   CreateClientChoicesResult,
   FinalizeClientChoicesResult,
 } from "@/lib/client-choices/types";
+import * as eoTemplatesRepo from "@/lib/event-order-templates/repository";
+import {
+  defaultAnswersFromEventOrderTemplate,
+  selectionDefinitionFromEventOrderTemplate,
+} from "@/lib/event-order-templates/selection-definition";
 import * as templatesRepo from "@/lib/client-choices-templates/repository";
 import {
   addLineFromOffering,
@@ -119,6 +124,45 @@ export async function createClientChoicesFromTemplate(
       definition,
     });
     await repo.insertActivity(supabase, venueId, choicesId, "created", `Created from template: ${template.name}`);
+    return { ok: true, choicesId } as CreateClientChoicesResult;
+  });
+  return result as CreateClientChoicesResult;
+}
+
+/** Preferred authoring path: freeze an Event Order Template into a selection instance. */
+export async function createClientChoicesFromEventOrderTemplate(
+  eventId: string,
+  eventOrderTemplateId: string,
+  nameOverride?: string,
+): Promise<CreateClientChoicesResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const template = await eoTemplatesRepo.getTemplateWithDetails(
+      supabase, venueId, eventOrderTemplateId,
+    );
+    if (!template) return { ok: false, message: "Event Order Template not found." } as CreateClientChoicesResult;
+
+    const { data: event } = await supabase.from("events")
+      .select("id, client_id, name")
+      .eq("id", eventId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ id: string; client_id: string | null; name: string }>();
+    if (!event) return { ok: false, message: "Event not found." } as CreateClientChoicesResult;
+
+    const definition = selectionDefinitionFromEventOrderTemplate(template);
+    const answers = defaultAnswersFromEventOrderTemplate(template);
+    const choicesId = await repo.insertInstance(supabase, venueId, {
+      eventId,
+      clientId: event.client_id,
+      templateId: null,
+      eventOrderTemplateId: template.id,
+      name: (nameOverride?.trim() || template.name).trim(),
+      definition,
+      answers,
+    });
+    await repo.insertActivity(
+      supabase, venueId, choicesId, "created",
+      `Created from Event Order Template: ${template.name}`,
+    );
     return { ok: true, choicesId } as CreateClientChoicesResult;
   });
   return result as CreateClientChoicesResult;
@@ -338,10 +382,11 @@ export async function reviseClientChoices(choicesId: string): Promise<CreateClie
       eventId: row.eventId,
       clientId: row.clientId,
       templateId: row.templateId,
+      eventOrderTemplateId: row.eventOrderTemplateId,
       name: `${row.name} (revision)`,
       definition: row.definition,
+      answers: row.answers,
     });
-    await repo.updateInstance(supabase, venueId, newId, { answers: row.answers });
     await repo.insertActivity(
       supabase, venueId, newId, "created",
       `Revision started from finalized choices ${row.id}`,

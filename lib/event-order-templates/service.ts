@@ -10,7 +10,8 @@ import {
 import * as repo from "@/lib/event-order-templates/repository";
 import type { TemplateLineWrite } from "@/lib/event-order-templates/repository";
 import type {
-  AddTemplateLineInput, AddTemplateLineResult, AddTemplateSectionResult,
+  AddTemplateGroupInput, AddTemplateGroupResult, AddTemplateLineInput, AddTemplateLineResult,
+  AddTemplateOptionInput, AddTemplateOptionResult, AddTemplateSectionResult,
   CreateEventOrderTemplateResult, EventOrderTemplate, EventOrderTemplateActionResult,
   EventOrderTemplateInput, EventOrderTemplateWithDetails, UpdateTemplateLineInput,
 } from "@/lib/event-order-templates/types";
@@ -190,6 +191,150 @@ export async function reorderLines(
 export async function removeLine(lineId: string): Promise<EventOrderTemplateActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.removeLine(supabase, venueId, lineId);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
+// ---- choice groups / options ----------------------------------------------------
+
+function parseGroupWrite(input: AddTemplateGroupInput): {
+  ok: true; write: repo.TemplateGroupWrite;
+} | { ok: false; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+  if (!input.name.trim()) errors.name = "Give this choice group a name.";
+  if (input.minSelect < 0) errors.minSelect = "Minimum cannot be negative.";
+  if (input.maxSelect != null && input.maxSelect < input.minSelect) {
+    errors.maxSelect = "Maximum must be at least the minimum.";
+  }
+  if (input.selectionMode === "single" && input.maxSelect != null && input.maxSelect > 1) {
+    errors.maxSelect = "Single-select groups allow at most one option.";
+  }
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    write: {
+      sectionId: input.sectionId,
+      name: input.name.trim(),
+      instructions: input.instructions?.trim() || null,
+      selectionMode: input.selectionMode,
+      minSelect: input.minSelect,
+      maxSelect: input.selectionMode === "single" ? (input.maxSelect ?? 1) : input.maxSelect,
+      allowQuantity: input.allowQuantity,
+    },
+  };
+}
+
+function parseOptionWrite(input: AddTemplateOptionInput): {
+  ok: true; write: repo.TemplateOptionWrite;
+} | { ok: false; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+  if (!input.label.trim()) errors.label = "Give this option a label.";
+  if (!input.groupId) errors.groupId = "Choose a choice group.";
+  let unitPrice: number | null = null;
+  if (input.isIncluded) {
+    unitPrice = 0;
+  } else if (input.unitPrice != null && String(input.unitPrice).trim() !== "") {
+    const n = Number(input.unitPrice);
+    if (!Number.isFinite(n) || n < 0) errors.unitPrice = "Enter a valid price.";
+    else unitPrice = n;
+  }
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    write: {
+      groupId: input.groupId,
+      offeringId: input.offeringId ?? null,
+      label: input.label.trim(),
+      description: input.description?.trim() || null,
+      isIncluded: Boolean(input.isIncluded),
+      unitPrice,
+      isDefault: Boolean(input.isDefault),
+    },
+  };
+}
+
+export async function addGroup(
+  templateId: string, input: AddTemplateGroupInput,
+): Promise<AddTemplateGroupResult> {
+  const parsed = parseGroupWrite(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
+  const result = await withVenue(async (supabase, venueId) => {
+    const sortOrder = await repo.nextSortOrder(
+      supabase, "event_order_template_groups", templateId, parsed.write.sectionId,
+    );
+    const group = await repo.insertGroup(supabase, venueId, templateId, parsed.write, sortOrder);
+    return { ok: true, group } as AddTemplateGroupResult;
+  });
+  return result as AddTemplateGroupResult;
+}
+
+export async function updateGroup_(
+  groupId: string, input: AddTemplateGroupInput,
+): Promise<EventOrderTemplateActionResult> {
+  const parsed = parseGroupWrite(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateGroup(supabase, venueId, groupId, parsed.write);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
+export async function removeGroup_(groupId: string): Promise<EventOrderTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.removeGroup(supabase, venueId, groupId);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
+export async function reorderGroups(orderedIds: string[]): Promise<EventOrderTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.reorderRows(supabase, "event_order_template_groups", venueId, orderedIds);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
+export async function addOption(
+  templateId: string, input: AddTemplateOptionInput,
+): Promise<AddTemplateOptionResult> {
+  const parsed = parseOptionWrite(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
+  const result = await withVenue(async (supabase, venueId) => {
+    const sortOrder = await repo.nextSortOrder(
+      supabase, "event_order_template_options", templateId, parsed.write.groupId,
+    );
+    const option = await repo.insertOption(supabase, venueId, templateId, parsed.write, sortOrder);
+    return { ok: true, option } as AddTemplateOptionResult;
+  });
+  return result as AddTemplateOptionResult;
+}
+
+export async function updateOption_(
+  optionId: string, input: AddTemplateOptionInput,
+): Promise<EventOrderTemplateActionResult> {
+  const parsed = parseOptionWrite(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateOption(supabase, venueId, optionId, parsed.write);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
+export async function removeOption_(optionId: string): Promise<EventOrderTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.removeOption(supabase, venueId, optionId);
+    return { ok: true } as EventOrderTemplateActionResult;
+  });
+  return result as EventOrderTemplateActionResult;
+}
+
+export async function reorderOptions(orderedIds: string[]): Promise<EventOrderTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.reorderRows(supabase, "event_order_template_options", venueId, orderedIds);
     return { ok: true } as EventOrderTemplateActionResult;
   });
   return result as EventOrderTemplateActionResult;

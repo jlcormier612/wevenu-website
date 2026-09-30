@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  createClientChoicesFromEventOrderTemplate,
   createClientChoicesFromTemplate,
   finalizeClientChoices,
   requestClientChoicesChanges,
@@ -22,6 +23,18 @@ export async function createClientChoicesFromTemplateAction(
   nameOverride?: string,
 ) {
   const result = await createClientChoicesFromTemplate(eventId, templateId, nameOverride);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function createClientChoicesFromEventOrderTemplateAction(
+  eventId: string,
+  eventOrderTemplateId: string,
+  nameOverride?: string,
+) {
+  const result = await createClientChoicesFromEventOrderTemplate(
+    eventId, eventOrderTemplateId, nameOverride,
+  );
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

@@ -21,7 +21,6 @@ import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-t
 import { getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { listPublicForms } from "@/lib/public-forms/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
-import { getTemplates as getChoicesTemplates } from "@/lib/client-choices-templates/service";
 import { getBrochures } from "@/lib/brochures/service";
 import { getSavedReports } from "@/lib/saved-reports/service";
 import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
@@ -89,7 +88,7 @@ export default async function LibraryPage() {
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
     packagesAll, inventoryItemsAll, qrCampaigns, publicForms, messageTemplates, inventoryTemplates,
-    questionnaireTemplates, eventOrderTemplatesAll, choicesTemplatesAll, brochuresAll, savedReports, offeringsAll,
+    questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports, offeringsAll,
   ] = await Promise.all([
     getContractTemplates(),
     getPlaybookTemplates(),
@@ -103,13 +102,11 @@ export default async function LibraryPage() {
     getInventoryTemplates(),
     getQuestionnaireTemplates(),
     getEventOrderTemplates(true),
-    getChoicesTemplates(true),
     getBrochures(true),
     getSavedReports(),
     listOfferings(true),
   ]);
   const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
-  const choicesTemplates = choicesTemplatesAll.filter((t) => !t.isArchived);
   const brochures = brochuresAll.filter((b) => !b.isArchived);
   const playbookTemplates = playbookTemplatesAll.filter((t) => !t.isArchived);
   const timelineTemplates = timelineTemplatesAll.filter((t) => !t.isArchived);
@@ -133,8 +130,7 @@ export default async function LibraryPage() {
         <ToolboxCard kind="template" title="Planning Templates" description="Client Planning and Venue Planning checklists you refine once, then apply per booking." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
         <ToolboxCard kind="template" title="Timeline Templates" description="Reusable day-of schedules. Use adds entries to an event timeline." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
         <ToolboxCard kind="template" title="Floor Plan Templates" description="Reusable room layouts. Use creates an event floor plan." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
-        <ToolboxCard kind="template" title="Event Order Templates" description="Reusable event-order structure built from your offerings." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
-        <ToolboxCard kind="template" title="Choices Templates" description="Reusable client selection forms (menus, bar, rentals). Use creates choices for an event." href="/library/choices-templates" count={choicesTemplates.length} icon={LayoutGrid} />
+        <ToolboxCard kind="template" title="Event Order Templates" description="Commercial build sheets — fixed offerings and selectable groups. Use applies on the venue side; Send lets the client choose." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
         <ToolboxCard kind="template" title="Inventory Templates" description="Reusable inventory setups built from Available Inventory. Use creates event inventory." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
         <ToolboxCard kind="template" title="Questionnaires & Feedback" description="Client questionnaires and post-event feedback you can send per booking." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
         <ToolboxCard kind="template" title="Message Templates" description="Emails and texts you send often — pick one when composing." href="/communication/templates" count={messageTemplates.length} icon={Mail} />
@@ -144,7 +140,7 @@ export default async function LibraryPage() {
         title="Reusable assets & catalogs"
         guidance="These are reusable items your templates can pull from, or shareable assets (forms, QR codes, brochures). They are not applied like templates."
       >
-        <ToolboxCard kind="catalog" title="Offerings" description="Menus, bar, services, and rentals. Event Order and Choices templates select from here." href="/library/offerings" count={offerings.length} icon={Package} />
+        <ToolboxCard kind="catalog" title="Offerings" description="Menus, bar, services, and rentals. Event Order Templates select from here." href="/library/offerings" count={offerings.length} icon={Package} />
         <ToolboxCard kind="catalog" title="Packages" description="What you sell commercially — priced packages with inclusions." href="/packages" count={packages.length} icon={Boxes} />
         <ToolboxCard kind="catalog" title="Available Inventory" description="Physical stock your venue owns. Inventory templates and floor plans use these items." href="/library/inventory" count={inventoryItems.length} icon={Package} />
         <ToolboxCard kind="catalog" title="Public Forms" description="Lead-capture forms for expos and open houses. Share by link or as a QR destination." href="/library/public-forms" count={publicForms.length} icon={ClipboardList} />

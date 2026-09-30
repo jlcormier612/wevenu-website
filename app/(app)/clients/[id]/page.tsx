@@ -65,7 +65,6 @@ import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
-import { getTemplates as getChoicesTemplates } from "@/lib/client-choices-templates/service";
 import {
   getClientChoices,
   listClientChoicesForEvent,
@@ -435,11 +434,10 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   ]);
 
   // Event Order is always available (optional by use). No feature gate.
-  const [eventOrder, packages, eventOrderTemplates, choicesTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules] = await Promise.all([
+  const [eventOrder, packages, eventOrderTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules] = await Promise.all([
     getEventOrder(eventId),
     getPackages(),
     getEventOrderTemplates(),
-    getChoicesTemplates(),
     listClientChoicesForEvent(eventId),
     getPackagesWithItems(true),
     getActiveSelectedPackageForClient(client.id),
@@ -537,7 +535,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       eventInventory={eventInventory}
       inventoryTemplates={inventoryTemplates}
       eventOrderTemplates={eventOrderTemplates}
-      choicesTemplates={choicesTemplates}
       clientChoices={clientChoices}
       financialImpact={financialImpact}
       bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}

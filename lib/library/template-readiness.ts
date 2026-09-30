@@ -3,8 +3,11 @@
  * Do not invent price/token validation; unpriced EO lines remain valid.
  */
 
-export function isEventOrderTemplateUnfinished(lineCount: number): boolean {
-  return lineCount <= 0;
+export function isEventOrderTemplateUnfinished(
+  lineCount: number,
+  groupCount = 0,
+): boolean {
+  return lineCount <= 0 && groupCount <= 0;
 }
 
 export function isInventoryTemplateUnfinished(itemCount: number): boolean {

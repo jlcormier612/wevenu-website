@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   addItem, addTemplateItem, addToEventOrder, createTemplate, deleteTemplate,
   ensureEventInventory, finalizeEventInventory, getTemplate, removeItem, removeTemplateItem,
-  reopenEventInventory, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
+  reopenEventInventory, sendInventoryTemplate, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
 } from "@/lib/event-inventory/service";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
@@ -24,6 +24,16 @@ export async function ensureEventInventoryAction(eventId: string, templateId: st
 
 export async function shareEventInventoryAction(eventInventoryId: string, eventId: string): Promise<EventInventoryActionResult> {
   const result = await shareEventInventory(eventInventoryId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Apply Inventory Template then share for client portal review. */
+export async function sendInventoryTemplateAction(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventInventoryResult | EventInventoryActionResult> {
+  const result = await sendInventoryTemplate(eventId, templateId);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

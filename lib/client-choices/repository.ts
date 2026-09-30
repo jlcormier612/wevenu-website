@@ -16,7 +16,8 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type Row = {
   id: string; venue_id: string; event_id: string; client_id: string | null;
-  template_id: string | null; name: string; status: string; access_key: string;
+  template_id: string | null; event_order_template_id?: string | null;
+  name: string; status: string; access_key: string;
   definition: ChoicesDefinition; answers: ChoicesAnswers;
   sent_at: string | null; opened_at: string | null; submitted_at: string | null;
   changes_requested_at: string | null; changes_requested_note: string | null;
@@ -47,6 +48,7 @@ export function mapClientChoices(r: Row): ClientChoices {
     eventId: r.event_id,
     clientId: r.client_id,
     templateId: r.template_id,
+    eventOrderTemplateId: r.event_order_template_id ?? null,
     name: r.name,
     status: r.status as ClientChoicesStatus,
     accessKey: r.access_key,
@@ -146,9 +148,13 @@ export async function insertInstance(
   input: {
     eventId: string;
     clientId: string | null;
-    templateId: string | null;
+    /** Legacy Choices Template id (nullable during EO absorption). */
+    templateId?: string | null;
+    /** Preferred authoring source — Event Order Template. */
+    eventOrderTemplateId?: string | null;
     name: string;
     definition: ChoicesDefinition;
+    answers?: ChoicesAnswers;
   },
 ): Promise<string> {
   const { data, error } = await client.from("client_choices")
@@ -156,11 +162,12 @@ export async function insertInstance(
       venue_id: venueId,
       event_id: input.eventId,
       client_id: input.clientId,
-      template_id: input.templateId,
+      template_id: input.templateId ?? null,
+      event_order_template_id: input.eventOrderTemplateId ?? null,
       name: input.name.trim(),
       status: "draft",
       definition: input.definition,
-      answers: {},
+      answers: input.answers ?? {},
     })
     .select("id")
     .single<{ id: string }>();

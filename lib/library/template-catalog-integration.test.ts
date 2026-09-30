@@ -197,8 +197,8 @@ describe("Choices Template — offering-first + label independence", () => {
     assert.match(apply, /offeringId: opt\.offeringId/);
   });
 
-  it("choices editor uses Select Offering primary / custom secondary", () => {
-    const ui = readFileSync(resolve("components/client-choices-templates/choices-template-detail.tsx"), "utf8");
+  it("EO choice-group editor uses Select Offering primary / custom secondary", () => {
+    const ui = readFileSync(resolve("components/event-order-templates/event-order-template-choice-groups.tsx"), "utf8");
     assert.match(ui, /Select Offering/);
     assert.match(ui, /Add custom option/);
     assert.doesNotMatch(ui, /Optional: link Offering/);
@@ -212,12 +212,12 @@ describe("Library guidance — catalog-first copy", () => {
     assert.doesNotMatch(src, /Checklist lines \(name, quantity, price\) are authored/);
   });
 
-  it("Event Order and Choices guidance emphasize catalog-first", () => {
+  it("Event Order Templates guidance emphasizes catalog-first fixed + selectable", () => {
     const eo = readFileSync(resolve("app/(app)/library/event-order-templates/page.tsx"), "utf8");
     assert.match(eo, /Built from your Offerings catalog/);
     assert.match(eo, /select offerings from your catalog first/i);
     const ch = readFileSync(resolve("app/(app)/library/choices-templates/page.tsx"), "utf8");
-    assert.match(ch, /Built from your Offerings catalog/);
-    assert.match(ch, /select offerings as choice options first/i);
+    assert.match(ch, /redirect\("\/library\/event-order-templates"\)/);
+    assert.doesNotMatch(ch, /ChoicesTemplateList/);
   });
 });

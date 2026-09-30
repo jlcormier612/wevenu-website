@@ -31,17 +31,16 @@ export default async function OfferingsLibraryPage() {
         }
       />
       <LibraryHowItWorks>
-        Create sellable offerings here. Event Order Templates and Choices Templates select from this catalog when you build those templates.
+        Create sellable offerings here. Event Order Templates select from this catalog when you build fixed lines and choice options.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="After you add or update offerings here, open a template and select which offerings to include. You can optionally link an offering to a physical inventory item."
+        detail="After you add or update offerings here, open an Event Order Template and select which offerings to include as fixed lines or choice options. You can optionally link an offering to a physical inventory item."
         action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
         secondaryActions={[
-          { href: "/library/choices-templates", label: "Open Choices Templates" },
           { href: "/library/inventory", label: "Manage Available Inventory" },
         ]}
       >
-        Used by Event Order Templates and Choices Templates.
+        Used by Event Order Templates.
       </LibraryDependencyNote>
       <OfferingsLibrarySection
         initialOfferings={offerings}

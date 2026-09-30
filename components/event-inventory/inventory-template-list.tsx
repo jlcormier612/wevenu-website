@@ -13,6 +13,7 @@ import {
   duplicateInventoryTemplateAction,
   ensureEventInventoryAction,
   getInventoryTemplateDetailAction,
+  sendInventoryTemplateAction,
   setInventoryTemplateArchivedAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
@@ -119,16 +120,18 @@ function StarterMenu({ missingKeys }: { missingKeys: InventoryTemplateStarterKey
 
 type UseStep = "pick" | "confirm";
 
-function UseInventoryTemplateSheet({
+function UseOrSendInventoryTemplateSheet({
   template,
   clientGroups,
   open,
   onOpenChange,
+  mode,
 }: {
   template: InventoryTemplate | null;
   clientGroups: TemplateApplyClientGroup[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode: "use" | "send";
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<UseStep>("pick");
@@ -169,6 +172,17 @@ function UseInventoryTemplateSheet({
     if (!selected || !template) return;
     setWarnOpen(false);
     startTransition(async () => {
+      if (mode === "send") {
+        const result = await sendInventoryTemplateAction(selected.id, template.id);
+        if (result.ok) {
+          toast.success("Inventory set up and shared with the client.");
+          router.push(`/events/${selected.id}#inventory`);
+          onOpenChange(false);
+        } else {
+          toast.error(result.message ?? "Could not send inventory.");
+        }
+        return;
+      }
       const result = await ensureEventInventoryAction(selected.id, template.id);
       if (result.ok) {
         toast.success("Inventory set up on the event.");
@@ -180,18 +194,28 @@ function UseInventoryTemplateSheet({
     });
   }
 
+  const title = mode === "send" ? LIBRARY_LABELS.sendToClient : "Use Template";
+  const confirmCta = mode === "send"
+    ? (pending ? "Sending…" : "Send to client")
+    : (pending ? "Setting up…" : "Use Template");
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-4">
-          <SheetTitle>Use Template</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
           {step === "pick" ? (
             <p className="text-sm text-muted-foreground">
-              Choose a client. This starts that booking&apos;s inventory list from
-              &ldquo;{template?.name}&rdquo;.
+              {mode === "send"
+                ? <>Choose a client event to apply &ldquo;{template?.name}&rdquo; and share for client review.</>
+                : <>Choose a client. This starts that booking&apos;s inventory list from &ldquo;{template?.name}&rdquo;.</>}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">Confirm before setting up inventory.</p>
+            <p className="text-sm text-muted-foreground">
+              {mode === "send"
+                ? "Applies the template (if needed) and shares the event inventory for client portal review — not an invoice."
+                : "Confirm before setting up inventory."}
+            </p>
           )}
         </SheetHeader>
 
@@ -211,12 +235,16 @@ function UseInventoryTemplateSheet({
             <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
               <li>Starts this event&apos;s inventory list from this template&apos;s items.</li>
               <li>If this event already has an inventory list, this opens it instead — it never overwrites existing work.</li>
-              <li>Does not send email, SMS, or portal notifications.</li>
+              {mode === "send" ? (
+                <li>Shares the list to the client portal for review (read-only). Billable items still use Event Order / Invoice.</li>
+              ) : (
+                <li>Does not send email, SMS, or portal notifications.</li>
+              )}
             </ul>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
               <Button type="button" disabled={pending || itemCount == null} onClick={requestApply}>
-                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Setting up…</> : "Use Template"}
+                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{confirmCta}</> : confirmCta}
               </Button>
             </div>
           </div>
@@ -233,11 +261,12 @@ function UseInventoryTemplateSheet({
 }
 
 function TemplateCard({
-  template, archivedView, onUse, onDelete, onDuplicate,
+  template, archivedView, onUse, onSend, onDelete, onDuplicate,
 }: {
   template: InventoryTemplate;
   archivedView?: boolean;
   onUse: () => void;
+  onSend: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
@@ -267,6 +296,7 @@ function TemplateCard({
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
             { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" },
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
+            { id: "send", label: LIBRARY_LABELS.sendToClient, onClick: onSend, emphasis: "use" },
           ]}
       overflowPending={pending}
       overflowItems={archivedView ? [] : [
@@ -309,6 +339,7 @@ export function InventoryTemplateList({
   const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [using, setUsing] = React.useState<InventoryTemplate | null>(null);
+  const [sending, setSending] = React.useState<InventoryTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<InventoryTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
 
@@ -330,6 +361,7 @@ export function InventoryTemplateList({
       <TemplateCard
         key={t.id} template={t} archivedView={archivedView}
         onUse={() => setUsing(t)}
+        onSend={() => setSending(t)}
         onDelete={() => setDeleting(t)}
         onDuplicate={() => {
           void (async () => {
@@ -353,7 +385,8 @@ export function InventoryTemplateList({
         <CreateTemplateSheet />
       </div>
       <p className="text-xs text-muted-foreground">
-        Templates are reusable packing lists. Applying one to an event happens on the booking — not as a client send from the Library.
+        Reusable packing lists. Use applies on the venue side; Send applies and shares for client portal review.
+        Billable inventory still uses Event Order / Invoice — not a parallel payment stack.
       </p>
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
@@ -376,11 +409,19 @@ export function InventoryTemplateList({
           </LibraryArchivedSection>
         </>
       )}
-      <UseInventoryTemplateSheet
+      <UseOrSendInventoryTemplateSheet
+        mode="use"
         template={using}
         clientGroups={clientGroups}
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
+      />
+      <UseOrSendInventoryTemplateSheet
+        mode="send"
+        template={sending}
+        clientGroups={clientGroups}
+        open={!!sending}
+        onOpenChange={(o) => { if (!o) setSending(null); }}
       />
       <LibraryDeleteConfirmDialog
         open={!!deleting}

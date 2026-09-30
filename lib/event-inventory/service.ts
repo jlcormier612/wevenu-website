@@ -73,6 +73,21 @@ export async function shareEventInventory(eventInventoryId: string): Promise<Eve
   return result as EventInventoryActionResult;
 }
 
+/**
+ * Library Send: apply template into event inventory (if new), then share for client review.
+ * Does not create invoices — billable items use existing EO/invoice paths separately.
+ */
+export async function sendInventoryTemplate(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventInventoryResult | EventInventoryActionResult> {
+  const ensured = await ensureEventInventory(eventId, templateId);
+  if (!ensured.ok) return ensured;
+  const shared = await shareEventInventory(ensured.eventInventoryId);
+  if (!shared.ok) return shared;
+  return { ok: true, eventInventoryId: ensured.eventInventoryId };
+}
+
 export async function finalizeEventInventory(eventInventoryId: string): Promise<EventInventoryActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);

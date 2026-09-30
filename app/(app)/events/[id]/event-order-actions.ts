@@ -12,6 +12,11 @@ import type {
   AddSectionResult, EnsureEventOrderResult, EventOrderActionResult, UpdateLineInput,
 } from "@/lib/event-orders/types";
 import type { TemplateApplySelection } from "@/lib/event-order-templates/offerings";
+import {
+  sendEventOrderTemplate,
+  useEventOrderTemplate,
+} from "@/lib/event-order-templates/use-send";
+import type { ChoicesAnswers } from "@/lib/client-choices/types";
 import { createInvoice, linkInvoiceToEventOrder } from "@/lib/invoices/service";
 import type { CreateInvoiceResult, InvoiceActionResult as InvoiceOpResult } from "@/lib/invoices/types";
 import { getEventOrderPdfUrl, shareEventOrderWithClient } from "@/lib/event-orders/representation";
@@ -48,6 +53,34 @@ export async function startOrApplyEventOrderTemplateAction(
   selections?: TemplateApplySelection[],
 ): Promise<EnsureEventOrderResult> {
   const result = await startOrApplyEventOrderTemplate(eventId, templateId, selections);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Use: fixed lines + optional venue-filled selectable groups → finalize (no client). */
+export async function useEventOrderTemplateAction(
+  eventId: string,
+  templateId: string,
+  opts?: {
+    lineSelections?: TemplateApplySelection[];
+    answers?: ChoicesAnswers;
+  },
+) {
+  const result = await useEventOrderTemplate(eventId, templateId, opts);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Send: fixed lines + freeze selectable groups for client portal. */
+export async function sendEventOrderTemplateAction(
+  eventId: string,
+  templateId: string,
+  opts?: {
+    lineSelections?: TemplateApplySelection[];
+    answers?: ChoicesAnswers;
+  },
+) {
+  const result = await sendEventOrderTemplate(eventId, templateId, opts);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

@@ -25,16 +25,16 @@ export default async function EventOrderTemplatesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Event Order Templates"
-        description="Reusable Event Order structure — sections and optional priced offerings. Applying copies a snapshot into the event; it is not an invoice."
+        description="Commercial build sheets — fixed offerings and selectable choice groups. Use applies on the venue side; Send lets the client choose. Applying creates the event’s own Event Order, not an invoice."
       />
       <LibraryHowItWorks>
-        Assemble a reusable order once. Use Template on a client booking to snapshot those lines into that event&apos;s Event Order.
+        Assemble a reusable commercial configuration once. Use Template fills selections and finalizes into that event&apos;s Event Order. Send Template freezes choice groups for the client portal.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="When you edit a template, select offerings from your catalog first. Add a custom line only when something is not already in Offerings. Applying copies a snapshot into the event — later catalog price changes do not rewrite existing event orders."
+        detail="When you edit a template, select offerings from your catalog first for fixed lines and choice options. Add a custom line or option only when something is not already in Offerings. Applying copies a snapshot into the event — later catalog price changes do not rewrite existing event orders."
         action={{ href: "/library/offerings", label: "Manage Offerings" }}
       >
-        Built from your Offerings catalog.
+        Built from your Offerings catalog — fixed lines and selectable groups.
       </LibraryDependencyNote>
       <EventOrderTemplateList
         templates={templates}

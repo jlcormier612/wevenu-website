@@ -287,7 +287,6 @@ export function EventDetail({
   eventInventory = null,
   inventoryTemplates = [],
   eventOrderTemplates = [],
-  choicesTemplates = [],
   clientChoices = [],
   financialImpact = null,
   bookingCommitmentInvoiceIds = [],
@@ -360,7 +359,6 @@ export function EventDetail({
   inventoryTemplates?: import("@/lib/event-inventory/types").InventoryTemplate[];
   // D7A — Event Order Templates. Same additive, non-feature-flagged shape as inventoryTemplates above.
   eventOrderTemplates?: import("@/lib/event-order-templates/types").EventOrderTemplate[];
-  choicesTemplates?: import("@/lib/client-choices-templates/types").ChoicesTemplate[];
   clientChoices?: import("@/lib/client-choices/types").ClientChoicesWithHistory[];
   financialImpact?: SelectionsFinancialImpact | null;
   bookingCommitmentInvoiceIds?: string[];
@@ -923,7 +921,7 @@ export function EventDetail({
         <TabsContent value="event-order">
           <ClientChoicesPanel
             eventId={event.id}
-            templates={choicesTemplates}
+            eventOrderTemplates={eventOrderTemplates}
             choices={clientChoices}
             financialImpact={financialImpact}
           />

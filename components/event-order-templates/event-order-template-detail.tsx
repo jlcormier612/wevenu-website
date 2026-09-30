@@ -20,6 +20,7 @@ import {
   updateEventOrderTemplateSectionAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { OfferingEditorSheet } from "@/components/event-order-templates/offering-editor-sheet";
+import { EventOrderTemplateChoiceGroups } from "@/components/event-order-templates/event-order-template-choice-groups";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
@@ -215,10 +216,12 @@ export function EventOrderTemplateDetail({
       />
 
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        You are building a reusable Event Order template. Add as much detail as you need — from simple sections to fully priced offerings. Applying this to an event creates that event’s own copy.
+        You are building a reusable commercial build sheet. Add fixed offerings and selectable choice
+        groups (Bar, Entrée, add-ons). Use applies selections on the venue side; Send lets the client choose.
+        Applying creates that event’s own Event Order — templates are not commitments.
       </p>
       <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground max-w-2xl">
-        Select offerings from your catalog first. Add a custom line only when needed. Need to create sellable items?{" "}
+        Select offerings from your catalog first. Add a custom line or option only when needed. Need to create sellable items?{" "}
         <Link href="/library/offerings" className="font-medium text-heading hover:underline">
           Manage Offerings →
         </Link>
@@ -355,6 +358,12 @@ export function EventOrderTemplateDetail({
           Add section
         </Button>
       )}
+
+      <EventOrderTemplateChoiceGroups
+        template={template}
+        catalogOfferings={catalogOfferings}
+        onPersist={onPersist}
+      />
 
       <div className="flex justify-end">
         <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={deleting} onClick={handleDelete}>

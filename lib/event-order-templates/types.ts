@@ -1,7 +1,7 @@
 /**
- * Event Order Templates — reusable delivery structure:
- * sections + optional snapshot offerings (priced or not).
- * Applying copies snapshots into the event-specific Event Order.
+ * Event Order Templates — reusable commercial build sheets:
+ * fixed lines + selectable groups/options with rules and snapshot pricing.
+ * Applying / Use / Send freezes snapshots into the event-specific Event Order.
  * The Event Order remains the source of truth; templates are not commitments.
  */
 
@@ -49,9 +49,47 @@ export type EventOrderTemplateLine = {
   updatedAt: string;
 };
 
+export type EventOrderTemplateSelectionMode = "single" | "multi";
+
+/** Selectable commercial group (e.g. Bar — choose one). */
+export type EventOrderTemplateGroup = {
+  id: string;
+  templateId: string;
+  venueId: string;
+  sectionId: string | null;
+  name: string;
+  instructions: string | null;
+  selectionMode: EventOrderTemplateSelectionMode;
+  minSelect: number;
+  maxSelect: number | null;
+  allowQuantity: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Option inside a choice group (Offering ref and/or custom label). */
+export type EventOrderTemplateOption = {
+  id: string;
+  templateId: string;
+  venueId: string;
+  groupId: string;
+  offeringId: string | null;
+  label: string;
+  description: string | null;
+  isIncluded: boolean;
+  unitPrice: number | null;
+  isDefault: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type EventOrderTemplateWithDetails = EventOrderTemplate & {
   sections: EventOrderTemplateSection[];
   lines: EventOrderTemplateLine[];
+  groups: EventOrderTemplateGroup[];
+  options: EventOrderTemplateOption[];
 };
 
 export type EventOrderTemplateInput = { name: string; description: string };
@@ -71,6 +109,26 @@ export type AddTemplateLineInput = {
 
 export type UpdateTemplateLineInput = AddTemplateLineInput;
 
+export type AddTemplateGroupInput = {
+  sectionId: string | null;
+  name: string;
+  instructions?: string;
+  selectionMode: EventOrderTemplateSelectionMode;
+  minSelect: number;
+  maxSelect: number | null;
+  allowQuantity: boolean;
+};
+
+export type AddTemplateOptionInput = {
+  groupId: string;
+  offeringId?: string | null;
+  label: string;
+  description?: string;
+  isIncluded?: boolean;
+  unitPrice?: string | null;
+  isDefault?: boolean;
+};
+
 export type EventOrderTemplateErrors = Record<string, string>;
 
 export type EventOrderTemplateActionResult =
@@ -87,4 +145,12 @@ export type AddTemplateSectionResult =
 
 export type AddTemplateLineResult =
   | { ok: true; line: EventOrderTemplateLine }
+  | { ok: false; message?: string; errors?: EventOrderTemplateErrors };
+
+export type AddTemplateGroupResult =
+  | { ok: true; group: EventOrderTemplateGroup }
+  | { ok: false; message?: string; errors?: EventOrderTemplateErrors };
+
+export type AddTemplateOptionResult =
+  | { ok: true; option: EventOrderTemplateOption }
   | { ok: false; message?: string; errors?: EventOrderTemplateErrors };

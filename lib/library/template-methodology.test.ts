@@ -19,9 +19,11 @@ import {
 } from "@/lib/library/template-apply-targets";
 
 describe("template structural readiness", () => {
-  it("EO unfinished only when zero lines (sections alone do not finish)", () => {
+  it("EO unfinished only when zero lines and zero choice groups", () => {
     assert.equal(isEventOrderTemplateUnfinished(0), true);
+    assert.equal(isEventOrderTemplateUnfinished(0, 0), true);
     assert.equal(isEventOrderTemplateUnfinished(1), false);
+    assert.equal(isEventOrderTemplateUnfinished(0, 1), false);
     // Intentionally unpriced EO (lines exist) is finished structurally
     assert.equal(isEventOrderTemplateUnfinished(2), false);
   });
@@ -57,16 +59,13 @@ describe("template structural readiness", () => {
     assert.match(src, /Apply Anyway/);
   });
 
-  it("all three Use sheets gate apply through unfinished check + warning dialog", () => {
+  it("EO and Inventory Use sheets gate apply through unfinished check + warning dialog", () => {
     const eo = readFileSync(resolve("components/event-order-templates/event-order-template-list.tsx"), "utf8");
     const inv = readFileSync(resolve("components/event-inventory/inventory-template-list.tsx"), "utf8");
-    const ch = readFileSync(resolve("components/client-choices-templates/choices-template-list.tsx"), "utf8");
     assert.match(eo, /isEventOrderTemplateUnfinished/);
     assert.match(eo, /IncompleteTemplateWarningDialog/);
     assert.match(inv, /isInventoryTemplateUnfinished/);
     assert.match(inv, /IncompleteTemplateWarningDialog/);
-    assert.match(ch, /isChoicesTemplateUnfinished/);
-    assert.match(ch, /IncompleteTemplateWarningDialog/);
   });
 });
 

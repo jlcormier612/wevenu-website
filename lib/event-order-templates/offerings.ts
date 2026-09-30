@@ -272,6 +272,24 @@ export function unsectionedLines(lines: EventOrderTemplateLine[]): EventOrderTem
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+export function groupsForSection<T extends { sectionId: string | null; sortOrder: number }>(
+  groups: T[],
+  sectionId: string | null,
+): T[] {
+  return groups
+    .filter((g) => (sectionId == null ? g.sectionId == null : g.sectionId === sectionId))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function optionsForGroup<T extends { groupId: string; sortOrder: number }>(
+  options: T[],
+  groupId: string,
+): T[] {
+  return options
+    .filter((o) => o.groupId === groupId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 export function moveOrderedIds(ids: string[], fromIndex: number, toIndex: number): string[] {
   const next = [...ids];
   if (

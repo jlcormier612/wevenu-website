@@ -12,7 +12,10 @@ import {
   duplicateEventOrderTemplateAction, getEventOrderTemplateDetailAction,
   setEventOrderTemplateArchivedAction,
 } from "@/app/(app)/library/event-order-templates/actions";
-import { startOrApplyEventOrderTemplateAction } from "@/app/(app)/events/[id]/event-order-actions";
+import {
+  sendEventOrderTemplateAction,
+  useEventOrderTemplateAction,
+} from "@/app/(app)/events/[id]/event-order-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { IncompleteTemplateWarningDialog } from "@/components/library/incomplete-template-warning-dialog";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
@@ -34,9 +37,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { formatRelative } from "@/lib/leads/constants";
 import { TemplateApplyChooser } from "@/components/event-order-templates/apply-event-order-template-sheet";
+import {
+  TemplateGroupAnswerChooser,
+  initialAnswersForTemplate,
+} from "@/components/event-order-templates/template-group-answer-chooser";
 import { defaultApplySelections, type TemplateApplySelection } from "@/lib/event-order-templates/offerings";
+import { templateHasSelectableGroups } from "@/lib/event-order-templates/selection-definition";
 import { EVENT_ORDER_STARTER_MASTERS, type EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
 import { isEventOrderTemplateUnfinished } from "@/lib/library/template-readiness";
+import type { ChoicesAnswers } from "@/lib/client-choices/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 
 function NewTemplateSheet() {
@@ -126,16 +135,18 @@ export type EventOrderEventOption = { id: string; name: string; eventDate: strin
 
 type UseStep = "pick" | "confirm";
 
-function UseEventOrderSheet({
+function UseOrSendEventOrderSheet({
   template,
   clientGroups,
   open,
   onOpenChange,
+  mode,
 }: {
   template: EventOrderTemplate | null;
   clientGroups: TemplateApplyClientGroup[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode: "use" | "send";
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<UseStep>("pick");
@@ -144,6 +155,7 @@ function UseEventOrderSheet({
   const [pending, startTransition] = React.useTransition();
   const [detail, setDetail] = React.useState<EventOrderTemplateWithDetails | null>(null);
   const [selections, setSelections] = React.useState<TemplateApplySelection[]>([]);
+  const [answers, setAnswers] = React.useState<ChoicesAnswers>({});
   const [warnOpen, setWarnOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -152,6 +164,7 @@ function UseEventOrderSheet({
       setSelected(null);
       setDetail(null);
       setSelections([]);
+      setAnswers({});
       setWarnOpen(false);
     }
   }, [open]);
@@ -164,12 +177,13 @@ function UseEventOrderSheet({
       const loaded = await getEventOrderTemplateDetailAction(template.id);
       setDetail(loaded);
       setSelections(loaded ? defaultApplySelections(loaded.lines) : []);
+      setAnswers(loaded ? initialAnswersForTemplate(loaded) : {});
     });
   }
 
   function requestApply() {
     if (!selected || !template || !detail) return;
-    if (isEventOrderTemplateUnfinished(detail.lines.length)) {
+    if (isEventOrderTemplateUnfinished(detail.lines.length, detail.groups?.length ?? 0)) {
       setWarnOpen(true);
       return;
     }
@@ -180,9 +194,30 @@ function UseEventOrderSheet({
     if (!selected || !template) return;
     setWarnOpen(false);
     startTransition(async () => {
-      const result = await startOrApplyEventOrderTemplateAction(selected.id, template.id, selections);
+      if (mode === "send") {
+        const result = await sendEventOrderTemplateAction(selected.id, template.id, {
+          lineSelections: selections,
+          answers,
+        });
+        if (result.ok) {
+          toast.success("Sent to client for selections.");
+          router.push(`/events/${selected.id}`);
+          onOpenChange(false);
+        } else {
+          toast.error(result.message ?? "Could not send this template.");
+        }
+        return;
+      }
+      const result = await useEventOrderTemplateAction(selected.id, template.id, {
+        lineSelections: selections,
+        answers,
+      });
       if (result.ok) {
-        toast.success("Template applied to the event.");
+        toast.success(
+          templateHasSelectableGroups(detail!)
+            ? "Template applied and selections finalized on the Event Order."
+            : "Template applied to the event.",
+        );
         router.push(`/events/${selected.id}#event-order`);
         onOpenChange(false);
       } else {
@@ -191,19 +226,27 @@ function UseEventOrderSheet({
     });
   }
 
+  const title = mode === "send" ? LIBRARY_LABELS.sendToClient : "Use Template";
+  const confirmCta = mode === "send"
+    ? (pending ? "Sending…" : "Send to client")
+    : (pending ? "Applying…" : "Apply to event");
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-4">
-          <SheetTitle>Use Template</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
           {step === "pick" ? (
             <p className="text-sm text-muted-foreground">
-              Choose a client. This starts that booking&apos;s Event Order from
-              &ldquo;{template?.name}&rdquo;.
+              {mode === "send"
+                ? <>Choose a client event to send &ldquo;{template?.name}&rdquo; for selections.</>
+                : <>Choose a client. This starts that booking&apos;s Event Order from &ldquo;{template?.name}&rdquo;.</>}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Choose what this event should receive. This copies a snapshot into the Event Order — not an invoice or contract.
+              {mode === "send"
+                ? "Fixed offerings apply now. Choice groups go to the client for selection — you finalize into the Event Order after they submit."
+                : "Choose fixed offerings and fill any choice groups. This applies on the venue side — no client round-trip."}
             </p>
           )}
         </SheetHeader>
@@ -222,7 +265,16 @@ function UseEventOrderSheet({
               <p><span className="text-muted-foreground">Event</span> · {selected.name} · {selected.eventDate}</p>
             </div>
             {detail ? (
-              <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} />
+              <>
+                <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} />
+                {templateHasSelectableGroups(detail) ? (
+                  <TemplateGroupAnswerChooser
+                    template={detail}
+                    answers={answers}
+                    onChange={setAnswers}
+                  />
+                ) : null}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">Loading offerings…</p>
             )}
@@ -232,7 +284,7 @@ function UseEventOrderSheet({
             <div className="flex flex-wrap justify-end gap-2 pt-2">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
               <Button type="button" disabled={pending || !detail} onClick={requestApply}>
-                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Applying…</> : "Apply to event"}
+                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{confirmCta}</> : confirmCta}
               </Button>
             </div>
           </div>
@@ -249,11 +301,12 @@ function UseEventOrderSheet({
 }
 
 function TemplateCard({
-  template, archivedView, onUse, onDelete,
+  template, archivedView, onUse, onSend, onDelete,
 }: {
   template: EventOrderTemplate;
   archivedView?: boolean;
   onUse: () => void;
+  onSend: () => void;
   onDelete: () => void;
 }) {
   const router = useRouter();
@@ -293,6 +346,7 @@ function TemplateCard({
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/event-order-templates/${template.id}/preview`, emphasis: "preview" },
             { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" },
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
+            { id: "send", label: LIBRARY_LABELS.sendToClient, onClick: onSend, emphasis: "use" },
           ]}
       overflowPending={pendingId === template.id}
       overflowItems={archivedView ? [] : [
@@ -327,6 +381,7 @@ export function EventOrderTemplateList({
 }) {
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [using, setUsing] = React.useState<EventOrderTemplate | null>(null);
+  const [sending, setSending] = React.useState<EventOrderTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<EventOrderTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
 
@@ -348,6 +403,7 @@ export function EventOrderTemplateList({
       <TemplateCard
         key={t.id} template={t} archivedView={archivedView}
         onUse={() => setUsing(t)}
+        onSend={() => setSending(t)}
         onDelete={() => setDeleting(t)}
       />
     );
@@ -357,8 +413,8 @@ export function EventOrderTemplateList({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">
-          Editing a template never changes an Event Order already on a booking, and never shares with the client.
-          Starters are examples you can edit — including prices, which are snapshots, not invoices.
+          Commercial build sheets — fixed offerings and selectable groups. Use applies on the venue side;
+          Send lets the client choose. Editing a template never changes an Event Order already on a booking.
         </p>
         <div className="flex items-center gap-2">
           <StarterMenu missingKeys={missingStarterKeys} />
@@ -380,11 +436,19 @@ export function EventOrderTemplateList({
           {archived.map((t) => renderCard(t, true))}
         </div>
       </LibraryArchivedSection>
-      <UseEventOrderSheet
+      <UseOrSendEventOrderSheet
+        mode="use"
         template={using}
         clientGroups={clientGroups}
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
+      />
+      <UseOrSendEventOrderSheet
+        mode="send"
+        template={sending}
+        clientGroups={clientGroups}
+        open={!!sending}
+        onOpenChange={(o) => { if (!o) setSending(null); }}
       />
       <LibraryDeleteConfirmDialog
         open={!!deleting}

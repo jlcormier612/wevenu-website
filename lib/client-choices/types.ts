@@ -55,6 +55,8 @@ export type ClientChoices = {
   eventId: string;
   clientId: string | null;
   templateId: string | null;
+  /** Set when created from an Event Order Template (preferred over templateId). */
+  eventOrderTemplateId: string | null;
   name: string;
   status: ClientChoicesStatus;
   accessKey: string;

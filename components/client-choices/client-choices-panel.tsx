@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  createClientChoicesFromTemplateAction,
+  createClientChoicesFromEventOrderTemplateAction,
   finalizeClientChoicesAction,
   requestClientChoicesChangesAction,
   reviseClientChoicesAction,
@@ -28,7 +28,7 @@ import {
   clientChoicesNextActor,
 } from "@/lib/client-choices/constants";
 import type { ClientChoices, ClientChoicesWithHistory } from "@/lib/client-choices/types";
-import type { ChoicesTemplate } from "@/lib/client-choices-templates/types";
+import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
 
 function summarizeAnswers(row: ClientChoices): string {
   const parts: string[] = [];
@@ -276,35 +276,36 @@ function FinancialImpact({
 
 export function ClientChoicesPanel({
   eventId,
-  templates,
+  eventOrderTemplates,
   choices,
   financialImpact = null,
 }: {
   eventId: string;
-  templates: ChoicesTemplate[];
+  /** Selectable Event Order Templates (preferred authoring source). */
+  eventOrderTemplates: Pick<EventOrderTemplate, "id" | "name">[];
   choices: ClientChoicesWithHistory[];
   financialImpact?: SelectionsFinancialImpact | null;
 }) {
   const router = useRouter();
-  const [templateId, setTemplateId] = React.useState(templates[0]?.id ?? "");
+  const [templateId, setTemplateId] = React.useState(eventOrderTemplates[0]?.id ?? "");
   const [pending, startTransition] = React.useTransition();
 
   return (
     <Card className="mb-4">
       <CardHeader>
-        <CardTitle className="text-base">Client Choices</CardTitle>
+        <CardTitle className="text-base">Client selections</CardTitle>
         <CardDescription>
-          Post-booking selections (menus, add-ons, rentals). Client submits; you finalize into Event Order — not a second invoice.
+          Selections from Event Order Templates (menus, add-ons, rentals). Client submits; you finalize into Event Order — not a second invoice.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {templates.length === 0 ? (
+        {eventOrderTemplates.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No Choices templates yet.{" "}
-            <Link href="/library/choices-templates" className="text-primary hover:underline">
+            No Event Order Templates yet.{" "}
+            <Link href="/library/event-order-templates" className="text-primary hover:underline">
               Create one in Library
             </Link>
-            .
+            {" "}with choice groups to start client selections here.
           </p>
         ) : (
           <div className="flex flex-wrap items-end gap-2">
@@ -313,7 +314,7 @@ export function ClientChoicesPanel({
               value={templateId}
               onChange={(e) => setTemplateId(e.target.value)}
             >
-              {templates.map((t) => (
+              {eventOrderTemplates.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
@@ -322,21 +323,21 @@ export function ClientChoicesPanel({
               size="sm"
               disabled={pending || !templateId}
               onClick={() => startTransition(async () => {
-                const r = await createClientChoicesFromTemplateAction(eventId, templateId);
+                const r = await createClientChoicesFromEventOrderTemplateAction(eventId, templateId);
                 if (!r.ok) toast.error(r.message ?? "Could not create.");
-                else { toast.success("Client Choices created."); router.refresh(); }
+                else { toast.success("Client selections created."); router.refresh(); }
               })}
             >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Choices"}
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start selections"}
             </Button>
-            <Link href="/library/choices-templates" className="text-xs text-muted-foreground hover:underline self-center">
-              Manage templates
+            <Link href="/library/event-order-templates" className="text-xs text-muted-foreground hover:underline self-center">
+              Manage Event Order Templates
             </Link>
           </div>
         )}
 
         {choices.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No Client Choices for this event yet.</p>
+          <p className="text-sm text-muted-foreground">No client selections for this event yet.</p>
         ) : (
           <div className="space-y-3">
             {choices.map((c) => (

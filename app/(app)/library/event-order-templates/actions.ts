@@ -6,13 +6,16 @@ import {
   addEventOrderStarterAgain,
 } from "@/lib/event-order-templates/provision";
 import {
-  addLine, addSection, createTemplate, deleteTemplate_, duplicateTemplate_, getTemplate,
-  removeLine, removeSection, reorderLines, reorderSections, setTemplateArchived_,
-  updateLine, updateSection, updateSectionGuidance, updateTemplate_,
+  addGroup, addLine, addOption, addSection, createTemplate, deleteTemplate_,
+  duplicateTemplate_, getTemplate, removeGroup_, removeLine, removeOption_,
+  removeSection, reorderGroups, reorderLines, reorderOptions, reorderSections,
+  setTemplateArchived_, updateGroup_, updateLine, updateOption_, updateSection,
+  updateSectionGuidance, updateTemplate_,
 } from "@/lib/event-order-templates/service";
 import type { EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
 import type {
-  AddTemplateLineInput, AddTemplateLineResult, AddTemplateSectionResult,
+  AddTemplateGroupInput, AddTemplateGroupResult, AddTemplateLineInput, AddTemplateLineResult,
+  AddTemplateOptionInput, AddTemplateOptionResult, AddTemplateSectionResult,
   CreateEventOrderTemplateResult, EventOrderTemplateActionResult, EventOrderTemplateInput,
   EventOrderTemplateWithDetails, UpdateTemplateLineInput,
 } from "@/lib/event-order-templates/types";
@@ -119,7 +122,71 @@ export async function removeEventOrderTemplateLineAction(templateId: string, lin
   return result;
 }
 
-/** Read-only fetch for the Library's Preview sheet — sections + lines only, no edit side-effects. */
+export async function addEventOrderTemplateGroupAction(
+  templateId: string, input: AddTemplateGroupInput,
+): Promise<AddTemplateGroupResult> {
+  const result = await addGroup(templateId, input);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function updateEventOrderTemplateGroupAction(
+  templateId: string, groupId: string, input: AddTemplateGroupInput,
+): Promise<EventOrderTemplateActionResult> {
+  const result = await updateGroup_(groupId, input);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function reorderEventOrderTemplateGroupsAction(
+  templateId: string, orderedIds: string[],
+): Promise<EventOrderTemplateActionResult> {
+  const result = await reorderGroups(orderedIds);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function removeEventOrderTemplateGroupAction(
+  templateId: string, groupId: string,
+): Promise<EventOrderTemplateActionResult> {
+  const result = await removeGroup_(groupId);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function addEventOrderTemplateOptionAction(
+  templateId: string, input: AddTemplateOptionInput,
+): Promise<AddTemplateOptionResult> {
+  const result = await addOption(templateId, input);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function updateEventOrderTemplateOptionAction(
+  templateId: string, optionId: string, input: AddTemplateOptionInput,
+): Promise<EventOrderTemplateActionResult> {
+  const result = await updateOption_(optionId, input);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function reorderEventOrderTemplateOptionsAction(
+  templateId: string, orderedIds: string[],
+): Promise<EventOrderTemplateActionResult> {
+  const result = await reorderOptions(orderedIds);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function removeEventOrderTemplateOptionAction(
+  templateId: string, optionId: string,
+): Promise<EventOrderTemplateActionResult> {
+  const result = await removeOption_(optionId);
+  if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+/** Read-only fetch for the Library's Preview sheet — sections + lines + groups, no edit side-effects. */
 export async function getEventOrderTemplateDetailAction(id: string): Promise<EventOrderTemplateWithDetails | null> {
   return getTemplate(id);
 }
