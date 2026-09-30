@@ -74,7 +74,6 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Overview",
     items: [
       { id: "dashboard", title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { id: "reports", title: "Reports", href: "/reporting", icon: BarChart3 },
     ],
   },
   {
@@ -136,6 +135,7 @@ export const NAV_SECTIONS: NavSection[] = [
       // which is the venue's own operational content for couples.
       { id: "guidance", title: "Guidance", href: "/help", icon: GraduationCap },
       { id: "venue-guide", title: "Venue Guide", href: "/guide", icon: Info },
+      { id: "reports", title: "Reports", href: "/reporting", icon: BarChart3 },
       // "Help & Feedback" is the only nav entry for venue-facing help requests
       // and product feedback. The sidebar footer used to carry a second trigger
       // that skipped this page and opened the form directly.

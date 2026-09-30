@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
+import { BarChart3 } from "lucide-react";
 
 import { NAV_ITEMS, NAV_SECTIONS } from "@/lib/navigation";
 
@@ -46,15 +47,38 @@ describe("venue navigation IA", () => {
       NAV_SECTIONS.map((s) => [s.id, s.items.map((i) => i.title)]),
     );
     assert.deepEqual(shape, {
-      overview: ["Dashboard", "Reports"],
+      overview: ["Dashboard"],
       relationships: ["Leads", "Clients", "Vendors"],
       scheduling: ["Calendar", "Tours"],
       communication: ["Inbox", "Automations"],
       library: ["Templates", "Documents"],
       financials: ["Contracts", "Payments"],
       "to-dos": ["Task Center", "Requests"],
-      "your-venue": ["Setup", "Settings", "Guidance", "Venue Guide", "Help & Feedback"],
+      "your-venue": [
+        "Setup",
+        "Settings",
+        "Guidance",
+        "Venue Guide",
+        "Reports",
+        "Help & Feedback",
+      ],
     });
+  });
+
+  it("keeps Reports under Your Venue between Venue Guide and Help & Feedback", () => {
+    const overview = NAV_SECTIONS.find((s) => s.id === "overview");
+    const yourVenue = NAV_SECTIONS.find((s) => s.id === "your-venue");
+    assert.ok(overview && yourVenue);
+    assert.equal(overview.items.length, 1);
+    assert.equal(overview.items[0]?.id, "dashboard");
+    assert.equal(NAV_SECTIONS.filter((s) => s.items.some((i) => i.id === "reports")).length, 1);
+    const titles = yourVenue.items.map((i) => i.title);
+    assert.equal(titles.indexOf("Reports"), titles.indexOf("Venue Guide") + 1);
+    assert.equal(titles.indexOf("Help & Feedback"), titles.indexOf("Reports") + 1);
+    const reports = NAV_ITEMS.find((i) => i.id === "reports");
+    assert.equal(reports?.title, "Reports");
+    assert.equal(reports?.href, "/reporting");
+    assert.equal(reports?.icon, BarChart3);
   });
 
   it("has no Admin section, empty or otherwise", () => {
