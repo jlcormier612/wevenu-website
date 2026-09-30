@@ -248,6 +248,22 @@ describe("Edit payment plan safety", () => {
     assert.match(detail, /Edit payment plan/);
     assert.match(detail, /editingPlan && !planHasActivity/);
   });
+
+  it("locks Payments schedule line edit/add/cancel behind the same activity guard", () => {
+    assert.match(scheduleDetail, /planLocked=\{planHasActivity\}/);
+    assert.match(scheduleDetail, /\{!planHasActivity && \(/);
+    assert.match(scheduleDetail, /Add Payment/);
+    assert.match(scheduleDetail, /editMode && !planLocked/);
+    assert.match(service, /assertSchedulePlanEditable/);
+    assert.match(service, /export async function updateLineItem_/);
+    const updateIdx = service.indexOf("export async function updateLineItem_");
+    const updateSlice = service.slice(updateIdx, updateIdx + 500);
+    assert.match(updateSlice, /assertSchedulePlanEditable\(scheduleId\)/);
+    const addIdx = service.indexOf("export async function addLineItem(");
+    assert.match(service.slice(addIdx, addIdx + 500), /assertSchedulePlanEditable\(scheduleId\)/);
+    const cancelIdx = service.indexOf("export async function cancelLineItem_");
+    assert.match(service.slice(cancelIdx, cancelIdx + 1600), /assertSchedulePlanEditable\(item\.schedule_id\)/);
+  });
 });
 
 describe("H. customer-facing actions are Preview, Send, and Edit", () => {

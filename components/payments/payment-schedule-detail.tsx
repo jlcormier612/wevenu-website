@@ -284,6 +284,7 @@ function LineItemRow({
   onMarkPaid,
   onDelete,
   currentUserRole,
+  planLocked = false,
 }: {
   item: PaymentLineItem;
   scheduleId: string;
@@ -293,6 +294,8 @@ function LineItemRow({
   onMarkPaid: (id: string) => void;
   onDelete: (id: string) => void;
   currentUserRole?: string | null;
+  /** When true, schedule structure (edit/cancel/add) is locked; Pay remains available. */
+  planLocked?: boolean;
 }) {
   const [editMode, setEditMode] = React.useState(false);
   const [payMode, setPayMode] = React.useState(false);
@@ -378,7 +381,7 @@ function LineItemRow({
     });
   }
 
-  if (editMode) {
+  if (editMode && !planLocked) {
     return (
       <LineItemForm
         initial={{
@@ -467,14 +470,18 @@ function LineItemRow({
               onClick={() => setPayMode(true)} disabled={cancelPending}>
               <CreditCard className="mr-1 h-3 w-3" /> Pay
             </Button>
-            <button type="button" onClick={() => setEditMode(true)}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button type="button" onClick={handleCancel} disabled={cancelPending}
-              className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Cancel">
-              <X className="h-3.5 w-3.5" />
-            </button>
+            {!planLocked && (
+              <>
+                <button type="button" onClick={() => setEditMode(true)}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={handleCancel} disabled={cancelPending}
+                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Cancel">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
           </div>
         )}
         {canRefund && (
@@ -711,9 +718,11 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
                 {!overAllocated && remaining <= 0 && allocated > 0 && <span className="text-success font-medium">✓ Fully allocated</span>}
               </div>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => setShowAdd(true)} disabled={showAdd}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Add Payment
-            </Button>
+            {!planHasActivity && (
+              <Button type="button" size="sm" variant="outline" onClick={() => setShowAdd(true)} disabled={showAdd}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Add Payment
+              </Button>
+            )}
           </div>
           <CardDescription>Click "Pay" on any item to record a received payment.</CardDescription>
         </CardHeader>
@@ -727,9 +736,9 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
             <LineItemRow key={item.id} item={item} scheduleId={schedule.id} scheduleTitle={schedule.title}
               clientId={schedule.clientId}
               onUpdate={handleItemUpdate} onMarkPaid={handleMarkPaid} onDelete={handleDelete}
-              currentUserRole={currentUserRole} />
+              currentUserRole={currentUserRole} planLocked={planHasActivity} />
           ))}
-          {showAdd && (
+          {showAdd && !planHasActivity && (
             <div className="space-y-2">
               {remaining > 0 && (
                 <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">

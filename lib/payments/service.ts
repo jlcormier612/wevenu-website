@@ -437,9 +437,28 @@ export async function createRetainerInvoiceAndSchedule(input: {
 
 // ---- line items -------------------------------------------------------------
 
+const PLAN_LOCKED_MESSAGE =
+  "Payments have already been requested or collected. Historical installments cannot be replaced.";
+
+async function assertSchedulePlanEditable(scheduleId: string): Promise<PaymentActionResult | null> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) {
+    // Unlinked schedules remain editable (no issued invoice activity signal).
+    if (ctx.message === "This payment plan isn't linked to an invoice.") return null;
+    return ctx;
+  }
+  const { scheduleHasPaymentActivity } = await import("@/lib/payments/reconcile-commitment");
+  if (scheduleHasPaymentActivity(ctx.schedule.lineItems, ctx.invoiceStatus)) {
+    return { ok: false, message: PLAN_LOCKED_MESSAGE };
+  }
+  return null;
+}
+
 export async function addLineItem(scheduleId: string, input: LineItemInput): Promise<AddLineItemResult> {
   const errors = validateLineItemInput(input, { requireObligationKind: true });
   if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.obligationKind ?? errors.label };
+  const locked = await assertSchedulePlanEditable(scheduleId);
+  if (locked) return locked as AddLineItemResult;
   const result = await withVenue(async (supabase, venueId) => {
     // Get current max sort_order
     const { data } = await supabase.from("payment_line_items")
@@ -463,6 +482,8 @@ export async function addLineItem(scheduleId: string, input: LineItemInput): Pro
 export async function updateLineItem_(itemId: string, scheduleId: string, input: LineItemInput): Promise<PaymentActionResult> {
   const errors = validateLineItemInput(input, { requireObligationKind: false });
   if (Object.keys(errors).length > 0) return { ok: false, errors };
+  const locked = await assertSchedulePlanEditable(scheduleId);
+  if (locked) return locked;
   const result = await withVenue(async (supabase, venueId) => {
     const outcome = await repo.updateLineItem(supabase, venueId, itemId, input);
     if (!outcome.ok) return { ok: false, message: outcome.message } as PaymentActionResult;
@@ -643,6 +664,8 @@ export async function cancelLineItem_(itemId: string): Promise<PaymentActionResu
     if (item.status === "paid" || item.status === "partially_refunded" || item.status === "refunded" || item.status === "processing") {
       return { ok: false, message: "Only an unpaid installment can be cancelled." } as PaymentActionResult;
     }
+    const locked = await assertSchedulePlanEditable(item.schedule_id);
+    if (locked) return locked as PaymentActionResult;
 
     await repo.cancelLineItem(supabase, venueId, itemId);
     await repo.syncScheduleTotalFromActiveLines(supabase, venueId, item.schedule_id);
