@@ -17,7 +17,7 @@
 | Piece | Location |
 | --- | --- |
 | Evaluators + sync | `lib/luv/spot-patterns.ts` |
-| Sync RPC + booking metric repair | `supabase/migrations/20261409500000_luv_phase5_spot_patterns.sql` |
+| Sync RPC + booking metric repair | `supabase/migrations/20261410100000_luv_phase5_spot_patterns.sql` |
 | Wire sync | `lib/luv/recommendation-service.ts` |
 | L1 exclusion | `lib/dashboard-system/luv-entry.ts` (`isPhase5SpotPatternRecommendation` → false) |
 | Global S2/S3 supersession | `lib/dashboard/service.ts` via `filterGlobalObservationsForSpotPatterns` |

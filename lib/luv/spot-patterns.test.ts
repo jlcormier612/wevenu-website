@@ -38,7 +38,7 @@ const ROOT = process.cwd();
 const VENUE_A = "venue-a";
 const VENUE_B = "venue-b";
 const NOW = Date.parse("2026-09-30T15:00:00.000Z");
-const MIGRATION = "supabase/migrations/20261409500000_luv_phase5_spot_patterns.sql";
+const MIGRATION = "supabase/migrations/20261410100000_luv_phase5_spot_patterns.sql";
 
 function read(rel: string) {
   return readFileSync(resolve(ROOT, rel), "utf8");
