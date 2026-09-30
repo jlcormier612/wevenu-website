@@ -39,6 +39,7 @@ import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
 import { getClientListFilterCounts } from "@/lib/clients/service";
 import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { leadDisplayName } from "@/lib/leads/constants";
+import { resolveDashboardOwnerFirstName } from "@/lib/dashboard/owner-greeting";
 import type {
   ActivityItem,
   AttentionLead,
@@ -204,13 +205,15 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("due_date", { ascending: true })
       .limit(15),
 
-    // Owner's name for the dashboard greeting
+    // Owner's name for the dashboard greeting.
+    // Select all is_owner rows — never bare maybeSingle — then prefer the
+    // accepted/linked owner over a pending owner invitation (same semantics
+    // as pickOwnerStaffForCoordinator / getVenueFullDetails ordering).
     supabase
       .from("venue_staff")
-      .select("full_name")
+      .select("full_name, title, accepted_at, owner_invite_pending, user_id")
       .eq("venue_id", venue.id)
-      .eq("is_owner", true)
-      .maybeSingle<{ full_name: string }>(),
+      .eq("is_owner", true),
 
     // Same Clients operational-view counts the Clients page pills use.
     // Coming up is today through the next 30 days — not every future booking.
@@ -337,9 +340,18 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
   const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
 
-  // Extract first name from "Jordan Rivera" → "Jordan"
-  const ownerFullName = staffRes.data?.full_name ?? null;
-  const ownerFirstName = ownerFullName ? ownerFullName.split(" ")[0] : null;
+  // Extract first name from preferred owner "Jen Fancy" → "Jen".
+  // Never bare maybeSingle on is_owner: a pending second owner must not
+  // PGRST116 the greeting into the unpersonalized fallback.
+  const ownerFirstName = resolveDashboardOwnerFirstName(
+    (staffRes.data ?? []) as {
+      full_name: string | null;
+      title: string | null;
+      accepted_at: string | null;
+      owner_invite_pending: boolean | null;
+      user_id: string | null;
+    }[],
+  );
 
   // Refresh all three lead scores (commitment, responsiveness, interest) — non-blocking
   void refreshAllLeadScores(supabase, venue.id).catch(() => {});
