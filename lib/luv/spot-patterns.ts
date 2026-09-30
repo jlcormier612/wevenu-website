@@ -30,6 +30,13 @@ import {
   isRecommendationActiveForDisplay,
   type RecommendationVisibilityFields,
 } from "./recommendation-visibility";
+import {
+  buildPA1ContextClauses,
+  buildPA4ContextClauses,
+  buildPP1ContextClauses,
+  enrichSpotPatternWithContext,
+  type UnattendedContextLead,
+} from "./spot-pattern-context";
 
 /** Shared cluster window / multiplicity (locked). */
 export const SPOT_PATTERN_WINDOW_DAYS = 14;
@@ -101,7 +108,7 @@ export function isQualifyingUnattendedInquiryForCluster(
 }
 
 export function evaluateUnattendedInquiryPattern(
-  leads: ContextualLead[],
+  leads: Array<ContextualLead & Partial<Pick<UnattendedContextLead, "acquisitionSource">>>,
   opts: {
     venueId: string;
     nowMs?: number;
@@ -125,7 +132,7 @@ export function evaluateUnattendedInquiryPattern(
   if (count < minCluster) return null;
 
   const windowDays = opts.windowDays ?? SPOT_PATTERN_WINDOW_DAYS;
-  return {
+  const base: SpotPatternRecommendation = {
     type: UNATTENDED_INQUIRY_PATTERN_TYPE,
     title: `${count} recent inquiries still need a first response`,
     body: `These new inquiries have had no recorded contact for over 48 hours (last ${windowDays} days).`,
@@ -137,6 +144,21 @@ export function evaluateUnattendedInquiryPattern(
       pattern: "P-A1",
     },
   };
+
+  // Phase 6 — enrich AFTER qualification. Never affects detection.
+  const contextLeads: UnattendedContextLead[] = qualifying.map((l) => ({
+    id: l.id,
+    venueId: l.venueId,
+    createdAt: l.createdAt,
+    acquisitionSource: l.acquisitionSource ?? null,
+  }));
+  return enrichSpotPatternWithContext(
+    base,
+    buildPA1ContextClauses(contextLeads, {
+      venueId: opts.venueId,
+      nowMs: opts.nowMs,
+    }),
+  );
 }
 
 // ── P-A4: payment-attention cluster ──────────────────────────────────────────
@@ -197,7 +219,14 @@ export function evaluatePaymentAttentionPattern(
   if (count < minCluster) return null;
 
   const windowDays = opts.windowDays ?? SPOT_PATTERN_WINDOW_DAYS;
-  return {
+  const qualifyingDates: string[] = [];
+  for (const input of inputs) {
+    if (!qualifyingIds.has(input.event.id)) continue;
+    if (input.event.venueId !== opts.venueId) continue;
+    qualifyingDates.push(input.event.eventDate);
+  }
+
+  const base: SpotPatternRecommendation = {
     type: PAYMENT_ATTENTION_PATTERN_TYPE,
     title: `${count} upcoming events need payment attention`,
     body: `These events are within the next ${windowDays} days and their payment schedules still need attention.`,
@@ -215,6 +244,11 @@ export function evaluatePaymentAttentionPattern(
       pattern: "P-A4",
     },
   };
+
+  return enrichSpotPatternWithContext(
+    base,
+    buildPA4ContextClauses(qualifyingDates, { nowMs: opts.nowMs }),
+  );
 }
 
 // ── P-P1: inquiry volume increase ────────────────────────────────────────────
@@ -225,6 +259,14 @@ export function evaluateInquiryVolumeIncrease(
     currentCount: number;
     priorCount: number;
     windowDays?: number;
+    /** Phase 6 optional — third adjacent window for sustained context. */
+    priorPriorCount?: number | null;
+    /** Phase 6 optional — tours in same windows (independent floor). */
+    tourCurrentCount?: number | null;
+    tourPriorCount?: number | null;
+    /** Phase 6 optional — bookings via first_booked_at (independent floor). */
+    bookingCurrentCount?: number | null;
+    bookingPriorCount?: number | null;
   },
 ): SpotPatternRecommendation | null {
   const windowDays = opts.windowDays ?? SPOT_PATTERN_WINDOW_DAYS;
@@ -241,7 +283,7 @@ export function evaluateInquiryVolumeIncrease(
   const pct = Math.round((absolute / prior) * 100);
   if (pct < INQUIRY_VOLUME_MIN_PCT) return null;
 
-  return {
+  const base: SpotPatternRecommendation = {
     type: INQUIRY_VOLUME_INCREASE_TYPE,
     title: "Inquiry volume is picking up",
     body: `You received ${current} inquiries in the last ${windowDays} days, compared with ${prior} in the previous ${windowDays} days.`,
@@ -256,6 +298,20 @@ export function evaluateInquiryVolumeIncrease(
       pattern: "P-P1",
     },
   };
+
+  // Phase 6 — enrichment only; secondary metrics never create the pattern.
+  return enrichSpotPatternWithContext(
+    base,
+    buildPP1ContextClauses({
+      priorCount: prior,
+      priorPriorCount: opts.priorPriorCount,
+      tourCurrentCount: opts.tourCurrentCount,
+      tourPriorCount: opts.tourPriorCount,
+      bookingCurrentCount: opts.bookingCurrentCount,
+      bookingPriorCount: opts.bookingPriorCount,
+      windowDays,
+    }),
+  );
 }
 
 /** Count leads created in [startMs, endMs). Venue-scoped caller supplies rows. */
@@ -267,6 +323,21 @@ export function countLeadsCreatedInRange(
   for (const lead of leads) {
     if (lead.venueId !== opts.venueId) continue;
     const t = Date.parse(lead.createdAt);
+    if (Number.isNaN(t)) continue;
+    if (t >= opts.startMs && t < opts.endMs) n += 1;
+  }
+  return n;
+}
+
+/** Count timestamps in [startMs, endMs) for the active venue only. */
+export function countTimestampsInRange(
+  rows: { venueId: string; at: string }[],
+  opts: { venueId: string; startMs: number; endMs: number },
+): number {
+  let n = 0;
+  for (const row of rows) {
+    if (row.venueId !== opts.venueId) continue;
+    const t = Date.parse(row.at);
     if (Number.isNaN(t)) continue;
     if (t >= opts.startMs && t < opts.endMs) n += 1;
   }
@@ -341,6 +412,8 @@ export async function syncPhase5SpotPatternRecommendations(
     const windowDays = SPOT_PATTERN_WINDOW_DAYS;
     const windowStart = new Date(nowMs - windowDays * 86_400_000).toISOString();
     const priorStart = new Date(nowMs - 2 * windowDays * 86_400_000).toISOString();
+    // Phase 6 sustained context needs a third adjacent window (42d lookback).
+    const priorPriorStart = new Date(nowMs - 3 * windowDays * 86_400_000).toISOString();
     const today = venueToday(venue.timezone ?? null);
     const soon14 = new Date(nowMs + windowDays * 86_400_000).toISOString().slice(0, 10);
     const fortyEightHoursAgo = new Date(nowMs - 48 * 3_600_000).toISOString();
@@ -350,6 +423,8 @@ export async function syncPhase5SpotPatternRecommendations(
       historyEventsRes,
       unattendedRes,
       volumeLeadsRes,
+      bookingLeadsRes,
+      tourApptsRes,
       upcomingEventsRes,
       paymentInvoices,
       paymentSchedules,
@@ -368,7 +443,7 @@ export async function syncPhase5SpotPatternRecommendations(
       onlyBusinessReporting(
         supabase
           .from("leads")
-          .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at")
+          .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, acquisition_source")
           .eq("venue_id", venueId)
           .eq("sales_stage", "new_inquiry")
           .is("last_contacted_at", null)
@@ -380,7 +455,23 @@ export async function syncPhase5SpotPatternRecommendations(
           .from("leads")
           .select("id, created_at")
           .eq("venue_id", venueId)
-          .gte("created_at", priorStart),
+          .gte("created_at", priorPriorStart),
+      ),
+      // Booking clock — first_booked_at only (never contract/payment/client-create).
+      onlyBusinessReporting(
+        supabase
+          .from("leads")
+          .select("id, first_booked_at")
+          .eq("venue_id", venueId)
+          .not("first_booked_at", "is", null)
+          .gte("first_booked_at", priorStart),
+      ),
+      onlyBusinessReporting(
+        supabase
+          .from("tour_appointments")
+          .select("id, scheduled_at")
+          .eq("venue_id", venueId)
+          .gte("scheduled_at", priorStart),
       ),
       onlyBusinessReporting(
         supabase
@@ -401,7 +492,7 @@ export async function syncPhase5SpotPatternRecommendations(
     const venueEventHistoryCount = historyEventsRes.count ?? 0;
 
     // P-A1
-    const unattendedLeads: ContextualLead[] = (
+    const unattendedLeads = (
       (unattendedRes.data ?? []) as {
         id: string;
         first_name: string;
@@ -409,6 +500,7 @@ export async function syncPhase5SpotPatternRecommendations(
         sales_stage: string;
         created_at: string;
         last_contacted_at: string | null;
+        acquisition_source: string | null;
       }[]
     ).map((row) => ({
       id: row.id,
@@ -418,6 +510,7 @@ export async function syncPhase5SpotPatternRecommendations(
       salesStage: row.sales_stage,
       createdAt: row.created_at,
       lastContactedAt: row.last_contacted_at,
+      acquisitionSource: row.acquisition_source,
     }));
 
     const pA1 = evaluateUnattendedInquiryPattern(unattendedLeads, {
@@ -434,6 +527,7 @@ export async function syncPhase5SpotPatternRecommendations(
     const currentStart = nowMs - windowDays * 86_400_000;
     const priorEnd = currentStart;
     const priorStartMs = nowMs - 2 * windowDays * 86_400_000;
+    const priorPriorStartMs = nowMs - 3 * windowDays * 86_400_000;
     const currentCount = countLeadsCreatedInRange(volumeRows, {
       venueId,
       startMs: currentStart,
@@ -444,10 +538,49 @@ export async function syncPhase5SpotPatternRecommendations(
       startMs: priorStartMs,
       endMs: priorEnd,
     });
+    const priorPriorCount = countLeadsCreatedInRange(volumeRows, {
+      venueId,
+      startMs: priorPriorStartMs,
+      endMs: priorStartMs,
+    });
+
+    const tourRows = (
+      (tourApptsRes.data ?? []) as { id: string; scheduled_at: string }[]
+    ).map((r) => ({ venueId, at: r.scheduled_at }));
+    const tourCurrentCount = countTimestampsInRange(tourRows, {
+      venueId,
+      startMs: currentStart,
+      endMs: nowMs + 1,
+    });
+    const tourPriorCount = countTimestampsInRange(tourRows, {
+      venueId,
+      startMs: priorStartMs,
+      endMs: priorEnd,
+    });
+
+    const bookingRows = (
+      (bookingLeadsRes.data ?? []) as { id: string; first_booked_at: string }[]
+    ).map((r) => ({ venueId, at: r.first_booked_at }));
+    const bookingCurrentCount = countTimestampsInRange(bookingRows, {
+      venueId,
+      startMs: currentStart,
+      endMs: nowMs + 1,
+    });
+    const bookingPriorCount = countTimestampsInRange(bookingRows, {
+      venueId,
+      startMs: priorStartMs,
+      endMs: priorEnd,
+    });
+
     const pP1 = evaluateInquiryVolumeIncrease({
       venueId,
       currentCount,
       priorCount,
+      priorPriorCount,
+      tourCurrentCount,
+      tourPriorCount,
+      bookingCurrentCount,
+      bookingPriorCount,
     });
     await syncOne(supabase, INQUIRY_VOLUME_INCREASE_TYPE, pP1);
 
