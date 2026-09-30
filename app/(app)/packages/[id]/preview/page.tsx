@@ -27,6 +27,7 @@ export default async function PackagePreviewPage({ params }: Props) {
       caption="Client-facing package presentation preview."
       editHref={`/packages/${pkg.id}`}
       libraryHref="/packages"
+      libraryLabel="Packages"
       contentMaxWidthClassName="max-w-xl"
     >
       <div className="space-y-4 pb-10">

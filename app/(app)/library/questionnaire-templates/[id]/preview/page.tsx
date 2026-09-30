@@ -33,6 +33,7 @@ export default async function QuestionnaireTemplatePreviewPage({ params }: Props
       caption="Preview as your clients will see it"
       editHref={`/library/questionnaire-templates/${template.id}`}
       libraryHref="/library/questionnaire-templates"
+      libraryLabel="Questionnaires & Feedback"
       contentMaxWidthClassName="max-w-xl"
     >
       <CoupleFamilyQuestionnaireForm

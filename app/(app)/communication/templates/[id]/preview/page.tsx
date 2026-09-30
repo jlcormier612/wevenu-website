@@ -24,6 +24,7 @@ export default async function MessageTemplatePreviewPage({ params }: Props) {
       caption="Recipient-facing preview with sample merge values. Preview does not send anything."
       editHref={`/communication/templates/${template.id}/edit`}
       libraryHref="/communication/templates"
+      libraryLabel="Message Templates"
       contentMaxWidthClassName="max-w-3xl"
     >
       <div className="space-y-3">

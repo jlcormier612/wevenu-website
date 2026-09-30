@@ -27,6 +27,7 @@ export default async function ContractTemplatePreviewPage({ params }: Props) {
       caption="Contract template preview — readable signing presentation. Merge fields fill when you create a working contract."
       editHref={`/contracts/templates/${template.id}/edit`}
       libraryHref="/library/contracts"
+      libraryLabel="Contract Templates"
       contentMaxWidthClassName="max-w-xl"
       actions={
         !template.isArchived ? (

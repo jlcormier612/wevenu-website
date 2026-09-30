@@ -36,7 +36,15 @@ import {
   buildSignerCandidates,
   defaultSelectedSignerIds,
   selectedIdsFromExistingSigners,
+  type SignerCandidate,
 } from "@/lib/contracts/signer-candidates";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
+
+/** Stable empties — default-param `= []` / inline `?? []` are new references every render and will retrigger effects. */
+const EMPTY_SIGNERS: ContractSigner[] = [];
+const EMPTY_CONTACTS: ClientContact[] = [];
+const EMPTY_CANDIDATES: SignerCandidate[] = [];
+const EMPTY_CONTACTS_BY_CLIENT: Record<string, ClientContact[]> = {};
 
 export type ContractBuilderDraft = {
   contractId: string;
@@ -53,14 +61,14 @@ export function ContractBuilder({
   mode,
   templates,
   clients,
-  contactsByClientId = {},
+  contactsByClientId = EMPTY_CONTACTS_BY_CLIENT,
   initialTemplateId,
   initialClientId,
   initialEventId,
   selectionId,
   selectionSummary,
   draft,
-  signers = [],
+  signers: signersProp,
   venueBrand = null,
 }: {
   mode: "create" | "draft";
@@ -78,6 +86,7 @@ export function ContractBuilder({
 }) {
   const router = useRouter();
   const contentRef = React.useRef<HTMLTextAreaElement>(null);
+  const signers = signersProp ?? EMPTY_SIGNERS;
 
   const requestedTemplate = initialTemplateId
     ? templates.find((t) => t.id === initialTemplateId && !t.isArchived)
@@ -117,16 +126,18 @@ export function ContractBuilder({
   }, [mode, initialClientId, clients, title]);
 
   const associatedClient = clients.find((c) => c.id === clientId) ?? null;
-  const clientContacts = clientId ? (contactsByClientId[clientId] ?? []) : [];
+  const clientContacts = clientId
+    ? (contactsByClientId[clientId] ?? EMPTY_CONTACTS)
+    : EMPTY_CONTACTS;
   const signerCandidates = React.useMemo(
-    () => (associatedClient ? buildSignerCandidates(associatedClient, clientContacts) : []),
+    () => (associatedClient ? buildSignerCandidates(associatedClient, clientContacts) : EMPTY_CANDIDATES),
     [associatedClient, clientContacts],
   );
 
   React.useEffect(() => {
     if (!clientId || !associatedClient) {
-      setSelectedSignerIds([]);
-      setSignersInitialized(false);
+      setSelectedSignerIds((prev) => (prev.length === 0 ? prev : []));
+      setSignersInitialized((prev) => (prev ? false : prev));
       return;
     }
     if (mode === "draft" && signers.length > 0 && !signersInitialized) {
@@ -393,6 +404,7 @@ export function ContractBuilder({
 
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/contracts" label="Contracts" />
       <div>
         <h2 className="font-heading text-xl text-heading">Contract Builder</h2>
         <p className="mt-1 text-sm text-muted-foreground">

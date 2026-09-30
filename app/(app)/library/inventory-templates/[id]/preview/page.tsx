@@ -22,6 +22,7 @@ export default async function InventoryTemplatePreviewPage({ params }: Props) {
       caption="Inventory template preview — allocation structure for your team. Not a client-facing page."
       editHref={`/library/inventory-templates/${template.id}`}
       libraryHref="/library/inventory-templates"
+      libraryLabel="Inventory Templates"
       contentMaxWidthClassName="max-w-xl"
     >
       <div className="space-y-4 pb-10">

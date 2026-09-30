@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createCategoryAction, createItemAction, updateItemAction, updateItemImageAction } from "@/app/(app)/library/inventory/actions";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
@@ -135,6 +136,11 @@ export function InventoryItemForm({
 
   return (
     <div className="space-y-4 max-w-xl">
+      <CollectionBackLink
+        href="/library/inventory"
+        label="Available Inventory"
+        confirmLeave={confirmLeave}
+      />
       <div className="space-y-1.5">
         <Label className="text-xs">Name</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Chiavari Chair — Gold" className="h-9 text-sm" />

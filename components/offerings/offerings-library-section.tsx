@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -225,7 +226,16 @@ function OfferingFormSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader className="mb-6">
+        <SheetHeader className="mb-6 space-y-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="-ml-2 w-fit text-muted-foreground"
+            onClick={() => onOpenChange(false)}
+          >
+            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Offerings
+          </Button>
           <SheetTitle>{offering ? "Edit offering" : "Add offering"}</SheetTitle>
         </SheetHeader>
         <div className="space-y-3">

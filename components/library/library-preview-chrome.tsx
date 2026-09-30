@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -6,12 +7,14 @@ import { cn } from "@/lib/utils";
 /**
  * Shared full-page Library Preview chrome (Questionnaire is the reference).
  * Content inside uses its natural readable width — this only standardizes the shell.
+ *
+ * Escape paths are destination-named (collection label), not browser-history "Back".
  */
 export function LibraryPreviewChrome({
   caption,
   editHref,
   libraryHref,
-  libraryLabel = "Library",
+  libraryLabel,
   contentMaxWidthClassName = "max-w-xl",
   actions,
   children,
@@ -21,7 +24,8 @@ export function LibraryPreviewChrome({
   caption: string;
   editHref?: string;
   libraryHref: string;
-  libraryLabel?: string;
+  /** Collection name shown on the primary escape control, e.g. "Event Order Templates". */
+  libraryLabel: string;
   contentMaxWidthClassName?: string;
   actions?: React.ReactNode;
   children: React.ReactNode;
@@ -35,7 +39,14 @@ export function LibraryPreviewChrome({
           contentMaxWidthClassName,
         )}
       >
-        <p className="text-sm text-muted-foreground">{caption}</p>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="-ml-2 text-muted-foreground"
+          render={<Link href={libraryHref} />}
+        >
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" /> {libraryLabel}
+        </Button>
         <div className="flex flex-wrap gap-2">
           {actions}
           {editHref ? (
@@ -43,11 +54,16 @@ export function LibraryPreviewChrome({
               Back to edit
             </Button>
           ) : null}
-          <Button size="sm" variant="outline" render={<Link href={libraryHref} />}>
-            {libraryLabel}
-          </Button>
         </div>
       </div>
+      <p
+        className={cn(
+          "mx-auto px-4 text-sm text-muted-foreground",
+          contentMaxWidthClassName,
+        )}
+      >
+        {caption}
+      </p>
       <div className={cn("mx-auto px-4", contentMaxWidthClassName)}>{children}</div>
     </div>
   );

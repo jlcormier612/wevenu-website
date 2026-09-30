@@ -23,6 +23,7 @@ export default async function EventOrderTemplatePreviewPage({ params }: Props) {
       caption="Reusable template preview — applying it to an event creates that event’s own structure."
       editHref={`/library/event-order-templates/${template.id}`}
       libraryHref="/library/event-order-templates"
+      libraryLabel="Event Order Templates"
       contentMaxWidthClassName="max-w-xl"
     >
       <div className="pb-10">

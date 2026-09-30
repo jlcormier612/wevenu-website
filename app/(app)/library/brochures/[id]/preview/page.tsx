@@ -25,6 +25,7 @@ export default async function BrochurePreviewPage({ params }: Props) {
       caption="Preview of this brochure. Packages and FAQs update live from your current venue data."
       editHref={`/library/brochures/${data.brochure.id}`}
       libraryHref="/library/brochures"
+      libraryLabel="Brochures"
       contentMaxWidthClassName="max-w-3xl"
       actions={
         <Button
