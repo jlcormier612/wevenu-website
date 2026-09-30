@@ -3,6 +3,10 @@ import Link from "next/link";
 import { GitBranch } from "lucide-react";
 
 import { LeadList } from "@/components/leads/lead-list";
+import {
+  LEADS_SPOT_PATTERN_TYPES,
+  SpotPatternRecommendationsPanel,
+} from "@/components/luv/spot-pattern-recommendations";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
@@ -39,6 +43,7 @@ export default async function LeadsPage({ searchParams }: Props) {
           </div>
         }
       />
+      <SpotPatternRecommendationsPanel types={LEADS_SPOT_PATTERN_TYPES} />
       <LeadList
         leads={leads}
         initialAttention={initialAttention}

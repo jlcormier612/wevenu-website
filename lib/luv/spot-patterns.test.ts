@@ -553,6 +553,14 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     assert.match(entry, /Phase 5 Spot Patterns are L2/);
     const dash = read("lib/dashboard/service.ts");
     assert.match(dash, /filterGlobalObservationsForSpotPatterns/);
+    const leadsPage = read("app/(app)/leads/page.tsx");
+    assert.match(leadsPage, /SpotPatternRecommendationsPanel/);
+    assert.match(leadsPage, /LEADS_SPOT_PATTERN_TYPES/);
+    const paymentsPage = read("app/(app)/payments/page.tsx");
+    assert.match(paymentsPage, /SpotPatternRecommendationsPanel/);
+    assert.match(paymentsPage, /PAYMENTS_SPOT_PATTERN_TYPES/);
+    const dashPage = read("app/(app)/dashboard/page.tsx");
+    assert.doesNotMatch(dashPage, /SpotPatternRecommendationsPanel/);
   });
 
   it("manual and automation Lead→Booked share first_booked_at clock", () => {
