@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
-import { sendTourConfirmation } from "@/lib/tours/communication";
+import { sendTourScheduled } from "@/lib/tours/communication";
 import { notifyPaidUnbookedTour, runTourBookedSideEffects } from "@/lib/tours/booked-side-effects";
 import { createTourProtectionCheckoutSession } from "@/lib/tours/protection-checkout";
 import {
@@ -374,18 +374,25 @@ export async function completeProtectedTourFromWebhook(opts: {
       stateRegion: venue.data?.state_region ?? null,
     };
     if (result.idempotent !== true) {
-      void sendTourConfirmation({
-        venueId: request.venue_id,
-        leadId: booking.leadId!,
-        relationshipId: booking.relationshipId ?? null,
-        contactEmail: request.contact_email,
-        contactName: request.contact_name,
-        venueName: booking.venueName ?? "Venue",
-        primaryColor: venue.data?.primary_color ?? null,
-        scheduledAt: booking.scheduledAt!,
-        durationMinutes: booking.duration ?? 60,
-        timezone: venue.data?.timezone,
-      }).catch((err) => console.error("sendTourConfirmation failed:", err));
+      const { data: apptToken } = await admin.from("tour_appointments")
+        .select("confirm_token")
+        .eq("id", booking.appointmentId!)
+        .maybeSingle<{ confirm_token: string }>();
+      if (apptToken?.confirm_token) {
+        void sendTourScheduled({
+          venueId: request.venue_id,
+          leadId: booking.leadId!,
+          relationshipId: booking.relationshipId ?? null,
+          contactEmail: request.contact_email,
+          contactName: request.contact_name,
+          venueName: booking.venueName ?? "Venue",
+          primaryColor: venue.data?.primary_color ?? null,
+          scheduledAt: booking.scheduledAt!,
+          durationMinutes: booking.duration ?? 60,
+          confirmToken: apptToken.confirm_token,
+          timezone: venue.data?.timezone,
+        }).catch((err) => console.error("sendTourScheduled failed:", err));
+      }
       void runTourBookedSideEffects(booking);
     }
     return "handled";

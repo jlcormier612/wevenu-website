@@ -8,7 +8,13 @@ import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourCustomerSendPreview, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
-import { previewTourConfirmation, previewTourConfirmationRequest, sendTourConfirmation, sendTourConfirmationRequest } from "@/lib/tours/communication";
+import {
+  previewTourConfirmationRequest,
+  previewTourScheduled,
+  sendTourConfirmation,
+  sendTourConfirmationRequest,
+  sendTourScheduled,
+} from "@/lib/tours/communication";
 import { advanceLeadSalesStageIfForward } from "@/lib/leads/service";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
@@ -227,27 +233,26 @@ export async function bookTour(
 
   const { data: apptRow } = await admin
     .from("tour_appointments")
-    .select("contact_email, contact_name, contact_phone, venues(email, primary_color)")
+    .select("contact_email, contact_name, contact_phone, confirm_token, venues(email, primary_color)")
     .eq("id", appointmentId)
-    .maybeSingle<{ contact_email: string | null; contact_name: string | null; contact_phone: string | null; venues: { email: string | null; primary_color: string | null } | null }>();
+    .maybeSingle<{ contact_email: string | null; contact_name: string | null; contact_phone: string | null; confirm_token: string; venues: { email: string | null; primary_color: string | null } | null }>();
 
   const contactEmail = apptRow?.contact_email ?? fields.email;
   const contactName = apptRow?.contact_name ?? `${fields.firstName} ${fields.lastName}`.trim();
   const venueId = venueRow.id;
 
-  // Same confirmation, same pipeline, whether the website or a coordinator
-  // booked it — see lib/tours/communication.ts. Never blocks the response;
-  // a failed send must not fail a booking that already succeeded. Already
-  // tracks its own delivery status durably in conversation_messages; also
-  // recorded onto the intake attempt so a coordinator can see it from there too.
-  void sendTourConfirmation({
-    venueId, leadId, relationshipId, contactEmail, contactName,
-    venueName, primaryColor: apptRow?.venues?.primary_color ?? null, scheduledAt, durationMinutes: duration,
-    timezone: venueRow.timezone,
-  }).then(
-    (send) => recordNotificationStatus(admin, outcome.attemptId, send.ok ? "sent" : "failed"),
-    (err) => { console.error("sendTourConfirmation failed:", err); void recordNotificationStatus(admin, outcome.attemptId, "failed"); },
-  );
+  // Scheduled-language email (Confirm CTA) — tour remains scheduled until
+  // the client confirms. Never blocks the booking response.
+  if (apptRow?.confirm_token) {
+    void sendTourScheduled({
+      venueId, leadId, relationshipId, contactEmail, contactName,
+      venueName, primaryColor: apptRow?.venues?.primary_color ?? null, scheduledAt, durationMinutes: duration,
+      confirmToken: apptRow.confirm_token, timezone: venueRow.timezone,
+    }).then(
+      (send) => recordNotificationStatus(admin, outcome.attemptId, send.ok ? "sent" : "failed"),
+      (err) => { console.error("sendTourScheduled failed:", err); void recordNotificationStatus(admin, outcome.attemptId, "failed"); },
+    );
+  }
 
   return {
     ok: true,
@@ -615,14 +620,36 @@ const TOUR_RPC_ERRORS: Record<string, string> = {
   invalid_status: "That's not a valid tour status.",
 };
 
-async function sendConfirmationForResult(leadId: string, relationshipId: string | null, venueId: string, venueName: string, primaryColor: string | null, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null, timezone?: string | null) {
+async function sendScheduledEmailForAppointment(
+  appointmentId: string,
+  leadId: string,
+  relationshipId: string | null,
+  venueId: string,
+  venueName: string,
+  primaryColor: string | null,
+  scheduledAt: string,
+  duration: number,
+  contactEmail: string | null,
+  contactName: string | null,
+  timezone?: string | null,
+) {
   try {
-    return await sendTourConfirmation({
-      venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor, scheduledAt, durationMinutes: duration, timezone,
+    const supabase = await createClient();
+    const { data: appt } = await supabase.from("tour_appointments")
+      .select("confirm_token")
+      .eq("id", appointmentId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ confirm_token: string }>();
+    if (!appt?.confirm_token) {
+      return { ok: false as const, message: "This tour has no confirmation link yet." };
+    }
+    return await sendTourScheduled({
+      venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor,
+      scheduledAt, durationMinutes: duration, confirmToken: appt.confirm_token, timezone,
     });
   } catch (err) {
-    console.error("sendTourConfirmation failed:", err);
-    return { ok: false as const, message: "The confirmation email was not sent." };
+    console.error("sendTourScheduled failed:", err);
+    return { ok: false as const, message: "The scheduled tour email was not sent." };
   }
 }
 
@@ -646,9 +673,10 @@ export async function previewScheduleTourEmail(leadId: string, slotStart: string
     .maybeSingle<{ tour_duration_minutes: number }>();
   const duration = settings?.tour_duration_minutes ?? 60;
   const contactName = `${lead.first_name} ${lead.last_name}`.trim();
+  // Preview before an appointment exists — placeholder token is illustrative only.
   return {
     ok: true,
-    preview: previewTourConfirmation({
+    preview: previewTourScheduled({
       venueId: venue.id,
       leadId,
       relationshipId: null,
@@ -658,6 +686,7 @@ export async function previewScheduleTourEmail(leadId: string, slotStart: string
       primaryColor: venue.primaryColor,
       scheduledAt: slotStart,
       durationMinutes: duration,
+      confirmToken: "00000000-0000-0000-0000-000000000000",
       timezone: venue.timezone,
     }, "schedule"),
   };
@@ -669,16 +698,16 @@ export async function previewRescheduleTourEmail(appointmentId: string, slotStar
   if (!venue) return { ok: false, error: "Session expired." };
   const supabase = await createClient();
   const { data: appt } = await supabase.from("tour_appointments")
-    .select("lead_id, contact_name, contact_email, duration_minutes, status")
+    .select("lead_id, contact_name, contact_email, duration_minutes, status, confirm_token")
     .eq("id", appointmentId).eq("venue_id", venue.id)
-    .maybeSingle<{ lead_id: string | null; contact_name: string | null; contact_email: string | null; duration_minutes: number; status: string }>();
+    .maybeSingle<{ lead_id: string | null; contact_name: string | null; contact_email: string | null; duration_minutes: number; status: string; confirm_token: string }>();
   if (!appt) return { ok: false, error: "This tour could not be found." };
   if (appt.status === "cancelled" || appt.status === "completed" || appt.status === "no_show") {
     return { ok: false, error: "This tour can't be rescheduled — it's already cancelled, completed, or marked no-show." };
   }
   return {
     ok: true,
-    preview: previewTourConfirmation({
+    preview: previewTourScheduled({
       venueId: venue.id,
       leadId: appt.lead_id ?? "",
       relationshipId: null,
@@ -688,6 +717,7 @@ export async function previewRescheduleTourEmail(appointmentId: string, slotStar
       primaryColor: venue.primaryColor,
       scheduledAt: slotStart,
       durationMinutes: appt.duration_minutes,
+      confirmToken: appt.confirm_token,
       timezone: venue.timezone,
     }, "reschedule"),
   };
@@ -748,7 +778,10 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
     contactPhone: (d.contactPhone as string | null) ?? null,
   };
 
-  const confirmationEmail = await sendConfirmationForResult(result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
+  const confirmationEmail = await sendScheduledEmailForAppointment(
+    result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName,
+    venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone,
+  );
 
   // Tour Scheduled is a real Sales Pipeline stage. Forward-only — never
   // regresses Booked/Lost or stages already past tour_scheduled.
@@ -793,7 +826,10 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
     result.relationshipId = leadRow?.relationship_id ?? null;
   }
 
-  const confirmationEmail = await sendConfirmationForResult(result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
+  const confirmationEmail = await sendScheduledEmailForAppointment(
+    result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName,
+    venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone,
+  );
 
   return { ...result, confirmationEmail };
 }
@@ -827,17 +863,17 @@ export async function updateTourStatus(
   const supabase = await createClient();
 
   const { data: appt } = await supabase.from("tour_appointments")
-    .select("status, lead_id, contact_name, scheduled_at")
+    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes")
     .eq("id", appointmentId).eq("venue_id", venue.id)
-    .maybeSingle<{ status: string; lead_id: string | null; contact_name: string | null; scheduled_at: string }>();
+    .maybeSingle<{ status: string; lead_id: string | null; contact_name: string | null; contact_email: string | null; scheduled_at: string; duration_minutes: number }>();
   if (!appt) return { ok: false, error: "This tour could not be found." };
 
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "cancelled") patch.cancellation_reason = reason?.trim() || null;
-  // A manual status change must never itself send customer communication —
-  // this is the one and only place confirmation_source ever becomes
-  // 'manual'. The other path, 'prospect_link', can only be set by
-  // confirm_tour_by_token(), never from here.
+  // Manual confirm is the only place confirmation_source becomes 'manual'.
+  // The other path, 'prospect_link', is set only by confirm_tour_by_token().
+  // When the tour newly becomes confirmed, send the confirmed-language
+  // customer email (Add to Calendar) — same content as the prospect-link path.
   const becameConfirmed = status === "confirmed" && appt.status !== "confirmed";
   if (becameConfirmed) {
     patch.confirmed_at = new Date().toISOString();
@@ -851,11 +887,33 @@ export async function updateTourStatus(
     return { ok: false, error: fail ? TOUR_RPC_ERRORS.slot_taken : error.message };
   }
 
-  if (becameConfirmed && appt.lead_id) {
-    void supabase.from("lead_activities").insert({
-      venue_id: venue.id, lead_id: appt.lead_id, type: "tour_confirmed", title: "Tour confirmed",
-      description: `Tour for ${appt.contact_name ?? "the prospect"} marked confirmed manually.`,
-    }).then(null, () => {});
+  if (becameConfirmed) {
+    if (appt.lead_id) {
+      void supabase.from("lead_activities").insert({
+        venue_id: venue.id, lead_id: appt.lead_id, type: "tour_confirmed", title: "Tour confirmed",
+        description: `Tour for ${appt.contact_name ?? "the prospect"} marked confirmed manually.`,
+      }).then(null, () => {});
+    }
+    void (async () => {
+      let relationshipId: string | null = null;
+      if (appt.lead_id) {
+        const { data: lead } = await supabase.from("leads").select("relationship_id")
+          .eq("id", appt.lead_id).maybeSingle<{ relationship_id: string | null }>();
+        relationshipId = lead?.relationship_id ?? null;
+      }
+      await sendTourConfirmation({
+        venueId: venue.id,
+        leadId: appt.lead_id ?? "",
+        relationshipId,
+        contactEmail: appt.contact_email,
+        contactName: appt.contact_name,
+        venueName: venue.name,
+        primaryColor: venue.primaryColor,
+        scheduledAt: appt.scheduled_at,
+        durationMinutes: appt.duration_minutes,
+        timezone: venue.timezone,
+      });
+    })().catch((err) => console.error("sendTourConfirmation failed:", err));
   }
 
   if (status === "cancelled" || status === "no_show") {
@@ -984,7 +1042,42 @@ export async function confirmTourByToken(token: string): Promise<{ ok: boolean; 
   if (!d?.ok) {
     return { ok: false, error: d?.error === "not_confirmable" ? "This tour is no longer available to confirm." : "This confirmation link isn't valid." };
   }
-  return { ok: true, alreadyConfirmed: Boolean(d.alreadyConfirmed) };
+  const alreadyConfirmed = Boolean(d.alreadyConfirmed);
+  // Fresh confirmation only — never re-send on alreadyConfirmed.
+  if (!alreadyConfirmed) {
+    void (async () => {
+      const admin = createAdminClient();
+      const { data: appt } = await admin.from("tour_appointments")
+        .select("id, venue_id, lead_id, contact_email, contact_name, scheduled_at, duration_minutes, venues(name, primary_color, timezone)")
+        .eq("confirm_token", token)
+        .maybeSingle<{
+          id: string; venue_id: string; lead_id: string | null;
+          contact_email: string | null; contact_name: string | null;
+          scheduled_at: string; duration_minutes: number;
+          venues: { name: string; primary_color: string | null; timezone: string | null } | null;
+        }>();
+      if (!appt) return;
+      let relationshipId: string | null = null;
+      if (appt.lead_id) {
+        const { data: lead } = await admin.from("leads").select("relationship_id")
+          .eq("id", appt.lead_id).maybeSingle<{ relationship_id: string | null }>();
+        relationshipId = lead?.relationship_id ?? null;
+      }
+      await sendTourConfirmation({
+        venueId: appt.venue_id,
+        leadId: appt.lead_id ?? "",
+        relationshipId,
+        contactEmail: appt.contact_email,
+        contactName: appt.contact_name,
+        venueName: appt.venues?.name ?? "Venue",
+        primaryColor: appt.venues?.primary_color ?? null,
+        scheduledAt: appt.scheduled_at,
+        durationMinutes: appt.duration_minutes,
+        timezone: appt.venues?.timezone ?? null,
+      });
+    })().catch((err) => console.error("sendTourConfirmation failed:", err));
+  }
+  return { ok: true, alreadyConfirmed };
 }
 
 export async function updateTourOutcome(

@@ -30,8 +30,11 @@ describe("conversation email send carries thread context", () => {
 
 describe("tour emails also carry thread context for inbound reply matching", () => {
   const source = readFileSync(resolve("lib/tours/communication.ts"), "utf8");
-  it("sendTourConfirmation and sendTourConfirmationRequest pass threadId", () => {
+  it("scheduled, confirmation, and request sends pass threadId", () => {
     assert.match(source, /threadId: conversationId \?\? undefined/);
+    assert.match(source, /sendTourScheduled/);
+    assert.match(source, /sendTourConfirmation/);
+    assert.match(source, /sendTourConfirmationRequest/);
   });
 });
 

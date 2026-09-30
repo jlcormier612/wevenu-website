@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import {
   previewTourConfirmation,
   previewTourConfirmationRequest,
+  previewTourScheduled,
 } from "@/lib/tours/communication";
 
 const params = {
@@ -22,28 +23,44 @@ const params = {
 };
 
 describe("tour send previews use the real email builders", () => {
-  it("confirmation preview is the confirmation email, including venue branding", () => {
-    const preview = previewTourConfirmation(params);
+  it("scheduled preview uses scheduled language + Confirm CTA, never confirmed", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.sandbox.hellotocheers.com";
+    const preview = previewTourScheduled({ ...params, confirmToken: "tok_sched" });
     assert.equal(preview.who, "alex@example.com");
     assert.equal(preview.channel, "Email");
-    assert.match(preview.subject, /Tour confirmed/);
+    assert.match(preview.subject, /Your tour is scheduled/);
     assert.match(preview.subject, /Jen's Fancy/);
+    assert.doesNotMatch(preview.subject, /Tour confirmed/);
     assert.match(preview.body, /Hi Alex,/);
-    assert.match(preview.body, /60-minute tour at Jen's Fancy/);
-    assert.match(preview.body, /Add to Google Calendar:/);
+    assert.match(preview.body, /You're scheduled for a 60-minute tour at Jen's Fancy/);
+    assert.doesNotMatch(preview.body, /You're confirmed/);
+    assert.doesNotMatch(preview.body, /is confirmed/);
+    assert.match(preview.body, /https:\/\/app\.sandbox\.hellotocheers\.com\/confirm\/tok_sched/);
     assert.match(preview.html, /#FF1493/);
-    assert.match(preview.html, /Add to Calendar/);
-    assert.match(preview.why, /tour time/);
-    assert.match(preview.recipientAction, /calendar/);
-    assert.match(preview.htcAfterward, /conversation/);
+    assert.match(preview.html, /Confirm my tour/);
+    assert.doesNotMatch(preview.html, /Add to Calendar/);
+    assert.match(preview.htcAfterward, /stays Scheduled/);
   });
 
-  it("reschedule preview uses the same confirmation email for the new time", () => {
-    const preview = previewTourConfirmation(params, "reschedule");
-    assert.match(preview.subject, /Tour confirmed/);
-    assert.match(preview.body, /Jen's Fancy/);
-    assert.match(preview.why, /new tour time/);
+  it("reschedule preview is also scheduled-language (not confirmed)", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.sandbox.hellotocheers.com";
+    const preview = previewTourScheduled({ ...params, confirmToken: "tok_re" }, "reschedule");
+    assert.match(preview.subject, /Your tour is scheduled/);
+    assert.doesNotMatch(preview.subject, /Tour confirmed/);
+    assert.match(preview.body, /You're scheduled/);
+    assert.match(preview.why, /new scheduled tour time/);
     assert.match(preview.htcAfterward, /tour time changes/);
+  });
+
+  it("post-confirmation preview is confirmed language + Add to Calendar", () => {
+    const preview = previewTourConfirmation(params);
+    assert.match(preview.subject, /Tour confirmed/);
+    assert.match(preview.body, /Your 60-minute tour at Jen's Fancy is confirmed/);
+    assert.doesNotMatch(preview.body, /You're scheduled/);
+    assert.match(preview.body, /Add to Google Calendar:/);
+    assert.match(preview.html, /Add to Calendar/);
+    assert.doesNotMatch(preview.html, /Confirm my tour/);
+    assert.match(preview.htcAfterward, /Confirmed/);
   });
 
   it("confirmation request preview includes the secure confirm link", () => {
@@ -54,6 +71,9 @@ describe("tour send previews use the real email builders", () => {
     });
     assert.equal(preview.who, "alex@example.com");
     assert.match(preview.subject, /Please confirm your tour/);
+    assert.doesNotMatch(preview.subject, /Tour confirmed/);
+    assert.doesNotMatch(preview.body, /You're confirmed/);
+    assert.doesNotMatch(preview.body, /is confirmed\./);
     assert.match(preview.body, /https:\/\/app\.sandbox\.hellotocheers\.com\/confirm\/tok_abc/);
     assert.match(preview.html, /#FF1493/);
     assert.match(preview.html, /Confirm my tour/);
@@ -64,13 +84,40 @@ describe("tour send previews use the real email builders", () => {
 
   it("send and preview share one content builder each", () => {
     const src = readFileSync(resolve("lib/tours/communication.ts"), "utf8");
+    assert.match(src, /function buildScheduledContent/);
     assert.match(src, /function buildConfirmationContent/);
     assert.match(src, /function buildConfirmationRequestContent/);
+    assert.match(src, /previewTourScheduled[\s\S]*buildScheduledContent\(params\)/);
+    assert.match(src, /sendTourScheduled[\s\S]*buildScheduledContent\(params\)/);
     assert.match(src, /previewTourConfirmation[\s\S]*buildConfirmationContent\(params\)/);
     assert.match(src, /sendTourConfirmation[\s\S]*buildConfirmationContent\(params\)/);
     assert.match(src, /previewTourConfirmationRequest[\s\S]*buildConfirmationRequestContent\(params\)/);
     assert.match(src, /sendTourConfirmationRequest[\s\S]*buildConfirmationRequestContent\(params\)/);
     assert.match(src, /primaryColor/);
+  });
+
+  it("wiring: schedule paths send scheduled; confirm paths send confirmed", () => {
+    const service = readFileSync(resolve("lib/tours/service.ts"), "utf8");
+    const protection = readFileSync(resolve("lib/tours/protection.ts"), "utf8");
+    assert.match(service, /sendTourScheduled/);
+    assert.match(protection, /sendTourScheduled/);
+    // Public book / coordinator schedule / reschedule must not call sendTourConfirmation
+    // for the schedule side-effect — only confirmTourByToken / updateTourStatus may.
+    const scheduleFn = service.slice(service.indexOf("export async function scheduleTourForLead"));
+    const scheduleBody = scheduleFn.slice(0, scheduleFn.indexOf("export async function rescheduleTour"));
+    assert.match(scheduleBody, /sendScheduledEmailForAppointment|sendTourScheduled/);
+    assert.doesNotMatch(scheduleBody, /sendTourConfirmation\(/);
+
+    const rescheduleFn = service.slice(service.indexOf("export async function rescheduleTour"));
+    const rescheduleBody = rescheduleFn.slice(0, rescheduleFn.indexOf("const STATUS_TO_SIGNAL"));
+    assert.match(rescheduleBody, /sendScheduledEmailForAppointment|sendTourScheduled/);
+    assert.doesNotMatch(rescheduleBody, /sendTourConfirmation\(/);
+
+    const updateFn = service.slice(service.indexOf("export async function updateTourStatus"));
+    assert.match(updateFn, /becameConfirmed[\s\S]*sendTourConfirmation/);
+
+    const confirmFn = service.slice(service.indexOf("export async function confirmTourByToken"));
+    assert.match(confirmFn, /alreadyConfirmed[\s\S]*sendTourConfirmation|!alreadyConfirmed[\s\S]*sendTourConfirmation/);
   });
 
   it("confirmation preview greets with first name only for a full contact name", () => {
@@ -89,8 +136,6 @@ describe("tour send previews use the real email builders", () => {
       venueName: "Jen's Fancy Venue",
     });
     assert.doesNotMatch(preview.body, /Warmly,\nJen's Fancy Venue\nJen's Fancy Venue/);
-    // System tour confirmation is not the MSG template path — venue appears in
-    // body copy but must not appear as a duplicated signature block.
     assert.doesNotMatch(preview.body, /Warmly,/);
   });
 
@@ -100,21 +145,14 @@ describe("tour send previews use the real email builders", () => {
     assert.match(src, /if \(status !== "accepted"\)/);
   });
 
-  it("tour confirmation and request emails pass threadId so replies hit HTC inbound", () => {
+  it("tour emails pass threadId so replies hit HTC inbound", () => {
     const src = readFileSync(resolve("lib/tours/communication.ts"), "utf8");
     assert.match(src, /threadId: conversationId/);
     assert.match(src, /findOrCreateVenueCoupleConversation/);
-    // Must resolve conversation before sendEmail so Reply-To is set.
-    const confirmFn = src.slice(src.indexOf("export async function sendTourConfirmation"));
-    const confirmSend = confirmFn.slice(0, confirmFn.indexOf("export async function sendTourConfirmationRequest"));
+    const deliver = src.slice(src.indexOf("async function deliverTourSystemEmail"));
     assert.ok(
-      confirmSend.indexOf("findOrCreateConversation") < confirmSend.indexOf("sendEmail({"),
-      "conversation must be resolved before sendEmail in sendTourConfirmation",
-    );
-    const requestFn = src.slice(src.indexOf("export async function sendTourConfirmationRequest"));
-    assert.ok(
-      requestFn.indexOf("findOrCreateConversation") < requestFn.indexOf("sendEmail({"),
-      "conversation must be resolved before sendEmail in sendTourConfirmationRequest",
+      deliver.indexOf("findOrCreateConversation") < deliver.indexOf("sendEmail({"),
+      "conversation must be resolved before sendEmail in deliverTourSystemEmail",
     );
   });
 });
