@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import {
   generateFollowUpDraftAction,
+  deleteDraftAction,
   updateDraftStatusAction,
 } from "@/app/(app)/leads/[id]/luv-actions";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
@@ -25,8 +26,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  draftHistoryDrafts,
   pendingReviewDrafts,
   withDraftStatus,
+  withoutDraft,
 } from "@/lib/luv/draft-status";
 import type { LuvDraft } from "@/lib/luv/drafts";
 import type { LuvObservation } from "@/lib/luv/types";
@@ -65,7 +68,11 @@ function DraftCard({
 
   function handleDiscard() {
     startDiscard(async () => {
-      await updateDraftStatusAction(draft.id, leadId, "discarded");
+      const result = await deleteDraftAction(draft.id, leadId);
+      if (!result.ok) {
+        toast.error(result.message ?? "Couldn't discard that draft. Please try again.");
+        return;
+      }
       onDiscard(draft.id);
     });
   }
@@ -208,7 +215,7 @@ export function LuvDraftPanel({
   }, [completedDraftId]);
 
   const pendingDrafts = pendingReviewDrafts(allDrafts);
-  const pastDrafts = allDrafts.filter((d) => d.status !== "pending_review");
+  const pastDrafts = draftHistoryDrafts(allDrafts);
 
   function handleGenerate() {
     startGenerate(async () => {
@@ -227,7 +234,7 @@ export function LuvDraftPanel({
   }
 
   function handleDiscard(id: string) {
-    setAllDrafts((p) => withDraftStatus(p, id, "discarded"));
+    setAllDrafts((p) => withoutDraft(p, id));
   }
 
   function handleAccepted(id: string) {
@@ -299,7 +306,7 @@ export function LuvDraftPanel({
         </div>
       )}
 
-      {/* Past drafts (accepted + discarded) */}
+      {/* Past drafts (accepted / used only — discarded drafts are deleted) */}
       {pastDrafts.length > 0 && (
         <div className="space-y-2">
           <Separator />

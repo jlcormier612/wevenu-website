@@ -13,6 +13,7 @@
  * status=sent + offered_at), never sales_stage alone.
  */
 
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -251,13 +252,15 @@ export async function getDraftsForLead(leadId: string): Promise<LuvDraft[]> {
     .eq("venue_id", venue.id)
     .eq("entity_type", "lead")
     .eq("entity_id", leadId)
+    // Discarded rows are deleted; exclude any legacy discarded status from UI.
+    .neq("status", "discarded")
     .order("created_at", { ascending: false });
   return (data as DraftRow[] ?? []).map(mapDraft);
 }
 
 export async function updateDraftStatus(
   draftId: string,
-  status: "accepted" | "discarded",
+  status: "accepted",
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
   const venue = await getCurrentVenue();
@@ -267,8 +270,50 @@ export async function updateDraftStatus(
   await (supabase.from("luv_drafts") as any).update({ status }).eq("id", draftId).eq("venue_id", venue.id);
 }
 
+/**
+ * Discard = permanent delete. Venue-scoped; never archives as status=discarded.
+ * Admin delete after a user-session existence check so owner/manager restrictive
+ * delete RLS does not block coordinators who can generate drafts.
+ */
+export async function deleteDraft(
+  draftId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+
+  const supabase = await createClient();
+  const { data: existing, error: readError } = await supabase
+    .from("luv_drafts")
+    .select("id")
+    .eq("id", draftId)
+    .eq("venue_id", venue.id)
+    .maybeSingle<{ id: string }>();
+  if (readError) {
+    console.error("[luv/drafts] deleteDraft read failed:", readError);
+    return { ok: false, message: "Couldn't discard that draft. Please try again." };
+  }
+  if (!existing) {
+    return { ok: false, message: "That draft is no longer available." };
+  }
+
+  const admin = createAdminClient();
+  const { error: deleteError } = await admin
+    .from("luv_drafts")
+    .delete()
+    .eq("id", draftId)
+    .eq("venue_id", venue.id);
+  if (deleteError) {
+    console.error("[luv/drafts] deleteDraft failed:", deleteError);
+    return { ok: false, message: "Couldn't discard that draft. Please try again." };
+  }
+  return { ok: true };
+}
+
 export {
+  draftHistoryDrafts,
   draftStatusAfterSuccessfulSend,
   pendingReviewDrafts,
   withDraftStatus,
+  withoutDraft,
 } from "@/lib/luv/draft-status";

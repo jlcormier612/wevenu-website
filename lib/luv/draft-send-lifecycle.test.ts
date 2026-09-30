@@ -14,6 +14,7 @@ import {
   draftStatusAfterSuccessfulSend,
   pendingReviewDrafts,
   withDraftStatus,
+  withoutDraft,
 } from "@/lib/luv/draft-status";
 
 function draft(partial: Partial<LuvDraft> & Pick<LuvDraft, "id" | "status">): LuvDraft {
@@ -66,12 +67,11 @@ describe("Luv draft send lifecycle — pending review reconciliation", () => {
   });
 
   it("discard removes from pending review without implying sent", () => {
-    const after = withDraftStatus(
+    const after = withoutDraft(
       [draft({ id: "d1", status: "pending_review" })],
       "d1",
-      "discarded",
     );
-    assert.equal(after[0]?.status, "discarded");
+    assert.equal(after.length, 0);
     assert.equal(pendingReviewDrafts(after).length, 0);
   });
 
@@ -131,8 +131,9 @@ describe("Luv→Messages send wiring contracts", () => {
     assert.match(thread, /onAuthoritativeSendSuccess/);
   });
 
-  it("Copy still marks accepted; Discard still marks discarded", () => {
+  it("Copy still marks accepted; Discard permanently deletes", () => {
     assert.match(panel, /updateDraftStatusAction\(draft\.id, leadId, "accepted"\)/);
-    assert.match(panel, /updateDraftStatusAction\(draft\.id, leadId, "discarded"\)/);
+    assert.match(panel, /deleteDraftAction\(draft\.id, leadId\)/);
+    assert.doesNotMatch(panel, /updateDraftStatusAction\(draft\.id, leadId, "discarded"\)/);
   });
 });

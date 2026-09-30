@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  deleteDraft,
   generateFollowUpDraft,
   updateDraftStatus,
 } from "@/lib/luv/drafts";
@@ -20,8 +21,18 @@ export async function generateFollowUpDraftAction(
 export async function updateDraftStatusAction(
   draftId: string,
   leadId: string,
-  status: "accepted" | "discarded",
+  status: "accepted",
 ): Promise<void> {
   await updateDraftStatus(draftId, status);
   revalidatePath(`/leads/${leadId}`);
+}
+
+/** Discard = permanent delete. Does not archive. */
+export async function deleteDraftAction(
+  draftId: string,
+  leadId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const result = await deleteDraft(draftId);
+  if (result.ok) revalidatePath(`/leads/${leadId}`);
+  return result;
 }

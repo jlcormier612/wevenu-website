@@ -12,11 +12,19 @@ type DraftStatusRow = {
 
 /**
  * Pending-review list for the lead Luv panel.
- * Only `pending_review` drafts appear; accepted (copied or successfully sent)
- * and discarded drafts move to draft history.
+ * Only `pending_review` drafts appear. Accepted (copied or successfully sent)
+ * drafts move to draft history. Discard deletes the row — it must not remain
+ * in local state or history.
  */
 export function pendingReviewDrafts<T extends DraftStatusRow>(drafts: T[]): T[] {
   return drafts.filter((d) => d.status === "pending_review");
+}
+
+/**
+ * Accepted/used drafts only — discarded drafts are deleted and never listed.
+ */
+export function draftHistoryDrafts<T extends DraftStatusRow>(drafts: T[]): T[] {
+  return drafts.filter((d) => d.status === "accepted");
 }
 
 /**
@@ -36,4 +44,12 @@ export function withDraftStatus<T extends DraftStatusRow>(
   status: LuvDraftStatus,
 ): T[] {
   return drafts.map((d) => (d.id === draftId ? { ...d, status } : d));
+}
+
+/** Remove a draft from local state after a successful Discard delete. */
+export function withoutDraft<T extends DraftStatusRow>(
+  drafts: T[],
+  draftId: string,
+): T[] {
+  return drafts.filter((d) => d.id !== draftId);
 }
