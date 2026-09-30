@@ -170,12 +170,39 @@ Create → Edit → Duplicate → Preview → **Use** (internal) and/or **Send**
 - [ ] Expand editor/Use/Send integration coverage as journeys harden
 
 ### Phase 11 — Sandbox browser journeys + exact image verification
-- [ ] Commit + deploy `feat/commercial-eo-build-sheet` (migration must apply)
-- [ ] Journeys A–E against exact running image
-- [ ] Report commit SHA, task definition, image tag, digest, health
+- [x] Exact running image verified (see Proof log below) — contains `c7f02950` via ancestry of `04794c77`
+- [x] Journey C — selectable EO **Use** (venueUse, `submitted_at` null) on LuvCtx event `c43ca64a` → EO `ca92507b` with fixed + selectable lines
+- [x] Journey B — selectable EO **Send** on SelUse: client submit (`submitted_at` set) → venue finalize → EO lines include Bartender selection
+- [x] Journey A — Package add-on on **existing** SelUse client/event (no second client/event): Essential+$Bar → $17,500 selection → contract Fully Executed → invoice/plan → recorded initial payment → Documents
+- [x] Journey E — Library IA: no Choices Templates card; EO Templates describe fixed + selectable
+- [ ] Journey D — Inventory Use + Send still needs an explicit browser pass on this image
 - Production untouched
 
-**Implementation status (code):** Phases 1–7 landed on branch `feat/commercial-eo-build-sheet`. **Not GREEN** — Sandbox deploy, migration apply, and browser/DB gates remain.
+**Implementation status:** Phases 1–8 + most of 11 proven on Sandbox image `04794c77` (contains `c7f02950`). **NOT GREEN** until Inventory Use/Send browser proof completes and planning-capabilities Settings move is deployed+proven (separate workstream on this branch).
+
+---
+
+## Proof log (2026-09-30)
+
+| Item | Value |
+| --- | --- |
+| ECS task | `88e1c7a6c3c94991b47e8a79417d3d43` |
+| Task definition | `htc-sandbox-venue-app:467` |
+| Image tag | `04794c77f253672b012c0e9c35ddb2735baa3286` |
+| Image digest | `sha256:e3f8bf40c8c578f1c653d022e124e97ff6c0b284d28480afd44c54382a9979af` |
+| Health | `200` |
+| `c7f02950` in ancestry | yes |
+| Venue Use choices | `e17d5082` — finalized, **`submitted_at` null** |
+| Send choices | `8a2ac147` — finalized, **`submitted_at` set** |
+| SelUse client / event | `ceb551d5` / `2d2d9293` (single client, single event after package) |
+| Contract | `c1c1b338` — Fully Executed (client + venue signed) |
+| Invoice | `77f2f506` `INV-2026-77F2F5` — sent, balance $13,125 after $4,375 check recorded |
+| Schedule | `a6b0c946` Essential Wedding payments |
+| Documents | Invoice + Venue Rental Agreement + Event Order visible on booking Documents tab |
+
+**USE vs SEND (distinct):** Use finalizes without client submission; Send requires client submit before venue finalize.
+
+**Package add-on:** did **not** create a new booking/client/event — same `ceb551d5` / `2d2d9293`.
 
 ---
 

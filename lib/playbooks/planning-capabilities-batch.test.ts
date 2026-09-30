@@ -222,6 +222,43 @@ describe("PLAN-04 couple Tasks milestone grouping", () => {
   });
 });
 
+describe("Planning capabilities Settings IA", () => {
+  it("lives in Settings → Leads & Booking, not Planning Templates", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const playbooks = readFileSync(resolve("app/(app)/library/playbooks/page.tsx"), "utf8");
+    assert.doesNotMatch(playbooks, /PlanningCapabilitiesSection/);
+    assert.doesNotMatch(playbooks, /Planning capabilities/);
+    assert.match(playbooks, /Create reusable planning checklists once/);
+    assert.match(playbooks, /Settings → Leads/);
+
+    const leads = readFileSync(resolve("app/(app)/settings/leads/page.tsx"), "utf8");
+    assert.match(leads, /PlanningCapabilitiesSection/);
+    assert.match(leads, /id="planning"/);
+    assert.match(leads, /Planning tools/);
+
+    const section = readFileSync(resolve("components/settings/planning-capabilities-section.tsx"), "utf8");
+    assert.match(section, /Choose the planning tools your venue uses with couples and events/);
+    assert.match(section, /Save planning settings/);
+    assert.doesNotMatch(section, /planning surfaces/);
+
+    const caps = readFileSync(resolve("lib/playbooks/capabilities.ts"), "utf8");
+    assert.match(caps, /Preferred Vendors/);
+    assert.match(caps, /preferred vendor network/);
+    assert.match(caps, /couple.s portal/);
+    // Vendors gate portal + template tasks — not an Event Readiness section today.
+    assert.match(caps, /Planning Templates will not create vendor-selection work/);
+  });
+
+  it("preferred-vendors navigation respects vendors capability", async () => {
+    const { shouldOfferPreferredVendorsNavigation } = await import(
+      "@/lib/portal/preferred-vendors-surfaces"
+    );
+    assert.equal(shouldOfferPreferredVendorsNavigation({ vendors: true }), true);
+    assert.equal(shouldOfferPreferredVendorsNavigation({ vendors: false }), false);
+  });
+});
+
 describe("PLAN-01 / PLAN-05 / PLAN-07 seams", () => {
   it("unapply exists and blocks released client planning", async () => {
     const { readFileSync } = await import("node:fs");

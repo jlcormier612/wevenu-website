@@ -12,6 +12,7 @@ export async function savePlanningCapabilitiesAction(
   if (result.ok) {
     revalidatePath("/library/playbooks");
     revalidatePath("/settings");
+    revalidatePath("/settings/leads");
     revalidatePath("/clients");
   }
   return result;

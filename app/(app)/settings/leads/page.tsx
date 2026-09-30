@@ -5,6 +5,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { CommercialBookingPrefsSection } from "@/components/settings/commercial-booking-prefs-section";
+import { PlanningCapabilitiesSection } from "@/components/settings/planning-capabilities-section";
 import {
   Card,
   CardContent,
@@ -25,6 +26,12 @@ export default async function LeadsBookingSettingsPage() {
     getCurrentVenue(), getEmailIntakeStatus(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
   ]);
   const canEditInquiryForm = role === "owner" || role === "manager";
+  const planningCapabilities = {
+    timeline: venue?.planningTimelineEnabled ?? true,
+    floorPlan: venue?.planningFloorPlanEnabled ?? true,
+    seating: venue?.planningSeatingEnabled ?? true,
+    vendors: venue?.planningVendorsEnabled ?? true,
+  };
 
   return (
     <div className="space-y-6">
@@ -46,6 +53,20 @@ export default async function LeadsBookingSettingsPage() {
             <CommercialBookingPrefsSection
               initial={venue.commercialBookingPrefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS}
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {venue && (
+        <Card id="planning">
+          <CardHeader>
+            <CardTitle className="text-base">Planning tools</CardTitle>
+            <CardDescription>
+              Venue-wide choices for which planning experiences Hello to Cheers includes for your clients and events. Separate from Planning Templates, which are reusable checklists you apply per event.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PlanningCapabilitiesSection initial={planningCapabilities} />
           </CardContent>
         </Card>
       )}

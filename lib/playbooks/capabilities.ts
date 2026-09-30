@@ -1,8 +1,11 @@
 /**
- * Venue planning capabilities — optional surfaces that are not themselves
- * Planning Template applications (Timeline, Floor Plan, Seating, Vendors).
- * Distinct from event_tasks: a capability is what the venue offers; a task
- * is checklist work that may reference a capability.
+ * Venue planning capabilities — optional planning experiences that are not
+ * themselves Planning Template applications (Timeline, Floor Plan, Seating,
+ * Preferred Vendors).
+ *
+ * A capability is what the venue offers through Hello to Cheers.
+ * A Planning Template is a reusable checklist that may create work tied to
+ * those capabilities when applied to an event.
  */
 
 import type { TaskActionType } from "@/lib/playbooks/types";
@@ -23,6 +26,12 @@ export const DEFAULT_PLANNING_CAPABILITIES: VenuePlanningCapabilities = {
   vendors: true,
 };
 
+/**
+ * Venue-facing explanations. Copy must match real consumers:
+ * - Timeline / Floor Plan / Seating: Event Readiness + couple portal + template tasks
+ * - Preferred Vendors: couple portal Preferred Vendors nav/section + template vendor tasks
+ *   (not an Event Readiness section today)
+ */
 export const PLANNING_CAPABILITY_OPTIONS: {
   id: PlanningCapabilityId;
   key: keyof VenuePlanningCapabilities;
@@ -33,25 +42,29 @@ export const PLANNING_CAPABILITY_OPTIONS: {
     id: "timeline",
     key: "timeline",
     label: "Timeline",
-    description: "Day-of schedule planning with your clients.",
+    description:
+      "Use a shared event timeline to plan the day with your clients. Turn this on if you want couples and your team to work from a day-of schedule in Hello to Cheers. When it is off, Timeline does not appear in Event Readiness or the couple’s portal, and Planning Templates will not create timeline work for your events.",
   },
   {
     id: "floor_plan",
     key: "floorPlan",
     label: "Floor Plan",
-    description: "Room layouts and physical placement.",
+    description:
+      "Use floor plans to plan room layouts, seating areas, and physical event setup with your clients and team. When it is off, Floor Plans do not appear in Event Readiness or the couple’s portal, and Planning Templates will not create floor-plan work for your events.",
   },
   {
     id: "seating",
     key: "seating",
     label: "Seating",
-    description: "Guest seating charts (usually with a shared floor plan).",
+    description:
+      "Use seating plans to organize where guests will sit at the event. Turn this on if your venue helps clients create or manage guest seating arrangements through Hello to Cheers. When it is off, Seating does not appear in Event Readiness or the couple’s portal, and Planning Templates will not create seating work for your events.",
   },
   {
     id: "vendors",
     key: "vendors",
     label: "Preferred Vendors",
-    description: "Vendor recommendations and client vendor choices.",
+    description:
+      "Let couples discover your preferred vendor network and make vendor choices for their event in their portal. Your team manages recommended vendors and assignments in Hello to Cheers. When it is off, Preferred Vendors is hidden from the couple’s portal navigation (existing vendor records stay on file), and Planning Templates will not create vendor-selection work for your events.",
   },
 ];
 

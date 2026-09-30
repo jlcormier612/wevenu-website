@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Venue-level planning capability toggles — which optional planning surfaces
- * this venue actually offers. Distinct from Planning Templates / event tasks.
+ * Venue-wide planning configuration — which planning experiences this venue
+ * uses with couples and events. Lives in Settings (not Planning Templates).
  */
 
 import * as React from "react";
@@ -28,6 +28,10 @@ export function PlanningCapabilitiesSection({
   const [caps, setCaps] = React.useState(initial);
   const [pending, startSave] = React.useTransition();
 
+  React.useEffect(() => {
+    setCaps(initial);
+  }, [initial]);
+
   function setKey(key: keyof VenuePlanningCapabilities, value: boolean) {
     setCaps((p) => ({ ...p, [key]: value }));
   }
@@ -36,7 +40,7 @@ export function PlanningCapabilitiesSection({
     startSave(async () => {
       const result = await savePlanningCapabilitiesAction(caps);
       if (result.ok) {
-        toast.success("Planning capabilities saved.");
+        toast.success("Planning settings saved.");
         router.refresh();
       } else {
         toast.error(result.message ?? "Could not save.");
@@ -45,24 +49,28 @@ export function PlanningCapabilitiesSection({
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Turn off surfaces your venue doesn&apos;t use. Disabled capabilities won&apos;t appear in
-        Event Readiness, won&apos;t show in the couple&apos;s portal, and won&apos;t create required
-        tasks when you apply a Planning Template.
+    <div className="space-y-5">
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        Choose the planning tools your venue uses with couples and events.
+        These settings control which planning experiences appear for your
+        clients and which planning work Hello to Cheers includes for your
+        events. They affect what couples see in their portal, what shows in
+        Event Readiness for Timeline, Floor Plan, and Seating, and which
+        related work Planning Templates can create when applied.
       </p>
-      <div className="space-y-3">
+      <div className="space-y-5">
         {PLANNING_CAPABILITY_OPTIONS.map((opt) => (
-          <div key={opt.id} className="flex items-center justify-between gap-4">
-            <div>
+          <div key={opt.id} className="flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-1">
               <Label className="text-sm font-medium text-heading">{opt.label}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{opt.description}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{opt.description}</p>
             </div>
             <Switch
               checked={caps[opt.key]}
               disabled={pending}
               onCheckedChange={(v) => setKey(opt.key, v)}
               aria-label={`${opt.label} enabled`}
+              className="mt-0.5 shrink-0"
             />
           </div>
         ))}
@@ -80,7 +88,7 @@ export function PlanningCapabilitiesSection({
               Saving…
             </>
           ) : (
-            "Save planning capabilities"
+            "Save planning settings"
           )}
         </button>
       </div>
