@@ -96,6 +96,11 @@ describe("library collection header consistency", () => {
     assert.match(contracts, /Add another copy of Wedding Venue Agreement/);
     assert.doesNotMatch(contracts, /Add Wedding Venue Agreement again/);
 
+    const qrStarters = read("components/qr-campaigns/qr-starter-examples.tsx");
+    assert.match(qrStarters, /starterInsertLabel/);
+    assert.doesNotMatch(qrStarters, /Add again/);
+    assert.doesNotMatch(qrStarters, /Use this starter/);
+
     // Duplicate remains an independent overflow action
     assert.match(questionnaires, /LIBRARY_LABELS\.duplicate/);
     assert.match(read("components/communication/message-template-list.tsx"), /LIBRARY_LABELS\.duplicate|duplicate/);

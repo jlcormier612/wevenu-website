@@ -5,6 +5,7 @@ import { QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 import { addQrStarterAgainAction, createQrFromStarterAction } from "@/app/(app)/library/qr-campaigns/actions";
+import { starterInsertLabel } from "@/components/library/labels";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { QR_STARTER_MASTERS, type QrStarterMasterKey } from "@/lib/qr-campaigns/starters";
 
@@ -28,7 +29,7 @@ export function QrStarterExamples({
     }
     toast.success(
       existing.has(key)
-        ? "Starter added again. Your new code is ready below."
+        ? "Another copy added. Your new code is ready below."
         : "QR campaign created. Your new code is ready below.",
     );
     window.location.reload();
@@ -58,9 +59,7 @@ export function QrStarterExamples({
               id: `use-${starter.key}`,
               label: pending === starter.key
                 ? "Creating…"
-                : already
-                  ? "Add again"
-                  : "Use this starter",
+                : starterInsertLabel(starter.name, already),
               onClick: () => useStarter(starter.key),
               emphasis: "use",
               disabled: pending !== null,
