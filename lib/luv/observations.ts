@@ -26,8 +26,16 @@ import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
 import { generateMomentumLanguage } from "@/lib/leads/momentum";
+import {
+  isRecordScoped,
+  recordScopeWantsClientSurface,
+  recordScopeWantsEventWindow,
+  recordScopeWantsLeadPipeline,
+  type LuvObservationRecordScope,
+} from "@/lib/luv/observation-record-scope";
+import { buildPlanningWindowObservationsForEvent } from "@/lib/luv/planning-window-observations";
 import { computeEventTaskReadinessByKind } from "@/lib/playbooks/repository";
-import { computePaymentsReadiness, computePlanningReadiness, computeTimelineReadiness } from "@/lib/readiness/compute";
+import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import { getRequests } from "@/lib/requests/service";
 import type { Request as PlatformRequest } from "@/lib/requests/types";
 import { computeWebsiteReadiness } from "@/lib/wedding-website/readiness";
@@ -82,9 +90,16 @@ export async function getLuvObservations(
   venueId: string,
   today: string,
   settings?: Pick<LuvSettings, "observationsEnabled">,
+  scope?: LuvObservationRecordScope,
 ): Promise<LuvObservation[]> {
   if (settings?.observationsEnabled === false) return [];
   const observations: LuvObservation[] = [];
+  const wantLead = recordScopeWantsLeadPipeline(scope);
+  const wantEvent = recordScopeWantsEventWindow(scope);
+  const wantClient = recordScopeWantsClientSurface(scope);
+  const scopedEventId = isRecordScoped(scope) ? scope?.eventId : undefined;
+  const scopedClientId = isRecordScoped(scope) ? scope?.clientId : undefined;
+  const emptyRows = Promise.resolve({ data: [] as never[] });
 
   const soon21 = new Date(Date.now() + 21 * 86_400_000).toISOString().slice(0, 10);
   const soon30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
@@ -117,36 +132,60 @@ export async function getLuvObservations(
     paymentLineItems,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
-    onlyBusinessReporting(
-      supabase.from("events")
-        .select("id, name, event_date, client_id, status")
-        .eq("venue_id", venueId)
-        .not("status", "in", "(cancelled,complete)")
-        .gte("event_date", today)
-        .lte("event_date", soon21)
-        .order("event_date"),
-    ),
+    wantEvent
+      ? onlyBusinessReporting(
+        (() => {
+          let q = supabase.from("events")
+            .select("id, name, event_date, client_id, status")
+            .eq("venue_id", venueId)
+            .not("status", "in", "(cancelled,complete)")
+            .gte("event_date", today)
+            .lte("event_date", soon21)
+            .order("event_date");
+          if (scopedEventId) q = q.eq("id", scopedEventId);
+          return q;
+        })(),
+      )
+      : emptyRows,
 
     // Helper: timeline entry counts for those events
-    supabase.from("timeline_entries")
-      .select("event_id")
-      .eq("venue_id", venueId),
+    wantEvent
+      ? (() => {
+          let q = supabase.from("timeline_entries")
+            .select("event_id")
+            .eq("venue_id", venueId);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
 
     // Helper: which events have floor plans
-    supabase.from("floor_plans")
-      .select("event_id")
-      .eq("venue_id", venueId),
+    wantEvent
+      ? (() => {
+          let q = supabase.from("floor_plans")
+            .select("event_id")
+            .eq("venue_id", venueId);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
 
     // 3: Qualified/proposal leads — narrowed to "no tour scheduled" below,
     // against tour_appointments (Program 2 Phase 1a's canonical source),
     // since the query builder can't express a NOT EXISTS join inline here.
-    onlyBusinessReporting(
-      supabase.from("leads")
-        .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
-        .eq("venue_id", venueId)
-        .in("sales_stage", ["tour_scheduled", "proposal_sent"])
-        .order("created_at"),
-    ),
+    wantLead
+      ? onlyBusinessReporting(
+        (() => {
+          let q = supabase.from("leads")
+            .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
+            .eq("venue_id", venueId)
+            .in("sales_stage", ["tour_scheduled", "proposal_sent"])
+            .order("created_at");
+          if (scope?.leadId) q = q.eq("id", scope.leadId);
+          return q;
+        })(),
+      )
+      : emptyRows,
 
     // 4: Contracts sent 3+ days ago, still awaiting signature
     supabase.from("contracts")
@@ -167,23 +206,35 @@ export async function getLuvObservations(
       .order("expires_at"),
 
     // 6: "New" leads older than 48 h with no follow-up date
-    onlyBusinessReporting(
-      supabase.from("leads")
-        .select("id, first_name, last_name, partner_first_name, created_at")
-        .eq("venue_id", venueId)
-        .eq("sales_stage", "new_inquiry")
-        .is("follow_up_date", null)
-        .lt("created_at", twoDaysAgo)
-        .order("created_at"),
-    ),
+    wantLead
+      ? onlyBusinessReporting(
+        (() => {
+          let q = supabase.from("leads")
+            .select("id, first_name, last_name, partner_first_name, created_at")
+            .eq("venue_id", venueId)
+            .eq("sales_stage", "new_inquiry")
+            .is("follow_up_date", null)
+            .lt("created_at", twoDaysAgo)
+            .order("created_at");
+          if (scope?.leadId) q = q.eq("id", scope.leadId);
+          return q;
+        })(),
+      )
+      : emptyRows,
 
     // 7. Questionnaire: sent but not submitted for approaching events
-    supabase.from("event_questionnaires")
-      .select("id, event_id, status, sent_at, opened_at, access_key, events(name, event_date)")
-      .eq("venue_id", venueId)
-      .in("status", ["sent", "draft"])   // approaching events missing questionnaire submission
-      .gte("events.event_date", today)
-      .lte("events.event_date", soon30),
+    wantEvent
+      ? (() => {
+          let q = supabase.from("event_questionnaires")
+            .select("id, event_id, status, sent_at, opened_at, access_key, events(name, event_date)")
+            .eq("venue_id", venueId)
+            .in("status", ["sent", "draft"])   // approaching events missing questionnaire submission
+            .gte("events.event_date", today)
+            .lte("events.event_date", soon30);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
 
     // 8. Contracts expiring within 30 days
     supabase.from("contracts")
@@ -196,30 +247,48 @@ export async function getLuvObservations(
       .order("expires_at"),
 
     // 10: Upcoming tours (within 7 days) — high-value observation
-    supabase.from("tour_appointments")
-      .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id")
-      .eq("venue_id", venueId)
-      .in("status", ["scheduled", "confirmed"])
-      .gte("scheduled_at", today)
-      .lte("scheduled_at", soon7 + "T23:59:59")
-      .order("scheduled_at"),
+    wantLead
+      ? (() => {
+          let q = supabase.from("tour_appointments")
+            .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id")
+            .eq("venue_id", venueId)
+            .in("status", ["scheduled", "confirmed"])
+            .gte("scheduled_at", today)
+            .lte("scheduled_at", soon7 + "T23:59:59")
+            .order("scheduled_at");
+          if (scope?.leadId) q = q.eq("lead_id", scope.leadId);
+          return q;
+        })()
+      : emptyRows,
 
     // 11: Completed tours not yet followed up (within 7 days)
-    supabase.from("tour_appointments")
-      .select("id, scheduled_at, contact_name, lead_id, completed_at")
-      .eq("venue_id", venueId)
-      .eq("status", "completed")
-      .is("follow_up_sent_at", null)
-      .gte("scheduled_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
-      .order("scheduled_at", { ascending: false }),
+    wantLead
+      ? (() => {
+          let q = supabase.from("tour_appointments")
+            .select("id, scheduled_at, contact_name, lead_id, completed_at")
+            .eq("venue_id", venueId)
+            .eq("status", "completed")
+            .is("follow_up_sent_at", null)
+            .gte("scheduled_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+            .order("scheduled_at", { ascending: false });
+          if (scope?.leadId) q = q.eq("lead_id", scope.leadId);
+          return q;
+        })()
+      : emptyRows,
 
     // 12: Recent no-shows (within 3 days)
-    supabase.from("tour_appointments")
-      .select("id, scheduled_at, contact_name, lead_id")
-      .eq("venue_id", venueId)
-      .eq("status", "no_show")
-      .gte("scheduled_at", new Date(Date.now() - 3 * 86_400_000).toISOString())
-      .order("scheduled_at", { ascending: false }),
+    wantLead
+      ? (() => {
+          let q = supabase.from("tour_appointments")
+            .select("id, scheduled_at, contact_name, lead_id")
+            .eq("venue_id", venueId)
+            .eq("status", "no_show")
+            .gte("scheduled_at", new Date(Date.now() - 3 * 86_400_000).toISOString())
+            .order("scheduled_at", { ascending: false });
+          if (scope?.leadId) q = q.eq("lead_id", scope.leadId);
+          return q;
+        })()
+      : emptyRows,
 
     // 13: The venue's own timezone. tour_appointments.scheduled_at is a
     // timestamptz, so rendering it without this reports the *server's* wall
@@ -227,23 +296,35 @@ export async function getLuvObservations(
     getVenueTimezone(supabase, venueId),
 
     // S1: sent contracts (any age) with event linkage — venue scoped
-    supabase.from("contracts")
-      .select("id, title, status, sent_at, event_id, client_id, clients(first_name, last_name)")
-      .eq("venue_id", venueId)
-      .eq("status", "sent")
-      .not("sent_at", "is", null)
-      .not("event_id", "is", null),
+    wantEvent
+      ? (() => {
+          let q = supabase.from("contracts")
+            .select("id, title, status, sent_at, event_id, client_id, clients(first_name, last_name)")
+            .eq("venue_id", venueId)
+            .eq("status", "sent")
+            .not("sent_at", "is", null)
+            .not("event_id", "is", null);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
 
     // S3: new inquiries ≥48h with no recorded contact
-    onlyBusinessReporting(
-      supabase.from("leads")
-        .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at")
-        .eq("venue_id", venueId)
-        .eq("sales_stage", "new_inquiry")
-        .is("last_contacted_at", null)
-        .lte("created_at", fortyEightHoursAgo)
-        .order("created_at"),
-    ),
+    wantLead
+      ? onlyBusinessReporting(
+        (() => {
+          let q = supabase.from("leads")
+            .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at")
+            .eq("venue_id", venueId)
+            .eq("sales_stage", "new_inquiry")
+            .is("last_contacted_at", null)
+            .lte("created_at", fortyEightHoursAgo)
+            .order("created_at");
+          if (scope?.leadId) q = q.eq("id", scope.leadId);
+          return q;
+        })(),
+      )
+      : emptyRows,
 
     // S2: same payment sources Daily Briefing / Event Readiness use
     getInvoices(supabase, venueId),
@@ -462,10 +543,16 @@ export async function getLuvObservations(
   // ── Website missing content + unpublished ────────────────────────────────
   // Events within 6 months with published website but missing travel info
   const sixMonths = new Date(Date.now() + 180 * 86_400_000).toISOString().slice(0, 10);
-  const { data: sitesWithGaps } = await supabase
-    .from("couple_websites")
-    .select("client_id, slug, is_published, content, couple_guests(count)")
-    .eq("venue_id", venueId);
+  const { data: sitesWithGaps } = wantClient
+    ? await (() => {
+        let q = supabase
+          .from("couple_websites")
+          .select("client_id, slug, is_published, content, couple_guests(count)")
+          .eq("venue_id", venueId);
+        if (scopedClientId) q = q.eq("client_id", scopedClientId);
+        return q;
+      })()
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const site of (sitesWithGaps ?? []) as any[]) {
@@ -508,14 +595,20 @@ export async function getLuvObservations(
   // ── Wedding website milestones ───────────────────────────────────────────
   // "Emily & James just published their website." — coordinator awareness
   const websiteSince7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
-  const { data: recentlyPublished } = await supabase
-    .from("couple_websites")
-    .select("client_id, slug, updated_at, clients(first_name, partner_first_name)")
-    .eq("venue_id", venueId)
-    .eq("is_published", true)
-    .gte("updated_at", websiteSince7d)
-    .order("updated_at", { ascending: false })
-    .limit(5);
+  const { data: recentlyPublished } = wantClient
+    ? await (() => {
+        let q = supabase
+          .from("couple_websites")
+          .select("client_id, slug, updated_at, clients(first_name, partner_first_name)")
+          .eq("venue_id", venueId)
+          .eq("is_published", true)
+          .gte("updated_at", websiteSince7d)
+          .order("updated_at", { ascending: false })
+          .limit(5);
+        if (scopedClientId) q = q.eq("client_id", scopedClientId);
+        return q;
+      })()
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const site of (recentlyPublished ?? []) as any[]) {
@@ -539,15 +632,21 @@ export async function getLuvObservations(
   // reads; this block calls both directly and narrates around whatever they
   // already say, instead of re-deriving overdue/blocked counts or a
   // readiness percentage from a second, independent event_tasks query.
-  const { data: planningCandidateEvents } = await onlyBusinessReporting(
-    supabase
-      .from("events")
-      .select("id, name, event_date, client_id, clients(first_name, partner_first_name)")
-      .eq("venue_id", venueId)
-      .not("status", "in", "(cancelled,complete)")
-      .gte("event_date", today)
-      .lte("event_date", soon90),
-  );
+  const { data: planningCandidateEvents } = wantEvent
+    ? await onlyBusinessReporting(
+      (() => {
+        let q = supabase
+          .from("events")
+          .select("id, name, event_date, client_id, clients(first_name, partner_first_name)")
+          .eq("venue_id", venueId)
+          .not("status", "in", "(cancelled,complete)")
+          .gte("event_date", today)
+          .lte("event_date", soon90);
+        if (scopedEventId) q = q.eq("id", scopedEventId);
+        return q;
+      })(),
+    )
+    : { data: [] };
 
   // Timeline + Communication — read Event Readiness, same discipline as
   // Planning above (Luv Experience Completion, Work Stream 2). Both fetched
@@ -574,122 +673,79 @@ export async function getLuvObservations(
   // message_threads count that stops growing for every venue, producing an
   // increasingly false "no messages logged yet" as real activity moves to
   // conversation_messages.
-  const [timelineStatusRes, threadCountsRes, conversationMessageRes, clientRelationshipRes] = await Promise.all([
-    supabase.from("timeline_entries").select("event_id, status").eq("venue_id", venueId).eq("owner", "venue"),
-    supabase.from("message_threads").select("event_id, message_count").eq("venue_id", venueId),
-    supabase.from("conversation_messages").select("conversations!inner(relationship_id)").eq("venue_id", venueId),
-    supabase.from("clients").select("id, relationship_id").eq("venue_id", venueId).not("relationship_id", "is", null),
-  ]);
-  const timelineByEvent = new Map<string, Pick<TimelineEntry, "status">[]>();
-  for (const r of (timelineStatusRes.data ?? []) as { event_id: string; status: TimelineEntry["status"] }[]) {
-    if (!r.event_id) continue;
-    const list = timelineByEvent.get(r.event_id) ?? [];
-    list.push({ status: r.status });
-    timelineByEvent.set(r.event_id, list);
-  }
-  const threadCountByEvent = new Map<string, number>();
-  for (const r of (threadCountsRes.data ?? []) as { event_id: string | null; message_count: number }[]) {
-    if (!r.event_id) continue;
-    threadCountByEvent.set(r.event_id, (threadCountByEvent.get(r.event_id) ?? 0) + r.message_count);
-  }
-  const relationshipIdByClientId = new Map<string, string>();
-  for (const c of (clientRelationshipRes.data ?? []) as { id: string; relationship_id: string | null }[]) {
-    if (c.relationship_id) relationshipIdByClientId.set(c.id, c.relationship_id);
-  }
-  const conversationMessageCountByRelationship = new Map<string, number>();
-  type ConversationMessageJoinRow = { conversations: { relationship_id: string | null } | { relationship_id: string | null }[] | null };
-  for (const r of (conversationMessageRes.data ?? []) as ConversationMessageJoinRow[]) {
-    const rel = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
-    if (!rel?.relationship_id) continue;
-    conversationMessageCountByRelationship.set(
-      rel.relationship_id, (conversationMessageCountByRelationship.get(rel.relationship_id) ?? 0) + 1,
-    );
-  }
+  const planningCandidates = (planningCandidateEvents ?? []) as {
+    id: string; name: string; event_date: string; client_id: string | null;
+    clients?: { first_name?: string | null; partner_first_name?: string | null } | null;
+  }[];
 
-  for (const ev of (planningCandidateEvents ?? []) as { id: string; name: string; event_date: string; client_id: string | null; clients?: { first_name?: string | null; partner_first_name?: string | null } | null }[]) {
-    const readinessByKind = await computeEventTaskReadinessByKind(supabase, venueId, ev.id);
-    const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
-    const name = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ") || ev.name;
-
-    if (readinessByKind.client || readinessByKind.venue) {
-      const planning = computePlanningReadiness(readinessByKind);
-      const totalRequired = (readinessByKind.client?.totalRequired ?? 0) + (readinessByKind.venue?.totalRequired ?? 0);
-      const completedRequired = (readinessByKind.client?.completedRequired ?? 0) + (readinessByKind.venue?.completedRequired ?? 0);
-
-      if (planning.status === "needs_attention") {
-        observations.push({
-          id: `planning-attention-${ev.id}`,
-          kind: "risk",
-          priority: du <= 30 ? "high" : "medium",
-          message: `${name}'s planning needs attention.`,
-          detail: planning.detail,
-          link: `/events/${ev.id}#playbook`,
-          actionLabel: "View Playbook →",
-          recommendation: { label: "Review overdue or blocked tasks", link: `/events/${ev.id}#playbook`, type: "navigate" },
-        });
-      } else if (totalRequired >= 5 && completedRequired / totalRequired >= 0.7) {
-        observations.push({
-          id: `strong-momentum-${ev.id}`,
-          kind: "fact",
-          priority: "low",
-          message: `${name} has no exceptions and is ${planning.metric ?? `${completedRequired}/${totalRequired}`} ready.`,
-          detail: du <= 30 ? "Everything is on track for the big day." : "Planning momentum looks strong.",
-          link: `/events/${ev.id}`,
-          actionLabel: "View Event →",
-        });
-      }
+  // P7 readiness is independent per event. Skip the whole window when the
+  // record surface's event is outside 90 days (or no event is in scope).
+  // Otherwise load supporting rows + every event's readiness in one
+  // Promise.all — same query volume as before, not sequential awaits.
+  if (planningCandidates.length > 0) {
+    const timelineQuery = (() => {
+      let q = supabase.from("timeline_entries").select("event_id, status").eq("venue_id", venueId).eq("owner", "venue");
+      if (scopedEventId) q = q.eq("event_id", scopedEventId);
+      return q;
+    })();
+    const threadQuery = (() => {
+      let q = supabase.from("message_threads").select("event_id, message_count").eq("venue_id", venueId);
+      if (scopedEventId) q = q.eq("event_id", scopedEventId);
+      return q;
+    })();
+    const clientRelQuery = (() => {
+      let q = supabase.from("clients").select("id, relationship_id").eq("venue_id", venueId).not("relationship_id", "is", null);
+      if (scopedClientId) q = q.eq("id", scopedClientId);
+      return q;
+    })();
+    const [timelineStatusRes, threadCountsRes, conversationMessageRes, clientRelationshipRes, readinessResults] = await Promise.all([
+      timelineQuery,
+      threadQuery,
+      supabase.from("conversation_messages").select("conversations!inner(relationship_id)").eq("venue_id", venueId),
+      clientRelQuery,
+      Promise.all(planningCandidates.map((ev) => computeEventTaskReadinessByKind(supabase, venueId, ev.id))),
+    ]);
+    const timelineByEvent = new Map<string, Pick<TimelineEntry, "status">[]>();
+    for (const r of (timelineStatusRes.data ?? []) as { event_id: string; status: TimelineEntry["status"] }[]) {
+      if (!r.event_id) continue;
+      const list = timelineByEvent.get(r.event_id) ?? [];
+      list.push({ status: r.status });
+      timelineByEvent.set(r.event_id, list);
+    }
+    const threadCountByEvent = new Map<string, number>();
+    for (const r of (threadCountsRes.data ?? []) as { event_id: string | null; message_count: number }[]) {
+      if (!r.event_id) continue;
+      threadCountByEvent.set(r.event_id, (threadCountByEvent.get(r.event_id) ?? 0) + r.message_count);
+    }
+    const relationshipIdByClientId = new Map<string, string>();
+    for (const c of (clientRelationshipRes.data ?? []) as { id: string; relationship_id: string | null }[]) {
+      if (c.relationship_id) relationshipIdByClientId.set(c.id, c.relationship_id);
+    }
+    const conversationMessageCountByRelationship = new Map<string, number>();
+    type ConversationMessageJoinRow = { conversations: { relationship_id: string | null } | { relationship_id: string | null }[] | null };
+    for (const r of (conversationMessageRes.data ?? []) as ConversationMessageJoinRow[]) {
+      const rel = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
+      if (!rel?.relationship_id) continue;
+      conversationMessageCountByRelationship.set(
+        rel.relationship_id, (conversationMessageCountByRelationship.get(rel.relationship_id) ?? 0) + 1,
+      );
     }
 
-    // Timeline — genuinely new coverage: the "events approaching" briefing
-    // above (≤21 days) already flags a missing timeline as a boolean; this
-    // reads real completion% for the wider 22-90 day window, where a large
-    // outstanding share is a real, worth-surfacing risk per
-    // docs/luv-platform-intelligence-architecture.md §1's Timeline section.
-    if (du > 21) {
-      const entries = timelineByEvent.get(ev.id) ?? [];
-      const timeline = computeTimelineReadiness(entries as unknown as TimelineEntry[]);
-      if (timeline.status === "waiting" && entries.length >= 5) {
-        const complete = entries.filter((e) => e.status === "complete").length;
-        if (complete / entries.length < 0.5) {
-          observations.push({
-            id: `timeline-attention-${ev.id}`,
-            kind: "risk",
-            priority: du <= 60 ? "medium" : "low",
-            message: `${name}'s day-of timeline is ${timeline.metric ?? `${complete}/${entries.length}`} complete with ${du} days to go.`,
-            link: `/events/${ev.id}#timeline`,
-            actionLabel: "View Timeline →",
-            recommendation: { label: "Review the timeline", link: `/events/${ev.id}#timeline`, type: "navigate" },
-          });
-        }
-      }
-    }
-
-    // Communication — genuinely new coverage: nothing today tells a
-    // coordinator an approaching event has zero logged contact. Combines
-    // legacy message_threads counts with conversation_messages counts
-    // (via the event's client → relationship) — RC2, Milestone 5: every
-    // venue now defaults onto Conversations, so a signal built from
-    // message_threads alone would increasingly under-report real activity
-    // as new messages stop landing there. This doesn't need
-    // computeCommunicationReadiness's fuller unread-aware logic (that
-    // needs a real per-message read state this venue-wide pass doesn't
-    // have) — "has any contact been logged at all" is a plain count.
-    if (du <= 30) {
+    planningCandidates.forEach((ev, index) => {
+      const readinessByKind = readinessResults[index];
       const relationshipId = ev.client_id ? relationshipIdByClientId.get(ev.client_id) : undefined;
       const totalMessageCount =
         (threadCountByEvent.get(ev.id) ?? 0) +
         (relationshipId ? conversationMessageCountByRelationship.get(relationshipId) ?? 0 : 0);
-      if (totalMessageCount === 0) {
-        observations.push({
-          id: `communication-none-${ev.id}`,
-          kind: "fact",
-          priority: "low",
-          message: `${name} is ${inDays(ev.event_date)} with no messages logged yet.`,
-          link: `/events/${ev.id}#messages`,
-          actionLabel: "View Event →",
-        });
-      }
-    }
+      observations.push(
+        ...buildPlanningWindowObservationsForEvent(
+          ev,
+          readinessByKind,
+          timelineByEvent.get(ev.id) ?? [],
+          totalMessageCount,
+        ),
+      );
+    });
   }
 
   // ── Upcoming tour appointments ───────────────────────────────────────────
@@ -773,14 +829,20 @@ export async function getLuvObservations(
   // Avoids duplicating observations already covered by specific patterns above.
 
   // Fetch leads with high or declining commitment for momentum observations
-  const { data: momentumLeads } = await onlyBusinessReporting(
-    supabase.from("leads")
-      .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
-      .eq("venue_id", venueId)
-      .not("sales_stage", "in", "(booked,lost)")
-      .order("commitment_score", { ascending: false })
-      .limit(20),
-  );
+  const { data: momentumLeads } = wantLead
+    ? await onlyBusinessReporting(
+      (() => {
+        let q = supabase.from("leads")
+          .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
+          .eq("venue_id", venueId)
+          .not("sales_stage", "in", "(booked,lost)")
+          .order("commitment_score", { ascending: false })
+          .limit(20);
+        if (scope?.leadId) q = q.eq("id", scope.leadId);
+        return q;
+      })(),
+    )
+    : { data: [] };
 
   // For leads with signals, compute interest
   if (momentumLeads?.length) {
@@ -905,13 +967,19 @@ export async function getLuvObservations(
   // ── Couple portal engagement signals ─────────────────────────────────────
   // Inactivity only — a login timestamp, not private planning content
   // (guest list momentum retired below; see that note for why).
-  const { data: portalSessions } = await supabase
-    .from("client_portal_sessions")
-    .select("client_id, last_accessed_at, clients(first_name, partner_first_name, lead_id)")
-    .eq("venue_id", venueId)
-    .not("last_accessed_at", "is", null)
-    .order("last_accessed_at", { ascending: false })
-    .limit(20);
+  const { data: portalSessions } = wantClient
+    ? await (() => {
+        let q = supabase
+          .from("client_portal_sessions")
+          .select("client_id, last_accessed_at, clients(first_name, partner_first_name, lead_id)")
+          .eq("venue_id", venueId)
+          .not("last_accessed_at", "is", null)
+          .order("last_accessed_at", { ascending: false })
+          .limit(20);
+        if (scopedClientId) q = q.eq("client_id", scopedClientId);
+        return q;
+      })()
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const sess of (portalSessions ?? []) as any[]) {
@@ -997,7 +1065,13 @@ export async function getLuvObservations(
   // dueDate/sourceFeature directly, matching
   // docs/luv-platform-reconciliation.md §7's own mapping of Request states
   // onto the six observation kinds.
-  const allRequests = await getRequests();
+  const allRequests = !isRecordScoped(scope)
+    ? await getRequests()
+    : scope?.eventId
+      ? await getRequests({ eventId: scope.eventId })
+      : scope?.clientId
+        ? await getRequests({ clientId: scope.clientId })
+        : [];
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
   for (const req of allRequests as PlatformRequest[]) {

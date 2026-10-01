@@ -279,7 +279,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // messages) are preserved — only the artificial full-wave wait is removed.
   // Venue-wide catalogs (packages/offerings/inventory) stay for a later slice;
   // Slice 3A scopes contracts (client|event, no content) + template metadata.
-  // Luv observation *content* is unchanged.
+  // Luv observations are record-scoped inside getContextualObservationsForRecord.
 
   // Slice 3B — scope invoices to this client OR event (same semantics as the
   // former venue-wide load + app-side filter).

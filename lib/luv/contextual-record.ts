@@ -1,6 +1,8 @@
 /**
  * Load L3 contextual observations for the record currently being viewed.
  * Reuses the shared Notice engine — no second intelligence path.
+ * Passes the viewed record as a scope so venue-wide Dashboard work does
+ * not block Client Workspace / lead / contract initial render.
  */
 
 import { createClient } from "@/integrations/supabase/server";
@@ -25,6 +27,6 @@ export async function getContextualObservationsForRecord(
 ): Promise<LuvObservation[]> {
   const supabase = await createClient();
   const today = venueToday(venueTimezone ?? null);
-  const all = await getLuvObservations(supabase, venueId, today).catch(() => [] as LuvObservation[]);
+  const all = await getLuvObservations(supabase, venueId, today, undefined, record).catch(() => [] as LuvObservation[]);
   return filterObservationsForRecord(all, record);
 }
