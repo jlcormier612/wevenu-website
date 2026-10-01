@@ -14,6 +14,14 @@ export const INTERNAL_NOTES_LABEL = "Internal notes";
 export const INTERNAL_NOTES_PRIVACY_HINT =
   "Private to your venue team — never visible to the client.";
 
+/**
+ * New Lead — the venue-typed notes field. Staff are not entering the
+ * customer's original inquiry unless that text arrived through a
+ * customer-originated intake path (website form, etc.).
+ */
+export const NEW_LEAD_INTERNAL_NOTES_HINT =
+  "Add notes from your calls, emails, or conversations with this lead. These notes are for your venue team only and are not shared with the client.";
+
 /** Contextual labels — the word Internal must remain visible. */
 export type InternalNotesScope =
   | "default"

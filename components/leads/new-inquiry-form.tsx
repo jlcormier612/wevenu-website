@@ -31,6 +31,10 @@ import {
 import type { DuplicateCandidate } from "@/lib/leads/duplicate-detection";
 import type { LeadErrors, LeadInput } from "@/lib/leads/types";
 import type { IdentityDecision } from "@/lib/identity/decision";
+import {
+  INTERNAL_NOTES_LABEL,
+  NEW_LEAD_INTERNAL_NOTES_HINT,
+} from "@/lib/notes/internal-notes-copy";
 
 function TextField({
   id, label, value, onChange, error, hint, type = "text",
@@ -284,9 +288,13 @@ export function NewInquiryForm({
           <TextField id="inquiryDate" label="Inquiry date" type="date" value={input.inquiryDate}
             onChange={(v) => set("inquiryDate", v)} />
         </div>
-        <Field label="Inquiry message" htmlFor="inquiryMessage">
+        <Field
+          label={INTERNAL_NOTES_LABEL}
+          htmlFor="inquiryMessage"
+          hint={NEW_LEAD_INTERNAL_NOTES_HINT}
+        >
           <Textarea id="inquiryMessage" value={input.inquiryMessage} rows={4}
-            placeholder="Capture the message or details they shared when they first contacted you."
+            placeholder="Private venue notes — not the customer's original inquiry."
             onChange={(e) => set("inquiryMessage", e.target.value)} />
         </Field>
       </div>

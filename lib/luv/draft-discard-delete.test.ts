@@ -8,6 +8,7 @@ import { describe, it } from "node:test";
 
 import type { LuvDraft } from "@/lib/luv/drafts";
 import {
+  applyDiscardResult,
   draftHistoryDrafts,
   pendingReviewDrafts,
   withDraftStatus,
@@ -67,6 +68,16 @@ describe("Luv draft discard = delete", () => {
     assert.equal(pendingReviewDrafts(before).length, 1);
     assert.equal(withoutDraft(before, "d1").length, 0);
   });
+
+  it("failed deletion reports an error and keeps the draft (applyDiscardResult)", () => {
+    const before = [draft({ id: "d1", status: "pending_review" })];
+    const next = applyDiscardResult(before, "d1", {
+      ok: false,
+      message: "Couldn't discard that draft. Please try again.",
+    });
+    assert.equal(next.drafts.length, 1);
+    assert.equal(next.error, "Couldn't discard that draft. Please try again.");
+  });
 });
 
 describe("deleteDraft service + action wiring", () => {
@@ -93,7 +104,8 @@ describe("deleteDraft service + action wiring", () => {
   it("Discard UI deletes then removes locally; failure keeps draft and toasts", () => {
     assert.match(panel, /deleteDraftAction\(draft\.id, leadId\)/);
     assert.match(panel, /withoutDraft/);
-    assert.match(panel, /Couldn't discard that draft|toast\.error\(result\.message/);
+    assert.match(panel, /applyDiscardResult/);
+    assert.match(panel, /toast\.error\(next\.error\)/);
     assert.doesNotMatch(panel, /updateDraftStatusAction\(draft\.id, leadId, "discarded"\)/);
     assert.doesNotMatch(panel, /withDraftStatus\(p, id, "discarded"\)/);
   });

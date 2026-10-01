@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   INTERNAL_NOTES_LABEL,
   INTERNAL_NOTES_PRIVACY_HINT,
+  NEW_LEAD_INTERNAL_NOTES_HINT,
   NOTES_FROM_YOUR_VENUE_HINT,
   NOTES_FROM_YOUR_VENUE_LABEL,
   internalNotesLabel,
@@ -29,6 +30,13 @@ describe("internal notes locked copy", () => {
       assert.match(internalNotesLabel(scope), /^Internal /);
     }
     assert.equal(internalNotesLabel("default"), INTERNAL_NOTES_LABEL);
+  });
+
+  it("New Lead hint is unmistakably venue-only", () => {
+    assert.match(NEW_LEAD_INTERNAL_NOTES_HINT, /venue team only/i);
+    assert.match(NEW_LEAD_INTERNAL_NOTES_HINT, /not shared with the client/i);
+    assert.doesNotMatch(NEW_LEAD_INTERNAL_NOTES_HINT, /original inquiry/i);
+    assert.doesNotMatch(NEW_LEAD_INTERNAL_NOTES_HINT, /they shared when they first contacted/i);
   });
 
   it("keeps customer-facing payment schedule copy distinct from Internal", () => {

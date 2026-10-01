@@ -17,6 +17,12 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  customerFacingInquiryMessage,
+  inquiryOriginFromTrustTier,
+  resolveDraftDeleteDecision,
+  type InquiryOrigin,
+} from "@/lib/luv/draft-context-boundary";
 import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { Lead } from "@/lib/leads/types";
@@ -35,6 +41,11 @@ export type LuvDraft = {
 export type FollowUpVerifiedFacts = {
   /** commercial_proposals.status = sent AND offered_at set */
   proposalSent: boolean;
+  /**
+   * Provenance of leads.inquiry_message. Default venue (fail closed):
+   * only "customer" may place the message in generation context.
+   */
+  inquiryOrigin?: InquiryOrigin;
 };
 
 type DraftRow = {
@@ -81,6 +92,8 @@ export function buildFollowUpPrompt(
     ? Math.floor((Date.now() - new Date(lead.inquiryDate).getTime()) / 86_400_000)
     : null;
   const pipelineStage = (lead.salesStage ?? lead.status).replace(/_/g, " ");
+  const origin: InquiryOrigin = verified.inquiryOrigin ?? "venue";
+  const customerMessage = customerFacingInquiryMessage(lead.inquiryMessage, origin);
 
   const verifiedLines: string[] = [];
   if (verified.proposalSent) {
@@ -89,6 +102,17 @@ export function buildFollowUpPrompt(
   const verifiedBlock = verifiedLines.length > 0
     ? `**Verified facts (actions proven in the system — you may state these):**\n${verifiedLines.join("\n")}`
     : "**Verified facts:** none for completed actions on this lead.";
+
+  const customerMessageBlock = customerMessage
+    ? `**Customer-originated inquiry (they wrote this — eligible for personalization, not for mechanical repetition):**
+- "${customerMessage}"
+
+**Judgment (both gates required before using any detail from that inquiry):**
+- GATE 1: Only use a detail if it is appropriate to say back to the customer in this email.
+- GATE 2: Only use a detail if a thoughtful coordinator would naturally mention it in this specific follow-up. If it would sound like staff banter, teasing, speculation, relationship commentary, or an awkward callback, omit it.
+- Prefer warm, natural, relevant, useful, restrained personalization. Do not force a callback. Do not repeat their message mechanically.
+`
+    : "";
 
   return `You are helping a venue coordinator at ${venueName} write a warm, personal follow-up email to a prospective client.
 
@@ -103,8 +127,8 @@ The coordinator signing the email is: ${ownerName ?? "the team at " + venueName}
 - Pipeline stage (venue workflow context; not proof that a document or message was sent): ${pipelineStage}
 ${daysSinceInquiry != null ? `- Days since initial inquiry: ${daysSinceInquiry}` : ""}
 ${daysSinceContact != null ? `- Days since last contact: ${daysSinceContact}` : ""}
-${lead.inquiryMessage ? `- Their original message: "${lead.inquiryMessage}"` : ""}
 
+${customerMessageBlock}
 ${verifiedBlock}
 
 **Tone:** ${luvToneInstruction(tone)}
@@ -117,6 +141,7 @@ ${verifiedBlock}
 - Do NOT be pushy, salesy, or use corporate/template-sounding language
 - The subject line should be friendly, not promotional
 - Do not tell the client that the venue has sent, completed, confirmed, received, or otherwise performed an action unless that action appears under Verified facts. Pipeline stage alone is not proof. In particular: do not say a proposal was sent merely because the lead is in proposal_sent; do not claim a contract/invoice was sent, a payment was received, a tour was confirmed, or a message was sent from workflow position alone.
+- Never invent or allude to venue-internal notes, staff observations, or operational commentary. Those are not in your context.
 
 Format your response EXACTLY as:
 Subject: [subject line]
@@ -175,6 +200,23 @@ async function loadProposalSentFact(
   });
 }
 
+async function loadInquiryOrigin(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadId: string,
+): Promise<InquiryOrigin> {
+  const { data } = await supabase
+    .from("lead_intake_attempts")
+    .select("trust_tier")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .eq("status", "accepted")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ trust_tier: string }>();
+  return inquiryOriginFromTrustTier(data?.trust_tier ?? null);
+}
+
 // ---- Public service functions ---------------------------------------------
 
 export async function generateFollowUpDraft(lead: Lead): Promise<
@@ -204,13 +246,16 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const proposalSent = await loadProposalSentFact(supabase, venue.id, lead.id);
+    const [proposalSent, inquiryOrigin] = await Promise.all([
+      loadProposalSentFact(supabase, venue.id, lead.id),
+      loadInquiryOrigin(supabase, venue.id, lead.id),
+    ]);
     const prompt = buildFollowUpPrompt(
       lead,
       venue.name,
       ownerName,
       settings.preferredTone,
-      { proposalSent },
+      { proposalSent, inquiryOrigin },
     );
     const raw = await generateDraftText(prompt);
     const { subject, body } = parseEmailDraft(raw);
@@ -228,6 +273,7 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
           leadStatus: lead.salesStage ?? lead.status,
           leadName: `${lead.firstName} ${lead.lastName}`,
           verifiedProposalSent: proposalSent,
+          inquiryOrigin,
         },
         status: "pending_review",
       })
@@ -289,12 +335,10 @@ export async function deleteDraft(
     .eq("id", draftId)
     .eq("venue_id", venue.id)
     .maybeSingle<{ id: string }>();
-  if (readError) {
-    console.error("[luv/drafts] deleteDraft read failed:", readError);
-    return { ok: false, message: "Couldn't discard that draft. Please try again." };
-  }
-  if (!existing) {
-    return { ok: false, message: "That draft is no longer available." };
+  const decision = resolveDraftDeleteDecision(existing, readError);
+  if (!decision.proceed) {
+    if (readError) console.error("[luv/drafts] deleteDraft read failed:", readError);
+    return { ok: false, message: decision.message };
   }
 
   const admin = createAdminClient();
@@ -311,6 +355,7 @@ export async function deleteDraft(
 }
 
 export {
+  applyDiscardResult,
   draftHistoryDrafts,
   draftStatusAfterSuccessfulSend,
   pendingReviewDrafts,

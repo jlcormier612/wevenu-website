@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  applyDiscardResult,
   draftHistoryDrafts,
   pendingReviewDrafts,
   withDraftStatus,
@@ -69,8 +70,9 @@ function DraftCard({
   function handleDiscard() {
     startDiscard(async () => {
       const result = await deleteDraftAction(draft.id, leadId);
-      if (!result.ok) {
-        toast.error(result.message ?? "Couldn't discard that draft. Please try again.");
+      const next = applyDiscardResult([draft], draft.id, result);
+      if (next.error) {
+        toast.error(next.error);
         return;
       }
       onDiscard(draft.id);

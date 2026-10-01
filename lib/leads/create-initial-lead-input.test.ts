@@ -18,15 +18,17 @@ describe("createInitialLeadInput inquiry date", () => {
     assert.equal(input.inquiryDate, "2026-09-22");
   });
 
-  it("defaults Inquiry message empty — not an Internal note", () => {
+  it("defaults the venue-typed notes field empty", () => {
     const input = createInitialLeadInput("America/New_York");
     assert.equal(input.inquiryMessage, "");
   });
 
-  it("New Lead form labels the field Inquiry message, not Message / notes", () => {
+  it("New Lead form labels the venue-typed field Internal notes", () => {
     const source = readFileSync(resolve("components/leads/new-inquiry-form.tsx"), "utf8");
-    assert.match(source, /label="Inquiry message"/);
-    assert.doesNotMatch(source, /Message \/ notes/);
+    assert.match(source, /INTERNAL_NOTES_LABEL/);
+    assert.match(source, /NEW_LEAD_INTERNAL_NOTES_HINT/);
+    assert.doesNotMatch(source, /label="Inquiry message"/);
+    assert.doesNotMatch(source, /details they shared when they first contacted you/);
     assert.match(source, /createInitialLeadInput\(venueTimezone\)/);
   });
 

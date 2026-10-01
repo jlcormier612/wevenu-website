@@ -60,7 +60,10 @@ describe("buildFollowUpPrompt — proposal factuality", () => {
   });
 
   it("preserves personalization fields", () => {
-    const prompt = buildFollowUpPrompt(lead(), "Jen's Fancy", "Jen", "warm", { proposalSent: false });
+    const prompt = buildFollowUpPrompt(lead(), "Jen's Fancy", "Jen", "warm", {
+      proposalSent: false,
+      inquiryOrigin: "customer",
+    });
     assert.match(prompt, /Alex and Jordan/);
     assert.match(prompt, /wedding/);
     assert.match(prompt, /2027-06-14/);

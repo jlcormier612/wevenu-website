@@ -53,3 +53,16 @@ export function withoutDraft<T extends DraftStatusRow>(
 ): T[] {
   return drafts.filter((d) => d.id !== draftId);
 }
+
+/**
+ * Discard UI: only remove locally after a successful delete.
+ * Failed deletion keeps the draft visible and surfaces the error.
+ */
+export function applyDiscardResult<T extends DraftStatusRow>(
+  drafts: T[],
+  draftId: string,
+  result: { ok: true } | { ok: false; message: string },
+): { drafts: T[]; error: string | null } {
+  if (!result.ok) return { drafts, error: result.message };
+  return { drafts: withoutDraft(drafts, draftId), error: null };
+}
