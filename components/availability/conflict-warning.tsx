@@ -111,7 +111,12 @@ export function ConflictWarning({
       onStatusChange?.(result.conflicts.some((c) => c.severity === "error"));
     }, 400);
 
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      // Sticky tourDateBlocked fix: clear hard-block when this warning unmounts
+      // (completed tour, walk-in, date cleared, or parent stops rendering it).
+      onStatusChange?.(false);
+    };
   }, [date, endDate, startTime, endTime, setupTime, teardownTime, spaceId, type, excludeId, excludeLeadId, purpose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!status || status.conflicts.length === 0) return null;

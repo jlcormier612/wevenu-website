@@ -7,6 +7,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { normalizeEventType } from "@/lib/event-types/canonical";
 import { identityRpcFields } from "@/lib/identity/decision";
 import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
+import type { ExistingLeadTour } from "@/lib/leads/relationship-tour";
 import { TourCapacityWriteError, tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import type {
@@ -42,11 +43,31 @@ export type LeadTourInfo = {
 
 export const EMPTY_TOUR: LeadTourInfo = { tourDate: null, tourTime: null, tourCompleted: false, tourNotes: null };
 
-type TourAppointmentRow = { lead_id?: string | null; scheduled_at: string; status: string; notes: string | null };
+type TourAppointmentRow = {
+  id?: string;
+  lead_id?: string | null;
+  scheduled_at: string | null;
+  actual_occurred_at?: string | null;
+  origin?: string | null;
+  status: string;
+  notes: string | null;
+};
 
 function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined, timezone: string | null): LeadTourInfo {
   if (!row) return EMPTY_TOUR;
-  const { date, time } = utcToVenueLocalParts(row.scheduled_at, timezone);
+  const clockIso =
+    row.origin === "walk_in" || !row.scheduled_at
+      ? row.actual_occurred_at
+      : row.scheduled_at;
+  if (!clockIso) {
+    return {
+      tourDate: null,
+      tourTime: null,
+      tourCompleted: row.status === "completed",
+      tourNotes: row.notes,
+    };
+  }
+  const { date, time } = utcToVenueLocalParts(clockIso, timezone);
   return {
     tourDate: date,
     tourTime: time,
@@ -55,18 +76,28 @@ function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined, tim
   };
 }
 
-/** The most recent non-cancelled tour appointment for a single lead. */
+type LeadTourRow = TourAppointmentRow & { id: string };
+
+/** Prefer occupying upcoming/confirmed over completed; then latest clock. */
+function pickCurrentTourRow(rows: LeadTourRow[]): LeadTourRow | null {
+  if (rows.length === 0) return null;
+  const occupying = rows.filter((r) => r.status === "scheduled" || r.status === "confirmed");
+  const pool = occupying.length > 0 ? occupying : rows;
+  const clock = (r: LeadTourRow) => r.scheduled_at ?? r.actual_occurred_at ?? "";
+  return [...pool].sort((a, b) => clock(b).localeCompare(clock(a)))[0] ?? null;
+}
+
+/** The most relevant non-cancelled tour appointment for a single lead. */
 export async function getCurrentTourForLead(client: DbClient, venueId: string, leadId: string): Promise<LeadTourInfo> {
   const [{ data }, timezone] = await Promise.all([
     client.from("tour_appointments")
-      .select("scheduled_at, status, notes")
+      .select("id, scheduled_at, actual_occurred_at, origin, status, notes")
       .eq("venue_id", venueId).eq("lead_id", leadId)
-      .neq("status", "cancelled")
-      .order("scheduled_at", { ascending: false })
-      .limit(1).maybeSingle<TourAppointmentRow>(),
+      .neq("status", "cancelled"),
     getVenueTimezone(client, venueId),
   ]);
-  return tourInfoFromAppointment(data, timezone);
+  const row = pickCurrentTourRow((data ?? []) as LeadTourRow[]);
+  return tourInfoFromAppointment(row, timezone);
 }
 
 /** Batch version for list views — one query for many leads instead of N+1. */
@@ -75,24 +106,172 @@ export async function getCurrentToursForLeads(client: DbClient, venueId: string,
   if (leadIds.length === 0) return map;
   const [{ data }, timezone] = await Promise.all([
     client.from("tour_appointments")
-      .select("lead_id, scheduled_at, status, notes")
+      .select("id, lead_id, scheduled_at, actual_occurred_at, origin, status, notes")
       .eq("venue_id", venueId).in("lead_id", leadIds)
-      .neq("status", "cancelled")
-      .order("scheduled_at", { ascending: false }),
+      .neq("status", "cancelled"),
     getVenueTimezone(client, venueId),
   ]);
-  for (const row of (data ?? []) as TourAppointmentRow[]) {
-    if (!row.lead_id || map.has(row.lead_id)) continue; // rows are ordered desc, so the first one seen per lead is the most recent
-    map.set(row.lead_id, tourInfoFromAppointment(row, timezone));
+  const byLead = new Map<string, LeadTourRow[]>();
+  for (const row of (data ?? []) as LeadTourRow[]) {
+    if (!row.lead_id) continue;
+    const list = byLead.get(row.lead_id) ?? [];
+    list.push(row);
+    byLead.set(row.lead_id, list);
+  }
+  for (const [leadId, rows] of byLead) {
+    map.set(leadId, tourInfoFromAppointment(pickCurrentTourRow(rows), timezone));
   }
   return map;
 }
 
+async function loadExistingLeadTour(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<ExistingLeadTour | null> {
+  const { data } = await client.from("tour_appointments")
+    .select("id, scheduled_at, actual_occurred_at, origin, status")
+    .eq("venue_id", venueId).eq("lead_id", leadId)
+    .neq("status", "cancelled");
+  const row = pickCurrentTourRow((data ?? []) as LeadTourRow[]);
+  if (!row) return null;
+  return {
+    id: row.id,
+    status: row.status,
+    scheduledAt: row.scheduled_at,
+    origin: row.origin ?? "scheduled",
+  };
+}
+
+async function venueTourDurationMinutes(client: DbClient, venueId: string): Promise<{ timezone: string | null; durationMinutes: number }> {
+  const { data: venueRow } = await client.from("venues")
+    .select("timezone, tour_duration_minutes")
+    .eq("id", venueId)
+    .maybeSingle<{ timezone: string | null; tour_duration_minutes: number | null }>();
+  const durationMinutes = Number(venueRow?.tour_duration_minutes);
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    throw new Error("This venue does not have a tour duration configured.");
+  }
+  return { timezone: venueRow?.timezone ?? null, durationMinutes };
+}
+
+export type LeadTourApplyResult =
+  | { ok: true }
+  | { ok: false; kind: "reject"; message: string }
+  | { ok: false; kind: "capacity"; message: string };
+
 /**
- * Create or update the lead's tour appointment from the relationship-card
- * form. A scheduled Tour requires both date and time — date-only is refused,
- * never stored as a fabricated noon timestamp. Clearing the date cancels the
- * existing appointment rather than deleting history.
+ * Apply a Relationship-card tour intent. Does not write follow-up fields.
+ * Future-schedule is the only path that enforces capacity.
+ */
+export async function applyLeadTourWrite(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  input: { tourDate: string; tourTime: string; tourCompleted: boolean; tourNotes: string },
+): Promise<LeadTourApplyResult> {
+  const existing = await loadExistingLeadTour(client, venueId, leadId);
+  const decision = resolveLeadTourWrite({ ...input, existing });
+
+  if (decision.action === "reject") {
+    return { ok: false, kind: "reject", message: decision.message };
+  }
+  if (decision.action === "noop") return { ok: true };
+
+  if (decision.action === "clear") {
+    if (existing && (existing.status === "scheduled" || existing.status === "confirmed")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client.from("tour_appointments") as any).update({ status: "cancelled" }).eq("id", existing.id);
+    }
+    return { ok: true };
+  }
+
+  const { timezone, durationMinutes } = await venueTourDurationMinutes(client, venueId);
+
+  if (decision.action === "future_schedule") {
+    const scheduledAt = venueLocalToUtcIso(decision.tourDate, decision.tourTime, timezone);
+    if (existing && (existing.status === "scheduled" || existing.status === "confirmed")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (client.from("tour_appointments") as any).update({
+        scheduled_at: scheduledAt,
+        duration_minutes: durationMinutes,
+        status: "scheduled",
+        notes: decision.notes || null,
+        origin: "scheduled",
+        completed_at: null,
+      }).eq("id", existing.id);
+      if (error) {
+        const fail = tourCapacityFailureFromUnknown(error);
+        if (fail) return { ok: false, kind: "capacity", message: fail.message };
+        throw error;
+      }
+      return { ok: true };
+    }
+    const { error } = await client.from("tour_appointments").insert({
+      venue_id: venueId,
+      lead_id: leadId,
+      scheduled_at: scheduledAt,
+      duration_minutes: durationMinutes,
+      status: "scheduled",
+      notes: decision.notes || null,
+      origin: "scheduled",
+    });
+    if (error) {
+      const fail = tourCapacityFailureFromUnknown(error);
+      if (fail) return { ok: false, kind: "capacity", message: fail.message };
+      throw error;
+    }
+    return { ok: true };
+  }
+
+  if (decision.action === "complete_scheduled") {
+    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    // Completion-state: never touch scheduled_at. No capacity check.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      actual_occurred_at: actualOccurredAt,
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  if (decision.action === "actual_only") {
+    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      actual_occurred_at: actualOccurredAt,
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  if (decision.action === "walk_in") {
+    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    // Walk-in MUST create a NEW row and never update an existing scheduled/confirmed appointment.
+    const { error } = await client.from("tour_appointments").insert({
+      venue_id: venueId,
+      lead_id: leadId,
+      scheduled_at: null,
+      actual_occurred_at: actualOccurredAt,
+      duration_minutes: durationMinutes,
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      notes: decision.notes || null,
+      origin: "walk_in",
+    });
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Thin wrapper for older call sites — prefer applyLeadTourWrite.
  */
 export async function upsertLeadTour(
   client: DbClient,
@@ -100,58 +279,10 @@ export async function upsertLeadTour(
   leadId: string,
   input: { tourDate: string; tourTime: string; tourCompleted: boolean; tourNotes: string },
 ): Promise<void> {
-  const { data: existing } = await client.from("tour_appointments")
-    .select("id").eq("venue_id", venueId).eq("lead_id", leadId)
-    .neq("status", "cancelled")
-    .order("scheduled_at", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
-
-  const decision = resolveLeadTourWrite(input);
-  if (decision.action === "reject") {
-    throw new LeadTourWriteError(decision.message);
-  }
-  if (decision.action === "clear") {
-    if (existing) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client.from("tour_appointments") as any).update({ status: "cancelled" }).eq("id", existing.id);
-    }
-    return;
-  }
-
-  const { data: venueRow } = await client.from("venues")
-    .select("timezone, tour_duration_minutes")
-    .eq("id", venueId)
-    .maybeSingle<{ timezone: string | null; tour_duration_minutes: number | null }>();
-  const timezone = venueRow?.timezone ?? null;
-  const durationMinutes = Number(venueRow?.tour_duration_minutes);
-  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-    throw new Error("This venue does not have a tour duration configured.");
-  }
-  const scheduledAt = venueLocalToUtcIso(decision.tourDate, decision.tourTime, timezone);
-  const status = input.tourCompleted ? "completed" : "scheduled";
-  const completedAt = input.tourCompleted ? new Date().toISOString() : null;
-
-  if (existing) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (client.from("tour_appointments") as any).update({
-      scheduled_at: scheduledAt, duration_minutes: durationMinutes, status,
-      notes: input.tourNotes.trim() || null, completed_at: completedAt,
-    }).eq("id", existing.id);
-    if (error) {
-      const fail = tourCapacityFailureFromUnknown(error);
-      if (fail) throw new TourCapacityWriteError(fail.code, fail.message);
-      throw error;
-    }
-  } else {
-    const { error } = await client.from("tour_appointments").insert({
-      venue_id: venueId, lead_id: leadId, scheduled_at: scheduledAt,
-      duration_minutes: durationMinutes, status,
-      notes: input.tourNotes.trim() || null, completed_at: completedAt,
-    });
-    if (error) {
-      const fail = tourCapacityFailureFromUnknown(error);
-      if (fail) throw new TourCapacityWriteError(fail.code, fail.message);
-      throw error;
-    }
+  const result = await applyLeadTourWrite(client, venueId, leadId, input);
+  if (!result.ok) {
+    if (result.kind === "reject") throw new LeadTourWriteError(result.message);
+    throw new TourCapacityWriteError("tour_at_capacity", result.message);
   }
 }
 
@@ -715,20 +846,28 @@ export async function setPlannedEventSpace(
 
 /**
  * Update the relationship-management fields (next action, follow-up, tour,
- * etc.). Tour fields no longer write to the leads table directly — they
- * upsert the lead's canonical tour_appointments row instead (Program 2
- * Phase 1a), so a manually-scheduled tour and a publicly-booked one are the
- * same kind of record regardless of entry point.
+ * etc.). Follow-up fields always persist when valid. Tour scheduling is a
+ * separate intent: capacity failure returns a structured tour conflict and
+ * does not roll back the follow-up write. Date-only remains a tour reject
+ * before either write.
  */
 export async function updateRelationshipFields(
   client: DbClient,
   venueId: string,
   leadId: string,
   input: RelationshipInput,
-): Promise<void> {
-  const tourDecision = resolveLeadTourWrite(input);
-  if (tourDecision.action === "reject") {
-    throw new LeadTourWriteError(tourDecision.message);
+): Promise<{ tourConflict?: { message: string } }> {
+  // Date-only is a tour rejection — refuse before any write (locked E5).
+  const previewExisting = await loadExistingLeadTour(client, venueId, leadId);
+  const preview = resolveLeadTourWrite({
+    tourDate: input.tourDate,
+    tourTime: input.tourTime,
+    tourCompleted: input.tourCompleted,
+    tourNotes: input.tourNotes,
+    existing: previewExisting,
+  });
+  if (preview.action === "reject") {
+    throw new LeadTourWriteError(preview.message);
   }
 
   const { error } = await client
@@ -743,10 +882,19 @@ export async function updateRelationshipFields(
     .eq("venue_id", venueId);
   if (error) throw error;
 
-  await upsertLeadTour(client, venueId, leadId, {
-    tourDate: input.tourDate, tourTime: input.tourTime,
-    tourCompleted: input.tourCompleted, tourNotes: input.tourNotes,
+  const tourResult = await applyLeadTourWrite(client, venueId, leadId, {
+    tourDate: input.tourDate,
+    tourTime: input.tourTime,
+    tourCompleted: input.tourCompleted,
+    tourNotes: input.tourNotes,
   });
+  if (!tourResult.ok) {
+    if (tourResult.kind === "reject") {
+      throw new LeadTourWriteError(tourResult.message);
+    }
+    return { tourConflict: { message: tourResult.message } };
+  }
+  return {};
 }
 
 /** Outstanding relationship action only — does not touch tour or last contacted. */

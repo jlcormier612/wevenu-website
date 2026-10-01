@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
+import { tourDisplayClockIso } from "@/lib/tours/list-order";
 import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -250,8 +251,9 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
   const [pending, setPending] = React.useState(false);
   const [requestPreview, setRequestPreview] = React.useState<TourCustomerSendPreview | null>(null);
   const meta = STATUS_META[appt.status];
-  const d = new Date(appt.scheduledAt);
-  const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone);
+  const clockIso = tourDisplayClockIso(appt);
+  const d = clockIso ? new Date(clockIso) : new Date(0);
+  const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(clockIso ?? new Date(0).toISOString(), venueTimezone);
   const isActive = appt.status === "scheduled" || appt.status === "confirmed";
   const isPast = d.getTime() < new Date(now).getTime();
 
@@ -352,7 +354,11 @@ export function TourPanel({ leadId, tourAppointments, now, venueTimezone = null 
   function openSchedule() { setRescheduleId(null); setInstanceKey((k) => k + 1); setSheetOpen(true); }
   function openReschedule(id: string) { setRescheduleId(id); setInstanceKey((k) => k + 1); setSheetOpen(true); }
 
-  const sorted = [...tourAppointments].sort((a, b) => (a.scheduledAt < b.scheduledAt ? 1 : -1));
+  const sorted = [...tourAppointments].sort((a, b) => {
+    const ac = tourDisplayClockIso(a) ?? "";
+    const bc = tourDisplayClockIso(b) ?? "";
+    return ac < bc ? 1 : ac > bc ? -1 : 0;
+  });
 
   return (
     <div className="mt-4">

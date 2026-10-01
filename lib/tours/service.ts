@@ -49,33 +49,60 @@ export async function getTourCalendarEntries(
   const nextIso = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
   const windowEnd = venueLocalToUtcIso(nextIso, "00:00", tz);
 
-  const { data } = await client.from("tour_appointments")
-      .select("id, scheduled_at, status, lead_id, event_type, leads(first_name, last_name, partner_first_name)")
+  const select =
+    "id, scheduled_at, actual_occurred_at, origin, status, lead_id, event_type, contact_name, leads(first_name, last_name, partner_first_name)";
+
+  // Scheduled/confirmed/completed rows render from scheduled_at.
+  // Walk-ins (scheduled_at null) render from actual_occurred_at — one item per row.
+  const [{ data: scheduledRows }, { data: walkInRows }] = await Promise.all([
+    client.from("tour_appointments")
+      .select(select)
       .eq("venue_id", venueId)
       .eq("is_archived", false)
       .not("status", "in", "(cancelled,no_show)")
+      .not("scheduled_at", "is", null)
       .gte("scheduled_at", windowStart)
-      .lt("scheduled_at", windowEnd);
+      .lt("scheduled_at", windowEnd),
+    client.from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venueId)
+      .eq("is_archived", false)
+      .eq("origin", "walk_in")
+      .is("scheduled_at", null)
+      .not("status", "in", "(cancelled,no_show)")
+      .gte("actual_occurred_at", windowStart)
+      .lt("actual_occurred_at", windowEnd),
+  ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((t) => {
+  const seen = new Set<string>();
+  const rows: any[] = [];
+  for (const t of [...(scheduledRows ?? []), ...(walkInRows ?? [])] as any[]) {
+    if (seen.has(t.id)) continue;
+    seen.add(t.id);
+    rows.push(t);
+  }
+
+  return rows.map((t) => {
     const lead = t.leads as { first_name: string; last_name: string; partner_first_name: string | null } | null;
     const name = lead
       ? [lead.first_name, lead.last_name].join(" ") + (lead.partner_first_name ? ` & ${lead.partner_first_name}` : "")
       : (t.contact_name ?? "Unknown");
-    // Venue-local, not the UTC wall clock the stored timestamptz would give
-    // if extracted directly — a tour booked for 10:00 America/New_York
-    // correctly stores as 14:00 UTC; displaying "14:00" without converting
-    // back was the actual bug.
-    const { date, time } = utcToVenueLocalParts(t.scheduled_at as string, tz);
+    const clockIso =
+      t.origin === "walk_in" || !t.scheduled_at
+        ? (t.actual_occurred_at as string)
+        : (t.scheduled_at as string);
+    const { date, time } = utcToVenueLocalParts(clockIso, tz);
+    const walkIn = t.origin === "walk_in";
     return {
       id: `tour-${t.id}`,
       type: "tour",
       date,
       title: `Venue Tour — ${name}`,
-      subtitle: [t.status === "completed" ? "Completed" : null, t.event_type ? eventTypeLabel(t.event_type) : null]
-        .filter(Boolean)
-        .join(" · ") || null,
+      subtitle: [
+        walkIn ? "Walk-in" : null,
+        t.status === "completed" ? "Completed" : null,
+        t.event_type ? eventTypeLabel(t.event_type) : null,
+      ].filter(Boolean).join(" · ") || null,
       time,
       link: t.lead_id ? `/leads/${t.lead_id}` : "/tours",
     };
@@ -467,14 +494,19 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
       .order("scheduled_at", { ascending: false })
       .limit(50),
   ]);
-  const data = [...(upcomingRows ?? []), ...(completedRows ?? []), ...(overdueRows ?? [])];
-  // The Tours list showed "Unknown" for appointments whose own
-  // contact_name column was never populated (e.g. booked before that
-  // column was consistently filled in) even though the linked Lead's name
-  // was right there — the query already joined it, mapAppointment just
-  // never read it. Same name the Lead's own page already shows.
+  // Completed/walk-in history: sort by actual occurrence when scheduled_at is null.
+  const completedSorted = (completedRows ?? []).slice().sort((a: any, b: any) => {
+    const ac = a.actual_occurred_at ?? a.scheduled_at ?? "";
+    const bc = b.actual_occurred_at ?? b.scheduled_at ?? "";
+    return bc.localeCompare(ac);
+  });
+  const merged = [
+    ...(upcomingRows ?? []),
+    ...completedSorted,
+    ...(overdueRows ?? []),
+  ];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map(enrichAppointmentContact);
+  return (merged as any[]).map(enrichAppointmentContact);
 }
 
 /** Archived Tours workspace section — recoverable history, not reporting exclusion. */
@@ -573,7 +605,9 @@ function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
     id: r.id,
     venueId: r.venue_id,
     leadId: r.lead_id ?? null,
-    scheduledAt: r.scheduled_at,
+    scheduledAt: r.scheduled_at ?? null,
+    actualOccurredAt: r.actual_occurred_at ?? null,
+    origin: r.origin === "walk_in" ? "walk_in" : "scheduled",
     durationMinutes: r.duration_minutes,
     status: r.status,
     contactName: r.contact_name ?? null,

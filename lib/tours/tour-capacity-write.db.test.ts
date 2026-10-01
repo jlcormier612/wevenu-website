@@ -16,6 +16,7 @@ const CORRECTION = resolve("supabase/migrations/20261320000000_availability_corr
 const RECURRENCE = resolve("supabase/migrations/20261321000000_calendar_block_recurrence_coverage.sql");
 const ATOMICITY = resolve("supabase/migrations/20261322000000_tour_booking_atomicity.sql");
 const TOUR_EVENT_OVERLAP = resolve("supabase/migrations/20261404300000_allow_tours_during_booked_events.sql");
+const TWO_CLOCK = resolve("supabase/migrations/20261410400000_tour_two_clock_schema.sql");
 const CASES = resolve("lib/tours/tour-capacity-write.db.sql");
 
 function psql(args: string[], extra?: { timeoutMs?: number }): { status: number | null; stdout: string; stderr: string } {
@@ -62,6 +63,7 @@ function applyTourMigrations(): void {
   applySql(RECURRENCE);
   applySql(ATOMICITY);
   applySql(TOUR_EVENT_OVERLAP);
+  applySql(TWO_CLOCK);
 }
 
 function runPsql(sql: string): Promise<{ status: number | null; stdout: string; stderr: string }> {
@@ -77,10 +79,19 @@ function runPsql(sql: string): Promise<{ status: number | null; stdout: string; 
   });
 }
 
+function deleteVenueFixture(venueId: string, ownerId: string): string {
+  // Builtin schedule-item seed rows otherwise block venue delete.
+  return `
+    alter table public.venue_schedule_item_types disable trigger venue_schedule_item_types_no_builtin_delete;
+    delete from public.venues where id = '${venueId}';
+    alter table public.venue_schedule_item_types enable trigger venue_schedule_item_types_no_builtin_delete;
+    delete from auth.users where id = '${ownerId}';
+  `;
+}
+
 function setupVenue(venueId: string, ownerId: string, email: string): void {
   const setup = psql(["-c", `
-    delete from public.venues where id = '${venueId}';
-    delete from auth.users where id = '${ownerId}';
+    ${deleteVenueFixture(venueId, ownerId)}
     insert into auth.users (
       instance_id, id, aud, role, email, encrypted_password,
       email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -101,10 +112,7 @@ function setupVenue(venueId: string, ownerId: string, email: string): void {
 }
 
 function cleanupVenue(venueId: string, ownerId: string): void {
-  psql(["-c", `
-    delete from public.venues where id = '${venueId}';
-    delete from auth.users where id = '${ownerId}';
-  `]);
+  psql(["-c", deleteVenueFixture(venueId, ownerId)]);
 }
 
 describe("tour capacity live database", () => {

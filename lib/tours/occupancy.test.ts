@@ -108,12 +108,14 @@ describe("evaluateTourCapacity", () => {
     assert.equal(result.ok, true);
   });
 
-  it("ignores cancelled, completed, and no-show tours", () => {
+  it("ignores cancelled, completed, no-show, and null-schedule tours", () => {
     assert.equal(occupyingTour("cancelled"), false);
     assert.equal(occupyingTour("completed"), false);
     assert.equal(occupyingTour("no_show"), false);
     assert.equal(occupyingTour("scheduled"), true);
     assert.equal(occupyingTour("confirmed"), true);
+    assert.equal(occupyingTour("scheduled", null), false);
+    assert.equal(occupyingTour("confirmed", null), false);
     const result = evaluateTourCapacity({
       rules: { maxSimultaneousTours: 1 },
       existing: [tour({ id: "a", scheduledAtMs: TEN, status: "completed" })],

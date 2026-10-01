@@ -21,6 +21,8 @@ function appt(
   return {
     venueId: "v",
     leadId: "lead-1",
+    actualOccurredAt: null,
+    origin: "scheduled",
     durationMinutes: 60,
     contactName: "Wilma",
     contactEmail: "wilma@example-customer.com",

@@ -102,7 +102,10 @@ export function RelationshipCard({
   // way it already does for event creation, not just show an ignorable
   // advisory (Scheduling Release Readiness Phase 1).
   const [tourDateBlocked, setTourDateBlocked] = React.useState(false);
+  const [tourConflictMessage, setTourConflictMessage] = React.useState<string | null>(null);
   const tourDateOnly = Boolean(input.tourDate.trim() && !input.tourTime.trim());
+  // Hard Save disable only for future-schedule blocks (not completed/walk-in/actual-only).
+  const futureScheduleHardBlock = tourDateBlocked && !input.tourCompleted;
   const [nextActionMode, setNextActionMode] = React.useState<"preset" | "custom">(() =>
     (NEXT_ACTION_PRESETS as readonly string[]).includes(lead.nextActionText ?? "") || !lead.nextActionText
       ? "preset"
@@ -114,6 +117,10 @@ export function RelationshipCard({
 
   function set<K extends keyof RelationshipInput>(key: K, value: RelationshipInput[K]) {
     setInput((p) => ({ ...p, [key]: value }));
+    if (key === "tourCompleted" && value === true) {
+      setTourDateBlocked(false);
+      setTourConflictMessage(null);
+    }
   }
 
   function handleCancel() {
@@ -174,13 +181,21 @@ export function RelationshipCard({
     }
     startTransition(async () => {
       const hints = {
-        tourScheduled: input.tourDate !== prev.current.tourDate && !!input.tourDate && !!input.tourTime.trim(),
+        tourScheduled: input.tourDate !== prev.current.tourDate && !!input.tourDate && !!input.tourTime.trim() && !input.tourCompleted,
         followUpSet: input.followUpDate !== prev.current.followUpDate && !!input.followUpDate,
         contactedSet: input.lastContactedAt !== prev.current.lastContactedAt && !!input.lastContactedAt,
       };
       const result = await updateRelationshipAction(lead.id, input, hints);
       if (result.ok) {
         prev.current = { ...input };
+        if (result.tourConflict) {
+          setTourConflictMessage(result.tourConflict.message);
+          toast.success("Follow-up details saved.");
+          toast.error(result.tourConflict.message);
+          // Keep editing open so the tour conflict stays visible inline.
+          return;
+        }
+        setTourConflictMessage(null);
         setEditing(false);
         toast.success("Follow-up details saved.");
       } else {
@@ -218,7 +233,7 @@ export function RelationshipCard({
               <Button type="button" variant="ghost" size="sm" onClick={handleCancel} disabled={pending}>
                 Cancel
               </Button>
-              <Button type="button" size="sm" disabled={pending || tourDateBlocked || tourDateOnly} onClick={handleSave}>
+              <Button type="button" size="sm" disabled={pending || futureScheduleHardBlock || tourDateOnly} onClick={handleSave}>
                 {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
               </Button>
             </div>
@@ -435,6 +450,9 @@ export function RelationshipCard({
               </div>
               {tourDateOnly ? (
                 <p className="text-xs text-destructive">A tour time is required to schedule a venue tour. Clear the date to remove a scheduled tour.</p>
+              ) : null}
+              {tourConflictMessage ? (
+                <p className="text-xs text-destructive" role="alert">{tourConflictMessage}</p>
               ) : null}
               {input.tourDate && input.tourTime && !input.tourCompleted && (
                 <ConflictWarning date={input.tourDate} startTime={input.tourTime} type="tour" excludeId={lead.id} excludeLeadId={lead.id} onStatusChange={setTourDateBlocked} />

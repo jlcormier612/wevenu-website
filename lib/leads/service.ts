@@ -9,7 +9,6 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
 import { LeadTourWriteError, TOUR_TIME_REQUIRED } from "@/lib/leads/relationship-tour";
-import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   CreateLeadResult,
@@ -1092,23 +1091,19 @@ export async function updateRelationshipFields(
   activityHints: { tourScheduled?: boolean; followUpSet?: boolean; contactedSet?: boolean },
 ): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    let tourConflict: { message: string } | undefined;
     try {
-      await repo.updateRelationshipFields(supabase, venueId, leadId, input);
+      const outcome = await repo.updateRelationshipFields(supabase, venueId, leadId, input);
+      tourConflict = outcome.tourConflict;
     } catch (err) {
       if (err instanceof LeadTourWriteError) {
         return { ok: false, message: err.message || TOUR_TIME_REQUIRED } as LeadActionResult;
       }
-      const fail = tourCapacityFailureFromUnknown(err);
-      if (fail) {
-        return {
-          ok: false,
-          message: "That time is no longer available. Please choose another time.",
-        } as LeadActionResult;
-      }
       throw err;
     }
     // Log specific meaningful events rather than a generic "updated".
-    if (activityHints.tourScheduled && input.tourDate && input.tourTime) {
+    // Tour capacity conflict still saved follow-up — do not invent a tour_scheduled activity.
+    if (!tourConflict && activityHints.tourScheduled && input.tourDate && input.tourTime) {
       const { formatDate } = await import("@/lib/leads/constants");
       await repo.insertActivity(supabase, venueId, leadId, "tour_scheduled",
         `Tour scheduled for ${formatDate(input.tourDate)}`);
@@ -1123,7 +1118,7 @@ export async function updateRelationshipFields(
       await repo.insertActivity(supabase, venueId, leadId, "relationship_updated",
         "Relationship details updated");
     }
-    return { ok: true } as LeadActionResult;
+    return { ok: true, tourConflict } as LeadActionResult;
   });
   return result as LeadActionResult;
 }

@@ -72,10 +72,15 @@ function TourRow({
   const [outcome, setOutcome] = React.useState<string>(appt.outcome ?? "");
   const [notes, setNotes] = React.useState(appt.notes ?? "");
   const [savingOutcome, setSavingOutcome] = React.useState(false);
-  const { timeLabel } = formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone);
-  const venueParts = utcToVenueLocalParts(appt.scheduledAt, venueTimezone);
-  const dayNum = Number(venueParts.date.slice(8, 10));
-  const monthShort = new Date(`${venueParts.date}T12:00:00`).toLocaleDateString("en-US", { month: "short" });
+  const clockIso = appt.scheduledAt ?? appt.actualOccurredAt;
+  const { timeLabel } = formatVenueLocalTourDisplay(clockIso ?? "", venueTimezone);
+  const venueParts = clockIso
+    ? utcToVenueLocalParts(clockIso, venueTimezone)
+    : { date: "", time: "" };
+  const dayNum = venueParts.date ? Number(venueParts.date.slice(8, 10)) : 0;
+  const monthShort = venueParts.date
+    ? new Date(`${venueParts.date}T12:00:00`).toLocaleDateString("en-US", { month: "short" })
+    : "";
   const deleteGuard = canHardDeleteTourAppointment(appt);
   const displayName = appt.contactName ?? "Unknown";
 
@@ -206,6 +211,9 @@ function TourRow({
             <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[appt.status] === "amber" ? "border-amber-300 text-amber-700 bg-amber-50" : STATUS_COLORS[appt.status] === "green" ? "border-green-300 text-green-700 bg-green-50" : "border-border text-muted-foreground"}`}>
               {STATUS_LABELS[appt.status]}
             </Badge>
+            {appt.origin === "walk_in" && (
+              <Badge variant="outline" className="text-[10px] shrink-0 border-border text-muted-foreground">Walk-in</Badge>
+            )}
             {archivedView && (
               <Badge variant="muted" className="text-[10px] shrink-0">{LIBRARY_LABELS.archived}</Badge>
             )}

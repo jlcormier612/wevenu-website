@@ -80,7 +80,11 @@ export type TourAppointment = {
   id: string;
   venueId: string;
   leadId: string | null;
-  scheduledAt: string;
+  /** Null only for genuine walk-ins (origin=walk_in). */
+  scheduledAt: string | null;
+  /** When the tour actually occurred; never overwrites scheduledAt. */
+  actualOccurredAt: string | null;
+  origin: "scheduled" | "walk_in";
   durationMinutes: number;
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
   contactName: string | null;

@@ -194,7 +194,7 @@ export type TaskInput = {
 };
 
 export type LeadActionResult =
-  | { ok: true }
+  | { ok: true; tourConflict?: { message: string } }
   | { ok: false; errors?: LeadErrors; message?: string };
 
 export type CreateLeadResult =

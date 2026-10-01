@@ -2,22 +2,32 @@
  * Venue Tours page list ordering.
  *
  * Upcoming scheduled activities: soonest first (scheduled_at ascending).
- * Past: most recently past first (scheduled_at descending).
+ * Past: most recently past first (display clock descending).
  * Archived tours are excluded from Upcoming/Past (list hygiene).
+ * Walk-ins (null scheduled_at) are never upcoming — they render via actual_occurred_at in Past.
  *
  * Do not reuse for Inbox (most-recent activity) or conversation messages
  * (newest-first within a thread) — those have different semantics.
  */
 import type { TourAppointment } from "@/lib/tours/types";
 
+/** Calendar/list display clock: scheduled position, else walk-in actual occurrence. */
+export function tourDisplayClockIso(a: TourAppointment): string | null {
+  if (a.scheduledAt) return a.scheduledAt;
+  return a.actualOccurredAt;
+}
+
 export function compareTourScheduledAtAsc(a: TourAppointment, b: TourAppointment): number {
-  if (a.scheduledAt < b.scheduledAt) return -1;
-  if (a.scheduledAt > b.scheduledAt) return 1;
+  const ac = tourDisplayClockIso(a) ?? "";
+  const bc = tourDisplayClockIso(b) ?? "";
+  if (ac < bc) return -1;
+  if (ac > bc) return 1;
   return 0;
 }
 
 export function isUpcomingTourAppointment(a: TourAppointment, now: Date): boolean {
   if (a.isArchived) return false;
+  if (!a.scheduledAt) return false;
   return (
     a.status !== "cancelled" &&
     a.status !== "completed" &&
@@ -28,11 +38,10 @@ export function isUpcomingTourAppointment(a: TourAppointment, now: Date): boolea
 
 export function isPastTourAppointment(a: TourAppointment, now: Date): boolean {
   if (a.isArchived) return false;
-  return (
-    a.status === "completed" ||
-    a.status === "no_show" ||
-    (a.status !== "cancelled" && new Date(a.scheduledAt) < now)
-  );
+  if (a.status === "completed" || a.status === "no_show") return true;
+  if (a.status === "cancelled") return false;
+  if (!a.scheduledAt) return Boolean(a.actualOccurredAt);
+  return new Date(a.scheduledAt) < now;
 }
 
 export function partitionTourAppointmentsForVenueList(

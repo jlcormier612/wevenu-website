@@ -15,6 +15,8 @@ function appt(
   return {
     venueId: "v",
     leadId: null,
+    actualOccurredAt: null,
+    origin: "scheduled",
     durationMinutes: 60,
     contactName: null,
     contactEmail: null,
