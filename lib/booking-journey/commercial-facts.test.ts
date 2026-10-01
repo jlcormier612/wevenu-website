@@ -37,6 +37,85 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
 }
 
 describe("commercial artifact states", () => {
+  it("venue-created selection is Selected internally even when accepted or tokened", () => {
+    const draft = describeCommercialFacts({
+      selection: selection(),
+      proposal: null,
+      contract: null,
+      paymentLines: [],
+    }).find((row) => row.key === "package");
+    assert.equal(draft?.detail, "Selected internally · Not yet shared");
+
+    const accepted = describeCommercialFacts({
+      selection: selection({ status: "accepted", acceptedAt: "2026-10-01T18:00:00.000Z", acceptToken: "path-b-tok" }),
+      proposal: null,
+      contract: null,
+      paymentLines: [],
+    }).find((row) => row.key === "package");
+    assert.equal(accepted?.detail, "Selected internally");
+    assert.doesNotMatch(accepted?.detail ?? "", /couple/i);
+  });
+
+  it("proposal-approved selection is Selected by the couple via proposal_id", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({
+        proposalId: "prop-1",
+        status: "accepted",
+        acceptedAt: "2026-10-01T18:00:00.000Z",
+        acceptToken: null,
+      }),
+      proposal: {
+        id: "prop-1",
+        status: "approved",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: "sel-1",
+      },
+      contract: null,
+      paymentLines: [],
+    });
+    const pkg = facts.find((row) => row.key === "package");
+    const proposal = facts.find((row) => row.key === "proposal");
+    assert.equal(pkg?.detail, "Selected by the couple");
+    assert.doesNotMatch(pkg?.detail ?? "", /internally/i);
+    assert.equal(proposal?.state, "Approved");
+    assert.match(proposal?.detail ?? "", /from their choice/);
+  });
+
+  it("chosen-but-not-approved proposal does not claim the package was selected by the couple", () => {
+    const none = describeCommercialFacts({
+      selection: null,
+      proposal: {
+        id: "prop-1",
+        status: "selected",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: null,
+      },
+      contract: null,
+      paymentLines: [],
+    });
+    assert.equal(none.find((row) => row.key === "package")?.state, "Not selected");
+    assert.equal(none.find((row) => row.key === "proposal")?.state, "Option chosen");
+    assert.match(none.find((row) => row.key === "proposal")?.detail ?? "", /approve their selection/);
+
+    const priorVenue = describeCommercialFacts({
+      selection: selection(),
+      proposal: {
+        id: "prop-1",
+        status: "selected",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: null,
+      },
+      contract: null,
+      paymentLines: [],
+    });
+    assert.equal(priorVenue.find((row) => row.key === "package")?.detail, "Selected internally · Not yet shared");
+    assert.doesNotMatch(priorVenue.find((row) => row.key === "package")?.detail ?? "", /couple/i);
+    assert.equal(priorVenue.find((row) => row.key === "proposal")?.state, "Option chosen");
+  });
+
   it("direct package selection does not invent a Proposal row", () => {
     const facts = describeCommercialFacts({
       selection: selection(),

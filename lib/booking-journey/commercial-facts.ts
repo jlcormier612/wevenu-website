@@ -52,6 +52,17 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
     };
   }
   const price = `${selection.name} · ${formatCurrency(selection.totalAmount)}`;
+  // Provenance is commercial_selections.proposal_id — stamped only by
+  // approve_commercial_proposal. Venue create/bump never sets it.
+  // Do not infer couple choice from acceptToken or offered/accepted status.
+  if (selection.proposalId) {
+    return {
+      key: "package",
+      title: "Selected Package",
+      state: price,
+      detail: "Selected by the couple",
+    };
+  }
   const shared = selection.status === "offered" || selection.status === "accepted" || Boolean(selection.acceptToken);
   return {
     key: "package",
