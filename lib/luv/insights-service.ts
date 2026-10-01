@@ -1,5 +1,6 @@
 import { createClient } from "@/integrations/supabase/server";
 import type { LuvObservation } from "@/lib/luv/types";
+import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 import type { RawInsightRow } from "./insights-types";
 
 // Work Package R2 — points at the new Reporting destination that actually
@@ -20,9 +21,12 @@ const INSIGHT_ACTION_LABELS: Record<string, string> = {
 export async function getVenueInsights(): Promise<RawInsightRow[] | null> {
   try {
     const supabase = await createClient();
-    await supabase.rpc("compute_venue_insights");
-    const { data, error } = await supabase.rpc("get_venue_insights");
+    await forensicTime("insights_compute_rpc", () => supabase.rpc("compute_venue_insights"));
+    const { data, error } = await forensicTime("insights_get_rpc", () =>
+      supabase.rpc("get_venue_insights"),
+    );
     if (error || !data) return null;
+    forensicCount("insights_rpc_rows", Array.isArray(data) ? data.length : 0);
     return data as RawInsightRow[];
   } catch {
     return null;

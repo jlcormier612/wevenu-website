@@ -9,6 +9,7 @@ import { getCanonicallyBookedClientIds } from "@/lib/booking-journey/canonical-b
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { clientListFilterHref } from "@/lib/clients/list-filters";
+import { forensicTime } from "@/lib/dashboard/forensic-timing";
 import {
   isOpenLeadLifecycle,
   isOpenLeadOpportunity,
@@ -200,7 +201,8 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
   const monthStart = monthStartFromToday(today);
 
   const [{ data: leadRows }, { data: stageRows }, bookedIds, bookedValue, cashCollected, outstandingBalance] =
-    await Promise.all([
+    await forensicTime("snapshot_queries_wall", () =>
+      Promise.all([
       // Lean open-opportunity query only — Dashboard Focus uses a separate
       // Focus-population loader; do not re-fetch the full CRM dump here.
       supabase
@@ -216,7 +218,8 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
       getGrossBookedRevenue(),
       getPaymentsCollected(),
       getOutstandingBalance(),
-    ]);
+    ]),
+    );
 
   const canonicalByStageId = new Map(
     ((stageRows ?? []) as { id: string; canonical_stage: string }[]).map((s) => [

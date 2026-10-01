@@ -19,6 +19,10 @@
  *      Leads page already owns that queue).
  */
 import type { ClassifiedItem } from "@/lib/dashboard-system/decision-engine";
+import {
+  forensicRecordL1,
+  sanitizeObservationFamily,
+} from "@/lib/dashboard/forensic-timing";
 import type { VenueRecommendation } from "@/lib/luv/recommendation-types";
 import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
 import { isPhase5SpotPatternRecommendation } from "@/lib/luv/spot-patterns";
@@ -259,6 +263,12 @@ export function selectLuvDashboardEntry({
     ) {
       continue;
     }
+    forensicRecordL1({
+      source: "recommendation",
+      type: rec.type,
+      candidate: rec.type,
+      path: "selectLuvDashboardEntry.recommendation",
+    });
     return {
       message: rec.title,
       suggestion: rec.body || null,
@@ -276,6 +286,13 @@ export function selectLuvDashboardEntry({
     if (!isDashboardLevel1Observation(obs)) continue;
     if (suppressTourNoFollowup && isTourNoFollowupObservation(obs)) continue;
     if (focusSubjects.has(subject(obs.link))) continue;
+    const family = sanitizeObservationFamily(obs.id);
+    forensicRecordL1({
+      source: "observation",
+      type: family,
+      candidate: family,
+      path: "selectLuvDashboardEntry.observation",
+    });
     return {
       message: obs.message,
       suggestion: obs.recommendation?.label ?? obs.detail ?? null,
@@ -286,5 +303,21 @@ export function selectLuvDashboardEntry({
   }
 
   // 3. Interpret Focus when that interpretation is not a Leads-filter restatement.
-  return aggregateFocusEntry(focusItems);
+  const aggregate = aggregateFocusEntry(focusItems);
+  if (aggregate) {
+    forensicRecordL1({
+      source: "focus_aggregate",
+      type: aggregate.actionHref,
+      candidate: aggregate.actionHref,
+      path: "selectLuvDashboardEntry.focus_aggregate",
+    });
+  } else {
+    forensicRecordL1({
+      source: "NONE",
+      type: null,
+      candidate: null,
+      path: "selectLuvDashboardEntry.none",
+    });
+  }
+  return aggregate;
 }

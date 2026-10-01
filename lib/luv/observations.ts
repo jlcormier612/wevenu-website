@@ -51,6 +51,7 @@ import {
 import { getInvoices } from "@/lib/invoices/repository";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import type { Invoice } from "@/lib/invoices/types";
+import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -130,7 +131,7 @@ export async function getLuvObservations(
     paymentInvoices,
     paymentSchedules,
     paymentLineItems,
-  ] = await Promise.all([
+  ] = await forensicTime("luv_obs_primary_queries", () => Promise.all([
     // 1+2: Events within 21 days (not cancelled)
     wantEvent
       ? onlyBusinessReporting(
@@ -330,7 +331,15 @@ export async function getLuvObservations(
     getInvoices(supabase, venueId),
     getSchedules(supabase, venueId),
     getAllLineItems(supabase, venueId),
-  ]);
+  ]));
+
+  forensicCount("luv_obs_upcoming_events", (upcomingEventsRes.data ?? []).length);
+  forensicCount("luv_obs_qualified_leads", (qualifiedLeadsRes.data ?? []).length);
+  forensicCount("luv_obs_awaiting_signatures", (awaitingSignaturesRes.data ?? []).length);
+  forensicCount("luv_obs_upcoming_tours", (upcomingToursRes.data ?? []).length);
+  forensicCount("luv_obs_payment_invoices", paymentInvoices.length);
+  forensicCount("luv_obs_payment_schedules", paymentSchedules.length);
+  forensicCount("luv_obs_payment_line_items", paymentLineItems.length);
 
   // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
   // Instead of individual observations, generate ONE briefing card per event
@@ -698,13 +707,17 @@ export async function getLuvObservations(
       if (scopedClientId) q = q.eq("id", scopedClientId);
       return q;
     })();
-    const [timelineStatusRes, threadCountsRes, conversationMessageRes, clientRelationshipRes, readinessResults] = await Promise.all([
+    const [timelineStatusRes, threadCountsRes, conversationMessageRes, clientRelationshipRes, readinessResults] = await forensicTime(
+      "luv_obs_planning_readiness",
+      () => Promise.all([
       timelineQuery,
       threadQuery,
       supabase.from("conversation_messages").select("conversations!inner(relationship_id)").eq("venue_id", venueId),
       clientRelQuery,
       Promise.all(planningCandidates.map((ev) => computeEventTaskReadinessByKind(supabase, venueId, ev.id))),
-    ]);
+    ]),
+    );
+    forensicCount("luv_obs_planning_candidates", planningCandidates.length);
     const timelineByEvent = new Map<string, Pick<TimelineEntry, "status">[]>();
     for (const r of (timelineStatusRes.data ?? []) as { event_id: string; status: TimelineEntry["status"] }[]) {
       if (!r.event_id) continue;
@@ -1065,13 +1078,16 @@ export async function getLuvObservations(
   // dueDate/sourceFeature directly, matching
   // docs/luv-platform-reconciliation.md §7's own mapping of Request states
   // onto the six observation kinds.
-  const allRequests = !isRecordScoped(scope)
-    ? await getRequests()
-    : scope?.eventId
-      ? await getRequests({ eventId: scope.eventId })
-      : scope?.clientId
-        ? await getRequests({ clientId: scope.clientId })
-        : [];
+  const allRequests = await forensicTime("luv_obs_requests", async () =>
+    !isRecordScoped(scope)
+      ? await getRequests()
+      : scope?.eventId
+        ? await getRequests({ eventId: scope.eventId })
+        : scope?.clientId
+          ? await getRequests({ clientId: scope.clientId })
+          : [],
+  );
+  forensicCount("luv_obs_requests_rows", allRequests.length);
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
   for (const req of allRequests as PlatformRequest[]) {

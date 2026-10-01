@@ -25,6 +25,7 @@ import {
   paymentsAttentionHref,
   requestsAttentionHref,
 } from "@/lib/luv/briefing-attention-links";
+import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 import { createClient } from "@/integrations/supabase/server";
 import { getContracts } from "@/lib/contracts/repository";
 import { getInvoices } from "@/lib/invoices/repository";
@@ -165,8 +166,16 @@ async function loadReadinessInputs(supabase: DbClient, venueId: string) {
  */
 export async function getFocusNeedsAttentionBriefing(venueId: string): Promise<LuvBriefing> {
   const supabase: DbClient = await createClient();
-  const readiness = await loadReadinessInputs(supabase, venueId);
+  const readiness = await forensicTime("briefing_load_readiness_inputs", () =>
+    loadReadinessInputs(supabase, venueId),
+  );
+  forensicCount("briefing_events", readiness.events.length);
+  forensicCount("briefing_contracts", readiness.contracts.length);
+  forensicCount("briefing_invoices", readiness.invoices.length);
+  forensicCount("briefing_requests", readiness.requests.length);
+  forensicCount("briefing_schedule_event_keys", readiness.scheduleLinesByEventId.size);
   const needsAttentionNow = buildNeedsAttentionNow(readiness);
+  forensicCount("briefing_needs_attention_built", needsAttentionNow.length);
   return {
     needsAttentionNow,
     comingUpThisWeek: [],

@@ -34,6 +34,11 @@ import {
   leadBelongsInFocusPopulation,
   leadMatchesFocusTourRules,
 } from "@/lib/dashboard/focus-lead-membership";
+import {
+  forensicCount,
+  forensicSetVenue,
+  forensicTime,
+} from "@/lib/dashboard/forensic-timing";
 import type {
   AttentionLead,
   DashboardData,
@@ -223,14 +228,17 @@ export async function loadFocusPopulationLeads(
 
 export async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
-  const venue = await getCurrentVenue();
+  const venue = await forensicTime("auth_venue_resolution", () => getCurrentVenue());
   if (!venue) return null;
+  forensicSetVenue(venue.id);
 
   // Ready-gate and client creation are independent — run together.
-  const [readyToInviteCouples, supabase] = await Promise.all([
-    isVenueReadyToInviteCouples(venue.id),
-    createClient(),
-  ]);
+  const [readyToInviteCouples, supabase] = await forensicTime("ready_gate_and_client", () =>
+    Promise.all([
+      isVenueReadyToInviteCouples(venue.id),
+      createClient(),
+    ]),
+  );
   if (!readyToInviteCouples) return null;
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
@@ -261,46 +269,66 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     staffRes,
     luvSettings,
     briefing,
-  ] = await Promise.all([
-    loadFocusPopulationLeads(supabase, venue.id, venue.timezone, today, twoDaysAgoMs, twoWeeksOut),
-    supabase
-      .from("lead_tasks")
-      .select("*, leads!inner(first_name, last_name)")
-      .eq("venue_id", venue.id)
-      .eq("completed", false)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true })
-      .limit(15),
-    // Coming up source: events table only — real event_date, next 30 days.
-    supabase
-      .from("events")
-      .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
-      .eq("venue_id", venue.id)
-      .neq("status", "cancelled")
-      .gte("event_date", today)
-      .lte("event_date", comingUpOut)
-      .order("event_date", { ascending: true })
-      .limit(8),
-    // Payment line items for today's dated Focus — not Coming up.
-    supabase
-      .from("payment_line_items")
-      .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")
-      .eq("venue_id", venue.id)
-      .in("status", ["pending", "overdue"])
-      .not("due_date", "is", null)
-      .order("due_date", { ascending: true })
-      .limit(15),
-    supabase
-      .from("venue_staff")
-      .select("full_name, title, accepted_at, owner_invite_pending, user_id")
-      .eq("venue_id", venue.id)
-      .eq("is_owner", true),
-    getLuvSettings().catch(() => null),
-    getFocusNeedsAttentionBriefing(venue.id).catch(() => emptyBriefing),
-  ]);
+  ] = await forensicTime("wave1_parallel_wall", () =>
+    Promise.all([
+      forensicTime("focus_population", () =>
+        loadFocusPopulationLeads(supabase, venue.id, venue.timezone, today, twoDaysAgoMs, twoWeeksOut),
+      ),
+      forensicTime("tasks_query", () =>
+        supabase
+          .from("lead_tasks")
+          .select("*, leads!inner(first_name, last_name)")
+          .eq("venue_id", venue.id)
+          .eq("completed", false)
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
+          .limit(15),
+      ),
+      // Coming up source: events table only — real event_date, next 30 days.
+      forensicTime("events_query", () =>
+        supabase
+          .from("events")
+          .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
+          .eq("venue_id", venue.id)
+          .neq("status", "cancelled")
+          .gte("event_date", today)
+          .lte("event_date", comingUpOut)
+          .order("event_date", { ascending: true })
+          .limit(8),
+      ),
+      // Payment line items for today's dated Focus — not Coming up.
+      forensicTime("payments_query", () =>
+        supabase
+          .from("payment_line_items")
+          .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")
+          .eq("venue_id", venue.id)
+          .in("status", ["pending", "overdue"])
+          .not("due_date", "is", null)
+          .order("due_date", { ascending: true })
+          .limit(15),
+      ),
+      forensicTime("staff_query", () =>
+        supabase
+          .from("venue_staff")
+          .select("full_name, title, accepted_at, owner_invite_pending, user_id")
+          .eq("venue_id", venue.id)
+          .eq("is_owner", true),
+      ),
+      forensicTime("luv_settings", () => getLuvSettings().catch(() => null)),
+      forensicTime("get_focus_briefing", () =>
+        getFocusNeedsAttentionBriefing(venue.id).catch(() => emptyBriefing),
+      ),
+    ]),
+  );
 
   if (tasksRes.error) throw tasksRes.error;
   if (eventsRes.error) throw eventsRes.error;
+
+  forensicCount("focus_leads", focusLeads.length);
+  forensicCount("tasks_rows", (tasksRes.data ?? []).length);
+  forensicCount("events_rows", (eventsRes.data ?? []).length);
+  forensicCount("payments_rows", (paymentsRes.data ?? []).length);
+  forensicCount("briefing_needs_attention", briefing.needsAttentionNow.length);
 
   const leads = focusLeads;
 
@@ -410,16 +438,34 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     activationScore,
     venueReadiness,
     nextPendingMilestone,
-  ] = await Promise.all([
-    getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
-    getCommunicationObservations(supabase, venue.id).catch(() => []),
-    getVenueInsights().catch(() => null),
-    readVenueRecommendations().catch(() => []),
-    getDismissedObservationIds().catch(() => new Set<string>()),
-    getActivationScore(venue.id).catch(() => null),
-    loadVenueReadiness().catch(() => null),
-    getNextPendingMilestone(venue.id).catch(() => null),
-  ]);
+  ] = await forensicTime("wave2_parallel_wall", () =>
+    Promise.all([
+      forensicTime("get_luv_observations", () =>
+        getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
+      ),
+      forensicTime("get_communication_observations", () =>
+        getCommunicationObservations(supabase, venue.id).catch(() => []),
+      ),
+      forensicTime("get_venue_insights", () => getVenueInsights().catch(() => null)),
+      forensicTime("read_venue_recommendations", () =>
+        readVenueRecommendations().catch(() => []),
+      ),
+      forensicTime("dismissed_observation_ids", () =>
+        getDismissedObservationIds().catch(() => new Set<string>()),
+      ),
+      forensicTime("activation_score", () => getActivationScore(venue.id).catch(() => null)),
+      forensicTime("load_venue_readiness", () => loadVenueReadiness().catch(() => null)),
+      forensicTime("next_pending_milestone", () =>
+        getNextPendingMilestone(venue.id).catch(() => null),
+      ),
+    ]),
+  );
+
+  forensicCount("luv_observations_raw", luvObservationsRaw.length);
+  forensicCount("communication_observations", communicationObservations.length);
+  forensicCount("insights_rows", rawInsights?.length ?? 0);
+  forensicCount("recommendations_raw", recommendationsRaw.length);
+  forensicCount("dismissed_ids", dismissedObservationIds.size);
 
   const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
   const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
@@ -439,11 +485,18 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     : [];
   const recommendations = recommendationsForSuppression;
 
+  forensicCount("setup_gap_observations", setupGapObservations.length);
+  forensicCount("readiness_observations", readinessObservations.length);
+  forensicCount("luv_observations_visible", luvObservations.length);
+  forensicCount("insight_observations_visible", insightObservations.length);
+
   return {
     venueName: venue.name,
     ownerFirstName,
     todayIso: today,
-    onboarding: await buildGuidedSetupChecklist(venue, activationScore, readyToInviteCouples),
+    onboarding: await forensicTime("guided_setup_checklist", () =>
+      buildGuidedSetupChecklist(venue, activationScore, readyToInviteCouples),
+    ),
     briefing,
     needsAttention,
     followupsDue,

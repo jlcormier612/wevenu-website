@@ -13,6 +13,13 @@ import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
 import { getBusinessSnapshot } from "@/lib/dashboard/business-snapshot";
 import {
+  forensicCount,
+  forensicExtra,
+  forensicRecordL1,
+  forensicTime,
+  withDashboardForensic,
+} from "@/lib/dashboard/forensic-timing";
+import {
   classifyBriefingItems, classifyUpcomingItems,
   collectCrossSectionSubjects, excludeByCrossSectionSubject,
 } from "@/lib/dashboard-system/decision-engine";
@@ -43,13 +50,22 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
  * "+ New Lead" remains as the header primary action.
  */
 export default async function DashboardPage({ searchParams }: Props) {
+  // Phase 3B timer-only forensic — temporary; does not change page semantics.
+  return withDashboardForensic(async () => {
   const [data, snapshot] = await Promise.all([
-    getDashboardData(),
-    getBusinessSnapshot(),
+    forensicTime("get_dashboard_data", () => getDashboardData()),
+    forensicTime("business_snapshot", () => getBusinessSnapshot()),
     searchParams,
   ]);
 
   if (!data) {
+    forensicExtra("dashboard_data", "null");
+    forensicRecordL1({
+      source: "NONE",
+      type: null,
+      candidate: null,
+      path: "dashboard_unavailable",
+    });
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <p className="text-muted-foreground">Dashboard unavailable.</p>
@@ -57,19 +73,40 @@ export default async function DashboardPage({ searchParams }: Props) {
     );
   }
 
-  const allFocusItems = classifyBriefingItems(data);
-  const focusItems = allFocusItems.slice(0, 10);
+  const assembly = await forensicTime("rsc_focus_l1_assembly", async () => {
+    const allFocusItems = classifyBriefingItems(data);
+    const focusItems = allFocusItems.slice(0, 10);
 
-  const claimedSubjects = collectCrossSectionSubjects(allFocusItems);
-  const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
+    const claimedSubjects = collectCrossSectionSubjects(allFocusItems);
+    const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
 
-  const luvEntry = data.luvObservationsEnabled
-    ? selectLuvDashboardEntry({
-        focusItems,
-        observations: [...data.luvObservations, ...data.insightObservations],
-        recommendations: data.recommendations,
-      })
-    : null;
+    forensicCount("focus_items_classified", allFocusItems.length);
+    forensicCount("focus_items_shown", focusItems.length);
+    forensicCount("upcoming_items_shown", upcomingItems.length);
+    forensicCount("luv_observations_in", data.luvObservations.length);
+    forensicCount("insight_observations_in", data.insightObservations.length);
+    forensicCount("recommendations_in", data.recommendations.length);
+
+    const luvEntry = data.luvObservationsEnabled
+      ? selectLuvDashboardEntry({
+          focusItems,
+          observations: [...data.luvObservations, ...data.insightObservations],
+          recommendations: data.recommendations,
+        })
+      : (forensicRecordL1({
+          source: "NONE",
+          type: "observations_disabled",
+          candidate: null,
+          path: "luv_observations_disabled",
+        }), null);
+
+    return { allFocusItems, focusItems, upcomingItems, luvEntry };
+  });
+
+  const { allFocusItems, focusItems, upcomingItems, luvEntry } = assembly;
+
+  // RSC JSX build is sync; serialization cost is not separately measurable here.
+  forensicExtra("rsc_serialization", "UNKNOWN");
 
   return (
     <div className="space-y-8">
@@ -135,6 +172,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       </section>
     </div>
   );
+  });
 }
 
 function ClassifiedRow({ item }: { item: ClassifiedItem }): ReactNode {
