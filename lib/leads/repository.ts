@@ -225,13 +225,12 @@ export async function applyLeadTourWrite(
   }
 
   if (decision.action === "complete_scheduled") {
-    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
-    // Completion-state: never touch scheduled_at. No capacity check.
+    // Completion-state only: status + completed_at. No occurrence clock.
+    // No booked-clock rewrite. No capacity check.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client.from("tour_appointments") as any).update({
       status: "completed",
       completed_at: new Date().toISOString(),
-      actual_occurred_at: actualOccurredAt,
       notes: decision.notes || null,
     }).eq("id", decision.appointmentId);
     if (error) throw error;

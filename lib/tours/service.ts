@@ -908,6 +908,7 @@ export async function updateTourStatus(
 
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "cancelled") patch.cancellation_reason = reason?.trim() || null;
+  if (status === "completed") patch.completed_at = new Date().toISOString();
   // Manual confirm is the only place confirmation_source becomes 'manual'.
   // The other path, 'prospect_link', is set only by confirm_tour_by_token().
   // When the tour newly becomes confirmed, send the confirmed-language

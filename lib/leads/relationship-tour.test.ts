@@ -189,6 +189,7 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
       applyFn.indexOf('decision.action === "actual_only"'),
     );
     assert.doesNotMatch(completeBlock, /scheduled_at:/);
+    assert.doesNotMatch(completeBlock, /actual_occurred_at:/);
   });
 
   it("calendar projects scheduled from scheduled_at and walk-ins from actual_occurred_at", () => {
@@ -205,6 +206,21 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
 
   it("Focus tour window still keys off scheduled_at (walk-ins excluded by null)", () => {
     assert.match(focus, /gte\("scheduled_at", tourWindowStart\)/);
+  });
+
+  it("updateTourStatus writes completion-state only — never scheduled_at or actual_occurred_at", () => {
+    const updateFn = calendar.slice(
+      calendar.indexOf("export async function updateTourStatus"),
+      calendar.indexOf("export async function requestTourConfirmation"),
+    );
+    const patchBlock = updateFn.slice(
+      updateFn.indexOf("const patch:"),
+      updateFn.indexOf(".update(patch)"),
+    );
+    assert.match(patchBlock, /status === "completed"/);
+    assert.match(patchBlock, /patch\.completed_at/);
+    assert.doesNotMatch(patchBlock, /scheduled_at:/);
+    assert.doesNotMatch(patchBlock, /actual_occurred_at/);
   });
 
   it("Relationship UI requires time when a Tour date is set, and still allows clearing", () => {
