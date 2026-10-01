@@ -271,11 +271,19 @@ describe("H. customer-facing actions are Preview, Send, and Edit", () => {
   it("does not keep competing request/copy/preview-plan buttons", () => {
     assert.match(detail, /Preview/);
     assert.match(detail, /Open in Payments/);
+    assert.match(detail, /status !== "draft" \|\| paymentRequestSent/);
     assert.match(detail, /Edit payment plan/);
     assert.match(detail, /send-invoice-and-payment-plan/);
     assert.doesNotMatch(detail, /Preview payment plan/);
     assert.doesNotMatch(detail, /View payment plan/);
     assert.doesNotMatch(detail, /Request initial payment/);
     assert.doesNotMatch(detail, /Send copy of payment plan and invoice/);
+  });
+
+  it("Preview offers Send to Client via the authoritative send-review path", () => {
+    assert.match(detail, /data-testid="preview-send-invoice-and-payment-plan"/);
+    assert.match(detail, /Send to Client/);
+    assert.match(detail, /setPreviewOpen\(false\);\s*\n\s*openSendReview\(\)/);
+    assert.match(detail, /sendInvoiceAndPaymentPlanAction/);
   });
 });

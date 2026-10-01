@@ -320,7 +320,7 @@ export function InvoiceDetail({
               </Button>
             )
           )}
-          {linkedScheduleId && (
+          {linkedScheduleId && (status !== "draft" || paymentRequestSent) && (
             <Button
               type="button"
               variant="outline"
@@ -628,6 +628,22 @@ export function InvoiceDetail({
         eyebrow="Customer-facing invoice and payment plan"
         title={humanTitle}
         onBack={() => setPreviewOpen(false)}
+        primary={
+          invoice.clientId && status !== "void" && linkedScheduleId && !paymentRequestSent ? (
+            <Button
+              type="button"
+              size="sm"
+              disabled={emailPending || planMismatch}
+              onClick={() => {
+                setPreviewOpen(false);
+                openSendReview();
+              }}
+              data-testid="preview-send-invoice-and-payment-plan"
+            >
+              Send to Client
+            </Button>
+          ) : undefined
+        }
       >
         <div className="bg-white py-8">
           <InvoicePrintDocument

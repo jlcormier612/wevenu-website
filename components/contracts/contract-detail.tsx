@@ -329,8 +329,12 @@ export function ContractDetail({
         </div>
       ) : null}
       <BusinessAssetHeader
-        backHref="/contracts"
-        backLabel="Contracts"
+        backHref={contract.clientId ? `/clients/${contract.clientId}` : "/contracts"}
+        backLabel={
+          contract.clientId && contract.clientName?.trim()
+            ? contract.clientName.trim()
+            : "Contracts"
+        }
         whatIsThis="Contract"
         title={contract.title}
         status={

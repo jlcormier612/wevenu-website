@@ -61,10 +61,10 @@ export function ArtifactReviewOverlay({
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {primary}
           <Button type="button" variant="outline" size="sm" onClick={onBack}>
             Back to edit
           </Button>
-          {primary}
         </div>
       </header>
       <div className={cn("min-h-0 flex-1 overflow-x-hidden overflow-y-auto")}>{children}</div>

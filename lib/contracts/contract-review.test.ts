@@ -26,8 +26,21 @@ describe("Contract full-screen review", () => {
     assert.match(builder, /Send to Client/);
     const overlay = readFileSync(resolve("components/artifacts/artifact-review-overlay.tsx"), "utf8");
     assert.match(overlay, /Back to edit/);
+    assert.match(overlay, /\{primary\}/);
+    // Primary next-step action precedes Back to edit (preview → send pattern).
+    assert.ok(overlay.indexOf("{primary}") < overlay.indexOf("Back to edit"));
     assert.match(overlay, /createPortal/);
     assert.match(overlay, /z-\[200\]/);
+  });
+
+  it("Contract Detail back nav returns to Client Workspace when clientId exists", () => {
+    assert.match(
+      detail,
+      /backHref=\{contract\.clientId \? `\/clients\/\$\{contract\.clientId\}` : "\/contracts"\}/,
+    );
+    assert.match(detail, /contract\.clientName/);
+    assert.doesNotMatch(detail, /backHref="\/contracts"/);
+    assert.doesNotMatch(detail, /backLabel="Contracts"/);
   });
 
   it("opening preview cannot collect a couple signature", () => {
