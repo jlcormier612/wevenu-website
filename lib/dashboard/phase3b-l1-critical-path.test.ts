@@ -330,7 +330,54 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
     }
   });
 
-  it("10. Dashboard GET does not call getLuvObservations for L1", () => {
+  it("10. list-href contract/document observations cannot produce L1", () => {
+    const contract = observation({
+      id: "contract-aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+      message: "A contract has been waiting for a signature for 5 days.",
+      link: "/contracts",
+      recommendation: { label: "Send a gentle reminder", link: "/contracts", type: "navigate" },
+    });
+    const expiry = observation({
+      id: "contract-expiry-aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002",
+      message: "A contract expires in 7 days.",
+      link: "/contracts",
+      recommendation: { label: "Review the contract", link: "/contracts", type: "navigate" },
+    });
+    const orphanDoc = observation({
+      id: "doc-aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003",
+      message: "A document is coming up for renewal.",
+      link: "/documents",
+      recommendation: { label: "Review before it lapses", link: "/documents", type: "navigate" },
+    });
+    for (const obs of [contract, expiry, orphanDoc]) {
+      assert.equal(isDashboardLevel1Observation(obs), false, obs.id);
+    }
+    assert.equal(
+      selectLuvDashboardEntry({
+        focusItems: [],
+        observations: [contract, expiry, orphanDoc],
+        recommendations: [],
+      }),
+      null,
+    );
+    // Live setup-gap still wins when list-href contract/doc noise is present.
+    const withSetup = selectLuvDashboardEntry({
+      focusItems: [],
+      observations: [
+        contract,
+        observation({
+          id: "setup-gap-three_couples_active",
+          message: "Invite three couples.",
+          link: "/leads",
+          recommendation: { label: "Open leads", link: "/leads", type: "navigate" },
+        }),
+      ],
+      recommendations: [],
+    });
+    assert.equal(withSetup?.dismissObservationId, "setup-gap-three_couples_active");
+  });
+
+  it("11. Dashboard GET does not call getLuvObservations for L1", () => {
     assert.doesNotMatch(service, /getLuvObservations/);
     assert.doesNotMatch(page, /getLuvObservations/);
     assert.match(service, /computeSetupGapObservations/);
@@ -338,7 +385,7 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
     assert.match(service, /getCommunicationObservations/);
   });
 
-  it("11. Dashboard GET does not manufacture persisted recommendations", () => {
+  it("12. Dashboard GET does not manufacture persisted recommendations", () => {
     assert.doesNotMatch(service, /readVenueRecommendations/);
     assert.doesNotMatch(service, /getVenueRecommendations\(/);
     assert.doesNotMatch(service, /refreshVenueRecommendations/);
@@ -349,7 +396,7 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
     assert.match(page, /recommendations:\s*\[\]/);
   });
 
-  it("12. Dashboard GET does not compute venue insights for L1", () => {
+  it("13. Dashboard GET does not compute venue insights for L1", () => {
     assert.doesNotMatch(service, /getVenueInsights/);
     assert.doesNotMatch(service, /compute_venue_insights/);
     assert.doesNotMatch(service, /computeInsightObservations/);
@@ -357,7 +404,7 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
     assert.match(page, /observations:\s*data\.luvObservations/);
   });
 
-  it("13. Focus / Event Readiness behavior remains unchanged", () => {
+  it("14. Focus / Event Readiness behavior remains unchanged", () => {
     assert.match(page, /Today's Focus/);
     assert.match(page, /classifyBriefingItems/);
     assert.match(page, /classifyUpcomingItems/);

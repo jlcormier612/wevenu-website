@@ -176,12 +176,14 @@ export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
   const primaryHref = obs.recommendation?.link ?? obs.link;
   if (isRecordScopedHref(primaryHref) || isRecordScopedHref(obs.link)) return false;
 
-  // Qualifying non-record-scoped communication / contract / document families.
-  // Dashboard GET only assembles these when a current live source already
-  // produced them. Record-scoped members stay Level-3.
+  // Attention model (locked): list-href contract/document observations are
+  // not L1 for this release — accuracy alone does not justify the one
+  // Dashboard attention slot. They resolve to /contracts or /documents.
+  if (obs.id.startsWith("contract-")) return false;
+  if (obs.id.startsWith("doc-")) return false;
+
+  // Qualifying non-record-scoped communication family only.
   if (obs.id.startsWith("comm-stale-unopened-")) return true;
-  if (obs.id.startsWith("contract-")) return true;
-  if (obs.id.startsWith("doc-")) return true;
   return false;
 }
 

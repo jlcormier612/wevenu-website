@@ -427,11 +427,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   );
 
   // Live L1 sources only — no broad observation engine, no insights compute,
-  // no persisted-recommendation read. Contract/document families have no other
-  // current-GET source after that removal and are therefore omitted (not
-  // recreated). Setup-gap and readiness reuse the live calculations already
-  // required for guided setup / readiness. Communication reuses its existing
-  // observation calculation for the authorized L1 families.
+  // no persisted-recommendation read. List-href contract/document families
+  // are not L1 under the locked attention model and are not recreated.
+  // Setup-gap and readiness reuse the live calculations already required for
+  // guided setup / readiness. Communication reuses its existing observation
+  // calculation for the authorized L1 families.
   const [
     communicationObservationsRaw,
     dismissedObservationIds,
