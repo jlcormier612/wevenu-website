@@ -5,6 +5,9 @@
  * Source-level contracts: prove dependency-sensitive calls still receive
  * required inputs, workspace data props remain wired, and cache() is
  * request-scoped (same pattern as getCurrentVenue) — not a global cache.
+ *
+ * Slice 2 pipelines former Wave B dependents; assertions here keep the
+ * Slice 1 cache contracts and the independent-read / dependency invariants.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -62,8 +65,7 @@ describe("Slice 1 — request-scoped getCurrentUserRole cache", () => {
 describe("Slice 1 — BookingWorkspacePage dependency-correct batches", () => {
   const booked = bookedBranch(page);
 
-  it("collapses independent reads into Wave A Promise.all", () => {
-    assert.match(booked, /Wave A/);
+  it("collapses independent reads into a parallel Promise.all (Slice 1; Slice 2 pipelines dependents)", () => {
     assert.match(booked, /getCurrentUserRole\(\)/);
     assert.match(booked, /getQuestionnaireTemplates\(\)/);
     assert.match(booked, /getEventFloorPlanOffers\(eventId\)/);
@@ -78,25 +80,17 @@ describe("Slice 1 — BookingWorkspacePage dependency-correct batches", () => {
     assert.match(booked, /loadBookingJourneyForClient/);
   });
 
-  it("keeps invoice-id → line-marker dependency in Wave B", () => {
-    assert.match(booked, /Wave B/);
+  it("keeps invoice-id → line-marker dependency (pipelined in Slice 2)", () => {
     assert.match(booked, /getInvoiceLineMarkers\(eventInvoices\.map/);
-    // Must not call markers before invoices are filtered from Wave A.
-    const markersIdx = booked.indexOf("getInvoiceLineMarkers(eventInvoices.map");
-    const waveBIdx = booked.indexOf("Wave B");
-    assert.ok(markersIdx > waveBIdx, "markers after Wave B marker");
   });
 
-  it("keeps choice-list → getClientChoices dependency in Wave B", () => {
-    assert.match(booked, /clientChoicesList\.map\(\(c\) => getClientChoices\(c\.id\)\)/);
-    const choicesIdx = booked.indexOf("clientChoicesList.map((c) => getClientChoices(c.id))");
-    assert.ok(choicesIdx > booked.indexOf("Wave B"));
+  it("keeps choice-list → getClientChoices dependency (pipelined in Slice 2)", () => {
+    assert.match(booked, /getClientChoices\(c\.id\)/);
   });
 
-  it("keeps task staff ids → contacts and request ids → requestsByIds in Wave B", () => {
+  it("keeps task staff ids → contacts and request ids → requestsByIds (pipelined in Slice 2)", () => {
     assert.match(booked, /getTaskContactsByStaffIds\(eventTasks\.map/);
     assert.match(booked, /getRequestsByIds\(requestIds\)/);
-    assert.ok(booked.indexOf("getRequestsByIds(requestIds)") > booked.indexOf("Wave B"));
   });
 
   it("keeps conversation id → messages as an inner serial chain", () => {

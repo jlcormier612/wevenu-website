@@ -111,10 +111,14 @@ describe("client contact workspace", () => {
   it("loads current contact from the client and historical inquiry from the lead", () => {
     const page = source("app/(app)/clients/[id]/page.tsx");
     assert.match(page, /firstName: client\.firstName/);
-    assert.match(page, /email: cl\?\.email \|\| client\.email/);
+    // Slice 2: contact fields come from cached getClient (no duplicate clients select).
+    assert.match(page, /email: client\.email \|\| null/);
+    assert.match(page, /phone: client\.phone \|\| null/);
+    assert.match(page, /partnerEmail: client\.partnerEmail \|\| null/);
     assert.match(page, /inquiryMessage: leadRow\?\.inquiry_message/);
     assert.match(page, /\.select\("source, inquiry_message, inquiry_message_origin"\)/);
     assert.doesNotMatch(page, /leadRow\?\.phone/);
     assert.doesNotMatch(page, /leadRow\?\.email/);
+    assert.doesNotMatch(page, /\.from\("clients"\)\.select\("email, phone, partner_email/);
   });
 });

@@ -106,15 +106,16 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
 
   if (!client.linkedEventId) {
     const displayName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
-    const photo = client.relationshipId
-      ? await getRelationshipPhotoForVenue(client.relationshipId)
-      : null;
+    // Slice 2 — photo is independent of the rest of the unbooked workspace reads.
     const [
-      journey, packagesWithItems, packageList, templates, applications, tasks,
+      photo, journey, packagesWithItems, packageList, templates, applications, tasks,
       timelineEntries, timelineSections, timelineTemplates, venue, spaces,
       floorPlans, floorPlanTemplates, vendors, vendorAssignments, eventOrder, eventOrderTemplates,
       offerings, inventoryItems, staffRole,
     ] = await Promise.all([
+      client.relationshipId
+        ? getRelationshipPhotoForVenue(client.relationshipId)
+        : Promise.resolve(null),
       loadBookingJourneyForClient({
         clientId: client.id,
         eventId: null,
@@ -266,27 +267,107 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   }
 
   const eventId = client.linkedEventId;
-  // Wave A — everything that needs only eventId / clientId / known ids.
-  // Genuine dependencies (invoice ids → markers, conversation id → messages,
-  // choice-list → getClientChoices, task staff ids → contacts, etc.) stay in Wave B.
-  const supabase = await createClient();
+  // Slice 2 — collapse the Wave A → Wave B serial barrier.
+  // Independent reads still fan out together. Dependent reads chain from their
+  // parent promise so they start as soon as that parent resolves, overlapping
+  // remaining siblings instead of waiting for every Wave A call to finish.
+  // Data dependencies (invoice ids → markers, choice-list → choices, tasks →
+  // contacts/requests, venue+contracts → Luv observations, conversation id →
+  // messages) are preserved — only the artificial full-wave wait is removed.
+  // Venue-wide catalogs (packages/offerings/inventory/contracts-all) stay for a
+  // later slice; Luv observation *content* is unchanged.
+
+  const invoicesPromise = getInvoices({});
+  const eventInvoicesPromise = invoicesPromise.then((all) =>
+    all.filter((inv) => inv.eventId === eventId || inv.clientId === id),
+  );
+  const invoiceLineMarkersPromise = eventInvoicesPromise.then((eventInvoices) =>
+    getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id)),
+  );
+
+  const questionnairesPromise = getQuestionnaires(eventId);
+  const activityListsPromise = questionnairesPromise.then((questionnaires) =>
+    Promise.all(questionnaires.map(async (q) => [q.id, await getQuestionnaireActivities(q.id)] as const)),
+  );
+
+  const eventTasksPromise = getEventTasks(eventId);
+  const requestsByIdsPromise = eventTasksPromise.then((eventTasks) => {
+    const requestIds = eventTasks.map((t) => t.requestId).filter((v): v is string => !!v);
+    return getRequestsByIds(requestIds);
+  });
+  const taskContactsPromise = eventTasksPromise.then((eventTasks) =>
+    getTaskContactsByStaffIds(eventTasks.map((t) => t.assignedToStaffId)),
+  );
+
+  const clientChoicesListPromise = listClientChoicesForEvent(eventId);
+  const clientChoicesRawPromise = clientChoicesListPromise.then((list) =>
+    Promise.all(list.map((c) => getClientChoices(c.id))),
+  );
+
+  const venuePromise = getCurrentVenue();
+  // teamMembers only needs venue id — start via cached getCurrentVenue, not after
+  // the full independent batch (was Wave B only because venue lived in Wave A).
+  const teamMembersPromise = venuePromise.then((v) => (v ? getTeamMembers(v.id) : []));
+
+  const contractsPromise = getContracts();
+  const contractsFilteredPromise = contractsPromise.then((all) =>
+    all.filter((c) => c.eventId === eventId || c.clientId === id),
+  );
+  const contextualObservationsPromise = Promise.all([venuePromise, contractsFilteredPromise]).then(
+    ([venue, contracts]) =>
+      venue
+        ? getContextualObservationsForRecord(venue.id, venue.timezone, {
+            eventId,
+            clientId: id,
+            contractIds: contracts.map((c) => c.id),
+          })
+        : Promise.resolve([]),
+  );
+
+  // Lead extras own their createClient — no serial createClient ahead of the batch.
+  // Contact email/phone/partnerEmail come from cached getClient (duplicate clients
+  // select removed).
+  const leadExtrasPromise = client.leadId
+    ? (async () => {
+        const supabase = await createClient();
+        const [leadRes, noteRes] = await Promise.all([
+          supabase
+            .from("leads")
+            .select("source, inquiry_message, inquiry_message_origin")
+            .eq("id", client.leadId!)
+            .maybeSingle<{
+              source: string | null;
+              inquiry_message: string | null;
+              inquiry_message_origin: string | null;
+            }>(),
+          supabase
+            .from("lead_notes")
+            .select("id, body, created_at")
+            .eq("lead_id", client.leadId!)
+            .order("created_at", { ascending: false }),
+        ]);
+        return { leadRow: leadRes.data, noteRows: noteRes.data };
+      })()
+    : Promise.resolve({ leadRow: null, noteRows: null });
+
   const [
-    event, availableVendors, allInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaires, eventTasks, allPlaybookTemplates,
+    event, availableVendors, eventInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaires, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
-    spaces, contractTemplates, allContracts, allTimelineTemplates,
+    spaces, contractTemplates, contracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
     floorPlanTemplates, inventoryUsage, eventInventory, inventoryTemplates, inventoryCatalogItems,
     staffRole, questionnaireTemplates, floorPlanOffers, spaceAssignments, sessions,
     guestSummary, seatingSummary,
-    eventOrder, packages, eventOrderTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules,
-    eventRequests, photo, clientContactRow, leadExtras, conversationBundle,
+    eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules,
+    eventRequests, photo, leadExtras, conversationBundle,
+    invoiceLineMarkers, activityLists, requestsById, taskContacts, teamMembers, clientChoicesRaw, contextualObservations,
   ] = await Promise.all([
-    getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
+    getEvent(eventId), getVendors(), eventInvoicesPromise, getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
     getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]), getRecentInteractionMap().then((m) => [...m.entries()]),
-    getQuestionnaires(eventId),
-    getEventTasks(eventId), getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
-    getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), getCurrentVenue(), getEventRecommendations(eventId),
-    getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplatesForLibrary(),
+    questionnairesPromise,
+    eventTasksPromise, getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
+    getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getEventRecommendations(eventId),
+    getSpaces(), getContractTemplates(), contractsFilteredPromise, getTimelineTemplatesForLibrary(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
     getFloorPlanTemplates(), getUsageForEvent(eventId),
     // D5A — Event Inventory is not feature-flagged (unlike Event Order):
@@ -302,7 +383,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     getEventOrder(eventId),
     getPackages(),
     getEventOrderTemplates(),
-    listClientChoicesForEvent(eventId),
     getPackagesWithItems(true),
     getActiveSelectedPackageForClient(client.id),
     loadBookingJourneyForClient({
@@ -316,30 +396,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     client.relationshipId
       ? getRelationshipPhotoForVenue(client.relationshipId)
       : Promise.resolve(null),
-    // Same pattern as the old /events/[id]/page.tsx: resolve email + relationship
-    // id directly (event.clientId doesn't carry these), for Messages and the
-    // anniversary/final-details send-to-couple flows.
-    supabase.from("clients").select("email, phone, partner_email, relationship_id").eq("id", id)
-      .maybeSingle<{ email: string | null; phone: string | null; partner_email: string | null; relationship_id: string | null }>(),
-    client.leadId
-      ? Promise.all([
-          supabase.from("leads")
-            .select("source, inquiry_message, inquiry_message_origin")
-            .eq("id", client.leadId)
-            .maybeSingle<{
-              source: string | null;
-              inquiry_message: string | null;
-              inquiry_message_origin: string | null;
-            }>(),
-          supabase.from("lead_notes")
-            .select("id, body, created_at")
-            .eq("lead_id", client.leadId)
-            .order("created_at", { ascending: false }),
-        ]).then(([leadRes, noteRes]) => ({
-          leadRow: leadRes.data,
-          noteRows: noteRes.data,
-        }))
-      : Promise.resolve({ leadRow: null, noteRows: null }),
+    leadExtrasPromise,
     // Conversation: relationship → conversation id → messages (inner serial only).
     (async (): Promise<{ conversationId: string | null; messages: ConversationMessage[] }> => {
       const relationshipId = client.relationshipId;
@@ -349,6 +406,14 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       const conversation = await getConversation(conversationId);
       return { conversationId, messages: conversation?.messages ?? [] };
     })(),
+    invoiceLineMarkersPromise,
+    activityListsPromise,
+    requestsByIdsPromise,
+    taskContactsPromise,
+    teamMembersPromise,
+    // clientChoicesListPromise is started above; only the dependent raw payload is awaited here.
+    clientChoicesRawPromise,
+    contextualObservationsPromise,
   ]);
   if (!event) notFound();
   const floorPlanCanEdit = canEditFloorPlans(staffRole);
@@ -359,34 +424,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // same exclusion the old getTemplates() applied by default.
   const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
   const timelineTemplates = allTimelineTemplates.filter((t) => !t.isArchived);
-  const eventInvoices = allInvoices.filter((inv) => inv.eventId === eventId || inv.clientId === id);
-  const contracts = allContracts.filter((c) => c.eventId === eventId || c.clientId === id);
-  const requestIds = eventTasks.map((t) => t.requestId).filter((v): v is string => !!v);
-
-  // Wave B — only calls that require Wave A outputs.
-  const [
-    invoiceLineMarkers,
-    activityLists,
-    requestsById,
-    taskContacts,
-    teamMembers,
-    clientChoicesRaw,
-    contextualObservations,
-  ] = await Promise.all([
-    getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id)),
-    Promise.all(questionnaires.map(async (q) => [q.id, await getQuestionnaireActivities(q.id)] as const)),
-    getRequestsByIds(requestIds),
-    getTaskContactsByStaffIds(eventTasks.map((t) => t.assignedToStaffId)),
-    venue ? getTeamMembers(venue.id) : Promise.resolve([]),
-    Promise.all(clientChoicesList.map((c) => getClientChoices(c.id))),
-    venue
-      ? getContextualObservationsForRecord(venue.id, venue.timezone, {
-          eventId,
-          clientId: id,
-          contractIds: contracts.map((c) => c.id),
-        })
-      : Promise.resolve([]),
-  ]);
 
   const bookingCommitmentInvoiceIds = packageBookingCommitmentInvoiceIds(invoiceLineMarkers);
   const frozenLineIds = frozenEventOrderLineIds(
@@ -413,8 +450,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     if (task.requestId && requestsById[task.requestId]) requestsByTaskId[task.id] = requestsById[task.requestId];
   }
 
-  const cl = clientContactRow.data;
-  const coupleEmail = cl?.email ?? client.email ?? null;
+  const coupleEmail = client.email ?? null;
 
   let relationshipContact: {
     clientId: string;
@@ -441,9 +477,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       lastName: client.lastName,
       partnerFirstName: client.partnerFirstName,
       partnerLastName: client.partnerLastName,
-      phone: cl?.phone || client.phone || null,
-      email: cl?.email || client.email || null,
-      partnerEmail: cl?.partner_email || client.partnerEmail || null,
+      phone: client.phone || null,
+      email: client.email || null,
+      partnerEmail: client.partnerEmail || null,
       source: sourceLabel,
       inquiryMessage: leadRow?.inquiry_message ?? null,
       inquiryMessageOrigin: leadRow?.inquiry_message_origin ?? "unknown",
@@ -460,9 +496,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       lastName: client.lastName,
       partnerFirstName: client.partnerFirstName,
       partnerLastName: client.partnerLastName,
-      phone: cl?.phone || client.phone || null,
-      email: cl?.email || client.email || null,
-      partnerEmail: cl?.partner_email || client.partnerEmail || null,
+      phone: client.phone || null,
+      email: client.email || null,
+      partnerEmail: client.partnerEmail || null,
       source: null,
       inquiryMessage: null,
     };
