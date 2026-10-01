@@ -61,7 +61,7 @@ describe("Luv observation record scope", () => {
     assert.match(inquiry, /Gate 2/);
     const drafts = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
     assert.match(drafts, /Gate 1 \+ Gate 2/);
-    const followUp = readFileSync(resolve("lib/luv/follow-up-workflow-context.ts"), "utf8");
-    assert.match(followUp, /followUpDate|nextActionText/);
+    const followUp = readFileSync(resolve("lib/luv/tour-followup-pattern.ts"), "utf8");
+    assert.match(followUp, /followUp|next_action|follow_up/i);
   });
 });
