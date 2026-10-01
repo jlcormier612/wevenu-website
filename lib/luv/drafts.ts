@@ -26,6 +26,15 @@ import {
   customerFacingInquiryContext,
   type CustomerFacingInquiryContext,
 } from "@/lib/luv/customer-facing-inquiry-context";
+import {
+  classifyFollowUpTourState,
+  deriveFollowUpProhibitions,
+  deriveFollowUpWorkflowIntent,
+  formatTourWorkflowFact,
+  workflowIntentLabel,
+  type FollowUpTourState,
+  type FollowUpWorkflowIntent,
+} from "@/lib/luv/follow-up-workflow-context";
 import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { Lead } from "@/lib/leads/types";
@@ -49,6 +58,11 @@ export type FollowUpVerifiedFacts = {
    * only "customer" may place the message in generation context.
    */
   inquiryOrigin?: InquiryOrigin;
+  /**
+   * Authoritative tour workflow state from tour_appointments.
+   * Defaults to { kind: "none" } when omitted (tests / callers without a tour read).
+   */
+  tour?: FollowUpTourState;
 };
 
 type DraftRow = {
@@ -104,13 +118,71 @@ export function buildFollowUpPrompt(
     origin,
   );
 
+  const tour: FollowUpTourState = verified.tour ?? { kind: "none" };
+  const workflowIntent: FollowUpWorkflowIntent = deriveFollowUpWorkflowIntent({
+    tour,
+    nextActionText: lead.nextActionText,
+  });
+  const prohibitions = deriveFollowUpProhibitions({
+    tour,
+    proposalSent: verified.proposalSent,
+  });
+
   const verifiedLines: string[] = [];
   if (verified.proposalSent) {
     verifiedLines.push("- The proposal was sent to this client.");
   }
+  if (tour.kind === "completed") {
+    verifiedLines.push(
+      `- This couple completed a venue tour (scheduled ${tour.scheduledAt}${tour.completedAt ? `; completed_at ${tour.completedAt}` : ""}).`,
+    );
+  }
+  if (tour.kind === "upcoming") {
+    verifiedLines.push(
+      `- This couple has an upcoming venue tour (${tour.status}) scheduled for ${tour.scheduledAt}.`,
+    );
+  }
   const verifiedBlock = verifiedLines.length > 0
     ? `**Verified facts (actions proven in the system — you may state these):**\n${verifiedLines.join("\n")}`
     : "**Verified facts:** none for completed actions on this lead.";
+
+  const workflowFactLines: string[] = [
+    `- ${formatTourWorkflowFact(tour)}`,
+    `- Proposal sent (authoritative): ${verified.proposalSent ? "yes" : "no"}`,
+  ];
+  if (lead.nextActionText?.trim()) {
+    workflowFactLines.push(
+      `- Recorded next action (venue workflow context — not automatic customer-facing copy): ${lead.nextActionText.trim()}`,
+    );
+  }
+  if (lead.followUpDate) {
+    workflowFactLines.push(`- Follow-up date: ${lead.followUpDate}`);
+  }
+  if (lead.lastContactedAt) {
+    workflowFactLines.push(`- Last contacted: ${lead.lastContactedAt}`);
+  }
+
+  const prohibitionLines: string[] = [];
+  if (prohibitions.inviteToScheduleTour) {
+    prohibitionLines.push(
+      "- Do not invite them to schedule a first or another tour.",
+    );
+  }
+  if (prohibitions.implyNoTourVisited) {
+    prohibitionLines.push(
+      "- Do not imply they have not visited / have not toured the venue.",
+    );
+  }
+  if (prohibitions.implyNoTourScheduled) {
+    prohibitionLines.push(
+      "- Do not imply that no tour is scheduled.",
+    );
+  }
+  if (prohibitions.claimProposalSent) {
+    prohibitionLines.push(
+      "- Do not claim a proposal was sent.",
+    );
+  }
 
   const customerMessageBlock =
     inquiryContext.status === "usable"
@@ -139,6 +211,14 @@ The coordinator signing the email is: ${ownerName ?? "the team at " + venueName}
 ${daysSinceInquiry != null ? `- Days since initial inquiry: ${daysSinceInquiry}` : ""}
 ${daysSinceContact != null ? `- Days since last contact: ${daysSinceContact}` : ""}
 
+**Workflow facts (authoritative application state):**
+${workflowFactLines.join("\n")}
+
+**Workflow direction (application-owned — do not invent a conflicting workflow action):**
+- Primary intent: ${workflowIntent}
+- ${workflowIntentLabel(workflowIntent)}
+${prohibitionLines.length > 0 ? `\n**Workflow constraints:**\n${prohibitionLines.join("\n")}` : ""}
+
 ${customerMessageBlock}
 ${verifiedBlock}
 
@@ -148,11 +228,12 @@ ${verifiedBlock}
 - Address them by first name(s) — like you know them a little
 - Keep it short: 2–3 paragraphs maximum
 - Acknowledge where they are in the process naturally using workflow context, without inventing completed actions
-- Offer one gentle, specific next step (schedule a tour, answer questions, arrange a call)
+- Offer one gentle next step consistent with the application-provided workflow intent and constraints. Do not invent or contradict workflow actions.
 - Do NOT be pushy, salesy, or use corporate/template-sounding language
 - The subject line should be friendly, not promotional
 - Do not tell the client that the venue has sent, completed, confirmed, received, or otherwise performed an action unless that action appears under Verified facts. Pipeline stage alone is not proof. In particular: do not say a proposal was sent merely because the lead is in proposal_sent; do not claim a contract/invoice was sent, a payment was received, a tour was confirmed, or a message was sent from workflow position alone.
 - Never invent or allude to venue-internal notes, staff observations, or operational commentary. Those are not in your context.
+- Recorded next-action text is venue workflow context. Do not paste staff instructions to the customer unless independently appropriate as natural customer-facing language.
 
 Format your response EXACTLY as:
 Subject: [subject line]
@@ -211,6 +292,24 @@ async function loadProposalSentFact(
   });
 }
 
+/** Thin tour_appointments read — same canonical source as the lead workspace. */
+async function loadFollowUpTourState(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadId: string,
+): Promise<FollowUpTourState> {
+  const { data } = await supabase
+    .from("tour_appointments")
+    .select("scheduled_at, status, completed_at")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .order("scheduled_at", { ascending: false })
+    .limit(10);
+  return classifyFollowUpTourState(
+    (data ?? []) as { scheduled_at: string; status: string; completed_at: string | null }[],
+  );
+}
+
 // ---- Public service functions ---------------------------------------------
 
 export async function generateFollowUpDraft(lead: Lead): Promise<
@@ -240,14 +339,21 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const proposalSent = await loadProposalSentFact(supabase, venue.id, lead.id);
+    const [proposalSent, tour] = await Promise.all([
+      loadProposalSentFact(supabase, venue.id, lead.id),
+      loadFollowUpTourState(supabase, venue.id, lead.id),
+    ]);
     const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
+    const workflowIntent = deriveFollowUpWorkflowIntent({
+      tour,
+      nextActionText: lead.nextActionText,
+    });
     const prompt = buildFollowUpPrompt(
       lead,
       venue.name,
       ownerName,
       settings.preferredTone,
-      { proposalSent, inquiryOrigin },
+      { proposalSent, inquiryOrigin, tour },
     );
     const raw = await generateDraftText(prompt);
     const { subject, body } = parseEmailDraft(raw);
@@ -266,6 +372,8 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
           leadName: `${lead.firstName} ${lead.lastName}`,
           verifiedProposalSent: proposalSent,
           inquiryOrigin,
+          tourKind: tour.kind,
+          workflowIntent,
         },
         status: "pending_review",
       })
