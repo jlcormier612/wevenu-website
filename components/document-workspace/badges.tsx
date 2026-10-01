@@ -1,6 +1,6 @@
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { EXPERIENCE_STATUS_LABEL } from "@/lib/document-workspace/experience";
-import type { ExperienceStatus, WorkspaceCategory, WorkspaceStatus } from "@/lib/document-workspace/types";
+import { experienceBadgeLabel } from "@/lib/document-workspace/experience";
+import type { ExperienceStatus, WorkspaceCategory, WorkspaceDocType, WorkspaceStatus } from "@/lib/document-workspace/types";
 
 const CATEGORY_VARIANT: Record<WorkspaceCategory, BadgeVariant> = {
   "Contracts":        "default",
@@ -42,14 +42,16 @@ const EXPERIENCE_VARIANT: Record<ExperienceStatus, BadgeVariant | null> = {
 export function WorkspaceStatusBadge({
   status,
   experienceStatus,
+  docType,
 }: {
   status: WorkspaceStatus;
   experienceStatus?: ExperienceStatus;
+  docType?: WorkspaceDocType;
 }) {
   if (experienceStatus && experienceStatus !== "none") {
     const variant = EXPERIENCE_VARIANT[experienceStatus];
     if (!variant) return null;
-    return <Badge variant={variant}>{EXPERIENCE_STATUS_LABEL[experienceStatus]}</Badge>;
+    return <Badge variant={variant}>{experienceBadgeLabel(experienceStatus, docType)}</Badge>;
   }
   const meta = STATUS_META[status];
   if (!meta) return null;

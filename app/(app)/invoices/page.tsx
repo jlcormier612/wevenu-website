@@ -57,7 +57,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
       ) : (
         <div className="space-y-3">
           {sorted.map((inv) => (
-            <Link key={inv.id} href={`/invoices/${inv.id}`}
+            <Link key={inv.id} href={`/invoices/${inv.id}?returnTo=${encodeURIComponent("/invoices")}`}
               className="block rounded-sm border border-border bg-card p-5 hover:bg-muted/30 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1 min-w-0">

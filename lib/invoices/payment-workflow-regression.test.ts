@@ -273,8 +273,10 @@ describe("H. customer-facing actions are Preview, Send, and Edit", () => {
   const detail = readFileSync("components/invoices/invoice-detail.tsx", "utf8");
   it("does not keep competing request/copy/preview-plan buttons", () => {
     assert.match(detail, /Preview/);
-    assert.match(detail, /Open in Payments/);
-    assert.match(detail, /status !== "draft" \|\| paymentRequestSent/);
+    assert.doesNotMatch(detail, /Open in Payments/);
+    assert.match(detail, /Void this invoice/);
+    assert.match(detail, /Print/);
+    assert.match(detail, /Mark as Paid/);
     assert.match(detail, /Edit payment plan/);
     assert.match(detail, /send-invoice-and-payment-plan/);
     assert.doesNotMatch(detail, /Preview payment plan/);

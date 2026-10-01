@@ -111,3 +111,14 @@ describe("appendContractReturnTo", () => {
     assert.equal(appendContractReturnTo("/contracts/c1", "https://evil"), "/contracts/c1");
   });
 });
+
+describe("document workspace still preserves contract returnTo independently of invoices", () => {
+  it("lead origin still resolves to the lead, not invoices", () => {
+    const nav = resolveContractBackNavigation({
+      returnTo: "/leads/54fb2e7d-d429-4701-afe1-ea4a39cb03b4",
+      clientName: "Lucy Peanut & Charlie Brown",
+    });
+    assert.equal(nav.href, "/leads/54fb2e7d-d429-4701-afe1-ea4a39cb03b4");
+    assert.equal(nav.label, "Lucy Peanut & Charlie Brown");
+  });
+});

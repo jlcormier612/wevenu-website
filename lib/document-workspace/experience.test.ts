@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { applyContractVersionLineage, normalizeWorkspaceDocument } from "@/lib/document-workspace/normalize";
-import { describeExperience } from "@/lib/document-workspace/experience";
+import { describeExperience, experienceBadgeLabel } from "@/lib/document-workspace/experience";
 
 function baseRow(over: Partial<Parameters<typeof normalizeWorkspaceDocument>[0]> = {}) {
   return {
@@ -56,7 +56,7 @@ describe("experience labels", () => {
     assert.match(awaitingVenue.nextActionLabel ?? "", /countersign/i);
   });
 
-  it("maps sent invoices to With Someone (awaiting couple payment) on Documents", () => {
+  it("maps sent invoices to with_someone internally and Waiting on Client on the card", () => {
     const sent = describeExperience({
       docType: "invoice",
       rawStatus: "sent",
@@ -68,6 +68,9 @@ describe("experience labels", () => {
     assert.equal(sent.nextActor, "couple");
     assert.equal(sent.nextActionLabel, "Couple to pay");
     assert.equal(sent.filterStatus, "action_needed");
+    assert.equal(experienceBadgeLabel(sent.experienceStatus, "invoice"), "Waiting on Client");
+    assert.notEqual(experienceBadgeLabel(sent.experienceStatus, "invoice"), "With Someone");
+    assert.equal(experienceBadgeLabel("with_someone", "contract"), "With Someone");
   });
 
   it("maps signed+finalized contracts to Final and keeps companion uploads distinct", () => {

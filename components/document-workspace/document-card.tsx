@@ -116,7 +116,7 @@ export function WorkspaceDocumentCard({
             {doc.name}
           </button>
           <WorkspaceCategoryBadge category={doc.category} />
-          <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} />
+          <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} docType={doc.docType} />
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           {relationship && <span className="truncate max-w-[14rem]">{relationship}</span>}

@@ -13,6 +13,7 @@ import {
   computeNetPaid,
 } from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
+import { safeInvoiceReturnPath } from "@/lib/invoices/return-path";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
@@ -36,7 +37,8 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
     getCurrentVenue(),
   ]);
   if (!invoice || !venue) notFound();
-  const returnTo = safePaymentScheduleReturnPath(returnToRaw);
+  const returnTo = safeInvoiceReturnPath(returnToRaw);
+  const returnToPaymentSchedule = safePaymentScheduleReturnPath(returnToRaw);
   const linkedSummary = scheduleSummaries.find((s) => s.invoiceId === invoice.id) ?? null;
   const linked = linkedSummary ? await getPaymentSchedule(linkedSummary.id) : null;
   const amountDueNow = resolveAmountDueNow({
@@ -68,7 +70,8 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       packages={packages}
       eventOrderDrift={eventOrderDrift}
       emailConfigured={isEmailConfigured()}
-      returnToPaymentSchedule={returnTo}
+      returnTo={returnTo}
+      returnToPaymentSchedule={returnToPaymentSchedule}
       amountDueNow={amountDueNow}
       paidToDate={paidToDate}
       cancelledPlanAmount={cancelledPlanAmount}

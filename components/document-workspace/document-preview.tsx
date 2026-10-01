@@ -150,7 +150,7 @@ export function DocumentPreviewSheet({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <WorkspaceCategoryBadge category={doc.category} />
-            <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} />
+            <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} docType={doc.docType} />
           </div>
         </SheetHeader>
 

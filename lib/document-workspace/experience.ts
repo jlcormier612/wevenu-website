@@ -22,6 +22,21 @@ export const EXPERIENCE_STATUS_LABEL: Record<ExperienceStatus, string> = {
   none: "",
 };
 
+/**
+ * Badge copy. Internal `with_someone` stays for contracts/questionnaires/
+ * event orders/choices. Sent invoices use the same human label Invoice
+ * Detail already shows ("Waiting on Client") — not "With Someone".
+ */
+export function experienceBadgeLabel(
+  experienceStatus: ExperienceStatus,
+  docType?: WorkspaceDocType,
+): string {
+  if (docType === "invoice" && experienceStatus === "with_someone") {
+    return "Waiting on Client";
+  }
+  return EXPERIENCE_STATUS_LABEL[experienceStatus];
+}
+
 export type ExperienceView = {
   experienceStatus: ExperienceStatus;
   nextActor: NextActor;

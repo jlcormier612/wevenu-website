@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { filterDocuments, searchDocuments, sortDocuments } from "@/lib/document-workspace/filter-sort";
 import { workspaceDocKey } from "@/lib/document-workspace/normalize";
 import { appendContractReturnTo } from "@/lib/contracts/return-path";
+import { appendInvoiceReturnTo } from "@/lib/invoices/return-path";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { WORKSPACE_CATEGORIES } from "@/lib/document-workspace/types";
 import type { DocumentEntityType } from "@/lib/documents/types";
@@ -61,7 +62,10 @@ export function DocumentWorkspace({
   const docsWithReturn = React.useMemo(() => {
     if (!returnTo) return documentsProp;
     return documentsProp.map((doc) => {
-      const href = appendContractReturnTo(doc.producerHref, returnTo);
+      const href = appendInvoiceReturnTo(
+        appendContractReturnTo(doc.producerHref, returnTo),
+        returnTo,
+      );
       return href && href !== doc.producerHref ? { ...doc, producerHref: href } : doc;
     });
   }, [documentsProp, returnTo]);

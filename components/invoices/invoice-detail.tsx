@@ -42,6 +42,7 @@ import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib
 import type { Package } from "@/lib/packages/types";
 import type { Venue } from "@/lib/venue/types";
 import { NOTES_FROM_YOUR_VENUE_LABEL } from "@/lib/notes/internal-notes-copy";
+import { resolveInvoiceBackNavigation } from "@/lib/invoices/return-path";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: string } | null> = {
@@ -62,6 +63,7 @@ export function InvoiceDetail({
   packages,
   eventOrderDrift = null,
   emailConfigured = true,
+  returnTo = null,
   returnToPaymentSchedule = null,
   amountDueNow = null,
   paidToDate = null,
@@ -77,6 +79,8 @@ export function InvoiceDetail({
   packages: Package[];
   eventOrderDrift?: EventOrderDrift | null;
   emailConfigured?: boolean;
+  /** Originating workspace (lead/client/invoices/documents). */
+  returnTo?: string | null;
   /** When set (from payment-schedule handoff), show continue CTA after amount exists. */
   returnToPaymentSchedule?: string | null;
   /** Next open installment — never the full outstanding under "Amount Due Now". */
@@ -132,6 +136,10 @@ export function InvoiceDetail({
   const [nameDraft, setNameDraft] = React.useState(invoice.displayName?.trim() || humanTitle);
   const transition = STATUS_TRANSITIONS[status];
   const continueToSchedule = safePaymentScheduleReturnPath(returnToPaymentSchedule);
+  const backNav = resolveInvoiceBackNavigation({
+    returnTo,
+    clientName: invoice.clientName,
+  });
   const displayPaidToDate = paidToDate != null
     ? paidToDate
     : Math.max(0, invoice.total - invoice.balanceDue);
@@ -220,8 +228,8 @@ export function InvoiceDetail({
   return (
     <div className="space-y-6">
       <BusinessAssetHeader
-        backHref="/invoices"
-        backLabel="Invoices"
+        backHref={backNav.href}
+        backLabel={backNav.label}
         whatIsThis="Invoice & Payment Plan"
         title={humanTitle}
         status={<>
@@ -319,16 +327,6 @@ export function InvoiceDetail({
                 Send
               </Button>
             )
-          )}
-          {linkedScheduleId && (status !== "draft" || paymentRequestSent) && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              render={<Link href={`/payments/${linkedScheduleId}`} />}
-            >
-              Open in Payments
-            </Button>
           )}
           {status !== "void" && status !== "paid" && (
             <Button type="button" variant="outline" size="sm"
