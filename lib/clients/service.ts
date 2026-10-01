@@ -1,6 +1,7 @@
 /**
  * Clients application service. Server-only.
  */
+import { cache } from "react";
 import { isPastEventDate } from "@/lib/migration/historical-record";
 import { occupancyFailureFromUnknown, calendarBlockFailureFromUnknown } from "@/lib/availability/event-occupancy";
 import {
@@ -179,12 +180,17 @@ export async function getClientListFilterCounts(): Promise<Record<ClientListFilt
   });
 }
 
-export async function getClient(clientId: string): Promise<ClientWithDetails | null> {
+/**
+ * Request-scoped `cache()` — generateMetadata + page both call getClient(id)
+ * on the same render. Same pattern as getCurrentVenue: never cross-request,
+ * never changes auth/venue isolation (still resolves via getCurrentVenue).
+ */
+export const getClient = cache(async (clientId: string): Promise<ClientWithDetails | null> => {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
   return repo.getClient(await createClient(), venue.id, clientId);
-}
+});
 
 // ---- create -----------------------------------------------------------------
 

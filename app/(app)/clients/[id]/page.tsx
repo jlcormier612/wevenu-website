@@ -266,12 +266,20 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   }
 
   const eventId = client.linkedEventId;
+  // Wave A — everything that needs only eventId / clientId / known ids.
+  // Genuine dependencies (invoice ids → markers, conversation id → messages,
+  // choice-list → getClientChoices, task staff ids → contacts, etc.) stay in Wave B.
+  const supabase = await createClient();
   const [
     event, availableVendors, allInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaires, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
     spaces, contractTemplates, allContracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
     floorPlanTemplates, inventoryUsage, eventInventory, inventoryTemplates, inventoryCatalogItems,
+    staffRole, questionnaireTemplates, floorPlanOffers, spaceAssignments, sessions,
+    guestSummary, seatingSummary,
+    eventOrder, packages, eventOrderTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules,
+    eventRequests, photo, clientContactRow, leadExtras, conversationBundle,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
     getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]), getRecentInteractionMap().then((m) => [...m.entries()]),
@@ -284,33 +292,108 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     // D5A — Event Inventory is not feature-flagged (unlike Event Order):
     // it's additive to the venue-wide catalog every venue already has.
     getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
+    getCurrentUserRole(),
+    getQuestionnaireTemplates(),
+    getEventFloorPlanOffers(eventId),
+    getEventSpaceAssignments(eventId),
+    getPortalSessions(id),
+    getGuestReadinessSummary(id),
+    getSeatingReadinessSummary(null, eventId),
+    getEventOrder(eventId),
+    getPackages(),
+    getEventOrderTemplates(),
+    listClientChoicesForEvent(eventId),
+    getPackagesWithItems(true),
+    getActiveSelectedPackageForClient(client.id),
+    loadBookingJourneyForClient({
+      clientId: client.id,
+      eventId,
+      leadId: client.leadId,
+    }),
+    listActiveOfferings(),
+    getPaymentSchedules(),
+    getRequests({ eventId }),
+    client.relationshipId
+      ? getRelationshipPhotoForVenue(client.relationshipId)
+      : Promise.resolve(null),
+    // Same pattern as the old /events/[id]/page.tsx: resolve email + relationship
+    // id directly (event.clientId doesn't carry these), for Messages and the
+    // anniversary/final-details send-to-couple flows.
+    supabase.from("clients").select("email, phone, partner_email, relationship_id").eq("id", id)
+      .maybeSingle<{ email: string | null; phone: string | null; partner_email: string | null; relationship_id: string | null }>(),
+    client.leadId
+      ? Promise.all([
+          supabase.from("leads")
+            .select("source, inquiry_message, inquiry_message_origin")
+            .eq("id", client.leadId)
+            .maybeSingle<{
+              source: string | null;
+              inquiry_message: string | null;
+              inquiry_message_origin: string | null;
+            }>(),
+          supabase.from("lead_notes")
+            .select("id, body, created_at")
+            .eq("lead_id", client.leadId)
+            .order("created_at", { ascending: false }),
+        ]).then(([leadRes, noteRes]) => ({
+          leadRow: leadRes.data,
+          noteRows: noteRes.data,
+        }))
+      : Promise.resolve({ leadRow: null, noteRows: null }),
+    // Conversation: relationship → conversation id → messages (inner serial only).
+    (async (): Promise<{ conversationId: string | null; messages: ConversationMessage[] }> => {
+      const relationshipId = client.relationshipId;
+      if (!relationshipId) return { conversationId: null, messages: [] };
+      const conversationId = await getConversationIdForRelationship(relationshipId);
+      if (!conversationId) return { conversationId: null, messages: [] };
+      const conversation = await getConversation(conversationId);
+      return { conversationId, messages: conversation?.messages ?? [] };
+    })(),
   ]);
   if (!event) notFound();
-  const staffRole = await getCurrentUserRole();
   const floorPlanCanEdit = canEditFloorPlans(staffRole);
   const floorPlanCanDelete = canDeleteFloorPlanRows(staffRole);
   // D5D — additive templates + activity logs for each working form.
   const questionnaire = questionnaires.find((q) => q.kind === "final_details") ?? questionnaires[0] ?? null;
-  const [questionnaireTemplates, activityLists] = await Promise.all([
-    getQuestionnaireTemplates(),
-    Promise.all(questionnaires.map(async (q) => [q.id, await getQuestionnaireActivities(q.id)] as const)),
-  ]);
-  const questionnaireActivitiesById = Object.fromEntries(activityLists);
-  const questionnaireActivities = questionnaire ? (questionnaireActivitiesById[questionnaire.id] ?? []) : [];
-  const floorPlanOffers = await getEventFloorPlanOffers(eventId);
   // Archived templates aren't valid choices for applying to a booking —
   // same exclusion the old getTemplates() applied by default.
   const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
   const timelineTemplates = allTimelineTemplates.filter((t) => !t.isArchived);
   const eventInvoices = allInvoices.filter((inv) => inv.eventId === eventId || inv.clientId === id);
-  const invoiceLineMarkers = await getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id));
+  const contracts = allContracts.filter((c) => c.eventId === eventId || c.clientId === id);
+  const requestIds = eventTasks.map((t) => t.requestId).filter((v): v is string => !!v);
+
+  // Wave B — only calls that require Wave A outputs.
+  const [
+    invoiceLineMarkers,
+    activityLists,
+    requestsById,
+    taskContacts,
+    teamMembers,
+    clientChoicesRaw,
+    contextualObservations,
+  ] = await Promise.all([
+    getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id)),
+    Promise.all(questionnaires.map(async (q) => [q.id, await getQuestionnaireActivities(q.id)] as const)),
+    getRequestsByIds(requestIds),
+    getTaskContactsByStaffIds(eventTasks.map((t) => t.assignedToStaffId)),
+    venue ? getTeamMembers(venue.id) : Promise.resolve([]),
+    Promise.all(clientChoicesList.map((c) => getClientChoices(c.id))),
+    venue
+      ? getContextualObservationsForRecord(venue.id, venue.timezone, {
+          eventId,
+          clientId: id,
+          contractIds: contracts.map((c) => c.id),
+        })
+      : Promise.resolve([]),
+  ]);
+
   const bookingCommitmentInvoiceIds = packageBookingCommitmentInvoiceIds(invoiceLineMarkers);
   const frozenLineIds = frozenEventOrderLineIds(
     invoiceLineMarkers,
     eventInvoices.filter((inv) => inv.status !== "void").map((inv) => inv.id),
   );
   const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
-  const spaceAssignments = await getEventSpaceAssignments(eventId);
   const spaceAssignmentsDisplay = formatEventSpaceAssignmentsDisplay(
     spaceAssignments.map((a) => ({
       useKey: a.useKey,
@@ -318,27 +401,19 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       spaceName: a.spaceName ?? spaces.find((s) => s.id === a.spaceId)?.name ?? "—",
     })),
   );
-  const contracts = allContracts.filter((c) => c.eventId === eventId || c.clientId === id);
+
+  const questionnaireActivitiesById = Object.fromEntries(activityLists);
+  const questionnaireActivities = questionnaire ? (questionnaireActivitiesById[questionnaire.id] ?? []) : [];
 
   // Request Framework integration: tasks may optionally link to a Request.
   // Independent lifecycle — this only resolves current status/due date for
   // display, it never affects task completion.
-  const requestIds = eventTasks.map((t) => t.requestId).filter((v): v is string => !!v);
-  const [requestsById, eventRequests] = await Promise.all([getRequestsByIds(requestIds), getRequests({ eventId })]);
   const requestsByTaskId: Record<string, Request> = {};
   for (const task of eventTasks) {
     if (task.requestId && requestsById[task.requestId]) requestsByTaskId[task.id] = requestsById[task.requestId];
   }
 
-  const taskContacts = await getTaskContactsByStaffIds(eventTasks.map((t) => t.assignedToStaffId));
-  const teamMembers = venue ? await getTeamMembers(venue.id) : [];
-
-  // Same pattern as the old /events/[id]/page.tsx: resolve email + relationship
-  // id directly (event.clientId doesn't carry these), for Messages and the
-  // anniversary/final-details send-to-couple flows.
-  const supabase = await createClient();
-  const { data: cl } = await supabase.from("clients").select("email, phone, partner_email, relationship_id").eq("id", id)
-    .maybeSingle<{ email: string | null; phone: string | null; partner_email: string | null; relationship_id: string | null }>();
+  const cl = clientContactRow.data;
   const coupleEmail = cl?.email ?? client.email ?? null;
 
   let relationshipContact: {
@@ -356,20 +431,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   } | null = null;
   let leadNotes: { id: string; body: string; createdAt: string }[] = [];
   if (client.leadId) {
-    const [{ data: leadRow }, { data: noteRows }] = await Promise.all([
-      supabase.from("leads")
-        .select("source, inquiry_message, inquiry_message_origin")
-        .eq("id", client.leadId)
-        .maybeSingle<{
-          source: string | null;
-          inquiry_message: string | null;
-          inquiry_message_origin: string | null;
-        }>(),
-      supabase.from("lead_notes")
-        .select("id, body, created_at")
-        .eq("lead_id", client.leadId)
-        .order("created_at", { ascending: false }),
-    ]);
+    const leadRow = leadExtras.leadRow;
     const sourceLabel = leadRow?.source
       ? (LEAD_SOURCES.find((s) => s.value === leadRow.source)?.label ?? leadRow.source)
       : null;
@@ -386,7 +448,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       inquiryMessage: leadRow?.inquiry_message ?? null,
       inquiryMessageOrigin: leadRow?.inquiry_message_origin ?? "unknown",
     };
-    leadNotes = ((noteRows ?? []) as { id: string; body: string; created_at: string }[]).map((n) => ({
+    leadNotes = ((leadExtras.noteRows ?? []) as { id: string; body: string; created_at: string }[]).map((n) => ({
       id: n.id,
       body: n.body,
       createdAt: n.created_at,
@@ -406,22 +468,14 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     };
   }
 
-  let linkableConversationMessages: LinkableConversationMessage[] = [];
-  let conversationMessages: ConversationMessage[] = [];
-  let conversationId: string | null = null;
-  if (cl?.relationship_id) {
-    conversationId = await getConversationIdForRelationship(cl.relationship_id);
-    if (conversationId) {
-      const conversation = await getConversation(conversationId);
-      conversationMessages = conversation?.messages ?? [];
-      linkableConversationMessages = conversationMessages.map((m) => ({
-        id: m.id,
-        label: m.channel === "internal_note" ? "Internal Note" : "Conversation",
-        detail: m.body.length > 80 ? `${m.body.slice(0, 80)}…` : m.body,
-      }));
-    }
-  }
-  const sessions = await getPortalSessions(id);
+  const conversationId = conversationBundle.conversationId;
+  const conversationMessages = conversationBundle.messages;
+  const linkableConversationMessages: LinkableConversationMessage[] = conversationMessages.map((m) => ({
+    id: m.id,
+    label: m.channel === "internal_note" ? "Internal Note" : "Conversation",
+    detail: m.body.length > 80 ? `${m.body.slice(0, 80)}…` : m.body,
+  }));
+
   // Prefer a non-financial session — a 'financial' session's own RPCs
   // (e.g. get_seating_data) deliberately return zeroed-out stats for that
   // access level, and it's also the wrong link to hand a coordinator who
@@ -429,30 +483,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const portalSession = sessions.find((s) => s.accessLevel !== "financial") ?? sessions[0] ?? null;
   const portalToken = portalSession?.accessToken ?? null;
 
-  // Event Readiness — Phase 1: Platform Integration. Two small, additive
-  // reads alongside everything already fetched above; every other
-  // capability's readiness is computed from data already on this page.
-  const [guestSummary, seatingSummary] = await Promise.all([
-    getGuestReadinessSummary(id),
-    getSeatingReadinessSummary(null, eventId),
-  ]);
-
-  // Event Order is always available (optional by use). No feature gate.
-  const [eventOrder, packages, eventOrderTemplates, clientChoicesList, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules] = await Promise.all([
-    getEventOrder(eventId),
-    getPackages(),
-    getEventOrderTemplates(),
-    listClientChoicesForEvent(eventId),
-    getPackagesWithItems(true),
-    getActiveSelectedPackageForClient(client.id),
-    loadBookingJourneyForClient({
-      clientId: client.id,
-      eventId,
-      leadId: client.leadId,
-    }),
-    listActiveOfferings(),
-    getPaymentSchedules(),
-  ]);
   const eoLinkedInvoice = eventOrder
     ? eventInvoices.find((inv) => inv.eventOrderId === eventOrder.id && inv.status === "draft")
       ?? eventInvoices.find((inv) => inv.eventOrderId === eventOrder.id && inv.status !== "void")
@@ -461,9 +491,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const eoLinkedScheduleId = eoLinkedInvoice
     ? (paymentSchedules.find((s) => s.invoiceId === eoLinkedInvoice.id)?.id ?? null)
     : null;
-  const clientChoices = (
-    await Promise.all(clientChoicesList.map((c) => getClientChoices(c.id)))
-  ).filter((c): c is NonNullable<typeof c> => !!c);
+  const clientChoices = clientChoicesRaw.filter((c): c is NonNullable<typeof c> => !!c);
   const financialImpact = buildSelectionsFinancialImpact({
     eventOrderId: eventOrder?.id ?? null,
     clientId: event.clientId,
@@ -491,16 +519,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   });
 
   const workspaceName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
-  const photo = client.relationshipId
-    ? await getRelationshipPhotoForVenue(client.relationshipId)
-    : null;
-  const contextualObservations = venue
-    ? await getContextualObservationsForRecord(venue.id, venue.timezone, {
-        eventId,
-        clientId: id,
-        contractIds: contracts.map((c) => c.id),
-      })
-    : [];
   return (
     <div className="space-y-3">
       <div className="flex justify-end">

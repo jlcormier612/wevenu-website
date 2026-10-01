@@ -110,13 +110,16 @@ export const getCurrentVenue = cache(async (): Promise<Venue | null> => {
  * (same source of truth used by RLS) — server actions call this for early,
  * good-error-message rejections; RLS is the backstop if this check is ever
  * bypassed or forgotten. See docs/trust-risk-register.md TR-G1.
+ *
+ * Request-scoped `cache()` — layout + page both call this on the same
+ * render; role cannot change mid-request. Never cross-request.
  */
-export async function getCurrentUserRole(): Promise<string | null> {
+export const getCurrentUserRole = cache(async (): Promise<string | null> => {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
   const { data } = await supabase.rpc("current_user_role");
   return (data as string | null) ?? null;
-}
+});
 
 /** True when the current user has a venue with setup completed. */
 export async function hasCompletedVenueSetup(): Promise<boolean> {
