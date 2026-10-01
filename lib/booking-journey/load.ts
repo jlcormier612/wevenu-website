@@ -7,7 +7,7 @@ import {
 import { resolveActiveProposal, resolveLatestWithdrawnProposal } from "@/lib/commercial-proposals/service";
 import type { CommercialProposal } from "@/lib/commercial-proposals/types";
 import { getClientInvitation } from "@/lib/client-auth/service";
-import { getContracts } from "@/lib/contracts/service";
+import { getContracts, getContractsForClientOrEvent } from "@/lib/contracts/service";
 import { pickContract } from "@/lib/clients/booking-handoff";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { getEventPlaybookApplications } from "@/lib/playbooks/service";
@@ -137,9 +137,15 @@ export async function loadBookingJourneyForClient(input: {
   eventId?: string | null;
   leadId?: string | null;
 }): Promise<BookingJourneyModel> {
+  // When eventId is known (Client Workspace booked path), use the same
+  // client|event scoped list as Documents/readiness — avoids a second
+  // venue-wide contracts+content fetch on that page.
+  const contractsPromise = input.eventId
+    ? getContractsForClientOrEvent(input.clientId, input.eventId)
+    : getContracts();
   const [selection, contracts, paymentLines, invitation, applications, prefs, brand, name, proposal] = await Promise.all([
     getActiveSelectedPackageForClient(input.clientId),
-    getContracts(),
+    contractsPromise,
     paymentLinesForClient(input.clientId),
     getClientInvitation(input.clientId),
     input.eventId ? getEventPlaybookApplications(input.eventId) : Promise.resolve([]),

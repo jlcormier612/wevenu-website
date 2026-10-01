@@ -21,7 +21,10 @@ import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getConversation, getConversationIdForRelationship } from "@/lib/conversations/service";
 import type { ConversationMessage } from "@/lib/conversations/types";
-import { getContracts, getTemplates as getContractTemplates } from "@/lib/contracts/service";
+import {
+  getContractsForClientOrEvent,
+  getTemplatesMetadata as getContractTemplates,
+} from "@/lib/contracts/service";
 import { getDocuments, getEventDocumentsFromVendors } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getEvent } from "@/lib/events/service";
@@ -274,8 +277,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // Data dependencies (invoice ids → markers, choice-list → choices, tasks →
   // contacts/requests, venue+contracts → Luv observations, conversation id →
   // messages) are preserved — only the artificial full-wave wait is removed.
-  // Venue-wide catalogs (packages/offerings/inventory/contracts-all) stay for a
-  // later slice; Luv observation *content* is unchanged.
+  // Venue-wide catalogs (packages/offerings/inventory) stay for a later slice;
+  // Slice 3A scopes contracts (client|event, no content) + template metadata.
+  // Luv observation *content* is unchanged.
 
   const invoicesPromise = getInvoices({});
   const eventInvoicesPromise = invoicesPromise.then((all) =>
@@ -309,11 +313,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // the full independent batch (was Wave B only because venue lived in Wave A).
   const teamMembersPromise = venuePromise.then((v) => (v ? getTeamMembers(v.id) : []));
 
-  const contractsPromise = getContracts();
-  const contractsFilteredPromise = contractsPromise.then((all) =>
-    all.filter((c) => c.eventId === eventId || c.clientId === id),
-  );
-  const contextualObservationsPromise = Promise.all([venuePromise, contractsFilteredPromise]).then(
+  // Slice 3A — scope contracts to this client OR event; omit full content.
+  const contractsPromise = getContractsForClientOrEvent(id, eventId);
+  const contextualObservationsPromise = Promise.all([venuePromise, contractsPromise]).then(
     ([venue, contracts]) =>
       venue
         ? getContextualObservationsForRecord(venue.id, venue.timezone, {
@@ -367,7 +369,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     questionnairesPromise,
     eventTasksPromise, getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getEventRecommendations(eventId),
-    getSpaces(), getContractTemplates(), contractsFilteredPromise, getTimelineTemplatesForLibrary(),
+    getSpaces(), getContractTemplates(), contractsPromise, getTimelineTemplatesForLibrary(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
     getFloorPlanTemplates(), getUsageForEvent(eventId),
     // D5A — Event Inventory is not feature-flagged (unlike Event Order):

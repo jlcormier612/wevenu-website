@@ -139,6 +139,14 @@ export async function getTemplates(includeArchived = false): Promise<ContractTem
   return repo.getTemplates(await createClient(), venue.id, includeArchived);
 }
 
+/** Metadata-only templates (no content). For Client Workspace Documents list. */
+export async function getTemplatesMetadata(includeArchived = false): Promise<ContractTemplate[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getTemplatesMetadata(await createClient(), venue.id, includeArchived);
+}
+
 export async function getTemplate(id: string): Promise<ContractTemplate | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
@@ -194,6 +202,20 @@ export async function getContracts(): Promise<Contract[]> {
   const venue = await getCurrentVenue();
   if (!venue) return [];
   return repo.getContracts(await createClient(), venue.id);
+}
+
+/**
+ * Client Workspace contracts: client OR event scope, without full content.
+ * Venue authorization remains via getCurrentVenue + RLS.
+ */
+export async function getContractsForClientOrEvent(
+  clientId: string,
+  eventId: string,
+): Promise<Contract[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getContractsForClientOrEvent(await createClient(), venue.id, { clientId, eventId });
 }
 
 /** Financials Contracts list — current agreement tip per amends_contract_id family. */

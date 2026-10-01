@@ -23,7 +23,7 @@ type TemplateRow = {
 };
 type ContractRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
-  template_id: string | null; title: string; content: string; status: Contract["status"];
+  template_id: string | null; title: string; content?: string | null; status: Contract["status"];
   execution_origin?: Contract["executionOrigin"] | null;
   sign_token: string; signer_name: string | null; signed_at: string | null;
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
@@ -41,6 +41,14 @@ type ContractRow = {
     legacy: boolean;
   } | null;
 };
+
+/** List/readiness columns — intentionally omits `content` (large text blob). */
+const CONTRACT_WORKSPACE_LIST_SELECT =
+  "id, venue_id, client_id, event_id, template_id, title, status, execution_origin, sign_token, signer_name, signed_at, sent_at, expires_at, created_at, updated_at, amends_contract_id, branding_snapshot, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)";
+
+/** Template picker/metadata columns — intentionally omits `content`. */
+const TEMPLATE_METADATA_SELECT =
+  "id, venue_id, name, description, is_default, is_archived, source_master_key, created_at, updated_at";
 type ActRow = {
   id: string; venue_id: string; contract_id: string; type: string; title: string;
   description: string | null; created_at: string;
@@ -129,6 +137,25 @@ export async function getTemplates(client: DbClient, venueId: string, includeArc
   return (data as TemplateRow[]).map(mapTemplate);
 }
 
+/**
+ * Template metadata for surfaces that only need name/id/flags (e.g. Client
+ * Workspace Documents). Does not retrieve full template content — create/edit
+ * paths must continue using getTemplate(id) / getTemplates().
+ */
+export async function getTemplatesMetadata(
+  client: DbClient,
+  venueId: string,
+  includeArchived = false,
+): Promise<ContractTemplate[]> {
+  let q = client.from("contract_templates").select(TEMPLATE_METADATA_SELECT).eq("venue_id", venueId);
+  if (!includeArchived) q = q.eq("is_archived", false);
+  const { data, error } = await q.order("is_default", { ascending: false }).order("name");
+  if (error) throw error;
+  return ((data ?? []) as Omit<TemplateRow, "content">[]).map((r) =>
+    mapTemplate({ ...r, content: "" }),
+  );
+}
+
 export async function getTemplate(client: DbClient, venueId: string, id: string): Promise<ContractTemplate | null> {
   const { data, error } = await client.from("contract_templates").select("*")
     .eq("id", id).eq("venue_id", venueId).maybeSingle<TemplateRow>();
@@ -199,12 +226,18 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
 
 // ---- contracts --------------------------------------------------------------
 
-export async function getContracts(client: DbClient, venueId: string): Promise<Contract[]> {
-  const { data, error } = await client.from("contracts")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
-    .eq("venue_id", venueId).order("created_at", { ascending: false });
-  if (error) throw error;
-  const contracts = (data as unknown as ContractRow[]).map(mapContract);
+type SignerSummaryRow = {
+  contract_id: string;
+  signer_type: string;
+  signed_at: string | null;
+  is_required: boolean;
+};
+
+async function attachSignerSummaries(
+  client: DbClient,
+  venueId: string,
+  contracts: Contract[],
+): Promise<Contract[]> {
   if (contracts.length === 0) return contracts;
 
   const { data: signerRows, error: sErr } = await client.from("contract_signers")
@@ -213,9 +246,8 @@ export async function getContracts(client: DbClient, venueId: string): Promise<C
     .in("contract_id", contracts.map((c) => c.id));
   if (sErr) throw sErr;
 
-  type SummaryRow = { contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean };
-  const byContract = new Map<string, SummaryRow[]>();
-  for (const row of (signerRows ?? []) as SummaryRow[]) {
+  const byContract = new Map<string, SignerSummaryRow[]>();
+  for (const row of (signerRows ?? []) as SignerSummaryRow[]) {
     const list = byContract.get(row.contract_id) ?? [];
     list.push(row);
     byContract.set(row.contract_id, list);
@@ -236,6 +268,33 @@ export async function getContracts(client: DbClient, venueId: string): Promise<C
       anyClientSigned,
     };
   });
+}
+
+export async function getContracts(client: DbClient, venueId: string): Promise<Contract[]> {
+  const { data, error } = await client.from("contracts")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
+    .eq("venue_id", venueId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return attachSignerSummaries(client, venueId, (data as unknown as ContractRow[]).map(mapContract));
+}
+
+/**
+ * Client Workspace / Booking Documents list path.
+ * Scope: client_id = clientId OR event_id = eventId (venue RLS still applies).
+ * Omits contract `content`; signers are loaded only for the scoped IDs.
+ */
+export async function getContractsForClientOrEvent(
+  client: DbClient,
+  venueId: string,
+  scope: { clientId: string; eventId: string },
+): Promise<Contract[]> {
+  const { data, error } = await client.from("contracts")
+    .select(CONTRACT_WORKSPACE_LIST_SELECT)
+    .eq("venue_id", venueId)
+    .or(`client_id.eq.${scope.clientId},event_id.eq.${scope.eventId}`)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return attachSignerSummaries(client, venueId, (data as unknown as ContractRow[]).map(mapContract));
 }
 
 export async function getContract(client: DbClient, venueId: string, id: string): Promise<ContractWithDetails | null> {
