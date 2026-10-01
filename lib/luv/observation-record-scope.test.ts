@@ -41,7 +41,7 @@ describe("Luv observation record scope", () => {
     assert.match(contextual, /filterObservationsForRecord\(all, record\)/);
 
     const dashboard = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
-    assert.match(dashboard, /getLuvObservations\(supabase, venue\.id, today, luvSettings \?\? undefined\)/);
+    assert.doesNotMatch(dashboard, /getLuvObservations/);
     assert.doesNotMatch(dashboard, /getLuvObservations\([^)]+record/);
 
     const observations = readFileSync(resolve("lib/luv/observations.ts"), "utf8");

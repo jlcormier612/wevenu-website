@@ -90,8 +90,8 @@ export default async function DashboardPage({ searchParams }: Props) {
     const luvEntry = data.luvObservationsEnabled
       ? selectLuvDashboardEntry({
           focusItems,
-          observations: [...data.luvObservations, ...data.insightObservations],
-          recommendations: data.recommendations,
+          observations: data.luvObservations,
+          recommendations: [],
         })
       : (forensicRecordL1({
           source: "NONE",

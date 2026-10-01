@@ -126,16 +126,17 @@ describe("Luv does not restate Today's Focus", () => {
     assert.equal(entry, null);
   });
 
-  it("leads with a recommendation, which is already interpretation plus an action", () => {
+  it("does not let a persisted recommendation occupy L1 when a live source is present", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [focusItem()],
       observations: [level1SetupObservation()],
       recommendations: [recommendation()],
     });
 
-    assert.equal(entry?.message, "Your inquiry response time slipped this week.");
-    assert.equal(entry?.suggestion, "Want to see which leads are waiting?");
-    assert.equal(entry?.actionLabel, "View report");
+    assert.equal(entry?.message, "Your public website isn't collecting inquiries yet.");
+    assert.equal(entry?.actionHref, "/setup");
+    assert.equal(entry?.dismissObservationId, "setup-gap-public_website");
+    assert.equal(entry?.dismissRecommendationId, undefined);
   });
 
   it("observations carry a persistable observation dismiss id, not a recommendation id", () => {
@@ -191,7 +192,7 @@ describe("Luv does not restate Today's Focus", () => {
     assert.equal(selectLuvDashboardEntry({ focusItems: [], observations: [], recommendations: [] }), null);
   });
 
-  it("still surfaces tour_followup_pattern when Focus Calendar also links to /tours", () => {
+  it("does not surface persisted tour_followup_pattern; Focus Calendar aggregate remains the fallback", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [
         focusItem({
@@ -211,9 +212,10 @@ describe("Luv does not restate Today's Focus", () => {
         }),
       ],
     });
-    assert.equal(entry?.message, "3 recent tours still need follow-up");
+    assert.notEqual(entry?.message, "3 recent tours still need follow-up");
+    assert.equal(entry?.dismissRecommendationId, undefined);
+    assert.equal(entry?.message, "I noticed one tour is on today's schedule.");
     assert.equal(entry?.actionHref, "/tours");
-    assert.equal(entry?.dismissRecommendationId, "rec-1");
   });
 });
 
@@ -269,9 +271,12 @@ describe("Dashboard Level-1 eligibility (Product Lock attention model)", () => {
         }),
       ],
     });
-    // Exactly one entry object — first eligible Level-1 recommendation wins.
+    // Exactly one entry object — first eligible live Level-1 observation wins.
+    // Persisted recommendations cannot occupy L1.
     assert.ok(entry);
-    assert.equal(entry?.message, "Clients have asked about pets.");
+    assert.equal(entry?.message, "Gap A");
+    assert.equal(entry?.dismissObservationId, "setup-gap-a");
+    assert.equal(entry?.dismissRecommendationId, undefined);
     assert.equal(Object.keys(entry!).filter((k) => k === "message").length, 1);
   });
 
@@ -348,7 +353,7 @@ describe("Dashboard Level-1 eligibility (Product Lock attention model)", () => {
     assert.equal(isDashboardLevel1Observation(level3), false);
   });
 
-  it("Level-1 recommendation wins over Level-3 observation", () => {
+  it("persisted recommendation cannot produce L1 over a Level-3 observation", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [level3LeadObservation()],
@@ -360,8 +365,7 @@ describe("Dashboard Level-1 eligibility (Product Lock attention model)", () => {
         }),
       ],
     });
-    assert.equal(entry?.message, "3 recent tours still need follow-up");
-    assert.equal(entry?.actionHref, "/tours");
+    assert.equal(entry, null);
   });
 
   it("record-scoped recommendation CTA is not Dashboard Level-1", () => {

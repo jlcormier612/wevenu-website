@@ -99,7 +99,7 @@ describe("engineering cleanup — dashboard dead recentBookings removed", () => 
     assert.doesNotMatch(svc, /recentBookings/);
     // Phase 3A: Focus-population scoped load replaces arbitrary venue-wide lead LIMITs.
     assert.match(svc, /loadFocusPopulationLeads/);
-    assert.match(svc, /readVenueRecommendations/);
+    assert.doesNotMatch(svc, /readVenueRecommendations/);
     assert.match(svc, /\.limit\(15\)/);
   });
 

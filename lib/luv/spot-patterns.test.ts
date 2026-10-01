@@ -621,7 +621,8 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     assert.match(entry, /isPhase5SpotPatternRecommendation/);
     assert.match(entry, /Phase 5 Spot Patterns are L2/);
     const dash = read("lib/dashboard/service.ts");
-    assert.match(dash, /filterGlobalObservationsForSpotPatterns/);
+    assert.doesNotMatch(dash, /filterGlobalObservationsForSpotPatterns/);
+    assert.doesNotMatch(dash, /from "@\/lib\/luv\/observations"/);
     const leadsPage = read("app/(app)/leads/page.tsx");
     assert.match(leadsPage, /SpotPatternRecommendationsPanel/);
     assert.match(leadsPage, /LEADS_SPOT_PATTERN_TYPES/);

@@ -1,20 +1,18 @@
 /**
  * Dashboard application service (Sprint 7 — Today Dashboard).
  *
- * Phase 3A: Dashboard GET is a read/assembly operation for Focus, Coming Up,
- * Business Snapshot inputs, and minimal L1. It must not manufacture
- * venue-wide intelligence or run proven-unused engines on the critical path.
+ * Phase 3A/3B: Dashboard GET is a read/assembly operation for Focus, Coming Up,
+ * Business Snapshot inputs, and live L1 sources. It must not manufacture
+ * venue-wide intelligence, run the broad observation engine, compute venue
+ * insights, or read/sync persisted recommendations on the critical path.
  * Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getLuvObservations } from "@/lib/luv/observations";
 import { getCommunicationObservations } from "@/lib/luv/communication-observations";
 import { getLuvSettings } from "@/lib/luv/settings";
-import { getVenueInsights, computeInsightObservations } from "@/lib/luv/insights-service";
-import { getDismissedObservationIds, readVenueRecommendations } from "@/lib/luv/recommendation-service";
+import { getDismissedObservationIds } from "@/lib/luv/recommendation-service";
 import { filterVisibleObservations } from "@/lib/luv/observation-dismiss";
-import { filterGlobalObservationsForSpotPatterns } from "@/lib/luv/spot-patterns";
 import { getActivationScore, getNextPendingMilestone } from "@/lib/activation/service";
 import type { ActivationScore } from "@/lib/activation/types";
 import { GAP_COPY } from "@/lib/dashboard/gap-copy";
@@ -428,27 +426,22 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     }[],
   );
 
-  // Minimal L1 inputs only — no trends/memories/health/actions/momentum/manufacture.
+  // Live L1 sources only — no broad observation engine, no insights compute,
+  // no persisted-recommendation read. Contract/document families have no other
+  // current-GET source after that removal and are therefore omitted (not
+  // recreated). Setup-gap and readiness reuse the live calculations already
+  // required for guided setup / readiness. Communication reuses its existing
+  // observation calculation for the authorized L1 families.
   const [
-    luvObservationsRaw,
-    communicationObservations,
-    rawInsights,
-    recommendationsRaw,
+    communicationObservationsRaw,
     dismissedObservationIds,
     activationScore,
     venueReadiness,
     nextPendingMilestone,
   ] = await forensicTime("wave2_parallel_wall", () =>
     Promise.all([
-      forensicTime("get_luv_observations", () =>
-        getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
-      ),
       forensicTime("get_communication_observations", () =>
         getCommunicationObservations(supabase, venue.id).catch(() => []),
-      ),
-      forensicTime("get_venue_insights", () => getVenueInsights().catch(() => null)),
-      forensicTime("read_venue_recommendations", () =>
-        readVenueRecommendations().catch(() => []),
       ),
       forensicTime("dismissed_observation_ids", () =>
         getDismissedObservationIds().catch(() => new Set<string>()),
@@ -461,29 +454,27 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     ]),
   );
 
-  forensicCount("luv_observations_raw", luvObservationsRaw.length);
+  const communicationObservations = communicationObservationsRaw.filter((obs) =>
+    obs.id === "comm-all-delivered" ||
+    obs.id === "comm-recent-failures" ||
+    obs.id.startsWith("comm-stale-unopened-"),
+  );
   forensicCount("communication_observations", communicationObservations.length);
-  forensicCount("insights_rows", rawInsights?.length ?? 0);
-  forensicCount("recommendations_raw", recommendationsRaw.length);
   forensicCount("dismissed_ids", dismissedObservationIds.size);
 
   const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
   const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
   const observationsOn = luvSettings?.observationsEnabled !== false;
-  const recommendationsForSuppression = observationsOn ? recommendationsRaw : [];
+  // Preserve existing remaining-source order: communication, then setup-gap,
+  // then readiness. First eligible live L1 candidate still wins.
   const luvObservations = observationsOn
-    ? filterGlobalObservationsForSpotPatterns(
-        filterVisibleObservations(
-          [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations, ...readinessObservations],
-          dismissedObservationIds,
-        ),
-        recommendationsForSuppression,
+    ? filterVisibleObservations(
+        [...communicationObservations, ...setupGapObservations, ...readinessObservations],
+        dismissedObservationIds,
       )
     : [];
-  const insightObservations = observationsOn && rawInsights
-    ? filterVisibleObservations(computeInsightObservations(rawInsights), dismissedObservationIds)
-    : [];
-  const recommendations = recommendationsForSuppression;
+  const insightObservations: typeof luvObservations = [];
+  const recommendations: import("@/lib/luv/recommendation-types").VenueRecommendation[] = [];
 
   forensicCount("setup_gap_observations", setupGapObservations.length);
   forensicCount("readiness_observations", readinessObservations.length);

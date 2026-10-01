@@ -260,28 +260,24 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
     } as LuvObservation;
   }
 
-  it("surfaces the pattern recommendation on the Dashboard Luv card", () => {
+  it("persisted tour_followup_pattern cannot occupy the Dashboard Luv card", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [observation()],
       recommendations: [recommendation()],
     });
-    assert.equal(entry?.message, "3 recent tours still need follow-up");
-    assert.equal(entry?.actionHref, "/tours");
-    assert.equal(entry?.actionLabel, "Open Tours");
-    assert.equal(entry?.dismissRecommendationId, "rec-pattern");
-    assert.equal(entry?.dismissObservationId, undefined);
+    assert.equal(entry, null);
   });
 
-  it("does not create observation: dismissal — uses recommendation id", () => {
+  it("does not create observation: dismissal — persisted pattern is not L1", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [],
       recommendations: [recommendation()],
     });
-    assert.ok(entry?.dismissRecommendationId);
+    assert.equal(entry, null);
+    assert.equal(entry?.dismissRecommendationId, undefined);
     assert.equal(entry?.dismissObservationId, undefined);
-    assert.doesNotMatch(entry!.dismissRecommendationId!, /^observation:/);
   });
 
   it("dismissed pattern stays hidden (visibility) so refresh cannot resurrect it", () => {
@@ -312,7 +308,9 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
       observations: [],
       recommendations: [recommendation()],
     });
-    assert.equal(entry?.message, "3 recent tours still need follow-up");
+    assert.notEqual(entry?.message, "3 recent tours still need follow-up");
+    assert.equal(entry?.dismissRecommendationId, undefined);
+    assert.equal(entry?.message, "I noticed one tour is on today's schedule.");
     assert.equal(entry?.actionHref, "/tours");
   });
 
@@ -334,9 +332,14 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
         recommendation(),
       ],
     });
-    assert.equal(
+    assert.equal(entry, null);
+    assert.notEqual(
       entry?.message,
       "Clients have asked about exotic animals 3 times in the last 30 days.",
+    );
+    assert.notEqual(
+      entry?.message,
+      "Alex completed their tour 15h ago — follow up while it's fresh.",
     );
   });
 
@@ -347,8 +350,8 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
         focusItems: [],
         observations: [],
         recommendations: [created],
-      })?.dismissRecommendationId,
-      "stable-pattern-id",
+      }),
+      null,
     );
 
     // Same durable id after dismiss (sync must not mint a new visible row).

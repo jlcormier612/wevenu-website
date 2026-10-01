@@ -162,8 +162,8 @@ describe("Dashboard Phase 3A critical path contracts", () => {
   const service = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
   const page = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
 
-  it("Dashboard service uses read-only recommendations", () => {
-    assert.match(service, /readVenueRecommendations/);
+  it("Dashboard service does not read or manufacture persisted recommendations", () => {
+    assert.doesNotMatch(service, /readVenueRecommendations/);
     assert.doesNotMatch(service, /getVenueRecommendations\(/);
     assert.doesNotMatch(service, /refreshVenueRecommendations\(/);
     assert.doesNotMatch(service, /generate_venue_recommendations/);
@@ -184,6 +184,10 @@ describe("Dashboard Phase 3A critical path contracts", () => {
     assert.doesNotMatch(service, /getDailyBriefing\(/);
     assert.match(service, /getFocusNeedsAttentionBriefing/);
     assert.match(service, /loadFocusPopulationLeads/);
+    assert.doesNotMatch(service, /getLuvObservations/);
+    assert.doesNotMatch(service, /getVenueInsights/);
+    assert.doesNotMatch(service, /compute_venue_insights/);
+    assert.doesNotMatch(service, /computeInsightObservations/);
   });
 
   it("Dashboard page still renders Focus, Coming Up, Snapshot, and L1", () => {

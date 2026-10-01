@@ -225,7 +225,7 @@ describe("venue readiness — resolution, dismissal, dashboard quietness", () =>
     assert.deepEqual(hidden, []);
   });
 
-  it("lets an existing Level-1 recommendation keep the dashboard card", () => {
+  it("persisted recommendation cannot displace a live venue-readiness L1 candidate", () => {
     const readiness = readinessDashboardObservations(assessVenueReadiness(readyVenue({ activePackageCount: 0 })));
     const recommendation = {
       id: "rec-1",
@@ -244,8 +244,9 @@ describe("venue readiness — resolution, dismissal, dashboard quietness", () =>
       observations: readiness,
       recommendations: [recommendation],
     });
-    assert.equal(entry?.actionHref, "/tours");
-    assert.match(entry?.message ?? "", /follow-up/);
+    assert.equal(entry?.dismissObservationId, readiness[0]?.id);
+    assert.notEqual(entry?.dismissRecommendationId, "rec-1");
+    assert.doesNotMatch(entry?.message ?? "", /follow-up/);
   });
 
   it("does not praise every remaining checkbox when a blocker is still open", () => {

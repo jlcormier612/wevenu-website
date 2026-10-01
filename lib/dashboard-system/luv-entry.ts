@@ -11,12 +11,18 @@
  * lead-specific (Level-3) observations remain computed for lower surfaces;
  * they must not win the one global Dashboard card.
  *
- * So this picks, in order of how much interpretation it adds:
- *   1. a Level-1 recommendation that is not a Leads stale-contact filter duplicate,
- *   2. a Level-1 observation about something NOT already in Today's Focus,
- *   3. failing both, an aggregate read of Today's Focus — except when that
+ * Locked L1 trust: a candidate may occupy the Dashboard card only while its
+ * authoritative supporting facts are valid on the current GET. Persisted
+ * recommendations and insight_* rows are not revalidated on GET, so they
+ * cannot occupy L1.
+ *
+ * So this picks:
+ *   1. a valid live Level-1 observation whose facts were established on this GET
+ *      and which is not already in Today's Focus,
+ *   2. failing that, an aggregate read of Today's Focus — except when that
  *      aggregate would only restate lead follow-ups already listed (and the
- *      Leads page already owns that queue).
+ *      Leads page already owns that queue),
+ *   3. otherwise no L1 card.
  */
 import type { ClassifiedItem } from "@/lib/dashboard-system/decision-engine";
 import {
@@ -160,15 +166,23 @@ export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
   if (obs.id.startsWith("event-payment-attention-")) return false;
   if (obs.id.startsWith("inquiry-unattended-")) return false;
 
-  // Known venue-wide families (explicit allowlist).
+  // Locked live L1 families (explicit allowlist). insight_* is inferential
+  // and is never established as current on GET.
+  if (obs.id.startsWith("insight_")) return false;
   if (obs.id.startsWith("setup-gap-")) return true;
   if (obs.id.startsWith("venue-readiness-")) return true;
-  if (obs.id.startsWith("insight_")) return true;
   if (obs.id === "comm-all-delivered" || obs.id === "comm-recent-failures") return true;
 
   const primaryHref = obs.recommendation?.link ?? obs.link;
   if (isRecordScopedHref(primaryHref) || isRecordScopedHref(obs.link)) return false;
-  return true;
+
+  // Qualifying non-record-scoped communication / contract / document families.
+  // Dashboard GET only assembles these when a current live source already
+  // produced them. Record-scoped members stay Level-3.
+  if (obs.id.startsWith("comm-stale-unopened-")) return true;
+  if (obs.id.startsWith("contract-")) return true;
+  if (obs.id.startsWith("doc-")) return true;
+  return false;
 }
 
 /**
@@ -177,13 +191,14 @@ export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
  */
 export function isDashboardLevel1Recommendation(rec: VenueRecommendation): boolean {
   // Phase 5 Spot Patterns are L2 workflow intelligence only — never Dashboard L1.
+  // Locked L1 trust: persisted recommendations are not revalidated on GET.
+  // A stored row is not a current supporting fact.
   if (isPhase5SpotPatternRecommendation(rec)) return false;
-  if (isTourFollowupPatternRecommendation(rec)) return true;
-  if (rec.type.startsWith("client_ask_gap_")) return true;
-  const cta = firstCta(rec);
-  if (!cta) return false;
-  if (isRecordScopedHref(cta.href)) return false;
-  return true;
+  if (isTourFollowupPatternRecommendation(rec)) return false;
+  if (rec.type.startsWith("client_ask_gap_")) return false;
+  if (rec.type === "inquiry_reactivation" || rec.type === "seasonal_prep") return false;
+  void rec;
+  return false;
 }
 
 /**
@@ -247,16 +262,14 @@ export function selectLuvDashboardEntry({
   const focusSubjects = new Set(focusItems.map((i) => subject(i.href)));
   const suppressTourNoFollowup = shouldSuppressTourNoFollowupObservations(recommendations);
 
-  // 1. A Level-1 recommendation is already interpretation plus an action, so it
-  //    leads — unless it points at a Focus row or merely opens the Leads stale filter.
+  // 1. Persisted recommendations are not current L1 sources. The loop remains
+  //    so a stored row can never occupy the card merely because it exists.
   for (const rec of recommendations) {
     if (!isRecommendationActiveForDisplay(rec)) continue;
     if (isLeadsFilterDuplicateRecommendation(rec)) continue;
     if (!isDashboardLevel1Recommendation(rec)) continue;
     const cta = firstCta(rec);
     if (!cta) continue;
-    // Cross-lead tour follow-up pattern must not be suppressed by Calendar Focus
-    // rows that also navigate to /tours for today's upcoming schedule.
     if (
       !isTourFollowupPatternRecommendation(rec) &&
       focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))
@@ -278,7 +291,7 @@ export function selectLuvDashboardEntry({
     };
   }
 
-  // 2. A Level-1 observation, but only about something Today's Focus is not covering.
+  // 2. A valid live Level-1 observation, but only about something Today's Focus is not covering.
   //    Suppress individual tour-no-followup cards while the venue-level pattern
   //    is active or recently dismissed (same work as the V2 recommendation).
   //    Level-3 / single-record observations never win this slot.

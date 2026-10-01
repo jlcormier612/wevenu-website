@@ -96,10 +96,10 @@ describe("Phase 3B forensic instrumentation wiring", () => {
     assert.match(service, /forensicTime\("auth_venue_resolution"/);
     assert.match(service, /forensicTime\("focus_population"/);
     assert.match(service, /forensicTime\("get_focus_briefing"/);
-    assert.match(service, /forensicTime\("get_luv_observations"/);
+    assert.doesNotMatch(service, /forensicTime\("get_luv_observations"/);
     assert.match(service, /forensicTime\("get_communication_observations"/);
-    assert.match(service, /forensicTime\("get_venue_insights"/);
-    assert.match(service, /forensicTime\("read_venue_recommendations"/);
+    assert.doesNotMatch(service, /forensicTime\("get_venue_insights"/);
+    assert.doesNotMatch(service, /forensicTime\("read_venue_recommendations"/);
     assert.match(service, /forensicTime\("dismissed_observation_ids"/);
     assert.match(service, /forensicTime\("activation_score"/);
     assert.match(service, /forensicTime\("load_venue_readiness"/);
