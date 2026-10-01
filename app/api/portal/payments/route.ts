@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import { selectCanonicalPaymentSchedules, type PortalPaymentScheduleLike } from "@/lib/portal/payment-schedules";
+import { venueToday } from "@/lib/venue/timezone";
 
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
 
   // Same readiness rule as get_portal_checkout_context — surface before Pay is clickable.
   let onlinePaymentsReady = false;
+  let businessToday: string | null = null;
   try {
     const { createAdminClient } = await import("@/integrations/supabase/admin");
     const admin = createAdminClient();
@@ -37,18 +39,22 @@ export async function GET(request: Request) {
     if (session?.venue_id) {
       const { data: venue } = await admin
         .from("venues")
-        .select("stripe_account_id, stripe_onboarding_status, stripe_charges_enabled")
+        .select("stripe_account_id, stripe_onboarding_status, stripe_charges_enabled, timezone")
         .eq("id", session.venue_id)
         .maybeSingle<{
           stripe_account_id: string | null;
           stripe_onboarding_status: string | null;
           stripe_charges_enabled: boolean | null;
+          timezone: string | null;
         }>();
       onlinePaymentsReady = Boolean(
         venue?.stripe_account_id &&
           venue.stripe_onboarding_status === "connected" &&
           venue.stripe_charges_enabled === true,
       );
+      if (venue?.timezone) {
+        businessToday = venueToday(venue.timezone);
+      }
     }
   } catch {
     onlinePaymentsReady = false;
@@ -58,5 +64,6 @@ export async function GET(request: Request) {
     ...payload,
     schedules: selectCanonicalPaymentSchedules(payload.schedules ?? []),
     onlinePaymentsReady,
+    businessToday,
   });
 }

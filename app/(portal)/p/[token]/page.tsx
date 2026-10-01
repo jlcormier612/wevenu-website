@@ -18,8 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!ctx) return { title: "Wedding Workspace" };
   if (ctx.accessLevel === "financial") {
     return {
-      title: { absolute: `Payment — ${ctx.venue.name}` },
-      description: `Secure payment for ${ctx.venue.name}`,
+      title: { absolute: `Invoice & Payment Plan — ${ctx.venue.name}` },
+      description: `Your invoice and payment plan from ${ctx.venue.name}`,
     };
   }
   const coupleName = [ctx.client.firstName, ctx.client.partnerFirstName].filter(Boolean).join(" & ");

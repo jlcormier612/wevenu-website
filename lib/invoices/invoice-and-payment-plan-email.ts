@@ -1,9 +1,19 @@
 /**
  * Canonical customer email for Invoice & Payment Plan.
- * One send: schedule + totals + Pay now when an installment is actually due.
+ *
+ * One primary CTA: View Invoice & Payment Plan → financial-token page.
+ * Payment (Pay $X Now) lives on that page, not as a competing email CTA.
+ * Does not link into the normal couple portal / Documents.
  */
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
+import {
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+  type EmailVenueBrand,
+} from "@/lib/email/venue-brand";
 
 export type InvoiceAndPaymentPlanScheduleLine = {
   label: string;
@@ -29,9 +39,12 @@ export type InvoiceAndPaymentPlanEmailInput = {
   dueDateLabel: string | null;
   remainingAfter: number;
   scheduleLines: InvoiceAndPaymentPlanScheduleLine[];
-  /** Direct Stripe-handoff URL (financial token). Never a portal login prerequisite. */
-  payUrl: string | null;
-  documentsUrl: string | null;
+  /**
+   * Direct pre-portal Invoice & Payment Plan page (financial access token).
+   * Never a normal couple-portal / Documents URL.
+   */
+  invoicePlanUrl: string | null;
+  brand?: EmailVenueBrand;
 };
 
 export type InvoiceAndPaymentPlanEmailContent = {
@@ -48,17 +61,13 @@ export type InvoiceAndPaymentPlanEmailContent = {
   totalContracted: string;
   paidToDate: string;
   remainingBalance: string;
+  /** Same as invoicePlanUrl — customer-facing financial page. */
+  invoicePlanUrl: string | null;
+  /** @deprecated Prefer invoicePlanUrl; kept null (no email pay CTA). */
   paymentUrl: string | null;
+  /** @deprecated Couple Documents are not used for this send. */
   documentsUrl: string | null;
 };
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function formatDue(dueDate: string | null): string {
   if (!dueDate) return "Date TBD";
@@ -83,17 +92,10 @@ export function buildInvoiceAndPaymentPlanEmail(
     ? (dueNow.label?.trim() || "Amount due now")
     : null;
 
-  const scheduleText = input.scheduleLines.length > 0
-    ? input.scheduleLines
-      .map((l) => `• ${l.label}: ${formatCurrency(l.amount)} — due ${formatDue(l.dueDate)}`)
-      .join("\n")
-    : "No installment schedule is on file.";
-
   const dueNowText = payNow
     ? [
         `${amountDueLabel}: ${amountDueValue}`,
-        input.dueDateLabel ? `Due: ${input.dueDateLabel}` : null,
-        `Remaining after this payment: ${formatCurrency(input.remainingAfter)}`,
+        input.dueDateLabel ? `Due ${input.dueDateLabel}` : null,
         "",
       ]
     : dueNow.kind === "scheduled_future"
@@ -103,89 +105,58 @@ export function buildInvoiceAndPaymentPlanEmail(
         ]
       : [""];
 
-  const eventLine = input.eventName && input.eventDate
-    ? `Event: ${input.eventName} — ${formatDue(input.eventDate)}`
-    : input.eventDate
-      ? `Event: ${formatDue(input.eventDate)}`
-      : input.eventName
-        ? `Event: ${input.eventName}`
-        : null;
+  const planUrl = input.invoicePlanUrl;
 
   const text = [
     `Hi ${input.clientFirstName},`,
     "",
     `${input.venueName} has sent your invoice and payment plan.`,
     "",
-    `Client: ${input.clientName}`,
-    eventLine,
+    planUrl ? `View Invoice & Payment Plan:` : null,
+    planUrl,
+    planUrl ? "" : null,
+    ...dueNowText,
     `Invoice: ${input.invoiceLabel} (${input.invoiceNumber})`,
     `Total contracted: ${formatCurrency(input.totalContracted)}`,
     `Paid to date: ${formatCurrency(input.paidToDate)}`,
     `Balance remaining: ${formatCurrency(input.balanceDue)}`,
-    "",
-    ...dueNowText,
-    "Payment plan",
-    scheduleText,
-    "",
-    payNow && input.payUrl ? `Pay now: ${input.payUrl}` : null,
-    input.documentsUrl ? `View your documents: ${input.documentsUrl}` : null,
     "",
     `Warm regards,`,
     input.venueName,
     input.venueEmail ?? "",
   ].filter((line) => line !== null).join("\n");
 
-  const scheduleHtml = input.scheduleLines.length > 0
-    ? `<table style="width:100%;border-collapse:collapse;margin:16px 0">
-        <tr>
-          <th align="left" style="padding:8px 0;border-bottom:1px solid #ddd">Payment</th>
-          <th align="left" style="padding:8px 0;border-bottom:1px solid #ddd">Due</th>
-          <th align="right" style="padding:8px 0;border-bottom:1px solid #ddd">Amount</th>
-        </tr>
-        ${input.scheduleLines.map((l) =>
-          `<tr><td style="padding:8px 0">${escapeHtml(l.label)}</td><td style="padding:8px 0">${escapeHtml(formatDue(l.dueDate))}</td><td align="right" style="padding:8px 0">${escapeHtml(formatCurrency(l.amount))}</td></tr>`
-        ).join("")}
-      </table>`
-    : "<p>No installment schedule is on file.</p>";
-
-  const payButton = payNow && input.payUrl
-    ? `<p style="margin:24px 0"><a href="${escapeHtml(input.payUrl)}" style="display:inline-block;padding:14px 24px;background:#5D6F5D;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600">Pay ${escapeHtml(amountDueValue ?? "")} now</a></p>`
-    : "";
-
-  const documentsLink = input.documentsUrl
-    ? `<p style="font-size:13px;color:#666"><a href="${escapeHtml(input.documentsUrl)}" style="color:#5D6F5D">View your documents</a></p>`
-    : "";
+  const brand: EmailVenueBrand =
+    input.brand ?? emailBrandFromVenue({ name: input.venueName, email: input.venueEmail });
 
   const dueNowHtml = payNow
-    ? `<p style="font-size:20px;margin:16px 0 4px"><strong>${escapeHtml(amountDueLabel ?? "Amount due now")}: ${escapeHtml(amountDueValue ?? "")}</strong></p>
-       ${input.dueDateLabel ? `<p>Due ${escapeHtml(input.dueDateLabel)}</p>` : ""}
-       <p>Remaining after this payment: ${escapeHtml(formatCurrency(input.remainingAfter))}</p>`
+    ? `<p style="margin:0 0 4px;font-size:15px;color:#374151"><strong>${escapeHtml(amountDueLabel ?? "Amount due now")}: ${escapeHtml(amountDueValue ?? "")}</strong></p>
+       ${input.dueDateLabel ? `<p style="margin:0 0 16px;font-size:15px;color:#374151">Due ${escapeHtml(input.dueDateLabel)}</p>` : `<p style="margin:0 0 16px"></p>`}`
     : dueNow.kind === "scheduled_future"
-      ? `<p>Next payment (${escapeHtml(dueNow.label ?? "installment")}): ${escapeHtml(formatCurrency(dueNow.amount))} due ${escapeHtml(formatDue(dueNow.dueDate))}. It is not due yet.</p>`
+      ? `<p style="margin:0 0 16px;font-size:15px;color:#374151">Next payment (${escapeHtml(dueNow.label ?? "installment")}): ${escapeHtml(formatCurrency(dueNow.amount))} due ${escapeHtml(formatDue(dueNow.dueDate))}. It is not due yet.</p>`
       : "";
 
-  const html = [
-    `<p>Hi ${escapeHtml(input.clientFirstName)},</p>`,
-    `<p>${escapeHtml(input.venueName)} has sent your invoice and payment plan.</p>`,
-    `<p>Client: ${escapeHtml(input.clientName)}<br/>`,
-    eventLine ? `${escapeHtml(eventLine)}<br/>` : "",
-    `Invoice: ${escapeHtml(input.invoiceLabel)} (${escapeHtml(input.invoiceNumber)})<br/>`,
-    `Total contracted: ${escapeHtml(formatCurrency(input.totalContracted))}<br/>`,
-    `Paid to date: ${escapeHtml(formatCurrency(input.paidToDate))}<br/>`,
-    `Balance remaining: ${escapeHtml(formatCurrency(input.balanceDue))}</p>`,
+  const ctaHtml = planUrl
+    ? `<p style="margin:0 0 20px">${brandButtonHtml(brand, planUrl, "View Invoice & Payment Plan")}</p>`
+    : "";
+
+  const body = [
+    `<p style="margin:0 0 12px;font-size:15px;color:#374151">Hi ${escapeHtml(input.clientFirstName)},</p>`,
+    `<p style="margin:0 0 20px;font-size:15px;color:#374151"><strong>${escapeHtml(input.venueName)}</strong> has sent your invoice and payment plan.</p>`,
+    ctaHtml,
     dueNowHtml,
-    payButton,
-    `<p style="margin-top:24px"><strong>Payment plan</strong></p>`,
-    scheduleHtml,
-    documentsLink,
-    `<p>Warm regards,<br/>${escapeHtml(input.venueName)}</p>`,
-  ].filter(Boolean).join("\n");
+    `<p style="margin:0 0 4px;font-size:13px;color:#6b7280">Invoice: ${escapeHtml(input.invoiceLabel)} (${escapeHtml(input.invoiceNumber)})</p>`,
+    `<p style="margin:0 0 4px;font-size:13px;color:#6b7280">Total contracted: ${escapeHtml(formatCurrency(input.totalContracted))}</p>`,
+    `<p style="margin:0 0 4px;font-size:13px;color:#6b7280">Paid to date: ${escapeHtml(formatCurrency(input.paidToDate))}</p>`,
+    `<p style="margin:0 0 20px;font-size:13px;color:#6b7280">Balance remaining: ${escapeHtml(formatCurrency(input.balanceDue))}</p>`,
+    `<p style="margin:0;font-size:15px;color:#374151">Warm regards,<br/>${escapeHtml(input.venueName)}</p>`,
+  ].filter(Boolean).join("");
 
   return {
     to: input.clientEmail,
     subject: `Your invoice and payment plan — ${input.venueName}`,
     text,
-    html,
+    html: renderBrandedEmailHtml(brand, body),
     replyTo: input.venueEmail ?? undefined,
     recipient: input.clientEmail,
     clientName: input.clientName,
@@ -195,7 +166,8 @@ export function buildInvoiceAndPaymentPlanEmail(
     totalContracted: formatCurrency(input.totalContracted),
     paidToDate: formatCurrency(input.paidToDate),
     remainingBalance: formatCurrency(input.balanceDue),
-    paymentUrl: payNow ? input.payUrl : null,
-    documentsUrl: input.documentsUrl,
+    invoicePlanUrl: planUrl,
+    paymentUrl: null,
+    documentsUrl: null,
   };
 }

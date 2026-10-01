@@ -6,12 +6,13 @@ import { describe, it } from "node:test";
 describe("pre-portal payment access", () => {
   it("invoice email creates financial sessions when couple portal is not invited", () => {
     const source = readFileSync(resolve("lib/invoices/outbound.ts"), "utf8");
-    assert.match(source, /accessLevel === "couple"/);
     assert.match(source, /createPortalSession\(clientId, "Payment", "financial"\)/);
     assert.doesNotMatch(
       source,
       /createPortalSession\([^,]+, "Payment", "couple"\)/,
     );
+    assert.doesNotMatch(source, /createPortalSession\(clientId, "Documents", "couple"\)/);
+    assert.match(source, /invoicePlanUrl/);
   });
 
   it("portal page routes financial access to PaymentAccessShell", () => {
@@ -29,7 +30,8 @@ describe("pre-portal payment access", () => {
     assert.doesNotMatch(shell, /Timeline/);
     assert.doesNotMatch(shell, /Floor Plan/);
     assert.doesNotMatch(shell, /Vendors/);
-    assert.match(shell, /Pay \$\{/);
+    assert.match(shell, /Pay \$\{formatCurrency\(payableLine\.amount\)\} Now/);
     assert.match(shell, /What&apos;s next/);
+    assert.match(shell, /Invoice &amp; Payment Plan/);
   });
 });

@@ -683,8 +683,8 @@ export function InvoiceDetail({
           {sendPreview && (
             <p className="mx-auto max-w-3xl text-sm text-muted-foreground px-4">
               {sendPreview.payableNow
-                ? `This sends to ${sendPreview.recipient} and includes a pay-now action for ${sendPreview.amountDueNow}. The client does not need to sign in.`
-                : `This sends to ${sendPreview.recipient} with the full schedule. Nothing is presented as payable now.`}
+                ? `This sends to ${sendPreview.recipient} with a link to view the invoice and payment plan. When an installment is due, they can pay ${sendPreview.amountDueNow} from that page. The client does not need a planning portal invitation.`
+                : `This sends to ${sendPreview.recipient} with a link to view the invoice and payment plan. Nothing is presented as payable now.`}
             </p>
           )}
           <div className="bg-white py-8">

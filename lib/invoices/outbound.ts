@@ -36,8 +36,12 @@ export type InvoiceOutboundContext = {
   dueNowLine: InvoiceOutboundScheduleLine | null;
   paidToDate: number;
   remainingAfter: number;
-  portalPayUrl: string | null;
-  documentsUrl: string | null;
+  /**
+   * Pre-portal Invoice & Payment Plan page (financial access token).
+   * Optional ?item= binds a currently payable installment for checkout.
+   * Never a normal couple-portal Documents URL.
+   */
+  invoicePlanUrl: string | null;
 };
 
 const sendingPaymentRequest = new Set<string>();
@@ -104,12 +108,6 @@ export async function loadInvoiceOutboundContext(
   invoiceId: string,
   opts: {
     publish: boolean;
-    /**
-     * Full-document delivery uses Client Portal Documents. Create a couple
-     * session when missing so documentsUrl is present — independent of the
-     * financial payment-link session.
-     */
-    ensureCoupleDocuments?: boolean;
   },
 ): Promise<{ ok: true; ctx: InvoiceOutboundContext } | { ok: false; message: string }> {
   const venue = await getCurrentVenue();
@@ -177,26 +175,22 @@ export async function loadInvoiceOutboundContext(
       : invoice.balanceDue;
 
   const { publicAppOrigin } = await import("@/lib/env");
-  let portalPayUrl: string | null = null;
-  let documentsUrl: string | null = null;
+  let invoicePlanUrl: string | null = null;
   try {
     const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
     const sessions = await getPortalSessions(clientId);
-    let coupleSession = sessions.find((s) => s.accessLevel === "couple") ?? null;
     let financialSession = sessions.find((s) => s.accessLevel === "financial") ?? null;
-    if (opts.ensureCoupleDocuments && !coupleSession) {
-      coupleSession = await createPortalSession(clientId, "Documents", "couple");
-    }
-    // Payment CTA must be a financial-token destination — never couple portal login.
-    if (dueNow.kind === "next_installment" && !financialSession) {
+    // Invoice & Payment Plan uses the financial-token experience only —
+    // never create or link a normal couple portal / Documents session here.
+    if (!financialSession) {
       financialSession = await createPortalSession(clientId, "Payment", "financial");
     }
-    if (dueNow.kind === "next_installment" && financialSession?.accessToken) {
-      const itemQs = dueNowLine?.id ? `?item=${encodeURIComponent(dueNowLine.id)}` : "";
-      portalPayUrl = `${publicAppOrigin()}/p/${financialSession.accessToken}${itemQs}`;
-    }
-    if (coupleSession?.accessToken) {
-      documentsUrl = `${publicAppOrigin()}/p/${coupleSession.accessToken}#documents`;
+    if (financialSession?.accessToken) {
+      const itemQs =
+        dueNow.kind === "next_installment" && dueNowLine?.id
+          ? `?item=${encodeURIComponent(dueNowLine.id)}`
+          : "";
+      invoicePlanUrl = `${publicAppOrigin()}/p/${financialSession.accessToken}${itemQs}`;
     }
   } catch {
     /* email still sends without link */
@@ -224,8 +218,7 @@ export async function loadInvoiceOutboundContext(
       dueNowLine,
       paidToDate,
       remainingAfter,
-      portalPayUrl,
-      documentsUrl,
+      invoicePlanUrl,
     },
   };
 }

@@ -22,6 +22,7 @@ import type {
   InvoiceStatus,
 } from "@/lib/invoices/types";
 import { sendEmail } from "@/lib/email/send";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { buildInvoiceAndPaymentPlanEmail } from "@/lib/invoices/invoice-and-payment-plan-email";
 import {
   beginOutboundSend,
@@ -33,6 +34,7 @@ import {
   type InvoiceOutboundContext,
 } from "@/lib/invoices/outbound";
 import { getCurrentVenue } from "@/lib/venue/service";
+import type { EmailVenueBrand } from "@/lib/email/venue-brand";
 
 const INVOICE_ALREADY_SENT =
   "This invoice and payment plan was already sent."
@@ -111,8 +113,7 @@ export type InvoiceAndPaymentPlanPreview = {
   totalContracted: string;
   paidToDate: string;
   remainingBalance: string;
-  paymentUrl: string | null;
-  documentsUrl: string | null;
+  invoicePlanUrl: string | null;
   payableNow: boolean;
 };
 
@@ -129,7 +130,7 @@ export async function paymentRequestAlreadySentAction(
   return { ok: true, alreadySent };
 }
 
-function emailFromContext(ctx: InvoiceOutboundContext) {
+function emailFromContext(ctx: InvoiceOutboundContext, brand: EmailVenueBrand) {
   return buildInvoiceAndPaymentPlanEmail({
     clientFirstName: ctx.clientFirstName,
     clientEmail: ctx.clientEmail,
@@ -147,8 +148,8 @@ function emailFromContext(ctx: InvoiceOutboundContext) {
     dueDateLabel: dueDateLabelFromContext(ctx),
     remainingAfter: ctx.remainingAfter,
     scheduleLines: ctx.scheduleLines,
-    payUrl: ctx.portalPayUrl,
-    documentsUrl: ctx.documentsUrl,
+    invoicePlanUrl: ctx.invoicePlanUrl,
+    brand,
   });
 }
 
@@ -166,8 +167,7 @@ function previewFromEmail(
     totalContracted: email.totalContracted,
     paidToDate: email.paidToDate,
     remainingBalance: email.remainingBalance,
-    paymentUrl: email.paymentUrl,
-    documentsUrl: email.documentsUrl,
+    invoicePlanUrl: email.invoicePlanUrl,
     payableNow: ctx.dueNow.kind === "next_installment",
   };
 }
@@ -190,10 +190,9 @@ export async function previewInvoiceAndPaymentPlanAction(
   }
   const loaded = await loadInvoiceOutboundContext(invoiceId, {
     publish: false,
-    ensureCoupleDocuments: true,
   });
   if (!loaded.ok) return loaded;
-  const email = emailFromContext(loaded.ctx);
+  const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
   return { ok: true, preview: previewFromEmail(loaded.ctx, email), alreadySent: false };
 }
 
@@ -213,10 +212,9 @@ export async function sendInvoiceAndPaymentPlanAction(
     }
     const loaded = await loadInvoiceOutboundContext(invoiceId, {
       publish: true,
-      ensureCoupleDocuments: true,
     });
     if (!loaded.ok) return loaded;
-    const email = emailFromContext(loaded.ctx);
+    const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
     const result = await sendEmail({
       to: email.to,
       subject: email.subject,

@@ -80,7 +80,7 @@ describe("E. canonical Preview and Send", () => {
     assert.match(send, /beginOutboundSend\("payment_request"/);
   });
 
-  it("one customer email includes schedule and pay-now when due", () => {
+  it("one customer email includes schedule context and financial invoice CTA when due", () => {
     const email = buildInvoiceAndPaymentPlanEmail({
       clientFirstName: "Betty",
       clientEmail: "betty@example.com",
@@ -107,17 +107,18 @@ describe("E. canonical Preview and Send", () => {
         { label: "Planning Payment 1", amount: 2500, dueDate: "2026-12-12", status: "pending" },
         { label: "Final Payment", amount: 5000, dueDate: "2027-03-11", status: "pending" },
       ],
-      payUrl: "https://example.test/p/fin-token?item=pay-1",
-      documentsUrl: "https://example.test/p/couple-token#documents",
+      invoicePlanUrl: "https://example.test/p/fin-token?item=pay-1",
     });
     assert.equal(email.recipient, "betty@example.com");
     assert.match(email.subject, /invoice and payment plan/);
     assert.match(email.text, /Total contracted: \$10,000\.00/);
     assert.match(email.text, /Initial Payment: \$2,500\.00/);
-    assert.match(email.text, /Planning Payment 1: \$2,500\.00/);
-    assert.match(email.html, /Pay \$2,500\.00 now/);
+    assert.match(email.html, /View Invoice &amp; Payment Plan|View Invoice & Payment Plan/);
     assert.match(email.html, /https:\/\/example\.test\/p\/fin-token\?item=pay-1/);
+    assert.doesNotMatch(email.html, />Pay \$2,500\.00 now</);
+    assert.doesNotMatch(email.html, /View your documents/i);
     assert.doesNotMatch(email.html, /#payments/);
+    assert.doesNotMatch(email.html, /#documents/);
     assert.doesNotMatch(email.text, /must navigate the portal/i);
     assert.doesNotMatch(email.text, /not a request to pay/);
   });
@@ -146,12 +147,12 @@ describe("E. canonical Preview and Send", () => {
       scheduleLines: [
         { label: "Initial Payment", amount: 2500, dueDate: "2026-12-01", status: "pending" },
       ],
-      payUrl: "https://example.test/p/fin-token?item=pay-1",
-      documentsUrl: null,
+      invoicePlanUrl: "https://example.test/p/fin-token",
     });
     assert.equal(email.paymentUrl, null);
     assert.match(email.text, /not due yet/);
     assert.doesNotMatch(email.html, /Pay \$2,500\.00 now/);
+    assert.match(email.html, /View Invoice &amp; Payment Plan|View Invoice & Payment Plan/);
   });
 });
 
@@ -213,10 +214,12 @@ describe("G. one send, branded preview, financial pay path", () => {
     assert.match(detail, /InvoicePrintDocument/);
     assert.doesNotMatch(detail, /Send copy of payment plan and invoice/);
     assert.doesNotMatch(detail, /previewInvoiceDocumentCopyAction/);
-    assert.match(actions, /ensureCoupleDocuments: true/);
-    assert.match(outbound, /createPortalSession\(clientId, "Documents", "couple"\)/);
+    assert.doesNotMatch(actions, /ensureCoupleDocuments/);
+    assert.doesNotMatch(outbound, /createPortalSession\(clientId, "Documents", "couple"\)/);
     assert.match(outbound, /createPortalSession\(clientId, "Payment", "financial"\)/);
+    assert.match(outbound, /invoicePlanUrl/);
     assert.doesNotMatch(outbound, /#payments/);
+    assert.doesNotMatch(outbound, /#documents/);
   });
 
   it("Preview overlay is the branded document and cancel does not send", () => {
