@@ -18,6 +18,7 @@ export type ActivityType =
   | "task_completed"
   | "tour_scheduled"
   | "follow_up_set"
+  | "follow_up_completed"
   | "last_contacted"
   | "lead_updated"
   | "relationship_updated";

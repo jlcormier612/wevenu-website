@@ -5,7 +5,7 @@ import * as React from "react";
 import { Calendar, Clock, Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 
-import { updateRelationshipAction } from "@/app/(app)/leads/[id]/actions";
+import { completeFollowUpAction, updateRelationshipAction } from "@/app/(app)/leads/[id]/actions";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,12 +80,19 @@ function EditRow({
   );
 }
 
+type CompletionKind = "another_follow_up" | "other_next_action" | "no_further_follow_up";
+
 export function RelationshipCard({
   lead,
 }: {
   lead: Lead;
 }) {
   const [editing, setEditing] = React.useState(false);
+  const [completing, setCompleting] = React.useState(false);
+  const [completionKind, setCompletionKind] = React.useState<CompletionKind | null>(null);
+  const [completeNextAction, setCompleteNextAction] = React.useState("");
+  const [completeDate, setCompleteDate] = React.useState("");
+  const [completeActionMode, setCompleteActionMode] = React.useState<"preset" | "custom">("preset");
   const [input, setInput] = React.useState<RelationshipInput>(() =>
     createInitialRelationshipInput(lead),
   );
@@ -112,6 +119,52 @@ export function RelationshipCard({
   function handleCancel() {
     setInput(createInitialRelationshipInput(lead));
     setEditing(false);
+  }
+
+  function resetCompletion() {
+    setCompleting(false);
+    setCompletionKind(null);
+    setCompleteNextAction("");
+    setCompleteDate("");
+    setCompleteActionMode("preset");
+  }
+
+  function startCompletion() {
+    setEditing(false);
+    setCompleting(true);
+    setCompletionKind(null);
+    setCompleteNextAction("");
+    setCompleteDate("");
+    setCompleteActionMode("preset");
+  }
+
+  function submitCompletion(kind: CompletionKind, nextActionText?: string, followUpDate?: string) {
+    startTransition(async () => {
+      const result = await completeFollowUpAction(lead.id, {
+        kind,
+        nextActionText,
+        followUpDate,
+      });
+      if (result.ok) {
+        resetCompletion();
+        toast.success("Follow-up completed.");
+      } else {
+        toast.error(result.message ?? "Could not complete follow-up.");
+      }
+    });
+  }
+
+  function handleCompleteSave() {
+    if (!completionKind || completionKind === "no_further_follow_up") return;
+    if (completionKind === "another_follow_up" && !completeDate.trim()) {
+      toast.error("Enter the next follow-up date.");
+      return;
+    }
+    if (!completeNextAction.trim()) {
+      toast.error("Enter the next action.");
+      return;
+    }
+    submitCompletion(completionKind, completeNextAction, completeDate);
   }
 
   function handleSave() {
@@ -147,7 +200,7 @@ export function RelationshipCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Follow-up</CardTitle>
-          {!editing ? (
+          {!editing && !completing ? (
             <Button
               type="button"
               variant="ghost"
@@ -155,6 +208,10 @@ export function RelationshipCard({
               onClick={() => setEditing(true)}
             >
               {isEmpty ? "+ Add details" : "Edit"}
+            </Button>
+          ) : completing ? (
+            <Button type="button" variant="ghost" size="sm" onClick={resetCompletion} disabled={pending}>
+              Cancel
             </Button>
           ) : (
             <div className="flex items-center gap-2">
@@ -169,7 +226,105 @@ export function RelationshipCard({
         </div>
       </CardHeader>
       <CardContent>
-        {!editing ? (
+        {completing ? (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-sm text-foreground">
+                Follow up: {lead.nextActionText?.trim() ? lead.nextActionText : "—"}
+              </p>
+              <p className="text-sm text-foreground">
+                Due: {formatDate(lead.followUpDate) || "—"}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-heading">What&apos;s next?</p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant={completionKind === "another_follow_up" ? "default" : "outline"}
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => setCompletionKind("another_follow_up")}
+                >
+                  Another follow-up
+                </Button>
+                <Button
+                  type="button"
+                  variant={completionKind === "other_next_action" ? "default" : "outline"}
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => setCompletionKind("other_next_action")}
+                >
+                  Other next action
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => submitCompletion("no_further_follow_up")}
+                >
+                  {pending && completionKind === null ? (
+                    <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</>
+                  ) : (
+                    "No further follow-up"
+                  )}
+                </Button>
+              </div>
+            </div>
+            {(completionKind === "another_follow_up" || completionKind === "other_next_action") && (
+              <div className="space-y-3">
+                <EditRow label="Next action">
+                  {completeActionMode === "preset" ? (
+                    <Select
+                      value={completeNextAction || undefined}
+                      onValueChange={(v) => {
+                        if (v === CUSTOM_ACTION) {
+                          setCompleteActionMode("custom");
+                          setCompleteNextAction("");
+                        } else {
+                          setCompleteNextAction(v);
+                        }
+                      }}
+                      items={[...NEXT_ACTION_PRESETS.map((p) => ({ value: p, label: p })), { value: CUSTOM_ACTION, label: "Custom…" }]}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Choose a next step…" /></SelectTrigger>
+                      <SelectContent>
+                        {NEXT_ACTION_PRESETS.map((preset) => (
+                          <SelectItem key={preset} value={preset}>{preset}</SelectItem>
+                        ))}
+                        <SelectItem value={CUSTOM_ACTION}>Custom…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={completeNextAction}
+                        onChange={(e) => setCompleteNextAction(e.target.value)}
+                        placeholder="What's the next step?"
+                        autoFocus
+                      />
+                      <Button type="button" variant="ghost" size="sm"
+                        onClick={() => { setCompleteActionMode("preset"); setCompleteNextAction(""); }}>
+                        Use list
+                      </Button>
+                    </div>
+                  )}
+                </EditRow>
+                <EditRow label={completionKind === "another_follow_up" ? "Follow-up date" : "Due date (optional)"}>
+                  <Input
+                    type="date"
+                    value={completeDate}
+                    onChange={(e) => setCompleteDate(e.target.value)}
+                  />
+                </EditRow>
+                <Button type="button" size="sm" disabled={pending} onClick={handleCompleteSave}>
+                  {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : !editing ? (
           <div className="space-y-0.5">
             {lead.nextActionText ? (
               <DisplayRow
@@ -189,6 +344,13 @@ export function RelationshipCard({
                   : null
               }
             />
+            {lead.followUpDate ? (
+              <div className="pt-3">
+                <Button type="button" size="sm" onClick={startCompletion}>
+                  Complete follow-up
+                </Button>
+              </div>
+            ) : null}
             {isEmpty && (
               <p className="py-1 text-sm text-muted-foreground">
                 No follow-up details yet. Click &ldquo;Add details&rdquo; to record next steps,

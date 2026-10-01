@@ -18,10 +18,12 @@ import {
   updateLeadPipelineStage,
   updateLeadStatus,
   updateNote,
+  completeFollowUp,
   updateRelationshipFields,
   updateTask,
   wouldEnrollOnPipelineStageMove,
 } from "@/lib/leads/service";
+import type { FollowUpCompletionInput } from "@/lib/leads/follow-up-completion";
 import { refreshLeadScore } from "@/lib/leads/scores";
 import type {
   LeadActionResult,
@@ -238,6 +240,18 @@ export async function updateRelationshipAction(
     revalidateLead(leadId);
     // Tour scheduling is a commitment milestone — refresh scores immediately
     if (hints.tourScheduled) void refreshLeadScore(leadId).catch(() => {});
+  }
+  return result;
+}
+
+export async function completeFollowUpAction(
+  leadId: string,
+  input: FollowUpCompletionInput,
+): Promise<LeadActionResult> {
+  const result = await completeFollowUp(leadId, input);
+  if (result.ok) {
+    revalidateLead(leadId);
+    revalidatePath("/dashboard");
   }
   return result;
 }

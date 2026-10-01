@@ -207,6 +207,7 @@ const ACTIVITY_LABELS: Partial<Record<ActivityType | string, string>> = {
   task_completed: "Task completed",
   tour_scheduled: "Tour scheduled",
   follow_up_set: "Follow-up set",
+  follow_up_completed: "Follow-up completed",
   last_contacted: "Marked as contacted",
   lead_updated: "Lead info updated",
   relationship_updated: "Relationship details updated",

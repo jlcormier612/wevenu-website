@@ -749,6 +749,40 @@ export async function updateRelationshipFields(
   });
 }
 
+/** Outstanding relationship action only — does not touch tour or last contacted. */
+export async function getOutstandingFollowUp(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<{ nextActionText: string | null; followUpDate: string | null } | null> {
+  const { data, error } = await client
+    .from("leads")
+    .select("next_action_text, follow_up_date")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ next_action_text: string | null; follow_up_date: string | null }>();
+  if (error) throw error;
+  if (!data) return null;
+  return { nextActionText: data.next_action_text, followUpDate: data.follow_up_date };
+}
+
+export async function updateOutstandingFollowUp(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  input: { nextActionText: string | null; followUpDate: string | null },
+): Promise<void> {
+  const { error } = await client
+    .from("leads")
+    .update({
+      next_action_text: input.nextActionText,
+      follow_up_date: input.followUpDate,
+    })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 /** Edit an existing note's body. */
 export async function updateNote(
   client: DbClient,

@@ -21,6 +21,11 @@ import type {
   TaskInput,
 } from "@/lib/leads/types";
 import {
+  followUpCompletedTitle,
+  resolveFollowUpCompletion,
+  type FollowUpCompletionInput,
+} from "@/lib/leads/follow-up-completion";
+import {
   validateLeadInput,
   validateStatus,
   validateTaskInput,
@@ -1117,6 +1122,44 @@ export async function updateRelationshipFields(
     } else {
       await repo.insertActivity(supabase, venueId, leadId, "relationship_updated",
         "Relationship details updated");
+    }
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+export async function completeFollowUp(
+  leadId: string,
+  input: FollowUpCompletionInput,
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const current = await repo.getOutstandingFollowUp(supabase, venueId, leadId);
+    if (!current) return { ok: false, message: "Lead not found." } as LeadActionResult;
+    const resolved = resolveFollowUpCompletion(current, input);
+    if (!resolved.ok) return { ok: false, message: resolved.message } as LeadActionResult;
+
+    await repo.updateOutstandingFollowUp(supabase, venueId, leadId, {
+      nextActionText: resolved.nextActionText,
+      followUpDate: resolved.followUpDate,
+    });
+
+    const { formatDate } = await import("@/lib/leads/constants");
+    await repo.insertActivity(
+      supabase,
+      venueId,
+      leadId,
+      "follow_up_completed",
+      followUpCompletedTitle(resolved.completedDate, formatDate),
+      resolved.completedAction ?? undefined,
+    );
+    if (resolved.writeFollowUpSet && resolved.followUpDate) {
+      await repo.insertActivity(
+        supabase,
+        venueId,
+        leadId,
+        "follow_up_set",
+        `Follow-up set for ${formatDate(resolved.followUpDate)}`,
+      );
     }
     return { ok: true } as LeadActionResult;
   });
