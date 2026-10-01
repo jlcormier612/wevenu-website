@@ -11,10 +11,11 @@
  */
 import type { TourAppointment } from "@/lib/tours/types";
 
-/** Calendar/list display clock: scheduled position, else walk-in actual occurrence. */
+/** Calendar/list display clock: actual when completed, else scheduled, else walk-in actual. */
 export function tourDisplayClockIso(a: TourAppointment): string | null {
-  if (a.scheduledAt) return a.scheduledAt;
-  return a.actualOccurredAt;
+  if (a.origin === "walk_in" || !a.scheduledAt) return a.actualOccurredAt;
+  if (a.status === "completed" && a.actualOccurredAt) return a.actualOccurredAt;
+  return a.scheduledAt;
 }
 
 export function compareTourScheduledAtAsc(a: TourAppointment, b: TourAppointment): number {

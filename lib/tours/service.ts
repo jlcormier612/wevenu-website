@@ -52,31 +52,32 @@ export async function getTourCalendarEntries(
   const select =
     "id, scheduled_at, actual_occurred_at, origin, status, lead_id, event_type, contact_name, leads(first_name, last_name, partner_first_name)";
 
-  // Scheduled/confirmed/completed rows render from scheduled_at.
-  // Walk-ins (scheduled_at null) render from actual_occurred_at — one item per row.
-  const [{ data: scheduledRows }, { data: walkInRows }] = await Promise.all([
+  // Occupying scheduled/confirmed render from scheduled_at.
+  // Walk-ins and completed tours with an actual clock render from actual_occurred_at.
+  const [{ data: scheduledRows }, { data: actualRows }] = await Promise.all([
     client.from("tour_appointments")
       .select(select)
       .eq("venue_id", venueId)
       .eq("is_archived", false)
       .not("status", "in", "(cancelled,no_show)")
       .not("scheduled_at", "is", null)
+      .or("status.in.(scheduled,confirmed),actual_occurred_at.is.null")
       .gte("scheduled_at", windowStart)
       .lt("scheduled_at", windowEnd),
     client.from("tour_appointments")
       .select(select)
       .eq("venue_id", venueId)
       .eq("is_archived", false)
-      .eq("origin", "walk_in")
-      .is("scheduled_at", null)
       .not("status", "in", "(cancelled,no_show)")
+      .not("actual_occurred_at", "is", null)
+      .or("origin.eq.walk_in,status.eq.completed")
       .gte("actual_occurred_at", windowStart)
       .lt("actual_occurred_at", windowEnd),
   ]);
 
   const seen = new Set<string>();
   const rows: any[] = [];
-  for (const t of [...(scheduledRows ?? []), ...(walkInRows ?? [])] as any[]) {
+  for (const t of [...(scheduledRows ?? []), ...(actualRows ?? [])] as any[]) {
     if (seen.has(t.id)) continue;
     seen.add(t.id);
     rows.push(t);
@@ -88,7 +89,7 @@ export async function getTourCalendarEntries(
       ? [lead.first_name, lead.last_name].join(" ") + (lead.partner_first_name ? ` & ${lead.partner_first_name}` : "")
       : (t.contact_name ?? "Unknown");
     const clockIso =
-      t.origin === "walk_in" || !t.scheduled_at
+      t.origin === "walk_in" || !t.scheduled_at || (t.status === "completed" && t.actual_occurred_at)
         ? (t.actual_occurred_at as string)
         : (t.scheduled_at as string);
     const { date, time } = utcToVenueLocalParts(clockIso, tz);

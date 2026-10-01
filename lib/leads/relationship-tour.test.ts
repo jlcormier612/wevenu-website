@@ -189,14 +189,15 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
       applyFn.indexOf('decision.action === "actual_only"'),
     );
     assert.doesNotMatch(completeBlock, /scheduled_at:/);
-    assert.doesNotMatch(completeBlock, /actual_occurred_at:/);
+    assert.match(completeBlock, /actual_occurred_at:/);
   });
 
-  it("calendar projects scheduled from scheduled_at and walk-ins from actual_occurred_at", () => {
+  it("calendar projects occupying from scheduled_at and completed/walk-ins from actual_occurred_at", () => {
     const calFn = calendar.slice(calendar.indexOf("export async function getTourCalendarEntries"));
-    assert.match(calFn, /\.eq\("origin", "walk_in"\)/);
+    assert.match(calFn, /origin\.eq\.walk_in,status\.eq\.completed/);
     assert.match(calFn, /actual_occurred_at/);
     assert.match(calFn, /Walk-in/);
+    assert.match(calFn, /status === "completed" && t\.actual_occurred_at/);
   });
 
   it("app occupancy mirror documents null scheduled_at as non-occupying", () => {

@@ -52,6 +52,7 @@ import { getInvoices } from "@/lib/invoices/repository";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import type { Invoice } from "@/lib/invoices/types";
 import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
+import { completedTourHoursAgo, tourOccurrenceIso } from "@/lib/tours/occurrence-clock";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -266,12 +267,12 @@ export async function getLuvObservations(
     wantLead
       ? (() => {
           let q = supabase.from("tour_appointments")
-            .select("id, scheduled_at, contact_name, lead_id, completed_at")
+            .select("id, scheduled_at, actual_occurred_at, contact_name, lead_id, completed_at")
             .eq("venue_id", venueId)
             .eq("status", "completed")
             .is("follow_up_sent_at", null)
-            .gte("scheduled_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
-            .order("scheduled_at", { ascending: false });
+            .gte("completed_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+            .order("completed_at", { ascending: false });
           if (scope?.leadId) q = q.eq("lead_id", scope.leadId);
           return q;
         })()
@@ -1034,8 +1035,17 @@ export async function getLuvObservations(
 
   // ── Completed tours without follow-up ────────────────────────────────────
   // The 48 hours after a tour determines conversion. Surface immediately.
-  for (const tour of (completedNoFollowUpRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
-    const hoursAgo = Math.round((Date.now() - new Date(tour.scheduled_at).getTime()) / 3_600_000);
+  for (const tour of (completedNoFollowUpRes.data ?? []) as {
+    id: string;
+    scheduled_at: string | null;
+    actual_occurred_at?: string | null;
+    completed_at?: string | null;
+    contact_name: string | null;
+    lead_id: string | null;
+  }[]) {
+    const occurrence = tourOccurrenceIso(tour);
+    if (!occurrence) continue;
+    const hoursAgo = completedTourHoursAgo(occurrence);
     const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-no-followup-${tour.id}`,

@@ -56,7 +56,7 @@ type TourAppointmentRow = {
 function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined, timezone: string | null): LeadTourInfo {
   if (!row) return EMPTY_TOUR;
   const clockIso =
-    row.origin === "walk_in" || !row.scheduled_at
+    row.origin === "walk_in" || !row.scheduled_at || (row.status === "completed" && row.actual_occurred_at)
       ? row.actual_occurred_at
       : row.scheduled_at;
   if (!clockIso) {
@@ -225,12 +225,15 @@ export async function applyLeadTourWrite(
   }
 
   if (decision.action === "complete_scheduled") {
-    // Completion-state only: status + completed_at. No occurrence clock.
-    // No booked-clock rewrite. No capacity check.
+    // Completion-state + actual clock. Never rewrite scheduled_at.
+    // No capacity check. Writes actual_occurred_at so recency cannot
+    // fall back to a future booked slot (Oct 4 / -69h).
+    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client.from("tour_appointments") as any).update({
       status: "completed",
       completed_at: new Date().toISOString(),
+      actual_occurred_at: actualOccurredAt,
       notes: decision.notes || null,
     }).eq("id", decision.appointmentId);
     if (error) throw error;
