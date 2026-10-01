@@ -244,7 +244,6 @@ export function EventDetail({
   vendorDocuments = [],
   workspaceDocuments = [],
   pinnedDocumentKeys = [],
-  recentDocumentEntries = [],
   questionnaire = null,
   questionnaires = [],
   questionnaireTemplates = [],
@@ -314,7 +313,6 @@ export function EventDetail({
   vendorDocuments?: (Document & { vendorName: string | null })[];
   workspaceDocuments?: WorkspaceDocument[];
   pinnedDocumentKeys?: string[];
-  recentDocumentEntries?: [string, string][];
   questionnaire?: Questionnaire | null;
   questionnaires?: Questionnaire[];
   questionnaireTemplates?: QuestionnaireTemplate[];
@@ -881,7 +879,6 @@ export function EventDetail({
             vendorDocuments={vendorDocuments}
             workspaceDocuments={workspaceDocuments}
             pinnedDocumentKeys={pinnedDocumentKeys}
-            recentDocumentEntries={recentDocumentEntries}
             contractTemplates={contractTemplates} contracts={contracts} questionnaire={questionnaire}
             eventId={event.id} eventName={event.name} coupleEmail={coupleEmail} coupleName={event.clientName}
             returnTo={event.clientId ? `/clients/${event.clientId}` : undefined}

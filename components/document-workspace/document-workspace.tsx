@@ -35,16 +35,11 @@ const STATUS_OPTIONS: { value: WorkspaceStatus; label: string }[] = [
   { value: "none", label: "No status" },
 ];
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 export function DocumentWorkspace({
   title,
   description,
   documents: documentsProp,
   initialPinnedKeys,
-  initialRecentEntries,
   uploadTarget,
   pinningEnabled = true,
   returnTo,
@@ -53,8 +48,6 @@ export function DocumentWorkspace({
   description?: string;
   documents: WorkspaceDocument[];
   initialPinnedKeys: string[];
-  /** [docKey, occurredAtIso][] — Map isn't serializable across the server/client boundary, so this crosses as an array and is rehydrated into a Map on mount. */
-  initialRecentEntries: [string, string][];
   /** When set, renders the Workspace's upload affordance — every Relationship/Vendor Workspace entry point this replaces could already upload; omitted (as before) for the Global view, which never had one. */
   uploadTarget?: { entityType: DocumentEntityType; entityId: string; venueId: string };
   /** False for vendor-session contexts — document_workspace_pins is venue-tenant RLS, which a vendor session can't satisfy. Hides Pinned entirely rather than showing a section that can never populate. */
@@ -84,8 +77,6 @@ export function DocumentWorkspace({
   const [historyDoc, setHistoryDoc] = React.useState<WorkspaceDocument | null>(null);
   const [historyOpen, setHistoryOpen] = React.useState(false);
 
-  const recentMap = React.useMemo(() => new Map(initialRecentEntries), [initialRecentEntries]);
-
   function openPreview(doc: WorkspaceDocument) { setPreviewDoc(doc); setPreviewOpen(true); }
   function openHistory(doc: WorkspaceDocument) { setHistoryDoc(doc); setHistoryOpen(true); }
 
@@ -98,31 +89,12 @@ export function DocumentWorkspace({
   const hasAnyFilterActive = query.trim() !== "" || category !== "all" || status !== "all";
 
   const pinned = documents.filter((d) => pinnedKeys.has(workspaceDocKey(d.docType, d.id)));
-  const recent = [...documents]
-    .filter((d) => recentMap.has(workspaceDocKey(d.docType, d.id)))
-    .sort((a, b) => (recentMap.get(workspaceDocKey(b.docType, b.id))!).localeCompare(recentMap.get(workspaceDocKey(a.docType, a.id))!))
-    .slice(0, 25);
 
   const categoryCounts = React.useMemo(() => {
     const counts = new Map<WorkspaceCategory, number>();
     for (const c of WORKSPACE_CATEGORIES) counts.set(c, 0);
     for (const d of documents) counts.set(d.category, (counts.get(d.category) ?? 0) + 1);
     return counts;
-  }, [documents]);
-
-  // Document Activity — derived from each document's own real facts
-  // (created/updated/shared/signed). Per-document Viewed/Downloaded live in
-  // the Preview panel's own Activity section (fetched on open, not
-  // duplicated here across the whole scope).
-  const activity = React.useMemo(() => {
-    type Entry = { key: string; label: string; docName: string; occurredAt: string };
-    const entries: Entry[] = [];
-    for (const d of documents) {
-      entries.push({ key: `${d.docType}-${d.id}-c`, label: d.docType === "document" ? "Uploaded" : "Generated", docName: d.name, occurredAt: d.createdAt });
-      if (d.updatedAt !== d.createdAt) entries.push({ key: `${d.docType}-${d.id}-u`, label: "Edited", docName: d.name, occurredAt: d.updatedAt });
-      if (d.signedAt) entries.push({ key: `${d.docType}-${d.id}-s`, label: "Signed", docName: d.name, occurredAt: d.signedAt });
-    }
-    return entries.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 15);
   }, [documents]);
 
   function handlePinChange(key: string, next: boolean) {
@@ -166,18 +138,6 @@ export function DocumentWorkspace({
             </section>
           )}
 
-          {/* Recent Documents */}
-          {recent.length > 0 && (
-            <section className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent</h2>
-              <div className="space-y-2">
-                {recent.map((d) => (
-                  <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned={pinnedKeys.has(workspaceDocKey(d.docType, d.id))} onOpenPreview={openPreview} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
-                ))}
-              </div>
-            </section>
-          )}
-
           {/* Document Categories */}
           <section className="space-y-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h2>
@@ -211,7 +171,7 @@ export function DocumentWorkspace({
             </Select>
           </section>
 
-          {/* All Documents */}
+          {/* All Documents — single authoritative list */}
           <section className="space-y-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {category === "all" ? "All Documents" : category} ({filtered.length})
@@ -226,21 +186,6 @@ export function DocumentWorkspace({
               </div>
             )}
           </section>
-
-          {/* Document Activity */}
-          {activity.length > 0 && (
-            <section className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Activity</h2>
-              <div className="rounded-sm border border-border divide-y divide-border">
-                {activity.map((entry) => (
-                  <div key={entry.key} className="flex items-center justify-between px-3 py-2 text-xs">
-                    <span className="text-heading"><span className="font-medium">{entry.label}</span> · {entry.docName}</span>
-                    <span className="text-muted-foreground">{fmtDate(entry.occurredAt)}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
         </>
       )}
 

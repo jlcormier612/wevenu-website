@@ -1570,7 +1570,6 @@ function DocumentsTab({
         description={`Files for this booking — from ${detail.venueName}, shared by you, and (when enabled) with the couple.`}
         documents={workspaceDocuments}
         initialPinnedKeys={[]}
-        initialRecentEntries={[]}
         pinningEnabled={false}
       />
       <VendorEventSharePanel

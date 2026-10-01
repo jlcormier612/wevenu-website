@@ -145,7 +145,10 @@ export async function getPinnedDocumentKeys(): Promise<Set<string>> {
   return new Set((data ?? []).map((r) => workspaceDocKey(r.doc_type, r.doc_id)));
 }
 
-// ── Recent Documents (Step 2, Section 1 — "interacted with", not uploaded) ──
+// ── Recent Documents interaction timestamps ──────────────────────────────────
+// Writes still happen via recordDocumentInteractionAction (preview/open/download).
+// The Documents UI no longer renders a separate Recent section — Most Recent is
+// a sort on the single All Documents list. Kept for callers that need the map.
 
 export async function getRecentInteractionMap(limit = 100): Promise<Map<string, string>> {
   if (!isSupabaseConfigured) return new Map();

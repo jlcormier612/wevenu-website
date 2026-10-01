@@ -26,9 +26,9 @@ import {
 } from "@/lib/notes/internal-notes-copy";
 
 export function VendorDetail({
-  vendor, workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], reviews = [], conversations = [],
+  vendor, workspaceDocuments = [], pinnedDocumentKeys = [], reviews = [], conversations = [],
 }: {
-  vendor: VendorWithEvents; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; reviews?: VendorReview[]; conversations?: VendorRollupConversation[];
+  vendor: VendorWithEvents; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; reviews?: VendorReview[]; conversations?: VendorRollupConversation[];
 }) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
@@ -271,7 +271,6 @@ export function VendorDetail({
             description="Contracts, insurance certificates, menus, and other vendor files."
             documents={workspaceDocuments}
             initialPinnedKeys={pinnedDocumentKeys}
-            initialRecentEntries={recentDocumentEntries}
             uploadTarget={{ entityType: "vendor", entityId: vendor.id, venueId: vendor.venueId }}
           />
         </TabsContent>

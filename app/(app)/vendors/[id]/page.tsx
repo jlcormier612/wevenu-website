@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { VendorDetail } from "@/components/vendors/vendor-detail";
-import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
+import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getVendor, getVendorReviews } from "@/lib/vendors/service";
 import { getVendorRelationshipRollup } from "@/lib/conversations/service";
 
@@ -18,10 +18,9 @@ export default async function VendorDetailPage({ params }: Props) {
   const { id } = await params;
   const vendor = await getVendor(id);
   if (!vendor) notFound();
-  const [workspaceDocuments, pinnedKeys, recentMap, reviews, conversations] = await Promise.all([
+  const [workspaceDocuments, pinnedKeys, reviews, conversations] = await Promise.all([
     getVenueWorkspaceDocuments({ vendorId: id }),
     getPinnedDocumentKeys(),
-    getRecentInteractionMap(),
     getVendorReviews(id),
     vendor.vendorRelationshipId ? getVendorRelationshipRollup(vendor.vendorRelationshipId) : Promise.resolve([]),
   ]);
@@ -30,7 +29,6 @@ export default async function VendorDetailPage({ params }: Props) {
       vendor={vendor}
       workspaceDocuments={workspaceDocuments}
       pinnedDocumentKeys={[...pinnedKeys]}
-      recentDocumentEntries={[...recentMap.entries()]}
       reviews={reviews}
       conversations={conversations}
     />

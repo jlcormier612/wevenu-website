@@ -197,7 +197,7 @@ function SentRequestedSection({
 
 export function BookingDocumentsTab({
   entityType, entityId, venueId,
-  workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [],
+  workspaceDocuments = [], pinnedDocumentKeys = [],
   contractTemplates, contracts, questionnaire,
   eventId, eventName, coupleEmail, coupleName,
   returnTo,
@@ -209,7 +209,6 @@ export function BookingDocumentsTab({
   vendorDocuments?: (Document & { vendorName: string | null })[];
   workspaceDocuments?: WorkspaceDocument[];
   pinnedDocumentKeys?: string[];
-  recentDocumentEntries?: [string, string][];
   contractTemplates: ContractTemplate[];
   contracts: Contract[];
   questionnaire: Questionnaire | null;
@@ -232,7 +231,6 @@ export function BookingDocumentsTab({
         description="Every file for this booking — uploaded by your venue, the client, or shared by vendors — in one place. Anything a Planning task links to already appears here, the same file, not a copy."
         documents={workspaceDocuments}
         initialPinnedKeys={pinnedDocumentKeys}
-        initialRecentEntries={recentDocumentEntries}
         uploadTarget={{ entityType, entityId, venueId }}
         returnTo={returnTo}
       />

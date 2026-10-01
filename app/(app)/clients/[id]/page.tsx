@@ -26,7 +26,7 @@ import {
   getTemplatesMetadata as getContractTemplates,
 } from "@/lib/contracts/service";
 import { getDocuments, getEventDocumentsFromVendors } from "@/lib/documents/service";
-import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
+import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getEvent } from "@/lib/events/service";
 import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
 import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
@@ -352,7 +352,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     : Promise.resolve({ leadRow: null, noteRows: null });
 
   const [
-    event, availableVendors, eventInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaires, eventTasks, allPlaybookTemplates,
+    event, availableVendors, eventInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, questionnaires, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
     spaces, contractTemplates, contracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
@@ -364,7 +364,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     invoiceLineMarkers, activityLists, requestsById, taskContacts, teamMembers, clientChoicesRaw, contextualObservations,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), eventInvoicesPromise, getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
-    getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]), getRecentInteractionMap().then((m) => [...m.entries()]),
+    getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]),
     questionnairesPromise,
     eventTasksPromise, getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getEventRecommendations(eventId),
@@ -566,7 +566,6 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       vendorDocuments={vendorDocuments}
       workspaceDocuments={workspaceDocuments}
       pinnedDocumentKeys={pinnedDocumentKeys}
-      recentDocumentEntries={recentDocumentEntries}
       originatingLeadId={client.leadId}
       relationshipContact={relationshipContact}
       leadNotes={leadNotes}

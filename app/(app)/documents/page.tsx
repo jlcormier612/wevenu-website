@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 
 import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
-import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
+import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 
 export const metadata: Metadata = { title: "Documents" };
 
 export default async function DocumentsPage() {
-  const [documents, pinnedKeys, recentMap] = await Promise.all([
+  const [documents, pinnedKeys] = await Promise.all([
     getVenueWorkspaceDocuments(),
     getPinnedDocumentKeys(),
-    getRecentInteractionMap(),
   ]);
 
   return (
@@ -18,7 +17,6 @@ export default async function DocumentsPage() {
       description="Contracts, questionnaires, event orders, invoices, and files — one place to find anything."
       documents={documents}
       initialPinnedKeys={[...pinnedKeys]}
-      initialRecentEntries={[...recentMap.entries()]}
       returnTo="/documents"
     />
   );

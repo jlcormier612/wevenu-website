@@ -7,7 +7,7 @@ import { getHolds, getSpaces, getCapacityRules } from "@/lib/availability/servic
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
 import { loadBookingJourneyForLead } from "@/lib/booking-journey/load";
 import { getDocuments } from "@/lib/documents/service";
-import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
+import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getDraftsForLead } from "@/lib/luv/drafts";
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
 import { leadDisplayName } from "@/lib/leads/constants";
@@ -59,7 +59,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
 
   const page = await withTimeout(
     (async () => {
-      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments, packages, activeTemplate, venue] = await Promise.all([
+      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, luvDrafts, tourAppointments, packages, activeTemplate, venue] = await Promise.all([
         getLead(id),
         getHolds({ leadId: id }),
         getSpaces(),
@@ -67,7 +67,6 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getDocuments("lead", id),
         getVenueWorkspaceDocuments({ leadId: id }),
         getPinnedDocumentKeys(),
-        getRecentInteractionMap(),
         getDraftsForLead(id),
         getTourAppointmentsForLead(id),
         getPackagesWithItems(true),
@@ -106,7 +105,6 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         documents,
         workspaceDocuments,
         pinnedKeys,
-        recentMap,
         luvDrafts,
         tourAppointments,
         packages,
@@ -150,7 +148,6 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       documents={page.documents}
       workspaceDocuments={page.workspaceDocuments}
       pinnedDocumentKeys={[...page.pinnedKeys]}
-      recentDocumentEntries={[...page.recentMap.entries()]}
       luvDrafts={page.luvDrafts}
       autoLuvDraft={autoLuvDraft}
       tourAppointments={page.tourAppointments}
