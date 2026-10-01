@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { filterDocuments, searchDocuments, sortDocuments } from "@/lib/document-workspace/filter-sort";
 import { workspaceDocKey } from "@/lib/document-workspace/normalize";
+import { appendContractReturnTo } from "@/lib/contracts/return-path";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { WORKSPACE_CATEGORIES } from "@/lib/document-workspace/types";
 import type { DocumentEntityType } from "@/lib/documents/types";
@@ -46,6 +47,7 @@ export function DocumentWorkspace({
   initialRecentEntries,
   uploadTarget,
   pinningEnabled = true,
+  returnTo,
 }: {
   title: string;
   description?: string;
@@ -57,8 +59,21 @@ export function DocumentWorkspace({
   uploadTarget?: { entityType: DocumentEntityType; entityId: string; venueId: string };
   /** False for vendor-session contexts — document_workspace_pins is venue-tenant RLS, which a vendor session can't satisfy. Hides Pinned entirely rather than showing a section that can never populate. */
   pinningEnabled?: boolean;
+  /**
+   * Originating workflow path for Contract Detail back navigation
+   * (e.g. /leads/{id}, /clients/{id}, /documents).
+   */
+  returnTo?: string;
 }) {
-  const [documents, setDocuments] = useSyncedState(documentsProp);
+  const docsWithReturn = React.useMemo(() => {
+    if (!returnTo) return documentsProp;
+    return documentsProp.map((doc) => {
+      const href = appendContractReturnTo(doc.producerHref, returnTo);
+      return href && href !== doc.producerHref ? { ...doc, producerHref: href } : doc;
+    });
+  }, [documentsProp, returnTo]);
+
+  const [documents, setDocuments] = useSyncedState(docsWithReturn);
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState<WorkspaceCategory | "all">("all");
   const [status, setStatus] = React.useState<WorkspaceStatus | "all">("all");

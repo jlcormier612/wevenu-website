@@ -33,6 +33,17 @@ describe("invoice display name", () => {
     );
   });
 
+  it("renamed display_name stays the authoritative human-facing identity", () => {
+    assert.equal(
+      invoiceHumanLabel({
+        displayName: "Lucy & Charlie Wedding Deposit",
+        invoiceNumber: "INV-2026-B0E9C5",
+      }),
+      "Lucy & Charlie Wedding Deposit",
+    );
+    assert.equal(invoiceSystemNumber({ invoiceNumber: "INV-2026-B0E9C5" }), "INV-2026-B0E9C5");
+  });
+
   it("names the selections invoice separately from a booking invoice", () => {
     assert.equal(SELECTIONS_INVOICE_DISPLAY_NAME, "Event & Inventory Selections");
     assert.equal(BOOKING_INVOICE_LABEL, "Booking Invoice");

@@ -89,7 +89,15 @@ function TemplatesSection({
 
 // ---- Sent / Requested — documents with a real lifecycle (status, sent, completed) ----
 
-function SentRequestedSection({ contracts, questionnaire }: { contracts: Contract[]; questionnaire: Questionnaire | null }) {
+function SentRequestedSection({
+  contracts,
+  questionnaire,
+  returnTo,
+}: {
+  contracts: Contract[];
+  questionnaire: Questionnaire | null;
+  returnTo?: string;
+}) {
   const router = useRouter();
   const [sendingContract, startSendContract] = React.useTransition();
   const [placeholderWarningId, setPlaceholderWarningId] = React.useState<string | null>(null);
@@ -116,6 +124,10 @@ function SentRequestedSection({ contracts, questionnaire }: { contracts: Contrac
   }
 
   const hasAnything = contracts.length > 0 || (questionnaire && questionnaire.status !== "draft");
+  const contractHref = (id: string) =>
+    returnTo
+      ? `/contracts/${id}?returnTo=${encodeURIComponent(returnTo)}`
+      : `/contracts/${id}`;
 
   return (
     <>
@@ -144,7 +156,7 @@ function SentRequestedSection({ contracts, questionnaire }: { contracts: Contrac
                   {sendingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
                 </Button>
               ) : (
-                <Button size="sm" variant="ghost" render={<Link href={`/contracts/${c.id}`} />}>View</Button>
+                <Button size="sm" variant="ghost" render={<Link href={contractHref(c.id)} />}>View</Button>
               )}
             </div>
           </div>
@@ -188,6 +200,7 @@ export function BookingDocumentsTab({
   workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [],
   contractTemplates, contracts, questionnaire,
   eventId, eventName, coupleEmail, coupleName,
+  returnTo,
 }: {
   entityType: DocumentEntityType;
   entityId: string;
@@ -204,6 +217,8 @@ export function BookingDocumentsTab({
   eventName: string;
   coupleEmail: string | null;
   coupleName: string | null;
+  /** Client Workspace path for Contract Detail back navigation. */
+  returnTo?: string;
 }) {
   return (
     <div className="space-y-4">
@@ -211,7 +226,7 @@ export function BookingDocumentsTab({
         contractTemplates={contractTemplates} questionnaire={questionnaire}
         eventId={eventId} coupleEmail={coupleEmail} coupleName={coupleName} eventName={eventName}
       />
-      <SentRequestedSection contracts={contracts} questionnaire={questionnaire} />
+      <SentRequestedSection contracts={contracts} questionnaire={questionnaire} returnTo={returnTo} />
       <DocumentWorkspace
         title="Documents"
         description="Every file for this booking — uploaded by your venue, the client, or shared by vendors — in one place. Anything a Planning task links to already appears here, the same file, not a copy."
@@ -219,6 +234,7 @@ export function BookingDocumentsTab({
         initialPinnedKeys={pinnedDocumentKeys}
         initialRecentEntries={recentDocumentEntries}
         uploadTarget={{ entityType, entityId, venueId }}
+        returnTo={returnTo}
       />
     </div>
   );

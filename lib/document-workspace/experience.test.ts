@@ -56,6 +56,20 @@ describe("experience labels", () => {
     assert.match(awaitingVenue.nextActionLabel ?? "", /countersign/i);
   });
 
+  it("maps sent invoices to With Someone (awaiting couple payment) on Documents", () => {
+    const sent = describeExperience({
+      docType: "invoice",
+      rawStatus: "sent",
+      eventId: "e1",
+      id: "i1",
+      relationshipName: "Lucy & Charlie",
+    });
+    assert.equal(sent.experienceStatus, "with_someone");
+    assert.equal(sent.nextActor, "couple");
+    assert.equal(sent.nextActionLabel, "Couple to pay");
+    assert.equal(sent.filterStatus, "action_needed");
+  });
+
   it("maps signed+finalized contracts to Final and keeps companion uploads distinct", () => {
     const signed = describeExperience({ docType: "contract", rawStatus: "signed", eventId: "e1", id: "c1", hasFinalArtifact: true });
     assert.equal(signed.experienceStatus, "final");

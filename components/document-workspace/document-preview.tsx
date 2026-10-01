@@ -211,7 +211,7 @@ export function DocumentPreviewSheet({
                     <Button size="sm" variant="outline" className="mt-1">Open signing link</Button>
                   </a>
                 )}
-                <a href={`/contracts/${doc.id}`} className="block">
+                <a href={doc.producerHref ?? `/contracts/${doc.id}`} className="block">
                   <Button size="sm" variant="ghost" className="mt-1">Open contract</Button>
                 </a>
               </>

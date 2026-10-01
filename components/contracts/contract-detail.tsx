@@ -60,6 +60,7 @@ import {
   CONTRACT_SIGNATURE_CONSENT_TEXT,
   deriveContractSigningUiState,
 } from "@/lib/contracts/signers";
+import { resolveContractBackNavigation } from "@/lib/contracts/return-path";
 import type { ContractStatus, ContractWithDetails } from "@/lib/contracts/types";
 import {
   formatVersionLabel,
@@ -85,6 +86,7 @@ export function ContractDetail({
   draftClients = [],
   contactsByClientId = {},
   contextualObservations = [],
+  returnTo = null,
 }: {
   contract: ContractWithDetails;
   finalized: boolean;
@@ -96,6 +98,8 @@ export function ContractDetail({
   draftClients?: Client[];
   contactsByClientId?: Record<string, ClientContact[]>;
   contextualObservations?: LuvObservation[];
+  /** Originating workflow path (Lead / Client Workspace / Contracts). */
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
@@ -320,6 +324,12 @@ export function ContractDetail({
     return { expired, text: expired ? `Expired ${Math.abs(days)}d ago` : `Expires ${formatContractDate(contract.expiresAt!)}`, soon: !expired && days <= 14 };
   })() : null;
 
+  const backNav = resolveContractBackNavigation({
+    returnTo,
+    clientId: contract.clientId,
+    clientName: contract.clientName,
+  });
+
   return (
     <div className="space-y-6">
       <ContextualLuvObservationsPanel observations={contextualObservations} />
@@ -329,12 +339,8 @@ export function ContractDetail({
         </div>
       ) : null}
       <BusinessAssetHeader
-        backHref={contract.clientId ? `/clients/${contract.clientId}` : "/contracts"}
-        backLabel={
-          contract.clientId && contract.clientName?.trim()
-            ? contract.clientName.trim()
-            : "Contracts"
-        }
+        backHref={backNav.href}
+        backLabel={backNav.label}
         whatIsThis="Contract"
         title={contract.title}
         status={

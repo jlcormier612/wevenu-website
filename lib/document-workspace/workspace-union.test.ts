@@ -12,6 +12,10 @@ const choicesMigration = readFileSync(
   join(root, "supabase/migrations/20261407300000_client_choices_foundation.sql"),
   "utf8",
 );
+const invoiceDisplayNameMigration = readFileSync(
+  join(root, "supabase/migrations/20261410300000_venue_documents_invoice_display_name.sql"),
+  "utf8",
+);
 
 describe("get_venue_documents workspace union", () => {
   it("unions generic documents, contracts, invoices, floor plans, questionnaires, and event orders", () => {
@@ -47,5 +51,17 @@ describe("get_venue_documents workspace union", () => {
       migration.indexOf("'docType',         'invoice'"),
     );
     assert.match(contractBlock, /'fileUrl',\s+null/);
+  });
+
+  it("uses invoices.display_name as the Documents card title (not Invoice + number)", () => {
+    assert.match(
+      invoiceDisplayNameMigration,
+      /'name',\s+coalesce\(nullif\(trim\(i\.display_name\),\s*''\),\s*'Invoice'\)/,
+    );
+    assert.match(invoiceDisplayNameMigration, /'invoiceNumber',\s+i\.invoice_number/);
+    assert.doesNotMatch(
+      invoiceDisplayNameMigration,
+      /'Invoice ' \|\| coalesce\(i\.invoice_number/,
+    );
   });
 });

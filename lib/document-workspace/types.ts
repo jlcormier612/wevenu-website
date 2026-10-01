@@ -75,6 +75,8 @@ export type WorkspaceDocument = {
   /** Type-specific extras the Preview panel's Representation section reads — never rendered generically. */
   amount?: number | null;
   balanceDue?: number | null;
+  /** Secondary system identity for invoices (display name is primary in `name`). */
+  invoiceNumber?: string | null;
   signToken?: string | null;
   signedAt?: string | null;
   createdAt: string;

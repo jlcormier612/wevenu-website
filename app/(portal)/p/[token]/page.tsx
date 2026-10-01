@@ -48,8 +48,14 @@ export default async function PortalPage({ params }: Props) {
   if (!context) notFound();
 
   // Payment access before portal invitation — purpose-built pay experience.
+  // Portal layout pins h-svh + overflow-hidden for PortalShell; financial pages
+  // need a nested page scroll so the Invoice & Payment Plan schedule is reachable.
   if (context.accessLevel === "financial") {
-    return <PaymentAccessShell token={token} context={context} />;
+    return (
+      <div className="h-full overflow-y-auto overscroll-contain">
+        <PaymentAccessShell token={token} context={context} />
+      </div>
+    );
   }
 
   const [tasks, vendorTasks, timeline, legalGate] = await Promise.all([

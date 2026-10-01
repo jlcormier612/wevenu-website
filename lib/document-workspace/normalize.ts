@@ -29,6 +29,7 @@ export type WorkspaceRawRow = {
   uploadedByType: "venue" | "vendor";
   amount?: number | null;
   balanceDue?: number | null;
+  invoiceNumber?: string | null;
   signToken?: string | null;
   signedAt?: string | null;
   createdAt: string;
@@ -122,6 +123,7 @@ export function normalizeWorkspaceDocument(row: WorkspaceRawRow): WorkspaceDocum
     uploadedByType: row.uploadedByType,
     amount: row.amount ?? null,
     balanceDue: row.balanceDue ?? null,
+    invoiceNumber: row.invoiceNumber ?? null,
     signToken: row.signToken ?? null,
     signedAt: row.signedAt ?? null,
     createdAt: row.createdAt,

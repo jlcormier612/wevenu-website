@@ -884,6 +884,7 @@ export function EventDetail({
             recentDocumentEntries={recentDocumentEntries}
             contractTemplates={contractTemplates} contracts={contracts} questionnaire={questionnaire}
             eventId={event.id} eventName={event.name} coupleEmail={coupleEmail} coupleName={event.clientName}
+            returnTo={event.clientId ? `/clients/${event.clientId}` : undefined}
           />
         </TabsContent>
 

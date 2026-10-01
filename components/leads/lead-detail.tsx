@@ -856,6 +856,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             initialPinnedKeys={pinnedDocumentKeys}
             initialRecentEntries={recentDocumentEntries}
             uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
+            returnTo={`/leads/${lead.id}`}
           />
         </TabsContent>
 

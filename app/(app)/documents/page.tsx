@@ -19,6 +19,7 @@ export default async function DocumentsPage() {
       documents={documents}
       initialPinnedKeys={[...pinnedKeys]}
       initialRecentEntries={[...recentMap.entries()]}
+      returnTo="/documents"
     />
   );
 }

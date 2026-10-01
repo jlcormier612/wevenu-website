@@ -123,6 +123,9 @@ export function WorkspaceDocumentCard({
           {doc.eventName && doc.eventName !== relationship && (
             <span className="truncate max-w-[14rem]">{doc.eventName}</span>
           )}
+          {doc.docType === "invoice" && doc.invoiceNumber && (
+            <span className="tabular-nums">{doc.invoiceNumber}</span>
+          )}
           {doc.nextActionLabel && <span className="text-heading">{doc.nextActionLabel}</span>}
           <span>Updated {fmtDate(doc.updatedAt)}</span>
           <span>{ownerLabel(doc)}</span>

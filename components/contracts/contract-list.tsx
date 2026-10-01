@@ -103,7 +103,7 @@ export function ContractList({
                 <TableRow key={contract.id} className="group">
                   <TableCell className="font-medium text-foreground">
                     <div className="flex flex-col gap-0.5">
-                      <Link href={`/contracts/${contract.id}`} className="hover:text-primary">{contract.title}</Link>
+                      <Link href={`/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`} className="hover:text-primary">{contract.title}</Link>
                       {contract.listFamilySize > 1 ? (
                         <span className="text-xs font-normal text-muted-foreground">
                           {formatVersionLabel(contract.listVersionNumber)}
@@ -133,7 +133,7 @@ export function ContractList({
                     {formatContractDate(contract.createdAt.slice(0, 10))}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" render={<Link href={`/contracts/${contract.id}`} />}>View →</Button>
+                    <Button variant="ghost" size="sm" render={<Link href={`/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`} />}>View →</Button>
                   </TableCell>
                 </TableRow>
               ))}

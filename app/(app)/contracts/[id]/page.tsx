@@ -13,7 +13,10 @@ import type { Client } from "@/lib/clients/types";
 import type { ClientContact } from "@/lib/contacts/types";
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ review?: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ review?: string; returnTo?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -23,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ContractDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { review } = await searchParams;
+  const { review, returnTo: returnToRaw } = await searchParams;
   const [contract, venue, versionFamily] = await Promise.all([
     getContractDetail(id),
     getCurrentVenue(),
@@ -63,6 +66,7 @@ export default async function ContractDetailPage({ params, searchParams }: Props
       draftClients={draftClients}
       contactsByClientId={contactsByClientId}
       contextualObservations={contextualObservations}
+      returnTo={returnToRaw ?? null}
     />
   );
 }
