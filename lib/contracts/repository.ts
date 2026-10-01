@@ -180,10 +180,18 @@ export async function updateTemplate(client: DbClient, venueId: string, id: stri
   if (input.isDefault) {
     await client.from("contract_templates").update({ is_default: false }).eq("venue_id", venueId).neq("id", id);
   }
+  // First venue edit clears source_master_key so CTR-01 means an uncustomized
+  // system-provided starter. Setup-ready counts and the Starter badge follow
+  // that meaning. Provision refresh never uses the key alone to overwrite.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contract_templates") as any)
-    .update({ name: input.name.trim(), description: input.description.trim() || null,
-      content: input.content, is_default: input.isDefault })
+    .update({
+      name: input.name.trim(),
+      description: input.description.trim() || null,
+      content: input.content,
+      is_default: input.isDefault,
+      source_master_key: null,
+    })
     .eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
 }

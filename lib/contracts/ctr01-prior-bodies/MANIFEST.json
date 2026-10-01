@@ -1,0 +1,38 @@
+[
+  {
+    "name": "078.txt",
+    "len": 5157,
+    "sha256": "9df9e7caa69235842aa4f3fd9498e56941276bb6c3b22309d1bebd562047f466",
+    "startsWithNL": true
+  },
+  {
+    "name": "081.txt",
+    "len": 5115,
+    "sha256": "4afdac78f5245345a2844da42e4d9d0a772d8405630922e9812e02ec221600a3",
+    "startsWithNL": true
+  },
+  {
+    "name": "081-no-balance-confirmation.txt",
+    "len": 5060,
+    "sha256": "9aec99cbe1a9cf09df52dbabb683e90154aa3fec9ac9e686792d2003ca50c0a0",
+    "startsWithNL": true
+  },
+  {
+    "name": "prior-code-master.txt",
+    "len": 5057,
+    "sha256": "13b882e9e839fdcb7a417ce068f847d43598c120bd85162e701f149be600ad86",
+    "startsWithNL": false
+  },
+  {
+    "name": "prior-code-master-leading-nl.txt",
+    "len": 5058,
+    "sha256": "0a7749dbe380bdc6e2ecf3fea5c7c48b7cdb88a5e623670dbc2770196eed7c16",
+    "startsWithNL": true
+  },
+  {
+    "name": "081-no-leading-nl.txt",
+    "len": 5114,
+    "sha256": "f824aa6f65017a73a1a1664baa2a3631f6593c020d9b9e6e6d410e562d3de6f1",
+    "startsWithNL": false
+  }
+]

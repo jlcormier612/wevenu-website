@@ -105,6 +105,15 @@ describe("buildMergeData always resolves the new fields", () => {
     assert.match(authored, /\{\{ceremony_space\}\}/);
     assert.match(authored, /\{\{reception_space\}\}/);
   });
+
+  it("Wedding Venue Agreement starter places ceremony/reception tokens without inventing new merge authority", () => {
+    const starter = readFileSync(resolve("lib/contracts/starters.ts"), "utf8");
+    assert.match(starter, /Ceremony\n\{\{ceremony_space\}\}/);
+    assert.match(starter, /Reception\n\{\{reception_space\}\}/);
+    assert.match(starter, /\{\{event_spaces\}\}/);
+    assert.doesNotMatch(starter, /Add your venue's approved ceremony timing and location language/);
+    assert.doesNotMatch(starter, /Add your venue's approved reception timing and location language/);
+  });
 });
 
 describe("authority boundaries", () => {

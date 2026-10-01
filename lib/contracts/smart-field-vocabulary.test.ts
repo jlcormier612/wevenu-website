@@ -113,6 +113,23 @@ describe("starter / default templates", () => {
     assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{client_name\}\}/);
   });
 
+  it("contract starter Ceremony/Reception use booked-event space Smart Fields", () => {
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Ceremony\n\{\{ceremony_space\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Reception\n\{\{reception_space\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
+    assert.equal((WEDDING_VENUE_AGREEMENT_CONTENT.match(/\{\{event_spaces\}\}/g) ?? []).length, 2);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
+    assert.doesNotMatch(
+      WEDDING_VENUE_AGREEMENT_CONTENT,
+      /Add your venue's approved ceremony timing and location language/,
+    );
+    assert.doesNotMatch(
+      WEDDING_VENUE_AGREEMENT_CONTENT,
+      /Add your venue's approved reception timing and location language/,
+    );
+  });
+
   it("contract starter tokens are a subset of the approved picker catalog", () => {
     const tokens = extractTokens(WEDDING_VENUE_AGREEMENT_CONTENT);
     const approved = new Set(APPROVED_CONTRACT_KEYS);
@@ -143,6 +160,32 @@ describe("starter / default templates", () => {
     assert.match(sql, /\{\{contract_total\}\}/);
     assert.match(sql, /\{\{balance_remaining\}\}/);
     assert.match(sql, /\{\{payment_schedule_summary\}\}/);
+    for (const key of REMOVED_MERGE_FIELD_KEYS) {
+      assert.doesNotMatch(sql, new RegExp(`\\{\\{${key}\\}\\}`), key);
+    }
+  });
+
+  it("CTR-01 ceremony/reception migration updates system starters only", () => {
+    const sql = readFileSync(
+      resolve("supabase/migrations/20261410600000_contract_starter_ctr01_ceremony_reception_smart_fields.sql"),
+      "utf8",
+    );
+    assert.match(sql, /source_master_key = 'CTR-01'/);
+    assert.match(sql, /content IN \(/);
+    assert.match(sql, /Wedding Venue Agreement/);
+    assert.match(sql, /\{\{ceremony_space\}\}/);
+    assert.match(sql, /\{\{reception_space\}\}/);
+    assert.match(sql, /\{\{event_spaces\}\}/);
+    assert.match(sql, /Customer-authored templates \(source_master_key IS NULL\) are untouched/);
+    assert.match(sql, /Does not rewrite contracts/);
+    assert.doesNotMatch(sql, /UPDATE public\.contracts\b/);
+    // Must not be a bare key-only full replace without content allowlist.
+    const fullUpdate = sql.slice(0, sql.indexOf("-- Surgical"));
+    assert.match(fullUpdate, /content IN \(/);
+    assert.doesNotMatch(
+      sql,
+      /Add your venue's approved ceremony timing and location language here, or leave blank until those details are confirmed\.\n\nReception\n\{\{reception_space\}\}/,
+    );
     for (const key of REMOVED_MERGE_FIELD_KEYS) {
       assert.doesNotMatch(sql, new RegExp(`\\{\\{${key}\\}\\}`), key);
     }

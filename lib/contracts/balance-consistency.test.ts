@@ -140,6 +140,14 @@ describe("starter catalog hygiene", () => {
       starterContentNeedsSupportedSmartFieldRestore("Venue {{venue_name}}\nClient {{client_name}}"),
       true,
     );
+    assert.equal(
+      starterContentNeedsSupportedSmartFieldRestore(
+        "Ceremony\nAdd your venue's approved ceremony timing and location language here, or leave blank until those details are confirmed.\n{{event_spaces}}\n{{package_section}}\n{{included_items_summary}}\n{{additional_items_summary}}\n{{payment_schedule_summary}}\n{{contract_total}}\n{{balance_remaining}}",
+      ),
+      true,
+    );
     assert.equal(starterContentNeedsSupportedSmartFieldRestore(WEDDING_VENUE_AGREEMENT_CONTENT), false);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_space\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_space\}\}/);
   });
 });

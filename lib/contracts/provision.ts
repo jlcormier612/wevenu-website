@@ -6,18 +6,22 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { REMOVED_MERGE_FIELD_KEYS } from "@/lib/contracts/constants";
+import { applyCtr01ContentRefresh } from "@/lib/contracts/ctr01-refresh";
 import {
   CONTRACT_STARTER_MASTERS,
   getContractStarterMaster,
+  WEDDING_VENUE_AGREEMENT_CONTENT,
   type ContractStarterMasterKey,
 } from "@/lib/contracts/starters";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
 
-/** Booking-backed tokens the CTR-01 master must contain after the 22f09ea4 restore. */
+/** Booking-backed tokens the current CTR-01 master must advertise. */
 export const REQUIRED_CTR01_SMART_FIELDS = [
   "event_spaces",
+  "ceremony_space",
+  "reception_space",
   "package_section",
   "included_items_summary",
   "additional_items_summary",
@@ -31,13 +35,17 @@ export function starterContentHasRemovedSmartFields(content: string): boolean {
   return REMOVED_MERGE_FIELD_KEYS.some((key) => content.includes(`{{${key}}}`));
 }
 
-/** True when a system CTR-01 row is still the stripped 078 / 22f09ea4 body. */
+/** Diagnostics only — missing tokens alone must never authorize a rewrite. */
 export function starterContentNeedsSupportedSmartFieldRestore(content: string): boolean {
   return REQUIRED_CTR01_SMART_FIELDS.some((key) => !content.includes(`{{${key}}}`));
 }
 
+/**
+ * @deprecated Do not use for rewrite authorization. Prefer applyCtr01ContentRefresh.
+ * Kept as a thin wrapper so older tests that only checked "would refresh?" can migrate.
+ */
 export function starterContentShouldRefreshFromMaster(content: string): boolean {
-  return starterContentHasRemovedSmartFields(content) || starterContentNeedsSupportedSmartFieldRestore(content);
+  return applyCtr01ContentRefresh(content).action !== "none";
 }
 
 async function insertStarter(client: DbClient, venueId: string, name: string, description: string, content: string, sourceMasterKey: string, isDefault: boolean) {
@@ -68,12 +76,14 @@ export async function provisionContractStarters(
     const { data: byKey } = await client.from("contract_templates")
       .select("id, content").eq("venue_id", venueId).eq("source_master_key", master.key).limit(1).maybeSingle();
     if (byKey) {
-      // System starter still stripped (078) or still has removed tokens → refresh from master.
-      // Does not touch customer-authored templates (source_master_key null).
-      if (starterContentShouldRefreshFromMaster(byKey.content ?? "")) {
+      // Exact prior platform body → full master. Exact stock Ceremony/Reception
+      // block on an otherwise customized body → surgical only. Never refresh
+      // merely because tokens are missing or source_master_key is set.
+      const { action, content: next } = applyCtr01ContentRefresh(byKey.content ?? "");
+      if (action !== "none" && next !== (byKey.content ?? "")) {
         const { error } = await client
           .from("contract_templates")
-          .update({ content: master.content })
+          .update({ content: next })
           .eq("id", byKey.id)
           .eq("venue_id", venueId)
           .eq("source_master_key", master.key);
@@ -156,4 +166,9 @@ export async function addContractStarterAgain(
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Could not add starter." };
   }
+}
+
+/** Current master must advertise every required booking-backed Smart Field. */
+export function currentCtr01MasterHasRequiredSmartFields(): boolean {
+  return !starterContentNeedsSupportedSmartFieldRestore(WEDDING_VENUE_AGREEMENT_CONTENT);
 }

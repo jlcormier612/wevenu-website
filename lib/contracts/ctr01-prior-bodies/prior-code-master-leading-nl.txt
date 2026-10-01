@@ -1,36 +1,5 @@
-/**
- * Hello to Cheers — Wedding Venue Agreement starter (CTR-01).
- *
- * LEGAL SAFETY: Do not invent cancellation, liability, insurance, alcohol,
- * force majeure, dispute, governing-law, or other legally consequential
- * policy language. Venue-owned sections use explicit placeholders.
- *
- * Masters are code fixtures. Venue Library copies are independent rows.
- *
- * Smart Fields in this body must be a subset of MERGE_FIELDS (approved catalog).
- * Booking-backed fields (spaces, ceremony/reception space, package, totals,
- * payment) stay as tokens. Venue Access / Event Hours and policy sections use
- * venue-owned placeholders — no reliable SoT for those.
- */
 
-import { extractTokens } from "@/lib/shared-merge/tokens";
-
-export const CONTRACT_STARTER_MASTER_KEY = "CTR-01" as const;
-export type ContractStarterMasterKey = typeof CONTRACT_STARTER_MASTER_KEY;
-
-/** Distinctive phrase used to detect untouched venue-policy placeholders. */
-export const VENUE_POLICY_PLACEHOLDER_MARKER = "Add your venue's approved";
-
-export const WEDDING_VENUE_AGREEMENT_NAME = "Wedding Venue Agreement";
-export const WEDDING_VENUE_AGREEMENT_DESCRIPTION =
-  "A professionally structured starting point for your venue agreement. Add your venue's approved policies and terms, then customize it to make it your own.";
-
-/**
- * Starter body. Tokens use only the approved customer-facing Smart Field catalog.
- * Policy sections deliberately use the same "Add your venue's approved … here."
- * pattern so send-time safety can warn on untouched placeholders.
- */
-export const WEDDING_VENUE_AGREEMENT_CONTENT = `Wedding Venue Agreement
+Wedding Venue Agreement
 
 This Agreement is between {{venue_name}} and {{client_name}} for the celebration described below.
 
@@ -67,10 +36,10 @@ Venue Access / Event Hours
 Add your venue's approved access hours and event-day timing language here.
 
 Ceremony
-{{ceremony_space}}
+Add your venue's approved ceremony timing and location language here, or leave blank until those details are confirmed.
 
 Reception
-{{reception_space}}
+Add your venue's approved reception timing and location language here, or leave blank until those details are confirmed.
 
 ────────────────────────────────
 VENUE & EVENT SPACES
@@ -211,82 +180,3 @@ Venue
 Authorized Representative: ________________
 Signature: ________________________________
 Date: {{today_date}}
-`;
-
-export type ContractStarterMaster = {
-  key: ContractStarterMasterKey;
-  name: string;
-  description: string;
-  content: string;
-  isDefault: boolean;
-};
-
-export const CONTRACT_STARTER_MASTERS: readonly ContractStarterMaster[] = [
-  {
-    key: CONTRACT_STARTER_MASTER_KEY,
-    name: WEDDING_VENUE_AGREEMENT_NAME,
-    description: WEDDING_VENUE_AGREEMENT_DESCRIPTION,
-    content: WEDDING_VENUE_AGREEMENT_CONTENT,
-    isDefault: true,
-  },
-];
-
-export function getContractStarterMaster(key: string): ContractStarterMaster | undefined {
-  return CONTRACT_STARTER_MASTERS.find((m) => m.key === key);
-}
-
-/** Detect untouched venue-policy placeholders. */
-export function findUntouchedPolicyPlaceholders(content: string): string[] {
-  const matches = content.match(
-    new RegExp(`${VENUE_POLICY_PLACEHOLDER_MARKER}[^.\\n]*\\.`, "gi"),
-  );
-  return matches ? [...new Set(matches.map((m) => m.trim()))] : [];
-}
-
-export const STARTER_POLICY_PLACEHOLDERS_CODE = "STARTER_POLICY_PLACEHOLDERS" as const;
-
-export const STARTER_POLICY_PLACEHOLDERS_MESSAGE =
-  "This agreement still contains starter policy placeholders. Replace them with your venue's approved language before sending to a client.";
-
-export type CustomerSafeContractContentOptions = {
-  /** Venue-acknowledged send: placeholders remain a warning, not a hard block. */
-  allowPlaceholders?: boolean;
-};
-
-export type CustomerSafeContractContentResult =
-  | { ok: true }
-  | {
-      ok: false;
-      message: string;
-      unresolvedTokens: string[];
-      placeholders: string[];
-      code?: typeof STARTER_POLICY_PLACEHOLDERS_CODE;
-    };
-
-export function assertCustomerSafeContractContent(
-  content: string,
-  options?: CustomerSafeContractContentOptions,
-): CustomerSafeContractContentResult {
-  const unresolvedTokens = extractTokens(content);
-  const placeholders = findUntouchedPolicyPlaceholders(content);
-  const allowPlaceholders = options?.allowPlaceholders === true;
-
-  if (unresolvedTokens.length === 0 && (placeholders.length === 0 || allowPlaceholders)) {
-    return { ok: true };
-  }
-
-  const parts: string[] = [];
-  if (unresolvedTokens.length > 0) {
-    parts.push(`Unresolved details still need values: ${unresolvedTokens.map((t) => `{{${t}}}`).join(", ")}.`);
-  }
-  if (placeholders.length > 0 && !allowPlaceholders) {
-    parts.push(STARTER_POLICY_PLACEHOLDERS_MESSAGE);
-  }
-  return {
-    ok: false,
-    message: parts.join(" "),
-    unresolvedTokens,
-    placeholders,
-    ...(unresolvedTokens.length === 0 ? { code: STARTER_POLICY_PLACEHOLDERS_CODE } : {}),
-  };
-}
