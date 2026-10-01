@@ -170,6 +170,7 @@ export async function startProtectedTour(opts: {
           eventDate: normalized.eventDate,
           guestCount: normalized.guestCount,
           inquiryMessage: normalized.inquiryMessage ?? "",
+          inquiryMessageOrigin: "customer",
           sourceData: {
             ...(opts.sourceData ?? {}),
             inquiry_mode: "schedule_tour",

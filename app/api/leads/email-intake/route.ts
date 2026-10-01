@@ -149,6 +149,7 @@ export async function POST(request: NextRequest) {
           eventDate: normalized.eventDate,
           guestCount: normalized.guestCount,
           inquiryMessage: normalized.inquiryMessage,
+          inquiryMessageOrigin: "customer",
           sourceData: normalized.sourceData,
           confidenceScore: normalized.confidenceScore,
         },

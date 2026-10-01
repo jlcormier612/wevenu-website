@@ -98,6 +98,10 @@ import {
   INTERNAL_NOTES_LABEL,
   INTERNAL_NOTES_PRIVACY_HINT,
 } from "@/lib/notes/internal-notes-copy";
+import {
+  inquiryMessageDisplayHint,
+  inquiryMessageDisplayLabel,
+} from "@/lib/leads/inquiry-message-origin";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -722,7 +726,14 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                   <>
                     <Separator />
                     <div>
-                      <Label className="mb-1 text-xs text-muted-foreground">Inquiry message</Label>
+                      <Label className="mb-1 text-xs text-muted-foreground">
+                        {inquiryMessageDisplayLabel(lead.inquiryMessageOrigin)}
+                      </Label>
+                      {inquiryMessageDisplayHint(lead.inquiryMessageOrigin) && (
+                        <p className="mb-1 text-[11px] text-muted-foreground">
+                          {inquiryMessageDisplayHint(lead.inquiryMessageOrigin)}
+                        </p>
+                      )}
                       <p className="whitespace-pre-wrap text-sm text-foreground">
                         {lead.inquiryMessage}
                       </p>

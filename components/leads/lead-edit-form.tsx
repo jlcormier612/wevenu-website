@@ -24,6 +24,10 @@ import { Textarea } from "@/components/ui/textarea";
 import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
 import { LEAD_SOURCES, eventTypeLabel, formatDate } from "@/lib/leads/constants";
 import type { Lead, LeadErrors, LeadInput, LeadWithDetails } from "@/lib/leads/types";
+import {
+  inquiryMessageDisplayHint,
+  inquiryMessageDisplayLabel,
+} from "@/lib/leads/inquiry-message-origin";
 
 /**
  * Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
@@ -217,9 +221,17 @@ export function LeadEditForm({
             <Input id="iqd" type="date" value={input.inquiryDate} onChange={(e) => set("inquiryDate", e.target.value)} />
           </Field>
         </div>
-        <Field label="Inquiry message" htmlFor="msg">
+        <Field
+          label={inquiryMessageDisplayLabel(lead.inquiryMessageOrigin)}
+          htmlFor="msg"
+          hint={inquiryMessageDisplayHint(lead.inquiryMessageOrigin) ?? undefined}
+        >
           <Textarea id="msg" value={input.inquiryMessage} rows={4}
-            placeholder="Capture the message or details they shared when they first contacted you."
+            placeholder={
+              lead.inquiryMessageOrigin === "customer"
+                ? "Customer-authored inquiry text."
+                : "Private venue notes — not the customer's original inquiry."
+            }
             onChange={(e) => set("inquiryMessage", e.target.value)} />
         </Field>
       </div>

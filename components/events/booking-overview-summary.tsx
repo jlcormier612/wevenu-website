@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/events/constants";
 import { eventTypeLabel } from "@/lib/leads/constants";
+import { inquiryMessageDisplayLabel } from "@/lib/leads/inquiry-message-origin";
 import type { ClientStatus } from "@/lib/clients/types";
 import type { EventReadiness } from "@/lib/playbooks/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -92,6 +93,7 @@ export function BookingOverviewSummary({
     partnerEmail: string | null;
     source: string | null;
     inquiryMessage: string | null;
+    inquiryMessageOrigin?: string | null;
   } | null;
 }) {
   // ---- Payments: simple sums/finds over already-fetched invoices, nothing new invented ----
@@ -174,7 +176,7 @@ export function BookingOverviewSummary({
             {contact.source && <p><span className="text-muted-foreground">Source · </span>{contact.source}</p>}
             {contact.inquiryMessage && (
               <p className="whitespace-pre-wrap pt-1 text-foreground">
-                <span className="text-muted-foreground">Original inquiry · </span>
+                <span className="text-muted-foreground">{inquiryMessageDisplayLabel(contact.inquiryMessageOrigin)} · </span>
                 {contact.inquiryMessage}
               </p>
             )}

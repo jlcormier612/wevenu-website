@@ -15,8 +15,6 @@ import {
 } from "@/lib/luv/draft-status";
 import {
   customerFacingInquiryMessage,
-  inquiryOriginFromTrustTier,
-  isCustomerOriginatedTrustTier,
   resolveDraftDeleteDecision,
 } from "@/lib/luv/draft-context-boundary";
 import type { Lead } from "@/lib/leads/types";
@@ -56,25 +54,6 @@ function draft(partial: Partial<LuvDraft> & Pick<LuvDraft, "id" | "status">): Lu
   };
 }
 
-describe("inquiry origin from intake trust tier", () => {
-  it("treats direct, webhook, and email_parsed as customer-originated", () => {
-    assert.equal(isCustomerOriginatedTrustTier("direct"), true);
-    assert.equal(isCustomerOriginatedTrustTier("webhook"), true);
-    assert.equal(isCustomerOriginatedTrustTier("email_parsed"), true);
-    assert.equal(inquiryOriginFromTrustTier("direct"), "customer");
-  });
-
-  it("treats manual, import, missing, and unknown as venue-internal", () => {
-    assert.equal(isCustomerOriginatedTrustTier("manual"), false);
-    assert.equal(isCustomerOriginatedTrustTier("import"), false);
-    assert.equal(isCustomerOriginatedTrustTier(null), false);
-    assert.equal(isCustomerOriginatedTrustTier(undefined), false);
-    assert.equal(isCustomerOriginatedTrustTier("website"), false);
-    assert.equal(inquiryOriginFromTrustTier("manual"), "venue");
-    assert.equal(inquiryOriginFromTrustTier(null), "venue");
-  });
-});
-
 describe("customerFacingInquiryMessage — venue-originated excluded before generation", () => {
   const SENSITIVE = "SSN-CANARY-7741 do not tell the couple about the credit hold";
   const INNOCUOUS = "Called back Tuesday; seems lovely.";
@@ -94,9 +73,8 @@ describe("customerFacingInquiryMessage — venue-originated excluded before gene
     );
   });
 
-  it("does not treat leads.source as provenance", () => {
-    // Staff can pick "website" on New Lead; that is not customer authorship.
-    assert.equal(inquiryOriginFromTrustTier("website"), "venue");
+  it("excludes unknown/legacy content", () => {
+    assert.equal(customerFacingInquiryMessage(INNOCUOUS, "unknown"), null);
   });
 });
 
@@ -131,7 +109,7 @@ describe("buildFollowUpPrompt — source boundary", () => {
     assert.doesNotMatch(prompt, /seems lovely/);
   });
 
-  it("defaults missing origin to venue (fail closed)", () => {
+  it("defaults missing origin to unknown (fail closed)", () => {
     const prompt = buildFollowUpPrompt(
       lead({ inquiryMessage: SENSITIVE }),
       "Jen's Fancy",
@@ -140,6 +118,17 @@ describe("buildFollowUpPrompt — source boundary", () => {
       { proposalSent: false },
     );
     assert.doesNotMatch(prompt, /SSN-CANARY-7741/);
+  });
+
+  it("does not put unknown/legacy inquiry text in generation context", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: USEFUL, inquiryMessageOrigin: "unknown" }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false },
+    );
+    assert.doesNotMatch(prompt, /We love the garden/);
   });
 
   it("includes customer-originated inquiry for potential personalization", () => {
@@ -152,8 +141,8 @@ describe("buildFollowUpPrompt — source boundary", () => {
     );
     assert.match(prompt, /We love the garden and want a Saturday in August/);
     assert.match(prompt, /Customer-originated inquiry/);
-    assert.match(prompt, /GATE 1/);
-    assert.match(prompt, /GATE 2/);
+    assert.match(prompt, /Speak TO the customer/);
+    assert.match(prompt, /awkward callbacks/);
   });
 
   it("includes awkward customer detail in context but requires judgment not to echo", () => {
@@ -165,7 +154,7 @@ describe("buildFollowUpPrompt — source boundary", () => {
       { proposalSent: false, inquiryOrigin: "customer" },
     );
     assert.match(prompt, /Lucy keeping Charlie on his toes/);
-    assert.match(prompt, /awkward callback/);
+    assert.match(prompt, /awkward callbacks/);
     assert.match(prompt, /Do not repeat their message mechanically/);
   });
 
@@ -185,14 +174,14 @@ describe("buildFollowUpPrompt — source boundary", () => {
 });
 
 describe("generateFollowUpDraft never loads venue lead notes", () => {
-  it("does not query lead_notes and resolves origin from intake trust_tier", () => {
+  it("does not query lead_notes or infer origin from trust_tier / source", () => {
     const src = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
     assert.doesNotMatch(src, /lead_notes/);
-    assert.match(src, /loadInquiryOrigin/);
-    assert.match(src, /lead_intake_attempts/);
-    assert.match(src, /trust_tier/);
-    assert.match(src, /inquiryOriginFromTrustTier/);
+    assert.doesNotMatch(src, /lead_intake_attempts/);
+    assert.doesNotMatch(src, /trust_tier/);
+    assert.match(src, /inquiryMessageOrigin/);
     assert.match(src, /customerFacingInquiryMessage/);
+    assert.match(src, /normalizeInquiryMessageOrigin/);
   });
 });
 

@@ -352,16 +352,18 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     partnerEmail: string | null;
     source: string | null;
     inquiryMessage: string | null;
+    inquiryMessageOrigin?: string | null;
   } | null = null;
   let leadNotes: { id: string; body: string; createdAt: string }[] = [];
   if (client.leadId) {
     const [{ data: leadRow }, { data: noteRows }] = await Promise.all([
       supabase.from("leads")
-        .select("source, inquiry_message")
+        .select("source, inquiry_message, inquiry_message_origin")
         .eq("id", client.leadId)
         .maybeSingle<{
           source: string | null;
           inquiry_message: string | null;
+          inquiry_message_origin: string | null;
         }>(),
       supabase.from("lead_notes")
         .select("id, body, created_at")
@@ -382,6 +384,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       partnerEmail: cl?.partner_email || client.partnerEmail || null,
       source: sourceLabel,
       inquiryMessage: leadRow?.inquiry_message ?? null,
+      inquiryMessageOrigin: leadRow?.inquiry_message_origin ?? "unknown",
     };
     leadNotes = ((noteRows ?? []) as { id: string; body: string; created_at: string }[]).map((n) => ({
       id: n.id,

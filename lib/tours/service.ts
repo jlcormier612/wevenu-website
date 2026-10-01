@@ -205,6 +205,10 @@ export async function bookTour(
       }
       const { data: leadRow } = await admin.from("leads").select("relationship_id")
         .eq("id", d.leadId as string).maybeSingle<{ relationship_id: string | null }>();
+      await admin.from("leads")
+        .update({ inquiry_message_origin: "customer" })
+        .eq("id", d.leadId as string)
+        .eq("venue_id", venueRow.id);
       if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
       const { count } = await admin.from("leads")
         .select("id", { count: "exact", head: true })

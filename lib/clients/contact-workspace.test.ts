@@ -89,7 +89,7 @@ describe("client contact workspace", () => {
   it("shows Contact Information edit on the client workspace, separate from event edit", () => {
     const overview = source("components/events/booking-overview-summary.tsx");
     assert.match(overview, /Contact Information/);
-    assert.match(overview, /Original inquiry/);
+    assert.match(overview, /inquiryMessageDisplayLabel/);
     assert.match(overview, /href=\{`\/clients\/\$\{contact\.clientId\}\/edit`\}/);
     assert.match(overview, /aria-label="Edit contact information"/);
 
@@ -113,7 +113,7 @@ describe("client contact workspace", () => {
     assert.match(page, /firstName: client\.firstName/);
     assert.match(page, /email: cl\?\.email \|\| client\.email/);
     assert.match(page, /inquiryMessage: leadRow\?\.inquiry_message/);
-    assert.match(page, /\.select\("source, inquiry_message"\)/);
+    assert.match(page, /\.select\("source, inquiry_message, inquiry_message_origin"\)/);
     assert.doesNotMatch(page, /leadRow\?\.phone/);
     assert.doesNotMatch(page, /leadRow\?\.email/);
   });

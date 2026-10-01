@@ -386,6 +386,7 @@ export function EventDetail({
     partnerEmail: string | null;
     source: string | null;
     inquiryMessage: string | null;
+    inquiryMessageOrigin?: string | null;
   } | null;
   leadNotes?: { id: string; body: string; createdAt: string }[];
   bookingJourney?: BookingJourneyModel | null;

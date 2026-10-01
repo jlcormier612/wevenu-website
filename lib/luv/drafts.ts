@@ -19,7 +19,7 @@ import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   customerFacingInquiryMessage,
-  inquiryOriginFromTrustTier,
+  normalizeInquiryMessageOrigin,
   resolveDraftDeleteDecision,
   type InquiryOrigin,
 } from "@/lib/luv/draft-context-boundary";
@@ -42,7 +42,7 @@ export type FollowUpVerifiedFacts = {
   /** commercial_proposals.status = sent AND offered_at set */
   proposalSent: boolean;
   /**
-   * Provenance of leads.inquiry_message. Default venue (fail closed):
+   * Durable inquiry_message_origin. Default unknown (fail closed):
    * only "customer" may place the message in generation context.
    */
   inquiryOrigin?: InquiryOrigin;
@@ -92,7 +92,9 @@ export function buildFollowUpPrompt(
     ? Math.floor((Date.now() - new Date(lead.inquiryDate).getTime()) / 86_400_000)
     : null;
   const pipelineStage = (lead.salesStage ?? lead.status).replace(/_/g, " ");
-  const origin: InquiryOrigin = verified.inquiryOrigin ?? "venue";
+  const origin: InquiryOrigin = normalizeInquiryMessageOrigin(
+    verified.inquiryOrigin ?? lead.inquiryMessageOrigin,
+  );
   const customerMessage = customerFacingInquiryMessage(lead.inquiryMessage, origin);
 
   const verifiedLines: string[] = [];
@@ -107,10 +109,11 @@ export function buildFollowUpPrompt(
     ? `**Customer-originated inquiry (they wrote this — eligible for personalization, not for mechanical repetition):**
 - "${customerMessage}"
 
-**Judgment (both gates required before using any detail from that inquiry):**
-- GATE 1: Only use a detail if it is appropriate to say back to the customer in this email.
-- GATE 2: Only use a detail if a thoughtful coordinator would naturally mention it in this specific follow-up. If it would sound like staff banter, teasing, speculation, relationship commentary, or an awkward callback, omit it.
-- Prefer warm, natural, relevant, useful, restrained personalization. Do not force a callback. Do not repeat their message mechanically.
+**Judgment (use a detail only when it belongs in this email to the customer):**
+- Speak TO the customer, not ABOUT them as staff would.
+- Prefer natural, warm, relevant, useful, restrained personalization.
+- Avoid forced personalization, relationship commentary, teasing, speculation, awkward callbacks, unnecessary repetition, and "look how much I remember" language.
+- Do not repeat their message mechanically.
 `
     : "";
 
@@ -200,23 +203,6 @@ async function loadProposalSentFact(
   });
 }
 
-async function loadInquiryOrigin(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  venueId: string,
-  leadId: string,
-): Promise<InquiryOrigin> {
-  const { data } = await supabase
-    .from("lead_intake_attempts")
-    .select("trust_tier")
-    .eq("venue_id", venueId)
-    .eq("lead_id", leadId)
-    .eq("status", "accepted")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<{ trust_tier: string }>();
-  return inquiryOriginFromTrustTier(data?.trust_tier ?? null);
-}
-
 // ---- Public service functions ---------------------------------------------
 
 export async function generateFollowUpDraft(lead: Lead): Promise<
@@ -246,10 +232,8 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const [proposalSent, inquiryOrigin] = await Promise.all([
-      loadProposalSentFact(supabase, venue.id, lead.id),
-      loadInquiryOrigin(supabase, venue.id, lead.id),
-    ]);
+    const proposalSent = await loadProposalSentFact(supabase, venue.id, lead.id);
+    const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
     const prompt = buildFollowUpPrompt(
       lead,
       venue.name,

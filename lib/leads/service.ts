@@ -41,6 +41,7 @@ import {
 } from "@/lib/leads/sales-stages";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import type { RawIntakeInput, TrustTier } from "@/lib/lead-intake/types";
+import { originAfterStaffEdit, originForWritePath } from "@/lib/leads/inquiry-message-origin";
 import { previewFirstStepForSequence } from "@/lib/message-sequences/confirm-preview";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
 import { requireIdentityDecision } from "@/lib/identity/decision";
@@ -220,7 +221,15 @@ async function createLeadCore(
     },
     create: async () => {
       try {
-        const leadId = await repo.insertLead(supabase, venueId, input, historicalImport);
+        const inquiryMessageOrigin = historicalImport || trustTier === "import"
+          ? originForWritePath("import")
+          : originForWritePath("manual_new_lead");
+        const leadId = await repo.insertLead(
+          supabase,
+          venueId,
+          { ...input, inquiryMessageOrigin },
+          historicalImport,
+        );
         const { data: lead } = await supabase.from("leads").select("relationship_id")
           .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
         if (!lead?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
@@ -1028,10 +1037,14 @@ export async function updateLeadInfo(
     const [{ data: existing }, { data: venueRow }] = await Promise.all([
       supabase
         .from("leads")
-        .select("event_type")
+        .select("event_type, inquiry_message, inquiry_message_origin")
         .eq("id", leadId)
         .eq("venue_id", venueId)
-        .maybeSingle<{ event_type: string | null }>(),
+        .maybeSingle<{
+          event_type: string | null;
+          inquiry_message: string | null;
+          inquiry_message_origin: string | null;
+        }>(),
       supabase
         .from("venues")
         .select("accepted_inquiry_event_types")
@@ -1054,7 +1067,14 @@ export async function updateLeadInfo(
       } as LeadActionResult;
     }
 
-    await repo.updateLeadInfo(supabase, venueId, leadId, input);
+    await repo.updateLeadInfo(supabase, venueId, leadId, {
+      ...input,
+      inquiryMessageOrigin: originAfterStaffEdit({
+        previousMessage: existing?.inquiry_message,
+        nextMessage: input.inquiryMessage,
+        previousOrigin: existing?.inquiry_message_origin,
+      }),
+    });
     await repo.insertActivity(supabase, venueId, leadId, "lead_updated", "Lead information updated");
     return { ok: true } as LeadActionResult;
   });

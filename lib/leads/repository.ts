@@ -179,6 +179,7 @@ type LeadRow = {
   guest_count: number | null;
   estimated_budget: number | null;
   inquiry_message: string | null;
+  inquiry_message_origin?: string | null;
   inquiry_date: string;
   // Sprint 6 relationship fields
   next_action_text: string | null;
@@ -243,7 +244,11 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
     plannedEventSpaceId: r.planned_event_space_id ?? null,
     endDate: r.end_date, guestCount: r.guest_count, estimatedBudget: r.estimated_budget,
-    inquiryMessage: r.inquiry_message, inquiryDate: r.inquiry_date,
+    inquiryMessage: r.inquiry_message,
+    inquiryMessageOrigin: (r.inquiry_message_origin === "customer" || r.inquiry_message_origin === "venue" || r.inquiry_message_origin === "unknown")
+      ? r.inquiry_message_origin
+      : "unknown",
+    inquiryDate: r.inquiry_date,
     nextActionText: r.next_action_text, nextActionDue: r.next_action_due,
     followUpDate: r.follow_up_date, lastContactedAt: r.last_contacted_at,
     tourDate: tour.tourDate, tourTime: tour.tourTime,
@@ -402,6 +407,7 @@ export async function insertLead(
       estimatedBudget: input.estimatedBudget,
       source: input.source,
       inquiryMessage: input.inquiryMessage.trim(),
+      inquiryMessageOrigin: input.inquiryMessageOrigin ?? "unknown",
       inquiryDate: input.inquiryDate,
       // Lead Intake architecture: leads.source is now a real, enforced
       // vocabulary — a CSV row's free-text source that didn't match one is
@@ -608,6 +614,7 @@ export async function updateLeadInfo(
       : null,
     source: input.source || null,
     inquiry_message: input.inquiryMessage.trim() || null,
+    inquiry_message_origin: input.inquiryMessageOrigin ?? "unknown",
     inquiry_date: input.inquiryDate || null,
   };
 

@@ -103,7 +103,10 @@ export async function processFacebookLeadQueue(): Promise<ProcessResult> {
           p_source: mapped.leadSource,
           p_input: {
             firstName: n.firstName, lastName: n.lastName, email: n.email, phone: n.phone,
-            eventType: n.eventType, eventDate: n.eventDate, guestCount: n.guestCount, sourceData: n.sourceData,
+            eventType: n.eventType, eventDate: n.eventDate, guestCount: n.guestCount,
+            inquiryMessage: n.inquiryMessage,
+            inquiryMessageOrigin: "customer",
+            sourceData: n.sourceData,
           },
         });
         if (error || !rpcData?.ok) return { ok: false, error: rpcData?.error ?? error?.message ?? "Could not create lead from this Facebook lead." };

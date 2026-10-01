@@ -59,6 +59,11 @@ export type Lead = {
   guestCount: number | null;
   estimatedBudget: number | null;
   inquiryMessage: string | null;
+  /**
+   * Durable authorship of inquiryMessage. Never inferred from source/trustTier.
+   * Missing/legacy is treated as unknown.
+   */
+  inquiryMessageOrigin?: import("@/lib/leads/inquiry-message-origin").InquiryMessageOrigin;
   inquiryDate: string;
   // Sprint 6 — relationship fields
   nextActionText: string | null;
@@ -157,6 +162,8 @@ export type LeadInput = {
   estimatedBudget: string;
   source: string;
   inquiryMessage: string;
+  /** Set only on trusted write paths — never accepted from the New Lead form as customer. */
+  inquiryMessageOrigin?: import("@/lib/leads/inquiry-message-origin").InquiryMessageOrigin;
   inquiryDate: string;
   /** Set by CSV import when the spreadsheet's source text didn't match a registered source — preserves the original label since `source` itself falls back to "other". */
   originalSourceLabel?: string | null;
