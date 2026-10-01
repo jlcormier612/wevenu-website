@@ -1,5 +1,5 @@
 import { RecommendationsPanel } from "@/components/dashboard/recommendations-panel";
-import { getVenueRecommendations } from "@/lib/luv/recommendation-service";
+import { refreshVenueRecommendations } from "@/lib/luv/recommendation-service";
 import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
 import {
   PAYMENT_ATTENTION_PATTERN_TYPE,
@@ -30,7 +30,8 @@ export async function SpotPatternRecommendationsPanel({
 }: {
   types: readonly Phase5SpotPatternType[];
 }) {
-  const all = await getVenueRecommendations();
+  // Explicit refresh — L2 workflow surfaces may manufacture; Dashboard must not.
+  const all = await refreshVenueRecommendations();
   const allow = new Set<string>(types);
   const recommendations = all.filter(
     (rec) => allow.has(rec.type) && isRecommendationActiveForDisplay(rec),

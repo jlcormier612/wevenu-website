@@ -52,35 +52,68 @@ async function loadRecentlyDismissedPatternRows(
   return (data as RawRecommendationRow[]).map(mapRecommendationRow);
 }
 
-export async function getVenueRecommendations(): Promise<VenueRecommendation[]> {
+async function readPersistedVenueRecommendations(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<VenueRecommendation[]> {
+  const { data, error } = await supabase.rpc("get_venue_recommendations");
+  if (error || !data) return [];
+  const visible = filterVisibleRecommendations(
+    (data as RawRecommendationRow[])
+      .filter((row) => !isObservationDismissType(row.type))
+      .map(mapRecommendationRow),
+  );
+  const dismissedPatterns = await loadRecentlyDismissedPatternRows(supabase, [
+    TOUR_FOLLOWUP_PATTERN_TYPE,
+    ...PHASE5_SPOT_PATTERN_TYPES,
+  ]);
+  const extras = dismissedPatterns.filter(
+    (rec) => !visible.some((v) => v.id === rec.id),
+  );
+  return extras.length > 0 ? [...visible, ...extras] : visible;
+}
+
+/**
+ * READ-ONLY: persisted recommendations for surfaces that must not manufacture
+ * venue-wide intelligence (Dashboard GET).
+ *
+ * Does not call generate_venue_recommendations or any recommendation sync.
+ */
+export async function readVenueRecommendations(): Promise<VenueRecommendation[]> {
+  try {
+    const supabase = await createClient();
+    return await readPersistedVenueRecommendations(supabase);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * REFRESH then READ: generate + sync venue-wide recommendation layers, then
+ * return the persisted set. Explicit caller opt-in only — never Dashboard GET.
+ */
+export async function refreshVenueRecommendations(): Promise<VenueRecommendation[]> {
   try {
     const supabase = await createClient();
     await supabase.rpc("generate_venue_recommendations");
     // Guide-gap layer: Couple Ask information_gap aggregates → luv_recommendations.
-    // Classification + published client Guide coverage run in app code; RPC writes.
     await syncClientAskGapRecommendations(supabase);
     // Luv V2: venue-level recurring incomplete tour follow-up pattern.
     await syncTourFollowupPatternRecommendation(supabase);
     // Phase 5 Spot Patterns (L2 only — never Dashboard L1).
     await syncPhase5SpotPatternRecommendations(supabase);
-    const { data, error } = await supabase.rpc("get_venue_recommendations");
-    if (error || !data) return [];
-    const visible = filterVisibleRecommendations(
-      (data as RawRecommendationRow[])
-        .filter((row) => !isObservationDismissType(row.type))
-        .map(mapRecommendationRow),
-    );
-    const dismissedPatterns = await loadRecentlyDismissedPatternRows(supabase, [
-      TOUR_FOLLOWUP_PATTERN_TYPE,
-      ...PHASE5_SPOT_PATTERN_TYPES,
-    ]);
-    const extras = dismissedPatterns.filter(
-      (rec) => !visible.some((v) => v.id === rec.id),
-    );
-    return extras.length > 0 ? [...visible, ...extras] : visible;
+    return await readPersistedVenueRecommendations(supabase);
   } catch {
     return [];
   }
+}
+
+/**
+ * @deprecated Prefer readVenueRecommendations (Dashboard) or
+ * refreshVenueRecommendations (explicit manufacture). Kept as the refresh
+ * path so existing non-Dashboard callers keep current freshness behavior.
+ */
+export async function getVenueRecommendations(): Promise<VenueRecommendation[]> {
+  return refreshVenueRecommendations();
 }
 
 /** Observation ids dismissed in the last 7 days for the active venue. */

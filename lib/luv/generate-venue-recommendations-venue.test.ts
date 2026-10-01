@@ -111,19 +111,33 @@ describe("generate_venue_recommendations — authoritative venue (no LIMIT 1)", 
     assert.match(fixed, /v_next_ratio >= 1\.35/);
   });
 
-  it("app caller still invokes generate then Ask-gap then tour pattern sync", () => {
+  it("refresh path invokes generate then Ask-gap then tour pattern sync then read", () => {
     const service = read("lib/luv/recommendation-service.ts");
-    const fn = service.slice(service.indexOf("export async function getVenueRecommendations"));
+    const fn = service.slice(service.indexOf("export async function refreshVenueRecommendations"));
     const generateIdx = fn.indexOf('rpc("generate_venue_recommendations")');
     const askIdx = fn.indexOf("syncClientAskGapRecommendations");
     const tourIdx = fn.indexOf("syncTourFollowupPatternRecommendation");
     const spotIdx = fn.indexOf("syncPhase5SpotPatternRecommendations");
-    const getIdx = fn.indexOf('rpc("get_venue_recommendations")');
+    const readIdx = fn.indexOf("readPersistedVenueRecommendations");
     assert.ok(generateIdx >= 0);
     assert.ok(askIdx > generateIdx);
     assert.ok(tourIdx > askIdx);
     assert.ok(spotIdx > tourIdx);
-    assert.ok(getIdx > spotIdx);
+    assert.ok(readIdx > spotIdx);
+    assert.match(service, /rpc\("get_venue_recommendations"\)/);
+  });
+
+  it("read path does not manufacture recommendations", () => {
+    const service = read("lib/luv/recommendation-service.ts");
+    const fn = service.slice(
+      service.indexOf("export async function readVenueRecommendations"),
+      service.indexOf("export async function refreshVenueRecommendations"),
+    );
+    assert.doesNotMatch(fn, /generate_venue_recommendations/);
+    assert.doesNotMatch(fn, /syncClientAskGapRecommendations/);
+    assert.doesNotMatch(fn, /syncTourFollowupPatternRecommendation/);
+    assert.doesNotMatch(fn, /syncPhase5SpotPatternRecommendations/);
+    assert.match(fn, /readPersistedVenueRecommendations/);
   });
 
   it("prior defining migration still documents the defect we fixed (history lock)", () => {

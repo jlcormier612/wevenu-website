@@ -97,8 +97,10 @@ describe("engineering cleanup — dashboard dead recentBookings removed", () => 
     assert.doesNotMatch(types, /totalClients/);
     assert.doesNotMatch(types, /DashboardClient/);
     assert.doesNotMatch(svc, /recentBookings/);
-    assert.match(svc, /\.limit\(200\)/);
-    assert.match(svc, /\.limit\(100\)/);
+    // Phase 3A: Focus-population scoped load replaces arbitrary venue-wide lead LIMITs.
+    assert.match(svc, /loadFocusPopulationLeads/);
+    assert.match(svc, /readVenueRecommendations/);
+    assert.match(svc, /\.limit\(15\)/);
   });
 
   it("dead RecentBookingsWidget component is removed", () => {

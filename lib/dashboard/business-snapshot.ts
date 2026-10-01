@@ -201,10 +201,13 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
 
   const [{ data: leadRows }, { data: stageRows }, bookedIds, bookedValue, cashCollected, outstandingBalance] =
     await Promise.all([
+      // Lean open-opportunity query only — Dashboard Focus uses a separate
+      // Focus-population loader; do not re-fetch the full CRM dump here.
       supabase
         .from("leads")
         .select("sales_stage, estimated_budget, created_at, pipeline_stage_id")
-        .eq("venue_id", venue.id),
+        .eq("venue_id", venue.id)
+        .not("sales_stage", "in", `(${[...TERMINAL_LEAD_LIFECYCLE_STATES].join(",")})`),
       supabase
         .from("pipeline_stages")
         .select("id, canonical_stage")
