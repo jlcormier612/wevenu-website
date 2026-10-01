@@ -98,6 +98,20 @@ export async function getInvoices(filters?: { q?: string; status?: string }): Pr
   return repo.getInvoices(await createClient(), venue.id, filters);
 }
 
+/**
+ * Client Workspace invoices: client OR event scope.
+ * Venue authorization remains via getCurrentVenue + RLS.
+ */
+export async function getInvoicesForClientOrEvent(
+  clientId: string,
+  eventId: string,
+): Promise<Invoice[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getInvoicesForClientOrEvent(await createClient(), venue.id, { clientId, eventId });
+}
+
 export async function getInvoice(id: string): Promise<InvoiceWithLineItems | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();

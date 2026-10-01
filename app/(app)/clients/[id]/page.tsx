@@ -36,7 +36,7 @@ import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-template
 import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
 import { getGuestReadinessSummary } from "@/lib/guests/service";
 import { getUsageForEvent } from "@/lib/inventory/service";
-import { getInvoiceLineMarkers, getInvoices } from "@/lib/invoices/service";
+import { getInvoiceLineMarkers, getInvoicesForClientOrEvent } from "@/lib/invoices/service";
 import {
   frozenEventOrderLineIds,
   packageBookingCommitmentInvoiceIds,
@@ -281,10 +281,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // Slice 3A scopes contracts (client|event, no content) + template metadata.
   // Luv observation *content* is unchanged.
 
-  const invoicesPromise = getInvoices({});
-  const eventInvoicesPromise = invoicesPromise.then((all) =>
-    all.filter((inv) => inv.eventId === eventId || inv.clientId === id),
-  );
+  // Slice 3B — scope invoices to this client OR event (same semantics as the
+  // former venue-wide load + app-side filter).
+  const eventInvoicesPromise = getInvoicesForClientOrEvent(id, eventId);
   const invoiceLineMarkersPromise = eventInvoicesPromise.then((eventInvoices) =>
     getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id)),
   );

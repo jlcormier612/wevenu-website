@@ -135,6 +135,25 @@ export async function getInvoicesForClient(client: DbClient, venueId: string, cl
   return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));
 }
 
+/**
+ * Client Workspace list path.
+ * Scope: client_id = clientId OR event_id = eventId (venue RLS still applies).
+ * Matches prior app-side filter: inv.eventId === eventId || inv.clientId === id.
+ */
+export async function getInvoicesForClientOrEvent(
+  client: DbClient,
+  venueId: string,
+  scope: { clientId: string; eventId: string },
+): Promise<Invoice[]> {
+  const { data, error } = await client.from("invoices")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
+    .eq("venue_id", venueId)
+    .or(`client_id.eq.${scope.clientId},event_id.eq.${scope.eventId}`)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));
+}
+
 export async function insertInvoice(client: DbClient, venueId: string, input: InvoiceInput): Promise<string> {
   // Generate invoice number after getting the ID
   const { data, error } = await client.from("invoices")

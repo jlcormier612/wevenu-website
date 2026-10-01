@@ -46,12 +46,13 @@ describe("Slice 2 — booked path pipelines dependents off parents", () => {
   it("keeps invoice-id → line-marker dependency via parent.then", () => {
     assert.match(booked, /eventInvoicesPromise\.then/);
     assert.match(booked, /getInvoiceLineMarkers\(eventInvoices\.map/);
-    // Markers must not freefloat without filtering invoices first.
-    const markersFromFiltered = booked.indexOf(
+    // Slice 3B: scoped fetch replaces venue-wide + app filter; markers still
+    // chain from the scoped eventInvoicesPromise.
+    const markersFromScoped = booked.indexOf(
       "getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id))",
     );
-    const filterIdx = booked.indexOf("all.filter((inv) => inv.eventId === eventId || inv.clientId === id)");
-    assert.ok(filterIdx > 0 && markersFromFiltered > filterIdx);
+    const scopedIdx = booked.indexOf("getInvoicesForClientOrEvent(id, eventId)");
+    assert.ok(scopedIdx > 0 && markersFromScoped > scopedIdx);
   });
 
   it("keeps choice-list → getClientChoices dependency via parent.then", () => {
@@ -95,7 +96,7 @@ describe("Slice 2 — booked path pipelines dependents off parents", () => {
     const createIdx = booked.indexOf("const supabase = await createClient()");
     assert.ok(createIdx > 0);
     assert.ok(booked.lastIndexOf("leadExtrasPromise", createIdx) > 0);
-    assert.ok(booked.indexOf("const invoicesPromise") < createIdx);
+    assert.ok(booked.indexOf("const eventInvoicesPromise") < createIdx);
   });
 
   it("keeps celebration redirect serial before workspace reads", () => {
