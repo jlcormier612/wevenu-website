@@ -31,6 +31,10 @@ describe("email branding/signature path audit", () => {
       mustInclude: [/emailBrandFromVenue/, /buildContractInviteHtml/],
     },
     {
+      file: "lib/commercial-proposals/couple-email.ts",
+      mustInclude: [/emailBrandFromVenue/, /brandButtonHtml/, /renderBrandedEmailHtml/],
+    },
+    {
       file: "components/settings/communication-identity-section.tsx",
       mustInclude: [/renderEmailBrandPreviewHtml/, /emailSignature/],
     },

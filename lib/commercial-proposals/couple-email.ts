@@ -4,10 +4,20 @@
  * Send proposal publishes the offer, then submits this email through the
  * existing sendEmail + conversation history path (same shape as invoice
  * and tour emails). Provider acceptance is "submitted", not "delivered".
+ *
+ * HTML uses the shared venue-branded transactional shell + brandButtonHtml
+ * (same helpers as contract invite). Plaintext keeps the bare offer URL.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { sendEmail } from "@/lib/email/send";
+import {
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+  type EmailVenueBrand,
+} from "@/lib/email/venue-brand";
 import { publicAppOrigin } from "@/lib/env";
 import { customerFacingVenueName } from "@/lib/venue/identity";
 
@@ -23,6 +33,8 @@ export function buildProposalCoupleEmail(input: {
   offerUrl: string;
   offerMessage?: string | null;
   optionNames: string[];
+  /** Venue brand for HTML shell + CTA. Defaults to name-only brand when omitted (tests). */
+  brand?: EmailVenueBrand;
 }): ProposalEmailContent {
   const venue = input.venueName.trim() || "Your venue";
   const name = input.recipientFirstName?.trim() || "there";
@@ -47,25 +59,27 @@ export function buildProposalCoupleEmail(input: {
     venue,
   ].join("\n");
 
+  const brand: EmailVenueBrand = input.brand ?? emailBrandFromVenue({ name: venue });
   const htmlOptions = options.length > 0
-    ? `<ul>${options.map((n) => `<li>${escapeHtml(n)}</li>`).join("")}</ul>`
+    ? `<ul style="margin:0 0 20px;padding-left:20px;font-size:15px;color:#374151">${options.map((n) => `<li>${escapeHtml(n)}</li>`).join("")}</ul>`
     : "";
-  const html = [
-    `<p>Hi ${escapeHtml(name)},</p>`,
-    `<p><strong>${escapeHtml(venue)}</strong> sent you a proposal.</p>`,
-    `<p>Open it to review the options and choose the one you want.</p>`,
-    `<p><a href="${escapeHtml(input.offerUrl)}">Review your proposal</a></p>`,
-    `<p style="font-size:12px;color:#666">${escapeHtml(input.offerUrl)}</p>`,
+  const body = [
+    `<p style="margin:0 0 12px;font-size:15px;color:#374151">Hi ${escapeHtml(name)},</p>`,
+    `<p style="margin:0 0 12px;font-size:15px;color:#374151"><strong>${escapeHtml(venue)}</strong> sent you a proposal.</p>`,
+    `<p style="margin:0 0 20px;font-size:15px;color:#374151">Open it to review the options and choose the one you want.</p>`,
+    `<p style="margin:0 0 20px">${brandButtonHtml(brand, input.offerUrl, "Review your proposal")}</p>`,
     htmlOptions,
-    note ? `<p>A note from ${escapeHtml(venue)}:</p><p>${escapeHtml(note)}</p>` : "",
-    `<p>Choosing an option does not sign a contract. After you choose, your venue continues with the next step.</p>`,
-    `<p>${escapeHtml(venue)}</p>`,
-  ].filter(Boolean).join("\n");
+    note
+      ? `<p style="margin:0 0 8px;font-size:15px;color:#374151">A note from ${escapeHtml(venue)}:</p><p style="margin:0 0 20px;font-size:15px;color:#374151">${escapeHtml(note)}</p>`
+      : "",
+    `<p style="margin:0 0 12px;font-size:15px;color:#374151">Choosing an option does not sign a contract. After you choose, your venue continues with the next step.</p>`,
+    `<p style="margin:0;font-size:15px;color:#374151">${escapeHtml(venue)}</p>`,
+  ].filter(Boolean).join("");
 
   return {
     subject: `${venue} sent you a proposal`,
     text,
-    html,
+    html: renderBrandedEmailHtml(brand, body),
   };
 }
 
@@ -141,13 +155,23 @@ export async function submitProposalCoupleEmail(input: {
   offerMessage?: string | null;
   optionNames: string[];
 }): Promise<ProposalEmailSubmitResult> {
+  // Same branding fields as scheduled-messages / contract invite path
+  // (emailBrandFromVenue). Customer-facing display name stays venues.name.
   const { data: venue } = await input.supabase
     .from("venues")
-    .select("name, email")
+    .select("name, logo_url, primary_color, email_signature, email, phone")
     .eq("id", input.venueId)
     .maybeSingle();
   const venueName = customerFacingVenueName({
     name: (venue?.name as string | null) ?? null,
+  });
+  const brand = emailBrandFromVenue({
+    name: venueName,
+    logo_url: (venue?.logo_url as string | null) ?? null,
+    primary_color: (venue?.primary_color as string | null) ?? null,
+    email_signature: (venue?.email_signature as string | null) ?? null,
+    email: (venue?.email as string | null) ?? null,
+    phone: (venue?.phone as string | null) ?? null,
   });
 
   const recipient = await resolveRecipient(input.supabase, input.venueId, input.leadId, input.clientId);
@@ -167,6 +191,7 @@ export async function submitProposalCoupleEmail(input: {
     offerUrl,
     offerMessage: input.offerMessage,
     optionNames: input.optionNames,
+    brand,
   });
 
   const emailResult = await sendEmail({
@@ -219,12 +244,4 @@ export async function submitProposalCoupleEmail(input: {
     recipient: email,
     message: `Proposal email submitted to ${email}. Delivery is confirmed separately.`,
   };
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
