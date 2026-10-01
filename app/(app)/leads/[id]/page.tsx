@@ -23,6 +23,7 @@ import { markLeadVenueSeen } from "@/lib/navigation/attention-service";
 import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
 import { isSmsConfigured } from "@/lib/sms/send";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { getLeadSpacePreferences } from "@/lib/leads/space-preferences-service";
 
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
 const LEAD_DETAIL_LOAD_TIMEOUT_MS = 45_000;
@@ -59,7 +60,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
 
   const page = await withTimeout(
     (async () => {
-      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, luvDrafts, tourAppointments, packages, activeTemplate, venue] = await Promise.all([
+      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, luvDrafts, tourAppointments, packages, activeTemplate, venue, spacePreferences] = await Promise.all([
         getLead(id),
         getHolds({ leadId: id }),
         getSpaces(),
@@ -72,6 +73,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getPackagesWithItems(true),
         getActiveTemplate(),
         getCurrentVenue(),
+        getLeadSpacePreferences(id),
       ]);
       if (!lead) return null;
       const [conversationId, smsPermission, duplicateReview, teamMembers, currentStaff, textingConfigured] = await Promise.all([
@@ -118,6 +120,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         staffOptions: teamMembers.map((m) => ({ id: m.id, name: m.name })),
         currentStaffId: currentStaff?.id ?? null,
         venueTimezone: venue?.timezone ?? null,
+        spaceOperatingMode: venue?.spaceOperatingMode ?? "single",
+        spacePreferences,
       };
     })(),
     LEAD_DETAIL_LOAD_TIMEOUT_MS,
@@ -163,6 +167,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       photoUrl={photo?.displayedPhotoUrl ?? null}
       venueTimezone={page.venueTimezone}
       contextualObservations={page.contextualObservations}
+      spaceOperatingMode={page.spaceOperatingMode}
+      spacePreferences={page.spacePreferences}
     />
   );
 }

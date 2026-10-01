@@ -7,6 +7,10 @@
  * resolve with an honest value so older drafts never surface raw {{tokens}}.
  */
 import { formatContractDate } from "@/lib/contracts/constants";
+import {
+  CEREMONY_SPACE_UNLISTED,
+  RECEPTION_SPACE_UNLISTED,
+} from "@/lib/contracts/ceremony-reception-merge";
 import { EMPTY_EVENT_SPACES_LABEL } from "@/lib/contracts/event-spaces-merge";
 import {
   formatBalanceRemaining,
@@ -58,6 +62,8 @@ export type MergeContext = {
   venueAccessHours?: string | null;
   ceremonySummary?: string | null;
   receptionSummary?: string | null;
+  ceremonySpace?: string | null;
+  receptionSpace?: string | null;
   balanceRemaining?: string | null;
 };
 
@@ -113,6 +119,8 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.venue_access_hours = ctx.venueAccessHours?.trim() || MISSING_VENUE_ACCESS_HOURS;
   data.ceremony_summary = ctx.ceremonySummary?.trim() || MISSING_CEREMONY_SUMMARY;
   data.reception_summary = ctx.receptionSummary?.trim() || MISSING_RECEPTION_SUMMARY;
+  data.ceremony_space = ctx.ceremonySpace?.trim() || CEREMONY_SPACE_UNLISTED;
+  data.reception_space = ctx.receptionSpace?.trim() || RECEPTION_SPACE_UNLISTED;
   data.balance_remaining = ctx.balanceRemaining?.trim() || MISSING_BALANCE_REMAINING;
 
   return data;

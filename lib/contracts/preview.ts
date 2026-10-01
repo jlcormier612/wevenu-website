@@ -30,6 +30,8 @@ export function contractTemplatePreviewMergeData(): MergeData {
     event_type: "Wedding",
     guest_count: "120",
     event_spaces: "Garden & Barn",
+    ceremony_space: "Garden",
+    reception_space: "Barn",
     venue_access_hours: "Setup 2:00 PM · Event 4:00 PM – 10:00 PM · Teardown 11:00 PM",
     ceremony_summary: "Ceremony at Garden Terrace, 4:00 PM",
     reception_summary: "Reception at The Barn, 6:00 PM",

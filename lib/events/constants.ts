@@ -98,6 +98,8 @@ export function createInitialEventInput(
     guestCount: source?.guestCount != null ? String(source.guestCount) : "",
     clientId: source?.clientId ?? "",
     spaceId: source?.spaceId ?? "",
+    externalCeremonyLocation: "",
+    externalReceptionLocation: "",
   };
 }
 
@@ -114,5 +116,7 @@ export function eventInputFromVenueEvent(ev: VenueEvent): EventInput {
     guestCount: ev.guestCount != null ? String(ev.guestCount) : "",
     clientId: ev.clientId ?? "",
     spaceId: ev.spaceId ?? "",
+    externalCeremonyLocation: ev.externalCeremonyLocation ?? "",
+    externalReceptionLocation: ev.externalReceptionLocation ?? "",
   };
 }

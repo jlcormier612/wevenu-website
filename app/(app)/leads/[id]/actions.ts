@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { saveLeadSpacePreferences } from "@/lib/leads/space-preferences-service";
+import type { LeadSpacePreferenceInput } from "@/lib/leads/space-preferences";
 import {
   addNote,
   addTask,
@@ -84,6 +86,15 @@ export async function markLeadLostAction(
     revalidateLead(leadId);
     void refreshLeadScore(leadId).catch(() => {});
   }
+  return result;
+}
+
+export async function saveLeadSpacePreferencesAction(
+  leadId: string,
+  inputs: LeadSpacePreferenceInput[],
+): Promise<LeadActionResult> {
+  const result = await saveLeadSpacePreferences(leadId, inputs);
+  if (result.ok) revalidateLead(leadId);
   return result;
 }
 

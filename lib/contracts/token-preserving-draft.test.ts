@@ -57,6 +57,19 @@ describe("token-preserving contract draft", () => {
     assert.match(builder, /MERGE_FIELDS/);
   });
 
+  it("ceremony_space and reception_space stay on the existing preview/send path", () => {
+    assert.match(builder, /ceremony_space|MERGE_FIELDS/);
+    const send = service.slice(service.indexOf("export async function sendContract"));
+    assert.match(send, /materializeAuthoredContractContent/);
+    assert.match(send, /publishContractDocument/);
+    const preview = service.slice(
+      service.indexOf("export async function previewContractContent"),
+      service.indexOf("export async function createAmendmentFromContract"),
+    );
+    assert.doesNotMatch(preview, /updateContractContent/);
+    assert.doesNotMatch(preview, /\.from\("contracts"\)\.update/);
+  });
+
   it("draft reopen uses the same Contract Builder, not the reduced textarea", () => {
     assert.match(detail, /mode="draft"/);
     assert.match(detail, /<ContractBuilder/);

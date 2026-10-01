@@ -45,6 +45,8 @@ const APPROVED_CONTRACT_KEYS = [
   "event_type",
   "guest_count",
   "event_spaces",
+  "ceremony_space",
+  "reception_space",
   "package_section",
   "included_items_summary",
   "additional_items_summary",

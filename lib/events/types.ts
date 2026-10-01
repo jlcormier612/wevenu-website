@@ -44,6 +44,10 @@ export type VenueEvent = {
   operationalFloorPlanId: string | null;
   /** Phase 2 — couple-selected event floor plan (independent of operational). */
   coupleSelectedFloorPlanId: string | null;
+  /** Post-book ceremony location outside the venue. Null until set. */
+  externalCeremonyLocation: string | null;
+  /** Post-book reception location outside the venue. Null until set. */
+  externalReceptionLocation: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -109,6 +113,8 @@ export type EventInput = {
   guestCount: string;
   clientId: string;
   spaceId: string;   // empty string = no space assigned
+  externalCeremonyLocation?: string;
+  externalReceptionLocation?: string;
   /**
    * Multi-space use → physical space rows. Undefined = leave existing
    * assignments untouched on update; [] clears. Single-space venues ignore.

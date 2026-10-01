@@ -120,6 +120,34 @@ export function EventFormFields({
           works.
         </p>
       )}
+      {multi && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="External ceremony location"
+            htmlFor="ext-cer"
+            hint="Used when the ceremony is not in a venue space."
+          >
+            <Input
+              id="ext-cer"
+              value={input.externalCeremonyLocation ?? ""}
+              onChange={(e) => set("externalCeremonyLocation", e.target.value)}
+              placeholder="Outside the venue"
+            />
+          </Field>
+          <Field
+            label="External reception location"
+            htmlFor="ext-rec"
+            hint="Used when the reception is not in a venue space."
+          >
+            <Input
+              id="ext-rec"
+              value={input.externalReceptionLocation ?? ""}
+              onChange={(e) => set("externalReceptionLocation", e.target.value)}
+              placeholder="Location name"
+            />
+          </Field>
+        </div>
+      )}
 
       {/* Availability conflict advisory — hard block disables save */}
       {input.eventDate && (

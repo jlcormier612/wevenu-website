@@ -72,8 +72,8 @@ describe("contract service uses the booking picker, not event-only filter", () =
 });
 
 describe("KEEP catalog unchanged by this source-path repair", () => {
-  it("keeps 22 picker fields and the four removed keys", () => {
-    assert.equal(MERGE_FIELDS.length, 22);
+  it("keeps 24 picker fields and the four removed keys", () => {
+    assert.equal(MERGE_FIELDS.length, 24);
     assert.deepEqual(REMOVED_MERGE_FIELD_KEYS, [
       "venue_access_hours",
       "ceremony_summary",

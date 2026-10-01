@@ -23,6 +23,10 @@ import {
   replaceEmptyEventSpacesLabel,
   resolveEventSpacesLabel,
 } from "@/lib/contracts/event-spaces-merge";
+import {
+  resolveCeremonySpace,
+  resolveReceptionSpace,
+} from "@/lib/contracts/ceremony-reception-merge";
 import { pickPaymentScheduleForBooking } from "@/lib/contracts/payment-schedule-merge";
 import { getSpaces } from "@/lib/availability/service";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
@@ -548,6 +552,8 @@ export async function buildContractMergeData(opts: {
   let packageFromSelection = false;
   let ceremonySpaceLabel: string | null = null;
   let receptionSpaceLabel: string | null = null;
+  let ceremonyAsgName: string | null = null;
+  let receptionAsgName: string | null = null;
 
   // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
   // Financial SoT for total / deposit / remaining when no payment schedule exists:
@@ -630,10 +636,12 @@ export async function buildContractMergeData(opts: {
     const ceremonyAsg = assignments.find((a) => a.useKey === "ceremony");
     const receptionAsg = assignments.find((a) => a.useKey === "reception");
     if (ceremonyAsg?.spaceName?.trim()) {
-      ceremonySpaceLabel = `${labelForUseKey(ceremonyAsg.useKey, ceremonyAsg.useLabel)}: ${ceremonyAsg.spaceName.trim()}`;
+      ceremonyAsgName = ceremonyAsg.spaceName.trim();
+      ceremonySpaceLabel = `${labelForUseKey(ceremonyAsg.useKey, ceremonyAsg.useLabel)}: ${ceremonyAsgName}`;
     }
     if (receptionAsg?.spaceName?.trim()) {
-      receptionSpaceLabel = `${labelForUseKey(receptionAsg.useKey, receptionAsg.useLabel)}: ${receptionAsg.spaceName.trim()}`;
+      receptionAsgName = receptionAsg.spaceName.trim();
+      receptionSpaceLabel = `${labelForUseKey(receptionAsg.useKey, receptionAsg.useLabel)}: ${receptionAsgName}`;
     }
   } catch { /* optional */ }
 
@@ -756,6 +764,14 @@ export async function buildContractMergeData(opts: {
     venueAccessHours,
     ceremonySummary,
     receptionSummary,
+    ceremonySpace: resolveCeremonySpace({
+      assignmentName: ceremonyAsgName,
+      externalCeremonyLocation: event?.externalCeremonyLocation ?? null,
+    }),
+    receptionSpace: resolveReceptionSpace({
+      assignmentName: receptionAsgName,
+      externalReceptionLocation: event?.externalReceptionLocation ?? null,
+    }),
     balanceRemaining,
   });
 }

@@ -60,6 +60,8 @@ type EventRow = {
   booked_at: string | null;
   operational_floor_plan_id: string | null;
   couple_selected_floor_plan_id: string | null;
+  external_ceremony_location?: string | null;
+  external_reception_location?: string | null;
   // embedded client name from join
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
 };
@@ -79,6 +81,8 @@ function mapEvent(r: EventRow): VenueEvent {
     bookedAt: r.booked_at ?? null,
     operationalFloorPlanId: r.operational_floor_plan_id ?? null,
     coupleSelectedFloorPlanId: r.couple_selected_floor_plan_id ?? null,
+    externalCeremonyLocation: r.external_ceremony_location?.trim() || null,
+    externalReceptionLocation: r.external_reception_location?.trim() || null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -186,6 +190,8 @@ function toEventRow(venueId: string, input: EventInput): Record<string, unknown>
     setup_time: input.setupTime || null,
     teardown_time: input.teardownTime || null,
     guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
+    external_ceremony_location: input.externalCeremonyLocation?.trim() || null,
+    external_reception_location: input.externalReceptionLocation?.trim() || null,
   };
 }
 
