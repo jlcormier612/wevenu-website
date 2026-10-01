@@ -18,11 +18,14 @@ import { createClient } from "@/integrations/supabase/server";
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
-  customerFacingInquiryMessage,
   normalizeInquiryMessageOrigin,
   resolveDraftDeleteDecision,
   type InquiryOrigin,
 } from "@/lib/luv/draft-context-boundary";
+import {
+  customerFacingInquiryContext,
+  type CustomerFacingInquiryContext,
+} from "@/lib/luv/customer-facing-inquiry-context";
 import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { Lead } from "@/lib/leads/types";
@@ -95,7 +98,11 @@ export function buildFollowUpPrompt(
   const origin: InquiryOrigin = normalizeInquiryMessageOrigin(
     verified.inquiryOrigin ?? lead.inquiryMessageOrigin,
   );
-  const customerMessage = customerFacingInquiryMessage(lead.inquiryMessage, origin);
+  // Gate 1 + Gate 2: never pass raw inquiry_message into the prompt.
+  const inquiryContext: CustomerFacingInquiryContext = customerFacingInquiryContext(
+    lead.inquiryMessage,
+    origin,
+  );
 
   const verifiedLines: string[] = [];
   if (verified.proposalSent) {
@@ -105,9 +112,10 @@ export function buildFollowUpPrompt(
     ? `**Verified facts (actions proven in the system — you may state these):**\n${verifiedLines.join("\n")}`
     : "**Verified facts:** none for completed actions on this lead.";
 
-  const customerMessageBlock = customerMessage
-    ? `**Customer-originated inquiry (they wrote this — eligible for personalization, not for mechanical repetition):**
-- "${customerMessage}"
+  const customerMessageBlock =
+    inquiryContext.status === "usable"
+      ? `**Customer-provided details relevant to this follow-up:**
+${inquiryContext.details.map((d) => `- "${d}"`).join("\n")}
 
 **Judgment (use a detail only when it belongs in this email to the customer):**
 - Speak TO the customer, not ABOUT them as staff would.
@@ -115,7 +123,7 @@ export function buildFollowUpPrompt(
 - Avoid forced personalization, relationship commentary, teasing, speculation, awkward callbacks, unnecessary repetition, and "look how much I remember" language.
 - Do not repeat their message mechanically.
 `
-    : "";
+      : "";
 
   return `You are helping a venue coordinator at ${venueName} write a warm, personal follow-up email to a prospective client.
 

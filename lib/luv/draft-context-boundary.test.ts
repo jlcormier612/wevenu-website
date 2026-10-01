@@ -1,5 +1,5 @@
 /**
- * Luv customer-facing draft context — provenance + discard decisions.
+ * Luv customer-facing draft context — Gate 1 provenance + Gate 2 naturalness + discard.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -78,13 +78,16 @@ describe("customerFacingInquiryMessage — venue-originated excluded before gene
   });
 });
 
-describe("buildFollowUpPrompt — source boundary", () => {
+describe("buildFollowUpPrompt — Gate 1 + Gate 2 source boundary", () => {
   const SENSITIVE = "SSN-CANARY-7741 do not tell the couple about the credit hold";
   const INNOCUOUS = "Called back Tuesday; seems lovely.";
-  const AWKWARD = "Lucy keeping Charlie on his toes sounds like it will make the day even more fun.";
-  const USEFUL = "We love the garden and want a Saturday in August.";
+  const CHARLIE =
+    "Keeping Charlie on his toes sounds like it will make the day even more fun.";
+  const USEFUL = "We love the garden and are hoping for a Saturday in August.";
+  const MIXED =
+    "We love the garden. Keeping Charlie on his toes sounds like it will make the day even more fun.";
 
-  it("does not put a sensitive venue note in generation context", () => {
+  it("1. venue inquiry → absent", () => {
     const prompt = buildFollowUpPrompt(
       lead({ inquiryMessage: SENSITIVE }),
       "Jen's Fancy",
@@ -94,7 +97,152 @@ describe("buildFollowUpPrompt — source boundary", () => {
     );
     assert.doesNotMatch(prompt, /SSN-CANARY-7741/);
     assert.doesNotMatch(prompt, /credit hold/);
+    assert.doesNotMatch(prompt, /Customer-provided details/);
     assert.doesNotMatch(prompt, /Their original message/);
+  });
+
+  it("2. unknown inquiry → absent", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: USEFUL, inquiryMessageOrigin: "unknown" }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false },
+    );
+    assert.doesNotMatch(prompt, /We love the garden/);
+    assert.doesNotMatch(prompt, /Customer-provided details/);
+  });
+
+  it("3. invalid/missing origin → absent (fail closed)", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: SENSITIVE }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false },
+    );
+    assert.doesNotMatch(prompt, /SSN-CANARY-7741/);
+    assert.doesNotMatch(prompt, /Customer-provided details/);
+  });
+
+  it("4. customer + useful preference → present", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: "We love the garden." }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false, inquiryOrigin: "customer" },
+    );
+    assert.match(prompt, /We love the garden/);
+    assert.match(prompt, /Customer-provided details relevant to this follow-up/);
+  });
+
+  it("5. customer + useful planning detail → present", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: USEFUL }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false, inquiryOrigin: "customer" },
+    );
+    assert.match(prompt, /hoping for a Saturday in August/);
+    assert.match(prompt, /Customer-provided details relevant to this follow-up/);
+    assert.match(prompt, /Speak TO the customer/);
+  });
+
+  it("6. customer + Charlie-style relationship commentary → absent", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: CHARLIE }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false, inquiryOrigin: "customer" },
+    );
+    assert.doesNotMatch(prompt, /Keeping Charlie on his toes/);
+    assert.doesNotMatch(prompt, /on his toes/);
+    assert.doesNotMatch(prompt, /make the day even more fun/);
+    assert.doesNotMatch(prompt, /Customer-provided details/);
+  });
+
+  it("7. customer + mixed useful + withheld → useful remains, withheld absent", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: MIXED }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false, inquiryOrigin: "customer" },
+    );
+    assert.match(prompt, /We love the garden/);
+    assert.doesNotMatch(prompt, /Keeping Charlie on his toes/);
+    assert.doesNotMatch(prompt, /on his toes/);
+    assert.doesNotMatch(prompt, /make the day even more fun/);
+  });
+
+  it("8. if any content withheld, raw full inquiry cannot appear anywhere in prompt", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: MIXED }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false, inquiryOrigin: "customer" },
+    );
+    assert.doesNotMatch(prompt, new RegExp(MIXED.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.doesNotMatch(prompt, /We love the garden\. Keeping Charlie/);
+  });
+
+  it("9. structured lead facts remain available when inquiry context excluded", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({ inquiryMessage: INNOCUOUS }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false, inquiryOrigin: "venue" },
+    );
+    assert.match(prompt, /Lucy and Charlie/);
+    assert.match(prompt, /wedding/);
+    assert.match(prompt, /2027-08-14/);
+    assert.match(prompt, /80/);
+    assert.doesNotMatch(prompt, /Called back Tuesday/);
+  });
+
+  it("10. Gate 2 is wired into buildFollowUpPrompt (not only a standalone helper)", () => {
+    const src = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
+    assert.match(src, /customerFacingInquiryContext/);
+    assert.match(src, /from "@\/lib\/luv\/customer-facing-inquiry-context"/);
+    assert.doesNotMatch(src, /customerFacingInquiryMessage\(/);
+    // Raw inquiry must not be interpolated into the prompt after Gate 2.
+    const builder = src.slice(src.indexOf("export function buildFollowUpPrompt"));
+    const end = builder.indexOf("\nexport ");
+    const fn = end === -1 ? builder : builder.slice(0, end);
+    assert.doesNotMatch(fn, /inquiryMessage\}/);
+    assert.doesNotMatch(fn, /\$\{lead\.inquiryMessage/);
+    assert.doesNotMatch(fn, /customerMessage[^B]/);
+  });
+
+  it("11. lead_notes remains excluded", () => {
+    const src = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
+    assert.doesNotMatch(src, /lead_notes/);
+  });
+
+  it("12. no trust-tier / source bypass introduced", () => {
+    const src = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
+    assert.doesNotMatch(src, /trust_tier/);
+    assert.doesNotMatch(src, /lead_intake_attempts/);
+    assert.match(src, /inquiryMessageOrigin/);
+    assert.match(src, /normalizeInquiryMessageOrigin/);
+  });
+
+  it("regression: useful preference remains available to the model", () => {
+    const prompt = buildFollowUpPrompt(
+      lead({
+        inquiryMessage: "We love the garden and are hoping for a Saturday in August.",
+      }),
+      "Jen's Fancy",
+      "Jen",
+      "warm",
+      { proposalSent: false, inquiryOrigin: "customer" },
+    );
+    assert.match(prompt, /We love the garden and are hoping for a Saturday in August/);
   });
 
   it("does not put an innocuous venue note in generation context", () => {
@@ -108,69 +256,6 @@ describe("buildFollowUpPrompt — source boundary", () => {
     assert.doesNotMatch(prompt, /Called back Tuesday/);
     assert.doesNotMatch(prompt, /seems lovely/);
   });
-
-  it("defaults missing origin to unknown (fail closed)", () => {
-    const prompt = buildFollowUpPrompt(
-      lead({ inquiryMessage: SENSITIVE }),
-      "Jen's Fancy",
-      "Jen",
-      "warm",
-      { proposalSent: false },
-    );
-    assert.doesNotMatch(prompt, /SSN-CANARY-7741/);
-  });
-
-  it("does not put unknown/legacy inquiry text in generation context", () => {
-    const prompt = buildFollowUpPrompt(
-      lead({ inquiryMessage: USEFUL, inquiryMessageOrigin: "unknown" }),
-      "Jen's Fancy",
-      "Jen",
-      "warm",
-      { proposalSent: false },
-    );
-    assert.doesNotMatch(prompt, /We love the garden/);
-  });
-
-  it("includes customer-originated inquiry for potential personalization", () => {
-    const prompt = buildFollowUpPrompt(
-      lead({ inquiryMessage: USEFUL }),
-      "Jen's Fancy",
-      "Jen",
-      "warm",
-      { proposalSent: false, inquiryOrigin: "customer" },
-    );
-    assert.match(prompt, /We love the garden and want a Saturday in August/);
-    assert.match(prompt, /Customer-originated inquiry/);
-    assert.match(prompt, /Speak TO the customer/);
-    assert.match(prompt, /awkward callbacks/);
-  });
-
-  it("includes awkward customer detail in context but requires judgment not to echo", () => {
-    const prompt = buildFollowUpPrompt(
-      lead({ inquiryMessage: AWKWARD }),
-      "Jen's Fancy",
-      "Jen",
-      "warm",
-      { proposalSent: false, inquiryOrigin: "customer" },
-    );
-    assert.match(prompt, /Lucy keeping Charlie on his toes/);
-    assert.match(prompt, /awkward callbacks/);
-    assert.match(prompt, /Do not repeat their message mechanically/);
-  });
-
-  it("still personalizes from structured lead fields without venue notes", () => {
-    const prompt = buildFollowUpPrompt(
-      lead({ inquiryMessage: INNOCUOUS }),
-      "Jen's Fancy",
-      "Jen",
-      "warm",
-      { proposalSent: false, inquiryOrigin: "venue" },
-    );
-    assert.match(prompt, /Lucy and Charlie/);
-    assert.match(prompt, /wedding/);
-    assert.match(prompt, /2027-08-14/);
-    assert.match(prompt, /80/);
-  });
 });
 
 describe("generateFollowUpDraft never loads venue lead notes", () => {
@@ -180,7 +265,7 @@ describe("generateFollowUpDraft never loads venue lead notes", () => {
     assert.doesNotMatch(src, /lead_intake_attempts/);
     assert.doesNotMatch(src, /trust_tier/);
     assert.match(src, /inquiryMessageOrigin/);
-    assert.match(src, /customerFacingInquiryMessage/);
+    assert.match(src, /customerFacingInquiryContext/);
     assert.match(src, /normalizeInquiryMessageOrigin/);
   });
 });
