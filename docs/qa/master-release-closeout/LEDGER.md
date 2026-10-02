@@ -76,14 +76,17 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 ### STREAM 2 — Typography / JSX interstitial whitespace
 
-- **STATUS:** OPEN — committed `0a24f026`; deploy in flight (same train as `2e1a5b79`)
-- **IMPLEMENTATION COMMIT(S):** `0a24f026ae1ef2a91da95820bd020c3783d528e6` (+ ancestor occupancy whitespace in `60937777`)
-- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** still `60937777` until `2e1a5b79` rolls
+- **STATUS:** GREEN/CLOSED on `0a24f026` sole RUNNING (`htc-sandbox-venue-app:518`, digest `sha256:683f1ad768a2…`)
+- **IMPLEMENTATION COMMIT(S):** `0a24f026ae1ef2a91da95820bd020c3783d528e6`
+- **RUNNING IMAGE/TAG:** `0a24f026ae1ef2a91da95820bd020c3783d528e6`
+- **DIGEST:** `sha256:683f1ad768a209d3296ecf10580c75813f82a2cb998da58682324ec5d21b31be`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:518`
+- **TASK ID:** `60e9415948174a34b981b2f8c92d454c`
 - **AUTOMATED TEST EVIDENCE:** `lib/ui/jsx-interstitial-whitespace.test.ts` 2/2 PASS
-- **BROWSER EVIDENCE:** pre-fix observed `milestone s` / `task s` interstitial on client workspace under `60937777` (proves need for `0a24f026`)
+- **BROWSER EVIDENCE:** Task Center shows `3 items need attention on your team's list` (correct spacing; no `itemsneed`)
 - **DB/PERSISTENCE EVIDENCE:** n/a
-- **REGRESSION EVIDENCE:** walker forbids known-bad JSX interstitial patterns
-- **REMAINING WORK:** sole RUNNING on `2e1a5b79` (includes typography) → browser-prove Task Center / checklist copy has no `itemsneed` / `milestone s` concatenation.
+- **REGRESSION EVIDENCE:** walker forbids known-bad JSX interstitial patterns across app/components
+- **REMAINING WORK:** None
 
 ### STREAM 3 — Archive / Delete / Restore
 
