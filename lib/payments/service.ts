@@ -48,6 +48,7 @@ import {
   validateScheduleInput,
 } from "@/lib/payments/validation";
 import { selectCurrentUnpaidInstallment } from "@/lib/payments/manual-installment";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
