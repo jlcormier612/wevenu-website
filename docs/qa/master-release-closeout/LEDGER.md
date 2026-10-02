@@ -2,22 +2,20 @@
 
 **Status of this document:** working ledger for the current execution. Production untouched.
 
-Exact Sandbox runtime (sole RUNNING at verification before the occupancy-anchor deploy, 2026-10-02):
+Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware proof, 2026-10-02):
 
-- Commit / image tag: `204c885f45d4d4b54dc79d7b766c1c88539a1b4d`
-- Contains: `453caf2d` plus follow-up Save staying enabled on a known tour-capacity block, and paid-installment wording (`paymentPlanFact`).
-- Digest: `sha256:58d0d94073a897b4a21b0b29b1cb31d3f96ec59c0d9c7f826d8889bad7a0bea6`
-- Task definition: `htc-sandbox-venue-app:531`
-- Task ID: `2a503aef22df4476ad5084cb297d9adb`
+- Commit / image tag: `da6c79c9f6451298d47942d3de98f007d2adb5b8`
+- Digest: `sha256:d3db4a511e73c7ee1900090ae459148077a6df0871d05d36f91192ad66a53a1f`
+- Task definition: `htc-sandbox-venue-app:536`
+- Task ID: `101901f0fd3c494b9a4899862e6ea5ec`
 - Desired / running / pending: 1 / 1 / 0
-- Rollout: PRIMARY COMPLETED
-- Health: `/api/health` HTTP 200 (ECS container health reported UNKNOWN)
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37038967552
+- Rollout: PRIMARY COMPLETED (sole deployment)
+- Health: `/api/health` HTTP 200
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37070225043 SUCCESS
+- Migration: `20261411000000_date_hold_multi_space_time_aware.sql` applied (run 37070139294 SUCCESS)
 - Cluster: `htc-sandbox` only. No `htc-production` cluster in this account.
 - Production: untouched
-- Successor deploy in progress (not yet the running image): `a626f6b53acab19b9e1b624d61e62c1d452d8f84` on branch `fix/reception-occupancy-anchor` (parent `204c885f`). https://github.com/jlcormier612/wevenu-website/actions/runs/37044361883
-- `e33f2696` (Client → Event IA) is pushed on `feat/spaces-booking-e1-smart-fields` and is not this Sandbox image. Its deploy was cancelled. Migration `event_setup_states` is applied and unused by `204c885f`.
-- Prior sole RUNNING: `453caf2d` / `:530` / `352557a5…`
+- Prior sole RUNNING: `6a810904` / `:535` (post-booking commercial lifecycle)
 
 ## Already GREEN/CLOSED (not reopened)
 
@@ -521,7 +519,11 @@ Exact Sandbox runtime (sole RUNNING at verification before the occupancy-anchor 
   - Walk-in `42d07d8f-…` / tour `56bb3524-…`: origin walk_in, scheduled_at null, `actual_occurred_at=2026-10-01T18:30Z`, completed set. UI “Oct 1, 2026 at 2:30 PM (completed)”. Luv “23h ago”.
   - Actual-only `73da36a3-…` / tour `69f12800-…`: same id after visible Save; scheduled_at stayed null; actual moved to `2026-10-01T19:15Z`; completed_at unchanged. UI “3:15”.
   - Two-clock `b24ed7a7-…` / tour `a54ac537-…`: `scheduled_at=2026-11-16T16:00Z` preserved, `actual_occurred_at=2026-10-02T20:00Z`, completed_at set. Lead UI shows Oct 2 completed. Calendar 2026-10-02 shows 4:00 PM completed. Calendar 2026-11-16 is empty. Occupying count at the original scheduled timestamp among scheduled/confirmed = 0.
-- **E STATUS:** BLOCKED. Multi-space browser + DB proven for Ceremony Garden Lawn / Reception Barn / Additional Cocktail Terrace + Getting Ready Suite, and Wedding Venue Agreement preview resolved those names with no generic singular Event Space. Book-time `events.space_id` and `planned_event_space_id` were Barn. The later event-form save wrote `events.space_id` to Garden Lawn because `primarySpaceIdFromAssignments` took the first assignment (ceremony). Single-mode form showed one Event space (Garden Lawn) and no Ceremony/Reception. Reception-only permitted-uses form showed Reception = Barn and no Ceremony field. Fancy mode and original permitted uses were restored. Disposable spaces Cocktail Terrace `dd3599b2-…` and Getting Ready Suite `9ca019b4-…` are still on Fancy until the anchor re-proof. Fix `a626f6b5` prefers reception. Sandbox deploy of that commit is in progress and is not yet the sole running image, so this gate is not GREEN.
+- **E STATUS:** GREEN/CLOSED on exact sole RUNNING `7dbece3f` / `:534` / task `25a73246…` / digest `sha256:f58345f9…` (includes cherry-pick `0aa7a893` / same as `a626f6b5`).
+  - **BROWSER (OccBook3 event `7eeae958-…` / client `cb9a5af8-…`):** Edit event → Ceremony=Garden Lawn, Reception=Barn, Cocktail Hour=Cocktail Terrace, Getting Ready=Getting Ready Suite → Save changes. Reloaded edit retained all four assignments. Single-mode temporary: form showed one **Event space** (no Ceremony/Reception). Reception-only permitted-uses temporary: form showed **Reception=Barn** only (no Ceremony). Fancy restored to `multi` + original permitted uses.
+  - **DB AFTER SAVE:** `events.space_id=Barn` (`3b36ec69-…`) — **not** Garden Lawn. Assignments: ceremony→Garden Lawn, reception→Barn, cocktail_hour→Cocktail Terrace `dd3599b2-…`, getting_ready→Getting Ready Suite `9ca019b4-…`. `leads.planned_event_space_id` N/A (OccBook3 has no lead row); occupancy authority for booked event is `events.space_id`.
+  - **FIXTURE CLEANUP:** Disposable Cocktail Terrace + Getting Ready Suite deleted after proof. OccBook3 retained `space_id=Barn` + ceremony/reception assigns. Fancy spaces remaining: Barn, Covered Bridge, Garden Lawn.
+  - **AUTOMATED:** `lib/venue-spaces/assignments.test.ts` 6/6 PASS on proof pass.
 - **F STATUS:** GREEN/CLOSED.
   - Skip: SkipProof Disposable lead `5e39964f-…` / client `55404125-…`. Staff set Ceremony to “Not decided yet” in the lead UI (Covered Bridge is not ceremony-eligible and was not an option). Confirm Mark as Booked landed `/clients/55404125-…/booked?eventId=9106da9a-…`. DB: ceremony pref `undecided` / space null; reception Barn; one assignment `reception` → Barn; no ceremony assignment; `events.space_id` Barn; lead booked; client confirmed.
   - Rollback: client `86ea23d2-…` whose lead belongs to Sweet Daisy. `book_relationship` raised “Lead not found for this client.” after the write point. After the exception: zero events for that client, status still `booking`, `lifecycle_booked_at` null. Probe client and foreign lead were deleted afterward. No partial booking remained.
@@ -532,11 +534,71 @@ Exact Sandbox runtime (sole RUNNING at verification before the occupancy-anchor 
 - Wilma Flintstone client `5b064028-…` / selection `f7d9cb91-…` / `proposal_id=323f6cb8-…`: browser “Selected by the couple”.
 - Mira Vale client `d1ae24cc-…` / selection `50e28ac9-…` / `proposal_id` null / status draft: browser “Selected internally · Not yet shared”. No “Selected by the couple”.
 
+### Client → Event Workspace IA
+
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `e33f2696` / `:533` / task `70b962e3…` / digest `sha256:26ea1d08…`
+- **IMPLEMENTATION COMMIT:** `e33f269685b6741a311751eb373130a89bc1b1d5`
+- **MIGRATION:** `event_setup_states` already applied (prior Apply Sandbox Migration SUCCESS)
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37044727368 SUCCESS
+- **FIXTURE:** IaSetup Disposable client `e331bacd-…` / event `ac3d9606-…` / lead `444de131-…`
+- **BROWSER:**
+  - Setup list: Planning, Timeline, Floor plans, Vendors, Questionnaires, Inventory, Event order, Client portal — each with Set up / Skip
+  - Planning Set up → BookingSetupCard; DB `decisions.planning=set_up`
+  - Timeline Skip → DB `timeline=skipped`; timeline_entries/floor_plans/tasks/apps remain 0
+  - All remaining steps skipped → UI “Event setup complete” + Show setup; `collapsed_at` set
+  - Show setup reopened with all prior decisions intact; `collapsed_at` cleared then re-collapsed
+  - Disabled capability: Fancy `planning_timeline_enabled=false` on IaCapOff `55c7296b-…` — setup omitted Timeline (7 steps). Caps restored to all true afterward
+  - Needs Attention: overdue payment `7826e2a2-…` showed only “Payments 1 payment overdue.” Empty modules absent. After mark paid, Needs Attention empty
+  - Overview gone: Booking Journey, Event Readiness checklist, booked explanation, six summary tiles
+  - Tabs present and Planning `#playbook` works; `/events/ac3d9606-…` resolves to `/clients/e331bacd-…`; Day Sheet loads
+  - Lead `444de131-…` keeps Booking Details commercial facts (payment ≠ Booked copy)
+  - Pre-book lead `8b3db896-…` mounts Booking Details; no setup strip leak
+  - Celebration one-shot: re-hit `/booked` redirects to `/clients/{id}`; primaryHref overridden to `/clients/{id}`
+  - Luv tab on pre-book: “Luv's Thoughts” / New Lead copy intact
+- **DB:** `event_setup_states` row for `ac3d9606-…` with full decisions + collapsed_at; no duplicated module rows
+- **AUTOMATED:** `lib/event-setup/state.test.ts` + booking-handoff + prepare-booking-planning-ux = 27/27 PASS
+- **REMAINING WORK:** None for this stream. Stream 1E occupancy anchor is now GREEN on `7dbece3f` (separate residual entry).
+
+### Event Order / Inventory commercial lifecycle (master release)
+
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `6a810904` (`htc-sandbox-venue-app:535`, digest `sha256:fa9bba453d0e…`).
+- **LOCKED PRODUCT MODEL:** Same commercial lifecycle as booking. Finalize/lock = what will be provided. Invoice issuance = financial obligation. Payment plan optional. Included/$0 stay on the locked agreement and never freeze as charges. Client sees structured choices (not raw inventory). Amend reuses the same agreement instance.
+- **IMPLEMENTATION COMMIT:** `6a810904ee1e84afed09b3821a56a1db6d858d0b`
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37066663160 SUCCESS → sole PRIMARY COMPLETED `:535` / task `f18f91a1…`
+- **FIXTURE:** PostBook Disposable client `870f7ff2-31b1-4b8c-9370-abffda99cfc1` / event `b0371cc3-d2ff-4855-9144-c163d0da6f7d` / Wedding Reception template `99585da2-…` / choices instance `c4e0a129-97a6-40da-b81a-66f6f501555b` (same ID through amend).
+- **BROWSER + DB SCENARIOS (all PASS on this runtime):**
+  1. **Included-only:** venue started selections → configured Bartender (included) → Send → portal submit → Finalize. EO line Bartender `$0` `is_included=true`. Invoices/schedules empty. financialDelta `0`.
+  2. **Billable + invoice:** after amend path, venue Create New Invoice → Mark as issued. Invoice `c43071a9-…` / `INV-2026-C43071` status `sent`, total `$750`, issued_at set. No billing before issuance (copy: “Nothing has been billed yet”). No payment schedule created.
+  3. **Mixed:** locked agreement holds Caesar (included priced `$3`) + Premium (`$750`). Invoice line count `1` — only Premium frozen (`event_order_line_id=f0576767-…`). Caesar `is_included=true` amount `$3` **not** on invoice.
+  4. **Amendment (critical):** Amend → same choices ID `c4e0a129-…` → status `draft` with prior `applied_line_ids` retained → prior submissions `#1`/`#2` kept → prior Bartender EO line remained until re-finalize → send/client revise/finalize → Bartender removed; new applied lines `[5c3bf9d3-…, f0576767-…]`; submission `#4` financialDelta `750`; no duplicate EO charges.
+  5. **Inventory handoff:** inventory `7209cc44-…` finalized → Add to Event Order added included Chiavari + billable lounge sofa (`$250`). Toast “Added 2 items ($250.00 additional)”. Both `added_to_event_order_at` set. Included EO line `$0`; billable EO line `$250` not auto-invoiced. Floor assignments `0` (no floor-plan charge).
+- **AUTOMATED:** post-booking lifecycle A–I + selections-billing + unbilled-delta + lifecycle-gates + apply-to-event-order + inventory handoff — 36/36 PASS on this closeout.
+- **REMAINING WORK:** None for this stream.
+
+### Date Holds — multi-space + time-aware availability (master release)
+
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `da6c79c9` / `:536` / task `101901f0…` / digest `sha256:d3db4a511e73…`
+- **FORENSIC FINDING:** `date_holds` stored optional `space_id` + `start_time`/`end_time`, but conflict paths (`_is_event_date_available`, `events_enforce_availability` hold check, precheck `holdCount`) treated holds as **date-level only**. UI hard-coded empty times and a single Space select. Multi-space lead prefs (`lead_event_space_preferences`) and booked `event_space_assignments` existed, but holds could not protect both Ceremony+Reception resources, and space-specific holds incorrectly closed the whole date.
+- **PRODUCT DECISION:** Hold = **resource set + date + occupancy window**. Empty space set = whole venue. Null times = all-day (`00:00–23:59`) via existing `event_operational_window`. Overlap = existing `windowsOverlap` (exact boundary allowed). Turnaround remains booked-event-only (not invented for holds). Simultaneous venues (`max≥2`): space-specific holds do not block unrelated spaces; simple venues (`max<2`): any overlapping hold occupies the single venue slot.
+- **IMPLEMENTATION:** `date_hold_spaces` junction; time/space-aware SQL + TS precheck; createHold conflict vs other holds; UI multi-select + times defaulted from lead venue_space prefs; booked occupancy intersects `event_space_assignments`.
+- **COMMITS:** `8220c215` (feature), `da6c79c9` (RLS `current_user_venue_id` fix)
+- **MIGRATION:** `20261411000000_date_hold_multi_space_time_aware.sql` — apply run https://github.com/jlcormier612/wevenu-website/actions/runs/37070139294 SUCCESS
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37070225043 SUCCESS
+- **AUTOMATED:** `hold-occupancy.test.ts` A–K + seams; `event-occupancy` / `precheck` / `same-owner-hold` / `date-hold-booked-boundary` / calendar space-filter — **121/121 PASS**
+- **BROWSER (exact `da6c79c9`):** Lead `541ddde9-…` Ceremony=Covered Bridge / Reception=Barn → Place hold form defaults both spaces with Ceremony/Reception labels + occupancy times → placed hold `94a94a12-…` (then released; re-seed `0a92f112-…` for calendar persistence). Release restored Place-hold CTA.
+- **DB PROOF:**
+  - Multi-space hold: Bridge+Barn, `10:00–18:00`, `space_id` null, two `date_hold_spaces` rows
+  - Overlap Barn morning blocked (`hold_blocks`); exact boundary `14:00` start after `14:00` end allowed; evening overlap blocked; after release morning allowed
+  - Whole-venue hold (zero space rows) blocked Barn **and** Garden; release restored both
+  - Convert: hold `637e17c1-…` → `converted`; event `d7ea07a5-…` setup/start/end/teardown preserved; assignments ceremony=Bridge + reception=Barn
+- **REGRESSION:** Existing occupancy/precheck/tour/calendar filter suites GREEN; Production untouched
+- **REMAINING WORK:** None for this stream
+
 ### Stream 16
 
-- **STATUS:** OPEN
-- **BLOCKER:** Stream 1E occupancy anchor is not GREEN. Event-form save on `204c885f` replaced the Barn anchor with Garden Lawn. Fix `a626f6b5` is deploying and has not been re-proven on a sole running image. Client → Event IA is not part of this closeout. Do not start Stream 16.
-- **NOT GREEN.**
+- **STATUS:** OPEN / NOT STARTED as integrated gate
+- **BLOCKERS:** Date Holds multi-space/time GREEN/CLOSED on `da6c79c9`. Post-booking commercial lifecycle GREEN/CLOSED on `6a810904`. Stream 1E GREEN on `7dbece3f`. Client → Event IA GREEN on `e33f2696`. Do not call overall HTC release GREEN until Stream 16 itself is executed.
+- **NOT GREEN (overall release).**
 
 ## Production
 
