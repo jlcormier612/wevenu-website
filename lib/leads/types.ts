@@ -92,6 +92,11 @@ export type Lead = {
   /** When the lead was marked Lost. */
   lostAt: string | null;
   /**
+   * Authoritative Booked stamp from bookClient / venue Booked decision.
+   * Null means not Booked — sales_stage alone must never invent Booked.
+   */
+  firstBookedAt: string | null;
+  /**
    * When venue staff last acknowledged this lead for nav attention.
    * Null = unseen open-lead attention candidate.
    */

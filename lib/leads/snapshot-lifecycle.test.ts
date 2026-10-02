@@ -101,6 +101,17 @@ describe("Relationship Snapshot lifecycle precedence", () => {
     assert.doesNotMatch(snapshotInterestDescriptor(f, 5), /Still early/i);
   });
 
+  it("5b. sales_stage booked without first_booked_at must not surface Booked", () => {
+    // isBooked must be derived from first_booked_at (caller responsibility).
+    const f = facts({
+      isBooked: false,
+      contractStatus: null,
+    });
+    assert.equal(classifySnapshotLifecycleMilestone(f), "early");
+    assert.notEqual(snapshotInterestDescriptor(f, 5), "Booked");
+    assert.notEqual(snapshotCommitmentDescriptor(f, 20), "Booked");
+  });
+
   it("6. payment outstanding does not redefine Booked", () => {
     const outstandingNotBooked = facts({
       contractStatus: "signed",

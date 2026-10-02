@@ -36,6 +36,7 @@ import type { LuvDraft } from "@/lib/luv/drafts";
 import type { LuvObservation } from "@/lib/luv/types";
 import type { Lead } from "@/lib/leads/types";
 import type { SnapshotLifecycleFacts } from "@/lib/leads/snapshot-lifecycle";
+import { isAuthoritativeBooked } from "@/lib/luv/pipeline-stage-evidence";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 
 const DUSTY_ROSE = "#D8A7AA";
@@ -234,14 +235,14 @@ export function LuvDraftPanel({
         || l.status === "processing",
     );
     return {
-      isBooked: lead.salesStage === "booked",
+      isBooked: isAuthoritativeBooked({ firstBookedAt: lead.firstBookedAt }),
       contractStatus: contract?.status ?? null,
       venueSigned: contract?.venueSigned === true,
       requiredClientTotal: contract?.requiredClientTotal ?? 1,
       requiredClientSigned: contract?.requiredClientSigned ?? 0,
       hasPaymentOutstanding,
     };
-  }, [bookingJourney, lead.salesStage]);
+  }, [bookingJourney, lead.firstBookedAt]);
 
   function handleGenerate() {
     startGenerate(async () => {

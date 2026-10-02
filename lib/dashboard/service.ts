@@ -110,6 +110,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     lostReason: null,
     lostReasonDetail: null,
     lostAt: null,
+    firstBookedAt: null,
     venueSeenAt: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };

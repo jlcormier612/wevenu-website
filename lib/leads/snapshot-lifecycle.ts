@@ -18,7 +18,7 @@ import {
 import { scoreDescriptor } from "@/lib/leads/momentum";
 
 export type SnapshotLifecycleFacts = {
-  /** Authoritative Booked = sales_stage booked / venue Booked decision. */
+  /** Authoritative Booked = first_booked_at / venue Booked decision — never sales_stage alone. */
   isBooked: boolean;
   /** Latest relevant contract status when known. */
   contractStatus: string | null;
