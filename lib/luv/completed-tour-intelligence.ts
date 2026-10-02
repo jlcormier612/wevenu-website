@@ -288,6 +288,8 @@ export function evaluateCompletedTour(input: CompletedTourEvalInput): CompletedT
   return { mode: "silence", purpose: "none" };
 }
 
-export function completedTourDraftAllowed(decision: CompletedTourDecision): boolean {
+export function completedTourDraftAllowed(
+  decision: CompletedTourDecision,
+): decision is Extract<CompletedTourDecision, { mode: "actionable" }> {
   return decision.mode === "actionable";
 }
