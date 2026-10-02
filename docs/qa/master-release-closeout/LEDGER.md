@@ -418,9 +418,10 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 - **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof (not GREEN from tests alone)
 - **AUDIT:** Existing `WorkspaceCategory` (12 values) remains storage/read-model truth via `mapCategory`. Presentation roll-up only: Contracts / Financial / Planning / Vendors / Other (+ All). Empty groups hidden.
-- **IMPLEMENTATION COMMIT(S):** pending this commit
+- **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **FILES:** `lib/document-workspace/user-facing-categories.ts`, `components/document-workspace/document-workspace.tsx`
 - **AUTOMATED TEST EVIDENCE:** `user-facing-categories.test.ts` + documents surface tests PASS
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/36959110951 (in progress at dispatch)
 - **BROWSER EVIDENCE:** pending exact runtime
 - **REMAINING WORK:** Deploy → sole RUNNING → browser prove populated-only filters + correct roll-up membership
 
@@ -428,7 +429,9 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 - **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof
 - **ROOT CAUSE:** Snapshot descriptors used numeric scores only (`scoreDescriptor`). Signed contracts could still show Interest “Still early” / Commitment “Progressing toward booking” because scores lagged authoritative contract/Booked facts.
+- **CANONICAL FIXTURE (pre-fix proof target):** Miss Piggy lead `20e470d8-…` — interest=0 / commitment=45 / responsiveness=0 / sales_stage=`tour_scheduled` / contract `107fcc2c-…` status=`signed` (Fully Executed, all signers done) — currently would render the buggy early language from scores alone.
 - **FIX:** `lib/leads/snapshot-lifecycle.ts` precedence over scores; `LeadMomentumCard` + `LuvDraftPanel` consume `bookingJourney` contract + `salesStage === booked` + payment outstanding context. Signed ≠ Booked preserved.
+- **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **AUTOMATED TEST EVIDENCE:** `snapshot-lifecycle.test.ts` matrix PASS (early / sent / client-signed / FE / Booked / payment / responsiveness)
 - **BROWSER EVIDENCE:** pending exact runtime
 - **REMAINING WORK:** Browser-prove regression matrix on disposable fixtures + DB contract state
@@ -437,9 +440,11 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 - **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof
 - **SOURCE OF `"Essential Wedding — booking commitment"`:** System-generated in `lib/booking-journey/setup-payments.ts` `commitmentNotes()` → written to `invoices.notes` for guided-setup recovery matching. Classification: **D/E system payment-setup / invoice metadata** — not venue-authored.
+- **DB PROOF (pre-fix):** invoice `77f2f506-…` (SelUse) notes=`Essential Wedding — booking commitment`; linked schedule `a6b0c946-…` notes=null. Venue `name`=`Jen's Fancy Venue` vs `business_name`=`Fancy Venue LLC`.
 - **WHY TWICE:** `InvoicePrintDocument` showed Payment Instructions as `paymentInstructions || invoice.notes` and Notes as `invoice.notes` (same field). Callers passed `scheduleNotes ?? invoice.notes` while schedule notes were empty.
 - **WHY “Notes from Fancy Venue LLC”:** Notes heading used `businessName` (legal entity) ahead of customer-facing `venue.name`.
 - **FIX:** `lib/invoices/customer-facing-notes.ts` — suppress system commitment markers from instructions + Notes; Notes only when genuine venue-authored and distinct; Notes attribution uses customer-facing venue name.
+- **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **AUTOMATED TEST EVIDENCE:** `customer-facing-notes.test.ts` PASS; adjacent invoice workflow tests PASS
 - **BROWSER EVIDENCE:** pending exact runtime + DB provenance proof
 - **REMAINING WORK:** Browser-prove payment document; confirm Notes absent when only system metadata; genuine note path
@@ -448,7 +453,9 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 - **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof
 - **FORENSIC:** `PaymentScheduleList` used `s.title` (e.g. “Essential Wedding payments”) as primary; `clientName` was already on the row from repository join but secondary.
+- **FIXTURES:** 7× “Essential Wedding payments” (Miss Piggy, SelUse, Jasmine, …); 3× Signature; 3× Full Service; 6× Garden Package — ideal scanability proof.
 - **FIX:** Presentation only — primary = client/couple name (`list-identity.ts`); secondary = plan name + overdue count. Navigation/href unchanged.
+- **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **AUTOMATED TEST EVIDENCE:** `list-identity.test.ts` PASS
 - **BROWSER EVIDENCE:** pending exact runtime
 - **REMAINING WORK:** Prove multi-client same-plan scanability + click-through; adjacent invoice back-nav / setup routing smoke
