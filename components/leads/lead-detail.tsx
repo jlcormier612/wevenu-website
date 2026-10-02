@@ -251,15 +251,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         toast.error(result.message ?? "Could not mark this relationship Booked.");
         return;
       }
+      const qs = new URLSearchParams();
+      if (result.eventId) qs.set("eventId", result.eventId);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
       if (result.newlyBooked) {
-        const qs = new URLSearchParams();
-        if (result.eventId) qs.set("eventId", result.eventId);
-        const suffix = qs.toString() ? `?${qs.toString()}` : "";
-        router.push(`/clients/${result.clientId}/booked${suffix}`);
+        // Hard navigation — Client workspace is the post-booking home.
+        window.location.assign(`/clients/${result.clientId}/booked${suffix}`);
         return;
       }
       toast.success("Already booked.");
-      router.push(`/clients/${result.clientId}`);
+      window.location.assign(`/clients/${result.clientId}${suffix}`);
     });
   }
 
