@@ -1,21 +1,36 @@
-# Lead → Booked terminology cleanup — STATUS
+# Lead → Booked terminology + invoice back-nav — STATUS
 
-**STATUS:** OPEN — implementation landed locally; awaiting Sandbox deploy + browser proof
+**STATUS:** OPEN — invoice back-nav implemented locally; awaiting Sandbox deploy + browser proof of the three invoice origins. Terminology Mark as Booked already GREEN on `04d5df4b`.
 
 ## Audit
 `docs/qa/lead-booked-terminology/AUDIT.md`
 
-## Changes
-- Lead action: **Mark as Booked** (was Return to Booked)
-- Confirm copy per product; Cancel / Mark as Booked
-- Success → Client workspace (`/clients/{id}/booked` celebration when newlyBooked)
-- Removed **Open booking file →** from Lead action area
-- Same `returnLeadToBooked` → `bookClient` path (no second transition)
-- Event-detail "Return to Booked" left (cancelled-event restore)
+## UX decisions
+- Lead booking decision: **Mark as Booked** (not Return to Booked)
+- Confirm → existing `bookClient` → Client workspace
+- **Open booking file** removed (not a distinct destination)
+- **Start booking file** left (workspace-prep without Booked)
+- Event-detail **Return to Booked** left (cancelled-event restore)
+- Invoice detail back:
+  - Unbooked Lead origin / fallback → Lead (`#booking-journey-payments`)
+  - Booked Client origin / fallback → Client
+  - Global Invoices `returnTo=/invoices` → Invoices
+  - Label uses couple name when present, else **Lead** / **Client** / **Invoices**
 
-## Remaining for GREEN
-1. Commit + deploy Sandbox
-2. Sole RUNNING = this commit
-3. Disposable pre-booking lead browser matrix (Mark as Booked, confirm, land Client, data intact, payment nav regression)
+## Files
+- `lib/invoices/return-path.ts` + test
+- `components/invoices/invoice-detail.tsx`
+- `app/(app)/invoices/[id]/page.tsx`
+- `components/booking-journey/setup-payments-sheet.tsx`
+- `components/booking-journey/commercial-facts.tsx`
+- `components/booking-journey/booking-journey-panel.tsx`
+- `components/leads/lead-detail.tsx`
+- `app/(app)/clients/[id]/page.tsx`
+- `components/events/event-detail.tsx`
 
-Production untouched.
+## Automated tests
+- `lib/invoices/return-path.test.ts` PASS
+- `lib/contracts/return-path.test.ts` PASS (payment nav)
+- `lib/leads/booking-lifecycle.test.ts` PASS
+
+Production untouched. Overall HTC release not GREEN.

@@ -645,6 +645,7 @@ export function EventDetail({
               eventId={event.id}
               eventDate={event.eventDate}
               venueTimezone={venueTimezone}
+              workspaceReturnTo={event.clientId ? `/clients/${event.clientId}` : undefined}
             />
           )}
           <ContextualLuvObservationsPanel observations={contextualObservations} />

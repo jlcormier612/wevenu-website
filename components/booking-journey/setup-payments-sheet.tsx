@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { setupPaymentsAction } from "@/app/(app)/booking-journey/payments-actions";
+import { appendInvoiceReturnTo } from "@/lib/invoices/return-path";
 import { PaymentPlanBuilder } from "@/components/payments/payment-plan-builder";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ export function SetupPaymentsSheet({
   customSchedule = null,
   executedAt = null,
   today,
+  returnTo = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,6 +52,8 @@ export function SetupPaymentsSheet({
   customSchedule?: CustomScheduleTemplate | null;
   executedAt?: string | null;
   today?: string;
+  /** Originating Lead or Client workspace for invoice-detail back nav. */
+  returnTo?: string | null;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -69,6 +73,7 @@ export function SetupPaymentsSheet({
           customSchedule={customSchedule}
           executedAt={executedAt}
           today={today!}
+          returnTo={returnTo}
         />
       ) : null}
     </Sheet>
@@ -88,6 +93,7 @@ function SetupPaymentsSheetBody({
   customSchedule,
   executedAt,
   today,
+  returnTo,
 }: {
   onOpenChange: (open: boolean) => void;
   selection: CommercialSelection;
@@ -102,6 +108,7 @@ function SetupPaymentsSheetBody({
   customSchedule: CustomScheduleTemplate | null;
   executedAt: string | null;
   today: string;
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<1 | 2>(1);
@@ -132,7 +139,10 @@ function SetupPaymentsSheetBody({
       }
       toast.success("Invoice and payment plan saved. Preview it, then Send.");
       onOpenChange(false);
-      router.push(`/invoices/${result.invoiceId}`);
+      router.push(
+        appendInvoiceReturnTo(`/invoices/${result.invoiceId}`, returnTo)
+          ?? `/invoices/${result.invoiceId}`,
+      );
       router.refresh();
     });
   }

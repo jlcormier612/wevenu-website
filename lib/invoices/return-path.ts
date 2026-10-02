@@ -3,8 +3,14 @@
  * Reuses the contract return-path allowlist (leads/clients/documents)
  * plus the global invoices list. Payment-schedule handoff stays on
  * `safePaymentScheduleReturnPath` and is not the back arrow.
+ *
+ * Fully Executed / paid ≠ Booked. An invoice opened from an unbooked
+ * Lead returns to that Lead, not /invoices or /clients/.
  */
-import { safeContractReturnPath } from "@/lib/contracts/return-path";
+import {
+  BOOKING_JOURNEY_PAYMENTS_HASH,
+  safeContractReturnPath,
+} from "@/lib/contracts/return-path";
 
 export function safeInvoiceReturnPath(raw: string | null | undefined): string | null {
   const shared = safeContractReturnPath(raw);
@@ -39,9 +45,30 @@ export function appendInvoiceReturnTo(
   return `${href}${joiner}returnTo=${encodeURIComponent(safe)}`;
 }
 
+/**
+ * Canonical workspace for an invoice when returnTo is missing.
+ * Unbooked → Lead payment section. Booked → Client workspace.
+ */
+export function invoiceRelationshipReturnPath(input: {
+  leadId?: string | null;
+  clientId?: string | null;
+  relationshipBooked?: boolean;
+}): string | null {
+  if (input.relationshipBooked !== true && input.leadId?.trim()) {
+    return `/leads/${input.leadId.trim()}#${BOOKING_JOURNEY_PAYMENTS_HASH}`;
+  }
+  if (input.clientId?.trim()) {
+    return `/clients/${input.clientId.trim()}`;
+  }
+  return null;
+}
+
 export function resolveInvoiceBackNavigation(input: {
   returnTo?: string | null;
   clientName?: string | null;
+  leadId?: string | null;
+  clientId?: string | null;
+  relationshipBooked?: boolean;
 }): { href: string; label: string } {
   const safe = safeInvoiceReturnPath(input.returnTo);
   const coupleLabel = input.clientName?.trim() || null;
@@ -61,6 +88,18 @@ export function resolveInvoiceBackNavigation(input: {
       return { href: safe, label: "Documents" };
     }
     return { href: safe, label: coupleLabel ?? "Back" };
+  }
+
+  const inferred = invoiceRelationshipReturnPath({
+    leadId: input.leadId,
+    clientId: input.clientId,
+    relationshipBooked: input.relationshipBooked,
+  });
+  if (inferred) {
+    if (inferred.startsWith("/leads/")) {
+      return { href: inferred, label: coupleLabel ?? "Lead" };
+    }
+    return { href: inferred, label: coupleLabel ?? "Client" };
   }
 
   return { href: "/invoices", label: "Invoices" };

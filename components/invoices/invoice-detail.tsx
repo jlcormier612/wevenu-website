@@ -65,6 +65,8 @@ export function InvoiceDetail({
   emailConfigured = true,
   returnTo = null,
   returnToPaymentSchedule = null,
+  leadId = null,
+  relationshipBooked = false,
   amountDueNow = null,
   paidToDate = null,
   cancelledPlanAmount = 0,
@@ -81,6 +83,10 @@ export function InvoiceDetail({
   emailConfigured?: boolean;
   /** Originating workspace (lead/client/invoices/documents). */
   returnTo?: string | null;
+  /** Linked lead when the invoice belongs to a pre-booking relationship. */
+  leadId?: string | null;
+  /** True only when the relationship Event has booked_at. */
+  relationshipBooked?: boolean;
   /** When set (from payment-schedule handoff), show continue CTA after amount exists. */
   returnToPaymentSchedule?: string | null;
   /** Next open installment — never the full outstanding under "Amount Due Now". */
@@ -139,6 +145,9 @@ export function InvoiceDetail({
   const backNav = resolveInvoiceBackNavigation({
     returnTo,
     clientName: invoice.clientName,
+    leadId,
+    clientId: invoice.clientId,
+    relationshipBooked,
   });
   const displayPaidToDate = paidToDate != null
     ? paidToDate

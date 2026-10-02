@@ -344,7 +344,7 @@ describe("workspaces do not render the old Booking Journey", () => {
     assert.doesNotMatch(factsUi, /Set up initial payment/);
     assert.doesNotMatch(factsUi, /data-testid="request-initial-payment"/);
     assert.match(factsUi, /Preview and send/);
-    assert.match(factsUi, /href=\{\`\/invoices\/\$\{selection\.invoiceId\}`\}/);
+    assert.match(factsUi, /appendInvoiceReturnTo\(`\/invoices\/\$\{selection\.invoiceId\}`, invoiceReturnTo\)/);
     const describe = readFileSync(resolve("lib/booking-journey/commercial-facts.ts"), "utf8");
     const fn = describe.slice(describe.indexOf("export function describeCommercialFacts"));
     assert.doesNotMatch(fn, /invoiceFact\(/);

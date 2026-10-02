@@ -170,6 +170,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
           clientId={client.id}
           eventDate={client.eventDate}
           venueTimezone={venue?.timezone ?? null}
+          workspaceReturnTo={`/clients/${client.id}`}
         />
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-heading">Checklists</h2>

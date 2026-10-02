@@ -4,15 +4,14 @@
 
 Exact Sandbox runtime (latest sole RUNNING at last verification):
 
-- Commit / image tag: `1d6c96c24347161656175f3eb4b7a432b5769d26` (contains Smart Fields `2e1a5b79` + Archive `1d6c96c2`)
-- Digest: `sha256:c4962eace876d12638af0ee012ebee7ead43a415ccaf6a4186f6657941116fa0`
-- Task definition: `htc-sandbox-venue-app:519`
-- Task ID: `288fd1d5c7a1410695c0bbe1e73378c0`
+- Commit / image tag: `04d5df4ba97a2e8b9f311647ab5452cd0bd2a45e` (Lead→Booked terminology hard-nav)
+- Digest: `sha256:c4856cee4e8cdec900633d75ad3eec31443769ca3603eb729105924a21c3ccfb`
+- Task definition: `htc-sandbox-venue-app:525`
+- Task ID: `25cc3de0144041c484a47241c645bc5a`
 - Desired / running / pending: 1 / 1 / 0
-- Rollout: PRIMARY COMPLETED
-- Live `dpl`: `1d6c96c24347161656175f3eb4b7a432b5769d26`
+- Rollout: PRIMARY (sole RUNNING; prior `:524` draining at 0)
 - Health: `/api/health` HTTP 200
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36945340507
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36953857717
 - Cluster: `htc-sandbox` only
 - Production: untouched
 
@@ -126,6 +125,26 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 - **FIXTURE RESTORE:** Fancy multi + original permitted_uses; Miss Piggy prefs + planned restored
 - **REMAINING WORK:** None for this sub-gate
 - **STATUS FILE:** `docs/qa/lead-space-preferences-ux/STATUS.md`
+
+### STREAM 1b — Lead → Booked terminology / navigation
+
+- **STATUS:** GREEN on exact sole RUNNING `04d5df4b` / TD `:525` / task `25cc3de0…`
+- **AUDIT:** `docs/qa/lead-booked-terminology/AUDIT.md`
+- **IMPLEMENTATION COMMIT(S):** `51bbd4c6`, `d0da47d2`, `f583cd7d`, `04d5df4b`
+- **RUNNING IMAGE/TAG:** `04d5df4ba97a2e8b9f311647ab5452cd0bd2a45e`
+- **DIGEST:** `sha256:c4856cee4e8cdec900633d75ad3eec31443769ca3603eb729105924a21c3ccfb`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:525`
+- **TASK ID:** `25cc3de0144041c484a47241c645bc5a`
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/36953857717
+- **AUTOMATED TEST EVIDENCE:** `lib/leads/booking-lifecycle.test.ts` + payment-nav `lib/contracts/return-path.test.ts` PASS
+- **BROWSER EVIDENCE:**
+  - Disposable `c696630b…`: Mark as Booked (not Return to Booked); Open booking file gone; confirm copy exact
+  - Confirm → hard land `/clients/3e877b14…/booked?eventId=adff697d…` (“They're Booked”); Contract Signed intact
+  - Already-booked `b747f25f…`: Mark as Booked hidden
+  - Payment: FE-not-booked → lead `#booking-journey-payments`; Booked Ivy → `/clients/…?setupPayments=1`
+- **DB/PERSISTENCE EVIDENCE:** `sales_stage=booked`, `lifecycle_booked_at`, `events.booked_at`, contracts remain `signed`
+- **REMAINING WORK:** Invoice-detail back-nav (Lead / Client / Invoices) implemented locally; Sandbox browser proof pending
+- **STATUS FILE:** `docs/qa/lead-booked-terminology/STATUS.md`
 
 ### STREAM 2 — Typography / JSX interstitial whitespace
 

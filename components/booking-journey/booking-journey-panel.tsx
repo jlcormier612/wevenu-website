@@ -49,6 +49,7 @@ export function BookingJourneyPanel({
   today,
   venueTimezone = null,
   openSetupPayments = false,
+  workspaceReturnTo = null,
 }: {
   journey: BookingJourneyModel;
   packages: PackageWithItems[];
@@ -64,6 +65,8 @@ export function BookingJourneyPanel({
   venueTimezone?: string | null;
   /** Open Set up payments sheet (e.g. from Fully Executed contract → Lead Overview). */
   openSetupPayments?: boolean;
+  /** Originating workspace for invoice-detail back nav (Lead or Client). */
+  workspaceReturnTo?: string | null;
 }) {
   const router = useRouter();
   const [selectOpen, setSelectOpen] = React.useState(false);
@@ -254,6 +257,7 @@ export function BookingJourneyPanel({
           if (selection) setPaymentsOpen(true);
         }}
         onRecordDeposit={handleRecordDeposit}
+        invoiceReturnTo={workspaceReturnTo}
       />
 
       <CreateProposalSheet
@@ -297,6 +301,7 @@ export function BookingJourneyPanel({
           customSchedule={journey.prefs.defaultCustomSchedule}
           paymentCollection={journey.prefs.paymentCollection}
           today={businessToday}
+          returnTo={workspaceReturnTo}
         />
       )}
 

@@ -15,6 +15,7 @@ import {
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { safeInvoiceReturnPath } from "@/lib/invoices/return-path";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
+import { getClient } from "@/lib/clients/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 
@@ -64,6 +65,9 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
     createAdminClient(),
     { venueId: venue.id, invoiceId: invoice.id },
   );
+  const linkedClient = invoice.clientId ? await getClient(invoice.clientId) : null;
+  const leadId = linkedClient?.leadId ?? null;
+  const relationshipBooked = Boolean(invoice.bookedAt);
   return (
     <InvoiceDetail
       invoice={invoice}
@@ -71,6 +75,8 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       eventOrderDrift={eventOrderDrift}
       emailConfigured={isEmailConfigured()}
       returnTo={returnTo}
+      leadId={leadId}
+      relationshipBooked={relationshipBooked}
       returnToPaymentSchedule={returnToPaymentSchedule}
       amountDueNow={amountDueNow}
       paidToDate={paidToDate}

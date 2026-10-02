@@ -727,6 +727,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               guestCount={lead.guestCount ?? undefined}
               venueTimezone={venueTimezone}
               openSetupPayments={openSetupPayments}
+              workspaceReturnTo={`/leads/${lead.id}#booking-journey-payments`}
             />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

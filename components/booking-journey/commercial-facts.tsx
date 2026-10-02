@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
+import { appendInvoiceReturnTo } from "@/lib/invoices/return-path";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import { publicAppOrigin } from "@/lib/env";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ export function CommercialFacts({
   onCreateContract,
   onSetupPayments,
   onRecordDeposit,
+  invoiceReturnTo = null,
 }: {
   journey: BookingJourneyModel;
   today?: string;
@@ -48,6 +50,8 @@ export function CommercialFacts({
   onCreateContract: () => void;
   onSetupPayments: () => void;
   onRecordDeposit: () => void;
+  /** Originating Lead or Client workspace for invoice-detail back nav. */
+  invoiceReturnTo?: string | null;
 }) {
   const selection = journey.selection;
   const proposal = journey.proposal;
@@ -208,7 +212,7 @@ export function CommercialFacts({
                 </Button>
               )}
               {row.key === "payment_plan" && selection?.invoiceId && activePaymentLines.length > 0 && (
-                <Button type="button" size="sm" variant="outline" render={<Link href={`/invoices/${selection.invoiceId}`} />}>
+                <Button type="button" size="sm" variant="outline" render={<Link href={appendInvoiceReturnTo(`/invoices/${selection.invoiceId}`, invoiceReturnTo) ?? `/invoices/${selection.invoiceId}`} />}>
                   {journey.paymentRequestSent ? "Open invoice" : "Preview and send"}
                 </Button>
               )}
