@@ -837,6 +837,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                   desiredEventDate={lead.eventDate}
                   initialHolds={holds}
                   spaces={spaces}
+                  spacePreferences={spacePreferences}
                 />
               </CardContent>
             </Card>

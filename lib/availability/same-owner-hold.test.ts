@@ -15,6 +15,10 @@ const publicSql = readFileSync(
   resolve("supabase/migrations/20261403200000_hold_blocks_public_availability.sql"),
   "utf8",
 );
+const multiSpaceSql = readFileSync(
+  resolve("supabase/migrations/20261411000000_date_hold_multi_space_time_aware.sql"),
+  "utf8",
+);
 
 describe("same-owner hold exclusion", () => {
   it("drops only the checking lead's holds", () => {
@@ -45,5 +49,12 @@ describe("same-owner hold exclusion", () => {
     const fn = publicSql.slice(publicSql.indexOf("function public._is_event_date_available"));
     assert.match(fn, /date_holds/);
     assert.doesNotMatch(fn, /c\.lead_id = h\.lead_id/);
+  });
+
+  it("current write-path hold check keeps same-owner exclusion with space/time collision", () => {
+    const fn = multiSpaceSql.slice(multiSpaceSql.indexOf("function public.events_enforce_availability"));
+    assert.match(fn, /c\.lead_id = v_hold\.lead_id/);
+    assert.match(fn, /hold_resources_collide/);
+    assert.match(fn, /event_operational_window\(null, v_hold\.start_time/);
   });
 });

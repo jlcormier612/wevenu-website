@@ -137,7 +137,7 @@ export async function getCalendarData(
     // here, so an expired hold kept showing (and blocking) indefinitely
     // until a human manually released it.
     supabase.from("date_holds")
-      .select("id, title, hold_date, start_time, lead_id, space_id, leads(first_name, last_name)")
+      .select("id, title, hold_date, start_time, end_time, lead_id, space_id, leads(first_name, last_name)")
       .eq("venue_id", venue.id)
       .eq("status", "active")
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
@@ -221,9 +221,29 @@ export async function getCalendarData(
     }
   }
 
-  // Date holds
-  for (const h of (holdsRes.data ?? []) as any[]) {
+  // Date holds — resources from date_hold_spaces (empty = whole venue)
+  const holdRows = (holdsRes.data ?? []) as any[];
+  const holdIds = holdRows.map((h) => h.id as string).filter(Boolean);
+  const holdSpaceMap = new Map<string, string[]>();
+  if (holdIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: holdSpaces } = await (supabase.from("date_hold_spaces") as any)
+      .select("hold_id, space_id")
+      .eq("venue_id", venue.id)
+      .in("hold_id", holdIds);
+    for (const row of (holdSpaces ?? []) as { hold_id: string; space_id: string }[]) {
+      if (!row.hold_id || !row.space_id) continue;
+      const list = holdSpaceMap.get(row.hold_id) ?? [];
+      if (!list.includes(row.space_id)) list.push(row.space_id);
+      holdSpaceMap.set(row.hold_id, list);
+    }
+  }
+  for (const h of holdRows) {
     const ln = h.leads ? `${h.leads.first_name} ${h.leads.last_name}` : null;
+    const fromJunction = holdSpaceMap.get(h.id) ?? [];
+    const spaceIds = fromJunction.length > 0
+      ? fromJunction
+      : (h.space_id ? [h.space_id as string] : []);
     items.push({
       id: `hold-${h.id}`,
       type: "date_hold",
@@ -231,9 +251,10 @@ export async function getCalendarData(
       title: h.title,
       subtitle: ln ? `Hold for ${ln}` : null,
       time: h.start_time?.slice(0, 5) ?? null,
+      endTime: h.end_time?.slice(0, 5) ?? null,
       link: h.lead_id ? `/leads/${h.lead_id}` : "/calendar",
-      spaceId: h.space_id ?? null,
-      spaceIds: h.space_id ? [h.space_id] : [],
+      spaceId: spaceIds.length === 1 ? spaceIds[0]! : (h.space_id ?? null),
+      spaceIds,
     });
   }
 

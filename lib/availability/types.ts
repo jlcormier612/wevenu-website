@@ -32,7 +32,10 @@ export type DateHold = {
   id: string;
   venueId: string;
   leadId: string | null;
+  /** Legacy single-space mirror: set when exactly one space; null for whole venue or multi. */
   spaceId: string | null;
+  /** Spaces protected by this hold. Empty = whole venue. */
+  spaceIds: string[];
   title: string;
   holdDate: string;
   startTime: string | null;
@@ -45,6 +48,8 @@ export type DateHold = {
   // Embedded
   leadName: string | null;
   spaceName: string | null;
+  /** Names for spaceIds (calendar / hold card). */
+  spaceNames: string[];
 };
 
 export type BlockReason =
@@ -175,6 +180,12 @@ export type CapacityRulesInput = {
 
 export type DateHoldInput = {
   leadId: string;
+  /**
+   * Spaces to protect. Empty / omitted = whole venue.
+   * Legacy `spaceId` is accepted when spaceIds is empty.
+   */
+  spaceIds?: string[];
+  /** @deprecated Prefer spaceIds. Single-space compat. */
   spaceId: string;
   title: string;
   holdDate: string;

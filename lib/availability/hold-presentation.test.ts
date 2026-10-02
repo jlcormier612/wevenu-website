@@ -24,10 +24,13 @@ const section = readFileSync(
 const service = readFileSync(resolve("lib/availability/service.ts"), "utf8");
 
 function hold(over: Partial<DateHold> & Pick<DateHold, "id" | "holdDate" | "status">): DateHold {
+  const spaceId = over.spaceId ?? "space-1";
+  const spaceName = over.spaceName ?? "Covered Bridge";
   return {
     venueId: "v1",
     leadId: "lead-1",
-    spaceId: over.spaceId ?? "space-1",
+    spaceId,
+    spaceIds: over.spaceIds ?? (spaceId ? [spaceId] : []),
     title: "Hold — Wilma",
     startTime: null,
     endTime: null,
@@ -36,7 +39,8 @@ function hold(over: Partial<DateHold> & Pick<DateHold, "id" | "holdDate" | "stat
     createdAt: "2026-09-27T00:00:00Z",
     updatedAt: "2026-09-27T00:00:00Z",
     leadName: "Wilma Flintstone",
-    spaceName: over.spaceName ?? "Covered Bridge",
+    spaceName,
+    spaceNames: over.spaceNames ?? (spaceName ? [spaceName] : []),
     ...over,
   };
 }

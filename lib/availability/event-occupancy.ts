@@ -101,6 +101,8 @@ export type OccupancyEvent = {
   eventDate: string;
   eventEndDate: string | null;
   spaceId: string | null;
+  /** Canonical spaces from event_space_assignments (+ spaceId). */
+  spaceIds?: string[];
   setupTime: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -111,6 +113,8 @@ export type OccupancyInput = {
   eventDate: string;
   eventEndDate?: string | null;
   spaceId?: string | null;
+  /** Additional spaces for the candidate (assignments). */
+  spaceIds?: string[] | null;
   setupTime?: string | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -356,6 +360,25 @@ function eventOverlapsCandidate(event: OccupancyEvent, input: OccupancyInput, ca
   return windowsOverlap(candidateWindow, other);
 }
 
+function occupiedSpaceIds(event: {
+  spaceId?: string | null;
+  spaceIds?: readonly string[] | null;
+}): string[] {
+  const set = new Set<string>();
+  for (const id of event.spaceIds ?? []) {
+    const t = id?.trim();
+    if (t) set.add(t);
+  }
+  const primary = blankToNull(event.spaceId);
+  if (primary) set.add(primary);
+  return [...set];
+}
+
+function spaceSetsIntersect(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length === 0 || b.length === 0) return false;
+  return a.some((id) => b.includes(id));
+}
+
 export function evaluateEventOccupancy(
   input: OccupancyInput,
   venue: OccupancyVenue,
@@ -363,6 +386,7 @@ export function evaluateEventOccupancy(
 ): OccupancyResult {
   const effectiveMax = venue.effectiveMax < 1 ? 1 : Math.trunc(venue.effectiveMax);
   const spaceId = blankToNull(input.spaceId);
+  const candidateSpaces = occupiedSpaceIds({ spaceId, spaceIds: input.spaceIds });
   const simultaneous = effectiveMax >= 2;
 
   if (simultaneous) {
@@ -373,19 +397,21 @@ export function evaluateEventOccupancy(
         message: "Add an Event Space in Availability settings before booking. This venue can host more than one event at the same time.",
       };
     }
-    if (!spaceId) {
+    if (candidateSpaces.length === 0) {
       return {
         ok: false,
         code: "missing_space",
         message: "Assign an Event Space before booking. This venue can host more than one event at the same time.",
       };
     }
-    if (!venue.allSpaceIds.includes(spaceId)) {
-      return {
-        ok: false,
-        code: "invalid_space",
-        message: "That Event Space does not belong to this venue.",
-      };
+    for (const id of candidateSpaces) {
+      if (!venue.allSpaceIds.includes(id)) {
+        return {
+          ok: false,
+          code: "invalid_space",
+          message: "That Event Space does not belong to this venue.",
+        };
+      }
     }
   }
 
@@ -396,8 +422,10 @@ export function evaluateEventOccupancy(
     if (eventOverlapsCandidate(event, input, candidateWindow)) overlapping.push(event);
   }
 
-  if (simultaneous && spaceId) {
-    const sameSpace = overlapping.find((e) => e.spaceId === spaceId);
+  if (simultaneous && candidateSpaces.length > 0) {
+    const sameSpace = overlapping.find((e) =>
+      spaceSetsIntersect(candidateSpaces, occupiedSpaceIds(e)),
+    );
     if (sameSpace) {
       const label = sameSpace.name?.trim() || "another event";
       return {
@@ -424,7 +452,13 @@ export function evaluateEventOccupancy(
   if (turnaroundHours > 0) {
     const candidateIntervals = eventOperationalIntervals(input);
     for (const event of occupying) {
-      if (simultaneous && spaceId && event.spaceId !== spaceId) continue;
+      if (
+        simultaneous
+        && candidateSpaces.length > 0
+        && !spaceSetsIntersect(candidateSpaces, occupiedSpaceIds(event))
+      ) {
+        continue;
+      }
       const violation = turnaroundViolation(
         candidateIntervals,
         eventOperationalIntervals(event),

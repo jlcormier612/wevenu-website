@@ -7,6 +7,7 @@ import type { OccupancyInput, OccupancyResult } from "@/lib/availability/event-o
 import { persistScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { mapCalendarBlockRow } from "@/lib/availability/calendar-block-coverage";
 import { effectiveMinTurnaroundHours, protectedEndDate } from "@/lib/availability/event-occupancy";
+import { holdSpaceIds } from "@/lib/availability/hold-occupancy";
 import { foreignHoldCount } from "@/lib/availability/holds";
 import { buildAvailabilityConflicts } from "@/lib/availability/precheck";
 import { venueLocalToUtcIso } from "@/lib/venue/timezone";
@@ -45,7 +46,62 @@ const mapSpace = (r: SpaceRow): VenueSpace => ({
   isActive: r.is_active, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapRules = (r: RulesRow): VenueCapacityRules => ({ id: r.id, venueId: r.venue_id, maxSimultaneousEvents: r.max_simultaneous_events, maxSimultaneousTours: r.max_simultaneous_tours, minTurnaroundHours: Number(r.min_turnaround_hours), createdAt: r.created_at, updatedAt: r.updated_at });
-const mapHold = (r: HoldRow): DateHold => ({ id: r.id, venueId: r.venue_id, leadId: r.lead_id, spaceId: r.space_id, title: r.title, holdDate: r.hold_date, startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, status: r.status, expiresAt: r.expires_at, notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at, leadName: r.leads ? `${r.leads.first_name} ${r.leads.last_name}` : null, spaceName: r.venue_spaces?.name ?? null });
+function mapHold(r: HoldRow, spaces?: { space_id: string; name?: string | null }[]): DateHold {
+  const ids = holdSpaceIds({
+    spaceIds: spaces?.map((s) => s.space_id),
+    spaceId: r.space_id,
+  });
+  const names = (spaces ?? [])
+    .filter((s) => ids.includes(s.space_id))
+    .map((s) => s.name?.trim())
+    .filter((n): n is string => !!n);
+  const legacyName = r.venue_spaces?.name ?? null;
+  if (legacyName && ids.length === 1 && !names.includes(legacyName)) names.push(legacyName);
+  return {
+    id: r.id,
+    venueId: r.venue_id,
+    leadId: r.lead_id,
+    spaceId: ids.length === 1 ? ids[0]! : null,
+    spaceIds: ids,
+    title: r.title,
+    holdDate: r.hold_date,
+    startTime: r.start_time?.slice(0, 5) ?? null,
+    endTime: r.end_time?.slice(0, 5) ?? null,
+    status: r.status,
+    expiresAt: r.expires_at,
+    notes: r.notes,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    leadName: r.leads ? `${r.leads.first_name} ${r.leads.last_name}` : null,
+    spaceName: names.length === 1 ? names[0]! : names.length > 1 ? names.join(", ") : null,
+    spaceNames: names,
+  };
+}
+
+async function loadHoldSpaceMap(
+  client: DbClient,
+  venueId: string,
+  holdIds: string[],
+): Promise<Map<string, { space_id: string; name?: string | null }[]>> {
+  const map = new Map<string, { space_id: string; name?: string | null }[]>();
+  if (holdIds.length === 0) return map;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("date_hold_spaces") as any)
+    .select("hold_id, space_id, venue_spaces(name)")
+    .eq("venue_id", venueId)
+    .in("hold_id", holdIds);
+  if (error) throw error;
+  for (const row of (data ?? []) as {
+    hold_id: string;
+    space_id: string;
+    venue_spaces?: { name: string } | null;
+  }[]) {
+    const list = map.get(row.hold_id) ?? [];
+    list.push({ space_id: row.space_id, name: row.venue_spaces?.name ?? null });
+    map.set(row.hold_id, list);
+  }
+  return map;
+}
 const mapBlock = (r: BlockRow): CalendarBlock => ({
   id: r.id, venueId: r.venue_id, title: r.title, type: r.type, reason: r.reason,
   startDate: r.start_date, endDate: r.end_date, isAllDay: r.is_all_day,
@@ -153,7 +209,9 @@ export async function getHolds(client: DbClient, venueId: string, opts?: { leadI
   if (opts?.activeOnly) q = q.eq("status", "active");
   const { data, error } = await q.order("hold_date").order("created_at");
   if (error) throw error;
-  return (data as unknown as HoldRow[]).map(mapHold);
+  const rows = data as unknown as HoldRow[];
+  const spaceMap = await loadHoldSpaceMap(client, venueId, rows.map((r) => r.id));
+  return rows.map((r) => mapHold(r, spaceMap.get(r.id)));
 }
 
 export async function getHoldsForDates(client: DbClient, venueId: string, start: string, end: string): Promise<DateHold[]> {
@@ -161,14 +219,35 @@ export async function getHoldsForDates(client: DbClient, venueId: string, start:
     .eq("venue_id", venueId).eq("status", "active")
     .gte("hold_date", start).lte("hold_date", end);
   if (error) throw error;
-  return (data as unknown as HoldRow[]).map(mapHold);
+  const rows = data as unknown as HoldRow[];
+  const spaceMap = await loadHoldSpaceMap(client, venueId, rows.map((r) => r.id));
+  return rows.map((r) => mapHold(r, spaceMap.get(r.id)));
 }
 
 export async function insertHold(client: DbClient, venueId: string, input: DateHoldInput): Promise<string> {
+  const spaces = holdSpaceIds({ spaceIds: input.spaceIds, spaceId: input.spaceId });
+  const legacySpaceId = spaces.length === 1 ? spaces[0]! : null;
   const { data, error } = await client.from("date_holds")
-    .insert({ venue_id: venueId, lead_id: input.leadId || null, space_id: input.spaceId || null, title: input.title.trim(), hold_date: input.holdDate, start_time: input.startTime || null, end_time: input.endTime || null, expires_at: input.expiresAt || null, notes: input.notes.trim() || null })
+    .insert({
+      venue_id: venueId,
+      lead_id: input.leadId || null,
+      space_id: legacySpaceId,
+      title: input.title.trim(),
+      hold_date: input.holdDate,
+      start_time: input.startTime || null,
+      end_time: input.endTime || null,
+      expires_at: input.expiresAt || null,
+      notes: input.notes.trim() || null,
+    })
     .select("id").single<{ id: string }>();
   if (error) throw error;
+  if (spaces.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: spaceError } = await (client.from("date_hold_spaces") as any).insert(
+      spaces.map((spaceId) => ({ venue_id: venueId, hold_id: data.id, space_id: spaceId })),
+    );
+    if (spaceError) throw spaceError;
+  }
   return data.id;
 }
 
@@ -362,7 +441,7 @@ export async function checkAvailability(
     .eq("venue_id", venueId)
     .or(`and(start_date.lte.${rangeEnd},end_date.gte.${opts.date},recurrence_rule.eq.none),and(recurrence_rule.neq.none,start_date.lte.${rangeEnd},or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${opts.date}))`);
 
-  const holdsQuery = client.from("date_holds").select("lead_id")
+  const holdsQuery = client.from("date_holds").select("id, lead_id, space_id, hold_date, start_time, end_time")
     .eq("venue_id", venueId).eq("hold_date", opts.date).eq("status", "active")
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
@@ -427,21 +506,58 @@ export async function checkAvailability(
   ]);
 
   const spaces = (spacesRes.data ?? []) as { id: string; is_active: boolean }[];
-  const events = ((eventsRes.data ?? []) as {
+  const eventRows = (eventsRes.data ?? []) as {
     id: string; name: string | null; status: string;
     event_date: string; event_end_date: string | null; space_id: string | null;
     setup_time: string | null; start_time: string | null; end_time: string | null; teardown_time: string | null;
-  }[]).map((e) => ({
+  }[];
+  const eventSpaceMap = new Map<string, string[]>();
+  if (eventRows.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: assignRows } = await (client.from("event_space_assignments") as any)
+      .select("event_id, space_id")
+      .eq("venue_id", venueId)
+      .in("event_id", eventRows.map((e) => e.id));
+    for (const row of (assignRows ?? []) as { event_id: string; space_id: string }[]) {
+      if (!row.event_id || !row.space_id) continue;
+      const list = eventSpaceMap.get(row.event_id) ?? [];
+      if (!list.includes(row.space_id)) list.push(row.space_id);
+      eventSpaceMap.set(row.event_id, list);
+    }
+  }
+  const events = eventRows.map((e) => ({
     id: e.id,
     name: e.name ?? undefined,
     status: e.status,
     eventDate: e.event_date,
     eventEndDate: e.event_end_date,
     spaceId: e.space_id,
+    spaceIds: eventSpaceMap.get(e.id) ?? (e.space_id ? [e.space_id] : []),
     setupTime: e.setup_time,
     startTime: e.start_time,
     endTime: e.end_time,
     teardownTime: e.teardown_time,
+  }));
+
+  const holdRowsRaw = (holdsRes.data ?? []) as {
+    id: string;
+    lead_id: string | null;
+    space_id: string | null;
+    hold_date: string;
+    start_time: string | null;
+    end_time: string | null;
+  }[];
+  const holdSpaceMap = await loadHoldSpaceMap(client, venueId, holdRowsRaw.map((h) => h.id));
+  const holdOccupancyRows = holdRowsRaw.map((h) => ({
+    id: h.id,
+    leadId: h.lead_id,
+    holdDate: h.hold_date,
+    startTime: h.start_time?.slice(0, 5) ?? null,
+    endTime: h.end_time?.slice(0, 5) ?? null,
+    spaceIds: holdSpaceIds({
+      spaceIds: (holdSpaceMap.get(h.id) ?? []).map((s) => s.space_id),
+      spaceId: h.space_id,
+    }),
   }));
 
   const tours = ((toursRes.data ?? []) as {
@@ -489,9 +605,11 @@ export async function checkAvailability(
         recurrence_ends_on?: string | null; recurrence_count?: number | null;
       }[]).map(mapCalendarBlockRow),
       holdCount: foreignHoldCount(
-        (holdsRes.data ?? []) as { lead_id: string | null }[],
+        holdRowsRaw.map((h) => ({ lead_id: h.lead_id })),
         opts.excludeLeadId,
       ),
+      holds: holdOccupancyRows,
+      excludeLeadId: opts.excludeLeadId,
       holdBlocksAvailability: venueRow?.hold_blocks_availability !== false,
       allowToursDuringBookedEvents: venueRow?.allow_tours_during_booked_events === true,
       rules,

@@ -26,6 +26,11 @@ import {
   type OccupancyCode,
   type OccupancyEvent,
 } from "@/lib/availability/event-occupancy";
+import {
+  conflictingForeignHolds,
+  inquiryDateBlockedByHolds,
+  type HoldOccupancyRow,
+} from "@/lib/availability/hold-occupancy";
 import type { AvailabilityStatus, ConflictItem, ConflictType } from "@/lib/availability/types";
 import {
   effectiveMaxSimultaneousTours,
@@ -67,7 +72,12 @@ export type AvailabilityCheckTour = TourInterval & { leadId?: string | null };
 
 export type AvailabilityCheckSnapshot = {
   calendarBlocks: CalendarBlockCoverageInput[];
+  /** @deprecated Prefer `holds` — retained for older call sites/tests. */
   holdCount: number;
+  /** Active holds on the check date (caller already filtered expiry/status). */
+  holds?: HoldOccupancyRow[];
+  /** Lead whose own holds must not block this check. */
+  excludeLeadId?: string | null;
   /**
    * When true (venue default), active Holds refuse Event booking — same as
    * venues.hold_blocks_availability / events_enforce_availability.
@@ -131,7 +141,38 @@ export function buildAvailabilityConflicts(
   );
   if (coveringTitle) pushBlock(conflicts, coveringTitle);
 
-  if (snapshot.holdCount > 0) {
+  const effectiveMax = effectiveMaxSimultaneousEvents(snapshot.rules);
+  const holdRows = snapshot.holds ?? [];
+  const holdConflictCount = holdRows.length > 0
+    ? (() => {
+      const purpose = input.purpose ?? "booking";
+      const inquiryNoSpace = purpose === "preferred_date" && !input.spaceId?.trim();
+      if (inquiryNoSpace) {
+        return inquiryDateBlockedByHolds(
+          holdRows,
+          input.date,
+          effectiveMax,
+          snapshot.activeSpaceIds,
+          snapshot.excludeLeadId,
+        ) ? 1 : 0;
+      }
+      return conflictingForeignHolds(
+        holdRows,
+        {
+          date: input.date,
+          spaceIds: input.spaceId?.trim() ? [input.spaceId.trim()] : [],
+          setupTime: input.setupTime,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          teardownTime: input.teardownTime,
+        },
+        effectiveMax,
+        snapshot.excludeLeadId,
+      ).length;
+    })()
+    : snapshot.holdCount;
+
+  if (holdConflictCount > 0) {
     const holdBlocks = snapshot.holdBlocksAvailability !== false;
     if (holdBlocks) {
       conflicts.push({
@@ -142,9 +183,9 @@ export function buildAvailabilityConflicts(
     } else {
       conflicts.push({
         type: "hold_exists",
-        message: snapshot.holdCount === 1
+        message: holdConflictCount === 1
           ? "There is a hold on this date. Your settings do not treat holds as unavailable."
-          : `There are ${snapshot.holdCount} holds on this date. Your settings do not treat holds as unavailable.`,
+          : `There are ${holdConflictCount} holds on this date. Your settings do not treat holds as unavailable.`,
         severity: "warning",
       });
     }
@@ -152,7 +193,7 @@ export function buildAvailabilityConflicts(
 
   if (input.type === "event") {
     const venueOccupancy = {
-      effectiveMax: effectiveMaxSimultaneousEvents(snapshot.rules),
+      effectiveMax,
       minTurnaroundHours: effectiveMinTurnaroundHours(snapshot.rules),
       activeSpaceIds: snapshot.activeSpaceIds,
       allSpaceIds: snapshot.allSpaceIds,
