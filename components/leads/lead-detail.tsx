@@ -475,7 +475,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <div className="flex flex-wrap items-center gap-2">
             {lead.otherLeadsOnRelationship > 0 && (
               <Badge variant="secondary">
-                Returning relationship — {lead.otherLeadsOnRelationship} other {lead.otherLeadsOnRelationship === 1 ? "lead" : "leads"} on file
+                Returning relationship — {`${lead.otherLeadsOnRelationship} other ${lead.otherLeadsOnRelationship === 1 ? "lead" : "leads"} on file`}
               </Badge>
             )}
             {lead.intakeConfidence != null && lead.intakeConfidence < 80 && (
@@ -497,7 +497,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               initial={spacePreferences}
             />
           )}
-          {spaceOperatingMode !== "multi" && spacesRequired && (
+          {spacesRequired && (
             <div className="w-full min-w-56">
               <EventSpaceField
                 value={bookingSpaceId}
