@@ -20,6 +20,7 @@ import type {
   InvoiceStatus,
   InvoiceWithLineItems,
 } from "@/lib/invoices/types";
+import { isBillableEventOrderLineForInvoice } from "@/lib/client-choices/unbilled-delta";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { eventOrderLinesFingerprint } from "@/lib/event-orders/constants";
 import type { EventOrderLine } from "@/lib/event-orders/types";
@@ -64,8 +65,13 @@ function eoUnitPriceForInvoice(unitPrice: number | null): number {
   return unitPrice ?? 0;
 }
 
+/** Lines that may project onto / freeze into an EO-linked invoice. */
+function billableEventOrderLinesForInvoice(eventOrderLines: EventOrderLine[]): EventOrderLine[] {
+  return eventOrderLines.filter(isBillableEventOrderLineForInvoice);
+}
+
 function projectEventOrderLines(eventOrderLines: EventOrderLine[]): InvoiceLineItem[] {
-  return eventOrderLines.map((l) => {
+  return billableEventOrderLinesForInvoice(eventOrderLines).map((l) => {
     const type = PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item";
     return {
       id: l.id, invoiceId: "", venueId: l.venueId, packageId: l.packageId,
@@ -287,7 +293,10 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
         // again without a human's explicit decision.
         const eventOrder = await getEventOrder(invoice.eventId ?? "");
         if (eventOrder) {
-          await repo.insertFrozenLinesFromEventOrder(c, venueId, invoiceId, eventOrder.lines.map((l) => ({
+          // Copy only billable/additional lines — same rule as unbilledSelectionsTotal.
+          // Included / $0 / unpriced EO lines stay operational and must not charge.
+          const freezeLines = billableEventOrderLinesForInvoice(eventOrder.lines);
+          await repo.insertFrozenLinesFromEventOrder(c, venueId, invoiceId, freezeLines.map((l) => ({
             eventOrderLineId: l.id, packageId: l.packageId, type: PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item",
             description: l.description, quantity: l.quantity,
             unitPrice: eoUnitPriceForInvoice(l.unitPrice), amount: l.amount, sortOrder: l.sortOrder,
@@ -424,18 +433,21 @@ export async function getEventOrderDrift(invoiceId: string): Promise<EventOrderD
   const eventOrder = await getEventOrder(invoice.eventId ?? "");
   if (!eventOrder) return null;
 
-  const currentFingerprint = eventOrderLinesFingerprint(eventOrder.lines);
+  // Drift compares only billable EO lines — included/operational lines are
+  // never frozen and must not surface as "added charges."
+  const billableLines = billableEventOrderLinesForInvoice(eventOrder.lines);
+  const currentFingerprint = eventOrderLinesFingerprint(billableLines);
   if (invoice.eventOrderDismissedFingerprint === currentFingerprint) return null;
 
   const frozenLines = invoice.lineItems.filter((l): l is InvoiceLineItem & { eventOrderLineId: string } => !!l.eventOrderLineId);
   const frozenByEoId = new Map(frozenLines.map((l) => [l.eventOrderLineId, l]));
-  const currentEoIds = new Set(eventOrder.lines.map((l) => l.id));
+  const currentEoIds = new Set(billableLines.map((l) => l.id));
 
   const added: EventOrderLineSnapshot[] = [];
   const changed: EventOrderLineChange[] = [];
   const priceChanged: EventOrderPriceChange[] = [];
 
-  for (const line of eventOrder.lines) {
+  for (const line of billableLines) {
     const frozen = frozenByEoId.get(line.id);
     if (!frozen) {
       added.push({ description: line.description, quantity: line.quantity, unitPrice: eoUnitPriceForInvoice(line.unitPrice), amount: line.amount });
@@ -476,7 +488,12 @@ export async function dismissEventOrderDrift(invoiceId: string): Promise<Invoice
     if (!invoice || !invoice.eventOrderId) return { ok: false, message: "Invoice not found or not linked to an Event Order." } as InvoiceActionResult;
     const eventOrder = await getEventOrder(invoice.eventId ?? "");
     if (!eventOrder) return { ok: false, message: "Event Order not found." } as InvoiceActionResult;
-    await repo.setDismissedFingerprint(c, venueId, invoiceId, eventOrderLinesFingerprint(eventOrder.lines));
+    await repo.setDismissedFingerprint(
+      c,
+      venueId,
+      invoiceId,
+      eventOrderLinesFingerprint(billableEventOrderLinesForInvoice(eventOrder.lines)),
+    );
     await repo.insertActivity(c, venueId, invoiceId, "drift_dismissed", "Event Order changes reviewed and dismissed for now.");
     return { ok: true } as InvoiceActionResult;
   });
