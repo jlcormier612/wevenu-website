@@ -48,14 +48,16 @@ describe("Date Hold overview UX placement", () => {
   it("Hold form wires desiredEventDate into defaultHoldDateFromDesiredEventDate", () => {
     assert.match(holdSection, /desiredEventDate/);
     assert.match(holdSection, /defaultHoldDateFromDesiredEventDate/);
-    assert.match(holdSection, /placeHoldCtaLabel\(desiredDefault\)/);
+    assert.match(holdSection, /placeHoldCtaLabel\(desiredDefault, activeHolds\.length > 0\)/);
   });
 
-  it("Active hold is labeled Held with Release hold; Place hold is gated", () => {
+  it("Active holds are labeled Held with per-hold Release; Place another hold stays available", () => {
     assert.match(holdSection, />\s*Held\s*</);
     assert.match(holdSection, /Release hold/);
     assert.match(holdSection, /shouldShowPlaceHoldCta/);
     assert.match(holdSection, /showPlaceHold \?/);
+    assert.match(holdSection, /Place another hold/);
+    assert.match(holdSection, /This creates a new hold/);
   });
 
   it("createHoldAction still persists hold_date via date_holds (source of truth)", () => {
@@ -80,6 +82,6 @@ describe("Screenshot defect: desired 2027-02-14 must not become 2026-02-14", () 
   it("CTA labels the preferred date when present", () => {
     // formatDate uses en-US short month ("Feb 14, 2027") — CTA uses the same helper
     assert.equal(formatDate("2027-02-14"), "Feb 14, 2027");
-    assert.match(holdSection, /placeHoldCtaLabel\(desiredDefault\)/);
+    assert.match(holdSection, /placeHoldCtaLabel\(desiredDefault, activeHolds\.length > 0\)/);
   });
 });

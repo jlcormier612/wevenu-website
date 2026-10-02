@@ -218,7 +218,7 @@ export function holdConflictsWithBookedEvent(
   });
 }
 
-/** Hold vs other active hold (createHold pre-check). Same lead excluded by caller. */
+/** Hold vs other active hold (createHold pre-check). Same lead is included — two holds for one lead conflict only when resources and windows overlap. Same-owner exclusion applies to booking/availability checks, not hold-vs-hold. */
 export function holdsConflictWithEachOther(
   a: HoldOccupancyRow,
   b: HoldOccupancyRow,

@@ -151,22 +151,6 @@ export async function createHold(input: DateHoldInput): Promise<CreateHoldResult
       "@/lib/availability/event-occupancy"
     );
 
-    // Prevent an identical active hold for the same lead + date (UI already
-    // hides Place hold when any active hold exists; this is the server guard).
-    if (input.leadId) {
-      const existing = await repo.getHolds(supabase, venueId, {
-        leadId: input.leadId,
-        activeOnly: true,
-      });
-      if (existing.some((h) => h.holdDate === input.holdDate)) {
-        return {
-          ok: false,
-          message:
-            "An active hold already exists for this date. Release it before placing another.",
-        } as CreateHoldResult;
-      }
-    }
-
     const candidateSpaces = holdSpaceIds({
       spaceIds: input.spaceIds,
       spaceId: input.spaceId,

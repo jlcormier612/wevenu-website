@@ -20,12 +20,13 @@ export function historicalHolds(holds: readonly DateHold[]): DateHold[] {
   return holds.filter((h) => !isActiveHold(h));
 }
 
-/** Place-hold CTA is only for leads with no active hold. */
-export function shouldShowPlaceHoldCta(holds: readonly DateHold[]): boolean {
-  return !holds.some(isActiveHold);
+/** Place-hold CTA stays available when active holds already exist (another hold, not a replacement). */
+export function shouldShowPlaceHoldCta(_holds?: readonly DateHold[]): boolean {
+  return true;
 }
 
-export function placeHoldCtaLabel(desiredDefault: string): string {
+export function placeHoldCtaLabel(desiredDefault: string, hasActiveHolds = false): string {
+  if (hasActiveHolds) return "Place another hold";
   return desiredDefault
     ? `Place hold on ${formatDate(desiredDefault)}`
     : "Place Hold";

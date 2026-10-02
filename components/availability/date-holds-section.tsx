@@ -69,6 +69,7 @@ export function DateHoldsSection({
   const activeHolds = selectActiveHolds(holds);
   const pastHolds = selectHistoricalHolds(holds);
   const showPlaceHold = shouldShowPlaceHoldCta(holds);
+  const placeCtaLabel = placeHoldCtaLabel(desiredDefault, activeHolds.length > 0);
   const prefDefaults = defaultHoldSpaceIdsFromPreferences(spacePreferences);
   const activeSpaces = spaces.filter((s) => s.isActive);
 
@@ -168,9 +169,12 @@ export function DateHoldsSection({
 
   return (
     <div className="space-y-3">
-      {/* Active holds — authoritative date_holds.status === "active" */}
+      {/* Active holds — authoritative date_holds.status === "active". Multiple per lead/date are valid. */}
       {activeHolds.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2" data-testid="date-hold-active-list">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Active holds
+          </p>
           {activeHolds.map((hold) => (
             <div
               key={hold.id}
@@ -234,7 +238,7 @@ export function DateHoldsSection({
         </div>
       )}
 
-      {/* Place hold only when no active hold exists for this lead. */}
+      {/* Place hold / Place another hold — never gated by an existing active hold. */}
       {showForm ? (
         <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -341,9 +345,15 @@ export function DateHoldsSection({
             </div>
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-heading">You&apos;re placing a Hold on this date.</h3>
+            <h3 className="text-sm font-semibold text-heading">
+              {activeHolds.length > 0
+                ? "You're placing another Hold."
+                : "You're placing a Hold on this date."}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              Whether this Hold prevents booking is controlled by your availability settings.
+              {activeHolds.length > 0
+                ? "This creates a new hold. Existing holds stay as they are."
+                : "Whether this Hold prevents booking is controlled by your availability settings."}
             </p>
           </div>
           <div className="flex items-center justify-end gap-2">
@@ -372,7 +382,7 @@ export function DateHoldsSection({
           data-testid="date-hold-place"
         >
           <Plus className="mr-1 h-3.5 w-3.5" />
-          {placeHoldCtaLabel(desiredDefault)}
+          {placeCtaLabel}
         </Button>
       ) : null}
     </div>

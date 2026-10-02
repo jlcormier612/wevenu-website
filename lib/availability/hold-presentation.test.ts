@@ -56,7 +56,7 @@ describe("Date Hold active-state presentation", () => {
     );
   });
 
-  it("B. active hold → Held state; no Place hold CTA for that lead", () => {
+  it("B. active hold → Held list plus Place another hold CTA", () => {
     const holds = [
       hold({
         id: "a1",
@@ -67,20 +67,18 @@ describe("Date Hold active-state presentation", () => {
       }),
     ];
     assert.equal(isActiveHold(holds[0]), true);
-    assert.equal(shouldShowPlaceHoldCta(holds), false);
+    assert.equal(shouldShowPlaceHoldCta(holds), true);
+    assert.equal(placeHoldCtaLabel("2027-02-14", true), "Place another hold");
     assert.equal(activeHolds(holds)[0]?.holdDate, "2027-02-14");
     assert.equal(activeHolds(holds)[0]?.spaceName, "Covered Bridge");
     assert.match(section, />\s*Held\s*</);
     assert.match(section, /Release hold/);
     assert.match(section, /data-testid="date-hold-active"/);
     assert.match(section, /data-testid="date-hold-release"/);
-    // Place hold CTA is gated — not rendered while an active hold exists
+    assert.match(section, /data-testid="date-hold-active-list"/);
+    assert.match(section, /Place another hold/);
     assert.match(section, /showPlaceHold \?/);
     assert.match(section, /shouldShowPlaceHoldCta/);
-    assert.doesNotMatch(
-      section,
-      /activeHolds\.length > 0[\s\S]*Place hold on \$\{formatDate\(desiredDefault\)\}/,
-    );
   });
 
   it("C. release moves hold into historical Released list", () => {
@@ -109,10 +107,10 @@ describe("Date Hold active-state presentation", () => {
     assert.match(section, /Change only if you intend to hold a different day/);
   });
 
-  it("F. duplicate active hold for same lead+date is refused in createHold", () => {
-    assert.match(service, /An active hold already exists for this date/);
-    assert.match(service, /activeOnly:\s*true/);
-    assert.match(service, /h\.holdDate === input\.holdDate/);
+  it("F. createHold allows a second same-lead/date hold unless resources and windows overlap", () => {
+    assert.doesNotMatch(service, /An active hold already exists for this date/);
+    assert.match(service, /holdsConflictWithEachOther/);
+    assert.match(service, /That space and time window overlaps another active hold/);
   });
 
   it("G. calendar/availability still keys off active status (unchanged contract)", () => {
