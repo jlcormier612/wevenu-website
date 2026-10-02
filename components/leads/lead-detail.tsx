@@ -247,16 +247,19 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     setConfirmReturnBookedOpen(false);
     startLifecycle(async () => {
       const result = await returnLeadToBookedAction(lead.id);
-      // newlyBooked → server redirect to Client celebration workspace
       if (!result.ok) {
         toast.error(result.message ?? "Could not mark this relationship Booked.");
         return;
       }
-      if (!result.newlyBooked) {
-        toast.success("Already booked.");
-        router.push(`/clients/${result.clientId}`);
+      if (result.newlyBooked) {
+        const qs = new URLSearchParams();
+        if (result.eventId) qs.set("eventId", result.eventId);
+        const suffix = qs.toString() ? `?${qs.toString()}` : "";
+        router.push(`/clients/${result.clientId}/booked${suffix}`);
         return;
       }
+      toast.success("Already booked.");
+      router.push(`/clients/${result.clientId}`);
     });
   }
 

@@ -157,11 +157,6 @@ export async function returnLeadToBookedAction(
     revalidatePath("/calendar");
     if (result.eventId) revalidatePath(`/events/${result.eventId}`);
     void refreshLeadScore(leadId).catch(() => {});
-    // Same celebration handoff as confirmPipelineBookedMoveAction.
-    if (result.newlyBooked) {
-      const qs = result.eventId ? `?eventId=${encodeURIComponent(result.eventId)}` : "";
-      redirect(`/clients/${result.clientId}/booked${qs}`);
-    }
   }
   return result;
 }

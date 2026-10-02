@@ -83,7 +83,7 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.doesNotMatch(detail, /Open booking file →/);
     assert.match(actions, /returnLeadToBookedAction/);
     assert.match(actions, /moveLeadBackToSalesPipelineAction/);
-    assert.match(actions, /redirect\(`\/clients\/\$\{result\.clientId\}\/booked/);
+    assert.match(detail, /router\.push\(`\/clients\/\$\{result\.clientId\}\/booked/);
   });
 
   it("pipeline board confirms Mark as Booked before the canonical transition", () => {
