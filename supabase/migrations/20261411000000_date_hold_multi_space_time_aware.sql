@@ -28,8 +28,8 @@ alter table public.date_hold_spaces enable row level security;
 drop policy if exists date_hold_spaces_all on public.date_hold_spaces;
 create policy date_hold_spaces_all on public.date_hold_spaces
   for all
-  using (venue_id in (select public.user_venue_ids()))
-  with check (venue_id in (select public.user_venue_ids()));
+  using (venue_id = public.current_user_venue_id())
+  with check (venue_id = public.current_user_venue_id());
 
 grant select, insert, update, delete on public.date_hold_spaces to authenticated;
 
