@@ -218,7 +218,9 @@ export function evaluateCompletedTour(input: CompletedTourEvalInput): CompletedT
   }
 
   if (open && excerpt && looksLikeWaitingOnOthers(openText)) {
-    const topic = topicFromExcerpt(excerpt);
+    // Use the full inbound text for topic — shareable excerpts may be the
+    // thanks clause and would otherwise produce garbled "need to Thanks…" copy.
+    const topic = topicFromExcerpt(openText);
     return {
       mode: "contextual",
       purpose: "none",
