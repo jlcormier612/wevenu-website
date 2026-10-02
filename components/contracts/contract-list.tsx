@@ -20,6 +20,10 @@ import {
   type ContractListFilterKey,
   type ContractWorkflowListRow,
 } from "@/lib/contracts/list-filters";
+import {
+  contractListPrimaryTitle,
+  contractListSecondaryLabel,
+} from "@/lib/contracts/list-identity";
 import { formatVersionLabel } from "@/lib/contracts/version-lineage";
 
 export function ContractList({
@@ -90,7 +94,6 @@ export function ContractList({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Event Date</TableHead>
                 <TableHead>Status</TableHead>
@@ -99,22 +102,22 @@ export function ContractList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((contract) => (
+              {filtered.map((contract) => {
+                const href = `/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`;
+                return (
                 <TableRow key={contract.id} className="group">
                   <TableCell className="font-medium text-foreground">
                     <div className="flex flex-col gap-0.5">
-                      <Link href={`/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`} className="hover:text-primary">{contract.title}</Link>
-                      {contract.listFamilySize > 1 ? (
-                        <span className="text-xs font-normal text-muted-foreground">
-                          {formatVersionLabel(contract.listVersionNumber)}
-                        </span>
-                      ) : null}
+                      <Link href={href} className="hover:text-primary">
+                        {contractListPrimaryTitle(contract)}
+                      </Link>
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {contractListSecondaryLabel(contract)}
+                        {contract.listFamilySize > 1
+                          ? ` · ${formatVersionLabel(contract.listVersionNumber)}`
+                          : ""}
+                      </span>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {contract.clientName
-                      ? <Link href={`/clients/${contract.clientId}`} className="hover:text-primary">{contract.clientName}</Link>
-                      : "—"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
@@ -133,10 +136,11 @@ export function ContractList({
                     {formatContractDate(contract.createdAt.slice(0, 10))}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" render={<Link href={`/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`} />}>View →</Button>
+                    <Button variant="ghost" size="sm" render={<Link href={href} />}>View →</Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>

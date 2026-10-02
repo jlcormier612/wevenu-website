@@ -227,7 +227,15 @@ export async function getContractsForClientOrEvent(
 
 /** Financials Contracts list — current agreement tip per amends_contract_id family. */
 export async function getContractsForWorkflowList(): Promise<ContractWorkflowListRow[]> {
-  return rollupContractsToCurrentAgreements(await getContracts());
+  const [contracts, templates] = await Promise.all([
+    getContracts(),
+    getTemplatesMetadata(true),
+  ]);
+  const templateNameById = new Map(templates.map((t) => [t.id, t.name]));
+  return rollupContractsToCurrentAgreements(contracts).map((row) => ({
+    ...row,
+    templateName: row.templateId ? templateNameById.get(row.templateId) ?? null : null,
+  }));
 }
 
 export async function getContractDetail(id: string): Promise<ContractWithDetails | null> {

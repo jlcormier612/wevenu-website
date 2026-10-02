@@ -460,6 +460,17 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 - **BROWSER EVIDENCE:** pending exact runtime
 - **REMAINING WORK:** Prove multi-client same-plan scanability + click-through; adjacent invoice back-nav / setup routing smoke
 
+### Contracts — list identity / nomenclature
+
+- **STATUS:** OPEN — implementation complete; awaiting sole-RUNNING Sandbox + browser proof
+- **FORENSIC:** `ContractList` used `contract.title` (document/template title, e.g. “Venue Rental Agreement — Jane…”, “AES Jane Additional Preview…”) as primary. `clientName` already on row from repository couple join. No separate contract-type enum — closest authoritative type is `contract_templates.name`; default title construction uses `Venue Rental Agreement — {clientDisplayName}` in ContractBuilder.
+- **FIX:** Presentation only — primary = client/couple name; secondary = template name (else title prefix before em-dash, else “Contract”). Document/test titles no longer dominate list identity. Filters/status/nav/lifecycle unchanged. Href still `/contracts/{id}`.
+- **IMPLEMENTATION COMMIT(S):** pending this commit
+- **FILES:** `lib/contracts/list-identity.ts`, `components/contracts/contract-list.tsx`, `lib/contracts/service.ts` (template name enrich), `lib/contracts/list-filters.ts`
+- **AUTOMATED TEST EVIDENCE:** `list-identity.test.ts` + list-filters + client-first-signing PASS
+- **BROWSER EVIDENCE:** pending exact runtime
+- **REMAINING WORK:** Deploy → sole RUNNING → browser prove client-first / type-second hierarchy + click-through; confirm lifecycle filters unchanged
+
 ---
 
 ## Production

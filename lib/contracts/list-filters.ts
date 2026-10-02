@@ -6,6 +6,8 @@ export type ContractWorkflowListRow = Contract & {
   listVersionNumber: number;
   listFamilySize: number;
   listFamilyTitles: string[];
+  /** Linked template name when known — presentation type label only. */
+  templateName?: string | null;
 };
 
 /** List/badge population: one row per amends_contract_id family (current tip). */
@@ -94,14 +96,14 @@ export function countVenueActionRequiredContracts(contracts: readonly Contract[]
   return contracts.filter(isVenueActionRequiredContract).length;
 }
 
-/** Search current rows, including titles from explicit family members. */
+/** Search current rows by client name, type label, and titles (including family). */
 export function contractMatchesWorkflowSearch(
-  row: Pick<ContractWorkflowListRow, "title" | "clientName" | "listFamilyTitles">,
+  row: Pick<ContractWorkflowListRow, "title" | "clientName" | "listFamilyTitles" | "templateName">,
   query: string,
 ): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [row.title, row.clientName, ...(row.listFamilyTitles ?? [])].some((s) =>
+  return [row.title, row.clientName, row.templateName, ...(row.listFamilyTitles ?? [])].some((s) =>
     s?.toLowerCase().includes(q),
   );
 }
