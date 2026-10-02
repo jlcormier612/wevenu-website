@@ -82,6 +82,8 @@ import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/
 import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
+import { loadEventSetup } from "@/lib/event-setup/service";
+import { applicableSetupSteps } from "@/lib/event-setup/state";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -557,6 +559,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   });
 
   const workspaceName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
+  const eventSetup = await loadEventSetup(event.id);
+  const setupSteps = applicableSetupSteps({
+    timeline: venue?.planningTimelineEnabled ?? true,
+    floorPlan: venue?.planningFloorPlanEnabled ?? true,
+    seating: venue?.planningSeatingEnabled ?? true,
+    vendors: venue?.planningVendorsEnabled ?? true,
+  });
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -612,6 +621,8 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       photoUrl={photo?.displayedPhotoUrl ?? null}
       venueTimezone={venue?.timezone ?? null}
       contextualObservations={contextualObservations}
+      eventSetup={eventSetup}
+      applicableSetupSteps={setupSteps}
     />
     </div>
   );

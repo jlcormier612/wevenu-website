@@ -28,7 +28,7 @@ describe("Phase 2 planning apply seams", () => {
     assert.match(sheet, /applyPlaybookToClientAction/);
     assert.match(sheet, /!!eventId \|\| !!clientId/);
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
-    assert.match(celebration, /PreparePlanningPanel/);
+    assert.doesNotMatch(celebration, /PreparePlanningPanel/);
     assert.doesNotMatch(celebration, /applyPlaybookAction/);
   });
 
@@ -84,7 +84,7 @@ describe("Phase 2 planning apply seams", () => {
   it("wedding terminology on the booked page is unchanged", () => {
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
     assert.match(celebration, /eventTypeLabel/);
-    assert.match(celebration, /PreparePlanningPanel/);
+    assert.doesNotMatch(celebration, /PreparePlanningPanel/);
     const title = readFileSync(resolve("lib/playbooks/constants.ts"), "utf8");
     assert.match(title, /WEDDING_PLANNING_TITLE_EVENT_TYPES/);
     assert.match(title, /formatClientPlanningTitle/);

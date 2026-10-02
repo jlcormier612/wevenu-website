@@ -95,7 +95,9 @@ describe("client contact workspace", () => {
 
     const detail = source("components/events/event-detail.tsx");
     assert.match(detail, /Edit event/);
-    assert.match(detail, /Event information/);
+    assert.doesNotMatch(detail, /Event information/);
+    assert.match(detail, /Edit contact/);
+    assert.match(detail, /href=\{`\/clients\/\$\{relationshipContact\.clientId\}\/edit`\}/);
     assert.match(detail, /href=\{`\/events\/\$\{event\.id\}\/edit`\}/);
 
     const form = source("components/clients/client-form.tsx");

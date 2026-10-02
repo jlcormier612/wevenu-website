@@ -17,10 +17,11 @@ describe("Prepare Booking / Planning UX — single checklist entry + pre-book Ap
     assert.match(page, /EventTaskList/);
   });
 
-  it("booking celebration may still surface PreparePlanningPanel (no Checklists list there)", () => {
+  it("booking celebration does not repeat the setup checklist", () => {
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
-    assert.match(celebration, /PreparePlanningPanel/);
+    assert.doesNotMatch(celebration, /PreparePlanningPanel/);
     assert.doesNotMatch(celebration, /EventTaskList/);
+    assert.match(celebration, /client_planning/);
   });
 
   it("PlaybookApplyPreviewSheet enables Apply for clientId + eventDate (pre-book)", () => {

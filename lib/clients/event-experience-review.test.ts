@@ -144,7 +144,7 @@ describe("Phase 6 Event Experience review seams", () => {
   it("wedding wording and Phase 1–5 panels remain on Prepare", () => {
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
     assert.match(celebration, /eventTypeLabel/);
-    assert.match(celebration, /PreparePlanningPanel/);
+    assert.doesNotMatch(celebration, /PreparePlanningPanel/);
     assert.match(celebration, /FinancialReadinessPanel/);
     assert.match(celebration, /CommunicationsReviewPanel/);
     assert.match(celebration, /EventExperienceReviewPanel/);

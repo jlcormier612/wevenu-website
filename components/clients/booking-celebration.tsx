@@ -7,7 +7,6 @@ import Link from "next/link";
 import { CommunicationsReviewPanel } from "@/components/clients/communications-review-panel";
 import { EventExperienceReviewPanel } from "@/components/clients/event-experience-review-panel";
 import { FinancialReadinessPanel } from "@/components/clients/financial-readiness-panel";
-import { PreparePlanningPanel } from "@/components/clients/prepare-planning-panel";
 import { Button } from "@/components/ui/button";
 import type { BookingHandoffModel } from "@/lib/clients/booking-handoff";
 import type { CommunicationsReviewModel } from "@/lib/clients/communications-review";
@@ -130,10 +129,10 @@ export function BookingCelebration({
   celebrate = false,
   client,
   eventId,
-  eventDate,
-  eventType,
-  templates,
-  applications,
+  eventDate: _eventDate,
+  eventType: _eventType,
+  templates: _templates,
+  applications: _applications,
   handoff,
   financial,
   communications,
@@ -198,14 +197,11 @@ export function BookingCelebration({
           </div>
         )}
 
-        <PrepareChecklist handoff={handoff} />
-
-        <PreparePlanningPanel
-          eventId={eventId ?? null}
-          eventDate={eventDate ?? null}
-          eventType={eventType ?? client.eventType}
-          templates={templates}
-          applications={applications}
+        <PrepareChecklist
+          handoff={{
+            ...handoff,
+            items: handoff.items.filter((item) => item.key !== "client_planning" && item.key !== "venue_planning"),
+          }}
         />
 
         <FinancialReadinessPanel financial={financial} />

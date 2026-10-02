@@ -339,8 +339,13 @@ describe("workspaces do not render the old Booking Journey", () => {
     assert.match(panel, /ArtifactReviewOverlay/);
     assert.match(lead, /Pipeline stage/);
     assert.match(lead, /BookingJourneyPanel/);
-    assert.match(event, /EventReadinessCard/);
-    assert.match(event, /BookingJourneyPanel/);
+    assert.doesNotMatch(event, /EventReadinessCard/);
+    assert.doesNotMatch(event, /BookingJourneyPanel/);
+    assert.match(event, /selectOverviewExceptions/);
+    assert.match(event, /NeedsAttentionList/);
+    const clientPage = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+    assert.match(clientPage, /BookingJourneyPanel/);
+    assert.match(clientPage, /buildEventReadiness/);
     assert.doesNotMatch(inbox, /Filter by booking stage/);
     assert.doesNotMatch(inbox, /value="agreement"/);
     const invoice = readFileSync(resolve("components/invoices/invoice-detail.tsx"), "utf8");

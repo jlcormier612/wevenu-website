@@ -6,26 +6,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Calendar,
   Clock,
   FileDown,
-  MessageSquare,
   Pencil,
   Printer,
   Users,
-  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateEventStatusAction, returnClientToBookedAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
-import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
-import { EventReadinessCard } from "@/components/events/event-readiness-card";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
-import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
-import { BookingSetupCard } from "@/components/events/booking-setup-card";
-import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
+import { EventSetupPanel } from "@/components/events/event-setup-panel";
+import { NeedsAttentionList } from "@/components/events/needs-attention";
+import { selectOverviewExceptions, type EventSetupState, type SetupStepKey } from "@/lib/event-setup/state";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
@@ -42,12 +37,10 @@ import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
 import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { VenueSpace } from "@/lib/availability/types";
 import { BookingDocumentsTab } from "@/components/events/booking-documents-tab";
-import { RequestSummaryCard } from "@/components/events/request-summary-card";
 import { EventTaskList } from "@/components/playbooks/event-task-list";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import type { TimelineEntry, TimelineEntryAttachment, TimelineEntryLink, TimelineRelatedLink, TimelineSection } from "@/lib/timeline/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
-import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import { venueToday } from "@/lib/venue/timezone";
@@ -66,7 +59,7 @@ import type { ConversationMessage } from "@/lib/conversations/types";
 import type { ClientStatus } from "@/lib/clients/types";
 import { Button } from "@/components/ui/button";
 import {
-  Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle,
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/invoices/constants";
@@ -142,7 +135,7 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
 
 // ---- Event Date Hero (client-side for live countdown) ----------------------
 
-function EventHeroCard({ event }: { event: EventWithDetails }) {
+function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLine: string | null }) {
   const [countdown, setCountdown] = React.useState<string>("");
   React.useEffect(() => {
     const days = daysUntil(event.eventDate);
@@ -191,9 +184,15 @@ function EventHeroCard({ event }: { event: EventWithDetails }) {
               {event.endTime ? ` → ${formatTime(event.endTime)}` : ""}
             </span>
           )}
+          {spaceLine ? (
+            <>
+              {(event.startTime || event.guestCount != null) && <span className="text-border">·</span>}
+              <span className="whitespace-pre-line">{spaceLine}</span>
+            </>
+          ) : null}
           {event.guestCount != null && (
             <>
-              {event.startTime && <span className="text-border">·</span>}
+              {(event.startTime || spaceLine) && <span className="text-border">·</span>}
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
                 {event.guestCount.toLocaleString()} guests
@@ -271,7 +270,7 @@ export function EventDetail({
   spaceName = null,
   spaceAssignmentsDisplay = null,
   venueName = "Your venue",
-  clientStatus = null,
+  clientStatus: _clientStatus = null,
   contractTemplates = [],
   contracts = [],
   floorPlanTemplates = [],
@@ -293,7 +292,7 @@ export function EventDetail({
   bookingCommitmentInvoiceIds = [],
   linkedScheduleId = null,
   requestsByTaskId = {},
-  requests = [],
+  requests: _requests = [],
   readinessSummary,
   originatingLeadId = null,
   relationshipContact = null,
@@ -305,6 +304,8 @@ export function EventDetail({
   photoUrl = null,
   venueTimezone = null,
   contextualObservations = [],
+  eventSetup = { decisions: {}, collapsedAt: null },
+  applicableSetupSteps = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -394,6 +395,8 @@ export function EventDetail({
   photoUrl?: string | null;
   venueTimezone?: string | null;
   contextualObservations?: LuvObservation[];
+  eventSetup?: EventSetupState;
+  applicableSetupSteps?: SetupStepKey[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -449,8 +452,6 @@ export function EventDetail({
       else toast.error(result.message ?? "Could not update status.");
     });
   }
-
-  const multiDay = Boolean(event.eventEndDate && event.eventEndDate !== event.eventDate);
 
   return (
     <div className="space-y-5">
@@ -558,7 +559,10 @@ export function EventDetail({
       })()}
 
       {/* ── Event Date Hero ────────────────────────────────────────────── */}
-      <EventHeroCard event={event} />
+      <EventHeroCard
+        event={event}
+        spaceLine={spaceAssignmentsDisplay ?? spaceName}
+      />
 
       {/* ── Tabs ──────────────────────────────────────────────────────── */}
       {/* URL-hash addressable so an Interactive Planning Task can navigate
@@ -636,105 +640,69 @@ export function EventDetail({
 
         {/* ── Overview ──────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-4">
-          {bookingJourney && (
-            <BookingJourneyPanel
-              journey={bookingJourney}
-              packages={packagesWithItems}
-              leadId={originatingLeadId ?? undefined}
-              clientId={event.clientId ?? undefined}
-              eventId={event.id}
-              eventDate={event.eventDate}
-              venueTimezone={venueTimezone}
-              workspaceReturnTo={event.clientId ? `/clients/${event.clientId}` : undefined}
-            />
-          )}
+          <div id="requests-summary-card" />
           <ContextualLuvObservationsPanel observations={contextualObservations} />
-
-          <EventReadinessCard
-            summary={readinessSummary}
-            portalToken={portalToken}
-            onNavigateTab={(tab) => { setActiveTab(tab); window.location.hash = tab; }}
+          <EventSetupPanel
+            eventId={event.id}
+            clientId={event.clientId}
+            eventDate={event.eventDate}
+            eventName={event.name}
+            clientName={event.clientName}
+            eventType={event.eventType}
+            spaceId={event.spaceId}
+            eventStartTime={event.startTime}
+            hasTimeline={(event.timeline ?? []).length > 0}
+            state={eventSetup}
+            applicableSteps={applicableSetupSteps}
+            playbookTemplates={playbookTemplates}
+            playbookApplications={playbookApplications}
+            readinessByKind={readinessByKind}
+            timelineTemplates={timelineTemplates}
+            onNavigateTab={(tab) => {
+              if (tab === "questionnaires") {
+                setActiveTab("playbook");
+                window.location.hash = "questionnaires";
+                requestAnimationFrame(() => {
+                  document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+                return;
+              }
+              setActiveTab(tab);
+              window.location.hash = tab;
+            }}
           />
-          {clientStatus && (
-            <BookingOverviewSummary
-              clientName={event.clientName} eventType={event.eventType} eventDate={event.eventDate}
-              spaceName={spaceName} spaceAssignmentsDisplay={spaceAssignmentsDisplay}
-              guestCount={event.guestCount} guestCountSubmission={event.guestCountSubmission} clientStatus={clientStatus}
-              readinessByKind={readinessByKind}
-              invoices={invoices}
-              paymentScheduleLines={bookingJourney?.paymentLines ?? null}
-              timeline={event.timeline ?? []}
-              vendorAssignments={event.vendorAssignments} vendorRecommendations={vendorRecommendations}
-              conversationMessages={conversationMessages}
-              documents={documents}
-              contact={relationshipContact}
-            />
-          )}
-          {event.clientId && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Client portal</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PortalLinkWidget
-                  clientId={event.clientId}
-                  coupleName={event.clientName?.trim() || "your client"}
-                />
-              </CardContent>
-            </Card>
-          )}
-          <div id="requests-summary-card">
-            <RequestSummaryCard requests={requests} />
-          </div>
-          <BookingSetupCard
-            eventId={event.id} clientId={event.clientId} eventDate={event.eventDate} eventName={event.name}
-            clientName={event.clientName} eventType={event.eventType}
-            templates={playbookTemplates} applications={playbookApplications} readinessByKind={readinessByKind}
-            onApplied={() => router.refresh()}
+          <NeedsAttentionList
+            items={selectOverviewExceptions(readinessSummary.sections, questionnaires)}
+            onOpen={(item) => {
+              const { nav } = item;
+              if (nav.kind === "tab") {
+                if (nav.tab === "questionnaires") {
+                  setActiveTab("playbook");
+                  window.location.hash = "questionnaires";
+                  requestAnimationFrame(() => {
+                    document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  });
+                  return;
+                }
+                setActiveTab(nav.tab);
+                window.location.hash = nav.tab;
+              } else if (nav.kind === "link") {
+                router.push(nav.href);
+              } else if (nav.kind === "portal") {
+                if (!portalToken) return;
+                window.open(`/p/${portalToken}#${nav.section}`, "_blank", "noopener,noreferrer");
+              } else if (nav.kind === "scroll") {
+                document.getElementById(nav.elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
           />
-          <TimelineSetupCard
-            eventId={event.id} eventType={event.eventType} spaceId={event.spaceId} eventStartTime={event.startTime}
-            templates={timelineTemplates} hasTimeline={(event.timeline ?? []).length > 0}
-            onApplied={() => router.refresh()}
-          />
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Event information</CardTitle>
-              <CardAction>
-                <Link href={`/events/${event.id}/edit`} className="text-xs font-medium text-primary hover:underline">
-                  Edit
-                </Link>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {[
-                  { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },
-                  { icon: Clock, label: multiDay ? "Overall start" : "Start", value: formatTime(event.startTime) },
-                  { icon: Clock, label: multiDay ? "Overall end" : "End", value: formatTime(event.endTime) },
-                  { icon: Wrench, label: "Setup", value: formatTime(event.setupTime) },
-                  { icon: Wrench, label: "Teardown", value: formatTime(event.teardownTime) },
-                  { icon: Users, label: "Guests", value: event.guestCount != null ? `${event.guestCount.toLocaleString()}` : null },
-                ].filter((r) => r.value).map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{label}</p>
-                      <p className="text-sm font-medium text-foreground">{value}</p>
-                    </div>
-                  </div>
-                ))}
-                {!event.startTime && !event.guestCount && (
-                  <p className="text-sm text-muted-foreground">
-                    No schedule details yet.{" "}
-                    <Link href={`/events/${event.id}/edit`} className="font-medium text-primary hover:underline">
-                      Add details →
-                    </Link>
-                  </p>
-                )}
-            </CardContent>
-          </Card>
+          {relationshipContact ? (
+            <p className="text-sm text-muted-foreground">
+              <Link href={`/clients/${relationshipContact.clientId}/edit`} className="font-medium text-primary hover:underline">
+                Edit contact
+              </Link>
+            </p>
+          ) : null}
         </TabsContent>
 
         {/* ── Playbook ─────────────────────────────────────────────── */}

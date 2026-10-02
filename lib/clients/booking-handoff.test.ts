@@ -158,7 +158,7 @@ describe("booked page — conversion and copy seams", () => {
     assert.match(page, /clientHasEmail/);
     assert.match(page, /getEventPlaybookApplications/);
     assert.match(page, /getTemplates/);
-    assert.match(celebration, /PreparePlanningPanel/);
+    assert.doesNotMatch(celebration, /PreparePlanningPanel/);
     assert.match(celebration, /FinancialReadinessPanel/);
     assert.match(celebration, /EventExperienceReviewPanel/);
     assert.match(celebration, /CommunicationsReviewPanel/);
