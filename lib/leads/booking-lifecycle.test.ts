@@ -75,11 +75,15 @@ describe("Sales → Booking lifecycle product rules", () => {
     );
   });
 
-  it("UI exposes Return to Booked through the same transition", () => {
-    assert.match(detail, /Return to Booked/);
-    assert.match(detail, /same booking transition/i);
+  it("UI exposes Mark as Booked through the same bookClient transition", () => {
+    assert.match(detail, /Mark as Booked/);
+    assert.match(detail, /Mark as Booked\?/);
+    assert.match(detail, /open the client workspace/i);
+    assert.doesNotMatch(detail, /Return to Booked/);
+    assert.doesNotMatch(detail, /Open booking file →/);
     assert.match(actions, /returnLeadToBookedAction/);
     assert.match(actions, /moveLeadBackToSalesPipelineAction/);
+    assert.match(actions, /redirect\(`\/clients\/\$\{result\.clientId\}\/booked/);
   });
 
   it("pipeline board confirms Mark as Booked before the canonical transition", () => {

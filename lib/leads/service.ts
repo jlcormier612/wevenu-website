@@ -777,26 +777,30 @@ export async function leaveActiveBookedPipeline(
 }
 
 /**
- * Return a previously converted relationship to Booked.
+ * Mark a previously linked relationship as Booked.
  * Requires an existing linked client — does not create a new client/event.
  * An already-active Booked lead is a no-op. A cancelled relationship
  * (even if sales_stage was left on booked) calls bookClient.
+ * Same canonical bookClient transition as pipeline Mark as Booked.
  */
-export async function returnLeadToBooked(leadId: string): Promise<LeadActionResult> {
+export async function returnLeadToBooked(leadId: string): Promise<
+  | { ok: true; clientId: string; eventId: string | null; newlyBooked: boolean }
+  | { ok: false; message: string }
+> {
   const result = await withVenue(async (supabase, venueId) => {
     const { data: row } = await supabase.from("leads").select("sales_stage")
       .eq("id", leadId).eq("venue_id", venueId)
       .maybeSingle<{ sales_stage: string | null }>();
-    if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
+    if (!row) return { ok: false as const, message: "Lead not found." };
 
     const { data: linked } = await supabase.from("clients").select("id")
       .eq("lead_id", leadId).eq("venue_id", venueId)
       .maybeSingle<{ id: string }>();
     if (!linked) {
       return {
-        ok: false,
+        ok: false as const,
         message: "There is no client linked to this inquiry yet. Create a contract or set up payments from Commercial first, or start the booking file.",
-      } as LeadActionResult;
+      };
     }
 
     if (row.sales_stage === "booked") {
@@ -807,7 +811,12 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
         .limit(1)
         .maybeSingle<{ id: string }>();
       if (!cancelledEvent) {
-        return { ok: true } as LeadActionResult;
+        return {
+          ok: true as const,
+          clientId: linked.id,
+          eventId: null,
+          newlyBooked: false,
+        };
       }
     }
 
@@ -818,10 +827,17 @@ export async function returnLeadToBooked(leadId: string): Promise<LeadActionResu
       leadId,
       source: "manual",
     });
-    if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;
-    return { ok: true } as LeadActionResult;
+    if (!booked.ok) return { ok: false as const, message: booked.message };
+    return {
+      ok: true as const,
+      clientId: linked.id,
+      eventId: booked.eventId ?? null,
+      newlyBooked: booked.newlyBooked,
+    };
   });
-  return result as LeadActionResult;
+  return result as
+    | { ok: true; clientId: string; eventId: string | null; newlyBooked: boolean }
+    | { ok: false; message: string };
 }
 
 /**

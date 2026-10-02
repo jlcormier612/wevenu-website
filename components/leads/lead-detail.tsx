@@ -243,15 +243,19 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
-  function confirmReturnToBooked() {
+  function confirmMarkAsBooked() {
     setConfirmReturnBookedOpen(false);
     startLifecycle(async () => {
       const result = await returnLeadToBookedAction(lead.id);
-      if (result.ok) {
-        toast.success("Returned to Booked.");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not return to Booked.");
+      // newlyBooked → server redirect to Client celebration workspace
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not mark this relationship Booked.");
+        return;
+      }
+      if (!result.newlyBooked) {
+        toast.success("Already booked.");
+        router.push(`/clients/${result.clientId}`);
+        return;
       }
     });
   }
@@ -406,12 +410,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       />
       <LeadLifecycleConfirmDialog
         open={confirmReturnBookedOpen}
-        title="Return to Booked?"
-        description="This runs the same booking transition as Mark as Booked. The existing client, event, documents, messages, and payments stay in place. They return directly to Booked."
-        confirmLabel="Return to Booked"
+        title="Mark as Booked?"
+        description="This will move this relationship from Leads to Booked and open the client workspace. Your existing contract, event details, documents, messages, and payments will stay in place."
+        confirmLabel="Mark as Booked"
         confirming={lifecyclePending}
         onCancel={() => setConfirmReturnBookedOpen(false)}
-        onConfirm={confirmReturnToBooked}
+        onConfirm={confirmMarkAsBooked}
       />
       <LostReasonDialog
         open={lostMove != null}
@@ -624,15 +628,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               disabled={lifecyclePending}
               onClick={() => setConfirmReturnBookedOpen(true)}
             >
-              Return to Booked
+              Mark as Booked
             </Button>
           )}
-          {previouslyConverted ? (
-            <Button size="sm" variant={isBookingStarted || currentStage === "lost" ? "default" : "outline"}
-              render={<Link href={`/clients/${lead.linkedClientId}`} />}>
-              Open booking file →
-            </Button>
-          ) : currentStage !== "lost" ? (
+          {!previouslyConverted && currentStage !== "lost" ? (
             <Button
               size="sm"
               disabled={convertPending || convertBlocked || (!!lead.eventDate && eventDateBlocked)}

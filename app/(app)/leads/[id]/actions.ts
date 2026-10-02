@@ -146,13 +146,22 @@ export async function moveLeadBackToSalesPipelineAction(
 
 export async function returnLeadToBookedAction(
   leadId: string,
-): Promise<LeadActionResult> {
+): Promise<
+  | { ok: true; clientId: string; eventId: string | null; newlyBooked: boolean }
+  | { ok: false; message: string }
+> {
   const result = await returnLeadToBooked(leadId);
   if (result.ok) {
     revalidateLead(leadId);
     revalidatePath(`/clients`);
     revalidatePath("/calendar");
+    if (result.eventId) revalidatePath(`/events/${result.eventId}`);
     void refreshLeadScore(leadId).catch(() => {});
+    // Same celebration handoff as confirmPipelineBookedMoveAction.
+    if (result.newlyBooked) {
+      const qs = result.eventId ? `?eventId=${encodeURIComponent(result.eventId)}` : "";
+      redirect(`/clients/${result.clientId}/booked${qs}`);
+    }
   }
   return result;
 }
