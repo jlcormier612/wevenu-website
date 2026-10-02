@@ -224,6 +224,36 @@ export function CommercialBookingPrefsSection({
 
       <section className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Invoice adjustments
+        </p>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={prefs.useTaxes}
+            onChange={(e) => setPrefs((p) => ({ ...p, useTaxes: e.target.checked }))}
+          />
+          <span>
+            <span className="font-medium text-heading">Use taxes</span>
+            <span className="block text-muted-foreground">Show a tax line on invoices. You enter the amount. Hello to Cheers does not calculate a tax rate.</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={prefs.useDiscounts}
+            onChange={(e) => setPrefs((p) => ({ ...p, useDiscounts: e.target.checked }))}
+          />
+          <span>
+            <span className="font-medium text-heading">Use discounts</span>
+            <span className="block text-muted-foreground">Show a discount line on invoices.</span>
+          </span>
+        </label>
+      </section>
+
+      <section className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Remaining balance
         </p>
         <div className="space-y-2">

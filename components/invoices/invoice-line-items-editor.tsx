@@ -53,12 +53,13 @@ function LineItemRow({
 }
 
 export function InvoiceLineItemsEditor({
-  invoiceId, initialItems, packages, invoiceStatus,
+  invoiceId, initialItems, packages, invoiceStatus, lineTypes = LINE_ITEM_TYPES,
 }: {
   invoiceId: string;
   initialItems: InvoiceLineItem[];
   packages: Package[];
   invoiceStatus: string;
+  lineTypes?: { value: InvoiceLineItemType; label: string }[];
 }) {
   // See lib/hooks/use-synced-state.ts — the invoice-status control on this
   // same page calls router.refresh() on status change, and Event-Order-
@@ -161,10 +162,10 @@ export function InvoiceLineItemsEditor({
                   <Select
                     value={input.type}
                     onValueChange={(v) => setInput((p) => ({ ...p, type: v as InvoiceLineItemType, discountType: "fixed", discountValue: "", unitPrice: "" }))}
-                    items={LINE_ITEM_TYPES}
+                    items={lineTypes}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{LINE_ITEM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>{lineTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">

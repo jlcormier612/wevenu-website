@@ -33,6 +33,7 @@ import {
   recordScopeWantsLeadPipeline,
   type LuvObservationRecordScope,
 } from "@/lib/luv/observation-record-scope";
+import { tourFollowUpSuperseded } from "@/lib/luv/observation-supersession";
 import { buildPlanningWindowObservationsForEvent } from "@/lib/luv/planning-window-observations";
 import { computeEventTaskReadinessByKind } from "@/lib/playbooks/repository";
 import { computePaymentsReadiness } from "@/lib/readiness/compute";
@@ -55,6 +56,110 @@ import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 import { completedTourHoursAgo, tourOccurrenceIso } from "@/lib/tours/occurrence-clock";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Tour follow-up is only actionable while the relationship is still
+ * pre-agreement. A signed (or client-signed) contract, a received
+ * installment, or Booked/Lost supersedes it. A lead we cannot load is
+ * omitted — validity cannot be established.
+ */
+async function leadsWhoseTourFollowUpIsStale(
+  supabase: DbClient,
+  venueId: string,
+  leadIds: Array<string | null>,
+): Promise<Set<string>> {
+  const ids = [...new Set(leadIds.filter((id): id is string => Boolean(id)))];
+  const stale = new Set<string>();
+  if (ids.length === 0) return stale;
+
+  const { data: leads } = await supabase
+    .from("leads")
+    .select("id, sales_stage")
+    .eq("venue_id", venueId)
+    .in("id", ids);
+
+  const known = new Set<string>();
+  const stageByLead = new Map<string, string | null>();
+  for (const lead of (leads ?? []) as { id: string; sales_stage: string | null }[]) {
+    known.add(lead.id);
+    stageByLead.set(lead.id, lead.sales_stage);
+  }
+  for (const id of ids) {
+    if (!known.has(id)) stale.add(id);
+  }
+
+  const { data: clients } = await supabase
+    .from("clients")
+    .select("id, lead_id")
+    .eq("venue_id", venueId)
+    .in("lead_id", ids);
+  const clientRows = (clients ?? []) as { id: string; lead_id: string | null }[];
+  const clientIds = clientRows.map((c) => c.id);
+  const signedClientIds = new Set<string>();
+  const paidClientIds = new Set<string>();
+
+  if (clientIds.length > 0) {
+    const { data: contracts } = await supabase
+      .from("contracts")
+      .select("id, client_id, status, contract_signers(signer_type, signed_at)")
+      .eq("venue_id", venueId)
+      .in("client_id", clientIds)
+      .in("status", ["sent", "signed"]);
+    for (const row of (contracts ?? []) as {
+      client_id: string | null;
+      status: string;
+      contract_signers: { signer_type: string; signed_at: string | null }[] | { signer_type: string; signed_at: string | null } | null;
+    }[]) {
+      if (!row.client_id) continue;
+      const signers = Array.isArray(row.contract_signers)
+        ? row.contract_signers
+        : row.contract_signers
+          ? [row.contract_signers]
+          : [];
+      const clientSigned = signers.some((s) => s.signer_type === "client" && s.signed_at != null);
+      if (row.status === "signed" || clientSigned) signedClientIds.add(row.client_id);
+    }
+
+    const { data: schedules } = await supabase
+      .from("payment_schedules")
+      .select("client_id, payment_line_items(status)")
+      .eq("venue_id", venueId)
+      .in("client_id", clientIds);
+    for (const row of (schedules ?? []) as {
+      client_id: string | null;
+      payment_line_items: { status: string }[] | { status: string } | null;
+    }[]) {
+      if (!row.client_id) continue;
+      const lines = Array.isArray(row.payment_line_items)
+        ? row.payment_line_items
+        : row.payment_line_items
+          ? [row.payment_line_items]
+          : [];
+      if (lines.some((l) => l.status === "paid")) paidClientIds.add(row.client_id);
+    }
+  }
+
+  const clientsByLead = new Map<string, string[]>();
+  for (const c of clientRows) {
+    if (!c.lead_id) continue;
+    const list = clientsByLead.get(c.lead_id) ?? [];
+    list.push(c.id);
+    clientsByLead.set(c.lead_id, list);
+  }
+
+  for (const id of ids) {
+    if (stale.has(id)) continue;
+    const related = clientsByLead.get(id) ?? [];
+    if (tourFollowUpSuperseded({
+      salesStage: stageByLead.get(id) ?? null,
+      contractSigned: related.some((cid) => signedClientIds.has(cid)),
+      paymentReceived: related.some((cid) => paidClientIds.has(cid)),
+    })) {
+      stale.add(id);
+    }
+  }
+  return stale;
+}
 
 /** Friendly day-count phrasing. */
 function inDays(iso: string): string {
@@ -1034,7 +1139,16 @@ export async function getLuvObservations(
   // patched: keeping both would be redundant with that celebration anyway.
 
   // ── Completed tours without follow-up ────────────────────────────────────
-  // The 48 hours after a tour determines conversion. Surface immediately.
+  // Useful only while the relationship is still pre-agreement. Signed,
+  // Booked, or paid facts supersede this observation.
+  const staleTourFollowUpLeads = await leadsWhoseTourFollowUpIsStale(
+    supabase,
+    venueId,
+    ((completedNoFollowUpRes.data ?? []) as { lead_id: string | null }[])
+      .concat((noShowRes.data ?? []) as { lead_id: string | null }[])
+      .map((t) => t.lead_id),
+  );
+
   for (const tour of (completedNoFollowUpRes.data ?? []) as {
     id: string;
     scheduled_at: string | null;
@@ -1043,6 +1157,7 @@ export async function getLuvObservations(
     contact_name: string | null;
     lead_id: string | null;
   }[]) {
+    if (!tour.lead_id || staleTourFollowUpLeads.has(tour.lead_id)) continue;
     const occurrence = tourOccurrenceIso(tour);
     if (!occurrence) continue;
     const hoursAgo = completedTourHoursAgo(occurrence);
@@ -1063,6 +1178,7 @@ export async function getLuvObservations(
 
   // ── No-show tours ─────────────────────────────────────────────────────────
   for (const tour of (noShowRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
+    if (!tour.lead_id || staleTourFollowUpLeads.has(tour.lead_id)) continue;
     const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-no-show-${tour.id}`,

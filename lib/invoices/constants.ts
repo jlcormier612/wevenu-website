@@ -88,3 +88,19 @@ export function computeInvoiceTotals(lineItems: { type: InvoiceLineItemType; amo
   }
   return { subtotal, discountAmount, taxAmount, total: subtotal - discountAmount + taxAmount };
 }
+
+/** Amount remaining after discounts/deposits, before an explicit tax line. */
+export function taxableAmountBeforeTax(subtotal: number, discountAmount: number): number {
+  return Math.max(0, subtotal - discountAmount);
+}
+
+/** Hide tax/discount line types unless the venue turned them on. Existing lines still render. */
+export function invoiceLineTypesForVenue(
+  prefs: { useTaxes?: boolean; useDiscounts?: boolean },
+): { value: InvoiceLineItemType; label: string }[] {
+  return LINE_ITEM_TYPES.filter((t) => {
+    if (t.value === "tax" && !prefs.useTaxes) return false;
+    if (t.value === "discount" && !prefs.useDiscounts) return false;
+    return true;
+  });
+}

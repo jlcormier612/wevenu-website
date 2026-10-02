@@ -47,8 +47,8 @@ import {
   validateMarkPaidInput,
   validateScheduleInput,
 } from "@/lib/payments/validation";
-import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
-import { venueToday } from "@/lib/venue/timezone";
+import { selectCurrentUnpaidInstallment } from "@/lib/payments/manual-installment";
+import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 
@@ -496,6 +496,74 @@ export async function updateLineItem_(itemId: string, scheduleId: string, input:
     return { ok: true } as PaymentActionResult;
   });
   return result as PaymentActionResult;
+}
+
+/**
+ * Record the invoice's current unpaid installment as received offline.
+ * Persists through markLineItemPaid (status, paid_amount, payment_method)
+ * and reconcileInvoiceBalance. Does not write a Stripe id.
+ */
+export async function recordInvoiceInstallmentReceived(
+  invoiceId: string,
+): Promise<PaymentActionResult> {
+  const lookup = await withVenue(async (supabase, venueId) => {
+    const { data: schedule } = await supabase.from("payment_schedules")
+      .select("id")
+      .eq("invoice_id", invoiceId)
+      .eq("venue_id", venueId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    if (!schedule) {
+      return { ok: false as const, message: "This invoice has no payment schedule to record against." };
+    }
+    const { data: lines } = await supabase.from("payment_line_items")
+      .select("id, status, due_date, amount, stripe_payment_intent_id")
+      .eq("schedule_id", schedule.id)
+      .eq("venue_id", venueId);
+    const picked = selectCurrentUnpaidInstallment(
+      ((lines ?? []) as Array<{
+        id: string;
+        status: string;
+        due_date: string | null;
+        amount: number;
+        stripe_payment_intent_id: string | null;
+      }>).map((l) => ({
+        id: l.id,
+        status: l.status,
+        dueDate: l.due_date,
+        amount: Number(l.amount),
+        stripePaymentIntentId: l.stripe_payment_intent_id,
+      })),
+    );
+    if (!picked) {
+      return { ok: false as const, message: "No unpaid installment is waiting to be recorded." };
+    }
+    const tz = await getVenueTimezone(supabase, venueId);
+    return {
+      ok: true as const,
+      scheduleId: schedule.id,
+      itemId: picked.id,
+      paidAmount: picked.amount.toFixed(2),
+      paidDate: venueToday(tz),
+    };
+  });
+
+  if (!lookup || !("ok" in lookup)) {
+    return { ok: false, message: "Could not record this payment." };
+  }
+  if (!lookup.ok) return lookup;
+  if (!("itemId" in lookup)) {
+    return { ok: false, message: "Could not record this payment." };
+  }
+
+  return markLineItemPaid(lookup.itemId, lookup.scheduleId, {
+    paidAmount: lookup.paidAmount,
+    paymentMethod: "other",
+    referenceNumber: "",
+    paidDate: lookup.paidDate,
+    notes: "Recorded manually (offline collection).",
+  });
 }
 
 export async function markLineItemPaid(itemId: string, scheduleId: string, input: MarkPaidInput): Promise<PaymentActionResult> {

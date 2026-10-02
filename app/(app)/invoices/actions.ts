@@ -13,6 +13,7 @@ import {
   updateInvoiceDisplayName,
   updateInvoiceStatus,
 } from "@/lib/invoices/service";
+import { recordInvoiceInstallmentReceived } from "@/lib/payments/service";
 import type {
   AddLineItemResult,
   CreateInvoiceResult,
@@ -282,4 +283,22 @@ export async function previewInvoiceDocumentCopyAction(
     return { ok: false, message: "Could not prepare this invoice and payment plan." };
   }
   return { ok: true, preview: result.preview };
+}
+
+/** Record the current unpaid installment as received offline. Does not flip invoice status on its own. */
+export async function recordInvoiceInstallmentReceivedAction(
+  invoiceId: string,
+): Promise<InvoiceActionResult> {
+  const result = await recordInvoiceInstallmentReceived(invoiceId);
+  if (!result.ok) {
+    const message = "message" in result && result.message
+      ? result.message
+      : "Could not record this payment.";
+    return { ok: false, message };
+  }
+  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/invoices");
+  revalidatePath("/payments");
+  revalidatePath("/clients");
+  return { ok: true };
 }

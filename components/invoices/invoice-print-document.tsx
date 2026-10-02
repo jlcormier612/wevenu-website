@@ -4,7 +4,7 @@
  * Presentation polish only — totals come from the canonical invoice / payment system.
  */
 
-import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel } from "@/lib/invoices/constants";
+import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel, taxableAmountBeforeTax } from "@/lib/invoices/constants";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import {
   customerFacingPaymentInstructions,
@@ -255,6 +255,12 @@ export function InvoicePrintDocument({
               <div className="flex justify-between text-green-700">
                 <span>Adjustments</span>
                 <span>−{formatCurrency(invoice.discountAmount)}</span>
+              </div>
+            )}
+            {hasTax && (
+              <div className="flex justify-between text-gray-700">
+                <span>Taxable amount</span>
+                <span>{formatCurrency(taxableAmountBeforeTax(invoice.subtotal, invoice.discountAmount))}</span>
               </div>
             )}
             {hasTax && (

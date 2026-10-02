@@ -56,6 +56,10 @@ export type VenueCommercialBookingPrefs = {
    * Per-booking schedules remain editable — this is not an immutable rule.
    */
   defaultCustomSchedule: CustomScheduleTemplate | null;
+  /** Venue wants tax lines on invoices. Amounts are entered; no rate is assumed. */
+  useTaxes: boolean;
+  /** Venue wants discount lines on invoices. */
+  useDiscounts: boolean;
 };
 
 export const DEFAULT_COMMERCIAL_BOOKING_PREFS: VenueCommercialBookingPrefs = {
@@ -68,6 +72,8 @@ export const DEFAULT_COMMERCIAL_BOOKING_PREFS: VenueCommercialBookingPrefs = {
   remainingBalanceMode: "final",
   defaultSchedulePresetId: null,
   defaultCustomSchedule: null,
+  useTaxes: false,
+  useDiscounts: false,
 };
 
 function asString(v: unknown): string | null {
@@ -152,6 +158,8 @@ export function normalizeCommercialBookingPrefs(
     remainingBalanceMode: remaining,
     defaultSchedulePresetId,
     defaultCustomSchedule,
+    useTaxes: asBool(src.useTaxes, DEFAULT_COMMERCIAL_BOOKING_PREFS.useTaxes),
+    useDiscounts: asBool(src.useDiscounts, DEFAULT_COMMERCIAL_BOOKING_PREFS.useDiscounts),
   };
 }
 

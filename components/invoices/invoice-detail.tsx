@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import {
   previewInvoiceAndPaymentPlanAction,
+  recordInvoiceInstallmentReceivedAction,
   sendInvoiceAndPaymentPlanAction,
   updateInvoiceDisplayNameAction,
   updateInvoiceStatusAction,
@@ -31,7 +32,7 @@ import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency, invoiceStatusLabel } from "@/lib/invoices/constants";
+import { formatCurrency, invoiceLineTypesForVenue, invoiceStatusLabel, taxableAmountBeforeTax } from "@/lib/invoices/constants";
 import {
   planTotalsReconcile,
   scheduleHasPaymentActivity,
@@ -229,6 +230,16 @@ export function InvoiceDetail({
 
   function handleStatusChange(next: InvoiceStatus) {
     startTransition(async () => {
+      if (next === "paid" && linkedScheduleId) {
+        const recorded = await recordInvoiceInstallmentReceivedAction(invoice.id);
+        if (recorded.ok) {
+          toast.success("Payment recorded.");
+          router.refresh();
+        } else {
+          toast.error(recorded.message ?? "Could not record this payment.");
+        }
+        return;
+      }
       const result = await updateInvoiceStatusAction(invoice.id, next);
       if (result.ok) { setStatus(next); toast.success(`Invoice marked as ${invoiceStatusLabel(next)}.`); router.refresh(); }
       else toast.error(result.message ?? "Could not update status.");
@@ -254,7 +265,11 @@ export function InvoiceDetail({
             ? null
             : transition && (
           <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
-            {pending ? "Updating…" : transition.label}
+            {pending
+              ? "Updating…"
+              : transition.next === "paid" && linkedScheduleId
+                ? "Record payment received"
+                : transition.label}
           </Button>
             )
         }
@@ -448,6 +463,7 @@ export function InvoiceDetail({
             initialItems={invoice.lineItems}
             packages={packages}
             invoiceStatus={status}
+            lineTypes={invoiceLineTypesForVenue(venue.commercialBookingPrefs)}
           />
         </CardContent>
       </Card>
@@ -465,6 +481,12 @@ export function InvoiceDetail({
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Discounts / Deposits</dt>
                   <dd className="font-medium text-success">−{formatCurrency(invoice.discountAmount)}</dd>
+                </div>
+              )}
+              {invoice.taxAmount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Taxable amount</dt>
+                  <dd className="font-medium">{formatCurrency(taxableAmountBeforeTax(invoice.subtotal, invoice.discountAmount))}</dd>
                 </div>
               )}
               {invoice.taxAmount > 0 && (
