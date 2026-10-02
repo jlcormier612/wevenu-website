@@ -27,6 +27,10 @@ import {
   type CustomerFacingInquiryContext,
 } from "@/lib/luv/customer-facing-inquiry-context";
 import {
+  completedTourDraftAllowed,
+  evaluateCompletedTour,
+} from "@/lib/luv/completed-tour-intelligence";
+import {
   classifyFollowUpTourState,
   deriveFollowUpProhibitions,
   deriveFollowUpWorkflowIntent,
@@ -63,6 +67,9 @@ export type FollowUpVerifiedFacts = {
    * Defaults to { kind: "none" } when omitted (tests / callers without a tour read).
    */
   tour?: FollowUpTourState;
+  /** Specific unresolved purpose. Completed tours with none must not draft. */
+  communicationPurpose?: "unresolved_question" | "explicit_request" | "none";
+  communicationExcerpt?: string | null;
 };
 
 type DraftRow = {
@@ -122,6 +129,7 @@ export function buildFollowUpPrompt(
   const workflowIntent: FollowUpWorkflowIntent = deriveFollowUpWorkflowIntent({
     tour,
     nextActionText: lead.nextActionText,
+    communicationPurpose: verified.communicationPurpose,
   });
   const prohibitions = deriveFollowUpProhibitions({
     tour,
@@ -181,6 +189,21 @@ export function buildFollowUpPrompt(
   if (prohibitions.claimProposalSent) {
     prohibitionLines.push(
       "- Do not claim a proposal was sent.",
+    );
+  }
+  if (workflowIntent === "no_outreach") {
+    prohibitionLines.push(
+      "- Do not write a customer email. There is no legitimate communication purpose.",
+    );
+  }
+  if (workflowIntent === "answer_questions") {
+    prohibitionLines.push(
+      "- Do not write a generic tour thank-you or 'follow up while it's fresh' message.",
+    );
+  }
+  if (verified.communicationExcerpt) {
+    workflowFactLines.push(
+      `- Unresolved customer wording (shareable only): "${verified.communicationExcerpt}"`,
     );
   }
 
@@ -300,14 +323,53 @@ async function loadFollowUpTourState(
 ): Promise<FollowUpTourState> {
   const { data } = await supabase
     .from("tour_appointments")
-    .select("scheduled_at, status, completed_at")
+    .select("scheduled_at, status, completed_at, follow_up_sent_at, actual_occurred_at")
     .eq("venue_id", venueId)
     .eq("lead_id", leadId)
     .order("scheduled_at", { ascending: false })
     .limit(10);
-  return classifyFollowUpTourState(
-    (data ?? []) as { scheduled_at: string; status: string; completed_at: string | null }[],
-  );
+  const rows = (data ?? []) as {
+    scheduled_at: string;
+    status: string;
+    completed_at: string | null;
+    follow_up_sent_at: string | null;
+    actual_occurred_at: string | null;
+  }[];
+  return {
+    tour: classifyFollowUpTourState(rows),
+    followUpSentAt: rows.find((r) => r.status === "completed")?.follow_up_sent_at ?? null,
+    occurredAt:
+      rows.find((r) => r.status === "completed")?.actual_occurred_at
+      ?? rows.find((r) => r.status === "completed")?.completed_at
+      ?? rows.find((r) => r.status === "completed")?.scheduled_at
+      ?? null,
+  };
+}
+
+async function loadLeadThreadMessages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  relationshipId: string | null | undefined,
+): Promise<{ sentAt: string; senderType: string; channel: string | null; body: string | null }[]> {
+  if (!relationshipId) return [];
+  const { data: convs } = await supabase.from("conversations")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("relationship_id", relationshipId);
+  const convIds = (convs ?? []).map((c: { id: string }) => c.id);
+  if (convIds.length === 0) return [];
+  const { data: msgs } = await supabase.from("conversation_messages")
+    .select("sent_at, sender_type, channel, body")
+    .eq("venue_id", venueId)
+    .in("conversation_id", convIds);
+  return ((msgs ?? []) as {
+    sent_at: string; sender_type: string; channel: string | null; body: string | null;
+  }[]).map((m) => ({
+    sentAt: m.sent_at,
+    senderType: m.sender_type,
+    channel: m.channel,
+    body: m.body,
+  }));
 }
 
 // ---- Public service functions ---------------------------------------------
@@ -339,21 +401,47 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const [proposalSent, tour] = await Promise.all([
+    const [proposalSent, tourState, messages] = await Promise.all([
       loadProposalSentFact(supabase, venue.id, lead.id),
       loadFollowUpTourState(supabase, venue.id, lead.id),
+      loadLeadThreadMessages(supabase, venue.id, lead.relationshipId),
     ]);
+    const tour = tourState.tour;
     const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
+    let communicationPurpose: "unresolved_question" | "explicit_request" | "none" = "none";
+    let communicationExcerpt: string | null = null;
+    if (tour.kind === "completed") {
+      const decision = evaluateCompletedTour({
+        tourId: "draft",
+        leadId: lead.id,
+        contactName: [lead.firstName, lead.partnerFirstName].filter(Boolean).join(" and ") || null,
+        occurredAt: tourState.occurredAt ?? tour.completedAt ?? tour.scheduledAt,
+        followUpSentAt: tourState.followUpSentAt,
+        proposalSent,
+        messages,
+        inquiryMessage: lead.inquiryMessage,
+        inquiryOrigin,
+      });
+      if (!completedTourDraftAllowed(decision)) {
+        return { ok: false, message: "Nothing useful to draft for this relationship right now." };
+      }
+      communicationPurpose = decision.purpose;
+      communicationExcerpt = decision.excerpt;
+    }
     const workflowIntent = deriveFollowUpWorkflowIntent({
       tour,
       nextActionText: lead.nextActionText,
+      communicationPurpose,
     });
+    if (workflowIntent === "no_outreach") {
+      return { ok: false, message: "Nothing useful to draft for this relationship right now." };
+    }
     const prompt = buildFollowUpPrompt(
       lead,
       venue.name,
       ownerName,
       settings.preferredTone,
-      { proposalSent, inquiryOrigin, tour },
+      { proposalSent, inquiryOrigin, tour, communicationPurpose, communicationExcerpt },
     );
     const raw = await generateDraftText(prompt);
     const { subject, body } = parseEmailDraft(raw);
@@ -374,6 +462,7 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
           inquiryOrigin,
           tourKind: tour.kind,
           workflowIntent,
+          communicationPurpose,
         },
         status: "pending_review",
       })

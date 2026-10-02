@@ -1,6 +1,6 @@
 # Luv — pipeline stage is never authoritative evidence
 
-**Status:** IMPLEMENTED IN TREE — NOT GREEN  
+**Status:** NOT GREEN — stage lock stands; completed-tour canned follow-up retired in tree, awaiting exact-runtime browser proof  
 **Applies to:** coordinator observations AND customer-facing drafts  
 **Production:** untouched
 

@@ -47,12 +47,14 @@ import {
   buildS2EventPaymentObservation,
   buildS3UnattendedInquiryObservation,
 } from "@/lib/luv/contextual-signals";
+import { evaluateCompletedTour } from "@/lib/luv/completed-tour-intelligence";
 import { buildTourAllSetObservation, isCustomerFacingContactMessage } from "@/lib/luv/observation-quality";
+import { isAuthoritativeProposalSentRecord } from "@/lib/luv/pipeline-stage-evidence";
 import { getInvoices } from "@/lib/invoices/repository";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import type { Invoice } from "@/lib/invoices/types";
 import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
-import { completedTourHoursAgo, tourOccurrenceIso } from "@/lib/tours/occurrence-clock";
+import { tourOccurrenceIso } from "@/lib/tours/occurrence-clock";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -298,7 +300,7 @@ export async function getLuvObservations(
       ? onlyBusinessReporting(
         (() => {
           let q = supabase.from("leads")
-            .select("id, first_name, last_name, partner_first_name, created_at")
+            .select("id, first_name, last_name, partner_first_name, created_at, last_contacted_at")
             .eq("venue_id", venueId)
             .is("first_booked_at", null)
             .is("lost_at", null)
@@ -527,7 +529,8 @@ export async function getLuvObservations(
 
   // ── 6: New leads with no follow-up set ───────────────────────────────────
 
-  for (const lead of (newNoFollowUpRes.data ?? []) as { id: string; first_name: string; last_name: string; created_at: string }[]) {
+  for (const lead of (newNoFollowUpRes.data ?? []) as { id: string; first_name: string; last_name: string; created_at: string; last_contacted_at: string | null }[]) {
+    if (lead.last_contacted_at) continue;
     const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
     const days = daysAgo(lead.created_at);
     observations.push({
@@ -1053,31 +1056,102 @@ export async function getLuvObservations(
       .map((t) => t.lead_id),
   );
 
-  for (const tour of (completedNoFollowUpRes.data ?? []) as {
+  const completedTours = (completedNoFollowUpRes.data ?? []) as {
     id: string;
     scheduled_at: string | null;
     actual_occurred_at?: string | null;
     completed_at?: string | null;
     contact_name: string | null;
     lead_id: string | null;
-  }[]) {
+  }[];
+  const completedLeadIds = [...new Set(completedTours.map((t) => t.lead_id).filter(Boolean))] as string[];
+  const completedLeadMeta = new Map<string, {
+    relationshipId: string | null;
+    inquiryMessage: string | null;
+    inquiryOrigin: string | null;
+  }>();
+  const proposalSentByLead = new Set<string>();
+  const messagesByLead = new Map<string, { sentAt: string; senderType: string; channel: string | null; body: string | null }[]>();
+  if (completedLeadIds.length > 0) {
+    const { data: completedLeads } = await supabase.from("leads")
+      .select("id, relationship_id, inquiry_message, inquiry_message_origin")
+      .eq("venue_id", venueId)
+      .in("id", completedLeadIds);
+    for (const row of (completedLeads ?? []) as {
+      id: string; relationship_id: string | null; inquiry_message: string | null; inquiry_message_origin: string | null;
+    }[]) {
+      completedLeadMeta.set(row.id, {
+        relationshipId: row.relationship_id,
+        inquiryMessage: row.inquiry_message,
+        inquiryOrigin: row.inquiry_message_origin,
+      });
+    }
+    const { data: sentProposals } = await supabase.from("commercial_proposals")
+      .select("lead_id, status, offered_at")
+      .eq("venue_id", venueId)
+      .in("lead_id", completedLeadIds)
+      .eq("status", "sent")
+      .not("offered_at", "is", null);
+    for (const row of (sentProposals ?? []) as { lead_id: string | null; status: string; offered_at: string | null }[]) {
+      if (row.lead_id && isAuthoritativeProposalSentRecord({ status: row.status, offeredAt: row.offered_at })) {
+        proposalSentByLead.add(row.lead_id);
+      }
+    }
+    const relIds = [...new Set(
+      [...completedLeadMeta.values()].map((m) => m.relationshipId).filter(Boolean),
+    )] as string[];
+    if (relIds.length > 0) {
+      const { data: convs } = await supabase.from("conversations")
+        .select("id, relationship_id")
+        .eq("venue_id", venueId)
+        .in("relationship_id", relIds);
+      const convIds = (convs ?? []).map((c: { id: string }) => c.id);
+      const relByConv = new Map((convs ?? []).map((c: { id: string; relationship_id: string }) => [c.id, c.relationship_id]));
+      const leadByRel = new Map<string, string>();
+      for (const [leadId, meta] of completedLeadMeta) {
+        if (meta.relationshipId) leadByRel.set(meta.relationshipId, leadId);
+      }
+      if (convIds.length > 0) {
+        const { data: msgs } = await supabase.from("conversation_messages")
+          .select("conversation_id, sender_type, channel, body, sent_at")
+          .eq("venue_id", venueId)
+          .in("conversation_id", convIds);
+        for (const m of (msgs ?? []) as {
+          conversation_id: string; sender_type: string; channel: string | null; body: string | null; sent_at: string;
+        }[]) {
+          const rel = relByConv.get(m.conversation_id);
+          const leadId = rel ? leadByRel.get(rel) : undefined;
+          if (!leadId) continue;
+          const list = messagesByLead.get(leadId) ?? [];
+          list.push({
+            sentAt: m.sent_at,
+            senderType: m.sender_type,
+            channel: m.channel,
+            body: m.body,
+          });
+          messagesByLead.set(leadId, list);
+        }
+      }
+    }
+  }
+
+  for (const tour of completedTours) {
     if (!tour.lead_id || staleTourFollowUpLeads.has(tour.lead_id)) continue;
     const occurrence = tourOccurrenceIso(tour);
     if (!occurrence) continue;
-    const hoursAgo = completedTourHoursAgo(occurrence);
-    const name = tour.contact_name ?? "A prospective client";
-    observations.push({
-      id: `tour-no-followup-${tour.id}`,
-      kind: "risk",
-      priority: hoursAgo <= 24 ? "high" : "medium",
-      message: hoursAgo < 48
-        ? `${name} completed their tour ${hoursAgo}h ago — follow up while it's fresh.`
-        : `${name} completed their tour and hasn't received a follow-up yet.`,
-      detail: "Send a thank-you and keep momentum alive.",
-      link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",
-      actionLabel: "View Lead →",
-      recommendation: { label: "Ask Luv to draft a follow-up", link: tour.lead_id ? `/leads/${tour.lead_id}?luv=follow_up_email` : "/leads", type: "draft" },
+    const meta = completedLeadMeta.get(tour.lead_id);
+    const decision = evaluateCompletedTour({
+      tourId: tour.id,
+      leadId: tour.lead_id,
+      contactName: tour.contact_name,
+      occurredAt: occurrence,
+      proposalSent: proposalSentByLead.has(tour.lead_id),
+      messages: messagesByLead.get(tour.lead_id) ?? [],
+      inquiryMessage: meta?.inquiryMessage,
+      inquiryOrigin: meta?.inquiryOrigin,
     });
+    if (decision.mode === "silence") continue;
+    observations.push(decision.observation);
   }
 
   // ── No-show tours ─────────────────────────────────────────────────────────

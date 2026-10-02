@@ -111,7 +111,7 @@ describe("classifyFollowUpTourState", () => {
 });
 
 describe("deriveFollowUpWorkflowIntent / prohibitions", () => {
-  it("completed → never invite to schedule tour", () => {
+  it("completed → never invite to schedule tour; no automatic thank-you", () => {
     const tour = {
       kind: "completed" as const,
       scheduledAt: "2026-09-30T18:45:00Z",
@@ -119,11 +119,19 @@ describe("deriveFollowUpWorkflowIntent / prohibitions", () => {
     };
     assert.equal(
       deriveFollowUpWorkflowIntent({ tour, nextActionText: null }),
-      "acknowledge_completed_tour",
+      "no_outreach",
     );
     assert.equal(
       deriveFollowUpWorkflowIntent({ tour, nextActionText: "Follow up after tour" }),
-      "follow_recorded_next_action",
+      "no_outreach",
+    );
+    assert.equal(
+      deriveFollowUpWorkflowIntent({
+        tour,
+        nextActionText: null,
+        communicationPurpose: "unresolved_question",
+      }),
+      "answer_questions",
     );
     const p = deriveFollowUpProhibitions({ tour, proposalSent: false });
     assert.equal(p.inviteToScheduleTour, true);
@@ -176,7 +184,7 @@ describe("deriveFollowUpWorkflowIntent / prohibitions", () => {
 });
 
 describe("buildFollowUpPrompt — workflow contract", () => {
-  it("W1 Lucy-class: completed tour + next action; no schedule-tour menu", () => {
+  it("W1 Lucy-class: completed tour is not a thank-you trigger; no schedule-tour menu", () => {
     const prompt = buildFollowUpPrompt(
       lead({
         salesStage: "proposal_sent",
@@ -199,16 +207,13 @@ describe("buildFollowUpPrompt — workflow contract", () => {
     assert.match(prompt, /Tour: completed/);
     assert.match(prompt, /Follow up after tour/);
     assert.match(prompt, /Follow-up date: 2026-10-02/);
-    assert.match(prompt, /Primary intent: follow_recorded_next_action/);
+    assert.match(prompt, /Primary intent: no_outreach/);
     assert.match(prompt, /Do not invite them to schedule a first or another tour/);
     assert.match(prompt, /completed a venue tour/);
+    assert.doesNotMatch(prompt, /Primary intent: acknowledge_completed_tour/);
     assert.doesNotMatch(
       prompt,
       /Offer one gentle, specific next step \(schedule a tour, answer questions, arrange a call\)/,
-    );
-    assert.match(
-      prompt,
-      /Offer one gentle next step consistent with the application-provided workflow intent/,
     );
   });
 

@@ -17,7 +17,8 @@ export type FollowUpWorkflowIntent =
   | "follow_recorded_next_action"
   | "invite_to_schedule_tour"
   | "answer_questions"
-  | "gentle_check_in";
+  | "gentle_check_in"
+  | "no_outreach";
 
 export type FollowUpTourAppointmentRow = {
   scheduled_at: string;
@@ -74,13 +75,18 @@ export function classifyFollowUpTourState(
 export function deriveFollowUpWorkflowIntent(input: {
   tour: FollowUpTourState;
   nextActionText: string | null | undefined;
+  /** Specific unresolved purpose — completed tours do not default to thank-you. */
+  communicationPurpose?: "unresolved_question" | "explicit_request" | "none";
 }): FollowUpWorkflowIntent {
-  const next = input.nextActionText?.trim() || null;
-
   if (input.tour.kind === "completed") {
-    // Recorded next action may refine direction, but never opens a schedule-tour invite.
-    if (next) return "follow_recorded_next_action";
-    return "acknowledge_completed_tour";
+    if (
+      input.communicationPurpose === "unresolved_question"
+      || input.communicationPurpose === "explicit_request"
+    ) {
+      return "answer_questions";
+    }
+    // Next-action "Follow up after tour" is not a communication purpose.
+    return "no_outreach";
   }
   if (input.tour.kind === "upcoming") {
     return "reference_upcoming_tour";
@@ -115,7 +121,7 @@ export function deriveFollowUpProhibitions(input: {
 export function workflowIntentLabel(intent: FollowUpWorkflowIntent): string {
   switch (intent) {
     case "acknowledge_completed_tour":
-      return "Acknowledge the completed tour and offer helpful next steps (not scheduling a first/another tour).";
+      return "Acknowledge the completed tour only if a specific unresolved customer need requires it — never a generic thank-you.";
     case "reference_upcoming_tour":
       return "Reference the upcoming scheduled tour; do not ask them to schedule a first tour.";
     case "follow_recorded_next_action":
@@ -123,9 +129,11 @@ export function workflowIntentLabel(intent: FollowUpWorkflowIntent): string {
     case "invite_to_schedule_tour":
       return "A gentle invitation to schedule (or reschedule) a tour is an appropriate workflow direction.";
     case "answer_questions":
-      return "Offer to answer questions.";
+      return "Answer the specific unanswered customer question or request. Do not write a generic tour thank-you.";
     case "gentle_check_in":
       return "A gentle check-in is appropriate.";
+    case "no_outreach":
+      return "Do not write a customer email. Completing the tour is not itself a reason to reach out.";
   }
 }
 
