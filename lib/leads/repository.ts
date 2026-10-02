@@ -431,13 +431,25 @@ function mapTask(r: TaskRow): LeadTask {
 export async function getLeads(
   client: DbClient,
   venueId: string,
-  filters?: { q?: string; status?: string },
+  filters?: { q?: string; status?: string; includeArchived?: boolean },
 ): Promise<Lead[]> {
   let q = client.from("leads").select("*").eq("venue_id", venueId);
   if (filters?.status) q = q.eq("sales_stage", filters.status);
   if (filters?.q) {
     const term = `%${filters.q}%`;
     q = q.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},partner_first_name.ilike.${term},partner_last_name.ilike.${term}`);
+  }
+  // Active surfaces exclude archived relationships (relationship-level Archive).
+  if (!filters?.includeArchived) {
+    const { data: archived } = await client
+      .from("venue_customer_relationships")
+      .select("id")
+      .eq("venue_id", venueId)
+      .not("archived_at", "is", null);
+    const archivedIds = ((archived ?? []) as Array<{ id: string }>).map((r) => r.id);
+    if (archivedIds.length > 0) {
+      q = q.not("relationship_id", "in", `(${archivedIds.join(",")})`);
+    }
   }
   const { data, error } = await q.order("inquiry_date", { ascending: false }).order("created_at", { ascending: false });
   if (error) throw error;

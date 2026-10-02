@@ -359,6 +359,35 @@ export async function deleteLeadRecordAction(leadId: string) {
   return result;
 }
 
+/** Relationship-level Archive — not Delete. History remains. */
+export async function archiveLeadRelationshipAction(leadId: string) {
+  const { archiveRelationship } = await import("@/lib/relationships/archive");
+  const result = await archiveRelationship({ leadId });
+  if (result.ok) {
+    revalidatePath("/leads");
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/clients");
+    revalidatePath("/dashboard");
+    revalidatePath("/payments");
+    revalidatePath("/tasks");
+  }
+  return result;
+}
+
+export async function restoreLeadRelationshipAction(leadId: string) {
+  const { restoreRelationship } = await import("@/lib/relationships/archive");
+  const result = await restoreRelationship({ leadId });
+  if (result.ok) {
+    revalidatePath("/leads");
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/clients");
+    revalidatePath("/dashboard");
+    revalidatePath("/payments");
+    revalidatePath("/tasks");
+  }
+  return result;
+}
+
 export async function keepDuplicateSeparateAction(leadId: string) {
   const { keepDuplicateSeparate } = await import("@/lib/leads/duplicate-review");
   const result = await keepDuplicateSeparate(leadId);

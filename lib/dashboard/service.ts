@@ -76,7 +76,7 @@ type DashTaskRow = {
 };
 
 const LEAD_FOCUS_SELECT =
-  "id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, exclude_from_business_reporting";
+  "id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, exclude_from_business_reporting, relationship_id";
 
 const EMPTY_CLIENT_COUNTS = {
   all: 0,
@@ -164,6 +164,15 @@ export async function loadFocusPopulationLeads(
     `and(sales_stage.eq.new_inquiry,follow_up_date.is.null,created_at.lt.${cutoffIso})`,
   ].join(",");
 
+  const { data: archivedRels } = await supabase
+    .from("venue_customer_relationships")
+    .select("id")
+    .eq("venue_id", venueId)
+    .not("archived_at", "is", null);
+  const archivedRelationshipIds = new Set(
+    ((archivedRels ?? []) as Array<{ id: string }>).map((r) => r.id),
+  );
+
   const [followUpRes, tourRes] = await Promise.all([
     supabase
       .from("leads")
@@ -186,6 +195,8 @@ export async function loadFocusPopulationLeads(
 
   const byId = new Map<string, LeadRow>();
   for (const row of (followUpRes.data ?? []) as LeadRow[]) {
+    const relId = (row as { relationship_id?: string | null }).relationship_id;
+    if (relId && archivedRelationshipIds.has(relId)) continue;
     byId.set(row.id, row);
   }
 
@@ -206,6 +217,8 @@ export async function loadFocusPopulationLeads(
       .not("sales_stage", "in", TERMINAL_IN);
     if (tourLeadsError) throw tourLeadsError;
     for (const row of (tourLeads ?? []) as LeadRow[]) {
+      const relId = (row as { relationship_id?: string | null }).relationship_id;
+      if (relId && archivedRelationshipIds.has(relId)) continue;
       byId.set(row.id, row);
     }
   }

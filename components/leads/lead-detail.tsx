@@ -26,6 +26,7 @@ import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relati
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import type { PackageWithItems } from "@/lib/packages/types";
 import {
+  archiveLeadRelationshipAction,
   deleteLeadRecordAction,
   confirmPipelineBookedMoveAction,
   setLeadPlannedEventSpaceAction,
@@ -561,6 +562,26 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           >
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={lifecyclePending}
+            onClick={() => {
+              startLifecycle(async () => {
+                const result = await archiveLeadRelationshipAction(lead.id);
+                if (result.ok) {
+                  toast.success("Relationship archived. History is preserved.");
+                  router.push("/leads");
+                  router.refresh();
+                } else {
+                  toast.error(result.message ?? "Could not archive.");
+                }
+              });
+            }}
+          >
+            Archive
           </Button>
           <DeleteRecordButton
             kind="lead"
