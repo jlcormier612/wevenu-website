@@ -28,7 +28,7 @@ import { getLeadSpacePreferences } from "@/lib/leads/space-preferences-service";
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
 const LEAD_DETAIL_LOAD_TIMEOUT_MS = 45_000;
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string; setupPayments?: string }> };
 
 /** Canonical draft types Luv can auto-open from ?luv=… recommendation links. */
 const LUV_DRAFT_PARAMS = new Set(["follow_up_email", "follow_up_text", "next_steps", "timeline"]);
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { luv: luvParam } = await searchParams;
+  const { luv: luvParam, setupPayments } = await searchParams;
   const autoLuvDraft = normalizeAutoLuvDraft(luvParam);
 
   const page = await withTimeout(
@@ -138,6 +138,13 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       ? await getRelationshipPhotoForVenue(page.lead.relationshipId)
       : null;
 
+  const archiveState =
+    page.lead.relationshipId != null
+      ? await (await import("@/lib/relationships/archive")).getRelationshipArchiveState(
+          page.lead.relationshipId,
+        )
+      : null;
+
   // Computed server-side, not inside the client component — React Compiler
   // treats Date.now() as impure during render; see the identical pattern in
   // app/(app)/leads/page.tsx and app/(app)/clients/page.tsx.
@@ -146,6 +153,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
     <LeadDetail
       lead={page.lead}
       now={now}
+      relationshipArchived={Boolean(archiveState?.archivedAt)}
       holds={page.holds}
       spaces={page.spaces}
       maxSimultaneousEvents={effectiveMaxSimultaneousEvents(page.capacityRules)}
@@ -169,6 +177,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       contextualObservations={page.contextualObservations}
       spaceOperatingMode={page.spaceOperatingMode}
       spacePreferences={page.spacePreferences}
+      openSetupPayments={setupPayments === "1"}
     />
   );
 }

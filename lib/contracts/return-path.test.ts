@@ -1,11 +1,31 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
+import { greetingFirstName } from "@shared/relationships/normalize";
 import {
-  appendContractReturnTo,
+  BOOKING_JOURNEY_PAYMENTS_HASH,
   resolveContractBackNavigation,
+  resolveContractSetupPaymentsHref,
   safeContractReturnPath,
+  appendContractReturnTo,
 } from "@/lib/contracts/return-path";
+
+describe("signing confirmation uses greetingFirstName", () => {
+  it("derives first name from full legal name for the thank-you line", () => {
+    assert.equal(greetingFirstName({ fullName: "Kermit Frog" }), "Kermit");
+    assert.equal(greetingFirstName({ fullName: "Mary Jane Watson" }), "Mary");
+  });
+
+  it("SignForm greets with greetingFirstName and still submits the full name", () => {
+    const src = readFileSync(resolve("app/sign/[token]/sign-form.tsx"), "utf8");
+    assert.match(src, /greetingFirstName/);
+    assert.match(src, /Thank you, \{thankYouName\}/);
+    assert.match(src, /signContractAction\(token, name, consent\)/);
+    assert.doesNotMatch(src, /Thank you, \{name\}\./);
+  });
+});
 
 describe("safeContractReturnPath", () => {
   it("allows lead, client, contracts, and documents origins", () => {
@@ -40,6 +60,62 @@ describe("safeContractReturnPath", () => {
   });
 });
 
+describe("resolveContractSetupPaymentsHref — Fully Executed ≠ Booked", () => {
+  const leadId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const clientId = "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
+  it("pre-booking from lead returnTo → lead overview payment section", () => {
+    assert.equal(
+      resolveContractSetupPaymentsHref({
+        returnTo: `/leads/${leadId}`,
+        leadId,
+        clientId,
+        relationshipBooked: false,
+      }),
+      `/leads/${leadId}?setupPayments=1#${BOOKING_JOURNEY_PAYMENTS_HASH}`,
+    );
+  });
+
+  it("pre-booking with leadId and no returnTo → lead overview payment section", () => {
+    assert.equal(
+      resolveContractSetupPaymentsHref({
+        leadId,
+        clientId,
+        relationshipBooked: false,
+      }),
+      `/leads/${leadId}?setupPayments=1#${BOOKING_JOURNEY_PAYMENTS_HASH}`,
+    );
+  });
+
+  it("does not send pre-booking setup to the client workspace", () => {
+    const href = resolveContractSetupPaymentsHref({
+      leadId,
+      clientId,
+      relationshipBooked: false,
+    });
+    assert.ok(href);
+    assert.doesNotMatch(href!, /\/clients\//);
+  });
+
+  it("booked relationship → client workspace setupPayments", () => {
+    assert.equal(
+      resolveContractSetupPaymentsHref({
+        returnTo: `/leads/${leadId}`,
+        leadId,
+        clientId,
+        relationshipBooked: true,
+      }),
+      `/clients/${clientId}?setupPayments=1`,
+    );
+  });
+
+  it("Contract Detail uses resolveContractSetupPaymentsHref", () => {
+    const detail = readFileSync(resolve("components/contracts/contract-detail.tsx"), "utf8");
+    assert.match(detail, /resolveContractSetupPaymentsHref/);
+    assert.doesNotMatch(detail, /\/clients\/\$\{contract\.clientId\}\?setupPayments=1/);
+  });
+});
+
 describe("resolveContractBackNavigation", () => {
   it("Lead Documents origin returns to the lead overview", () => {
     const nav = resolveContractBackNavigation({
@@ -71,7 +147,28 @@ describe("resolveContractBackNavigation", () => {
     assert.equal(nav.label, "Contracts");
   });
 
-  it("no-context fallback uses client when present, else Contracts", () => {
+  it("no-context fallback prefers Lead when not booked", () => {
+    assert.deepEqual(
+      resolveContractBackNavigation({
+        clientId: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        clientName: "Couple",
+        leadId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        relationshipBooked: false,
+      }),
+      { href: "/leads/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", label: "Couple" },
+    );
+  });
+
+  it("no-context fallback uses client when booked or lead missing", () => {
+    assert.deepEqual(
+      resolveContractBackNavigation({
+        clientId: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        clientName: "Couple",
+        leadId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        relationshipBooked: true,
+      }),
+      { href: "/clients/bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", label: "Couple" },
+    );
     assert.deepEqual(
       resolveContractBackNavigation({
         clientId: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee",

@@ -60,7 +60,7 @@ import {
   CONTRACT_SIGNATURE_CONSENT_TEXT,
   deriveContractSigningUiState,
 } from "@/lib/contracts/signers";
-import { resolveContractBackNavigation } from "@/lib/contracts/return-path";
+import { resolveContractBackNavigation, resolveContractSetupPaymentsHref } from "@/lib/contracts/return-path";
 import type { ContractStatus, ContractWithDetails } from "@/lib/contracts/types";
 import {
   formatVersionLabel,
@@ -87,6 +87,8 @@ export function ContractDetail({
   contactsByClientId = {},
   contextualObservations = [],
   returnTo = null,
+  leadId = null,
+  relationshipBooked = false,
 }: {
   contract: ContractWithDetails;
   finalized: boolean;
@@ -100,6 +102,10 @@ export function ContractDetail({
   contextualObservations?: LuvObservation[];
   /** Originating workflow path (Lead / Client Workspace / Contracts). */
   returnTo?: string | null;
+  /** Originating lead when commercial customer came from a lead journey. */
+  leadId?: string | null;
+  /** True when events.booked_at is set — venue booking rule satisfied. */
+  relationshipBooked?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
@@ -328,6 +334,14 @@ export function ContractDetail({
     returnTo,
     clientId: contract.clientId,
     clientName: contract.clientName,
+    leadId,
+    relationshipBooked,
+  });
+  const setupPaymentsHref = resolveContractSetupPaymentsHref({
+    returnTo,
+    leadId,
+    clientId: contract.clientId,
+    relationshipBooked,
   });
 
   return (
@@ -628,17 +642,11 @@ export function ContractDetail({
                 </p>
               </div>
             </div>
-            {contract.clientId && (
+            {setupPaymentsHref && (
               <Button
                 size="sm"
                 render={
-                  <Link
-                    href={
-                      contract.eventId
-                        ? `/clients/${contract.clientId}?setupPayments=1`
-                        : `/clients/${contract.clientId}`
-                    }
-                  />
+                  <Link href={setupPaymentsHref} />
                 }
               >
                 Set up payments

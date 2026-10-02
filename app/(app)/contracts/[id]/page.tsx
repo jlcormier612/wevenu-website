@@ -9,6 +9,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getClient } from "@/lib/clients/service";
 import { getClientContacts } from "@/lib/contacts/service";
+import { getEvent } from "@/lib/events/service";
 import type { Client } from "@/lib/clients/types";
 import type { ClientContact } from "@/lib/contacts/types";
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
@@ -46,6 +47,18 @@ export default async function ContractDetailPage({ params, searchParams }: Props
     }
   }
 
+  // Lead journey context: Fully Executed ≠ Booked. Prefer lead workspace until booked_at.
+  let leadId: string | null = null;
+  let relationshipBooked = false;
+  if (contract.clientId) {
+    const client = draftClients[0] ?? (await getClient(contract.clientId));
+    leadId = client?.leadId ?? null;
+  }
+  if (contract.eventId) {
+    const event = await getEvent(contract.eventId);
+    relationshipBooked = Boolean(event?.bookedAt);
+  }
+
   const contextualObservations = venue
     ? await getContextualObservationsForRecord(venue.id, venue.timezone, {
         contractId: contract.id,
@@ -67,6 +80,8 @@ export default async function ContractDetailPage({ params, searchParams }: Props
       contactsByClientId={contactsByClientId}
       contextualObservations={contextualObservations}
       returnTo={returnToRaw ?? null}
+      leadId={leadId}
+      relationshipBooked={relationshipBooked}
     />
   );
 }

@@ -27,6 +27,7 @@ import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import type { PackageWithItems } from "@/lib/packages/types";
 import {
   archiveLeadRelationshipAction,
+  restoreLeadRelationshipAction,
   deleteLeadRecordAction,
   confirmPipelineBookedMoveAction,
   setLeadPlannedEventSpaceAction,
@@ -132,7 +133,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", spacePreferences = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", spacePreferences = [], relationshipArchived = false, openSetupPayments = false }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; relationshipArchived?: boolean; openSetupPayments?: boolean }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -563,26 +564,48 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={lifecyclePending}
-            onClick={() => {
-              startLifecycle(async () => {
-                const result = await archiveLeadRelationshipAction(lead.id);
-                if (result.ok) {
-                  toast.success("Relationship archived. History is preserved.");
-                  router.push("/leads");
-                  router.refresh();
-                } else {
-                  toast.error(result.message ?? "Could not archive.");
-                }
-              });
-            }}
-          >
-            Archive
-          </Button>
+          {relationshipArchived ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={lifecyclePending}
+              onClick={() => {
+                startLifecycle(async () => {
+                  const result = await restoreLeadRelationshipAction(lead.id);
+                  if (result.ok) {
+                    toast.success("Relationship restored to active lists.");
+                    router.refresh();
+                  } else {
+                    toast.error(result.message ?? "Could not restore.");
+                  }
+                });
+              }}
+            >
+              Restore
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={lifecyclePending}
+              onClick={() => {
+                startLifecycle(async () => {
+                  const result = await archiveLeadRelationshipAction(lead.id);
+                  if (result.ok) {
+                    toast.success("Relationship archived. History is preserved.");
+                    router.push("/leads");
+                    router.refresh();
+                  } else {
+                    toast.error(result.message ?? "Could not archive.");
+                  }
+                });
+              }}
+            >
+              Archive
+            </Button>
+          )}
           <DeleteRecordButton
             kind="lead"
             recordId={lead.id}
@@ -695,6 +718,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               eventType={lead.eventType ?? undefined}
               guestCount={lead.guestCount ?? undefined}
               venueTimezone={venueTimezone}
+              openSetupPayments={openSetupPayments}
             />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

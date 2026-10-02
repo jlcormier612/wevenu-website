@@ -48,6 +48,7 @@ export function BookingJourneyPanel({
   guestCount,
   today,
   venueTimezone = null,
+  openSetupPayments = false,
 }: {
   journey: BookingJourneyModel;
   packages: PackageWithItems[];
@@ -61,6 +62,8 @@ export function BookingJourneyPanel({
   guestCount?: number | null;
   today?: string;
   venueTimezone?: string | null;
+  /** Open Set up payments sheet (e.g. from Fully Executed contract → Lead Overview). */
+  openSetupPayments?: boolean;
 }) {
   const router = useRouter();
   const [selectOpen, setSelectOpen] = React.useState(false);
@@ -73,6 +76,16 @@ export function BookingJourneyPanel({
   const [pending, startTransition] = React.useTransition();
   const selection = journey.selection;
   const businessToday = today ?? venueToday(venueTimezone);
+
+  React.useEffect(() => {
+    if (!openSetupPayments || !selection) return;
+    setPaymentsOpen(true);
+    // Position at the Booking Journey payment section after navigation from contract.
+    const el = document.getElementById("booking-journey-payments");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [openSetupPayments, selection]);
 
   function handleCreateContract() {
     if (!selection) return;
@@ -219,7 +232,7 @@ export function BookingJourneyPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" id="booking-journey-payments">
       <CommercialFacts
         journey={journey}
         today={businessToday}
