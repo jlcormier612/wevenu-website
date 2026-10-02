@@ -20,6 +20,7 @@ import {
   activeHolds as selectActiveHolds,
   historicalHoldLabel,
   historicalHolds as selectHistoricalHolds,
+  holdWindowLabel,
   placeHoldCtaLabel,
   shouldShowPlaceHoldCta,
 } from "@/lib/availability/hold-presentation";
@@ -158,13 +159,6 @@ export function DateHoldsSection({
         .join(", ");
     }
     return "Whole venue";
-  }
-
-  function holdWindowLabel(hold: DateHold): string | null {
-    if (!hold.startTime && !hold.endTime) return null;
-    const start = hold.startTime ?? "00:00";
-    const end = hold.endTime ?? "23:59";
-    return `${start}–${end}`;
   }
 
   return (

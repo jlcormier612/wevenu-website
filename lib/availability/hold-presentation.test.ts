@@ -11,6 +11,7 @@ import {
   activeHolds,
   historicalHoldLabel,
   historicalHolds,
+  holdWindowLabel,
   isActiveHold,
   placeHoldCtaLabel,
   shouldShowPlaceHoldCta,
@@ -111,6 +112,25 @@ describe("Date Hold active-state presentation", () => {
     assert.doesNotMatch(service, /An active hold already exists for this date/);
     assert.match(service, /holdsConflictWithEachOther/);
     assert.match(service, /That space and time window overlaps another active hold/);
+  });
+
+  it("Active Holds window uses HTC 12-hour formatTime, not raw HH:mm", () => {
+    assert.equal(
+      holdWindowLabel({ startTime: "16:00", endTime: "18:00" }),
+      "4:00–6:00 PM",
+    );
+    assert.equal(
+      holdWindowLabel({ startTime: "18:00", endTime: "23:00" }),
+      "6:00–11:00 PM",
+    );
+    assert.equal(holdWindowLabel({ startTime: null, endTime: null }), null);
+    assert.equal(holdWindowLabel({ startTime: "00:00", endTime: "12:00" }), "12:00 AM–12:00 PM");
+    assert.equal(holdWindowLabel({ startTime: "12:00", endTime: "13:00" }), "12:00–1:00 PM");
+    assert.equal(holdWindowLabel({ startTime: "09:00", endTime: "11:00" }), "9:00–11:00 AM");
+    assert.equal(holdWindowLabel({ startTime: "10:00", endTime: "14:00" }), "10:00 AM–2:00 PM");
+    assert.match(section, /holdWindowLabel\(hold\)/);
+    assert.doesNotMatch(section, /function holdWindowLabel/);
+    assert.doesNotMatch(section, /\$\{start\}–\$\{end\}/);
   });
 
   it("G. calendar/availability still keys off active status (unchanged contract)", () => {
