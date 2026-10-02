@@ -108,13 +108,23 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 ### STREAM 1 — Lead Space Preferences UX (presentation)
 
-- **STATUS:** OPEN — forensic audit complete; compact UI implemented locally; not yet on sole RUNNING
+- **STATUS:** GREEN on exact sole RUNNING `abf4e0f4` / TD `:522` / task `79b0568c…`
 - **AUDIT:** `docs/qa/lead-space-preferences-ux/AUDIT.md`
-- **IMPLEMENTATION COMMIT(S):** pending
-- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** still `38e3d753` / `f67fb6fa…` / `:521` / `308fccbb…` (pre-change)
-- **AUTOMATED TEST EVIDENCE:** `lib/leads/space-preferences.test.ts` occupancy anchor + multi/single UI coupling PASS locally
-- **BROWSER EVIDENCE:** pending post-deploy
-- **REMAINING WORK:** commit → deploy → sole RUNNING → browser Cases A–E (+ booked Additional) → ledger GREEN for this sub-gate only
+- **IMPLEMENTATION COMMIT(S):** `abf4e0f4`
+- **RUNNING IMAGE/TAG:** `abf4e0f45c1c2bd60343cbe5cd8be12f4d293d6a`
+- **DIGEST:** `sha256:95e05e943ebc40b45c652381a5c84474ff6b325056fafdd93634d2ffd9b17e76`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:522`
+- **TASK ID:** `79b0568c1c3148c6b4562e948006229c`
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/36951012609
+- **AUTOMATED TEST EVIDENCE:** `lib/leads/space-preferences.test.ts` occupancy anchor + multi/single UI coupling PASS
+- **BROWSER EVIDENCE:**
+  - Fancy multi Miss Piggy: Ceremony|Garden Lawn · Reception|Barn side-by-side; no Event Space / Venue space
+  - Jane booked: + Additional Covered Bridge; no Ceremony/Reception duplicate
+  - Temporary single: Event space|Garden Lawn only
+  - Temporary reception-only: Reception|Barn only
+  - Occupancy: UI preference save re-wrote null `planned_event_space_id` → Barn (reception anchor)
+- **FIXTURE RESTORE:** Fancy multi + original permitted_uses; Miss Piggy prefs + planned restored
+- **REMAINING WORK:** None for this sub-gate
 - **STATUS FILE:** `docs/qa/lead-space-preferences-ux/STATUS.md`
 
 ### STREAM 2 — Typography / JSX interstitial whitespace
