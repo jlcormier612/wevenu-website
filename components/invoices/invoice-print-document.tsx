@@ -6,6 +6,12 @@
 
 import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel } from "@/lib/invoices/constants";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
+import {
+  customerFacingPaymentInstructions,
+  customerFacingVenueDisplayName,
+  customerFacingVenueNote,
+  isSystemBookingCommitmentNote,
+} from "@/lib/invoices/customer-facing-notes";
 import type { InvoiceWithLineItems } from "@/lib/invoices/types";
 import { paymentMilestoneDescription } from "@/lib/payments/starters";
 import type { PaymentObligationKind } from "@/lib/payments/types";
@@ -93,8 +99,23 @@ export function InvoicePrintDocument({
         venue.country !== "United States" ? venue.country : null,
       ].filter(Boolean);
 
-  const defaultNotes = `Thank you for choosing ${venueDisplayName} for your celebration. If you have any questions about this invoice, please contact our team.`;
-  const notes = invoice.notes?.trim() || defaultNotes;
+  // Guided setup writes `${package} — booking commitment` into invoice.notes for
+  // internal recovery — that is system metadata, not payment instructions or a
+  // venue-authored customer note. Never present it twice (or at all) as either.
+  const resolvedPaymentInstructions = customerFacingPaymentInstructions({
+    scheduleNotes: isSystemBookingCommitmentNote(paymentInstructions)
+      ? null
+      : paymentInstructions,
+    invoiceNotes: invoice.notes,
+  });
+  const venueAuthoredNote = customerFacingVenueNote({
+    invoiceNotes: invoice.notes,
+    paymentInstructions: resolvedPaymentInstructions,
+  });
+  const notesFromVenueName = customerFacingVenueDisplayName({
+    name: snap?.name ?? venue.name,
+    businessName: snap?.businessName ?? venue.businessName,
+  });
 
   return (
     <div className="min-h-screen bg-white font-sans text-black print:text-black">
@@ -316,26 +337,28 @@ export function InvoicePrintDocument({
               ))}
             </tbody>
           </table>
-          {(paymentInstructions?.trim() || invoice.notes?.trim()) && (
+          {resolvedPaymentInstructions && (
             <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
                 Payment instructions
               </p>
               <p className="text-sm text-gray-700 whitespace-pre-line">
-                {paymentInstructions?.trim() || invoice.notes}
+                {resolvedPaymentInstructions}
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Notes ──────────────────────────────────────────────────────── */}
-      <div className="border-t border-gray-200 px-12 py-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-          Notes from {venueDisplayName}
-        </p>
-        <p className="text-sm text-gray-700 whitespace-pre-line">{notes}</p>
-      </div>
+      {/* ── Notes — only genuine venue-authored content ─────────────── */}
+      {venueAuthoredNote && (
+        <div className="border-t border-gray-200 px-12 py-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            Notes from {notesFromVenueName}
+          </p>
+          <p className="text-sm text-gray-700 whitespace-pre-line">{venueAuthoredNote}</p>
+        </div>
+      )}
 
       {/* ── Venue contact footer ────────────────────────────────────────── */}
       <div className="border-t border-gray-200 px-12 py-6 mt-4">

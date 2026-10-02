@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/table";
 import { paymentAttentionReasons } from "@/lib/payments/attention-reasons";
 import { formatMoney } from "@/lib/payments/constants";
+import {
+  paymentScheduleListPrimaryTitle,
+  paymentScheduleListSecondaryLine,
+} from "@/lib/payments/list-identity";
 import type { PaymentScheduleSummary } from "@/lib/payments/types";
 
 export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleSummary[] }) {
@@ -66,11 +70,15 @@ export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleS
               {filtered.map((s) => (
                 <TableRow key={s.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/payments/${s.id}`} className="hover:text-primary">{s.title}</Link>
-                    {s.clientName && (
-                      <p className="text-xs text-muted-foreground">{s.clientName}</p>
-                    )}
-                    {paymentAttentionReasons(s).map((reason) => (
+                    <Link href={`/payments/${s.id}`} className="hover:text-primary">
+                      {paymentScheduleListPrimaryTitle(s)}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      {paymentScheduleListSecondaryLine(s)}
+                    </p>
+                    {paymentAttentionReasons(s)
+                      .filter((reason) => !reason.includes("overdue"))
+                      .map((reason) => (
                       <p key={reason} className="text-xs font-medium text-destructive mt-0.5">
                         {reason}
                       </p>

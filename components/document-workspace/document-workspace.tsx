@@ -12,12 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { filterDocuments, searchDocuments, sortDocuments } from "@/lib/document-workspace/filter-sort";
 import { workspaceDocKey } from "@/lib/document-workspace/normalize";
+import {
+  countUserFacingGroups,
+  filterByUserFacingGroup,
+  populatedUserFacingGroups,
+  type UserFacingDocumentGroup,
+} from "@/lib/document-workspace/user-facing-categories";
 import { appendContractReturnTo } from "@/lib/contracts/return-path";
 import { appendInvoiceReturnTo } from "@/lib/invoices/return-path";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
-import { WORKSPACE_CATEGORIES } from "@/lib/document-workspace/types";
 import type { DocumentEntityType } from "@/lib/documents/types";
-import type { WorkspaceCategory, WorkspaceDocument, WorkspaceFilters, WorkspaceSort, WorkspaceStatus } from "@/lib/document-workspace/types";
+import type { WorkspaceDocument, WorkspaceFilters, WorkspaceSort, WorkspaceStatus } from "@/lib/document-workspace/types";
 
 const SORT_OPTIONS: { value: WorkspaceSort; label: string }[] = [
   { value: "recent", label: "Most Recent" },
@@ -72,7 +77,7 @@ export function DocumentWorkspace({
 
   const [documents, setDocuments] = useSyncedState(docsWithReturn);
   const [query, setQuery] = React.useState("");
-  const [category, setCategory] = React.useState<WorkspaceCategory | "all">("all");
+  const [category, setCategory] = React.useState<UserFacingDocumentGroup | "all">("all");
   const [status, setStatus] = React.useState<WorkspaceStatus | "all">("all");
   const [sort, setSort] = React.useState<WorkspaceSort>("recent");
   const [pinnedKeys, setPinnedKeys] = React.useState<Set<string>>(new Set(initialPinnedKeys));
@@ -85,21 +90,25 @@ export function DocumentWorkspace({
   function openHistory(doc: WorkspaceDocument) { setHistoryDoc(doc); setHistoryOpen(true); }
 
   const filters: WorkspaceFilters = {
-    category: category === "all" ? undefined : category,
     status: status === "all" ? undefined : status,
   };
 
-  const filtered = sortDocuments(filterDocuments(searchDocuments(documents, query), filters), sort);
+  const filtered = sortDocuments(
+    filterDocuments(
+      filterByUserFacingGroup(searchDocuments(documents, query), category),
+      filters,
+    ),
+    sort,
+  );
   const hasAnyFilterActive = query.trim() !== "" || category !== "all" || status !== "all";
 
   const pinned = documents.filter((d) => pinnedKeys.has(workspaceDocKey(d.docType, d.id)));
 
-  const categoryCounts = React.useMemo(() => {
-    const counts = new Map<WorkspaceCategory, number>();
-    for (const c of WORKSPACE_CATEGORIES) counts.set(c, 0);
-    for (const d of documents) counts.set(d.category, (counts.get(d.category) ?? 0) + 1);
-    return counts;
-  }, [documents]);
+  const categoryCounts = React.useMemo(() => countUserFacingGroups(documents), [documents]);
+  const visibleCategories = React.useMemo(
+    () => populatedUserFacingGroups(documents),
+    [documents],
+  );
 
   function handlePinChange(key: string, next: boolean) {
     setPinnedKeys((prev) => {
@@ -142,14 +151,14 @@ export function DocumentWorkspace({
             </section>
           )}
 
-          {/* Document Categories */}
+          {/* Document Categories — user-facing roll-up; hide empty groups */}
           <section className="space-y-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h2>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" onClick={() => setCategory("all")}>
                 <Badge variant={category === "all" ? "default" : "outline"}>All ({documents.length})</Badge>
               </button>
-              {WORKSPACE_CATEGORIES.map((c) => (
+              {visibleCategories.map((c) => (
                 <button key={c} type="button" onClick={() => setCategory(c)}>
                   <Badge variant={category === c ? "default" : "outline"}>{c} ({categoryCounts.get(c) ?? 0})</Badge>
                 </button>

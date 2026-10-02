@@ -42,6 +42,7 @@ import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib
 import type { Package } from "@/lib/packages/types";
 import type { Venue } from "@/lib/venue/types";
 import { NOTES_FROM_YOUR_VENUE_LABEL } from "@/lib/notes/internal-notes-copy";
+import { isSystemBookingCommitmentNote } from "@/lib/invoices/customer-facing-notes";
 import { resolveInvoiceBackNavigation } from "@/lib/invoices/return-path";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
@@ -488,8 +489,8 @@ export function InvoiceDetail({
         </CardContent>
       </Card>
 
-      {/* Notes from your venue */}
-      {invoice.notes && (
+      {/* Notes from your venue — suppress system booking-commitment metadata */}
+      {invoice.notes && !isSystemBookingCommitmentNote(invoice.notes) && (
         <Card>
           <CardHeader><CardTitle className="text-base text-sm">{NOTES_FROM_YOUR_VENUE_LABEL}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground whitespace-pre-line">{invoice.notes}</p></CardContent>

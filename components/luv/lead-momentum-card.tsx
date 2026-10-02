@@ -7,6 +7,9 @@
  *   Stage 1 "new"       — warm guidance, zero conclusions
  *   Stage 2 "observing" — factual observations, no scores
  *   Stage 3 "insights"  — dimension dots + momentum summary
+ *
+ * Authoritative lifecycle facts (contract / Booked) override weak score
+ * language so a signed relationship is never described as "Still early".
  */
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
@@ -15,11 +18,25 @@ import {
   getConfidenceStage,
   getObservations,
   newLeadBeginningSentence,
-  scoreDescriptor,
   stillEarlySentence,
 } from "@/lib/leads/momentum";
+import {
+  snapshotCommitmentDescriptor,
+  snapshotForcesInsightsStage,
+  snapshotInterestDescriptor,
+  snapshotResponsivenessDescriptor,
+  type SnapshotLifecycleFacts,
+} from "@/lib/leads/snapshot-lifecycle";
 
 const DUSTY_ROSE = "#D8A7AA";
+
+const EMPTY_LIFECYCLE: SnapshotLifecycleFacts = {
+  isBooked: false,
+  contractStatus: null,
+  venueSigned: false,
+  requiredClientTotal: 1,
+  requiredClientSigned: 0,
+};
 
 // ── Shared card shell ──────────────────────────────────────────────────────────
 
@@ -160,12 +177,14 @@ function InsightsView({
   responsivenessScore,
   commitmentScore,
   daysSinceContact,
+  lifecycle,
 }: {
   firstName: string;
   interestScore: number;
   responsivenessScore: number;
   commitmentScore: number;
   daysSinceContact: number | null;
+  lifecycle: SnapshotLifecycleFacts;
 }) {
   const summary = generateMomentumLanguage(firstName, commitmentScore, responsivenessScore, interestScore, daysSinceContact);
 
@@ -174,9 +193,24 @@ function InsightsView({
       <LuvCardHeader label="Relationship Snapshot" />
 
       <div>
-        <DimensionRow label="Interest" score={interestScore} descriptor={scoreDescriptor("interest", interestScore)} color="#C7A66A" />
-        <DimensionRow label="Responsiveness" score={responsivenessScore} descriptor={scoreDescriptor("responsiveness", responsivenessScore)} color="#5D6F5D" />
-        <DimensionRow label="Commitment" score={commitmentScore} descriptor={scoreDescriptor("commitment", commitmentScore)} color="#B9D1C2" />
+        <DimensionRow
+          label="Interest"
+          score={interestScore}
+          descriptor={snapshotInterestDescriptor(lifecycle, interestScore)}
+          color="#C7A66A"
+        />
+        <DimensionRow
+          label="Responsiveness"
+          score={responsivenessScore}
+          descriptor={snapshotResponsivenessDescriptor(responsivenessScore)}
+          color="#5D6F5D"
+        />
+        <DimensionRow
+          label="Commitment"
+          score={commitmentScore}
+          descriptor={snapshotCommitmentDescriptor(lifecycle, commitmentScore)}
+          color="#B9D1C2"
+        />
       </div>
 
       {summary && <LuvCallout>{summary}</LuvCallout>}
@@ -193,6 +227,7 @@ export function LeadMomentumCard({
   interestScore,
   lastContactedAt,
   createdAt,
+  lifecycle = EMPTY_LIFECYCLE,
 }: {
   firstName: string;
   commitmentScore: number;
@@ -200,6 +235,8 @@ export function LeadMomentumCard({
   interestScore: number;
   lastContactedAt?: string | null;
   createdAt?: string | null;
+  /** Authoritative contract / Booked facts — presentation precedence only. */
+  lifecycle?: SnapshotLifecycleFacts;
 }) {
   const daysSince = lastContactedAt
     ? Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000)
@@ -210,6 +247,21 @@ export function LeadMomentumCard({
     : null;
 
   const stage = getConfidenceStage(interestScore, responsivenessScore, commitmentScore);
+
+  // Force insights when authoritative lifecycle milestones exist — never
+  // describe a signed contract with "new" / "still early" shells.
+  if (snapshotForcesInsightsStage(lifecycle)) {
+    return (
+      <InsightsView
+        firstName={firstName}
+        interestScore={interestScore}
+        responsivenessScore={responsivenessScore}
+        commitmentScore={commitmentScore}
+        daysSinceContact={daysSince}
+        lifecycle={lifecycle}
+      />
+    );
+  }
 
   // Force "new" stage if the lead is very young regardless of score thresholds
   const effectiveStage = (daysOld !== null && daysOld <= 3 && stage === "observing") ? "new" : stage;
@@ -237,6 +289,7 @@ export function LeadMomentumCard({
       responsivenessScore={responsivenessScore}
       commitmentScore={commitmentScore}
       daysSinceContact={daysSince}
+      lifecycle={lifecycle}
     />
   );
 }
