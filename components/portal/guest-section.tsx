@@ -818,11 +818,10 @@ function GuestRow({ token, guest, linkedPlusOneName, primaryGuestName, onDelete,
   onRemovePlusOne: (guestId: string) => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
-  const rsvpLink = `${typeof window !== "undefined" ? window.location.origin : ""}/rsvp/${guest.rsvpToken ?? ""}`;
-
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(rsvpLink);
+      const absolute = `${window.location.origin}/rsvp/${guest.rsvpToken ?? ""}`;
+      await navigator.clipboard.writeText(absolute);
       toast.success("RSVP link copied!");
     } catch {
       toast.error("Could not copy link.");

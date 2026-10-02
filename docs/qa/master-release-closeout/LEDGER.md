@@ -163,30 +163,49 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 ### STREAM 3 — Archive / Delete / Restore
 
-- **STATUS:** OPEN — Archive browser+DB proven on `1d6c96c2`; Restore UI added locally (needs deploy); PA4 cleanup remaining
-- **IMPLEMENTATION COMMIT(S):** `1d6c96c2` (+ pending Restore button on lead detail / page)
-- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** `1d6c96c2` / `sha256:c4962eac…` / `:519` / `288fd1d5…`
-- **AUTOMATED TEST EVIDENCE:** `lib/relationships/archive.test.ts`
-- **BROWSER EVIDENCE:**
-  - Archive button next to Delete on lead detail
-  - ArchiveProof disposable `143e826b-…` / rel `68bc3374-…`: Archive → redirect `/leads`; **not** in Leads list (`ArchiveProof` absent from page text)
-- **DB/PERSISTENCE EVIDENCE:** `archived_at=2026-10-02T00:28:16Z`, `archived_by` set; lead row retained (not deleted); DB restore clears `archived_at` and direct URL loads again
-- **REGRESSION EVIDENCE:** Delete remains hard-delete; Archive ≠ Delete
-- **REMAINING WORK:** deploy Restore UI; browser Restore click; Dashboard/Payments/Clients exclusion matrix; PA4 three-root cleanup after Archive GREEN
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `876c9d51` / TD `:526` / task `af8590f4…`
+- **IMPLEMENTATION COMMIT(S):** `1d6c96c2` (Archive authority + active-list exclusion); Restore UI present in running `876c9d51` image
+- **RUNNING IMAGE/TAG:** `876c9d519b63a01c0e73702a71d428a448e7767c`
+- **DIGEST:** `sha256:2e5e408c5cbac21ff1c22a751c0e1ecb01ebd2654787e328cf8055ee8f89369d`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:526`
+- **TASK ID:** `af8590f4d29943508b0da570f9277a5e`
+- **AUTOMATED TEST EVIDENCE:** `lib/relationships/archive.test.ts` 5/5 PASS
+- **BROWSER EVIDENCE (disposable ArchiveCloseout `5ad04202-…` / rel `0cbb0c2f-…` on `876c9d51`):**
+  1. Archive click → redirect `/leads`; search `ArchiveCloseout` → **No leads match your filters**
+  2. Direct URL still loads; **Restore** shown (not Archive); tour Mar 15 2028 retained; Internal notes shows historical note; Documents 1 retained
+  3. Clients search `ArchiveCloseout` while archived → **No clients match your filters**
+  4. Restore click → button returns to **Archive**; `archived_at` cleared
+  5. Leads search returns `ArchiveCloseout 369-4ec05d & Proof Partner` again
+  6. Delete remains separate hard-delete control beside Archive/Restore
+- **DB/PERSISTENCE EVIDENCE:**
+  - Archive: `archived_at=2026-10-02T02:33:07Z`, `archived_by=2fa73101-…`
+  - Survived archive (no deletion): lead_notes `8b45eff8-…`, tour `ec03e2a2-…`, document `3b87a144-…`, invoice `a637a923-…` (`ARC-1790908374144`), payment_schedule `00ea8516-…`, event `eb3d51ca-…`, client `cac735d6-…`
+  - Restore: `archived_at=null`, `archived_by=null`; same child counts retained (notes1/tours1/docs1/invoices1/schedules1)
+- **REGRESSION EVIDENCE:** Archive ≠ Delete; authority sole `venue_customer_relationships.archived_at`; no second lifecycle model
+- **REMAINING WORK:** None for Stream 3 (PA4 cleanup tracked separately)
+- **FIXTURE LEFT:** ArchiveCloseout restored ACTIVE (safe disposable; not Goldi/Jane/Ron)
 
 ### STREAM 4 — Follow-up Completion
 
-- **STATUS:** OPEN — paths 1–2 proven; path 3 interrupted by mid-deploy skew + Stream1Closeout becoming Booked
-- **IMPLEMENTATION COMMIT(S):** `d92ab44103fcdb6552abf5c6ca49b73a76d24b43` (do not rewrite); ancestor of current `1d6c96c2`
-- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** proofs started on `0a24f026`; continue on `1d6c96c2` / `:519` / `288fd1d5…`
-- **AUTOMATED TEST EVIDENCE:** not re-run this session
-- **BROWSER EVIDENCE (Stream1Closeout `45d7f034-…`):**
-  - Path 1 Another follow-up → `Follow up: Follow up after tour` / `Due: Oct 15, 2026` (Activity 7)
-  - Path 2 Other next action → UI `Next action: Confirm event details` / `Follow-up: —`; DB `follow_up_date=null`, `next_action_text=Confirm event details`
-  - Path 3 No further — save in flight when deploy cutover caused lead load failure; lead later `sales_stage=booked` with client `975b703b-…` / event `45a523d3-…` booked
-- **DB/PERSISTENCE EVIDENCE:** path 2 confirmed; path 3 incomplete
-- **REGRESSION EVIDENCE:** tour completion / Last Contacted must not complete follow-up — not yet proven
-- **REMAINING WORK:** finish path 3 (+ Cancel-as-fourth if required) on a disposable non-booked lead; prove tour completion and Last Contacted do not complete follow-up
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `876c9d51` / TD `:526` / task `af8590f4…`
+- **IMPLEMENTATION COMMIT(S):** `d92ab44103fcdb6552abf5c6ca49b73a76d24b43` (ancestor of running image)
+- **RUNNING IMAGE/TAG:** `876c9d519b63a01c0e73702a71d428a448e7767c`
+- **DIGEST:** `sha256:2e5e408c5cbac21ff1c22a751c0e1ecb01ebd2654787e328cf8055ee8f89369d`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:526`
+- **TASK ID:** `af8590f4d29943508b0da570f9277a5e`
+- **AUTOMATED TEST EVIDENCE:** `lib/leads/follow-up-completion.test.ts` 16/16 PASS
+- **BROWSER EVIDENCE (disposable fixtures on `876c9d51`):**
+  - **PATH 1** FUPath1 `16b31c96-…`: Complete → Another follow-up → `Follow up after tour` / `2026-10-20` → Save
+  - **PATH 2** FUPath4 `d99e9f6a-…`: Complete → Other next action → `Confirm event details` / date blank → Save
+  - **PATH 3** FUCloseout `4bcbfa58-…`: Complete → No further follow-up → Complete button gone; action/date cleared
+  - **PATH 4** FUPath4: Last Contacted → `2026-10-01` leaves follow-up open; walk-in tour complete (`origin=walk_in`, `actual_occurred_at=2026-10-01T18:45Z`) leaves follow-up open (`Complete follow-up` still shown)
+- **DB/PERSISTENCE EVIDENCE:**
+  - Path 1: `next_action_text=Follow up after tour`, `follow_up_date=2026-10-20`; activities `follow_up_completed` then `follow_up_set`
+  - Path 2: `next_action_text=Confirm event details`, `follow_up_date=null`; `follow_up_completed` only (no `follow_up_set`)
+  - Path 3: `next_action_text=null`, `follow_up_date=null`; `follow_up_completed — Oct 10, 2026`; `last_contacted_at` preserved
+  - Path 4: after last-contacted + tour complete, `follow_up_date=2026-10-12` / `next_action_text=Send venue brochure` still set; **no** `follow_up_completed` until Path 2 later
+- **REGRESSION EVIDENCE:** Tasks remain separate path (unit wiring); Last Contacted and tour completion do not complete follow-up
+- **REMAINING WORK:** None
 
 ### STREAM 5 — React hydration #418
 

@@ -81,10 +81,13 @@ export function TourSettingsSection({ initialSettings }: Props) {
   const [saving, startSave] = React.useTransition();
   const [previewRefreshKey, setPreviewRefreshKey] = React.useState(0);
 
-  const tourPath = publicTourSchedulingPath(s.tourEmbedKey);
-  const bookingUrl = tourPath
-    ? (typeof window !== "undefined" ? `${window.location.origin}${tourPath}` : tourPath)
-    : "";
+  // Relative path only in render — absolute origin must not branch on `window`
+  // or React hydration #418 fires (server relative vs client absolute).
+  const bookingUrl = publicTourSchedulingPath(s.tourEmbedKey) ?? "";
+  function absoluteBookingUrl() {
+    if (!bookingUrl) return "";
+    return `${window.location.origin}${bookingUrl}`;
+  }
 
   function set<K extends keyof TourSettings>(k: K, v: TourSettings[K]) {
     setS((p) => ({ ...p, [k]: v }));
@@ -130,11 +133,11 @@ export function TourSettingsSection({ initialSettings }: Props) {
                 <p className="text-[11px] font-mono text-muted-foreground break-all">{bookingUrl}</p>
               </div>
               <Button type="button" variant="outline" size="sm" className="shrink-0"
-                onClick={() => { navigator.clipboard.writeText(bookingUrl); toast.success("Copied!"); }}>
+                onClick={() => { navigator.clipboard.writeText(absoluteBookingUrl()); toast.success("Copied!"); }}>
                 <Copy className="h-3.5 w-3.5" />
               </Button>
               <Button type="button" variant="outline" size="sm" className="shrink-0"
-                onClick={() => window.open(bookingUrl, "_blank")}>
+                onClick={() => window.open(absoluteBookingUrl(), "_blank")}>
                 <ExternalLink className="h-3.5 w-3.5" />
               </Button>
             </div>

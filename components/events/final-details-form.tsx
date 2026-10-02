@@ -120,8 +120,9 @@ export function FinalDetailsForm({
   const includedFields = initial?.includedFields ?? [...CONFIGURABLE_FIELDS];
   const canApplyTemplate = !initial || initial.status === "draft";
 
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
+  // Relative path for render (hydration-safe). Absolute origin only when copying.
+  const formPath = initial?.accessKey ? `/questionnaire/${initial.accessKey}` : null;
+  const currentFormUrl = formUrl ?? formPath;
 
   function handleApplyTemplate() {
     if (!selectedTemplateId) return;
@@ -155,7 +156,10 @@ export function FinalDetailsForm({
 
   function handleCopyUrl() {
     if (!currentFormUrl) return;
-    navigator.clipboard.writeText(currentFormUrl);
+    const absolute = /^https?:\/\//i.test(currentFormUrl)
+      ? currentFormUrl
+      : `${window.location.origin}${currentFormUrl}`;
+    navigator.clipboard.writeText(absolute);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
   }

@@ -183,8 +183,14 @@ function KindPanel({
   /** Withdraw is sent|in_progress → draft only; submitted forms use Request Changes / Reopen. */
   const canWithdrawAccess = status === "sent" || status === "in_progress";
   const canApplyTemplate = !initial || status === "draft";
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
+  // Relative path for render (hydration-safe). Absolute origin only when copying.
+  const formPath = initial?.accessKey ? `/questionnaire/${initial.accessKey}` : null;
+  const currentFormUrl = formUrl ?? formPath;
+  function absoluteFormUrl() {
+    if (!currentFormUrl) return "";
+    if (/^https?:\/\//i.test(currentFormUrl)) return currentFormUrl;
+    return `${window.location.origin}${currentFormUrl}`;
+  }
   const waitingOn: WaitingOn =
     !initial?.sentAt || status === "draft" ? "venue"
     : isComplete ? "completed"
@@ -408,7 +414,7 @@ function KindPanel({
             <code className="flex-1 rounded-md bg-muted border border-border px-3 py-1.5 text-xs font-mono truncate">{currentFormUrl}</code>
             <Button type="button" variant="outline" size="sm" onClick={() => {
               if (!currentFormUrl) return;
-              navigator.clipboard.writeText(currentFormUrl);
+              navigator.clipboard.writeText(absoluteFormUrl());
               setCopiedUrl(true);
               setTimeout(() => setCopiedUrl(false), 2000);
             }}>
