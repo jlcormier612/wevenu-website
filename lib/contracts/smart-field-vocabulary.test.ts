@@ -47,6 +47,7 @@ const APPROVED_CONTRACT_KEYS = [
   "event_spaces",
   "ceremony_space",
   "reception_space",
+  "additional_event_spaces",
   "package_section",
   "included_items_summary",
   "additional_items_summary",
@@ -113,11 +114,11 @@ describe("starter / default templates", () => {
     assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{client_name\}\}/);
   });
 
-  it("contract starter Ceremony/Reception use booked-event space Smart Fields", () => {
+  it("contract starter Ceremony/Reception/Additional use lifecycle Smart Fields without duplicating event_spaces", () => {
     assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Ceremony\n\{\{ceremony_space\}\}/);
     assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Reception\n\{\{reception_space\}\}/);
-    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
-    assert.equal((WEDDING_VENUE_AGREEMENT_CONTENT.match(/\{\{event_spaces\}\}/g) ?? []).length, 2);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Additional Event Spaces\n\{\{additional_event_spaces\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
     assert.doesNotMatch(

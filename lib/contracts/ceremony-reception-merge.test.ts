@@ -11,15 +11,19 @@ import {
   resolveCeremonySpace,
   resolveReceptionSpace,
 } from "@/lib/contracts/ceremony-reception-merge";
-import { EMPTY_EVENT_SPACES_LABEL } from "@/lib/contracts/event-spaces-merge";
+import {
+  EMPTY_EVENT_SPACES_LABEL,
+  resolveEventSpacesLabel,
+} from "@/lib/contracts/event-spaces-merge";
 import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
 
 describe("ceremony_space / reception_space catalog", () => {
-  it("adds exactly two fields to the existing 22-field picker", () => {
+  it("adds ceremony, reception, and additional_event_spaces to the picker", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
-    assert.equal(MERGE_FIELDS.length, 24);
+    assert.equal(MERGE_FIELDS.length, 25);
     assert.ok(keys.includes("ceremony_space"));
     assert.ok(keys.includes("reception_space"));
+    assert.ok(keys.includes("additional_event_spaces"));
     assert.ok(keys.includes("event_spaces"));
     assert.ok(!keys.includes("ceremony_summary"));
     assert.ok(!keys.includes("reception_summary"));
@@ -178,13 +182,29 @@ describe("buildMergeData always resolves the new fields", () => {
     assert.match(authored, /\{\{reception_space\}\}/);
   });
 
-  it("Wedding Venue Agreement starter places ceremony/reception tokens without inventing new merge authority", () => {
+  it("Wedding Venue Agreement starter places venue/ceremony/reception/additional without duplicating event_spaces", () => {
     const starter = readFileSync(resolve("lib/contracts/starters.ts"), "utf8");
+    assert.match(starter, /Venue\n\{\{venue_name\}\}/);
     assert.match(starter, /Ceremony\n\{\{ceremony_space\}\}/);
     assert.match(starter, /Reception\n\{\{reception_space\}\}/);
-    assert.match(starter, /\{\{event_spaces\}\}/);
+    assert.match(starter, /Additional Event Spaces\n\{\{additional_event_spaces\}\}/);
+    assert.doesNotMatch(starter, /Event Spaces: \{\{event_spaces\}\}/);
+    assert.doesNotMatch(starter, /VENUE & EVENT SPACES/);
     assert.doesNotMatch(starter, /Add your venue's approved ceremony timing and location language/);
     assert.doesNotMatch(starter, /Add your venue's approved reception timing and location language/);
+  });
+
+  it("I: authored templates using {{event_spaces}} retain current semantics via resolveEventSpacesLabel", () => {
+    assert.match(
+      resolveEventSpacesLabel({
+        spaces: [{ id: "g", name: "Garden" }, { id: "b", name: "Barn" }],
+        assignments: [
+          { useKey: "ceremony", useLabel: "Ceremony", spaceId: "g", spaceName: "Garden" },
+          { useKey: "reception", useLabel: "Reception", spaceId: "b", spaceName: "Barn" },
+        ],
+      }),
+      /Ceremony: Garden\nReception: Barn/,
+    );
   });
 });
 

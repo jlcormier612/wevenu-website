@@ -34,5 +34,12 @@
     "len": 5114,
     "sha256": "f824aa6f65017a73a1a1664baa2a3631f6593c020d9b9e6e6d410e562d3de6f1",
     "startsWithNL": false
+  },
+  {
+    "name": "082-ceremony-reception-event-spaces.txt",
+    "len": 7671,
+    "sha256": "34c93bbe8fbc3799d4f60bd9385e042a7e0ae2e99de4cd1996000f875e7d6b0f",
+    "startsWithNL": false,
+    "note": "Post-106 ceremony/reception Smart Fields master (still had Event Spaces / VENUE & EVENT SPACES). Full-refresh to current Additional Event Spaces starter."
   }
 ]

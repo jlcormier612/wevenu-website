@@ -20,7 +20,9 @@ import {
 } from "@/lib/contracts/merge-extras";
 import {
   EMPTY_EVENT_SPACES_LABEL,
+  omitEmptyAdditionalEventSpacesSection,
   replaceEmptyEventSpacesLabel,
+  resolveAdditionalEventSpacesLabel,
   resolveEventSpacesLabel,
 } from "@/lib/contracts/event-spaces-merge";
 import {
@@ -414,9 +416,11 @@ export async function materializeAuthoredContractContent(opts: {
       requiredClientSignerNames,
     });
     const content = applyRequiredSignerSignatureBlocks(
-      replaceEmptyEventSpacesLabel(
-        mergeContent(opts.authoredContent, mergeData),
-        mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
+      omitEmptyAdditionalEventSpacesSection(
+        replaceEmptyEventSpacesLabel(
+          mergeContent(opts.authoredContent, mergeData),
+          mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
+        ),
       ),
       requiredClientSignerNames,
     );
@@ -557,6 +561,7 @@ export async function buildContractMergeData(opts: {
   let receptionAsgName: string | null = null;
   let ceremonyPreference: CeremonyReceptionPreferenceSource | null = null;
   let receptionPreference: CeremonyReceptionPreferenceSource | null = null;
+  let additionalEventSpacesLabel = "";
   // Canonical Booked = events.booked_at. Pre-booking contracts use lead preferences.
   const relationshipBooked = Boolean(event?.bookedAt);
 
@@ -637,6 +642,10 @@ export async function buildContractMergeData(opts: {
       assignments,
     });
     // Keep EMPTY_EVENT_SPACES_LABEL when unset — legacy {{event_spaces}} always resolves.
+    additionalEventSpacesLabel = resolveAdditionalEventSpacesLabel({
+      spaces,
+      assignments,
+    });
 
     const ceremonyAsg = assignments.find((a) => a.useKey === "ceremony");
     const receptionAsg = assignments.find((a) => a.useKey === "reception");
@@ -807,6 +816,7 @@ export async function buildContractMergeData(opts: {
       externalReceptionLocation: event?.externalReceptionLocation ?? null,
       preference: receptionPreference,
     }),
+    additionalEventSpaces: additionalEventSpacesLabel,
     balanceRemaining,
   });
 }

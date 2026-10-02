@@ -64,6 +64,8 @@ export type MergeContext = {
   receptionSummary?: string | null;
   ceremonySpace?: string | null;
   receptionSpace?: string | null;
+  /** Residual assignments only; empty string omits the starter section. */
+  additionalEventSpaces?: string | null;
   balanceRemaining?: string | null;
 };
 
@@ -121,6 +123,8 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.reception_summary = ctx.receptionSummary?.trim() || MISSING_RECEPTION_SUMMARY;
   data.ceremony_space = ctx.ceremonySpace?.trim() || CEREMONY_SPACE_UNLISTED;
   data.reception_space = ctx.receptionSpace?.trim() || RECEPTION_SPACE_UNLISTED;
+  // Empty → "" so the starter can omit the Additional Event Spaces section.
+  data.additional_event_spaces = ctx.additionalEventSpaces?.trim() || "";
   data.balance_remaining = ctx.balanceRemaining?.trim() || MISSING_BALANCE_REMAINING;
 
   return data;

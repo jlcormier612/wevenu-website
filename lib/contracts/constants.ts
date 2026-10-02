@@ -44,6 +44,11 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "event_spaces", label: "Event Spaces", description: "Spaces already chosen for this booking" },
   { key: "ceremony_space", label: "Ceremony Space", description: "Ceremony space already listed on this booking" },
   { key: "reception_space", label: "Reception Space", description: "Reception space already listed on this booking" },
+  {
+    key: "additional_event_spaces",
+    label: "Additional Event Spaces",
+    description: "Assigned event spaces other than Ceremony, Reception, or the legacy primary space",
+  },
   { key: "package_section", label: "Package", description: "Selected package summary from the booking" },
   { key: "included_items_summary", label: "Included Items", description: "Included items on the selected package or order" },
   { key: "additional_items_summary", label: "Additional Items", description: "Additional / optional items already on the order" },

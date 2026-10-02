@@ -19,9 +19,9 @@ type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof cre
 
 /** Booking-backed tokens the current CTR-01 master must advertise. */
 export const REQUIRED_CTR01_SMART_FIELDS = [
-  "event_spaces",
   "ceremony_space",
   "reception_space",
+  "additional_event_spaces",
   "package_section",
   "included_items_summary",
   "additional_items_summary",

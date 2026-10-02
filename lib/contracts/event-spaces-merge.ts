@@ -8,12 +8,22 @@
  * 4. Empty-state copy when none is set
  *
  * Does not invent a second space catalog — all IDs point at venue_spaces.
+ *
+ * {{additional_event_spaces}} is a residual view of the same assignments table
+ * (excludes ceremony, reception, and legacy event_space). Empty → "".
  */
 
 import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
 
 export const EMPTY_EVENT_SPACES_LABEL =
   "No event spaces are listed on this booking yet.";
+
+/** use_keys never listed under {{additional_event_spaces}}. */
+export const ADDITIONAL_EVENT_SPACES_EXCLUDED_USE_KEYS = new Set([
+  "ceremony",
+  "reception",
+  "event_space",
+]);
 
 export type EventSpaceNameRow = { id: string; name: string };
 
@@ -51,6 +61,39 @@ export function resolveEventSpacesLabel(opts: {
     if (space?.name?.trim()) return space.name.trim();
   }
   return EMPTY_EVENT_SPACES_LABEL;
+}
+
+/**
+ * Residual assigned spaces for {{additional_event_spaces}}.
+ * Empty string when none — never missing-value copy (starter omits the section).
+ */
+export function resolveAdditionalEventSpacesLabel(opts: {
+  spaces: EventSpaceNameRow[];
+  assignments?: EventSpaceAssignmentRow[] | null;
+}): string {
+  const rows = (opts.assignments ?? [])
+    .filter((a) => !ADDITIONAL_EVENT_SPACES_EXCLUDED_USE_KEYS.has(a.useKey.trim()))
+    .map((a) => {
+      const spaceName =
+        a.spaceName?.trim() ||
+        opts.spaces.find((s) => s.id === a.spaceId)?.name?.trim() ||
+        "";
+      return spaceName;
+    })
+    .filter(Boolean);
+  // Preserve assignment order; one line per residual assignment (space name).
+  return rows.join("\n");
+}
+
+/**
+ * After merge: drop the starter "Additional Event Spaces" heading when the
+ * resolved value was empty (no residual assignments).
+ */
+export function omitEmptyAdditionalEventSpacesSection(content: string): string {
+  // Heading immediately followed by blank line / next section rule / EOF.
+  return content
+    .replace(/(^|\n)Additional Event Spaces\n(?=\n|─|$)/g, "$1")
+    .replace(/\n{3,}/g, "\n\n");
 }
 
 /**

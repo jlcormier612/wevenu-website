@@ -16,13 +16,33 @@ export const CTR01_STOCK_CEREMONY_RECEPTION_BLOCK =
   "Reception\n" +
   "Add your venue's approved reception timing and location language here, or leave blank until those details are confirmed.";
 
-/** Replacement Ceremony/Reception block for the current master. */
-export const CTR01_NEW_CEREMONY_RECEPTION_BLOCK =
+/**
+ * Ceremony/Reception Smart Field block written by the 106 migration / prior
+ * 082 master — before Additional Event Spaces was added to the starter.
+ */
+export const CTR01_CEREMONY_RECEPTION_ONLY_BLOCK =
   "Ceremony\n{{ceremony_space}}\n\nReception\n{{reception_space}}";
+
+/** Replacement Ceremony/Reception/Additional block for the current master. */
+export const CTR01_NEW_CEREMONY_RECEPTION_BLOCK =
+  CTR01_CEREMONY_RECEPTION_ONLY_BLOCK +
+  "\n\nAdditional Event Spaces\n{{additional_event_spaces}}";
 
 const PRIOR_BODIES_DIR = join(process.cwd(), "lib/contracts/ctr01-prior-bodies");
 
 let cachedPriors: readonly string[] | null = null;
+
+function countOccurrences(haystack: string, needle: string): number {
+  let count = 0;
+  let from = 0;
+  while (true) {
+    const idx = haystack.indexOf(needle, from);
+    if (idx < 0) break;
+    count += 1;
+    from = idx + needle.length;
+  }
+  return count;
+}
 
 /** Exact prior untouched platform CTR-01 bodies (closed allowlist). */
 export function knownPriorUntouchedCtr01Bodies(): readonly string[] {
@@ -44,15 +64,17 @@ export type Ctr01RefreshAction = "full_refresh" | "surgical" | "none";
 export function classifyCtr01ContentRefresh(content: string): Ctr01RefreshAction {
   if (content === WEDDING_VENUE_AGREEMENT_CONTENT) return "none";
   if (isKnownPriorUntouchedCtr01Master(content)) return "full_refresh";
-  let count = 0;
-  let from = 0;
-  while (true) {
-    const idx = content.indexOf(CTR01_STOCK_CEREMONY_RECEPTION_BLOCK, from);
-    if (idx < 0) break;
-    count += 1;
-    from = idx + CTR01_STOCK_CEREMONY_RECEPTION_BLOCK.length;
+  if (countOccurrences(content, CTR01_STOCK_CEREMONY_RECEPTION_BLOCK) === 1) {
+    return "surgical";
   }
-  if (count === 1) return "surgical";
+  // Exact ceremony/reception-only Smart Field block → add Additional section.
+  // Guard: never treat the current NEW block as eligible (prefix would match).
+  if (
+    !content.includes("{{additional_event_spaces}}") &&
+    countOccurrences(content, CTR01_CEREMONY_RECEPTION_ONLY_BLOCK) === 1
+  ) {
+    return "surgical";
+  }
   return "none";
 }
 
@@ -65,9 +87,21 @@ export function applyCtr01ContentRefresh(content: string): {
     return { action, content: WEDDING_VENUE_AGREEMENT_CONTENT };
   }
   if (action === "surgical") {
+    if (countOccurrences(content, CTR01_STOCK_CEREMONY_RECEPTION_BLOCK) === 1) {
+      return {
+        action,
+        content: content.replace(
+          CTR01_STOCK_CEREMONY_RECEPTION_BLOCK,
+          CTR01_NEW_CEREMONY_RECEPTION_BLOCK,
+        ),
+      };
+    }
     return {
       action,
-      content: content.replace(CTR01_STOCK_CEREMONY_RECEPTION_BLOCK, CTR01_NEW_CEREMONY_RECEPTION_BLOCK),
+      content: content.replace(
+        CTR01_CEREMONY_RECEPTION_ONLY_BLOCK,
+        CTR01_NEW_CEREMONY_RECEPTION_BLOCK,
+      ),
     };
   }
   return { action: "none", content };
