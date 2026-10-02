@@ -30,7 +30,7 @@ describe("ceremony_space / reception_space catalog", () => {
   });
 });
 
-describe("ceremony / reception resolution", () => {
+describe("ceremony / reception resolution — post-booking (event authority)", () => {
   it("uses assignment names independently", () => {
     assert.equal(
       resolveCeremonySpace({ assignmentName: "  Garden  ", externalCeremonyLocation: "City Hall" }),
@@ -67,6 +67,78 @@ describe("ceremony / reception resolution", () => {
     assert.equal(reception, "Barn");
     assert.notEqual(ceremony, EMPTY_EVENT_SPACES_LABEL);
     assert.notEqual(ceremony, "Barn");
+  });
+
+  it("ignores lead preferences once booked", () => {
+    assert.equal(
+      resolveCeremonySpace({
+        booked: true,
+        assignmentName: null,
+        preference: { kind: "venue_space", spaceName: "Garden Lawn" },
+      }),
+      CEREMONY_SPACE_UNLISTED,
+    );
+    assert.equal(
+      resolveReceptionSpace({
+        booked: true,
+        assignmentName: "Barn",
+        preference: { kind: "venue_space", spaceName: "Stale Pref Barn" },
+      }),
+      "Barn",
+    );
+  });
+});
+
+describe("ceremony / reception resolution — pre-booking (lead preferences)", () => {
+  it("resolves venue-space preference names", () => {
+    assert.equal(
+      resolveCeremonySpace({
+        booked: false,
+        preference: { kind: "venue_space", spaceName: "  Garden Lawn  " },
+      }),
+      "Garden Lawn",
+    );
+    assert.equal(
+      resolveReceptionSpace({
+        booked: false,
+        preference: { kind: "venue_space", spaceName: "Barn" },
+      }),
+      "Barn",
+    );
+  });
+
+  it("resolves external preferences with ceremony locked copy and reception text", () => {
+    assert.equal(
+      resolveCeremonySpace({
+        booked: false,
+        preference: { kind: "external", externalLocation: "  City Hall  " },
+      }),
+      CEREMONY_OUTSIDE_VENUE,
+    );
+    assert.equal(
+      resolveReceptionSpace({
+        booked: false,
+        preference: { kind: "external", externalLocation: "  Harbor Dock  " },
+      }),
+      "Harbor Dock",
+    );
+  });
+
+  it("undecided and missing preferences stay unlisted", () => {
+    assert.equal(
+      resolveCeremonySpace({ booked: false, preference: { kind: "undecided" } }),
+      CEREMONY_SPACE_UNLISTED,
+    );
+    assert.equal(resolveReceptionSpace({ booked: false, preference: null }), RECEPTION_SPACE_UNLISTED);
+    assert.equal(
+      resolveCeremonySpace({
+        booked: false,
+        // Pre-booking must not invent from assignment-shaped leftovers.
+        assignmentName: "Should Not Appear",
+        preference: { kind: "undecided" },
+      }),
+      CEREMONY_SPACE_UNLISTED,
+    );
   });
 });
 
@@ -117,17 +189,21 @@ describe("buildMergeData always resolves the new fields", () => {
 });
 
 describe("authority boundaries", () => {
-  it("buildContractMergeData does not resolve new fields from planned space, questionnaire, notes, or preferences", () => {
+  it("buildContractMergeData uses lead preferences only when not booked; event authority when booked", () => {
     const service = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
     const fn = service.slice(service.indexOf("export async function buildContractMergeData"));
     assert.match(fn, /resolveCeremonySpace/);
     assert.match(fn, /resolveReceptionSpace/);
     assert.match(fn, /external_ceremony_location|externalCeremonyLocation/);
-    const ceremonyBlock = fn.slice(fn.indexOf("resolveCeremonySpace"), fn.indexOf("resolveReceptionSpace"));
-    assert.doesNotMatch(ceremonyBlock, /planned_event_space_id/);
-    assert.doesNotMatch(ceremonyBlock, /questionnaire/);
-    assert.doesNotMatch(ceremonyBlock, /lead_event_space_preferences/);
-    assert.doesNotMatch(ceremonyBlock, /lead_notes/);
+    assert.match(fn, /relationshipBooked/);
+    assert.match(fn, /bookedAt/);
+    assert.match(fn, /lead_event_space_preferences/);
+    assert.match(fn, /booked: relationshipBooked/);
+    // Still refuse questionnaire / planned-space / notes as ceremony_space authority.
+    const ceremonyCall = fn.slice(fn.indexOf("ceremonySpace: resolveCeremonySpace"), fn.indexOf("receptionSpace: resolveReceptionSpace"));
+    assert.doesNotMatch(ceremonyCall, /planned_event_space_id/);
+    assert.doesNotMatch(ceremonyCall, /questionnaire/);
+    assert.doesNotMatch(ceremonyCall, /lead_notes/);
     assert.doesNotMatch(fn, /resolveEventSpacesLabel\([\s\S]*ceremony_space/);
   });
 

@@ -26,6 +26,7 @@ import {
 import {
   resolveCeremonySpace,
   resolveReceptionSpace,
+  type CeremonyReceptionPreferenceSource,
 } from "@/lib/contracts/ceremony-reception-merge";
 import { pickPaymentScheduleForBooking } from "@/lib/contracts/payment-schedule-merge";
 import { getSpaces } from "@/lib/availability/service";
@@ -554,6 +555,10 @@ export async function buildContractMergeData(opts: {
   let receptionSpaceLabel: string | null = null;
   let ceremonyAsgName: string | null = null;
   let receptionAsgName: string | null = null;
+  let ceremonyPreference: CeremonyReceptionPreferenceSource | null = null;
+  let receptionPreference: CeremonyReceptionPreferenceSource | null = null;
+  // Canonical Booked = events.booked_at. Pre-booking contracts use lead preferences.
+  const relationshipBooked = Boolean(event?.bookedAt);
 
   // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
   // Financial SoT for total / deposit / remaining when no payment schedule exists:
@@ -642,6 +647,32 @@ export async function buildContractMergeData(opts: {
     if (receptionAsg?.spaceName?.trim()) {
       receptionAsgName = receptionAsg.spaceName.trim();
       receptionSpaceLabel = `${labelForUseKey(receptionAsg.useKey, receptionAsg.useLabel)}: ${receptionAsgName}`;
+    }
+
+    // Pre-booking only: ceremony/reception Smart Fields read lead preferences.
+    // Post-booking must not fall back to preferences (Booking-E1 seeds event authority).
+    if (!relationshipBooked && client?.leadId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: prefRows } = await (supabase.from("lead_event_space_preferences") as any)
+        .select("use_key, preference_kind, space_id, external_location")
+        .eq("lead_id", client.leadId);
+      const spaceNameById = new Map(spaces.map((s) => [s.id, s.name?.trim() || ""]));
+      for (const row of (prefRows ?? []) as Array<{
+        use_key: string;
+        preference_kind: string;
+        space_id: string | null;
+        external_location: string | null;
+      }>) {
+        const kind = row.preference_kind;
+        if (kind !== "venue_space" && kind !== "external" && kind !== "undecided") continue;
+        const source: CeremonyReceptionPreferenceSource = {
+          kind,
+          spaceName: row.space_id ? spaceNameById.get(row.space_id) ?? null : null,
+          externalLocation: row.external_location,
+        };
+        if (row.use_key === "ceremony") ceremonyPreference = source;
+        if (row.use_key === "reception") receptionPreference = source;
+      }
     }
   } catch { /* optional */ }
 
@@ -765,12 +796,16 @@ export async function buildContractMergeData(opts: {
     ceremonySummary,
     receptionSummary,
     ceremonySpace: resolveCeremonySpace({
+      booked: relationshipBooked,
       assignmentName: ceremonyAsgName,
       externalCeremonyLocation: event?.externalCeremonyLocation ?? null,
+      preference: ceremonyPreference,
     }),
     receptionSpace: resolveReceptionSpace({
+      booked: relationshipBooked,
       assignmentName: receptionAsgName,
       externalReceptionLocation: event?.externalReceptionLocation ?? null,
+      preference: receptionPreference,
     }),
     balanceRemaining,
   });
