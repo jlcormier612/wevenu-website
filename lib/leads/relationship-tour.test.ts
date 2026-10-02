@@ -163,7 +163,7 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
     assert.match(updateFn, /tourConflict/);
     assert.match(service, /tourConflict/);
     assert.match(card, /result\.tourConflict/);
-    assert.match(card, /futureScheduleHardBlock/);
+    assert.match(card, /must not disable Save/);
   });
 
   it("date-only Tour is refused before the lead row is written", () => {
@@ -227,6 +227,7 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
   it("Relationship UI requires time when a Tour date is set, and still allows clearing", () => {
     assert.match(card, /tourDateOnly/);
     assert.match(card, /A tour time is required to schedule a venue tour/);
-    assert.match(card, /disabled=\{pending \|\| futureScheduleHardBlock \|\| tourDateOnly\}/);
+    assert.match(card, /disabled=\{pending \|\| tourDateOnly\}/);
+    assert.doesNotMatch(card, /futureScheduleHardBlock/);
   });
 });

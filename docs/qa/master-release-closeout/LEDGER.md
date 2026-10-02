@@ -4,16 +4,15 @@
 
 Exact Sandbox runtime (latest sole RUNNING at last verification, 2026-10-02):
 
-- Commit / image tag: `5d81740312ac0c8aa2f268035a83f049182dfb24`
-- Contains: UX4 `934f82a3` + Contracts list identity `5d817403`
-- Does NOT contain: later ledger-only `0008b225` / `c6a17dd6` docs, or uncommitted `/automations` alias
-- Digest: `sha256:bd428116a74f37609bc53ec94fcbe7195d0e0c6e22bb2274ddc7ce262aaecc8b`
-- Task definition: `htc-sandbox-venue-app:529`
-- Task ID: `d0698ebdc08046e68235adbe5900398d`
+- Commit / image tag: `453caf2de44a62177ba224465bb1867f04b2a2ce`
+- Contains: `8d3cfcbf` (offline installment recording, tour-follow-up supersession, tax/discount venue flags, `/automations` redirect) plus `453caf2d` (restore `getCurrentVenue` import). `8d3cfcbf` itself failed image build on the missing import and never ran.
+- Digest: `sha256:cbf77be79efa305c9584415bdd3d2af7ab1019280caa903508fde1c5e2d7c3ef`
+- Task definition: `htc-sandbox-venue-app:530`
+- Task ID: `352557a58429409ea3b09133dabb6af9`
 - Desired / running / pending: 1 / 1 / 0
 - Rollout: PRIMARY COMPLETED
 - Health: `/api/health` HTTP 200 (ECS container health reported UNKNOWN)
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36959617230
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37031949214
 - Cluster: `htc-sandbox` only
 - Production: untouched
 - Prior sole RUNNING: `eeee6049` / `:527` / `1659e4a4…` (Streams 8–15 audits); `876c9d51` / `:526` (invoice back-nav)
@@ -478,43 +477,50 @@ Exact Sandbox runtime (latest sole RUNNING at last verification, 2026-10-02):
 
 ### Manual / offline payments — invoice vs schedule reconciliation
 
-- **STATUS:** OPEN
-- **DEFECT:** Invoice “Mark as Paid” (`components/invoices/invoice-detail.tsx` `STATUS_TRANSITIONS.sent.next = "paid"` → `updateInvoiceStatusAction`) flips invoice status only. It does not call `markItemPaid` / `reconcileInvoiceBalance`. A schedule installment can stay overdue after the invoice reads Paid.
-- **AUTHORITATIVE PATH THAT ALREADY EXISTS:** `lib/payments/service.ts` mark-paid records the line, activity, and `repo.reconcileInvoiceBalance`.
-- **WHY IT BLOCKS:** Customer-facing money state contradicts itself (invoice complete, schedule overdue).
-- **SMALLEST NEXT ACTION:** Route invoice “Mark as Paid” through the existing schedule mark-paid path (or disable the invoice-only transition when a schedule exists) and browser+DB prove one disposable installment.
+- **STATUS:** OPEN — installment truth proven; client booking-detail wording still says the paid installment is due
+- **RUNTIME:** `453caf2d` / `:530` / task `352557a5…` / digest `sha256:cbf77be7…`
+- **FIXTURE:** OfflinePay Disposable client `384ee231-…` invoice `328fe0ce-…` schedule `2898a151-…` line `6d6a1a16-…`
+- **BEFORE:** line status `overdue`, amount 400, stripe ids null, invoice status `sent`, balance_due 400
+- **BROWSER:** “Record payment received” → invoice Paid to Date $400, Balance $0, Paid in Full; schedule line “Sep 28, 2026 · paid”; schedule page PAID / Paid Oct 2, 2026 / method Other / activity “Payment received: $400” “Via other”. Attention payments list dropped from 16 to 15 and OfflinePay is absent from the overdue list.
+- **DB:** line status `paid`, paid_amount 400, payment_method `other`, notes “Recorded manually (offline collection).”, stripe_payment_intent_id null, stripe_checkout_session_id null. Invoice status `paid`, balance_due 0. Activity type `payment_received` description “Via other”.
+- **PROVIDER:** no Stripe id written. `quickbooks_sync_queue` row `e5d064ac-…` status `pending`, attempt_count 0, operation upsert — queued by the existing `markLineItemPaid` path, not a completed QuickBooks or Stripe charge.
+- **REMAINING DEFECT:** Client booking details still render `paymentPlanFact` as “$400.00 due September 28, 2026” for a paid line. Local fix in `lib/booking-journey/commercial-facts.ts` is not in image `453caf2d`.
 
 ### Taxes and discounts
 
-- **STATUS:** OPEN — product decision not invented
-- **AUDIT FINDING:** Invoice model already stores discount/tax amounts (`invoice.discountAmount`, `invoice.taxAmount`) and the print document renders them when non-zero. No venue-level enable/disable for “uses taxes / discounts / both / neither” was confirmed in this pass.
-- **WHY IT BLOCKS:** Implementing a tax engine without the venue’s tax basis (inclusive vs exclusive, which lines are taxable, jurisdiction) would invent accounting semantics the brief forbids.
-- **SMALLEST NEXT ACTION:** Confirm whether existing invoice discount/tax fields plus line editors are the intended first-release surface, or whether a venue setting is required before exposing auto-calc.
+- **STATUS:** GREEN on `453caf2d` for the first-release model (entered line amounts, no tax rate)
+- **MODEL:** Venue prefs `useTaxes` / `useDiscounts` (default false). Builder hides those line types when off. Totals stay `computeInvoiceTotals`. Taxable amount = subtotal − discounts when tax is present.
+- **BROWSER + STORED TOTALS:** Neither subtotal/total $1,000. Tax subtotal $1,000, taxable $1,000, tax $80, total $1,080. Discount subtotal $1,000, adjustments −$150, total $850, no taxable row. Both subtotal $1,000, adjustments −$100, taxable $900, tax $72, total $972. Print of Both matches. Neither dropdown omitted Tax and Discount. After enabling both flags, dropdown included Discount and Tax.
+- **RESTORE:** Fancy `commercial_booking_prefs` returned to the pre-proof JSON (no useTaxes/useDiscounts keys). `space_operating_mode` remained `multi`.
 
 ### Luv global truth / relevance
 
-- **STATUS:** OPEN
-- **DEFECT (proven on `5d817403`):** Miss Piggy is Booked (`sales_stage=booked`, FE contract, payment plan) and Luv still shows “Miss Piggy completed their tour 10h ago — follow up while it's fresh.”
-- **LOCATION:** Contextual observations on the lead workspace (`Luv noticed`), not the Snapshot descriptors (those correctly say Booked / No pattern yet).
-- **WHY IT BLOCKS:** Stronger lifecycle facts do not suppress earlier-stage tour follow-up recommendations.
-- **SMALLEST NEXT ACTION:** Gate tour-follow-up observations on current contract/payment/booked facts in the existing observation eligibility path; regression-test inquiry → tour → contract → payment supersession.
+- **STATUS:** GREEN on `453caf2d` for tour-follow-up supersession
+- **RULE:** A completed-tour follow-up stays only while the relationship is still pre-agreement. Client-signed or fully signed contract, a received installment, or sales stage Booked/Lost supersedes it. A lead that cannot be loaded is omitted. Proposal stage alone does not. Same gate on no-show follow-ups. No TTL.
+- **BROWSER:** RelProof Prebook `8e09b630-…` shows “completed their tour 3h ago — follow up while it's fresh.” RelProof BookedStale `81c20100-…`, SignedStale `0919f5ed-…`, and PaidStale `67bfb786-…` do not show that recommendation.
+- **TESTS:** `lib/luv/observation-supersession.test.ts`
+
+### Signed-not-booked Snapshot
+
+- **STATUS:** GREEN on `453caf2d`
+- **FIXTURE:** RelProof SignedStale, sales stage `proposal_sent`, contract status `signed`, not Booked.
+- **BROWSER (Luv tab):** Interest “Contract fully executed”. Commitment “Contract fully executed · Not yet marked Booked”. Responsiveness “No pattern yet”.
 
 ### Automations alias
 
-- **STATUS:** OPEN
-- **DEFECT:** `app/(app)/automations/page.tsx` redirect to `/communication/series` is uncommitted and not in image `5d817403`. Naked `/automations` 404s on this runtime. Nav already uses `/communication/series` (GREEN on prior image).
-- **SMALLEST NEXT ACTION:** Commit the alias, deploy, prove `/automations` redirects on the new sole RUNNING task.
+- **STATUS:** GREEN on `453caf2d`
+- **BROWSER:** `https://app.sandbox.hellotocheers.com/automations` landed on `/communication/series`. Page title Automations. Sales group and Client “Post-Event Thank You” still present.
 
 ### Stream 1 residuals B/C/E/F
 
-- **STATUS:** OPEN on `5d817403` — not re-proven this pass
-- **BLOCKER:** Combined follow-up+conflict, disposable tour lifecycle matrix, spaces single/multi restore, and Booking-E1 skip/rollback were proven only on earlier images (`eeee6049` / `876c9d51` partial). Current image has not been browser-proven for B/C/E/F.
-- **SMALLEST NEXT ACTION:** Disposable lead proofs for B then C, then settings cycle E with restore, then F skip/rollback DB proof.
+- **STATUS:** OPEN — CONCRETE BLOCKER on B; C/E/F not re-proven on `453caf2d`
+- **B (server path, proven on `453caf2d`):** ConflictSave Disposable `d2e876b5-…`, occupying tour `eac4a67f-…` at `2026-11-02T14:00:00Z`. Form showed “Maximum simultaneous tours (1) reached for this time.” The visible Save control was disabled, so a staff click could not start the write. Invoking that same save handler with follow-up `2026-10-20` and tour `2026-11-02` `09:00` persisted `follow_up_date=2026-10-20`, created no tour row for the lead, and showed “Follow-up details saved” plus the capacity conflict. A local change removes the hard disable so the next image can be proven with an ordinary click. That change is not in `453caf2d`.
+- **C / E / F:** not exercised on this image.
 
 ### Stream 16
 
 - **STATUS:** OPEN
-- **BLOCKER:** Manual payments contradiction, Luv stale tour follow-up on a Booked relationship, Automations alias not deployed, Stream 1 B/C/E/F not re-proven on `5d817403`, taxes/discounts decision unresolved.
+- **BLOCKER:** Stream 1 B staff click is still disabled on `453caf2d` (server write proven only by invoking the handler); C/E/F unproven on `453caf2d`; paid installment still reads as due on the client booking-detail card until the commercial-facts wording is in the sole running image.
 - **NOT GREEN.**
 
 ## Production

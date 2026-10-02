@@ -275,6 +275,20 @@ describe("commercial artifact states", () => {
     assert.equal(facts.find((row) => row.key === "invoice"), undefined);
   });
 
+  it("describes a received installment as paid, not still due", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ invoiceId: "inv-1" }),
+      contract: null,
+      paymentLines: [
+        { obligationKind: "deposit", status: "paid", amount: 400, dueDate: "2026-09-28" },
+      ],
+      today: "2026-10-02",
+    });
+    const plan = facts.find((row) => row.key === "payment_plan");
+    assert.match(plan?.detail ?? "", /\$400\.00 paid September 28, 2026/);
+    assert.doesNotMatch(plan?.detail ?? "", /due September 28/);
+  });
+
   it("after a successful payment request does not present another request setup", () => {
     const facts = describeCommercialFacts({
       selection: selection({ invoiceId: "inv-1" }),

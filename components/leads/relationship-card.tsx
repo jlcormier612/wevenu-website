@@ -97,15 +97,12 @@ export function RelationshipCard({
     createInitialRelationshipInput(lead),
   );
   const [pending, startTransition] = React.useTransition();
-  // Mirrors event-form.tsx's own dateBlocked wiring exactly — a hard
-  // conflict (e.g. a calendar_blocked date) must disable Save here the same
-  // way it already does for event creation, not just show an ignorable
-  // advisory (Scheduling Release Readiness Phase 1).
-  const [tourDateBlocked, setTourDateBlocked] = React.useState(false);
+  // Capacity and calendar blocks stay visible, but they must not disable Save.
+  // Follow-up fields share this button with the tour. The server writes the
+  // follow-up first and returns a structured tour conflict without rolling it back.
+  const [, setTourDateBlocked] = React.useState(false);
   const [tourConflictMessage, setTourConflictMessage] = React.useState<string | null>(null);
   const tourDateOnly = Boolean(input.tourDate.trim() && !input.tourTime.trim());
-  // Hard Save disable only for future-schedule blocks (not completed/walk-in/actual-only).
-  const futureScheduleHardBlock = tourDateBlocked && !input.tourCompleted;
   const [nextActionMode, setNextActionMode] = React.useState<"preset" | "custom">(() =>
     (NEXT_ACTION_PRESETS as readonly string[]).includes(lead.nextActionText ?? "") || !lead.nextActionText
       ? "preset"
@@ -233,7 +230,7 @@ export function RelationshipCard({
               <Button type="button" variant="ghost" size="sm" onClick={handleCancel} disabled={pending}>
                 Cancel
               </Button>
-              <Button type="button" size="sm" disabled={pending || futureScheduleHardBlock || tourDateOnly} onClick={handleSave}>
+              <Button type="button" size="sm" disabled={pending || tourDateOnly} onClick={handleSave}>
                 {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
               </Button>
             </div>

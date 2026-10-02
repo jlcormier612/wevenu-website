@@ -204,9 +204,12 @@ export function paymentPlanFact(
       detail: null,
     };
   }
-  const installmentLines = active.map(
-    (line) => `${formatCurrency(line.amount)} due ${formatInstallmentDue(line.dueDate, today)}`,
-  );
+  const installmentLines = active.map((line) => {
+    const when = formatInstallmentDue(line.dueDate, today);
+    if (line.status === "paid") return `${formatCurrency(line.amount)} paid ${when}`;
+    if (line.status === "overdue") return `${formatCurrency(line.amount)} overdue · was due ${when}`;
+    return `${formatCurrency(line.amount)} due ${when}`;
+  });
   return {
     key: "payment_plan",
     title: "Payment plan",
