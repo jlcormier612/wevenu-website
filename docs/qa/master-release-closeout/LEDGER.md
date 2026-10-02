@@ -4,14 +4,14 @@
 
 Exact Sandbox runtime (latest sole RUNNING at last verification):
 
-- Commit / image tag: `04d5df4ba97a2e8b9f311647ab5452cd0bd2a45e` (Lead→Booked terminology hard-nav)
-- Digest: `sha256:c4856cee4e8cdec900633d75ad3eec31443769ca3603eb729105924a21c3ccfb`
-- Task definition: `htc-sandbox-venue-app:525`
-- Task ID: `25cc3de0144041c484a47241c645bc5a`
+- Commit / image tag: `876c9d519b63a01c0e73702a71d428a448e7767c` (invoice origin back-nav)
+- Digest: `sha256:2e5e408c5cbac21ff1c22a751c0e1ecb01ebd2654787e328cf8055ee8f89369d`
+- Task definition: `htc-sandbox-venue-app:526`
+- Task ID: `af8590f4d29943508b0da570f9277a5e`
 - Desired / running / pending: 1 / 1 / 0
-- Rollout: PRIMARY (sole RUNNING; prior `:524` draining at 0)
+- Rollout: PRIMARY COMPLETED
 - Health: `/api/health` HTTP 200
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36953857717
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36954707812
 - Cluster: `htc-sandbox` only
 - Production: untouched
 
@@ -128,22 +128,23 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 ### STREAM 1b — Lead → Booked terminology / navigation
 
-- **STATUS:** GREEN on exact sole RUNNING `04d5df4b` / TD `:525` / task `25cc3de0…`
+- **STATUS:** GREEN on exact sole RUNNING `876c9d51` / TD `:526` / task `af8590f4…`
 - **AUDIT:** `docs/qa/lead-booked-terminology/AUDIT.md`
-- **IMPLEMENTATION COMMIT(S):** `51bbd4c6`, `d0da47d2`, `f583cd7d`, `04d5df4b`
-- **RUNNING IMAGE/TAG:** `04d5df4ba97a2e8b9f311647ab5452cd0bd2a45e`
-- **DIGEST:** `sha256:c4856cee4e8cdec900633d75ad3eec31443769ca3603eb729105924a21c3ccfb`
-- **TASK DEFINITION:** `htc-sandbox-venue-app:525`
-- **TASK ID:** `25cc3de0144041c484a47241c645bc5a`
-- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/36953857717
-- **AUTOMATED TEST EVIDENCE:** `lib/leads/booking-lifecycle.test.ts` + payment-nav `lib/contracts/return-path.test.ts` PASS
+- **IMPLEMENTATION COMMIT(S):** `51bbd4c6`, `d0da47d2`, `f583cd7d`, `04d5df4b`, `876c9d51`
+- **RUNNING IMAGE/TAG:** `876c9d519b63a01c0e73702a71d428a448e7767c`
+- **DIGEST:** `sha256:2e5e408c5cbac21ff1c22a751c0e1ecb01ebd2654787e328cf8055ee8f89369d`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:526`
+- **TASK ID:** `af8590f4d29943508b0da570f9277a5e`
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/36954707812
+- **AUTOMATED TEST EVIDENCE:** `lib/leads/booking-lifecycle.test.ts` + `lib/invoices/return-path.test.ts` + `lib/contracts/return-path.test.ts` PASS
 - **BROWSER EVIDENCE:**
-  - Disposable `c696630b…`: Mark as Booked (not Return to Booked); Open booking file gone; confirm copy exact
-  - Confirm → hard land `/clients/3e877b14…/booked?eventId=adff697d…` (“They're Booked”); Contract Signed intact
-  - Already-booked `b747f25f…`: Mark as Booked hidden
+  - Disposable `c696630b…`: Mark as Booked; Open booking file gone; land Client `/booked`
+  - Unbooked Miss Piggy invoice `14e4cb27…` from Lead → back `/leads/20e470d8…#booking-journey-payments` (not Invoices, not `/clients/`)
+  - Booked Jane invoice `60d264f4…` from Client → back `/clients/b2a45f9f…`
+  - Global `/invoices` → Jane invoice → back **Invoices** `/invoices`
   - Payment: FE-not-booked → lead `#booking-journey-payments`; Booked Ivy → `/clients/…?setupPayments=1`
 - **DB/PERSISTENCE EVIDENCE:** `sales_stage=booked`, `lifecycle_booked_at`, `events.booked_at`, contracts remain `signed`
-- **REMAINING WORK:** Invoice-detail back-nav (Lead / Client / Invoices) implemented locally; Sandbox browser proof pending
+- **REMAINING WORK:** None for this sub-gate
 - **STATUS FILE:** `docs/qa/lead-booked-terminology/STATUS.md`
 
 ### STREAM 2 — Typography / JSX interstitial whitespace
