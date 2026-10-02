@@ -320,7 +320,11 @@ async function loadFollowUpTourState(
   supabase: Awaited<ReturnType<typeof createClient>>,
   venueId: string,
   leadId: string,
-): Promise<FollowUpTourState> {
+): Promise<{
+  tour: FollowUpTourState;
+  followUpSentAt: string | null;
+  occurredAt: string | null;
+}> {
   const { data } = await supabase
     .from("tour_appointments")
     .select("scheduled_at, status, completed_at, follow_up_sent_at, actual_occurred_at")
