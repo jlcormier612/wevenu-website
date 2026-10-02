@@ -25,7 +25,6 @@ import { getVenueTimezone } from "@/lib/venue/timezone";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
-import { generateMomentumLanguage } from "@/lib/leads/momentum";
 import {
   isRecordScoped,
   recordScopeWantsClientSurface,
@@ -47,8 +46,8 @@ import {
   buildS1EventContractObservation,
   buildS2EventPaymentObservation,
   buildS3UnattendedInquiryObservation,
-  buildS4TourPrepObservation,
 } from "@/lib/luv/contextual-signals";
+import { buildTourAllSetObservation, isCustomerFacingContactMessage } from "@/lib/luv/observation-quality";
 import { getInvoices } from "@/lib/invoices/repository";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import type { Invoice } from "@/lib/invoices/types";
@@ -74,15 +73,17 @@ async function leadsWhoseTourFollowUpIsStale(
 
   const { data: leads } = await supabase
     .from("leads")
-    .select("id, sales_stage")
+    .select("id, first_booked_at, lost_at")
     .eq("venue_id", venueId)
     .in("id", ids);
 
   const known = new Set<string>();
-  const stageByLead = new Map<string, string | null>();
-  for (const lead of (leads ?? []) as { id: string; sales_stage: string | null }[]) {
+  const bookedByLead = new Map<string, boolean>();
+  const lostByLead = new Map<string, boolean>();
+  for (const lead of (leads ?? []) as { id: string; first_booked_at: string | null; lost_at: string | null }[]) {
     known.add(lead.id);
-    stageByLead.set(lead.id, lead.sales_stage);
+    bookedByLead.set(lead.id, Boolean(lead.first_booked_at));
+    lostByLead.set(lead.id, Boolean(lead.lost_at));
   }
   for (const id of ids) {
     if (!known.has(id)) stale.add(id);
@@ -151,7 +152,8 @@ async function leadsWhoseTourFollowUpIsStale(
     if (stale.has(id)) continue;
     const related = clientsByLead.get(id) ?? [];
     if (tourFollowUpSuperseded({
-      salesStage: stageByLead.get(id) ?? null,
+      booked: bookedByLead.get(id) === true,
+      lost: lostByLead.get(id) === true,
       contractSigned: related.some((cid) => signedClientIds.has(cid)),
       paymentReceived: related.some((cid) => paidClientIds.has(cid)),
     })) {
@@ -184,14 +186,6 @@ function daysAgo(iso: string): number {
  * exactly this and the read path in lib/leads/repository.ts already uses it,
  * which is why the Dashboard row said 11:00 while Luv said 3:00 PM.
  */
-function venueLocalLabel(iso: string, timezone: string | null, opts: Intl.DateTimeFormatOptions): string {
-  try {
-    return new Intl.DateTimeFormat("en-US", { timeZone: timezone || "America/New_York", ...opts }).format(new Date(iso));
-  } catch {
-    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(new Date(iso));
-  }
-}
-
 export async function getLuvObservations(
   supabase: DbClient,
   venueId: string,
@@ -277,22 +271,9 @@ export async function getLuvObservations(
         })()
       : emptyRows,
 
-    // 3: Qualified/proposal leads — narrowed to "no tour scheduled" below,
-    // against tour_appointments (Program 2 Phase 1a's canonical source),
-    // since the query builder can't express a NOT EXISTS join inline here.
-    wantLead
-      ? onlyBusinessReporting(
-        (() => {
-          let q = supabase.from("leads")
-            .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
-            .eq("venue_id", venueId)
-            .in("sales_stage", ["tour_scheduled", "proposal_sent"])
-            .order("created_at");
-          if (scope?.leadId) q = q.eq("id", scope.leadId);
-          return q;
-        })(),
-      )
-      : emptyRows,
+    // 3: Retired — "may be ready to schedule a tour" used sales_stage
+    // (tour_scheduled / proposal_sent) as proof. Stage is never evidence.
+    emptyRows,
 
     // 4: Contracts sent 3+ days ago, still awaiting signature
     supabase.from("contracts")
@@ -319,7 +300,8 @@ export async function getLuvObservations(
           let q = supabase.from("leads")
             .select("id, first_name, last_name, partner_first_name, created_at")
             .eq("venue_id", venueId)
-            .eq("sales_stage", "new_inquiry")
+            .is("first_booked_at", null)
+            .is("lost_at", null)
             .is("follow_up_date", null)
             .lt("created_at", twoDaysAgo)
             .order("created_at");
@@ -357,7 +339,7 @@ export async function getLuvObservations(
     wantLead
       ? (() => {
           let q = supabase.from("tour_appointments")
-            .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id")
+            .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id, status")
             .eq("venue_id", venueId)
             .in("status", ["scheduled", "confirmed"])
             .gte("scheduled_at", today)
@@ -421,10 +403,10 @@ export async function getLuvObservations(
       ? onlyBusinessReporting(
         (() => {
           let q = supabase.from("leads")
-            .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at")
+            .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, first_booked_at, lost_at, relationship_id")
             .eq("venue_id", venueId)
-            .eq("sales_stage", "new_inquiry")
-            .is("last_contacted_at", null)
+            .is("first_booked_at", null)
+            .is("lost_at", null)
             .lte("created_at", fortyEightHoursAgo)
             .order("created_at");
           if (scope?.leadId) q = q.eq("id", scope.leadId);
@@ -494,34 +476,9 @@ export async function getLuvObservations(
     });
   }
 
-  // ── 3: Qualified leads with no tour ──────────────────────────────────────
-
-  const qualifiedLeads = (qualifiedLeadsRes.data ?? []) as { id: string; first_name: string; last_name: string; partner_first_name?: string | null; sales_stage: string; created_at: string }[];
-  const leadsWithActiveTours = new Set<string>();
-  if (qualifiedLeads.length > 0) {
-    const { data: activeTours } = await supabase.from("tour_appointments")
-      .select("lead_id").eq("venue_id", venueId)
-      .in("lead_id", qualifiedLeads.map((l) => l.id))
-      .not("status", "in", "(cancelled)");
-    for (const t of (activeTours ?? []) as { lead_id: string | null }[]) {
-      if (t.lead_id) leadsWithActiveTours.add(t.lead_id);
-    }
-  }
-
-  for (const lead of qualifiedLeads.filter((l) => !leadsWithActiveTours.has(l.id))) {
-    const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
-    const days = daysAgo(lead.created_at);
-    observations.push({
-      id: `tour-${lead.id}`,
-      kind: "recommendation",
-      priority: "medium",
-      message: `${name} may be ready to schedule a tour.`,
-      detail: `${lead.sales_stage === "proposal_sent" ? "In Proposal Sent stage" : "Tour scheduled"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
-      link: `/leads/${lead.id}`,
-      actionLabel: "View Lead →",
-      recommendation: { label: "Invite them to schedule a tour", link: `/leads/${lead.id}`, type: "navigate" },
-    });
-  }
+  // ── 3: Retired. Stage-based "ready to schedule a tour" invented work
+  // from sales_stage (including a false "Tour scheduled" claim).
+  void qualifiedLeadsRes;
 
   // ── 4: Contracts awaiting signature ──────────────────────────────────────
 
@@ -868,79 +825,25 @@ export async function getLuvObservations(
   }
 
   // ── Upcoming tour appointments ───────────────────────────────────────────
-  // Tours are high-intent moments. Generic schedule notice stays L3.
-  // S4 upgrades the same id only when evidence shows a real prep gap.
+  // Authoritative source: tour_appointments. Never sales_stage.
+  // Confirmed/scheduled with no unresolved issue → contextual all-set (no CTA)
+  // or silence. Do not manufacture "Make first contact" / "Prepare for the tour".
   const upcomingTours = (upcomingToursRes.data ?? []) as {
-    id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null;
+    id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null; status: string | null;
   }[];
-  const tourLeadIds = [...new Set(upcomingTours.map((t) => t.lead_id).filter(Boolean))] as string[];
-  const tourLeadPrepById = new Map<string, {
-    id: string; next_action_text: string | null; next_action_due: string | null;
-    last_contacted_at: string | null; sales_stage: string;
-  }>();
-  if (tourLeadIds.length > 0) {
-    const { data: tourLeads } = await onlyBusinessReporting(
-      supabase.from("leads")
-        .select("id, next_action_text, next_action_due, last_contacted_at, sales_stage")
-        .eq("venue_id", venueId)
-        .in("id", tourLeadIds),
-    );
-    for (const row of (tourLeads ?? []) as {
-      id: string; next_action_text: string | null; next_action_due: string | null;
-      last_contacted_at: string | null; sales_stage: string;
-    }[]) {
-      tourLeadPrepById.set(row.id, row);
-    }
-  }
-
   for (const tour of upcomingTours) {
     const tourDate = new Date(tour.scheduled_at);
     const du = Math.ceil((tourDate.getTime() - Date.now()) / 86_400_000);
-    const timeStr = venueLocalLabel(tour.scheduled_at, venueTimezone, {
-      weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    const ready = buildTourAllSetObservation({
+      tourId: tour.id,
+      scheduledAt: tour.scheduled_at,
+      status: tour.status,
+      contactName: tour.contact_name,
+      leadId: tour.lead_id,
+      daysUntil: du,
+      timeZone: venueTimezone,
     });
-    const name = tour.contact_name ?? "A prospective client";
-    const leadRow = tour.lead_id ? tourLeadPrepById.get(tour.lead_id) ?? null : null;
-    const s4 = buildS4TourPrepObservation(
-      {
-        id: tour.id,
-        venueId,
-        scheduledAt: tour.scheduled_at,
-        contactName: tour.contact_name,
-        durationMinutes: tour.duration_minutes,
-        leadId: tour.lead_id,
-      },
-      leadRow
-        ? {
-            leadId: leadRow.id,
-            venueId,
-            nextActionText: leadRow.next_action_text,
-            nextActionDue: leadRow.next_action_due,
-            lastContactedAt: leadRow.last_contacted_at,
-            salesStage: leadRow.sales_stage,
-          }
-        : null,
-      { venueId },
-      du === 0
-        ? `today at ${venueLocalLabel(tour.scheduled_at, venueTimezone, { hour: "numeric", minute: "2-digit" })}`
-        : timeStr,
-    );
-    if (s4) {
-      observations.push(s4);
-      continue;
-    }
-    observations.push({
-      id: `tour-upcoming-${tour.id}`,
-      kind: "fact",
-      priority: du === 0 ? "high" : "medium",
-      message: du === 0
-        ? `${name} has a tour today at ${venueLocalLabel(tour.scheduled_at, venueTimezone, { hour: "numeric", minute: "2-digit" })}.`
-        : `${name} has a tour scheduled for ${timeStr}.`,
-      detail: `${tour.duration_minutes}-minute tour. ${du === 0 ? "Make sure everything is ready." : `In ${du} day${du !== 1 ? "s" : ""}.`}`,
-      link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",
-      actionLabel: "View Lead →",
-      recommendation: { label: "Prepare for the tour", link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads", type: "navigate" },
-    });
+    if (ready) observations.push(ready);
   }
 
   // ── Momentum: relationship health language ────────────────────────────────
@@ -952,9 +855,10 @@ export async function getLuvObservations(
     ? await onlyBusinessReporting(
       (() => {
         let q = supabase.from("leads")
-          .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
+          .select("id, first_name, last_name, first_booked_at, lost_at, commitment_score, last_contacted_at, created_at")
           .eq("venue_id", venueId)
-          .not("sales_stage", "in", "(booked,lost)")
+          .is("first_booked_at", null)
+          .is("lost_at", null)
           .order("commitment_score", { ascending: false })
           .limit(20);
         if (scope?.leadId) q = q.eq("id", scope.leadId);
@@ -980,7 +884,7 @@ export async function getLuvObservations(
       signalsByLead.set(s.lead_id, arr);
     }
 
-    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; last_contacted_at: string | null; created_at: string }[]) {
+    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; first_booked_at: string | null; lost_at: string | null; commitment_score: number; last_contacted_at: string | null; created_at: string }[]) {
       const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
       const leadSignals = signalsByLead.get(lead.id) ?? [];
       const interestScore = computeInterestFromSignals(leadSignals);
@@ -1046,13 +950,13 @@ export async function getLuvObservations(
       map.set(s.lead_id, (map.get(s.lead_id) ?? 0) + s.signal_strength);
     }
 
-    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; last_contacted_at: string | null }[]) {
+    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; first_booked_at: string | null; lost_at: string | null; commitment_score: number; last_contacted_at: string | null }[]) {
       const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
       const recent = recentByLead.get(lead.id) ?? 0;
       const prior  = priorByLead.get(lead.id) ?? 0;
       const alreadyCovered = observations.some((o) => o.id.includes(lead.id));
       if (alreadyCovered) continue;
-      if (lead.sales_stage === "booked" || lead.sales_stage === "lost") continue;
+      if (lead.first_booked_at || lead.lost_at) continue;
 
       // Significant INCREASE in signals this week
       if (recent >= 4 && prior === 0) {
@@ -1359,11 +1263,50 @@ export async function getLuvObservations(
     if (s2) observations.push(s2);
   }
 
-  // S3 — unattended new inquiry (≥48h, never contacted)
-  for (const row of (unattendedInquiryRes.data ?? []) as {
+  // S3 — unattended inquiry (≥48h) using communication + tour records, not stage
+  const s3Rows = (unattendedInquiryRes.data ?? []) as {
     id: string; first_name: string; last_name: string; sales_stage: string;
     created_at: string; last_contacted_at: string | null;
-  }[]) {
+    first_booked_at: string | null; lost_at: string | null; relationship_id: string | null;
+  }[];
+  const s3LeadIds = s3Rows.map((r) => r.id);
+  const s3RelIds = [...new Set(s3Rows.map((r) => r.relationship_id).filter(Boolean))] as string[];
+  const contactedLeadIds = new Set<string>();
+  const tourStatusByLead = new Map<string, string>();
+  if (s3LeadIds.length > 0) {
+    const { data: s3Tours } = await supabase.from("tour_appointments")
+      .select("lead_id, status")
+      .eq("venue_id", venueId)
+      .in("lead_id", s3LeadIds)
+      .in("status", ["scheduled", "confirmed", "completed"]);
+    for (const t of (s3Tours ?? []) as { lead_id: string | null; status: string }[]) {
+      if (t.lead_id) tourStatusByLead.set(t.lead_id, t.status);
+    }
+  }
+  if (s3RelIds.length > 0) {
+    const { data: convs } = await supabase.from("conversations")
+      .select("id, relationship_id")
+      .eq("venue_id", venueId)
+      .in("relationship_id", s3RelIds);
+    const convIds = (convs ?? []).map((c: { id: string }) => c.id);
+    const relByConv = new Map((convs ?? []).map((c: { id: string; relationship_id: string }) => [c.id, c.relationship_id]));
+    if (convIds.length > 0) {
+      const { data: msgs } = await supabase.from("conversation_messages")
+        .select("conversation_id, sender_type, channel")
+        .eq("venue_id", venueId)
+        .in("conversation_id", convIds);
+      const relsWithMsg = new Set<string>();
+      for (const m of (msgs ?? []) as { conversation_id: string; sender_type: string; channel: string }[]) {
+        if (!isCustomerFacingContactMessage({ senderType: m.sender_type, channel: m.channel })) continue;
+        const rel = relByConv.get(m.conversation_id);
+        if (rel) relsWithMsg.add(rel);
+      }
+      for (const row of s3Rows) {
+        if (row.relationship_id && relsWithMsg.has(row.relationship_id)) contactedLeadIds.add(row.id);
+      }
+    }
+  }
+  for (const row of s3Rows) {
     const s3 = buildS3UnattendedInquiryObservation(
       {
         id: row.id,
@@ -1373,6 +1316,10 @@ export async function getLuvObservations(
         salesStage: row.sales_stage,
         createdAt: row.created_at,
         lastContactedAt: row.last_contacted_at,
+        hasCustomerFacingMessage: contactedLeadIds.has(row.id),
+        tourStatus: tourStatusByLead.get(row.id) ?? null,
+        firstBookedAt: row.first_booked_at,
+        lostAt: row.lost_at,
       },
       { venueId },
     );
@@ -1387,8 +1334,7 @@ export async function getLuvObservations(
     o.id.startsWith("event-contract-unsigned-") ||
     o.id.startsWith("event-payment-attention-") ||
     o.id.startsWith("inquiry-unattended-") ||
-    // S4 upgrades tour-upcoming in place when evidence exists
-    (o.id.startsWith("tour-upcoming-") && o.kind === "recommendation");
+    o.id.startsWith("tour-upcoming-");
   const contextual = sorted.filter(isContextual);
   const rest = sorted.filter((o) => !isContextual(o));
   return [...contextual, ...rest].slice(0, 8);

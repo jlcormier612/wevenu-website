@@ -7,7 +7,8 @@ describe("tour follow-up supersession", () => {
   it("stays actionable after a completed tour before agreement", () => {
     assert.equal(
       tourFollowUpSuperseded({
-        salesStage: "tour_scheduled",
+        booked: false,
+        lost: false,
         contractSigned: false,
         paymentReceived: false,
       }),
@@ -15,10 +16,11 @@ describe("tour follow-up supersession", () => {
     );
   });
 
-  it("proposal stage alone does not suppress the follow-up", () => {
+  it("proposal stage / sales_stage is not even an input — cannot suppress", () => {
     assert.equal(
       tourFollowUpSuperseded({
-        salesStage: "proposal_sent",
+        booked: false,
+        lost: false,
         contractSigned: false,
         paymentReceived: false,
       }),
@@ -29,7 +31,8 @@ describe("tour follow-up supersession", () => {
   it("signed contract supersedes even when not Booked", () => {
     assert.equal(
       tourFollowUpSuperseded({
-        salesStage: "proposal_sent",
+        booked: false,
+        lost: false,
         contractSigned: true,
         paymentReceived: false,
       }),
@@ -37,10 +40,11 @@ describe("tour follow-up supersession", () => {
     );
   });
 
-  it("Booked supersedes", () => {
+  it("authoritative Booked (first_booked_at) supersedes", () => {
     assert.equal(
       tourFollowUpSuperseded({
-        salesStage: "booked",
+        booked: true,
+        lost: false,
         contractSigned: false,
         paymentReceived: false,
       }),
@@ -51,7 +55,8 @@ describe("tour follow-up supersession", () => {
   it("a received payment supersedes", () => {
     assert.equal(
       tourFollowUpSuperseded({
-        salesStage: "tour_scheduled",
+        booked: false,
+        lost: false,
         contractSigned: false,
         paymentReceived: true,
       }),
@@ -59,14 +64,27 @@ describe("tour follow-up supersession", () => {
     );
   });
 
-  it("lost supersedes", () => {
+  it("authoritative Lost (lost_at) supersedes", () => {
     assert.equal(
       tourFollowUpSuperseded({
-        salesStage: "lost",
+        booked: false,
+        lost: true,
         contractSigned: false,
         paymentReceived: false,
       }),
       true,
+    );
+  });
+
+  it("sales_stage booked without first_booked_at does not supersede", () => {
+    assert.equal(
+      tourFollowUpSuperseded({
+        booked: false,
+        lost: false,
+        contractSigned: false,
+        paymentReceived: false,
+      }),
+      false,
     );
   });
 });

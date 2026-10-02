@@ -6,6 +6,7 @@
  */
 
 import type { LuvObservation } from "@/lib/luv/types";
+import { hasQualifyingCustomerContact } from "@/lib/luv/observation-quality";
 
 export const CONTEXTUAL_EVENT_WINDOW_DAYS = 21;
 export const UNATTENDED_INQUIRY_HOURS = 48;
@@ -45,9 +46,14 @@ export type ContextualLead = {
   venueId: string;
   firstName: string;
   lastName: string;
+  /** Weak journey metadata only — never proof of contact or action. */
   salesStage: string;
   createdAt: string;
   lastContactedAt: string | null;
+  hasCustomerFacingMessage?: boolean;
+  tourStatus?: string | null;
+  firstBookedAt?: string | null;
+  lostAt?: string | null;
 };
 
 export type ContextualTour = {
@@ -109,38 +115,21 @@ export function isUnattendedInquiryAge(createdAt: string, opts: ContextualEvalOp
 }
 
 /**
- * S4 evidence — only fire when something concrete is missing/open.
- * Generic "tour is soon, be prepared" is not evidence.
+ * S4 evidence — only a genuine open next action the coordinator set.
+ * Null last_contacted_at is NOT "no contact": confirmation emails and
+ * conversation_messages are authoritative. A scheduled tour is itself
+ * contact evidence. "Make first contact" is retired.
  */
 export function tourPreparationEvidence(
   tour: ContextualTour,
   lead: ContextualTourLeadPrep | null,
   opts: ContextualEvalOpts,
-): { kind: "next_action" | "never_contacted"; detail: string } | null {
+): { kind: "next_action"; detail: string } | null {
   if (!lead || lead.venueId !== opts.venueId) return null;
   if (tour.venueId !== opts.venueId) return null;
   if (!tour.leadId || tour.leadId !== lead.leadId) return null;
 
-  const nextAction = lead.nextActionText?.trim() ?? "";
-  if (nextAction) {
-    const tourDay = tour.scheduledAt.slice(0, 10);
-    const due = lead.nextActionDue;
-    // Open next action with no due date, or due on/before the tour day.
-    if (!due || due <= tourDay) {
-      return {
-        kind: "next_action",
-        detail: `Open next action before the tour: ${nextAction}.`,
-      };
-    }
-  }
-
-  if (lead.lastContactedAt == null) {
-    return {
-      kind: "never_contacted",
-      detail: "No contact is recorded yet for this inquiry before the tour.",
-    };
-  }
-
+  // last_contacted_at / sales_stage never qualify as a prep gap.
   return null;
 }
 
@@ -213,8 +202,13 @@ export function buildS3UnattendedInquiryObservation(
   opts: ContextualEvalOpts,
 ): LuvObservation | null {
   if (lead.venueId !== opts.venueId) return null;
-  if (lead.salesStage !== "new_inquiry") return null;
-  if (lead.lastContactedAt != null) return null;
+  if (lead.firstBookedAt) return null;
+  if (lead.lostAt) return null;
+  if (hasQualifyingCustomerContact({
+    lastContactedAt: lead.lastContactedAt,
+    hasCustomerFacingMessage: lead.hasCustomerFacingMessage,
+    tourStatus: lead.tourStatus,
+  })) return null;
   if (!isUnattendedInquiryAge(lead.createdAt, opts)) return null;
 
   const name = leadDisplayName(lead);
@@ -264,7 +258,7 @@ export function buildS4TourPrepObservation(
     link: href,
     actionLabel: "Open Lead →",
     recommendation: {
-      label: evidence.kind === "next_action" ? "Complete the open next action" : "Make first contact before the tour",
+      label: "Complete the open next action",
       link: href,
       type: "navigate",
     },

@@ -445,9 +445,10 @@ export async function syncPhase5SpotPatternRecommendations(
       onlyBusinessReporting(
         supabase
           .from("leads")
-          .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, acquisition_source")
+          .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, acquisition_source, first_booked_at, lost_at")
           .eq("venue_id", venueId)
-          .eq("sales_stage", "new_inquiry")
+          .is("first_booked_at", null)
+          .is("lost_at", null)
           .is("last_contacted_at", null)
           .lte("created_at", fortyEightHoursAgo)
           .gte("created_at", windowStart),

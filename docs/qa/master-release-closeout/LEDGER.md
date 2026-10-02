@@ -1,8 +1,10 @@
 # HTC Master Release Closeout Ledger
 
-**Status of this document:** working ledger for the current execution. Production untouched.
+**OVERALL HTC RELEASE:** NOT GREEN — Luv pipeline-stage-is-never-evidence + observation-quality correction is implemented in tree but not yet proven on exact Sandbox runtime. Date Hold multi-hold (`fd213041`) also awaits runtime + browser proof. Production untouched.
 
-Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware proof, 2026-10-02):
+**Status of this document:** authoritative master-release closeout. Production untouched.
+
+Exact Sandbox runtime (sole RUNNING after Stream 16 integrated gate, 2026-10-02):
 
 - Commit / image tag: `da6c79c9f6451298d47942d3de98f007d2adb5b8`
 - Digest: `sha256:d3db4a511e73c7ee1900090ae459148077a6df0871d05d36f91192ad66a53a1f`
@@ -30,7 +32,7 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 | Invoice/customer-facing financial flow | GREEN/CLOSED | prior | prior | prior | prior | prior | invoice tests | prior | prior | do not reopen | None |
 | Documents simplification | GREEN/CLOSED | prior | prior | prior | prior | prior | prior | prior | prior | do not reopen | None |
 | Luv performance scope | GREEN/CLOSED | `0b5a34e4` | prior Luv-scope runtime | prior | prior | prior | CW Luv tests | TTFB 2078 ms | n/a | do not reopen | None |
-| Luv contextual-intelligence S1–S4 / Phase 5 / Phase 6 | GREEN/CLOSED | prior formal close | prior | prior | prior | prior | phase STATUS files | prior | prior | do not reopen | None |
+| Luv contextual-intelligence S1–S4 / Phase 5 / Phase 6 | OPEN — stage-is-never-evidence + quality correction in tree; NOT GREEN until exact-runtime browser+DB | pending this correction | not yet | not yet | not yet | not yet | `lib/luv/pipeline-stage-evidence.test.ts` + Luv suites 200+206 PASS locally | not yet | not yet | prior S1–S2/proposal/draft rules preserved; S3/S4 no longer treat stage or empty last_contacted_at as proof | Exact Sandbox runtime + browser+DB |
 | Dashboard greeting | GREEN/CLOSED | prior | prior | prior | prior | prior | prior | prior | prior | do not reopen | None |
 | Global deleted-record visibility | GREEN/CLOSED | prior | prior | prior | prior | prior | `docs/qa/global-deleted-record-visibility/STATUS.md` | prior | prior | do not reopen | None |
 | Library collection consistency | GREEN/CLOSED | prior | prior | prior | prior | prior | prior STATUS | prior | prior | do not reopen | None |
@@ -73,12 +75,7 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 - **DB/PERSISTENCE EVIDENCE:** OccBook3; Jasmine two-clock; Jane assigns ceremony+reception+cocktail_hour(+legacy event_space); Wilma/Cinde commercial_selections.proposal_id
 - **PACKAGE PROVENANCE / OCT4 / CTR-01 / AES ADD-ON:** CLOSED on current runtime proofs above + prior add-on GREEN
 - **SMART FIELDS PRODUCT LOCK:** retained
-- **REMAINING WORK (closeout re-proof — concrete):**
-  - **B** combined follow-up save + tour conflict on disposable lead (exact `eeee6049`)
-  - **C** disposable tour lifecycle matrix (scheduled→complete, walk-in, actual-only) beyond Jasmine regression already GREEN
-  - **E** browser-prove single-mode UI + reception-only-via-permitted-uses presentation (DB check: `space_operating_mode` enum is only `single`|`multi`; Fancy restored `multi` after single cycle)
-  - **F** disposable Booking-E1 skip inactive/disallowed + seed rollback DB proof (unit skip already PASS 4/4)
-  - Stream 1 product previously GREEN on `1d6c96c2`; do not reopen A/D/G/H/AES add-on without regression
+- **REMAINING WORK:** None. Residuals B/C/E/F later GREEN/CLOSED on `204c885f` / `7dbece3f` (see Stream 1 residuals below). Do not reopen A/D/G/H/AES without regression.
 
 ### STREAM 1 ADD-ON — `{{additional_event_spaces}}` starter correction
 
@@ -298,7 +295,7 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 - **BROWSER EVIDENCE:** Nav Automations href=`/communication/series` (current); page title Automations; Sales group (New Inquiry Welcome 37 enrolled; Proposal Follow-Up; Tour Confirmation; Tour Follow-Up); Client group (Post-Event Thank You); help disclosure present. Naked `/automations` 404 on current image — alias fix ready for next Sandbox deploy.
 - **DB/PERSISTENCE EVIDENCE:** n/a
 - **REGRESSION EVIDENCE:** none observed on list surface
-- **REMAINING WORK:** Deploy automations alias redirect on next Sandbox cutover; then re-hit `/automations` → series (not required to reopen stream once deployed)
+- **REMAINING WORK:** None. Alias later GREEN on `453caf2d` and re-verified in Stream 16 (`/automations` → Sales + Client groups).
 
 ### STREAM 10 — Help / Guides
 
@@ -368,7 +365,7 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 - **BROWSER EVIDENCE:** `/automations` 404 on current image (alias pending deploy); primary nav path healthy
 - **DB/PERSISTENCE EVIDENCE:** latest migrations present through `20261410800000_…additional_event_spaces`; no pending Apply Migrations workflow found; Production clusters other than `htc-sandbox` not touched
 - **REGRESSION EVIDENCE:** no accidental production deploy
-- **REMAINING WORK:** Ship Automations alias on next Sandbox deploy
+- **REMAINING WORK:** None. Automations `/automations` alias later GREEN on `453caf2d`.
 
 ### STREAM 15 — Responsive / mobile
 
@@ -386,14 +383,15 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 
 ### STREAM 16 — Final cross-system regression
 
-- **STATUS:** OPEN — blocked until Stream 1 remaining B/C/E/F closeout items are GREEN
-- **IMPLEMENTATION COMMIT(S):** n/a
-- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** not yet
-- **AUTOMATED TEST EVIDENCE:** none
-- **BROWSER EVIDENCE:** none
-- **DB/PERSISTENCE EVIDENCE:** none
-- **REGRESSION EVIDENCE:** none
-- **REMAINING WORK:** after Stream 1 residual gates close + Automations alias deploy, run full Lead→Client→Event→Contract→Invoice/Payment + Tours/Spaces/Smart Fields/Luv/Tasks/Dashboard/Documents/Archive/portal matrix on sole RUNNING.
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `da6c79c9` / `:536` / task `101901f0…` / digest `sha256:d3db4a511e73…`
+- **IMPLEMENTATION COMMIT(S):** n/a (integrated gate; no product redesign)
+- **RUNNING IMAGE/TAG:** `da6c79c9f6451298d47942d3de98f007d2adb5b8`
+- **DIGEST:** `sha256:d3db4a511e73c7ee1900090ae459148077a6df0871d05d36f91192ad66a53a1f`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:536`
+- **TASK ID:** `101901f0fd3c494b9a4899862e6ea5ec`
+- **AUTOMATED TEST EVIDENCE:** post-booking + event-setup + EO freeze 41/41 PASS; hold-occupancy + contract return-path + booking-lifecycle 45/45 PASS. Date-hold suite previously 121/121 on this image.
+- **BROWSER + DB EVIDENCE:** see Stream 16 section below (same runtime). No Stream 16 defect found. Closed streams not reopened.
+- **REMAINING WORK:** None.
 
 ### PA4 QA cleanup
 
@@ -428,14 +426,14 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 
 ### Luv — Relationship Snapshot lifecycle authority
 
-- **STATUS:** OPEN — Booked path proven on runtime; signed-not-booked browser matrix still required
+- **STATUS:** GREEN/CLOSED — remaining signed-not-booked matrix proven later on `453caf2d` (see “Signed-not-booked Snapshot”). Not reopened in Stream 16.
 - **ROOT CAUSE:** Snapshot descriptors used numeric scores only (`scoreDescriptor`). Signed contracts could still show Interest “Still early” / Commitment “Progressing toward booking” because scores lagged authoritative contract/Booked facts.
 - **CANONICAL FIXTURE (pre-fix proof target):** Miss Piggy lead `20e470d8-…` was tour_scheduled + FE when the bug was filed. DB now `sales_stage=booked`, `first_booked_at=2026-10-02T03:50:26Z`, commitment_score=100.
 - **FIX:** `lib/leads/snapshot-lifecycle.ts` precedence over scores; `LeadMomentumCard` + `LuvDraftPanel` consume `bookingJourney` contract + `salesStage === booked` + payment outstanding context. Signed ≠ Booked preserved.
 - **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **AUTOMATED TEST EVIDENCE:** `snapshot-lifecycle.test.ts` matrix PASS
 - **BROWSER EVIDENCE:** Piggy Luv tab on `5d817403`: Interest Booked / Responsiveness “No pattern yet” / Commitment Booked. Matches current Booked authority. Responsiveness correctly stays score-based.
-- **REMAINING WORK:** Browser-prove disposable signed-not-booked and fully-executed-not-booked (Piggy is no longer that case).
+- **REMAINING WORK:** None. Signed-not-booked / fully-executed-not-booked proven on `453caf2d` (RelProof SignedStale).
 
 ### Payment document — redundant / unexpected note provenance
 
@@ -561,18 +559,19 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 
 ### Event Order / Inventory commercial lifecycle (master release)
 
-- **STATUS:** GREEN/CLOSED on exact sole RUNNING `6a810904` (`htc-sandbox-venue-app:535`, digest `sha256:fa9bba453d0e…`).
-- **LOCKED PRODUCT MODEL:** Same commercial lifecycle as booking. Finalize/lock = what will be provided. Invoice issuance = financial obligation. Payment plan optional. Included/$0 stay on the locked agreement and never freeze as charges. Client sees structured choices (not raw inventory). Amend reuses the same agreement instance.
-- **IMPLEMENTATION COMMIT:** `6a810904ee1e84afed09b3821a56a1db6d858d0b`
-- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37066663160 SUCCESS → sole PRIMARY COMPLETED `:535` / task `f18f91a1…`
-- **FIXTURE:** PostBook Disposable client `870f7ff2-31b1-4b8c-9370-abffda99cfc1` / event `b0371cc3-d2ff-4855-9144-c163d0da6f7d` / Wedding Reception template `99585da2-…` / choices instance `c4e0a129-97a6-40da-b81a-66f6f501555b` (same ID through amend).
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `da6c79c9` / `:536` / task `101901f0…` / digest `sha256:d3db4a511e73…` (contains implementation `6a810904`).
+- **LOCKED PRODUCT MODEL:** Same commercial lifecycle as booking. Finalize/lock = what will be provided. Invoice issuance = financial obligation. Payment plan optional. Included/$0 stay on the locked agreement and never freeze as charges. Client sees structured choices (not raw inventory). Amend reuses the same Client Choices instance.
+- **IMPLEMENTATION COMMIT:** `6a810904ee1e84afed09b3821a56a1db6d858d0b` (ancestor of running `da6c79c9`; not redeployed backward)
+- **PRIOR CLOSEOUT:** GREEN on `:535` / `6a810904` with fixture `870f7ff2-…` (later deleted). Re-proved on current sole image below.
+- **FIXTURE (exact `da6c79c9`):** PostBook Gate16 client `86731d0b-3a0f-4911-b5ab-54c648d09738` / event `7b8eca64-e13a-4644-8204-bcccee3b3690` / Wedding Reception template `99585da2-…` / choices instance `540dfa9b-cdfa-4052-ae96-0ba5450f9600` (same ID through amend) / portal `/p/pb1617909807765657h0zi5bu`.
 - **BROWSER + DB SCENARIOS (all PASS on this runtime):**
-  1. **Included-only:** venue started selections → configured Bartender (included) → Send → portal submit → Finalize. EO line Bartender `$0` `is_included=true`. Invoices/schedules empty. financialDelta `0`.
-  2. **Billable + invoice:** after amend path, venue Create New Invoice → Mark as issued. Invoice `c43071a9-…` / `INV-2026-C43071` status `sent`, total `$750`, issued_at set. No billing before issuance (copy: “Nothing has been billed yet”). No payment schedule created.
-  3. **Mixed:** locked agreement holds Caesar (included priced `$3`) + Premium (`$750`). Invoice line count `1` — only Premium frozen (`event_order_line_id=f0576767-…`). Caesar `is_included=true` amount `$3` **not** on invoice.
-  4. **Amendment (critical):** Amend → same choices ID `c4e0a129-…` → status `draft` with prior `applied_line_ids` retained → prior submissions `#1`/`#2` kept → prior Bartender EO line remained until re-finalize → send/client revise/finalize → Bartender removed; new applied lines `[5c3bf9d3-…, f0576767-…]`; submission `#4` financialDelta `750`; no duplicate EO charges.
-  5. **Inventory handoff:** inventory `7209cc44-…` finalized → Add to Event Order added included Chiavari + billable lounge sofa (`$250`). Toast “Added 2 items ($250.00 additional)”. Both `added_to_event_order_at` set. Included EO line `$0`; billable EO line `$250` not auto-invoiced. Floor assignments `0` (no floor-plan charge).
-- **AUTOMATED:** post-booking lifecycle A–I + selections-billing + unbilled-delta + lifecycle-gates + apply-to-event-order + inventory handoff — 36/36 PASS on this closeout.
+  1. **Included-only:** Start selections → Bartender included → Send → portal Submit → Finalize. Status `finalized`. EO line `a2704c35-…` Bartender `$0` `is_included=true` notes `choices:540dfa9b-…:9f01e86f-…`. Invoices `[]`. Payment schedules `[]`. Copy: “Locked — this is what will be provided.” Delivery subtotal `$0`.
+  2. **Billable + invoice:** After mixed re-finalize, venue Create New Invoice `19dc321e-…` / `INV-2026-19DC32` → Mark as issued → status `sent`, `issued_at=2026-10-02T22:46:41Z`, total `$750`. One frozen line: Premium open bar `event_order_line_id=005520f0-…`. No payment schedule. Financial obligation began at issue, not at finalize.
+  3. **Mixed:** Locked answers bartender + Premium. EO has both: Bartender `39ebb6af-…` `$0` included + Premium `005520f0-…` `$750` not included. Issued invoice line count `1` — bartender / Chiavari never on invoice lines.
+  4. **Amendment (critical):** Amend kept same `client_choices.id=540dfa9b-…`. After Amend: status `draft`, `applied_line_ids` still `[a2704c35-…]`, submissions `#1`/`#2` retained. After re-finalize: old line `a2704c35-…` **deleted**; new applied `[39ebb6af-…, 005520f0-…]`; submissions `#1–#4` retained; activity “Removed: Bartender service” then re-added current pair; no duplicate current lines.
+  5. **Inventory:** Event Inventory `464e7962-…` finalized → Add to Event Order. Chiavari included `$0` + sofa billable `$250` both `added_to_event_order_at` set and on EO. Existing sent invoice stayed `$750` / Premium only. UI: “$250.00 that is not on the current invoice yet.” Amended live-projection draft `9e048241-…` UI `$1,000` (750+250); included chairs not projected. Floor plan `64dff46e-…` + catalog table object `83172b2e-…` (`72\" Round Table` / `abd07513-…`) created **no** new invoice. Library `/library/inventory` operational (catalog + New/Import). Payment plan remained optional throughout.
+- **AUTOMATED:** post-booking lifecycle / selections-billing / unbilled-delta / lifecycle-gates — 34/34 PASS this gate (prior closeout 36/36; 45/45 locally on implementation).
+- **REGRESSION:** Date Holds stream not reopened. Production untouched.
 - **REMAINING WORK:** None for this stream.
 
 ### Date Holds — multi-space + time-aware availability (master release)
@@ -594,11 +593,49 @@ Exact Sandbox runtime (sole RUNNING after Date Hold multi-space / time-aware pro
 - **REGRESSION:** Existing occupancy/precheck/tour/calendar filter suites GREEN; Production untouched
 - **REMAINING WORK:** None for this stream
 
-### Stream 16
+### Stream 16 — Final integrated release gate
 
-- **STATUS:** OPEN / NOT STARTED as integrated gate
-- **BLOCKERS:** Date Holds multi-space/time GREEN/CLOSED on `da6c79c9`. Post-booking commercial lifecycle GREEN/CLOSED on `6a810904`. Stream 1E GREEN on `7dbece3f`. Client → Event IA GREEN on `e33f2696`. Do not call overall HTC release GREEN until Stream 16 itself is executed.
-- **NOT GREEN (overall release).**
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `da6c79c9` / `:536` / task `101901f0…` / digest `sha256:d3db4a511e73…`
+- **PURPOSE:** Prove the complete HTC product works coherently across the customer lifecycle on the actual Sandbox runtime. Not a redesign. Closed streams were not reopened.
+- **RUNTIME RE-VERIFIED AT GATE:** image `da6c79c9f6451298d47942d3de98f007d2adb5b8` · TD `:536` · task `101901f0fd3c494b9a4899862e6ea5ec` · digest `sha256:d3db4a511e73c7ee1900090ae459148077a6df0871d05d36f91192ad66a53a1f` · desired/running/pending 1/1/0 · PRIMARY COMPLETED · `/api/health` HTTP 200 · clusters: `htc-sandbox` only (no `htc-production`)
+- **FIXTURES:** PostBook Gate16 client `86731d0b-…` / event `7b8eca64-…` / choices `540dfa9b-…` / EO `0781cca4-…` / portal `/p/pb1617909807765657h0zi5bu`. Wilma Flintstone lead `4e7c5ab7-…` / contract `6817afd1-…` (`signed`). Active Fancy holds: 4 (including multi-space `32079292-…` Bridge+Barn).
+- **BROWSER (15 journey areas — all PASS; no Stream 16 defect):**
+  1. **Lead intake / workspace:** Leads list + Wilma workspace. Lead terminology intact. Ceremony/reception prefs. Commercial facts. Proposal path. Luv tab + customer-note disclaimer. Booked remains a venue decision. Texting permission present.
+  2. **Proposal:** Wilma / Grace / Cinde Inbox + workspace retain proposal send / Selected by the couple vs Selected internally. Proposal Sent factuality not reopened; no false sent claim observed.
+  3. **Contract:** `/contracts` filters intact. Wilma `6817afd1-…` Fully Executed (client then venue). Documents shows contracts in one place. Locked lifecycle not rewritten.
+  4. **Initial financial lifecycle:** Contract → booking invoice / payment surfaces on Payments list and Inbox (Goldi planning payment reminder). Payment plan remains optional (Gate16 has none).
+  5. **Client → Event workspace:** Gate16 lands `/clients/86731d0b-…?eventId=7b8eca64-…`. Operational tabs: Planning, Timeline, Floor Plans, Documents, Vendors, Event Order, Inventory, Payments, Conversation, Activity, Internal notes, Team. Setup/readiness strip present. No duplicated booking narrative.
+  6. **Event spaces:** Edit event Ceremony=Covered Bridge (80), Reception=Barn (150). Saved assignments match DB. No Stream 1E regression.
+  7. **Date Holds / availability:** Calendar space filter + availability copy intact. Four active Fancy holds persist including multi-space Bridge+Barn `32079292-…`. Prior Date Hold GREEN proof on this same image not reopened.
+  8. **Event Order / Inventory:** Included bartender + Chiavari; billable Premium + sofa; mixed lock; same-instance amend already proven; payment plan optional; invoice $750 Premium only.
+  9. **Invoices:** Staff `INV-2026-19DC32` Issued, Total/Balance $750, Paid $0. Preview Charges include Premium open bar; bartender/Chiavari/sofa/included absent. Portal: Balance $750, “No payment schedule has been set.” Amendment draft `INV-2026-9E0482` exists; sent invoice remains the active financial record until the amendment is sent (by design).
+  10. **Payments / payment plans:** Gate16 `payment_schedules=[]`. Create-schedule is a CTA, not mandatory. Portal and staff both state no schedule yet.
+  11. **Documents:** `/documents` All (104) / Contracts (42) / Financial (37) / Planning (25). Gate16 rows: sent invoice 19DC32, amend draft 9E0482, Event Order, Wedding Reception planning, floor plan. No duplicate charge representation of included lines.
+  12. **Luv:** Portal Ask Luv: “Luv answers from those sources only” (Documents, contracts, payments, questionnaires, Your Choices, Venue Guide). From Luv guest-list suggestion is customer-facing. Settings: Luv never sends on its own. No private-note leak observed. Not redesigned.
+  13. **Texting / Twilio:** Settings → Communications: Texting setup status “Setting up” (existing Sandbox A2P state). Inbox `/messaging` lists conversations; compose Channel = Email / Text (not ready) / Portal message. Internal note is a separate tab. Not an A2P reopen.
+  14. **Setup / Guidance / Automations:** `/setup-hub` All set (3 spaces, branding/availability/packages/intake). `/setup` redirects ready venue to dashboard. `/help` Guidance library intact. `/automations` Sales + Client groups present (prior alias GREEN).
+  15. **Mobile 390×844:** Dashboard hamburger + greeting + Business Snapshot readable. Portal payments: INV-2026-19DC32 / $750 / no schedule / no bartender. No clipped primary CTA.
+- **DB / DATA INTEGRITY:**
+  - Client `86731d0b-…` confirmed; Event `7b8eca64-…` confirmed `2028-11-11`; occupancy `space_id`=Barn; assignments ceremony=Bridge + reception=Barn
+  - Choices `540dfa9b-…` finalized; applied `[39ebb6af-… bartender $0 included, 005520f0-… Premium $750]`
+  - EO lines current (4): bartender $0 included, Premium $750, Chiavari $0 included, sofa $250 billable. Old amend line `a2704c35-…` absent. No duplicate descriptions
+  - Invoices: unique IDs; sent `19dc321e-…` total 750 / balance 750 / one line Premium → `event_order_line_id=005520f0-…`; draft amend `9e048241-…` total 0 (live projection until send). `includedOnInvoices=[]`. Schedules `[]`
+  - Inventory items both `added_to_event_order_at` set. Floor allocation created no invoice
+  - Wilma lead `4e7c5ab7-…` `sales_stage=tour_scheduled` (Signed ≠ Booked preserved); contract `6817afd1-…` status `signed`
+  - Active holds 4; multi-space hold `32079292-…` has Bridge + Barn rows. No unexpected state transitions
+- **REGRESSION:** No Stream 16 defect. Date Holds, post-booking commercial lifecycle, Stream 1E, Client→Event IA, Luv, Twilio/A2P, Documents, Contracts, Invoices not reopened.
+- **AUTOMATED (this gate):** 41/41 + 45/45 PASS (see above).
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** None
+
+## OVERALL HTC RELEASE
+
+- **STATUS:** NOT GREEN
+- Post-Booking Commercial Lifecycle and Stream 16 remain proven on `da6c79c9`.
+- Luv is NOT GREEN: pipeline/sales stage is never authoritative evidence (observations + drafts). Implemented locally; awaiting commit runtime + browser+DB.
+- Date Hold multi-hold (`fd213041`) is NOT GREEN until exact-runtime browser+DB.
+- Production untouched.
+- No later list. No new backlog.
 
 ## Production
 

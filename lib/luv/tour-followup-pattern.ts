@@ -9,7 +9,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
+import { isAuthoritativeBooked, isAuthoritativeLost } from "@/lib/luv/pipeline-stage-evidence";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { RecommendationCta } from "./recommendation-types";
 
@@ -31,7 +31,10 @@ export type TourFollowupPatternTourInput = {
   followUpSentAt: string | null;
   /** Window uses scheduled_at — same clock as V1 tour-no-followup observations. */
   scheduledAt: string;
-  leadSalesStage: string | null;
+  /** Weak journey metadata only — never used to qualify or exclude. */
+  leadSalesStage?: string | null;
+  firstBookedAt?: string | null;
+  lostAt?: string | null;
 };
 
 export type TourFollowupPatternRecommendation = {
@@ -69,7 +72,8 @@ export function isQualifyingTourFollowupPatternTour(
   if (tour.status !== "completed") return false;
   if (tour.followUpSentAt != null) return false;
   if (!tour.leadId) return false;
-  if (!isOpenLeadLifecycle(tour.leadSalesStage)) return false;
+  if (isAuthoritativeBooked({ firstBookedAt: tour.firstBookedAt })) return false;
+  if (isAuthoritativeLost({ lostAt: tour.lostAt })) return false;
   const scheduledMs = Date.parse(tour.scheduledAt);
   if (Number.isNaN(scheduledMs)) return false;
   const windowStart = nowMs - windowDays * 24 * 60 * 60 * 1000;
@@ -129,18 +133,22 @@ type TourRow = {
   follow_up_sent_at: string | null;
   scheduled_at: string;
   leads:
-    | { sales_stage: string | null; status: string | null }
-    | { sales_stage: string | null; status: string | null }[]
+    | { sales_stage: string | null; status: string | null; first_booked_at: string | null; lost_at: string | null }
+    | { sales_stage: string | null; status: string | null; first_booked_at: string | null; lost_at: string | null }[]
     | null;
 };
 
-function leadStageFromEmbed(
+function leadLifecycleFromEmbed(
   leads: TourRow["leads"],
-): string | null {
-  if (!leads) return null;
+): { salesStage: string | null; firstBookedAt: string | null; lostAt: string | null } {
+  if (!leads) return { salesStage: null, firstBookedAt: null, lostAt: null };
   const row = Array.isArray(leads) ? leads[0] : leads;
-  if (!row) return null;
-  return row.sales_stage ?? row.status ?? null;
+  if (!row) return { salesStage: null, firstBookedAt: null, lostAt: null };
+  return {
+    salesStage: row.sales_stage ?? row.status ?? null,
+    firstBookedAt: row.first_booked_at ?? null,
+    lostAt: row.lost_at ?? null,
+  };
 }
 
 /**
@@ -162,7 +170,7 @@ export async function syncTourFollowupPatternRecommendation(
     const { data, error } = await supabase
       .from("tour_appointments")
       .select(
-        "venue_id, lead_id, status, follow_up_sent_at, scheduled_at, leads!inner(sales_stage, status)",
+        "venue_id, lead_id, status, follow_up_sent_at, scheduled_at, leads!inner(sales_stage, status, first_booked_at, lost_at)",
       )
       .eq("venue_id", venue.id)
       .eq("status", "completed")
@@ -176,14 +184,19 @@ export async function syncTourFollowupPatternRecommendation(
     }
 
     const tours: TourFollowupPatternTourInput[] = ((data ?? []) as TourRow[]).map(
-      (row) => ({
-        venueId: row.venue_id,
-        leadId: row.lead_id,
-        status: row.status,
-        followUpSentAt: row.follow_up_sent_at,
-        scheduledAt: row.scheduled_at,
-        leadSalesStage: leadStageFromEmbed(row.leads),
-      }),
+      (row) => {
+        const lifecycle = leadLifecycleFromEmbed(row.leads);
+        return {
+          venueId: row.venue_id,
+          leadId: row.lead_id,
+          status: row.status,
+          followUpSentAt: row.follow_up_sent_at,
+          scheduledAt: row.scheduled_at,
+          leadSalesStage: lifecycle.salesStage,
+          firstBookedAt: lifecycle.firstBookedAt,
+          lostAt: lifecycle.lostAt,
+        };
+      },
     );
 
     const active = evaluateTourFollowupPatternRecommendation(tours, {

@@ -185,9 +185,10 @@ describe("P-A1 — unattended inquiry cluster", () => {
     );
   });
 
-  it("reuses S3 semantics (contacted / wrong stage / too new excluded)", () => {
+  it("reuses S3 semantics (contacted / tour record / too new excluded; stage is not)", () => {
     const contacted = lead("x", { lastContactedAt: hoursAgo(1) });
-    const touring = lead("y", { salesStage: "touring" });
+    const touringStageOnly = lead("y", { salesStage: "touring" });
+    const tourOnRecord = { ...lead("t"), tourStatus: "confirmed" };
     const fresh = lead("z", { createdAt: hoursAgo(12) });
     const ok = lead("ok");
     assert.equal(buildS3UnattendedInquiryObservation(contacted, { venueId: VENUE_A, nowMs: NOW }), null);
@@ -196,7 +197,12 @@ describe("P-A1 — unattended inquiry cluster", () => {
       false,
     );
     assert.equal(
-      isQualifyingUnattendedInquiryForCluster(touring, { venueId: VENUE_A, nowMs: NOW }),
+      isQualifyingUnattendedInquiryForCluster(touringStageOnly, { venueId: VENUE_A, nowMs: NOW }),
+      true,
+      "sales_stage touring without a tour record is not contact evidence",
+    );
+    assert.equal(
+      isQualifyingUnattendedInquiryForCluster(tourOnRecord, { venueId: VENUE_A, nowMs: NOW }),
       false,
     );
     assert.equal(

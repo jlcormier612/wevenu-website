@@ -8,7 +8,10 @@
  */
 
 export type TourFollowUpLifecycleFacts = {
-  salesStage: string | null;
+  /** Authoritative Booked — first_booked_at, not sales_stage. */
+  booked: boolean;
+  /** Authoritative Lost — lost_at, not sales_stage. */
+  lost: boolean;
   contractSigned: boolean;
   paymentReceived: boolean;
 };
@@ -16,7 +19,7 @@ export type TourFollowUpLifecycleFacts = {
 export function tourFollowUpSuperseded(
   facts: TourFollowUpLifecycleFacts,
 ): boolean {
-  if (facts.salesStage === "booked" || facts.salesStage === "lost") return true;
+  if (facts.booked || facts.lost) return true;
   if (facts.contractSigned) return true;
   if (facts.paymentReceived) return true;
   return false;

@@ -671,7 +671,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           }}
         />
       ) : null}
-      <ContextualLuvObservationsPanel observations={contextualObservations} />
+      <ContextualLuvObservationsPanel
+        observations={contextualObservations}
+        currentPath={`/leads/${lead.id}`}
+      />
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
         <TabsList className="max-w-full flex-nowrap overflow-x-auto">

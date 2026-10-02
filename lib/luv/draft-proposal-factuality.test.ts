@@ -85,15 +85,20 @@ describe("buildFollowUpPrompt — proposal factuality", () => {
 });
 
 describe("observations — proposal_sent stage copy", () => {
-  it("does not assert Proposal sent from sales_stage alone", () => {
+  it("does not assert Proposal sent or In Proposal Sent stage from sales_stage", () => {
     const src = readFileSync(resolve("lib/luv/observations.ts"), "utf8");
     assert.doesNotMatch(
       src,
       /sales_stage === "proposal_sent" \? "Proposal sent"/,
     );
-    assert.match(
+    assert.doesNotMatch(
       src,
       /sales_stage === "proposal_sent" \? "In Proposal Sent stage"/,
     );
+    assert.doesNotMatch(
+      src,
+      /sales_stage === "tour_scheduled" \? "Tour scheduled"/,
+    );
+    assert.match(src, /Stage is never evidence/);
   });
 });

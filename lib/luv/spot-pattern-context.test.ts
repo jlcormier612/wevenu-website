@@ -177,7 +177,7 @@ describe("Phase 6 P-A1 context", () => {
     const syncSrc = readFileSync(resolve("lib/luv/spot-patterns.ts"), "utf8");
     const unattendedSelect = syncSrc.slice(
       syncSrc.indexOf('.select("id, first_name, last_name, sales_stage, created_at, last_contacted_at'),
-      syncSrc.indexOf('.eq("sales_stage", "new_inquiry")'),
+      syncSrc.indexOf('.is("first_booked_at", null)'),
     );
     assert.match(unattendedSelect, /acquisition_source/);
     assert.doesNotMatch(unattendedSelect, /,\s*source[,\s"]/);

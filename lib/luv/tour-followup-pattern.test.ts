@@ -120,19 +120,44 @@ describe("tour follow-up pattern — threshold and distinct leads", () => {
 });
 
 describe("tour follow-up pattern — population filters", () => {
-  it("excludes cancelled / lost / booked / won leads", () => {
+  it("sales_stage booked/lost/won/cancelled without stamps still qualifies", () => {
     for (const stage of ["cancelled", "lost", "booked", "won"]) {
-      const below = evaluateTourFollowupPatternRecommendation(
+      const active = evaluateTourFollowupPatternRecommendation(
         [
           tour({ leadId: "l1", leadSalesStage: stage }),
           tour({ leadId: "l2", leadSalesStage: stage }),
           tour({ leadId: "l3" }),
-          tour({ leadId: "l4" }),
         ],
         { venueId: VENUE_A, nowMs: NOW },
       );
-      assert.equal(below, null, `terminal stage ${stage} must not pad the count`);
+      assert.equal(
+        active?.metadata.lead_count,
+        3,
+        `stage ${stage} without first_booked_at/lost_at must not exclude`,
+      );
     }
+  });
+
+  it("authoritative first_booked_at / lost_at exclude a lead", () => {
+    const bookedOut = evaluateTourFollowupPatternRecommendation(
+      [
+        tour({ leadId: "l1", firstBookedAt: hoursAgo(2) }),
+        tour({ leadId: "l2" }),
+        tour({ leadId: "l3" }),
+      ],
+      { venueId: VENUE_A, nowMs: NOW },
+    );
+    assert.equal(bookedOut, null, "first_booked_at must drop the lead");
+
+    const lostOut = evaluateTourFollowupPatternRecommendation(
+      [
+        tour({ leadId: "l1", lostAt: hoursAgo(2) }),
+        tour({ leadId: "l2" }),
+        tour({ leadId: "l3" }),
+      ],
+      { venueId: VENUE_A, nowMs: NOW },
+    );
+    assert.equal(lostOut, null, "lost_at must drop the lead");
   });
 
   it("follow_up_sent_at removes a lead from the qualifying population", () => {

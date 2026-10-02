@@ -239,7 +239,7 @@ describe("S3 unattended inquiry", () => {
     assert.match(obs!.id, /^inquiry-unattended-/);
   });
 
-  it("47h does not; contacted does not; wrong stage does not", () => {
+  it("47h does not; contacted does not; stage alone does not suppress", () => {
     assert.equal(
       buildS3UnattendedInquiryObservation(
         lead({
@@ -257,9 +257,16 @@ describe("S3 unattended inquiry", () => {
       ),
       null,
     );
-    assert.equal(
+    // Wrong/skipped stage is not proof of contact — still unattended if no records.
+    assert.ok(
       buildS3UnattendedInquiryObservation(
         lead({ id: "L1", salesStage: "tour_scheduled" }),
+        { venueId: VENUE, nowMs: NOW },
+      ),
+    );
+    assert.equal(
+      buildS3UnattendedInquiryObservation(
+        lead({ id: "L1", salesStage: "tour_scheduled", tourStatus: "confirmed" }),
         { venueId: VENUE, nowMs: NOW },
       ),
       null,
@@ -278,7 +285,7 @@ describe("S3 unattended inquiry", () => {
 });
 
 describe("S4 tour + evidence-based prep", () => {
-  it("upcoming tour with next_action evidence qualifies", () => {
+  it("next_action / last_contacted_at do not manufacture tour-prep work", () => {
     const t = tour({ id: "t1" });
     const prep: ContextualTourLeadPrep = {
       leadId: "lead-tour-1",
@@ -288,13 +295,11 @@ describe("S4 tour + evidence-based prep", () => {
       lastContactedAt: "2026-09-28T12:00:00.000Z",
       salesStage: "tour_scheduled",
     };
-    assert.ok(tourPreparationEvidence(t, prep, { venueId: VENUE, nowMs: NOW }));
-    const obs = buildS4TourPrepObservation(t, prep, { venueId: VENUE, nowMs: NOW }, "Fri, Oct 2, 2:00 PM");
-    assert.ok(obs);
-    assert.equal(obs!.id, "tour-upcoming-t1");
-    assert.match(obs!.message, /preparation is still incomplete/);
-    assert.match(obs!.detail ?? "", /Send venue brochure/);
-    assert.match(obs!.id, /^tour-upcoming-/);
+    assert.equal(tourPreparationEvidence(t, prep, { venueId: VENUE, nowMs: NOW }), null);
+    assert.equal(
+      buildS4TourPrepObservation(t, prep, { venueId: VENUE, nowMs: NOW }, "Fri, Oct 2, 2:00 PM"),
+      null,
+    );
   });
 
   it("upcoming tour with no meaningful gap does not qualify", () => {
@@ -314,7 +319,7 @@ describe("S4 tour + evidence-based prep", () => {
     );
   });
 
-  it("never-contacted lead before tour is evidence", () => {
+  it("null last_contacted_at is not a no-contact / first-contact observation", () => {
     const evidence = tourPreparationEvidence(
       tour({ id: "t1" }),
       {
@@ -327,7 +332,23 @@ describe("S4 tour + evidence-based prep", () => {
       },
       { venueId: VENUE, nowMs: NOW },
     );
-    assert.equal(evidence?.kind, "never_contacted");
+    assert.equal(evidence, null);
+    assert.equal(
+      buildS4TourPrepObservation(
+        tour({ id: "t1" }),
+        {
+          leadId: "lead-tour-1",
+          venueId: VENUE,
+          nextActionText: null,
+          nextActionDue: null,
+          lastContactedAt: null,
+          salesStage: "new_inquiry",
+        },
+        { venueId: VENUE, nowMs: NOW },
+        "Mon, Oct 5, 9:00 AM",
+      ),
+      null,
+    );
   });
 });
 

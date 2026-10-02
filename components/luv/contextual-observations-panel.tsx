@@ -6,14 +6,18 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { observationActionCta } from "@/lib/luv/observation-quality";
 import type { LuvObservation } from "@/lib/luv/types";
 
 export function ContextualLuvObservationsPanel({
   observations,
   emptyHint,
+  currentPath,
 }: {
   observations: LuvObservation[];
   emptyHint?: string;
+  /** When set, a CTA that points at this same record is omitted (no dead same-page link). */
+  currentPath?: string;
 }) {
   if (observations.length === 0) {
     if (!emptyHint) return null;
@@ -32,8 +36,7 @@ export function ContextualLuvObservationsPanel({
       </div>
       <ul className="space-y-3">
         {observations.map((obs) => {
-          const href = obs.recommendation?.link ?? obs.link;
-          const label = obs.recommendation?.label ?? obs.actionLabel ?? "Open →";
+          const cta = observationActionCta(obs, currentPath);
           return (
             <li
               key={obs.id}
@@ -43,13 +46,15 @@ export function ContextualLuvObservationsPanel({
               {obs.detail ? (
                 <p className="text-xs text-muted-foreground leading-relaxed">{obs.detail}</p>
               ) : null}
-              <Link
-                href={href}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2"
-              >
-                {label}
-                <ArrowRight className="h-3 w-3" />
-              </Link>
+              {cta ? (
+                <Link
+                  href={cta.href}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2"
+                >
+                  {cta.label}
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              ) : null}
             </li>
           );
         })}
