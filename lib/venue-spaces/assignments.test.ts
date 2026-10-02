@@ -39,6 +39,17 @@ describe("event space assignments", () => {
     );
   });
 
+  it("prefers reception over an earlier ceremony assignment as the occupancy primary", () => {
+    assert.equal(
+      primarySpaceIdFromAssignments([
+        { useKey: "ceremony", useLabel: "Ceremony", spaceId: "garden" },
+        { useKey: "reception", useLabel: "Reception", spaceId: "barn" },
+        { useKey: "cocktail_hour", useLabel: "Cocktail Hour", spaceId: "terrace" },
+      ]),
+      "barn",
+    );
+  });
+
   it("allows same physical space for multiple uses", () => {
     const normalized = normalizeAssignmentInputs([
       { useKey: "ceremony", useLabel: "Ceremony", spaceId: "barn" },
