@@ -2,20 +2,22 @@
 
 **Status of this document:** working ledger for the current execution. Production untouched.
 
-Exact Sandbox runtime (latest sole RUNNING at last verification, 2026-10-02):
+Exact Sandbox runtime (sole RUNNING at verification before the occupancy-anchor deploy, 2026-10-02):
 
-- Commit / image tag: `453caf2de44a62177ba224465bb1867f04b2a2ce`
-- Contains: `8d3cfcbf` (offline installment recording, tour-follow-up supersession, tax/discount venue flags, `/automations` redirect) plus `453caf2d` (restore `getCurrentVenue` import). `8d3cfcbf` itself failed image build on the missing import and never ran.
-- Digest: `sha256:cbf77be79efa305c9584415bdd3d2af7ab1019280caa903508fde1c5e2d7c3ef`
-- Task definition: `htc-sandbox-venue-app:530`
-- Task ID: `352557a58429409ea3b09133dabb6af9`
+- Commit / image tag: `204c885f45d4d4b54dc79d7b766c1c88539a1b4d`
+- Contains: `453caf2d` plus follow-up Save staying enabled on a known tour-capacity block, and paid-installment wording (`paymentPlanFact`).
+- Digest: `sha256:58d0d94073a897b4a21b0b29b1cb31d3f96ec59c0d9c7f826d8889bad7a0bea6`
+- Task definition: `htc-sandbox-venue-app:531`
+- Task ID: `2a503aef22df4476ad5084cb297d9adb`
 - Desired / running / pending: 1 / 1 / 0
 - Rollout: PRIMARY COMPLETED
 - Health: `/api/health` HTTP 200 (ECS container health reported UNKNOWN)
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37031949214
-- Cluster: `htc-sandbox` only
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37038967552
+- Cluster: `htc-sandbox` only. No `htc-production` cluster in this account.
 - Production: untouched
-- Prior sole RUNNING: `eeee6049` / `:527` / `1659e4a4…` (Streams 8–15 audits); `876c9d51` / `:526` (invoice back-nav)
+- Successor deploy in progress (not yet the running image): `a626f6b53acab19b9e1b624d61e62c1d452d8f84` on branch `fix/reception-occupancy-anchor` (parent `204c885f`). https://github.com/jlcormier612/wevenu-website/actions/runs/37044361883
+- `e33f2696` (Client → Event IA) is pushed on `feat/spaces-booking-e1-smart-fields` and is not this Sandbox image. Its deploy was cancelled. Migration `event_setup_states` is applied and unused by `204c885f`.
+- Prior sole RUNNING: `453caf2d` / `:530` / `352557a5…`
 
 ## Already GREEN/CLOSED (not reopened)
 
@@ -477,14 +479,14 @@ Exact Sandbox runtime (latest sole RUNNING at last verification, 2026-10-02):
 
 ### Manual / offline payments — invoice vs schedule reconciliation
 
-- **STATUS:** OPEN — installment truth proven; client booking-detail wording still says the paid installment is due
-- **RUNTIME:** `453caf2d` / `:530` / task `352557a5…` / digest `sha256:cbf77be7…`
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `204c885f` / `:531` / task `2a503aef…` / digest `sha256:58d0d940…`
+- **RUNTIME:** `204c885f` / `:531` / task `2a503aef22df4476ad5084cb297d9adb` / digest `sha256:58d0d94073a897b4a21b0b29b1cb31d3f96ec59c0d9c7f826d8889bad7a0bea6`
 - **FIXTURE:** OfflinePay Disposable client `384ee231-…` invoice `328fe0ce-…` schedule `2898a151-…` line `6d6a1a16-…`
 - **BEFORE:** line status `overdue`, amount 400, stripe ids null, invoice status `sent`, balance_due 400
 - **BROWSER:** “Record payment received” → invoice Paid to Date $400, Balance $0, Paid in Full; schedule line “Sep 28, 2026 · paid”; schedule page PAID / Paid Oct 2, 2026 / method Other / activity “Payment received: $400” “Via other”. Attention payments list dropped from 16 to 15 and OfflinePay is absent from the overdue list.
 - **DB:** line status `paid`, paid_amount 400, payment_method `other`, notes “Recorded manually (offline collection).”, stripe_payment_intent_id null, stripe_checkout_session_id null. Invoice status `paid`, balance_due 0. Activity type `payment_received` description “Via other”.
 - **PROVIDER:** no Stripe id written. `quickbooks_sync_queue` row `e5d064ac-…` status `pending`, attempt_count 0, operation upsert — queued by the existing `markLineItemPaid` path, not a completed QuickBooks or Stripe charge.
-- **REMAINING DEFECT:** Client booking details still render `paymentPlanFact` as “$400.00 due September 28, 2026” for a paid line. Local fix in `lib/booking-journey/commercial-facts.ts` is not in image `453caf2d`.
+- **WORDING (exact `204c885f` browser + DB):** Client `384ee231-3533-44f0-80ba-4cccce82e20e` booking-detail line is “$400.00 paid September 28, 2026”. The false “$400.00 due September 28, 2026” string is absent. Line `6d6a1a16-…` remains `paid`, paid_amount 400, method `other`, stripe ids null. Invoice `328fe0ce-…` remains `paid`, balance_due 0. Accounting was not rewritten.
 
 ### Taxes and discounts
 
@@ -511,16 +513,29 @@ Exact Sandbox runtime (latest sole RUNNING at last verification, 2026-10-02):
 - **STATUS:** GREEN on `453caf2d`
 - **BROWSER:** `https://app.sandbox.hellotocheers.com/automations` landed on `/communication/series`. Page title Automations. Sales group and Client “Post-Event Thank You” still present.
 
-### Stream 1 residuals B/C/E/F
+### Stream 1 residuals B/C/E/F — exact `204c885f`
 
-- **STATUS:** OPEN — CONCRETE BLOCKER on B; C/E/F not re-proven on `453caf2d`
-- **B (server path, proven on `453caf2d`):** ConflictSave Disposable `d2e876b5-…`, occupying tour `eac4a67f-…` at `2026-11-02T14:00:00Z`. Form showed “Maximum simultaneous tours (1) reached for this time.” The visible Save control was disabled, so a staff click could not start the write. Invoking that same save handler with follow-up `2026-10-20` and tour `2026-11-02` `09:00` persisted `follow_up_date=2026-10-20`, created no tour row for the lead, and showed “Follow-up details saved” plus the capacity conflict. A local change removes the hard disable so the next image can be proven with an ordinary click. That change is not in `453caf2d`.
-- **C / E / F:** not exercised on this image.
+- **B STATUS:** GREEN/CLOSED. ConflictSave Disposable `d2e876b5-…`. Visible Save was enabled (pointer-events auto) and was clicked; button text became “Saving…”. Warning stayed “Maximum simultaneous tours (1) reached for this time.” DB `follow_up_date` moved `2026-10-20` → `2026-10-22`. No tour row for that lead. Occupying tour `eac4a67f-…` unchanged.
+- **C STATUS:** GREEN/CLOSED. Disposable matrix, one row each, no wrong-row mutation.
+  - Scheduled `3e86512d-…` / tour `07fd001d-…`: `scheduled_at=2026-11-09T15:00Z`, actual null, completed null. UI “Nov 9, 2026 at 10:00 AM”. Calendar 2026-11-09 shows the tour. Occupying count at that timestamp = 1.
+  - Walk-in `42d07d8f-…` / tour `56bb3524-…`: origin walk_in, scheduled_at null, `actual_occurred_at=2026-10-01T18:30Z`, completed set. UI “Oct 1, 2026 at 2:30 PM (completed)”. Luv “23h ago”.
+  - Actual-only `73da36a3-…` / tour `69f12800-…`: same id after visible Save; scheduled_at stayed null; actual moved to `2026-10-01T19:15Z`; completed_at unchanged. UI “3:15”.
+  - Two-clock `b24ed7a7-…` / tour `a54ac537-…`: `scheduled_at=2026-11-16T16:00Z` preserved, `actual_occurred_at=2026-10-02T20:00Z`, completed_at set. Lead UI shows Oct 2 completed. Calendar 2026-10-02 shows 4:00 PM completed. Calendar 2026-11-16 is empty. Occupying count at the original scheduled timestamp among scheduled/confirmed = 0.
+- **E STATUS:** BLOCKED. Multi-space browser + DB proven for Ceremony Garden Lawn / Reception Barn / Additional Cocktail Terrace + Getting Ready Suite, and Wedding Venue Agreement preview resolved those names with no generic singular Event Space. Book-time `events.space_id` and `planned_event_space_id` were Barn. The later event-form save wrote `events.space_id` to Garden Lawn because `primarySpaceIdFromAssignments` took the first assignment (ceremony). Single-mode form showed one Event space (Garden Lawn) and no Ceremony/Reception. Reception-only permitted-uses form showed Reception = Barn and no Ceremony field. Fancy mode and original permitted uses were restored. Disposable spaces Cocktail Terrace `dd3599b2-…` and Getting Ready Suite `9ca019b4-…` are still on Fancy until the anchor re-proof. Fix `a626f6b5` prefers reception. Sandbox deploy of that commit is in progress and is not yet the sole running image, so this gate is not GREEN.
+- **F STATUS:** GREEN/CLOSED.
+  - Skip: SkipProof Disposable lead `5e39964f-…` / client `55404125-…`. Staff set Ceremony to “Not decided yet” in the lead UI (Covered Bridge is not ceremony-eligible and was not an option). Confirm Mark as Booked landed `/clients/55404125-…/booked?eventId=9106da9a-…`. DB: ceremony pref `undecided` / space null; reception Barn; one assignment `reception` → Barn; no ceremony assignment; `events.space_id` Barn; lead booked; client confirmed.
+  - Rollback: client `86ea23d2-…` whose lead belongs to Sweet Daisy. `book_relationship` raised “Lead not found for this client.” after the write point. After the exception: zero events for that client, status still `booking`, `lifecycle_booked_at` null. Probe client and foreign lead were deleted afterward. No partial booking remained.
+
+### Package provenance — exact `204c885f`
+
+- **STATUS:** GREEN/CLOSED
+- Wilma Flintstone client `5b064028-…` / selection `f7d9cb91-…` / `proposal_id=323f6cb8-…`: browser “Selected by the couple”.
+- Mira Vale client `d1ae24cc-…` / selection `50e28ac9-…` / `proposal_id` null / status draft: browser “Selected internally · Not yet shared”. No “Selected by the couple”.
 
 ### Stream 16
 
 - **STATUS:** OPEN
-- **BLOCKER:** Stream 1 B staff click is still disabled on `453caf2d` (server write proven only by invoking the handler); C/E/F unproven on `453caf2d`; paid installment still reads as due on the client booking-detail card until the commercial-facts wording is in the sole running image.
+- **BLOCKER:** Stream 1E occupancy anchor is not GREEN. Event-form save on `204c885f` replaced the Barn anchor with Garden Lawn. Fix `a626f6b5` is deploying and has not been re-proven on a sole running image. Client → Event IA is not part of this closeout. Do not start Stream 16.
 - **NOT GREEN.**
 
 ## Production
