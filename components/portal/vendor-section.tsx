@@ -681,7 +681,7 @@ function SubmitBar({
       {!confirmingSubmit ? (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <p className="text-sm text-foreground">
-            {pendingCount} pick{pendingCount === 1 ? "" : "s"} not yet sent to your venue.
+            {`${pendingCount} pick${pendingCount === 1 ? "" : "s"} not yet sent to your venue.`}
           </p>
           <Button type="button" size="sm" onClick={onConfirm}>Submit Vendor List</Button>
         </div>

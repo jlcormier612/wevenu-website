@@ -217,7 +217,8 @@ export default async function TaskCenterPage() {
           </span>
           {watchCount > 0 && (
             <span>
-              <span className="font-medium text-heading">{watchCount}</span> client item{watchCount !== 1 ? "s" : ""} to watch
+              <span className="font-medium text-heading">{watchCount}</span>
+              {` client item${watchCount !== 1 ? "s" : ""} to watch`}
             </span>
           )}
         </div>

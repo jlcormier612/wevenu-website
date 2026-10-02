@@ -38,7 +38,7 @@ export default async function PlaybookEditorPage({ params }: Props) {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            {template.eventType ? `${template.eventType.replace(/_/g, " ")} template` : "All event types"} · {tasks.length} task{tasks.length !== 1 ? "s" : ""} across {milestones.length} milestone{milestones.length !== 1 ? "s" : ""}
+            {`${template.eventType ? `${template.eventType.replace(/_/g, " ")} template` : "All event types"} · ${tasks.length} task${tasks.length !== 1 ? "s" : ""} across ${milestones.length} milestone${milestones.length !== 1 ? "s" : ""}`}
           </p>
         </div>
         <DuplicatePlaybookButton templateId={id} templateName={template.name} />

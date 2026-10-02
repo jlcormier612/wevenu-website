@@ -36,7 +36,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
       <SpotPatternRecommendationsPanel types={PAYMENTS_SPOT_PATTERN_TYPES} />
       {attentionOnly && (
         <p className="text-sm text-muted-foreground">
-          Showing {visible.length} schedule{visible.length === 1 ? "" : "s"} that need attention.
+          {`Showing ${visible.length} schedule${visible.length === 1 ? "" : "s"} that need attention.`}
           {" "}
           <Link href="/payments?filter=all" className="text-primary hover:underline">Show all</Link>
         </p>

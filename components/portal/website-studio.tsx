@@ -1446,7 +1446,7 @@ export function WebsiteStudio({
             <div className="flex-1">
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Website Studio</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                {completedSections} section{completedSections !== 1 ? "s" : ""} added
+                {`${completedSections} section${completedSections !== 1 ? "s" : ""} added`}
                 {previewSite.isPublished && " · 🟢 Live"}
               </p>
             </div>

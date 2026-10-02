@@ -542,12 +542,12 @@ function GuestWorkspacePanel({
       <div className="flex-1 overflow-y-auto">
         {needsReassignmentCount > 0 && (
           <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {needsReassignmentCount} guest{needsReassignmentCount === 1 ? "" : "s"} need{needsReassignmentCount === 1 ? "s" : ""} a new table — their table was removed from the Floor Plan.
+            {`${needsReassignmentCount} guest${needsReassignmentCount === 1 ? "" : "s"} need${needsReassignmentCount === 1 ? "s" : ""} a new table — their table was removed from the Floor Plan.`}
           </div>
         )}
         {unconvertedPlusOnesCount > 0 && (
           <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {unconvertedPlusOnesCount} plus-one{unconvertedPlusOnesCount === 1 ? "" : "s"} {unconvertedPlusOnesCount === 1 ? "has" : "have"} a name but no seat — convert them to a full guest before the floor plan can seat them.
+            {`${unconvertedPlusOnesCount} plus-one${unconvertedPlusOnesCount === 1 ? "" : "s"} ${unconvertedPlusOnesCount === 1 ? "has" : "have"} a name but no seat — convert them to a full guest before the floor plan can seat them.`}
           </div>
         )}
 
@@ -677,7 +677,7 @@ function SelectionBar({
 }) {
   return (
     <div className="mx-4 mt-3 flex items-center gap-2 flex-wrap rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
-      <span className="text-xs font-medium text-foreground">{count} guest{count === 1 ? "" : "s"} selected</span>
+      <span className="text-xs font-medium text-foreground">{`${count} guest${count === 1 ? "" : "s"} selected`}</span>
       <select
         value={selectedTableId ?? ""} onChange={(e) => onChangeTable(e.target.value)}
         className="h-7 rounded-md border border-border bg-card px-2 text-xs"
@@ -727,7 +727,7 @@ function SeatingDashboard({ data, onContinue }: { data: SeatingData; onContinue:
 
       {data.needsReassignment.length > 0 && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 max-w-xs">
-          {data.needsReassignment.length} guest{data.needsReassignment.length === 1 ? "" : "s"} need a new table since their table was removed.
+          {`${data.needsReassignment.length} guest${data.needsReassignment.length === 1 ? "" : "s"} need a new table since their table was removed.`}
         </p>
       )}
 
@@ -1138,7 +1138,7 @@ export default function SeatingSection({ token }: { token: string }) {
           )}
           {strandedCount > 0 && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4 max-w-xs mx-auto">
-              {strandedCount} guest{strandedCount === 1 ? "" : "s"} will need a new table once seating reopens.
+              {`${strandedCount} guest${strandedCount === 1 ? "" : "s"} will need a new table once seating reopens.`}
             </p>
           )}
         </div>

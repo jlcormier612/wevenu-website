@@ -287,15 +287,13 @@ export function WeddingDaySeating({
 
           {data.needsReassignment.length > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {data.needsReassignment.length} guest{data.needsReassignment.length === 1 ? "" : "s"} need a table — their table was removed after they were seated.
+              {`${data.needsReassignment.length} guest${data.needsReassignment.length === 1 ? "" : "s"} need a table — their table was removed after they were seated.`}
             </div>
           )}
 
           {data.stats.unconvertedPlusOnes > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {data.stats.unconvertedPlusOnes} named plus-one{data.stats.unconvertedPlusOnes === 1 ? "" : "s"}{" "}
-              {data.stats.unconvertedPlusOnes === 1 ? "is" : "are"} not yet a full guest record and will not
-              appear as a seatable guest until converted. Rosters below only include guests who can be seated.
+              {`${data.stats.unconvertedPlusOnes} named plus-one${data.stats.unconvertedPlusOnes === 1 ? "" : "s"} ${data.stats.unconvertedPlusOnes === 1 ? "is" : "are"} not yet a full guest record and will not appear as a seatable guest until converted. Rosters below only include guests who can be seated.`}
             </div>
           )}
 

@@ -151,9 +151,7 @@ export default async function SeatingPrintPage({ params, searchParams }: Props) 
 
                 {data.stats.unconvertedPlusOnes > 0 && (
                   <p style={{ fontSize: 12, color: "#8B6914", marginBottom: 16, padding: "8px 12px", background: "#FFF8E7", borderRadius: 8 }}>
-                    Note: {data.stats.unconvertedPlusOnes} named plus-one{data.stats.unconvertedPlusOnes === 1 ? "" : "s"}{" "}
-                    {data.stats.unconvertedPlusOnes === 1 ? "is" : "are"} not yet converted to a full guest and
-                    {data.stats.unconvertedPlusOnes === 1 ? " is" : " are"} not listed below as seatable.
+                    Note: {`${data.stats.unconvertedPlusOnes} named plus-one${data.stats.unconvertedPlusOnes === 1 ? "" : "s"} ${data.stats.unconvertedPlusOnes === 1 ? "is" : "are"} not yet converted to a full guest and ${data.stats.unconvertedPlusOnes === 1 ? "is" : "are"} not listed below as seatable.`}
                   </p>
                 )}
 

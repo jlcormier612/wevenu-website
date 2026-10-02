@@ -180,7 +180,7 @@ export function VendorLuvBriefing({
           <h2 className="font-heading text-sm font-semibold text-heading">Today&apos;s briefing</h2>
           {totalUrgent > 0 && (
             <span className="ml-auto text-xs font-semibold text-destructive">
-              {totalUrgent} need{totalUrgent === 1 ? "s" : ""} attention
+              {`${totalUrgent} need${totalUrgent === 1 ? "s" : ""} attention`}
             </span>
           )}
         </div>

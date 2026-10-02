@@ -214,7 +214,7 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions, lastSyncedA
       {hasCoverSuggestions && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
           <p className="text-xs font-semibold text-primary">
-            📸 {engagementPhotos.length} engagement photo{engagementPhotos.length === 1 ? "" : "s"} found — tap one to use as your cover
+            📸 {`${engagementPhotos.length} engagement photo${engagementPhotos.length === 1 ? "" : "s"} found — tap one to use as your cover`}
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {engagementPhotos.slice(0, 6).map((p, i) => (

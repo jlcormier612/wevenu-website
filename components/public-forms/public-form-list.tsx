@@ -260,8 +260,7 @@ export const PublicFormList = React.forwardRef<
                       <Badge variant="muted">Archived</Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {f.leadCount} lead{f.leadCount === 1 ? "" : "s"} kept · {f.qrCount} QR code
-                      {f.qrCount === 1 ? "" : "s"} still listed
+                      {`${f.leadCount} lead${f.leadCount === 1 ? "" : "s"} kept · ${f.qrCount} QR code${f.qrCount === 1 ? "" : "s"} still listed`}
                     </p>
                   </Link>
                 ))}

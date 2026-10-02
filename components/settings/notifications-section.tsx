@@ -129,7 +129,7 @@ export function NotificationsSection({
           <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-amber-900">
-              {stats.dueNow} reminder{stats.dueNow !== 1 ? "s" : ""} due now
+              {`${stats.dueNow} reminder${stats.dueNow !== 1 ? "s" : ""} due now`}
             </p>
             <p className="text-xs text-amber-700 mt-0.5">
               These should send on the next automatic run, or use Send Now below.
@@ -142,9 +142,7 @@ export function NotificationsSection({
           <div>
             <p className="text-sm font-medium text-amber-900">Some notifications failed to send</p>
             <p className="text-xs text-amber-700 mt-0.5">
-              {stats.failedLast24h} failed deliver
-              {stats.failedLast24h !== 1 ? "ies" : "y"} in the last 24 hours. Hello to Cheers will keep
-              retrying automatically.
+              {`${stats.failedLast24h} failed deliver${stats.failedLast24h !== 1 ? "ies" : "y"} in the last 24 hours. Hello to Cheers will keep retrying automatically.`}
             </p>
           </div>
         </div>

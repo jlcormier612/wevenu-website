@@ -604,7 +604,7 @@ function StepResults({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <AlertCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
-              {result.errors.length} row{result.errors.length !== 1 ? "s" : ""} not imported
+              {`${result.errors.length} row${result.errors.length !== 1 ? "s" : ""} not imported`}
             </div>
             <button
               type="button"

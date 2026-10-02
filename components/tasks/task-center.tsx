@@ -701,7 +701,7 @@ export function TaskCenter({
           <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />
             <p className="text-sm font-medium text-destructive">
-              {doImmediate} item{doImmediate !== 1 ? "s" : ""} need attention on your team&apos;s list
+              {`${doImmediate} item${doImmediate !== 1 ? "s" : ""} need attention on your team's list`}
             </p>
           </div>
         )}

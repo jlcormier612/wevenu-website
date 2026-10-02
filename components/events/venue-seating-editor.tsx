@@ -155,7 +155,7 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
 
       {data.stats.unconvertedPlusOnes > 0 && (
         <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          ⚠ {data.stats.unconvertedPlusOnes} plus-one{data.stats.unconvertedPlusOnes === 1 ? "" : "s"} {data.stats.unconvertedPlusOnes === 1 ? "has" : "have"} a name but no guest record — marked below with ⚠, they can&apos;t be seated until converted to a full guest.
+          ⚠ {`${data.stats.unconvertedPlusOnes} plus-one${data.stats.unconvertedPlusOnes === 1 ? "" : "s"} ${data.stats.unconvertedPlusOnes === 1 ? "has" : "have"} a name but no guest record — marked below with ⚠, they can't be seated until converted to a full guest.`}
         </div>
       )}
 

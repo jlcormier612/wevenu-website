@@ -145,7 +145,7 @@ export function ClientList({
     <div className="space-y-4">
       {weddingDayToday > 0 && (
         <p className="text-sm font-medium text-heading">
-          🎉 {weddingDayToday} wedding{weddingDayToday === 1 ? "" : "s"} today
+          🎉 {`${weddingDayToday} wedding${weddingDayToday === 1 ? "" : "s"} today`}
         </p>
       )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

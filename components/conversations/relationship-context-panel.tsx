@@ -139,7 +139,7 @@ function ContextBody({
             )}
             {requestHref && (
               <Link href={requestHref} className="inline-block pt-1 text-[11px] font-medium text-primary hover:underline">
-                Open {o.relationshipType === "Booking" ? "booking" : "lead"} workspace →
+                {`Open ${o.relationshipType === "Booking" ? "booking" : "lead"} workspace →`}
               </Link>
             )}
           </div>

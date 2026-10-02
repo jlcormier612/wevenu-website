@@ -197,7 +197,7 @@ function PreparePlanningKind({
           {!loadingPreview && selected && groups.length > 0 && (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                {groups.length} milestone{groups.length === 1 ? "" : "s"} · {taskCount} task{taskCount === 1 ? "" : "s"} will be created{eventId ? " for this event" : " for this client"}.
+                {`${groups.length} milestone${groups.length === 1 ? "" : "s"} · ${taskCount} task${taskCount === 1 ? "" : "s"} will be created${eventId ? " for this event" : " for this client"}.`}
               </p>
               {groups.map((g) => (
                 <div key={g.milestoneId} className="space-y-1">

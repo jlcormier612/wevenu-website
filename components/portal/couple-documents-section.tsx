@@ -505,7 +505,7 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       {pendingSignature.length > 0 && (
         <div className="w-full rounded-xl border border-amber-300 bg-amber-50/40 px-3 py-3">
           <p className="text-sm font-semibold text-amber-800">
-            ✍️ {pendingSignature.length} contract{pendingSignature.length === 1 ? "" : "s"} waiting for your signature
+            ✍️ {`${pendingSignature.length} contract${pendingSignature.length === 1 ? "" : "s"} waiting for your signature`}
           </p>
         </div>
       )}

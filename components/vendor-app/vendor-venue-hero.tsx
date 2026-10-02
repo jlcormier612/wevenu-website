@@ -156,7 +156,7 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
             )}
             <span className="text-xs text-white/70">Partner since {formatPartnerSince(partnership.addedAt)}</span>
             {partnership.activeEventCount > 0 && (
-              <span className="text-xs text-white/70">· {partnership.activeEventCount} event{partnership.activeEventCount === 1 ? "" : "s"} together</span>
+              <span className="text-xs text-white/70">· {`${partnership.activeEventCount} event${partnership.activeEventCount === 1 ? "" : "s"} together`}</span>
             )}
           </div>
         </div>
@@ -245,7 +245,7 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
               {formatEventDateRangeShort(nextEvent.eventDate!, nextEvent.eventEndDate)}
             </p>
             <p className="mt-2 text-[10px] text-muted-foreground">
-              {upcomingAtVenue.length} upcoming event{upcomingAtVenue.length === 1 ? "" : "s"} together
+              {`${upcomingAtVenue.length} upcoming event${upcomingAtVenue.length === 1 ? "" : "s"} together`}
             </p>
             <p className="mt-1 text-[11px] font-medium text-primary">Open event →</p>
           </Link>

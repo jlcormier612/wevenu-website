@@ -168,8 +168,7 @@ export function SelectPackageSheet({
           )}
           {unpriced.length > 0 && (
             <p className="pt-2 text-xs text-muted-foreground">
-              {unpriced.length} Library package{unpriced.length === 1 ? "" : "s"} still need a price
-              before they can be selected.
+              {`${unpriced.length} Library package${unpriced.length === 1 ? "" : "s"} still need a price before they can be selected.`}
             </p>
           )}
         </div>

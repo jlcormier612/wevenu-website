@@ -110,7 +110,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
       </ComparisonCardGrid>
 
       <p className="text-xs text-muted-foreground">
-        {currentlyBooked} {currentlyBooked === 1 ? "relationship is" : "relationships are"} currently in Booked on your pipeline.
+          {`${currentlyBooked} ${currentlyBooked === 1 ? "relationship is" : "relationships are"} currently in Booked on your pipeline.`}
         That snapshot can differ from Bookings above, which count when you first marked them booked.
         {undatedBookings > 0
           ? ` ${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count. ${undatedBookings === 1 ? "It still counts" : "They still count"} in Leads who booked.`
