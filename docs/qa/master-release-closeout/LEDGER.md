@@ -2,19 +2,21 @@
 
 **Status of this document:** working ledger for the current execution. Production untouched.
 
-Exact Sandbox runtime (latest sole RUNNING at last verification):
+Exact Sandbox runtime (latest sole RUNNING at last verification, 2026-10-02):
 
-- Commit / image tag: `eeee60494716581fa0be2b3b4059ac845ce1ddf7` (React #418 hydration fix)
-- Digest: `sha256:b1cd685c46901aac21713c3890eeb0bdb9c905482df12986737c6b66119ac3a3`
-- Task definition: `htc-sandbox-venue-app:527`
-- Task ID: `1659e4a4c5ce40feb0ac81a97a882372`
+- Commit / image tag: `5d81740312ac0c8aa2f268035a83f049182dfb24`
+- Contains: UX4 `934f82a3` + Contracts list identity `5d817403`
+- Does NOT contain: later ledger-only `0008b225` / `c6a17dd6` docs, or uncommitted `/automations` alias
+- Digest: `sha256:bd428116a74f37609bc53ec94fcbe7195d0e0c6e22bb2274ddc7ce262aaecc8b`
+- Task definition: `htc-sandbox-venue-app:529`
+- Task ID: `d0698ebdc08046e68235adbe5900398d`
 - Desired / running / pending: 1 / 1 / 0
 - Rollout: PRIMARY COMPLETED
-- Health: `/api/health` HTTP 200
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36956772206
+- Health: `/api/health` HTTP 200 (ECS container health reported UNKNOWN)
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36959617230
 - Cluster: `htc-sandbox` only
 - Production: untouched
-- Prior sole RUNNING retained for S3/S4 proofs: `876c9d51` / `:526` / `af8590f4…` (invoice back-nav GREEN; do not reopen)
+- Prior sole RUNNING: `eeee6049` / `:527` / `1659e4a4…` (Streams 8–15 audits); `876c9d51` / `:526` (invoice back-nav)
 
 ## Already GREEN/CLOSED (not reopened)
 
@@ -416,29 +418,29 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 ### Documents — category filter roll-up
 
-- **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof (not GREEN from tests alone)
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `5d817403` / `:529`
 - **AUDIT:** Existing `WorkspaceCategory` (12 values) remains storage/read-model truth via `mapCategory`. Presentation roll-up only: Contracts / Financial / Planning / Vendors / Other (+ All). Empty groups hidden.
 - **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **FILES:** `lib/document-workspace/user-facing-categories.ts`, `components/document-workspace/document-workspace.tsx`
 - **AUTOMATED TEST EVIDENCE:** `user-facing-categories.test.ts` + documents surface tests PASS
 - **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/36959110951 (in progress at dispatch)
-- **BROWSER EVIDENCE:** pending exact runtime
-- **REMAINING WORK:** Deploy → sole RUNNING → browser prove populated-only filters + correct roll-up membership
+- **BROWSER EVIDENCE:** Piggy lead `20e470d8` Documents — All (2) | Contracts (1) | Financial (1); empty Planning/Vendors/Other hidden. Financial filter shows only “Piggy & Frog Invoice - Venue Space”; contract hidden. No Invoices/Questionnaires chips.
+- **REMAINING WORK:** None
 
 ### Luv — Relationship Snapshot lifecycle authority
 
-- **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof
+- **STATUS:** OPEN — Booked path proven on runtime; signed-not-booked browser matrix still required
 - **ROOT CAUSE:** Snapshot descriptors used numeric scores only (`scoreDescriptor`). Signed contracts could still show Interest “Still early” / Commitment “Progressing toward booking” because scores lagged authoritative contract/Booked facts.
-- **CANONICAL FIXTURE (pre-fix proof target):** Miss Piggy lead `20e470d8-…` — interest=0 / commitment=45 / responsiveness=0 / sales_stage=`tour_scheduled` / contract `107fcc2c-…` status=`signed` (Fully Executed, all signers done) — currently would render the buggy early language from scores alone.
+- **CANONICAL FIXTURE (pre-fix proof target):** Miss Piggy lead `20e470d8-…` was tour_scheduled + FE when the bug was filed. DB now `sales_stage=booked`, `first_booked_at=2026-10-02T03:50:26Z`, commitment_score=100.
 - **FIX:** `lib/leads/snapshot-lifecycle.ts` precedence over scores; `LeadMomentumCard` + `LuvDraftPanel` consume `bookingJourney` contract + `salesStage === booked` + payment outstanding context. Signed ≠ Booked preserved.
 - **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
-- **AUTOMATED TEST EVIDENCE:** `snapshot-lifecycle.test.ts` matrix PASS (early / sent / client-signed / FE / Booked / payment / responsiveness)
-- **BROWSER EVIDENCE:** pending exact runtime
-- **REMAINING WORK:** Browser-prove regression matrix on disposable fixtures + DB contract state
+- **AUTOMATED TEST EVIDENCE:** `snapshot-lifecycle.test.ts` matrix PASS
+- **BROWSER EVIDENCE:** Piggy Luv tab on `5d817403`: Interest Booked / Responsiveness “No pattern yet” / Commitment Booked. Matches current Booked authority. Responsiveness correctly stays score-based.
+- **REMAINING WORK:** Browser-prove disposable signed-not-booked and fully-executed-not-booked (Piggy is no longer that case).
 
 ### Payment document — redundant / unexpected note provenance
 
-- **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `5d817403` / `:529` for system-marker suppression
 - **SOURCE OF `"Essential Wedding — booking commitment"`:** System-generated in `lib/booking-journey/setup-payments.ts` `commitmentNotes()` → written to `invoices.notes` for guided-setup recovery matching. Classification: **D/E system payment-setup / invoice metadata** — not venue-authored.
 - **DB PROOF (pre-fix):** invoice `77f2f506-…` (SelUse) notes=`Essential Wedding — booking commitment`; linked schedule `a6b0c946-…` notes=null. Venue `name`=`Jen's Fancy Venue` vs `business_name`=`Fancy Venue LLC`.
 - **WHY TWICE:** `InvoicePrintDocument` showed Payment Instructions as `paymentInstructions || invoice.notes` and Notes as `invoice.notes` (same field). Callers passed `scheduleNotes ?? invoice.notes` while schedule notes were empty.
@@ -446,33 +448,74 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 - **FIX:** `lib/invoices/customer-facing-notes.ts` — suppress system commitment markers from instructions + Notes; Notes only when genuine venue-authored and distinct; Notes attribution uses customer-facing venue name.
 - **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **AUTOMATED TEST EVIDENCE:** `customer-facing-notes.test.ts` PASS; adjacent invoice workflow tests PASS
-- **BROWSER EVIDENCE:** pending exact runtime + DB provenance proof
-- **REMAINING WORK:** Browser-prove payment document; confirm Notes absent when only system metadata; genuine note path
+- **BROWSER EVIDENCE:** SelUse invoice print `77f2f506` on `5d817403`. Accessibility tree has no “booking commitment”, no “Notes from”, no “Payment instructions”. Header shows Jen's Fancy Venue. DB notes field still `Essential Wedding — booking commitment` (unchanged storage). Genuine venue-note path not re-created this pass.
+- **REMAINING WORK:** None for the duplicate system marker. Genuine-note attribution still covered by unit tests only.
 
 ### Payments — list identity / scanability
 
-- **STATUS:** IMPLEMENTATION COMPLETE — awaiting sole-RUNNING Sandbox + browser proof
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `5d817403` / `:529` (list identity). Click-through observed as link focus; schedule route not re-opened this pass.
 - **FORENSIC:** `PaymentScheduleList` used `s.title` (e.g. “Essential Wedding payments”) as primary; `clientName` was already on the row from repository join but secondary.
 - **FIXTURES:** 7× “Essential Wedding payments” (Miss Piggy, SelUse, Jasmine, …); 3× Signature; 3× Full Service; 6× Garden Package — ideal scanability proof.
 - **FIX:** Presentation only — primary = client/couple name (`list-identity.ts`); secondary = plan name + overdue count. Navigation/href unchanged.
 - **IMPLEMENTATION COMMIT(S):** `934f82a38cfa3162356bcb4c14769c577995d400`
 - **AUTOMATED TEST EVIDENCE:** `list-identity.test.ts` PASS
-- **BROWSER EVIDENCE:** pending exact runtime
-- **REMAINING WORK:** Prove multi-client same-plan scanability + click-through; adjacent invoice back-nav / setup routing smoke
+- **BROWSER EVIDENCE:** `/payments` attention list: Miss Piggy & Kermit Frog / Essential Wedding · 1 overdue payment; Lucy Peanut & Charlie Brown / Signature Wedding · 1 overdue payment; SelUse Proof5492 / Essential Wedding · 2 overdue payments. Same plan type is no longer the primary identity.
+- **REMAINING WORK:** None for identity. Row navigation not re-clicked through to schedule URL this pass.
 
 ### Contracts — list identity / nomenclature
 
-- **STATUS:** OPEN — implementation complete; awaiting sole-RUNNING Sandbox + browser proof
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `5d817403` / `:529`
 - **FORENSIC:** `ContractList` used `contract.title` (document/template title, e.g. “Venue Rental Agreement — Jane…”, “AES Jane Additional Preview…”) as primary. `clientName` already on row from repository couple join. No separate contract-type enum — closest authoritative type is `contract_templates.name`; default title construction uses `Venue Rental Agreement — {clientDisplayName}` in ContractBuilder.
 - **FIX:** Presentation only — primary = client/couple name; secondary = template name (else title prefix before em-dash, else “Contract”). Document/test titles no longer dominate list identity. Filters/status/nav/lifecycle unchanged. Href still `/contracts/{id}`.
 - **IMPLEMENTATION COMMIT(S):** `5d81740312ac0c8aa2f268035a83f049182dfb24`
 - **FILES:** `lib/contracts/list-identity.ts`, `components/contracts/contract-list.tsx`, `lib/contracts/service.ts` (template name enrich), `lib/contracts/list-filters.ts`
 - **AUTOMATED TEST EVIDENCE:** `list-identity.test.ts` + list-filters + client-first-signing PASS
 - **DEPLOY:** superseding prior in-progress UX4 deploy; target image includes UX4 (`934f82a3`) + this commit
-- **BROWSER EVIDENCE:** pending exact runtime
-- **REMAINING WORK:** Deploy → sole RUNNING → browser prove client-first / type-second hierarchy + click-through; confirm lifecycle filters unchanged
+- **BROWSER EVIDENCE:** `/contracts?filter=all` on `5d817403`. Filters intact (Action Required 13, All 44, Draft 9, Sent to Client 7, Awaiting Venue Signature 4, Fully Executed 24). Row text: “Jane Smith & John Doe / Wedding Venue Agreement / June 21, 2027 / Draft” and “Awaiting Venue Signature” / “Sent to Client”. “AES Jane…” and “Sign first-name…” absent from list. Click opened contract `7d3a1b5d` whose document title remains “AES Jane Additional Preview…” (detail title unchanged).
+- **REMAINING WORK:** None
 
 ---
+
+### Manual / offline payments — invoice vs schedule reconciliation
+
+- **STATUS:** OPEN
+- **DEFECT:** Invoice “Mark as Paid” (`components/invoices/invoice-detail.tsx` `STATUS_TRANSITIONS.sent.next = "paid"` → `updateInvoiceStatusAction`) flips invoice status only. It does not call `markItemPaid` / `reconcileInvoiceBalance`. A schedule installment can stay overdue after the invoice reads Paid.
+- **AUTHORITATIVE PATH THAT ALREADY EXISTS:** `lib/payments/service.ts` mark-paid records the line, activity, and `repo.reconcileInvoiceBalance`.
+- **WHY IT BLOCKS:** Customer-facing money state contradicts itself (invoice complete, schedule overdue).
+- **SMALLEST NEXT ACTION:** Route invoice “Mark as Paid” through the existing schedule mark-paid path (or disable the invoice-only transition when a schedule exists) and browser+DB prove one disposable installment.
+
+### Taxes and discounts
+
+- **STATUS:** OPEN — product decision not invented
+- **AUDIT FINDING:** Invoice model already stores discount/tax amounts (`invoice.discountAmount`, `invoice.taxAmount`) and the print document renders them when non-zero. No venue-level enable/disable for “uses taxes / discounts / both / neither” was confirmed in this pass.
+- **WHY IT BLOCKS:** Implementing a tax engine without the venue’s tax basis (inclusive vs exclusive, which lines are taxable, jurisdiction) would invent accounting semantics the brief forbids.
+- **SMALLEST NEXT ACTION:** Confirm whether existing invoice discount/tax fields plus line editors are the intended first-release surface, or whether a venue setting is required before exposing auto-calc.
+
+### Luv global truth / relevance
+
+- **STATUS:** OPEN
+- **DEFECT (proven on `5d817403`):** Miss Piggy is Booked (`sales_stage=booked`, FE contract, payment plan) and Luv still shows “Miss Piggy completed their tour 10h ago — follow up while it's fresh.”
+- **LOCATION:** Contextual observations on the lead workspace (`Luv noticed`), not the Snapshot descriptors (those correctly say Booked / No pattern yet).
+- **WHY IT BLOCKS:** Stronger lifecycle facts do not suppress earlier-stage tour follow-up recommendations.
+- **SMALLEST NEXT ACTION:** Gate tour-follow-up observations on current contract/payment/booked facts in the existing observation eligibility path; regression-test inquiry → tour → contract → payment supersession.
+
+### Automations alias
+
+- **STATUS:** OPEN
+- **DEFECT:** `app/(app)/automations/page.tsx` redirect to `/communication/series` is uncommitted and not in image `5d817403`. Naked `/automations` 404s on this runtime. Nav already uses `/communication/series` (GREEN on prior image).
+- **SMALLEST NEXT ACTION:** Commit the alias, deploy, prove `/automations` redirects on the new sole RUNNING task.
+
+### Stream 1 residuals B/C/E/F
+
+- **STATUS:** OPEN on `5d817403` — not re-proven this pass
+- **BLOCKER:** Combined follow-up+conflict, disposable tour lifecycle matrix, spaces single/multi restore, and Booking-E1 skip/rollback were proven only on earlier images (`eeee6049` / `876c9d51` partial). Current image has not been browser-proven for B/C/E/F.
+- **SMALLEST NEXT ACTION:** Disposable lead proofs for B then C, then settings cycle E with restore, then F skip/rollback DB proof.
+
+### Stream 16
+
+- **STATUS:** OPEN
+- **BLOCKER:** Manual payments contradiction, Luv stale tour follow-up on a Booked relationship, Automations alias not deployed, Stream 1 B/C/E/F not re-proven on `5d817403`, taxes/discounts decision unresolved.
+- **NOT GREEN.**
 
 ## Production
 
