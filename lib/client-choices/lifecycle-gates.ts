@@ -14,6 +14,8 @@ export const CLIENT_CHOICES_ALREADY_FINALIZED_MESSAGE = "Already finalized.";
 export const CLIENT_CHOICES_SEND_DRAFT_ONLY_MESSAGE = "Only a draft can be sent.";
 export const CLIENT_CHOICES_REQUEST_CHANGES_MESSAGE =
   "Request changes is available while reviewing a client submission.";
+export const CLIENT_CHOICES_AMEND_ONLY_FINALIZED_MESSAGE =
+  "Only a finalized agreement can be amended.";
 
 export function clientSaveBlocked(status: string): ClientChoicesActionResult | null {
   if (!isClientChoicesClientEditable(status)) {
@@ -76,6 +78,22 @@ export function finalizeBlocked(
   return null;
 }
 
+export function amendBlocked(status: string): ClientChoicesActionResult | null {
+  if (status !== "finalized") {
+    return { ok: false, message: CLIENT_CHOICES_AMEND_ONLY_FINALIZED_MESSAGE };
+  }
+  return null;
+}
+
+/**
+ * Amend reopens the same Choices instance (draft) so re-finalize can
+ * replace the previously applied Event Order lines. A new instance would
+ * duplicate charges because appliedLineIds would start empty.
+ */
+export function amendReusesSameInstance(): boolean {
+  return true;
+}
+
 /** Submit never mutates Event Order or invoice — enforced by service boundaries. */
 export function submitMutatesFinancialSystems(): boolean {
   return false;
@@ -84,4 +102,9 @@ export function submitMutatesFinancialSystems(): boolean {
 /** Only venue finalize applies to Event Order. */
 export function finalizeAppliesToEventOrder(): boolean {
   return true;
+}
+
+/** Finalize / lock is not invoice issuance. */
+export function finalizeCreatesInvoice(): boolean {
+  return false;
 }

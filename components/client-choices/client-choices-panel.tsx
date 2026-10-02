@@ -124,11 +124,11 @@ function ChoicesRow({
               disabled={pending}
               onClick={() => startTransition(async () => {
                 const r = await reviseClientChoicesAction(eventId, row.id);
-                if (!r.ok) toast.error(r.message ?? "Could not start revision.");
-                else { toast.success("Revision draft created."); router.refresh(); }
+                if (!r.ok) toast.error(r.message ?? "Could not start the amendment.");
+                else { toast.success("Amendment started. Send to the client when ready."); router.refresh(); }
               })}
             >
-              Revise
+              Amend
             </Button>
           ) : null}
           {(row.status === "sent" || row.status === "in_progress") ? (
@@ -191,8 +191,11 @@ function ChoicesRow({
         </details>
       ) : null}
 
-      {row.eventOrderId && row.status === "finalized" ? (
-        <p className="text-xs text-muted-foreground">Applied to Event Order.</p>
+      {row.status === "finalized" ? (
+        <p className="text-xs text-muted-foreground">
+          Locked — this is what will be provided.
+          {row.eventOrderId ? " Applied to the Event Order." : ""}
+        </p>
       ) : null}
     </div>
   );

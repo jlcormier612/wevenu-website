@@ -1,5 +1,9 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  eventInventoryItemsPendingForEventOrder,
+  inventoryHandoffBillableTotal,
+} from "@/lib/event-inventory/handoff";
 import * as repo from "@/lib/event-inventory/repository";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
@@ -108,16 +112,11 @@ export async function finalizeEventInventory(eventInventoryId: string): Promise<
 }
 
 /**
- * Financial handoff (D5 brief §17-19) — "Inventory provides the applicable
- * commercial input. The financial domain creates/owns the actual financial
- * obligation." Deliberately not automatic on finalize — this is its own
- * explicit venue action, matching the brief's "Add to Payment Plan"
- * framing. Reuses Event Order's existing, unmodified addLineFromInventory/
- * addCustomLine functions — no second financial engine, no new provenance
- * value, no direct Inventory→Invoice or Inventory→Payment Plan link
- * invented. Only priced items are ever pushed (an item included at no
- * extra charge has nothing to bill); everything downstream (Event Order →
- * Invoice freeze → Payment Schedule) already exists and is untouched.
+ * Inventory provides commercial input. Event Order owns the locked
+ * agreement. Invoice freeze owns money. This action is explicit — never
+ * automatic on inventory finalize. Included/$0 items still enter the
+ * Event Order as operational agreement lines; only additional charges
+ * are later eligible to freeze onto an invoice.
  */
 export async function addToEventOrder(eventInventoryId: string, eventId: string): Promise<AddToEventOrderResult> {
   const venue = await getCurrentVenue();
@@ -129,22 +128,11 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
   if (inv.status !== "finalized") {
     return { ok: false, message: "Finalize the Event Inventory before adding it to the Event Order." };
   }
-  // D8 — filters out items already pushed by a prior call, closing two real
-  // bugs at once: (1) no server-side guard previously existed against
-  // re-adding the same item twice (a double-click/retry/second tab would
-  // have duplicated every billable line's financial impact), and (2) the
-  // old all-time "has this Event Inventory ever been pushed" flag
-  // permanently hid the action after first use, blocking items added on a
-  // later Reopen from ever reaching the Event Order. Both are fixed by
-  // tracking eligibility per item instead of once for the whole Inventory.
-  const billable = inv.items.filter((i) => i.unitPrice != null && i.unitPrice > 0 && !i.addedToEventOrderAt);
-  if (billable.length === 0) {
-    const anyBillable = inv.items.some((i) => i.unitPrice != null && i.unitPrice > 0);
+  const pending = eventInventoryItemsPendingForEventOrder(inv.items);
+  if (pending.length === 0) {
     return {
       ok: false,
-      message: anyBillable
-        ? "Everything billable here has already been added to the Event Order."
-        : "Nothing to add — every item here is included at no extra charge.",
+      message: "Everything here has already been added to the Event Order.",
     };
   }
 
@@ -157,22 +145,21 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
   if (!ensured.ok) return { ok: false, message: ensured.message };
 
   let added = 0;
-  let addedTotal = 0;
   const addedItemIds: string[] = [];
-  for (const item of billable) {
+  for (const item of pending) {
+    const unitPrice = item.unitPrice == null ? "" : String(item.unitPrice);
     const lineResult = item.inventoryItemId
       ? await addLineFromInventory(ensured.eventOrderId, {
           inventoryItemId: item.inventoryItemId, description: item.name,
-          quantity: String(item.quantity), unitPrice: String(item.unitPrice), sectionId: null,
+          quantity: String(item.quantity), unitPrice, sectionId: null,
           isIncluded: item.isIncluded,
         })
       : await addCustomLine(ensured.eventOrderId, {
-          description: item.name, quantity: String(item.quantity), unitPrice: String(item.unitPrice), sectionId: null,
+          description: item.name, quantity: String(item.quantity), unitPrice, sectionId: null,
           isIncluded: item.isIncluded,
         });
     if (lineResult.ok) {
       added++;
-      addedTotal += item.quantity * (item.unitPrice ?? 0);
       addedItemIds.push(item.id);
     }
   }
@@ -180,7 +167,7 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
   if (added === 0) return { ok: false, message: "Could not add items to the Event Order." };
   await repo.markAddedToEventOrder(supabase, venue.id, addedItemIds);
   await repo.insertActivity(supabase, venue.id, eventInventoryId, "added_to_event_order", `${added} item${added !== 1 ? "s" : ""} added to Event Order`);
-  return { ok: true, addedCount: added, addedTotal };
+  return { ok: true, addedCount: added, addedTotal: inventoryHandoffBillableTotal(pending) };
 }
 
 export async function reopenEventInventory(eventInventoryId: string): Promise<EventInventoryActionResult> {

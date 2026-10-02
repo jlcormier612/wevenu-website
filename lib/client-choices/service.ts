@@ -11,6 +11,7 @@ import {
   choicesLineNotes,
 } from "@/lib/client-choices/apply-to-event-order";
 import {
+  amendBlocked,
   finalizeBlocked,
   requestChangesBlocked,
 } from "@/lib/client-choices/lifecycle-gates";
@@ -369,30 +370,32 @@ export async function finalizeClientChoices(
 }
 
 /**
- * Start a post-finalize revision cycle: new draft-like working state from
- * the finalized definition, preserving all prior submissions.
+ * Amend a locked agreement: reopen THIS instance as a draft.
+ * Prior submissions stay as the audit of what was agreed.
+ * appliedLineIds stay so the next finalize replaces those EO lines
+ * instead of inserting a second set of charges.
  */
 export async function reviseClientChoices(choicesId: string): Promise<CreateClientChoicesResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const row = await repo.getById(supabase, venueId, choicesId);
     if (!row) return { ok: false, message: "Choices not found." } as CreateClientChoicesResult;
-    if (row.status !== "finalized") {
-      return { ok: false, message: "Only a finalized Choices can be revised this way." } as CreateClientChoicesResult;
-    }
-    const newId = await repo.insertInstance(supabase, venueId, {
-      eventId: row.eventId,
-      clientId: row.clientId,
-      templateId: row.templateId,
-      eventOrderTemplateId: row.eventOrderTemplateId,
-      name: `${row.name} (revision)`,
-      definition: row.definition,
-      answers: row.answers,
+    const blocked = amendBlocked(row.status);
+    if (blocked) return blocked as CreateClientChoicesResult;
+    await repo.updateInstance(supabase, venueId, row.id, {
+      status: "draft",
+      sent_at: null,
+      opened_at: null,
+      submitted_at: null,
+      finalized_at: null,
+      changes_requested_note: null,
+      changes_requested_at: null,
     });
     await repo.insertActivity(
-      supabase, venueId, newId, "created",
-      `Revision started from finalized choices ${row.id}`,
+      supabase, venueId, row.id, "amended",
+      "Amendment started — send to the client when ready.",
+      "The previous finalized submission remains on the history. Event Order lines stay until you finalize again.",
     );
-    return { ok: true, choicesId: newId } as CreateClientChoicesResult;
+    return { ok: true, choicesId: row.id } as CreateClientChoicesResult;
   });
   return result as CreateClientChoicesResult;
 }

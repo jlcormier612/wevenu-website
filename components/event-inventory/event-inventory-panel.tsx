@@ -114,11 +114,11 @@ export function EventInventoryPanel({
   const inv = eventInventory;
   const isFinalized = inv.status === "finalized";
   const isDraft = inv.status === "draft";
-  const billableTotal = inv.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.quantity, 0);
-  // D8 — per-item, not a permanent all-time flag: reflects exactly what's
-  // still eligible right now, so items added after a prior push (Reopen →
-  // add more → Finalize again) correctly bring this button back.
-  const hasUnpushedBillable = inv.items.some((i) => i.unitPrice != null && i.unitPrice > 0 && !i.addedToEventOrderAt);
+  const billableTotal = inv.items.reduce(
+    (sum, i) => i.isIncluded ? sum : sum + (i.unitPrice ?? 0) * i.quantity,
+    0,
+  );
+  const hasUnpushedItems = inv.items.some((i) => !i.addedToEventOrderAt);
 
   async function handleRemove(item: EventInventoryItem) {
     if (!confirm(`Remove "${item.name}"?`)) return;
@@ -139,12 +139,14 @@ export function EventInventoryPanel({
           lastUpdated={new Date(inv.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={isFinalized ? (
             <div className="flex items-center gap-2">
-              {hasUnpushedBillable && (
+              {hasUnpushedItems && (
                 <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
                   onClick={() => startLifecycle(async () => {
                     const result = await addEventInventoryToEventOrderAction(inv.id, eventId);
-                    if (result.ok) toast.success(`Added ${result.addedCount} item${result.addedCount === 1 ? "" : "s"} (${formatMoney(result.addedTotal)}) to the Event Order.`);
-                    else toast.error(result.message ?? "Could not add to Event Order.");
+                    if (result.ok) {
+                      const extra = result.addedTotal > 0 ? ` (${formatMoney(result.addedTotal)} additional)` : " (included — no additional charge)";
+                      toast.success(`Added ${result.addedCount} item${result.addedCount === 1 ? "" : "s"}${extra} to the Event Order.`);
+                    } else toast.error(result.message ?? "Could not add to Event Order.");
                   })}>
                   Add to Event Order
                 </Button>

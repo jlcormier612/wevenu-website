@@ -7,9 +7,12 @@ import {
   toClientChoicesDisplayStatus,
 } from "@/lib/client-choices/constants";
 import {
+  amendBlocked,
+  amendReusesSameInstance,
   clientSubmitBlocked,
   finalizeBlocked,
   finalizeAppliesToEventOrder,
+  finalizeCreatesInvoice,
   requestChangesBlocked,
   submitMutatesFinancialSystems,
 } from "@/lib/client-choices/lifecycle-gates";
@@ -63,8 +66,16 @@ describe("Client Choices lifecycle gates", () => {
     assert.equal(requestChangesBlocked("submitted"), null);
   });
 
-  it("enforces financial boundary: submit never, finalize applies EO", () => {
+  it("enforces financial boundary: submit never, finalize applies EO, no invoice", () => {
     assert.equal(submitMutatesFinancialSystems(), false);
     assert.equal(finalizeAppliesToEventOrder(), true);
+    assert.equal(finalizeCreatesInvoice(), false);
+  });
+
+  it("amend is only from finalized and reuses the same instance", () => {
+    assert.ok(amendBlocked("submitted"));
+    assert.ok(amendBlocked("draft"));
+    assert.equal(amendBlocked("finalized"), null);
+    assert.equal(amendReusesSameInstance(), true);
   });
 });
