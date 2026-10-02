@@ -6,6 +6,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   normalizeLeadSpacePreference,
+  occupancyAnchorSpaceIdFromPreferences,
   shouldShowLeadSpacePreference,
   type LeadEventSpacePreference,
   type LeadSpacePreferenceInput,
@@ -99,6 +100,18 @@ export async function saveLeadSpacePreferences(
       { onConflict: "lead_id,use_key" },
     );
     if (error) throw error;
+  }
+
+  // Keep planned_event_space_id as occupancy/book anchor without exposing a
+  // redundant Event Space control in multi-mode Lead UI.
+  const anchor = occupancyAnchorSpaceIdFromPreferences(values);
+  if (anchor) {
+    const { error: plannedErr } = await supabase
+      .from("leads")
+      .update({ planned_event_space_id: anchor })
+      .eq("id", leadId)
+      .eq("venue_id", venue.id);
+    if (plannedErr) throw plannedErr;
   }
 
   return { ok: true };

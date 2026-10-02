@@ -133,7 +133,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", spacePreferences = [], relationshipArchived = false, openSetupPayments = false }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; relationshipArchived?: boolean; openSetupPayments?: boolean }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -491,21 +491,26 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {spaceOperatingMode === "multi" && !lead.linkedEventId && (
+          {spaceOperatingMode === "multi" && (
             <LeadSpacePreferenceFields
               leadId={lead.id}
               spaces={spaces}
               spaceOperatingMode={spaceOperatingMode}
               initial={spacePreferences}
+              assignments={spaceAssignments}
+              readOnly={Boolean(lead.linkedEventId)}
+              onOccupancyAnchorChange={(spaceId) => {
+                if (spaceId) setBookingSpaceId(spaceId);
+              }}
             />
           )}
-          {spacesRequired && (
+          {spaceOperatingMode !== "multi" && (spacesRequired || spaces.some((s) => s.isActive)) && (
             <div className="w-full min-w-56">
               <EventSpaceField
                 value={bookingSpaceId}
                 onChange={(v) => { void handlePlannedSpaceChange(v); }}
                 spaces={spaces}
-                spacesRequired
+                spacesRequired={spacesRequired}
               />
             </div>
           )}

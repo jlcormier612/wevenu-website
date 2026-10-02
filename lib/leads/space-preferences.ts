@@ -93,3 +93,22 @@ export function spaceAllowsPreferenceUse(
   if (uses.length > 0 && !uses.includes(useKey)) return { seedable: false, reason: "disallowed" };
   return { seedable: true };
 }
+
+/**
+ * Occupancy / book_relationship still need a single planned_event_space_id /
+ * p_space_id anchor. Prefer reception venue-space, else ceremony — never invent
+ * a second SoT; UI may hide the generic Event Space field in multi mode.
+ */
+export function occupancyAnchorSpaceIdFromPreferences(
+  prefs: ReadonlyArray<Pick<LeadEventSpacePreference, "useKey" | "preferenceKind" | "spaceId">>,
+): string | null {
+  const reception = prefs.find(
+    (p) => p.useKey === "reception" && p.preferenceKind === "venue_space" && p.spaceId?.trim(),
+  );
+  if (reception?.spaceId?.trim()) return reception.spaceId.trim();
+  const ceremony = prefs.find(
+    (p) => p.useKey === "ceremony" && p.preferenceKind === "venue_space" && p.spaceId?.trim(),
+  );
+  if (ceremony?.spaceId?.trim()) return ceremony.spaceId.trim();
+  return null;
+}

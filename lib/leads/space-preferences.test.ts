@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import type { VenueSpace } from "@/lib/availability/types";
 import {
   normalizeLeadSpacePreference,
+  occupancyAnchorSpaceIdFromPreferences,
   shouldShowLeadSpacePreference,
   spaceAllowsPreferenceUse,
   venueOffersUse,
@@ -154,12 +155,46 @@ describe("booking seed eligibility", () => {
   });
 });
 
+describe("occupancy anchor from preferences", () => {
+  it("prefers reception venue-space over ceremony", () => {
+    assert.equal(
+      occupancyAnchorSpaceIdFromPreferences([
+        { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null },
+        { useKey: "reception", preferenceKind: "venue_space", spaceId: "barn", externalLocation: null },
+      ]),
+      "barn",
+    );
+  });
+
+  it("falls back to ceremony when reception is not a venue space", () => {
+    assert.equal(
+      occupancyAnchorSpaceIdFromPreferences([
+        { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null },
+        { useKey: "reception", preferenceKind: "undecided", spaceId: null, externalLocation: null },
+      ]),
+      "garden",
+    );
+  });
+
+  it("returns null when no venue-space preference exists", () => {
+    assert.equal(
+      occupancyAnchorSpaceIdFromPreferences([
+        { useKey: "ceremony", preferenceKind: "external", spaceId: null, externalLocation: "City Hall" },
+        { useKey: "reception", preferenceKind: "undecided", spaceId: null, externalLocation: null },
+      ]),
+      null,
+    );
+  });
+});
+
 describe("preference is not an assignment", () => {
   it("lead preference writes never insert event_space_assignments", () => {
     const service = readFileSync(resolve("lib/leads/space-preferences-service.ts"), "utf8");
     assert.doesNotMatch(service, /\.from\("event_space_assignments"\)/);
     assert.doesNotMatch(service, /insert into public\.event_space_assignments/);
     assert.match(service, /lead_event_space_preferences/);
+    assert.match(service, /occupancyAnchorSpaceIdFromPreferences/);
+    assert.match(service, /planned_event_space_id/);
   });
 
   it("one catalog: space_id stays NOT NULL and no second space table is created", () => {
@@ -170,10 +205,12 @@ describe("preference is not an assignment", () => {
     assert.match(assignments, /space_id\s+uuid not null/);
   });
 
-  it("lead detail shows ceremony/reception only in multi mode", () => {
+  it("lead detail shows ceremony/reception in multi mode; Event Space only in single mode", () => {
     const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
     assert.match(detail, /LeadSpacePreferenceFields/);
     assert.match(detail, /spaceOperatingMode === "multi"/);
-    assert.match(detail, /spaceOperatingMode !== "multi" && spacesRequired/);
+    assert.match(detail, /spaceOperatingMode !== "multi"/);
+    assert.match(detail, /EventSpaceField/);
+    assert.doesNotMatch(detail, /\{spacesRequired && \(/);
   });
 });

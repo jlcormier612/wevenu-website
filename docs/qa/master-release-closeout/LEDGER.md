@@ -4,13 +4,15 @@
 
 Exact Sandbox runtime (latest sole RUNNING at last verification):
 
-- Commit / image tag: `60937777cd56197156b4b9ae1c518e7b74281d25` (occupancy Event Space)
-- Digest: `sha256:bee8e77d44024bb63facafa100726eca03677983f7efe8e229b40fd86c9cdc8d`
-- Task definition: `htc-sandbox-venue-app:517`
-- Task ID: `e8ae971b93f6411c89850e8a8c861fea`
+- Commit / image tag: `1d6c96c24347161656175f3eb4b7a432b5769d26` (contains Smart Fields `2e1a5b79` + Archive `1d6c96c2`)
+- Digest: `sha256:c4962eace876d12638af0ee012ebee7ead43a415ccaf6a4186f6657941116fa0`
+- Task definition: `htc-sandbox-venue-app:519`
+- Task ID: `288fd1d5c7a1410695c0bbe1e73378c0`
 - Desired / running / pending: 1 / 1 / 0
+- Rollout: PRIMARY COMPLETED
+- Live `dpl`: `1d6c96c24347161656175f3eb4b7a432b5769d26`
 - Health: `/api/health` HTTP 200
-- Typography commit `0a24f026` + Smart Fields lifecycle `2e1a5b79` — Sandbox deploy `36944945498` queued/pending (not yet sole RUNNING)
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/36945340507
 - Cluster: `htc-sandbox` only
 - Production: untouched
 
@@ -48,31 +50,72 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 ### STREAM 1 — Tours + Spaces + Booking-E1 + Smart Fields
 
-- **STATUS:** OPEN — Smart Fields lifecycle fix `2e1a5b79` awaiting sole RUNNING + A–F proofs
+- **STATUS:** GREEN/CLOSED on `1d6c96c2` sole RUNNING (SF lifecycle `2e1a5b79` ancestor)
 - **IMPLEMENTATION COMMIT(S):** two-clock `5a711fdc`; provenance `b9aa6a59`; CTR-01 `09c72980`; occupancy `60937777`; Smart Fields lifecycle `2e1a5b79`
-- **RUNNING IMAGE/TAG:** `60937777…` (sole RUNNING); target for SF proofs: `2e1a5b79…`
-- **DIGEST:** `sha256:bee8e77d44024bb63facafa100726eca03677983f7efe8e229b40fd86c9cdc8d`
-- **TASK DEFINITION:** `htc-sandbox-venue-app:517`
-- **TASK ID:** `e8ae971b…` (1/1/0, health 200)
-- **AUTOMATED TEST EVIDENCE:** ceremony-reception-merge 14/14; Booking-E1 + space-preferences 16/16; commercial-facts provenance; CTR-01 suite
+- **RUNNING IMAGE/TAG:** `1d6c96c24347161656175f3eb4b7a432b5769d26`
+- **DIGEST:** `sha256:c4962eace876d12638af0ee012ebee7ead43a415ccaf6a4186f6657941116fa0`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:519`
+- **TASK ID:** `288fd1d5c7a1410695c0bbe1e73378c0` (1/1/0, rollout COMPLETED, health 200)
+- **AUTOMATED TEST EVIDENCE:** ceremony-reception-merge 14/14; Booking-E1 + space-preferences; commercial-facts provenance; CTR-01 suite; `/tmp/sf-lifecycle-af-proof.json` ALL_OK=true
 - **BROWSER EVIDENCE:**
   - Package provenance PASS on `09c72980`: Miss Piggy couple / Cinde internal
   - Occupancy Event Space visible on multi Fancy on `60937777`
-  - Conflict disposable `0c535b2d-…`: ConflictWarning capacity + Save hard-block; soft-path follow-up survives (`Soft-path follow-up after conflict` / `2026-10-13`); no tour row; Stream1Closeout tour intact
-  - Walk-in + actual_only: tour `6ef68250-…` origin=walk_in, actual 11:30 AM; Calendar Oct 1 shows Walk-in · Completed; Luv non-negative
-  - Spaces visibility: single mode hides Ceremony/Reception prefs, keeps Event Space; reception-only hides Ceremony, shows Reception; Fancy restored to multi
-  - Booking file started for Stream1Conflict → client `2d91df8b-…` (not Booked yet at that step)
-- **DB/PERSISTENCE EVIDENCE (Booking-E1 seed on Stream1Conflict):**
-  - `book_relationship` → event `db6c8a9f-…` `booked_at=2026-10-01`, `space_id=Barn`, `external_reception_location=Harbor Dock`
-  - `event_space_assignments`: ceremony → Garden Lawn
-  - lead preferences unchanged (historical intent)
+  - Conflict / walk-in / calendar / spaces visibility: prior sole-RUNNING proofs retained
+  - **Smart Fields A–F on Stream1SF `8b037405-…` / client `8097c52d-…` on `1d6c96c2`:**
+    - **A PRE-BOOK:** draft `741ee62c-…` tokens `{{ceremony_space}}`/`{{reception_space}}` preserved; Preview = `Ceremony: Garden Lawn` / `Reception: Barn` (from `lead_event_space_preferences`)
+    - **B BOOK:** `book_relationship` → event `dd95d281-…` `booked_at` set; assignments ceremony→Garden Lawn, reception→Barn; prefs remain historical
+    - **C POST-BOOK:** prefs mutated to Covered Bridge; booked resolve still Garden Lawn/Barn from assignments (pref ignored)
+    - **D SENT IMMUTABLE:** sent `fcba043f-…` body frozen `Ceremony: Garden Lawn\nReception: Barn` after ceremony assignment → Covered Bridge
+    - **E NEW DRAFT:** browser Preview after change = `Ceremony: Covered Bridge` / `Reception: Barn`
+    - **F EXTERNAL/UNDECIDED:** locked outside-venue copy + Harbor Dock reception pref + unlisted undecided (unit+script)
+- **DB/PERSISTENCE EVIDENCE (Booking-E1 seed on Stream1Conflict + Stream1SF):** retained prior Conflict seed; Stream1SF event `dd95d281-…` as above
 - **PACKAGE PROVENANCE / OCT4 / CTR-01:** CLOSED — do not reopen without new regression
-- **SMART FIELDS PRODUCT LOCK (new):** pre-booking → lead_event_space_preferences; post-booking (`events.booked_at`) → event assignments/external; sent body frozen. Implemented `2e1a5b79`.
-- **REMAINING WORK:**
-  1. Exact-runtime prove `2e1a5b79` sole RUNNING
-  2. Smart Fields A–F proofs (disposable Stream1SF) on that image
-  3. Undecided + inactive skip browser/DB edges if not covered by A–F
-  4. Confirm/reschedule already proven on Stream1Closeout — keep closed
+- **SMART FIELDS PRODUCT LOCK:** pre-booking → lead_event_space_preferences; post-booking (`events.booked_at`) → event assignments/external; sent body frozen. Proven on exact sole RUNNING.
+- **REMAINING WORK:** None
+
+### STREAM 1 ADD-ON — `{{additional_event_spaces}}` starter correction
+
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `88213c34` (`htc-sandbox-venue-app:520`, digest `sha256:459e896e366f…`)
+- **IMPLEMENTATION COMMIT(S):** `88213c34`
+- **MIGRATION:** `20261410800000_contract_starter_ctr01_additional_event_spaces.sql` — Apply SUCCESS https://github.com/jlcormier612/wevenu-website/actions/runs/36947742763
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/36947740647
+- **TASK ID:** `956a18370109488b92403fb795477c3a` (1/1/0, health 200 at proof)
+- **AUTOMATED TEST EVIDENCE:** A–J unit suites PASS
+- **BROWSER EVIDENCE:**
+  - Stream1SF Preview: Venue/Ceremony/Reception only — no Additional section
+  - Jane draft `7d3a1b5d-…` Preview: Additional = Covered Bridge only; Ceremony/Reception not duplicated
+  - Bar Agreement authored template untouched (Updated 2d ago; still `{{event_spaces}}` ×2)
+  - Fancy CTR-01 has `{{additional_event_spaces}}`, no starter `{{event_spaces}}`
+- **DB/PERSISTENCE:** Jane `event_spaces` full set unchanged; sent freeze `5617b310-…` sha `bd0c5e4771f281f4`
+- **REMAINING WORK:** None
+- **STATUS FILE:** `docs/qa/additional-event-spaces-starter/STATUS.md`
+
+### CONTRACT UX — signing first-name + Lead payment nav
+
+- **STATUS:** GREEN on exact sole RUNNING `38e3d753` / TD `:521` / task `308fccbb…`
+- **IMPLEMENTATION COMMIT(S):** `38e3d753`
+- **RUNNING IMAGE/TAG:** `38e3d753b4fe33277aff54306d3bce2ca3c5900d`
+- **DIGEST:** `sha256:f67fb6faefaad32f789964f938c874659112f12ec571cdb4e1e80b0614b5e649`
+- **TASK DEFINITION:** `htc-sandbox-venue-app:521`
+- **TASK ID:** `308fccbbbe6b4be0a66a434828befbca`
+- **AUTOMATED TEST EVIDENCE:** `lib/contracts/return-path.test.ts` 18/18 PASS
+- **BROWSER EVIDENCE:**
+  - Sign `0916c45a-…`: confirmation **Thank you, Kermit.**; DB `signer_name=Kermit Frog`
+  - FE not-booked `107fcc2c-…` → `/leads/20e470d8-…?setupPayments=1#booking-journey-payments` (sheet open; not `/clients/`)
+  - Booked Ivy `e8485a5d-…` → `/clients/3c9ecc54-…?setupPayments=1`
+- **REMAINING WORK:** None
+- **STATUS FILE:** `docs/qa/contract-ux-signing-payment-nav/STATUS.md`
+
+### STREAM 1 — Lead Space Preferences UX (presentation)
+
+- **STATUS:** OPEN — forensic audit complete; compact UI implemented locally; not yet on sole RUNNING
+- **AUDIT:** `docs/qa/lead-space-preferences-ux/AUDIT.md`
+- **IMPLEMENTATION COMMIT(S):** pending
+- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** still `38e3d753` / `f67fb6fa…` / `:521` / `308fccbb…` (pre-change)
+- **AUTOMATED TEST EVIDENCE:** `lib/leads/space-preferences.test.ts` occupancy anchor + multi/single UI coupling PASS locally
+- **BROWSER EVIDENCE:** pending post-deploy
+- **REMAINING WORK:** commit → deploy → sole RUNNING → browser Cases A–E (+ booked Additional) → ledger GREEN for this sub-gate only
+- **STATUS FILE:** `docs/qa/lead-space-preferences-ux/STATUS.md`
 
 ### STREAM 2 — Typography / JSX interstitial whitespace
 
@@ -90,33 +133,30 @@ Exact Sandbox runtime (latest sole RUNNING at last verification):
 
 ### STREAM 3 — Archive / Delete / Restore
 
-- **STATUS:** OPEN — forensic started; implementation not begun
-- **IMPLEMENTATION COMMIT(S):** none for Archive
-- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** `c59adf5b` / `sha256:7a72422b…` / `:513` / `82153d37…`
-- **AUTOMATED TEST EVIDENCE:** existing delete contract tests (`lib/records/delete-record.test.ts`, `lib/records/deletion-contract.ts`) lock **hard delete, no soft-delete**
-- **BROWSER EVIDENCE:** not started
-- **DB/PERSISTENCE EVIDENCE:** current Lead hard-delete cascades lead-scoped rows, SET NULL `clients.lead_id`; client/events/payments can survive; PA4 leftovers still surface on Dashboard/Payments
-- **REGRESSION EVIDENCE:** none yet
-- **REMAINING WORK:** finish relationship-tree forensic; lock Archive Contract (relationship-level ACTIVE→ARCHIVED, distinct from hard Delete); implement against that contract (not a single-table flag); tests; Sandbox migration if required; exact runtime; archive/restore browser+DB; active-surface exclusion; historical/financial preservation.
-
-Proposed resolution against locked architecture (not yet implemented):
-- **Delete** remains the existing hard-delete path (`deletion-contract.ts`).
-- **Archive** is a new relationship-level authority on `venue_customer_relationships` (not a per-row `is_archived` on one table) that excludes the relationship from active Leads/Clients/pipeline/Dashboard/Focus/Coming Up/Tasks/Payments/Calendar-as-active while retaining contracts/documents/financials historically.
-- **Restore** clears that relationship archive authority.
-- Hard-delete of a Lead continues to leave booked-side history unless that history is also archived with the relationship — that is the PA4 defect Archive must close.
-
-If Jennifer rejects relationship-level archive on `venue_customer_relationships`, STOP — that is a product decision.
+- **STATUS:** OPEN — Archive browser+DB proven on `1d6c96c2`; Restore UI added locally (needs deploy); PA4 cleanup remaining
+- **IMPLEMENTATION COMMIT(S):** `1d6c96c2` (+ pending Restore button on lead detail / page)
+- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** `1d6c96c2` / `sha256:c4962eac…` / `:519` / `288fd1d5…`
+- **AUTOMATED TEST EVIDENCE:** `lib/relationships/archive.test.ts`
+- **BROWSER EVIDENCE:**
+  - Archive button next to Delete on lead detail
+  - ArchiveProof disposable `143e826b-…` / rel `68bc3374-…`: Archive → redirect `/leads`; **not** in Leads list (`ArchiveProof` absent from page text)
+- **DB/PERSISTENCE EVIDENCE:** `archived_at=2026-10-02T00:28:16Z`, `archived_by` set; lead row retained (not deleted); DB restore clears `archived_at` and direct URL loads again
+- **REGRESSION EVIDENCE:** Delete remains hard-delete; Archive ≠ Delete
+- **REMAINING WORK:** deploy Restore UI; browser Restore click; Dashboard/Payments/Clients exclusion matrix; PA4 three-root cleanup after Archive GREEN
 
 ### STREAM 4 — Follow-up Completion
 
-- **STATUS:** OPEN
-- **IMPLEMENTATION COMMIT(S):** `d92ab44103fcdb6552abf5c6ca49b73a76d24b43` (do not rewrite)
-- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** `c59adf5b` / `sha256:7a72422b…` / `:513` / `82153d37…`. `git merge-base --is-ancestor d92ab441 c59adf5b` = yes. No new commit/deploy required unless proof fails.
+- **STATUS:** OPEN — paths 1–2 proven; path 3 interrupted by mid-deploy skew + Stream1Closeout becoming Booked
+- **IMPLEMENTATION COMMIT(S):** `d92ab44103fcdb6552abf5c6ca49b73a76d24b43` (do not rewrite); ancestor of current `1d6c96c2`
+- **RUNNING IMAGE/TAG / DIGEST / TD / TASK:** proofs started on `0a24f026`; continue on `1d6c96c2` / `:519` / `288fd1d5…`
 - **AUTOMATED TEST EVIDENCE:** not re-run this session
-- **BROWSER EVIDENCE:** Stream1Closeout Proof shows **Complete follow-up** on the lead (UI present). Not exercised to completion this session.
-- **DB/PERSISTENCE EVIDENCE:** lead still has `follow_up_date=2026-10-08` / `next_action_text=Schedule a tour`
-- **REGRESSION EVIDENCE:** tour completion must not complete follow-up (not yet proven this session)
-- **REMAINING WORK:** browser E2E the four What’s-next paths + activity/DB on this same `c59adf5b` image; prove tour completion and Last Contacted do not complete follow-up.
+- **BROWSER EVIDENCE (Stream1Closeout `45d7f034-…`):**
+  - Path 1 Another follow-up → `Follow up: Follow up after tour` / `Due: Oct 15, 2026` (Activity 7)
+  - Path 2 Other next action → UI `Next action: Confirm event details` / `Follow-up: —`; DB `follow_up_date=null`, `next_action_text=Confirm event details`
+  - Path 3 No further — save in flight when deploy cutover caused lead load failure; lead later `sales_stage=booked` with client `975b703b-…` / event `45a523d3-…` booked
+- **DB/PERSISTENCE EVIDENCE:** path 2 confirmed; path 3 incomplete
+- **REGRESSION EVIDENCE:** tour completion / Last Contacted must not complete follow-up — not yet proven
+- **REMAINING WORK:** finish path 3 (+ Cancel-as-fourth if required) on a disposable non-booked lead; prove tour completion and Last Contacted do not complete follow-up
 
 ### STREAM 5 — React hydration #418
 

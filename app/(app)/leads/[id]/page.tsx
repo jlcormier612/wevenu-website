@@ -24,6 +24,7 @@ import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service"
 import { isSmsConfigured } from "@/lib/sms/send";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getLeadSpacePreferences } from "@/lib/leads/space-preferences-service";
+import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
 
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
 const LEAD_DETAIL_LOAD_TIMEOUT_MS = 45_000;
@@ -76,6 +77,13 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getLeadSpacePreferences(id),
       ]);
       if (!lead) return null;
+      const spaceAssignments = lead.linkedEventId
+        ? (await getEventSpaceAssignments(lead.linkedEventId)).map((a) => ({
+            useKey: a.useKey,
+            useLabel: a.useLabel,
+            spaceName: a.spaceName?.trim() || spaces.find((s) => s.id === a.spaceId)?.name?.trim() || "",
+          })).filter((a) => a.spaceName)
+        : [];
       const [conversationId, smsPermission, duplicateReview, teamMembers, currentStaff, textingConfigured] = await Promise.all([
         lead.relationshipId
           ? getConversationIdForRelationship(lead.relationshipId)
@@ -122,6 +130,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         venueTimezone: venue?.timezone ?? null,
         spaceOperatingMode: venue?.spaceOperatingMode ?? "single",
         spacePreferences,
+        spaceAssignments,
       };
     })(),
     LEAD_DETAIL_LOAD_TIMEOUT_MS,
@@ -177,6 +186,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       contextualObservations={page.contextualObservations}
       spaceOperatingMode={page.spaceOperatingMode}
       spacePreferences={page.spacePreferences}
+      spaceAssignments={page.spaceAssignments}
       openSetupPayments={setupPayments === "1"}
     />
   );
