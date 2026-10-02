@@ -53,6 +53,8 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.match(fn, /bookClient/);
     assert.match(fn, /source: "manual"/);
     assert.match(fn, /no client linked/i);
+    assert.match(fn, /planned_event_space_id/);
+    assert.match(fn, /spaceId: leadRow\?\.planned_event_space_id/);
   });
 
   it("convertLeadToClient creates the workspace without pipeline Booked", () => {

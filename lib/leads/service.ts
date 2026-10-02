@@ -820,12 +820,17 @@ export async function returnLeadToBooked(leadId: string): Promise<
       }
     }
 
+    const { data: leadRow } = await supabase.from("leads").select("planned_event_space_id")
+      .eq("id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ planned_event_space_id: string | null }>();
+
     const { bookClient } = await import("@/lib/booking-journey/book-client");
     const booked = await bookClient(supabase, {
       venueId,
       clientId: linked.id,
       leadId,
       source: "manual",
+      spaceId: leadRow?.planned_event_space_id ?? null,
     });
     if (!booked.ok) return { ok: false as const, message: booked.message };
     return {
