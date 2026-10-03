@@ -16,6 +16,10 @@ const invoiceDisplayNameMigration = readFileSync(
   join(root, "supabase/migrations/20261410300000_venue_documents_invoice_display_name.sql"),
   "utf8",
 );
+const questionnaireKindNamesMigration = readFileSync(
+  join(root, "supabase/migrations/20261411700000_venue_documents_questionnaire_kind_names.sql"),
+  "utf8",
+);
 
 describe("get_venue_documents workspace union", () => {
   it("unions generic documents, contracts, invoices, floor plans, questionnaires, and event orders", () => {
@@ -62,6 +66,22 @@ describe("get_venue_documents workspace union", () => {
     assert.doesNotMatch(
       invoiceDisplayNameMigration,
       /'Invoice ' \|\| coalesce\(i\.invoice_number/,
+    );
+  });
+
+  it("projects questionnaire Documents titles by kind (not one Final Details hardcode)", () => {
+    assert.match(
+      questionnaireKindNamesMigration,
+      /when 'client_planning' then 'Client Planning Questionnaire'/,
+    );
+    assert.match(questionnaireKindNamesMigration, /when 'final_details' then 'Final Details'/);
+    assert.match(
+      questionnaireKindNamesMigration,
+      /when 'post_event_feedback' then 'Post-Event Feedback'/,
+    );
+    assert.doesNotMatch(
+      questionnaireKindNamesMigration,
+      /'name',\s+'Final Details Questionnaire'/,
     );
   });
 });

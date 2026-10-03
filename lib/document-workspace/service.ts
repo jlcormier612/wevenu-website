@@ -5,7 +5,9 @@ import {
   applyContractVersionLineage,
   normalizeWorkspaceDocument,
   workspaceDocKey,
+  type WorkspaceRawRow,
 } from "@/lib/document-workspace/normalize";
+import { applyQuestionnaireWorkspaceNames } from "@/lib/document-workspace/questionnaire-names";
 import type {
   WorkspaceActivityEntry,
   WorkspaceDocument,
@@ -30,7 +32,27 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
     console.error("[getVenueWorkspaceDocuments]", error.message);
     return [];
   }
-  const rows = (data?.documents ?? []) as Parameters<typeof normalizeWorkspaceDocument>[0][];
+  const rawRows = (data?.documents ?? []) as WorkspaceRawRow[];
+  const questionnaireIds = rawRows
+    .filter((r) => r.docType === "questionnaire")
+    .map((r) => r.id);
+  const kindById = new Map<string, string>();
+  if (questionnaireIds.length > 0) {
+    const { data: kindRows, error: kindError } = await supabase
+      .from("event_questionnaires")
+      .select("id, kind")
+      .eq("venue_id", venue.id)
+      .in("id", questionnaireIds);
+    if (kindError) {
+      console.error("[getVenueWorkspaceDocuments] questionnaire kinds", kindError.message);
+    } else {
+      for (const row of (kindRows ?? []) as { id: string; kind: string }[]) {
+        if (row.kind) kindById.set(row.id, row.kind);
+      }
+    }
+  }
+  // Titles come from questionnaire-family kindLabel — not the legacy RPC hardcode.
+  const rows = applyQuestionnaireWorkspaceNames(rawRows, kindById);
   const docs = rows.map(normalizeWorkspaceDocument);
 
   const contractIds = docs.filter((d) => d.docType === "contract").map((d) => d.id);

@@ -35,6 +35,8 @@ export type WorkspaceRawRow = {
   createdAt: string;
   updatedAt: string;
   hasFinalArtifact?: boolean;
+  /** Questionnaire family kind when the RPC includes it (post kind-name migration). */
+  kind?: string | null;
 };
 
 // Vendor-sourced files are grouped under "Vendor Documents" regardless of
