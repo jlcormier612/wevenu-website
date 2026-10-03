@@ -17,6 +17,7 @@ import type {
   CalendarBlockInput,
   DateHold,
   DateHoldInput,
+  DateHoldUpdateInput,
   SpaceInput,
   VenueCapacityRules,
   VenueSpace,
@@ -224,6 +225,15 @@ export async function getHoldsForDates(client: DbClient, venueId: string, start:
   return rows.map((r) => mapHold(r, spaceMap.get(r.id)));
 }
 
+export async function getHold(client: DbClient, venueId: string, holdId: string): Promise<DateHold | null> {
+  const { data, error } = await client.from("date_holds").select("*, leads(first_name, last_name), venue_spaces(name)")
+    .eq("id", holdId).eq("venue_id", venueId).maybeSingle<HoldRow>();
+  if (error) throw error;
+  if (!data) return null;
+  const spaceMap = await loadHoldSpaceMap(client, venueId, [data.id]);
+  return mapHold(data, spaceMap.get(data.id));
+}
+
 export async function insertHold(client: DbClient, venueId: string, input: DateHoldInput): Promise<string> {
   const spaces = holdSpaceIds({ spaceIds: input.spaceIds, spaceId: input.spaceId });
   const legacySpaceId = spaces.length === 1 ? spaces[0]! : null;
@@ -249,6 +259,50 @@ export async function insertHold(client: DbClient, venueId: string, input: DateH
     if (spaceError) throw spaceError;
   }
   return data.id;
+}
+
+export async function updateHold(
+  client: DbClient,
+  venueId: string,
+  holdId: string,
+  input: DateHoldUpdateInput,
+): Promise<void> {
+  const spaces = holdSpaceIds({ spaceIds: input.spaceIds, spaceId: input.spaceId });
+  const legacySpaceId = spaces.length === 1 ? spaces[0]! : null;
+  const patch: {
+    hold_date: string;
+    start_time: string | null;
+    end_time: string | null;
+    space_id: string | null;
+    title?: string;
+    expires_at?: string | null;
+  } = {
+    hold_date: input.holdDate,
+    start_time: input.startTime || null,
+    end_time: input.endTime || null,
+    space_id: legacySpaceId,
+  };
+  if (input.title !== undefined) patch.title = input.title.trim();
+  if (input.expiresAt !== undefined) patch.expires_at = input.expiresAt || null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("date_holds") as any)
+    .update(patch)
+    .eq("id", holdId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: deleteError } = await (client.from("date_hold_spaces") as any)
+    .delete()
+    .eq("hold_id", holdId)
+    .eq("venue_id", venueId);
+  if (deleteError) throw deleteError;
+  if (spaces.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: spaceError } = await (client.from("date_hold_spaces") as any).insert(
+      spaces.map((spaceId) => ({ venue_id: venueId, hold_id: holdId, space_id: spaceId })),
+    );
+    if (spaceError) throw spaceError;
+  }
 }
 
 export async function updateHoldStatus(client: DbClient, venueId: string, holdId: string, status: DateHold["status"]): Promise<void> {

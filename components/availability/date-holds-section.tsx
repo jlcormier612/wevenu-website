@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   createHoldAction,
   releaseHoldAction,
+  updateHoldAction,
 } from "@/app/(app)/availability/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +26,17 @@ import {
   shouldShowPlaceHoldCta,
 } from "@/lib/availability/hold-presentation";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
-import type { DateHold, DateHoldInput } from "@/lib/availability/types";
-import type { VenueSpace } from "@/lib/availability/types";
+import type { DateHold, DateHoldInput, DateHoldUpdateInput, VenueSpace } from "@/lib/availability/types";
+
+function holdExpiresDateInput(expiresAt: string | null): string {
+  if (!expiresAt) return "";
+  const d = new Date(expiresAt);
+  if (Number.isNaN(d.getTime())) return expiresAt.slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 export type HoldSpacePreferenceSeed = {
   useKey: string;
@@ -55,7 +65,8 @@ export function DateHoldsSection({
   // See lib/hooks/use-synced-state.ts — TasksSection may refresh siblings
   // on the same page and would otherwise leave this list stale.
   const [holds, setHolds] = useSyncedState(initialHolds);
-  const [showForm, setShowForm] = React.useState(false);
+  const [formMode, setFormMode] = React.useState<"create" | "edit" | null>(null);
+  const [editingHoldId, setEditingHoldId] = React.useState<string | null>(null);
   const [holdDate, setHoldDate] = React.useState("");
   const [holdTitle, setHoldTitle] = React.useState(`Hold — ${leadName}`);
   const [wholeVenue, setWholeVenue] = React.useState(false);
@@ -65,6 +76,7 @@ export function DateHoldsSection({
   const [expiresAt, setExpiresAt] = React.useState("");
   const [addPending, startAdd] = React.useTransition();
   const [releasingId, setReleasingId] = React.useState<string | null>(null);
+  const showForm = formMode !== null;
 
   const desiredDefault = defaultHoldDateFromDesiredEventDate(desiredEventDate);
   const activeHolds = selectActiveHolds(holds);
@@ -73,6 +85,17 @@ export function DateHoldsSection({
   const placeCtaLabel = placeHoldCtaLabel(desiredDefault, activeHolds.length > 0);
   const prefDefaults = defaultHoldSpaceIdsFromPreferences(spacePreferences);
   const activeSpaces = spaces.filter((s) => s.isActive);
+  const formSpaces = React.useMemo(() => {
+    const heldInactive = spaces.filter((s) =>
+      !s.isActive && selectedSpaceIds.includes(s.id),
+    );
+    return [...activeSpaces, ...heldInactive];
+  }, [spaces, activeSpaces, selectedSpaceIds]);
+
+  function closeForm() {
+    setFormMode(null);
+    setEditingHoldId(null);
+  }
 
   function openForm() {
     setHoldDate(desiredDefault);
@@ -83,7 +106,20 @@ export function DateHoldsSection({
     setStartTime("");
     setEndTime("");
     setExpiresAt("");
-    setShowForm(true);
+    setEditingHoldId(null);
+    setFormMode("create");
+  }
+
+  function openEdit(hold: DateHold) {
+    setHoldDate(hold.holdDate);
+    setHoldTitle(hold.title);
+    setWholeVenue(hold.spaceIds.length === 0);
+    setSelectedSpaceIds(hold.spaceIds);
+    setStartTime(hold.startTime ?? "");
+    setEndTime(hold.endTime ?? "");
+    setExpiresAt(holdExpiresDateInput(hold.expiresAt));
+    setEditingHoldId(hold.id);
+    setFormMode("edit");
   }
 
   function toggleSpace(spaceId: string) {
@@ -133,9 +169,47 @@ export function DateHoldsSection({
           spaceName: names.length === 1 ? names[0]! : names.length > 1 ? names.join(", ") : null,
           spaceNames: names,
         }]);
-        setShowForm(false);
+        closeForm();
         router.refresh();
       } else toast.error(result.message ?? "Could not place hold.");
+    });
+  }
+
+  function handleSave() {
+    if (!editingHoldId || !holdDate || !holdTitle.trim()) return;
+    const spaceIds = wholeVenue ? [] : selectedSpaceIds;
+    startAdd(async () => {
+      const input: DateHoldUpdateInput = {
+        leadId,
+        spaceIds,
+        spaceId: spaceIds.length === 1 ? spaceIds[0]! : "",
+        title: holdTitle.trim(),
+        holdDate,
+        startTime,
+        endTime,
+        expiresAt: expiresAt ? new Date(expiresAt + "T23:59:59").toISOString() : "",
+      };
+      const result = await updateHoldAction(editingHoldId, input);
+      if (result.ok) {
+        toast.success("Hold updated.");
+        const names = spaceIds
+          .map((id) => formSpaces.find((s) => s.id === id)?.name ?? spaces.find((s) => s.id === id)?.name)
+          .filter((n): n is string => !!n);
+        setHolds((p) => p.map((h) => h.id !== editingHoldId ? h : {
+          ...h,
+          spaceId: spaceIds.length === 1 ? spaceIds[0]! : null,
+          spaceIds,
+          title: holdTitle.trim(),
+          holdDate,
+          startTime: startTime || null,
+          endTime: endTime || null,
+          expiresAt: expiresAt || h.expiresAt,
+          spaceName: names.length === 1 ? names[0]! : names.length > 1 ? names.join(", ") : null,
+          spaceNames: names,
+        }));
+        closeForm();
+        router.refresh();
+      } else toast.error(result.message ?? "Could not update hold.");
     });
   }
 
@@ -195,24 +269,35 @@ export function DateHoldsSection({
                   ) : null}
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                disabled={releasingId === hold.id}
-                onClick={() => handleRelease(hold.id)}
-                data-testid="date-hold-release"
-              >
-                {releasingId === hold.id ? (
-                  <>
-                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                    Releasing…
-                  </>
-                ) : (
-                  "Release hold"
-                )}
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={addPending || releasingId === hold.id}
+                  onClick={() => openEdit(hold)}
+                  data-testid="date-hold-edit"
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={releasingId === hold.id}
+                  onClick={() => handleRelease(hold.id)}
+                  data-testid="date-hold-release"
+                >
+                  {releasingId === hold.id ? (
+                    <>
+                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                      Releasing…
+                    </>
+                  ) : (
+                    "Release hold"
+                  )}
+                </Button>
+              </div>
             </div>
           ))}
         </div>
@@ -248,15 +333,15 @@ export function DateHoldsSection({
                 onChange={(e) => setHoldDate(e.target.value)}
                 data-testid="date-hold-hold-date"
               />
-              {desiredDefault ? (
+              {formMode !== "edit" && desiredDefault ? (
                 <p className="text-[11px] text-muted-foreground">
                   Defaults to their preferred event date ({formatDate(desiredDefault)}). Change only if you intend to hold a different day.
                 </p>
-              ) : (
+              ) : formMode !== "edit" ? (
                 <p className="text-[11px] text-muted-foreground">
                   No preferred event date on this lead — enter the date to hold.
                 </p>
-              )}
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Start time <span className="font-normal text-muted-foreground">(optional)</span></Label>
@@ -279,7 +364,7 @@ export function DateHoldsSection({
                 Venue occupancy window for this hold. Leave blank for all day.
               </p>
             </div>
-            {activeSpaces.length > 0 && (
+            {formSpaces.length > 0 && (
               <div className="space-y-1.5 sm:col-span-2" data-testid="date-hold-spaces">
                 <Label className="text-xs">Spaces to hold</Label>
                 <label className="flex items-center gap-2 text-sm">
@@ -295,7 +380,7 @@ export function DateHoldsSection({
                   <span>Whole venue</span>
                 </label>
                 <div className="mt-1 space-y-1">
-                  {activeSpaces.map((s) => {
+                  {formSpaces.map((s) => {
                     const pref = spacePreferences.find(
                       (p) => p.preferenceKind === "venue_space" && p.spaceId === s.id,
                     );
@@ -328,6 +413,11 @@ export function DateHoldsSection({
                     Select one or more spaces, or choose Whole venue.
                   </p>
                 ) : null}
+                {formMode === "edit" && formSpaces.some((s) => !s.isActive) ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    A space on this hold is no longer active. It stays available here so saving without changing spaces does not drop it.
+                  </p>
+                ) : null}
               </div>
             )}
             <div className="space-y-1.5">
@@ -340,18 +430,22 @@ export function DateHoldsSection({
           </div>
           <div className="space-y-1">
             <h3 className="text-sm font-semibold text-heading">
-              {activeHolds.length > 0
-                ? "You're placing another Hold."
-                : "You're placing a Hold on this date."}
+              {formMode === "edit"
+                ? "You're editing this Hold."
+                : activeHolds.length > 0
+                  ? "You're placing another Hold."
+                  : "You're placing a Hold on this date."}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {activeHolds.length > 0
-                ? "This creates a new hold. Existing holds stay as they are."
-                : "Whether this Hold prevents booking is controlled by your availability settings."}
+              {formMode === "edit"
+                ? "Saving updates this hold. It does not create a new one."
+                : activeHolds.length > 0
+                  ? "This creates a new hold. Existing holds stay as they are."
+                  : "Whether this Hold prevents booking is controlled by your availability settings."}
             </p>
           </div>
           <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)} disabled={addPending}>Cancel</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={closeForm} disabled={addPending}>Cancel</Button>
             <Button
               type="button"
               size="sm"
@@ -359,11 +453,14 @@ export function DateHoldsSection({
                 !holdDate
                 || !holdTitle.trim()
                 || addPending
-                || (activeSpaces.length > 0 && !wholeVenue && selectedSpaceIds.length === 0)
+                || (formSpaces.length > 0 && !wholeVenue && selectedSpaceIds.length === 0)
               }
-              onClick={handleAdd}
+              onClick={formMode === "edit" ? handleSave : handleAdd}
+              data-testid={formMode === "edit" ? "date-hold-save" : "date-hold-place-submit"}
             >
-              {addPending ? "Placing…" : "Place Hold"}
+              {addPending
+                ? (formMode === "edit" ? "Saving…" : "Placing…")
+                : (formMode === "edit" ? "Save hold" : "Place Hold")}
             </Button>
           </div>
         </div>

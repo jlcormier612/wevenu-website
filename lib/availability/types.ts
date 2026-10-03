@@ -195,6 +195,18 @@ export type DateHoldInput = {
   notes: string;
 };
 
+/** In-place edit. Omitting title / expiresAt preserves the stored values. Never writes notes. */
+export type DateHoldUpdateInput = {
+  leadId: string;
+  spaceIds?: string[];
+  spaceId: string;
+  holdDate: string;
+  startTime: string;
+  endTime: string;
+  title?: string;
+  expiresAt?: string;
+};
+
 export type CalendarBlockInput = {
   title: string;
   type: ManualScheduleType;

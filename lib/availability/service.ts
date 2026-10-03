@@ -13,6 +13,7 @@ import type {
   CreateSpaceResult,
   DateHold,
   DateHoldInput,
+  DateHoldUpdateInput,
   SpaceInput,
   VenueCapacityRules,
   VenueSpace,
@@ -139,85 +140,131 @@ export async function getHolds(opts?: { leadId?: string; activeOnly?: boolean })
   return repo.getHolds(await createClient(), venue.id, opts);
 }
 
+type HoldPlacementInput = {
+  leadId: string;
+  spaceIds?: string[];
+  spaceId: string;
+  holdDate: string;
+  startTime: string;
+  endTime: string;
+};
+
+async function assertHoldPlacement(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  input: HoldPlacementInput,
+  opts?: { excludeHoldId?: string },
+): Promise<AvailabilityActionResult> {
+  const {
+    holdSpaceIds,
+    holdsConflictWithEachOther,
+    otherActiveHoldsForPlacement,
+  } = await import("@/lib/availability/hold-occupancy");
+  const { effectiveMaxSimultaneousEvents } = await import(
+    "@/lib/availability/event-occupancy"
+  );
+
+  const candidateSpaces = holdSpaceIds({
+    spaceIds: input.spaceIds,
+    spaceId: input.spaceId,
+  });
+  const candidate = {
+    id: "candidate",
+    leadId: input.leadId || null,
+    holdDate: input.holdDate,
+    startTime: input.startTime || null,
+    endTime: input.endTime || null,
+    spaceIds: candidateSpaces,
+  };
+
+  const rules = await repo.getCapacityRules(supabase, venueId);
+  const effectiveMax = effectiveMaxSimultaneousEvents(rules);
+
+  const activeOnDate = otherActiveHoldsForPlacement(
+    await repo.getHolds(supabase, venueId, { activeOnly: true }),
+    input.holdDate,
+    opts?.excludeHoldId,
+  );
+  for (const other of activeOnDate) {
+    if (holdsConflictWithEachOther(candidate, {
+      id: other.id,
+      leadId: other.leadId,
+      holdDate: other.holdDate,
+      startTime: other.startTime,
+      endTime: other.endTime,
+      spaceIds: other.spaceIds,
+    }, effectiveMax)) {
+      return {
+        ok: false,
+        message: "That space and time window overlaps another active hold.",
+      };
+    }
+  }
+
+  const spacesToCheck = candidateSpaces.length > 0 ? candidateSpaces : [undefined];
+  for (const spaceId of spacesToCheck) {
+    const status = await repo.checkAvailability(supabase, venueId, {
+      date: input.holdDate,
+      startTime: input.startTime || undefined,
+      endTime: input.endTime || undefined,
+      spaceId,
+      type: "event",
+      purpose: spaceId ? "booking" : "preferred_date",
+      excludeLeadId: input.leadId || undefined,
+    });
+    const hardEventConflict = status.conflicts.some(
+      (c) => c.severity === "error" && (
+        c.type === "event_capacity_full"
+        || c.type === "event_occupancy"
+        || c.type === "space_booked"
+        || c.type === "calendar_blocked"
+        || c.type === "event_turnaround"
+      ),
+    );
+    if (hardEventConflict) {
+      return {
+        ok: false,
+        message: status.conflicts.find((c) => c.severity === "error")?.message
+          ?? "That date is not available for a hold.",
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 export async function createHold(input: DateHoldInput): Promise<CreateHoldResult> {
   if (!input.holdDate) return { ok: false, message: "Hold date is required." };
   if (!input.title.trim()) return { ok: false, message: "Title is required." };
   const result = await withVenue(async (supabase, venueId) => {
-    const {
-      holdSpaceIds,
-      holdsConflictWithEachOther,
-    } = await import("@/lib/availability/hold-occupancy");
-    const { effectiveMaxSimultaneousEvents } = await import(
-      "@/lib/availability/event-occupancy"
-    );
-
-    const candidateSpaces = holdSpaceIds({
-      spaceIds: input.spaceIds,
-      spaceId: input.spaceId,
-    });
-    const candidate = {
-      id: "candidate",
-      leadId: input.leadId || null,
-      holdDate: input.holdDate,
-      startTime: input.startTime || null,
-      endTime: input.endTime || null,
-      spaceIds: candidateSpaces,
-    };
-
-    const rules = await repo.getCapacityRules(supabase, venueId);
-    const effectiveMax = effectiveMaxSimultaneousEvents(rules);
-
-    const activeOnDate = (await repo.getHolds(supabase, venueId, { activeOnly: true }))
-      .filter((h) => h.holdDate === input.holdDate);
-    for (const other of activeOnDate) {
-      if (holdsConflictWithEachOther(candidate, {
-        id: other.id,
-        leadId: other.leadId,
-        holdDate: other.holdDate,
-        startTime: other.startTime,
-        endTime: other.endTime,
-        spaceIds: other.spaceIds,
-      }, effectiveMax)) {
-        return {
-          ok: false,
-          message: "That space and time window overlaps another active hold.",
-        } as CreateHoldResult;
-      }
-    }
-
-    const spacesToCheck = candidateSpaces.length > 0 ? candidateSpaces : [undefined];
-    for (const spaceId of spacesToCheck) {
-      const status = await repo.checkAvailability(supabase, venueId, {
-        date: input.holdDate,
-        startTime: input.startTime || undefined,
-        endTime: input.endTime || undefined,
-        spaceId,
-        type: "event",
-        purpose: spaceId ? "booking" : "preferred_date",
-        excludeLeadId: input.leadId || undefined,
-      });
-      const hardEventConflict = status.conflicts.some(
-        (c) => c.severity === "error" && (
-          c.type === "event_capacity_full"
-          || c.type === "event_occupancy"
-          || c.type === "space_booked"
-          || c.type === "calendar_blocked"
-          || c.type === "event_turnaround"
-        ),
-      );
-      if (hardEventConflict) {
-        return {
-          ok: false,
-          message: status.conflicts.find((c) => c.severity === "error")?.message
-            ?? "That date is not available for a hold.",
-        } as CreateHoldResult;
-      }
-    }
-
+    const asserted = await assertHoldPlacement(supabase, venueId, input);
+    if (!asserted.ok) return asserted as CreateHoldResult;
     const holdId = await repo.insertHold(supabase, venueId, input);
     return { ok: true, holdId } as CreateHoldResult;
   });
   return result as CreateHoldResult;
+}
+
+export async function updateHold(holdId: string, input: DateHoldUpdateInput): Promise<AvailabilityActionResult> {
+  if (!input.holdDate) return { ok: false, message: "Hold date is required." };
+  if (input.title !== undefined && !input.title.trim()) {
+    return { ok: false, message: "Title is required." };
+  }
+  const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getHold(supabase, venueId, holdId);
+    if (!existing) return { ok: false, message: "Hold not found." } as AvailabilityActionResult;
+    if (existing.status !== "active") {
+      return { ok: false, message: "Only an active hold can be edited." } as AvailabilityActionResult;
+    }
+    if ((existing.leadId || "") !== (input.leadId || "")) {
+      return { ok: false, message: "That hold does not belong to this lead." } as AvailabilityActionResult;
+    }
+    const asserted = await assertHoldPlacement(supabase, venueId, input, { excludeHoldId: holdId });
+    if (!asserted.ok) return asserted;
+    await repo.updateHold(supabase, venueId, holdId, input);
+    return { ok: true } as AvailabilityActionResult;
+  });
+  return result as AvailabilityActionResult;
 }
 
 export async function releaseHold(holdId: string): Promise<AvailabilityActionResult> {

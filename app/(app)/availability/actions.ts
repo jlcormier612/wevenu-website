@@ -16,6 +16,7 @@ import {
   releaseHold,
   saveCapacityRules,
   updateBlock_,
+  updateHold,
   updateSpace_,
 } from "@/lib/availability/service";
 import type {
@@ -26,6 +27,7 @@ import type {
   CreateHoldResult,
   CreateSpaceResult,
   DateHoldInput,
+  DateHoldUpdateInput,
   SpaceInput,
 } from "@/lib/availability/types";
 import { getScheduleRelationOption, searchScheduleRelationOptions } from "@/lib/calendar/service";
@@ -75,6 +77,12 @@ export async function saveCapacityRulesAction(input: { maxSimultaneousEvents: nu
 
 export async function createHoldAction(input: DateHoldInput): Promise<CreateHoldResult> {
   const result = await createHold(input);
+  if (result.ok) { revalidatePath("/calendar"); revalidatePath("/leads", "layout"); }
+  return result;
+}
+
+export async function updateHoldAction(holdId: string, input: DateHoldUpdateInput): Promise<AvailabilityActionResult> {
+  const result = await updateHold(holdId, input);
   if (result.ok) { revalidatePath("/calendar"); revalidatePath("/leads", "layout"); }
   return result;
 }

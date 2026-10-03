@@ -218,6 +218,23 @@ export function holdConflictsWithBookedEvent(
   });
 }
 
+/**
+ * Active holds on the candidate date, minus the hold being edited.
+ * Create passes no excludeHoldId. Same-lead siblings stay in the set.
+ */
+export function otherActiveHoldsForPlacement<T extends { id?: string; holdDate: string }>(
+  holds: readonly T[],
+  holdDate: string,
+  excludeHoldId?: string | null,
+): T[] {
+  const exclude = excludeHoldId?.trim() || "";
+  return holds.filter((h) => {
+    if (h.holdDate !== holdDate) return false;
+    if (exclude && h.id === exclude) return false;
+    return true;
+  });
+}
+
 /** Hold vs other active hold (createHold pre-check). Same lead is included — two holds for one lead conflict only when resources and windows overlap. Same-owner exclusion applies to booking/availability checks, not hold-vs-hold. */
 export function holdsConflictWithEachOther(
   a: HoldOccupancyRow,
