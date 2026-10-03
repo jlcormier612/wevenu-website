@@ -5,6 +5,7 @@
  */
 import Link from "next/link";
 
+import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ReadinessImportance, VenueReadinessAssessment } from "@/lib/luv/venue-readiness";
 
@@ -28,7 +29,9 @@ export function OperationalReadinessCard({ assessment }: { assessment: VenueRead
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Luv on your setup</CardTitle>
+        <CardTitle className="text-base flex items-center gap-1.5">
+          <LuvHeart size={14} /> Luv on your setup
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {assessment.opening ? (
