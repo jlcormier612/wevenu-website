@@ -10,6 +10,25 @@ const migration = readFileSync(
   "utf8",
 );
 
+describe("compact space preference header layout", () => {
+  it("uses a 4-column desktop grid and drops the narrow max-w-xl wrap", () => {
+    assert.match(fields, /data-testid="space-preference-grid"/);
+    assert.match(fields, /lg:grid-cols-4/);
+    assert.match(fields, /sm:grid-cols-2/);
+    assert.match(fields, /grid-cols-1/);
+    assert.doesNotMatch(fields, /max-w-xl/);
+    assert.doesNotMatch(fields, /gap-x-6/);
+    assert.doesNotMatch(fields, /min-w-\[8\.5rem\]/);
+  });
+
+  it("keeps Outside the venue plus the location entry for wedding ceremony/reception", () => {
+    assert.match(fields, /Outside the venue/);
+    assert.match(fields, /Location name/);
+    assert.match(fields, /pref-ext-/);
+    assert.match(fields, /allowsExternalLocation/);
+  });
+});
+
 describe("event-type-aware space preference wiring", () => {
   it("lead columns come from relevant uses, not hardcoded Ceremony/Reception", () => {
     assert.match(fields, /relevantUsesForExperience/);

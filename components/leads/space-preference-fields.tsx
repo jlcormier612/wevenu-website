@@ -111,11 +111,14 @@ export function LeadSpacePreferenceFields({
     const assigned = assignments.filter((a) => a.useKey !== "event_space" && a.spaceName.trim());
     if (assigned.length === 0) return null;
     return (
-      <div className="w-full max-w-xl">
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="w-full min-w-0">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Space preferences
         </p>
-        <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+        <div
+          className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
+          data-testid="space-preference-grid"
+        >
           {assigned.map((a) => (
             <ReadOnlyColumn
               key={`${a.useKey}:${a.spaceName}`}
@@ -150,11 +153,14 @@ export function LeadSpacePreferenceFields({
   }
 
   return (
-    <div className="w-full max-w-xl">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="w-full min-w-0">
+      <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         Space preferences
       </p>
-      <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+      <div
+        className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
+        data-testid="space-preference-grid"
+      >
         {relevant.map((use) => {
           const value = prefs.find((p) => p.useKey === use.key) ?? emptyPref(use.key);
           return (
@@ -184,9 +190,9 @@ export function LeadSpacePreferenceFields({
 
 function ReadOnlyColumn({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-[7.5rem]">
+    <div className="min-w-0">
       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
+      <p className="mt-0.5 truncate text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -223,7 +229,7 @@ function PreferenceColumn({
   const selectValue = preferenceSelectValue(value);
 
   return (
-    <div className="min-w-[8.5rem] max-w-[14rem] space-y-1.5">
+    <div className="min-w-0 space-y-1">
       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>

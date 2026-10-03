@@ -444,6 +444,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         onConfirm={confirmBookedFromStage}
       />
       {/* Header */}
+      <div className="space-y-3">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
           <Button
@@ -507,20 +508,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {showUsePreferences && (
-            <LeadSpacePreferenceFields
-              leadId={lead.id}
-              spaces={spaces}
-              spaceOperatingMode={spaceOperatingMode}
-              eventType={lead.eventType}
-              initial={spacePreferences}
-              assignments={spaceAssignments}
-              readOnly={Boolean(lead.linkedEventId)}
-              onOccupancyAnchorChange={(spaceId) => {
-                if (spaceId) setBookingSpaceId(spaceId);
-              }}
-            />
-          )}
           {showEventSpaceField && (
             <div className="w-full min-w-56">
               <EventSpaceField
@@ -664,6 +651,21 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           ) : null}
         </div>
         </div>
+      </div>
+      {showUsePreferences && (
+        <LeadSpacePreferenceFields
+          leadId={lead.id}
+          spaces={spaces}
+          spaceOperatingMode={spaceOperatingMode}
+          eventType={lead.eventType}
+          initial={spacePreferences}
+          assignments={spaceAssignments}
+          readOnly={Boolean(lead.linkedEventId)}
+          onOccupancyAnchorChange={(spaceId) => {
+            if (spaceId) setBookingSpaceId(spaceId);
+          }}
+        />
+      )}
       </div>
 
       {/* Relationship card */}
