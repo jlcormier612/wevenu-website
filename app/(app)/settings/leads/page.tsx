@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
@@ -67,6 +68,13 @@ export default async function LeadsBookingSettingsPage() {
           </CardHeader>
           <CardContent>
             <PlanningCapabilitiesSection initial={planningCapabilities} />
+            <p className="mt-4 text-sm text-muted-foreground">
+              <Link href="/settings/leads/setup-profiles" className="font-medium text-foreground underline underline-offset-2">
+                Setup Profiles
+              </Link>
+              {" "}
+              — tell Hello to Cheers how this venue normally operates. New events inherit the profile for their type.
+            </p>
           </CardContent>
         </Card>
       )}

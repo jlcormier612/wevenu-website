@@ -17,10 +17,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   SETUP_PRESENTATION_LABEL,
+  effectiveDecisionMap,
+  effectiveSetupDecision,
   setupDecisionCounts,
   setupDecisionsComplete,
   setupStepLabel,
   setupStepPresentation,
+  setupStepSource,
   type EventSetupState,
   type SetupStepKey,
 } from "@/lib/event-setup/state";
@@ -64,9 +67,12 @@ export function EventSetupPanel({
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
-  const complete = setupDecisionsComplete(applicableSteps, state.decisions);
+  const [changing, setChanging] = React.useState<SetupStepKey | null>(null);
+  const effective = effectiveDecisionMap(state);
+  const complete = setupDecisionsComplete(applicableSteps, effective);
   const collapsed = Boolean(state.collapsedAt) && complete;
-  const counts = setupDecisionCounts(applicableSteps, state.decisions);
+  const counts = setupDecisionCounts(applicableSteps, effective);
+  const usingProfile = Boolean(state.usesProfile && state.profileName);
 
   function decide(step: SetupStepKey, decision: "set_up" | "skipped") {
     startTransition(async () => {
@@ -110,11 +116,20 @@ export function EventSetupPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-medium text-heading">Get this event ready</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {complete
-              ? "Every setup area has a decision. Configured and skipped are finished choices."
-              : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
-          </p>
+          {usingProfile ? (
+            <>
+              <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Most areas are already configured from your venue&apos;s standard setup. Change an area only if this event is different.
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {complete
+                ? "Every setup area has a decision. Configured and skipped are finished choices."
+                : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
+            </p>
+          )}
           <p className="mt-1 text-xs text-muted-foreground">
             {counts.needsDecision} need a decision
             {" · "}
@@ -131,8 +146,11 @@ export function EventSetupPanel({
       </div>
       <ul className="space-y-3">
         {applicableSteps.map((step) => {
-          const decision = state.decisions[step] ?? null;
+          const decision = effectiveSetupDecision(state, step) ?? null;
           const presentation = setupStepPresentation(decision);
+          const source = setupStepSource(state, step);
+          const inherited = state.inheritedDecisions?.[step];
+          const showChooser = presentation === "needs_decision" || changing === step;
           return (
             <li key={step} className="rounded-lg border border-border px-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -148,16 +166,29 @@ export function EventSetupPanel({
                     }
                   >
                     {SETUP_PRESENTATION_LABEL[presentation]}
+                    {source === "profile" && state.profileName ? ` · ${state.profileName}` : ""}
+                    {source === "event" && state.usesProfile ? " · This event" : ""}
                   </Badge>
                 </div>
-                {presentation === "needs_decision" ? (
+                {showChooser ? (
                   <div className="flex gap-2">
-                    <Button type="button" size="sm" disabled={pending} onClick={() => decide(step, "set_up")}>
+                    <Button type="button" size="sm" disabled={pending} onClick={() => { setChanging(null); decide(step, "set_up"); }}>
                       Set up
                     </Button>
-                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => decide(step, "skipped")}>
+                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { setChanging(null); decide(step, "skipped"); }}>
                       Skip
                     </Button>
+                  </div>
+                ) : state.usesProfile ? (
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setChanging(step)}>
+                      Change for this event
+                    </Button>
+                    {source === "event" && inherited ? (
+                      <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => decide(step, inherited)}>
+                        Use {state.profileName}
+                      </Button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

@@ -20,9 +20,21 @@ export type SetupStepKey = (typeof SETUP_STEP_ORDER)[number];
 export type SetupDecision = "set_up" | "skipped";
 export type SetupDecisions = Partial<Record<SetupStepKey, SetupDecision>>;
 
+export type SetupDecisionSource = "profile" | "event" | "unset";
+
+/**
+ * When usesProfile is true, the event inherited a snapshot.
+ * Effective decision = override, else inherited snapshot.
+ * decisions is the no-profile path and is not a copy of the profile.
+ */
 export type EventSetupState = {
   decisions: SetupDecisions;
   collapsedAt: string | null;
+  usesProfile?: boolean;
+  profileId?: string | null;
+  profileName?: string | null;
+  inheritedDecisions?: SetupDecisions;
+  overrides?: SetupDecisions;
 };
 
 export type OverviewException = {
@@ -91,7 +103,40 @@ export function setupDecisionCounts(
 }
 
 export function emptyEventSetupState(): EventSetupState {
-  return { decisions: {}, collapsedAt: null };
+  return {
+    decisions: {},
+    collapsedAt: null,
+    usesProfile: false,
+    profileId: null,
+    profileName: null,
+    inheritedDecisions: {},
+    overrides: {},
+  };
+}
+
+export function effectiveDecisionMap(state: EventSetupState): SetupDecisions {
+  if (!state.usesProfile) return state.decisions;
+  const out: SetupDecisions = {};
+  const inherited = state.inheritedDecisions ?? {};
+  const overrides = state.overrides ?? {};
+  const keys = new Set<string>([...Object.keys(inherited), ...Object.keys(overrides)]);
+  for (const key of keys) {
+    if (!isSetupStepKey(key)) continue;
+    const chosen = overrides[key] ?? inherited[key];
+    if (chosen === "set_up" || chosen === "skipped") out[key] = chosen;
+  }
+  return out;
+}
+
+export function setupStepSource(state: EventSetupState, step: SetupStepKey): SetupDecisionSource {
+  if (!state.usesProfile) return state.decisions[step] ? "event" : "unset";
+  if (state.overrides?.[step]) return "event";
+  if (state.inheritedDecisions?.[step]) return "profile";
+  return "unset";
+}
+
+export function effectiveSetupDecision(state: EventSetupState, step: SetupStepKey): SetupDecision | undefined {
+  return effectiveDecisionMap(state)[step];
 }
 
 /** Venue capability off means the step is not offered. On does not mean this event must use it. */
@@ -108,11 +153,11 @@ export function isSetupStepKey(value: string): value is SetupStepKey {
   return (SETUP_STEP_ORDER as readonly string[]).includes(value);
 }
 
-export function undecidedSetupSteps(applicable: SetupStepKey[], decisions: SetupDecisions): SetupStepKey[] {
+export function undecidedSetupSteps(applicable: readonly SetupStepKey[], decisions: SetupDecisions): SetupStepKey[] {
   return applicable.filter((step) => decisions[step] !== "set_up" && decisions[step] !== "skipped");
 }
 
-export function setupDecisionsComplete(applicable: SetupStepKey[], decisions: SetupDecisions): boolean {
+export function setupDecisionsComplete(applicable: readonly SetupStepKey[], decisions: SetupDecisions): boolean {
   return undecidedSetupSteps(applicable, decisions).length === 0;
 }
 
@@ -122,22 +167,45 @@ export function setupDecisionsComplete(applicable: SetupStepKey[], decisions: Se
  */
 export function withSetupDecision(
   state: EventSetupState,
-  applicable: SetupStepKey[],
+  applicable: readonly SetupStepKey[],
   step: SetupStepKey,
   decision: SetupDecision,
 ): EventSetupState {
   if (!applicable.includes(step)) return state;
-  const wasComplete = setupDecisionsComplete(applicable, state.decisions);
+  const wasComplete = setupDecisionsComplete(applicable, effectiveDecisionMap(state));
   const decisions: SetupDecisions = { ...state.decisions, [step]: decision };
-  const nowComplete = setupDecisionsComplete(applicable, decisions);
+  const nowComplete = setupDecisionsComplete(applicable, state.usesProfile
+    ? effectiveDecisionMap({ ...state, decisions })
+    : decisions);
   return {
+    ...state,
     decisions,
     collapsedAt: !wasComplete && nowComplete ? new Date().toISOString() : state.collapsedAt,
   };
 }
 
+/** Event-only exception. Matching the inherited snapshot removes the override. */
+export function withProfileOverride(
+  state: EventSetupState,
+  applicable: readonly SetupStepKey[],
+  step: SetupStepKey,
+  decision: SetupDecision,
+): EventSetupState {
+  if (!applicable.includes(step) || !state.usesProfile) return state;
+  const wasComplete = setupDecisionsComplete(applicable, effectiveDecisionMap(state));
+  const overrides: SetupDecisions = { ...(state.overrides ?? {}) };
+  if (state.inheritedDecisions?.[step] === decision) delete overrides[step];
+  else overrides[step] = decision;
+  const next: EventSetupState = { ...state, overrides };
+  const nowComplete = setupDecisionsComplete(applicable, effectiveDecisionMap(next));
+  return {
+    ...next,
+    collapsedAt: !wasComplete && nowComplete ? new Date().toISOString() : state.collapsedAt,
+  };
+}
+
 export function withSetupReopened(state: EventSetupState): EventSetupState {
-  return { decisions: state.decisions, collapsedAt: null };
+  return { ...state, collapsedAt: null };
 }
 
 export function withSetupCollapsed(state: EventSetupState): EventSetupState {

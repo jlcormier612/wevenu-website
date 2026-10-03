@@ -3,6 +3,7 @@ import {
   applicableSetupSteps,
   emptyEventSetupState,
   isSetupStepKey,
+  withProfileOverride,
   withSetupCollapsed,
   withSetupDecision,
   withSetupReopened,
@@ -50,7 +51,9 @@ export async function decideEventSetup(
   if (!ctx) return { ok: false, message: "No venue found." };
   if (!ctx.applicable.includes(step)) return { ok: false, message: "This venue does not use that step." };
   const current = await getEventSetupState(ctx.venueId, eventId);
-  const next = withSetupDecision(current, ctx.applicable, step, chosen as SetupDecision);
+  const next = current.usesProfile
+    ? withProfileOverride(current, ctx.applicable, step, chosen as SetupDecision)
+    : withSetupDecision(current, ctx.applicable, step, chosen as SetupDecision);
   const state = await saveEventSetupState(ctx.venueId, eventId, next);
   return { ok: true, state };
 }

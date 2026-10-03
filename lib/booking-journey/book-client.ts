@@ -15,10 +15,10 @@
  * Create Event when a client is chosen. Commercial milestones do not
  * call this. A second call does not create another event.
  *
- * Sequence exit, the lifecycle booking row, and the tour-converted
- * signal run only after the transaction commits. They are not the
- * booking. A failure there does not undo Booked and cannot leave an
- * event without the relationship.
+ * Sequence exit, the lifecycle booking row, the tour-converted
+ * signal, and setup-profile inheritance run only after the transaction
+ * commits. They are not the booking. A failure there does not undo
+ * Booked and cannot leave an event without the relationship.
  */
 import type { createClient } from "@/integrations/supabase/server";
 import { calendarBlockFailureFromUnknown, occupancyFailureFromUnknown } from "@/lib/availability/event-occupancy";
@@ -147,6 +147,15 @@ export async function bookClient(
         signal_strength: 3,
         metadata: { appointment_id: tour.id },
       }).then(null, () => {});
+    }
+  }
+
+  if (newlyBooked) {
+    try {
+      const { inheritSetupProfileForNewEvent } = await import("@/lib/event-setup/inherit");
+      await inheritSetupProfileForNewEvent(supabase, venueId, row.event_id);
+    } catch (err) {
+      console.error("Setup profile inheritance failed:", err);
     }
   }
 
