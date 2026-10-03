@@ -1,6 +1,6 @@
 # HTC Master Release Closeout Ledger
 
-**OVERALL HTC RELEASE:** NOT GREEN — Date Hold + Luv sub-gates GREEN/CLOSED. Payment lifecycle OPEN (financial scenario proven on sole RUNNING `d8ccf73c` / `:544`; UX defects found and fixed locally, not yet the sole running image). Venue Planning template + setup Overview OPEN (browser/DB proof pending). Event Setup Profiles / venue defaults OPEN (implemented `d82f9817`; inheritance, override, browser, and database proof pending). Production untouched.
+**OVERALL HTC RELEASE:** NOT GREEN — Date Hold + Luv sub-gates GREEN/CLOSED. Payment lifecycle GREEN/CLOSED on sole RUNNING `14d6f73b` / `:546` (contains `804fe393`; payment files unchanged since that commit). Venue Planning template + setup Overview OPEN. Event Setup Profiles / venue defaults OPEN. Production untouched.
 
 **Status of this document:** authoritative master-release closeout. Production untouched.
 
@@ -673,7 +673,7 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 
 ### Payment lifecycle + offline recording + Payments filters (master release)
 
-- **STATUS:** OPEN — financial recording proven on sole RUNNING `d8ccf73c` (contains `23ed4f4a`). **Not GREEN.** Three UX defects on that runtime are fixed in the working tree and are not yet the sole running image.
+- **STATUS:** GREEN/CLOSED on sole RUNNING `14d6f73b26bf7a77ac35a41681e519b17bd2956f` (`htc-sandbox-venue-app:546`). Image contains `804fe393` with no later diff under `lib/payments`, `components/invoices`, `components/payments`, or the invoice/payments app routes. The earlier `:545` image was tagged `804fe393` and drained before this proof; the proof ran on the sole RUNNING descendant.
 - **ROOT CAUSE (Minnie four×$8k):** Invoice top-right “Record payment received” called `recordInvoiceInstallmentReceived` → `selectCurrentUnpaidInstallment` silently advanced to the next unpaid line on each click; invoice status stayed `sent` so the CTA remained. Four clicks = four installments marked paid.
 - **PRODUCT LOCK:**
   - Offline payment is first-class via Venue Payment Collection Preferences (`acceptedPaymentMethods` + `clientPaymentInstructions`)
@@ -691,10 +691,15 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
   2. Record dialog first paint said “no open installment” before the installment list loaded.
   3. After a successful record, the invoice badge stayed “Issued” until a full navigation; a reload showed “Partially Paid”.
 - **FIX COMMIT:** `804fe393` — On Track requires `scheduleStatus === "on_track"`; dialog opens in a loading state; invoice status follows the refreshed server status; record-method lists use venue preferences (no invented card/Venmo/Stripe).
-- **FIX DEPLOY:** queued https://github.com/jlcormier612/wevenu-website/actions/runs/37084546058 — not sole RUNNING yet.
-- **AUTOMATED TEST EVIDENCE:** 90/90 PASS focused after the fix (`offline-recording`, `list-filters`, `attention-reasons`, invoice-balance, manual-installment, commercial-facts, venue-prefs, customer-facing-notes, portal payment-access).
+- **FIX DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37084546058 SUCCESS (`804fe393`). Later deploy https://github.com/jlcormier612/wevenu-website/actions/runs/37086041317 is the sole RUNNING image and contains that commit.
+- **EXACT RUNTIME OF THIS CLOSEOUT:** image `405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:14d6f73b26bf7a77ac35a41681e519b17bd2956f`. Digest `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21`. Task def `htc-sandbox-venue-app:546` PRIMARY COMPLETED, sole deployment. Task `e348d4a678654e2281894642dd81ca02`. desired/running/pending 1/1/0. Health HTTP 200 `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`. Production cluster `htc-production` absent.
+- **RE-PROOF ON THAT RUNTIME (disposable PayProof804, not Minnie/Mickey):** invoice `1d9ebf3d-ba28-48db-9426-112e44522519` / schedule `fafe2df4-c729-422b-b4ea-f668c1dafc93` / Initial line `c6052633-4559-47ff-a8af-9b9b6acdb93e`. Dialog first paint was “Loading installments…” with Record disabled; it did not flash “no open installment”. Form then showed Initial Payment, $8,000, Check, date 2026-10-03, reference 8041. Methods offered: Check and Bank Transfer / ACH only. Double-click showed Recording… (disabled). After the dialog closed, without leaving the invoice, the badge was Partially Paid, paid $8,000, balance $24,000, plan 1 of 4, next payment Planning Payment 1. Reopened selector: Planning Payment 1, Planning Payment 2, Final Payment — Initial Payment absent. DB: one paid line, method check, reference 8041, paid_at 2026-10-03, idempotency `552e2b6a-6425-4178-af03-05a749f5a60a`. Other three lines pending. One activity `30cba08b-f360-40e0-b031-3f28abfdc9c9` “Payment received: $8,000” / “Via check · Initial Payment”.
+- **FILTERS:** All 35 first, Action Required 16, On Track 1, Partially Paid 7, Paid in Full 7, No Payments 1. Nav badge 16 = Action Required. On Track contained only PayFilt OnTrack. Action Required contained PayFilt Overdue and Miss Piggy’s overdue Essential Wedding, not PayFilt OnTrack. Partially Paid contained PayFilt Partial, PayProof804, and OffPay32. Paid in Full contained PayFilt Full and not the partials. No Payments contained only PayFilt None. Search “PayFilt” inside No Payments stayed on PayFilt None; inside All it showed all five PayFilt schedules.
+- **PREFS + PORTAL:** Settings → Leads & Booking showed Outside HTC, Check, ACH / bank transfer, and the saved instructions. Online payment was unchecked. OffPay32 portal showed How to pay / Accepted methods: Check, and ACH / bank transfer / the saved instructions, and no Pay now. OffPay32 DB remained partially_paid, balance 24000, Initial check ref 1001, one payment_received activity. Fancy `commercial_booking_prefs` restored to the prior online JSON (no `acceptedPaymentMethods`, no instructions).
+- **CLIENT WORKSPACE:** Payments tab listed the invoice as Partially Paid with $24,000.00 due, not Paid in Full.
+- **AUTOMATED TEST EVIDENCE:** 74/74 PASS focused (`offline-recording`, `list-filters`, `attention-reasons`, invoice-balance, manual-installment, venue-prefs, customer-facing-notes, portal payment-access including online-ready).
 - **PRODUCTION:** untouched
-- **REMAINING WORK:** Deploy the fix; confirm it is the sole RUNNING image; re-check On Track, dialog first paint, and in-place Partially Paid badge. Then GREEN/CLOSED. Do not mark overall HTC GREEN.
+- **REMAINING WORK:** None for this stream. Do not mark overall HTC GREEN.
 
 ## OVERALL HTC RELEASE
 
@@ -702,7 +707,7 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 - Date Hold multiple holds: GREEN/CLOSED (exact browser+DB).
 - Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB storage unchanged).
 - Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on prior sole RUNNING `ed87d485` (do not reopen without regression).
-- Payment lifecycle + Payments filters: OPEN — financial proof on sole RUNNING `d8ccf73c` / `:544`; On Track, dialog first paint, and in-place status badge block GREEN until the local fix is the sole running image.
+- Payment lifecycle + Payments filters: GREEN/CLOSED on sole RUNNING `14d6f73b` / `:546` (contains `804fe393`).
 - Venue Planning template + setup Overview: OPEN — implemented `d8ccf73c`; not GREEN until sole runtime + browser/DB proof.
 - Event Setup Profiles / venue defaults: OPEN — implemented `d82f9817`. Snapshot inheritance. Not GREEN until sole runtime, browser workflow, and database proof.
 - Production untouched.
