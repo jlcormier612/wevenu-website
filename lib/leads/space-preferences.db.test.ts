@@ -15,6 +15,7 @@ const BOOK = resolve("supabase/migrations/20261408300000_book_relationship_consu
 const USES = resolve("supabase/migrations/20261405900000_invoice_name_and_venue_spaces_uses.sql");
 const SPACES = resolve("supabase/migrations/20261410500000_lead_event_space_preferences.sql");
 const TYPED = resolve("supabase/migrations/20261411900000_event_type_aware_space_preferences.sql");
+const NA = resolve("supabase/migrations/20261412000000_space_preference_not_applicable.sql");
 const CASES = resolve("lib/leads/space-preferences.db.sql");
 
 function psql(args: string[], extra?: { timeoutMs?: number }): { status: number | null; stdout: string; stderr: string } {
@@ -57,6 +58,7 @@ describe("spaces + Booking-E1 live writes", () => {
       applySql(USES);
       applySql(SPACES);
       applySql(TYPED);
+      applySql(NA);
       const cases = readFileSync(CASES, "utf8");
       let run = { status: 1 as number | null, stdout: "", stderr: "" };
       for (let attempt = 0; attempt < 6; attempt++) {

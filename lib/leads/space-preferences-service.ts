@@ -157,14 +157,13 @@ export async function saveLeadSpacePreferences(
     weddingFamily: profile.isWeddingSpecific,
     relevantUseKeys: allowedUseKeys,
   });
-  if (anchor) {
-    const { error: plannedErr } = await supabase
-      .from("leads")
-      .update({ planned_event_space_id: anchor })
-      .eq("id", leadId)
-      .eq("venue_id", venue.id);
-    if (plannedErr) throw plannedErr;
-  }
+  // Clear when no applicable venue_space remains (N/A / undecided / external only).
+  const { error: plannedErr } = await supabase
+    .from("leads")
+    .update({ planned_event_space_id: anchor })
+    .eq("id", leadId)
+    .eq("venue_id", venue.id);
+  if (plannedErr) throw plannedErr;
 
   return { ok: true };
 }

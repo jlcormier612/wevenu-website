@@ -43,6 +43,15 @@ describe("Booking-E1 space preference seeding", () => {
     assert.match(fn, /preference_kind = 'external'/);
   });
 
+  it("undecided and not_applicable never seed assignments or external locations", () => {
+    // Seed filters are positive matches on venue_space / external only.
+    assert.match(fn, /preference_kind = 'venue_space'/);
+    assert.match(fn, /preference_kind = 'external'/);
+    assert.doesNotMatch(fn, /preference_kind = 'undecided'/);
+    assert.doesNotMatch(fn, /preference_kind = 'not_applicable'/);
+    assert.doesNotMatch(fn, /preference_kind in \(/);
+  });
+
   it("seeds any configured venue_space use key, not only ceremony/reception", () => {
     assert.doesNotMatch(fn, /p\.use_key in \('ceremony', 'reception'\)/);
     assert.match(fn, /cocktail_hour/);

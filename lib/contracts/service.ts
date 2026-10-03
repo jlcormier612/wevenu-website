@@ -681,7 +681,14 @@ export async function buildContractMergeData(opts: {
         external_location: string | null;
       }>) {
         const kind = row.preference_kind;
-        if (kind !== "venue_space" && kind !== "external" && kind !== "undecided") continue;
+        if (
+          kind !== "venue_space"
+          && kind !== "external"
+          && kind !== "undecided"
+          && kind !== "not_applicable"
+        ) {
+          continue;
+        }
         const source: CeremonyReceptionPreferenceSource = {
           kind,
           spaceName: row.space_id ? spaceNameById.get(row.space_id) ?? null : null,

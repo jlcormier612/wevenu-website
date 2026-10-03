@@ -72,7 +72,7 @@ describe("lead space preference visibility", () => {
 });
 
 describe("lead space preference shape", () => {
-  it("accepts venue_space, external, and undecided for wedding ceremony", () => {
+  it("accepts venue_space, external, undecided, and not_applicable for wedding ceremony", () => {
     assert.deepEqual(
       normalizeLeadSpacePreference({
         useKey: "ceremony",
@@ -92,6 +92,40 @@ describe("lead space preference shape", () => {
     assert.deepEqual(
       normalizeLeadSpacePreference({ useKey: "ceremony", preferenceKind: "undecided" }, { profile: EXPERIENCE_PROFILES.wedding }),
       { ok: true, value: { useKey: "ceremony", preferenceKind: "undecided", spaceId: null, externalLocation: null } },
+    );
+    assert.deepEqual(
+      normalizeLeadSpacePreference(
+        { useKey: "ceremony", preferenceKind: "not_applicable" },
+        { profile: EXPERIENCE_PROFILES.wedding },
+      ),
+      {
+        ok: true,
+        value: {
+          useKey: "ceremony",
+          preferenceKind: "not_applicable",
+          spaceId: null,
+          externalLocation: null,
+        },
+      },
+    );
+  });
+
+  it("rejects not_applicable with space_id or external_location", () => {
+    assert.equal(
+      normalizeLeadSpacePreference({
+        useKey: "ceremony",
+        preferenceKind: "not_applicable",
+        spaceId: "garden",
+      }).ok,
+      false,
+    );
+    assert.equal(
+      normalizeLeadSpacePreference({
+        useKey: "ceremony",
+        preferenceKind: "not_applicable",
+        externalLocation: "Casino",
+      }).ok,
+      false,
     );
   });
 
@@ -191,6 +225,23 @@ describe("occupancy anchor from preferences", () => {
       null,
     );
   });
+
+  it("not_applicable never contributes an occupancy anchor", () => {
+    assert.equal(
+      occupancyAnchorSpaceIdFromPreferences([
+        { useKey: "reception", preferenceKind: "not_applicable", spaceId: null, externalLocation: null },
+        { useKey: "ceremony", preferenceKind: "not_applicable", spaceId: null, externalLocation: null },
+      ]),
+      null,
+    );
+    assert.equal(
+      occupancyAnchorSpaceIdFromPreferences([
+        { useKey: "reception", preferenceKind: "venue_space", spaceId: "barn", externalLocation: null },
+        { useKey: "ceremony", preferenceKind: "not_applicable", spaceId: null, externalLocation: null },
+      ], { weddingFamily: true }),
+      "barn",
+    );
+  });
 });
 
 describe("preference is not an assignment", () => {
@@ -201,8 +252,22 @@ describe("preference is not an assignment", () => {
     assert.match(service, /lead_event_space_preferences/);
     assert.match(service, /occupancyAnchorSpaceIdFromPreferences/);
     assert.match(service, /planned_event_space_id/);
+    // Always write planned space (including null) so last venue_space → N/A clears the anchor.
+    assert.match(service, /planned_event_space_id: anchor/);
+    assert.doesNotMatch(service, /if \(anchor\) \{/);
     assert.doesNotMatch(service, /linked_event_id/);
     assert.match(service, /eq\("lead_id", leadId\)/);
+  });
+
+  it("migration adds not_applicable without converting existing undecided rows", () => {
+    const mig = readFileSync(
+      resolve("supabase/migrations/20261412000000_space_preference_not_applicable.sql"),
+      "utf8",
+    );
+    assert.match(mig, /not_applicable/);
+    assert.match(mig, /undecided/);
+    assert.doesNotMatch(mig, /update\s+public\.lead_event_space_preferences/i);
+    assert.doesNotMatch(mig, /set\s+preference_kind/i);
   });
 
   it("one catalog: space_id stays NOT NULL and no second space table is created", () => {

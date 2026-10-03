@@ -144,6 +144,37 @@ describe("ceremony / reception resolution — pre-booking (lead preferences)", (
       CEREMONY_SPACE_UNLISTED,
     );
   });
+
+  it("not_applicable is unlisted and never uses the external-location path", () => {
+    assert.equal(
+      resolveCeremonySpace({
+        booked: false,
+        preference: {
+          kind: "not_applicable",
+          externalLocation: "Casino (must not appear)",
+          spaceName: "Barn",
+        },
+      }),
+      CEREMONY_SPACE_UNLISTED,
+    );
+    assert.equal(
+      resolveReceptionSpace({
+        booked: false,
+        preference: {
+          kind: "not_applicable",
+          externalLocation: "Warehouse (must not appear)",
+        },
+      }),
+      RECEPTION_SPACE_UNLISTED,
+    );
+    assert.notEqual(
+      resolveCeremonySpace({
+        booked: false,
+        preference: { kind: "not_applicable", externalLocation: "Casino" },
+      }),
+      CEREMONY_OUTSIDE_VENUE,
+    );
+  });
 });
 
 describe("buildMergeData always resolves the new fields", () => {

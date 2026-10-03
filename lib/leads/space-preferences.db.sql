@@ -85,16 +85,16 @@ begin
     v_venue, v_lead, 'Ada', 'Lovelace', 'spaces-a@example.test', 'confirmed', date '2099-09-01'
   ) returning id into v_client;
 
-  -- Shape: cocktail_hour is not a release preference use_key
+  -- Shape: not_applicable cannot carry a space_id
   begin
     insert into public.lead_event_space_preferences (
-      venue_id, lead_id, use_key, preference_kind
-    ) values (v_venue, v_lead, 'cocktail_hour', 'undecided');
-    raise exception 'cocktail_hour preference must be rejected';
+      venue_id, lead_id, use_key, preference_kind, space_id
+    ) values (v_venue, v_lead, 'ceremony', 'not_applicable', v_garden);
+    raise exception 'not_applicable with space_id must be rejected';
   exception
     when check_violation then null;
     when others then
-      if sqlerrm not like '%use_key%' then raise; end if;
+      if sqlerrm not like '%shape%' and sqlerrm not like '%lead_event_space_preferences%' then raise; end if;
   end;
 
   -- Venue isolation: space from venue B cannot attach to venue A preference
@@ -132,7 +132,7 @@ begin
   );
 
   v_result := public.book_relationship(
-    v_venue, v_client, null, null, null, null, date '2099-09-01'
+    v_venue, v_client, null, null, null, 'wedding', date '2099-09-01'
   );
   if coalesce(v_result->>'ok', '') is distinct from 'true' then
     raise exception 'venue_space booking must succeed: %', v_result;
@@ -196,7 +196,7 @@ begin
     (v_venue, v_lead, 'reception', 'undecided', null, null);
 
   v_result := public.book_relationship(
-    v_venue, v_client, null, null, null, null, date '2099-09-08'
+    v_venue, v_client, null, null, null, 'wedding', date '2099-09-08'
   );
   if coalesce(v_result->>'ok', '') is distinct from 'true' then
     raise exception 'external/undecided booking must succeed: %', v_result;
@@ -223,6 +223,45 @@ begin
     raise exception 'external preference must remain historical';
   end if;
 
+  -- not_applicable seeds nothing (assignments or external locations)
+  insert into public.venue_customer_relationships (venue_id, email, first_name, last_name)
+  values (v_venue, 'spaces-na@example.test', 'Ned', 'Applicable')
+  returning id into v_rel;
+  insert into public.leads (
+    venue_id, first_name, last_name, email, status, sales_stage, relationship_id, event_date
+  ) values (
+    v_venue, 'Ned', 'Applicable', 'spaces-na@example.test', 'new', 'new_inquiry', v_rel, date '2099-09-10'
+  ) returning id into v_lead;
+  insert into public.clients (
+    venue_id, lead_id, first_name, last_name, email, status, event_date
+  ) values (
+    v_venue, v_lead, 'Ned', 'Applicable', 'spaces-na@example.test', 'confirmed', date '2099-09-10'
+  ) returning id into v_client;
+  insert into public.lead_event_space_preferences (
+    venue_id, lead_id, use_key, preference_kind, space_id, external_location
+  ) values
+    (v_venue, v_lead, 'ceremony', 'not_applicable', null, null),
+    (v_venue, v_lead, 'reception', 'not_applicable', null, null);
+
+  v_result := public.book_relationship(
+    v_venue, v_client, null, null, null, 'wedding', date '2099-09-10'
+  );
+  if coalesce(v_result->>'ok', '') is distinct from 'true' then
+    raise exception 'not_applicable booking must succeed: %', v_result;
+  end if;
+  v_event := (v_result->>'event_id')::uuid;
+  select count(*)::integer into v_count
+  from public.event_space_assignments where event_id = v_event;
+  if v_count <> 0 then
+    raise exception 'not_applicable must not create assignments, count=%', v_count;
+  end if;
+  select external_ceremony_location, external_reception_location
+    into v_ext_c, v_ext_r
+  from public.events where id = v_event;
+  if v_ext_c is not null or v_ext_r is not null then
+    raise exception 'not_applicable must not seed external locations';
+  end if;
+
   -- Inactive + disallowed skip; booking still succeeds
   insert into public.venue_customer_relationships (venue_id, email, first_name, last_name)
   values (v_venue, 'spaces-c@example.test', 'Cara', 'Skip')
@@ -244,7 +283,7 @@ begin
     (v_venue, v_lead, 'reception', 'venue_space', v_disallow);
 
   v_result := public.book_relationship(
-    v_venue, v_client, null, null, null, null, date '2099-09-15'
+    v_venue, v_client, null, null, null, 'wedding', date '2099-09-15'
   );
   if coalesce(v_result->>'ok', '') is distinct from 'true' then
     raise exception 'inactive/disallowed booking must succeed: %', v_result;
@@ -298,7 +337,7 @@ begin
 
   begin
     v_result := public.book_relationship(
-      v_venue, v_client, null, null, null, null, date '2099-09-22'
+      v_venue, v_client, null, null, null, 'wedding', date '2099-09-22'
     );
     raise exception 'seeding failure must roll back booking, got %', v_result;
   exception

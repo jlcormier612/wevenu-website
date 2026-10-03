@@ -214,6 +214,15 @@ describe("hold occupancy — resources + date + window", () => {
     assert.deepEqual(ids, ["bridge", "barn"]);
   });
 
+  it("J2. undecided and not_applicable contribute no default hold spaces", () => {
+    const ids = defaultHoldSpaceIdsFromPreferences([
+      { preferenceKind: "undecided", spaceId: null },
+      { preferenceKind: "not_applicable", spaceId: null },
+      { preferenceKind: "venue_space", spaceId: "barn" },
+    ]);
+    assert.deepEqual(ids, ["barn"]);
+  });
+
   it("K. foreign hold exclusion still respects same owner", () => {
     const holds = [
       {

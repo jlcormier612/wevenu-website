@@ -13,6 +13,7 @@ import type { VenueSpace } from "@/lib/availability/types";
 import { resolveExperienceProfile } from "@/lib/event-experience";
 import type { LeadEventSpacePreference } from "@/lib/leads/space-preferences";
 import {
+  isApplicableLeadSpacePreferenceKind,
   normalizeLeadSpacePreference,
   occupancyAnchorSpaceIdFromPreferences,
 } from "@/lib/leads/space-preferences";
@@ -24,8 +25,9 @@ import {
 import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
 import { labelForUseKey } from "@/lib/venue-spaces/uses";
 
-function emptyPref(useKey: string): LeadEventSpacePreference {
-  return { useKey, preferenceKind: "undecided", spaceId: null, externalLocation: null };
+/** Never-saved candidate: UI starts unchecked (not_applicable), not undecided. */
+function missingPref(useKey: string): LeadEventSpacePreference {
+  return { useKey, preferenceKind: "not_applicable", spaceId: null, externalLocation: null };
 }
 
 export type LeadSpaceAssignmentDisplay = {
@@ -65,7 +67,7 @@ function preferenceFromSelectValue(
 }
 
 /**
- * Compact Lead header: WHERE is this event taking place?
+ * Compact Lead header: which candidate uses apply, and WHERE for those that do.
  * Multi-mode only, relevant configured uses for this event type.
  * Single-mode / no relevant uses uses EventSpaceField separately.
  */
@@ -94,13 +96,13 @@ export function LeadSpacePreferenceFields({
     [spaces, profile, eventType],
   );
   const [prefs, setPrefs] = React.useState<LeadEventSpacePreference[]>(() =>
-    relevant.map((use) => initial.find((p) => p.useKey === use.key) ?? emptyPref(use.key)),
+    relevant.map((use) => initial.find((p) => p.useKey === use.key) ?? missingPref(use.key)),
   );
   const [pending, startTransition] = React.useTransition();
   const relevantKey = relevant.map((use) => use.key).join(",");
 
   React.useEffect(() => {
-    setPrefs(relevant.map((use) => initial.find((p) => p.useKey === use.key) ?? emptyPref(use.key)));
+    setPrefs(relevant.map((use) => initial.find((p) => p.useKey === use.key) ?? missingPref(use.key)));
     // relevantKey tracks the use list; initial is the server snapshot for this lead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventType, relevantKey]);
@@ -116,7 +118,7 @@ export function LeadSpacePreferenceFields({
           Space preferences
         </p>
         <div
-          className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
+          className="flex flex-wrap gap-x-4 gap-y-2"
           data-testid="space-preference-grid"
         >
           {assigned.map((a) => (
@@ -152,35 +154,84 @@ export function LeadSpacePreferenceFields({
     });
   }
 
+  const applicableCount = prefs.filter((p) => isApplicableLeadSpacePreferenceKind(p.preferenceKind)).length;
+
   return (
     <div className="w-full min-w-0">
       <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         Space preferences
       </p>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Which parts of the event are taking place at your venue?
+      </p>
       <div
-        className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
+        className="flex flex-col gap-2"
         data-testid="space-preference-grid"
+        data-applicable-count={applicableCount}
       >
         {relevant.map((use) => {
-          const value = prefs.find((p) => p.useKey === use.key) ?? emptyPref(use.key);
+          const value = prefs.find((p) => p.useKey === use.key) ?? missingPref(use.key);
+          const applicable = isApplicableLeadSpacePreferenceKind(value.preferenceKind);
           return (
-            <PreferenceColumn
+            <div
               key={use.key}
-              label={use.label}
-              value={value}
-              spaces={spacesEligibleForUse(spaces, use.key)}
-              allowExternal={allowsExternalLocation(use.key, profile)}
-              disabled={pending}
-              onChange={(nextPref) => {
-                const next = relevant.map((u) =>
-                  u.key === nextPref.useKey
-                    ? nextPref
-                    : prefs.find((p) => p.useKey === u.key) ?? emptyPref(u.key),
-                );
-                setPrefs(next);
-                persist(next);
-              }}
-            />
+              className="min-w-0"
+              data-testid={`space-pref-row-${use.key}`}
+              data-applicable={applicable ? "true" : "false"}
+            >
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-border"
+                  checked={applicable}
+                  disabled={pending}
+                  data-testid={`space-pref-applicable-${use.key}`}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    const nextPref: LeadEventSpacePreference = checked
+                      ? {
+                          useKey: use.key,
+                          preferenceKind: "undecided",
+                          spaceId: null,
+                          externalLocation: null,
+                        }
+                      : {
+                          useKey: use.key,
+                          preferenceKind: "not_applicable",
+                          spaceId: null,
+                          externalLocation: null,
+                        };
+                    const next = relevant.map((u) =>
+                      u.key === nextPref.useKey
+                        ? nextPref
+                        : prefs.find((p) => p.useKey === u.key) ?? missingPref(u.key),
+                    );
+                    setPrefs(next);
+                    persist(next);
+                  }}
+                />
+                <span>{use.label}</span>
+              </label>
+              {applicable && (
+                <div className="mt-1.5 max-w-xs pl-6">
+                  <PreferenceSpaceControl
+                    value={value}
+                    spaces={spacesEligibleForUse(spaces, use.key)}
+                    allowExternal={allowsExternalLocation(use.key, profile)}
+                    disabled={pending}
+                    onChange={(nextPref) => {
+                      const next = relevant.map((u) =>
+                        u.key === nextPref.useKey
+                          ? nextPref
+                          : prefs.find((p) => p.useKey === u.key) ?? missingPref(u.key),
+                      );
+                      setPrefs(next);
+                      persist(next);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -197,15 +248,13 @@ function ReadOnlyColumn({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PreferenceColumn({
-  label,
+function PreferenceSpaceControl({
   value,
   spaces,
   allowExternal,
   disabled,
   onChange,
 }: {
-  label: string;
   value: LeadEventSpacePreference;
   spaces: VenueSpace[];
   allowExternal: boolean;
@@ -217,6 +266,7 @@ function PreferenceColumn({
     setExternalDraft(value.externalLocation ?? "");
   }, [value.externalLocation]);
 
+  // Space selector only — never includes a not-applicable option.
   const items = [
     { value: "undecided", label: "Not decided yet" },
     ...spaces.map((s) => ({
@@ -230,9 +280,6 @@ function PreferenceColumn({
 
   return (
     <div className="min-w-0 space-y-1">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
       <Select
         value={selectValue}
         onValueChange={(raw) => {

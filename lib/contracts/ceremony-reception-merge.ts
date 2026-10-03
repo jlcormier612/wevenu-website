@@ -15,7 +15,7 @@ export const CEREMONY_OUTSIDE_VENUE = "Ceremony is listed as outside the venue."
 export const RECEPTION_SPACE_UNLISTED = "Reception space is not listed yet.";
 
 export type CeremonyReceptionPreferenceSource = {
-  kind: "venue_space" | "external" | "undecided";
+  kind: "venue_space" | "external" | "undecided" | "not_applicable";
   spaceName?: string | null;
   externalLocation?: string | null;
 };
@@ -25,7 +25,11 @@ function resolveFromPreference(
   externalLockedCopy: string,
   unlisted: string,
 ): string {
-  if (!preference || preference.kind === "undecided") return unlisted;
+  // undecided = applicable but unresolved; not_applicable = not part of event.
+  // Both surface as unlisted — never the external-location path.
+  if (!preference || preference.kind === "undecided" || preference.kind === "not_applicable") {
+    return unlisted;
+  }
   if (preference.kind === "venue_space") {
     const name = preference.spaceName?.trim();
     return name || unlisted;
@@ -67,7 +71,11 @@ export function resolveReceptionSpace(opts: {
 }): string {
   if (opts.booked === false) {
     // Reception external uses the free-text location (not locked outside-venue copy).
-    if (!opts.preference || opts.preference.kind === "undecided") {
+    if (
+      !opts.preference
+      || opts.preference.kind === "undecided"
+      || opts.preference.kind === "not_applicable"
+    ) {
       return RECEPTION_SPACE_UNLISTED;
     }
     if (opts.preference.kind === "venue_space") {

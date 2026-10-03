@@ -14,8 +14,20 @@ import {
 } from "@/lib/venue-spaces/relevant-uses";
 import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
 
-export const LEAD_SPACE_PREFERENCE_KINDS = ["venue_space", "external", "undecided"] as const;
+export const LEAD_SPACE_PREFERENCE_KINDS = [
+  "venue_space",
+  "external",
+  "undecided",
+  "not_applicable",
+] as const;
 export type LeadSpacePreferenceKind = (typeof LEAD_SPACE_PREFERENCE_KINDS)[number];
+
+/** Applicable kinds participate in the event; not_applicable does not. */
+export function isApplicableLeadSpacePreferenceKind(
+  kind: LeadSpacePreferenceKind,
+): boolean {
+  return kind !== "not_applicable";
+}
 
 export type LeadEventSpacePreference = {
   useKey: string;
@@ -74,7 +86,10 @@ export function normalizeLeadSpacePreference(
     return { ok: false, message: "That space preference is not available for this event." };
   }
   if (!isLeadSpacePreferenceKind(preferenceKind)) {
-    return { ok: false, message: "Choose a venue space, an external location, or undecided." };
+    return {
+      ok: false,
+      message: "Choose a venue space, an external location, undecided, or not applicable.",
+    };
   }
   const spaceId = input.spaceId?.trim() || null;
   const externalLocation = input.externalLocation?.trim() || null;
@@ -97,8 +112,15 @@ export function normalizeLeadSpacePreference(
     if (!externalLocation) return { ok: false, message: "Enter the external location." };
     return { ok: true, value: { useKey, preferenceKind, spaceId: null, externalLocation } };
   }
+  // undecided and not_applicable share the cleared-fields shape.
   if (spaceId || externalLocation) {
-    return { ok: false, message: "An undecided preference cannot include a space or location." };
+    return {
+      ok: false,
+      message:
+        preferenceKind === "not_applicable"
+          ? "A not-applicable preference cannot include a space or location."
+          : "An undecided preference cannot include a space or location.",
+    };
   }
   return { ok: true, value: { useKey, preferenceKind, spaceId: null, externalLocation: null } };
 }
