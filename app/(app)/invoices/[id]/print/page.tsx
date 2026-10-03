@@ -69,6 +69,9 @@ export default async function InvoicePrintPage({ params }: Props) {
         cancelledPlanAmount={cancelledPlanAmount}
         scheduleLines={scheduleLines}
         paymentInstructions={linked?.notes ?? invoice.notes}
+        venuePaymentInstructions={
+          venue.commercialBookingPrefs?.clientPaymentInstructions ?? null
+        }
       />
     </>
   );

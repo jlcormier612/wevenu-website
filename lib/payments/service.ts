@@ -16,6 +16,7 @@ import type { Invoice } from "@/lib/invoices/types";
 import {
   computeTotalPaid,
   deriveScheduleStatus,
+  paymentPlanOverview,
   SCHEDULE_PRESETS,
 } from "@/lib/payments/constants";
 import {
@@ -47,11 +48,15 @@ import {
   validateMarkPaidInput,
   validateScheduleInput,
 } from "@/lib/payments/validation";
-import { selectCurrentUnpaidInstallment } from "@/lib/payments/manual-installment";
+import {
+  installmentRemainingAmount,
+  selectCurrentUnpaidInstallment,
+} from "@/lib/payments/manual-installment";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
+import type { OfflinePaymentRecordResult } from "@/lib/payments/types";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -500,71 +505,196 @@ export async function updateLineItem_(itemId: string, scheduleId: string, input:
 }
 
 /**
- * Record the invoice's current unpaid installment as received offline.
- * Persists through markLineItemPaid (status, paid_amount, payment_method)
- * and reconcileInvoiceBalance. Does not write a Stripe id.
+ * List open installments for an invoice's linked schedule — for the deliberate
+ * offline recording dialog. Never records money by itself.
+ */
+export async function listInvoiceOfflineInstallments(invoiceId: string): Promise<
+  | {
+      ok: true;
+      scheduleId: string;
+      installments: Array<{
+        id: string;
+        label: string;
+        status: string;
+        amount: number;
+        paidAmount: number | null;
+        remaining: number;
+        dueDate: string | null;
+      }>;
+      defaultItemId: string | null;
+    }
+  | { ok: false; message: string }
+> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired." };
+  const venueId = venue.id;
+
+  const { data: scheduleRaw } = await supabase.from("payment_schedules")
+    .select("id")
+    .eq("invoice_id", invoiceId)
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const schedule = scheduleRaw as { id: string } | null;
+  if (!schedule) {
+    return { ok: false, message: "This invoice has no payment schedule to record against." };
+  }
+  const { data: lines } = await supabase.from("payment_line_items")
+    .select("id, label, status, due_date, amount, paid_amount, stripe_payment_intent_id, sort_order")
+    .eq("schedule_id", schedule.id)
+    .eq("venue_id", venueId)
+    .order("sort_order", { ascending: true });
+  const mapped = ((lines ?? []) as Array<{
+    id: string;
+    label: string;
+    status: string;
+    due_date: string | null;
+    amount: number;
+    paid_amount: number | null;
+    stripe_payment_intent_id: string | null;
+  }>).map((l) => ({
+    id: l.id,
+    label: l.label,
+    status: l.status,
+    amount: Number(l.amount),
+    paidAmount: l.paid_amount != null ? Number(l.paid_amount) : null,
+    remaining: installmentRemainingAmount({
+      amount: Number(l.amount),
+      status: l.status,
+      paidAmount: l.paid_amount,
+    }),
+    dueDate: l.due_date,
+    stripePaymentIntentId: l.stripe_payment_intent_id,
+  }));
+  const open = mapped.filter((l) => l.remaining > 0 && !l.stripePaymentIntentId);
+  const picked = selectCurrentUnpaidInstallment(
+    mapped.map((l) => ({
+      id: l.id,
+      status: l.status,
+      dueDate: l.dueDate,
+      amount: l.amount,
+      paidAmount: l.paidAmount,
+      label: l.label,
+      stripePaymentIntentId: l.stripePaymentIntentId,
+    })),
+  );
+  return {
+    ok: true,
+    scheduleId: schedule.id,
+    installments: open.map(({ stripePaymentIntentId: _s, ...rest }) => rest),
+    defaultItemId: picked?.id ?? open[0]?.id ?? null,
+  };
+}
+
+/**
+ * Record offline payment against an EXPLICIT installment.
+ * Never auto-advances to a different installment.
+ */
+export async function recordOfflineInstallmentPayment(input: {
+  invoiceId?: string | null;
+  scheduleId: string;
+  itemId: string;
+  paidAmount: string;
+  paymentMethod: string;
+  referenceNumber?: string;
+  paidDate: string;
+  notes?: string;
+  idempotencyKey?: string;
+}): Promise<PaymentActionResult> {
+  return markLineItemPaid(input.itemId, input.scheduleId, {
+    paidAmount: input.paidAmount,
+    paymentMethod: input.paymentMethod,
+    referenceNumber: input.referenceNumber ?? "",
+    paidDate: input.paidDate,
+    notes: input.notes?.trim()
+      ? input.notes
+      : "Recorded manually (offline collection).",
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
+/**
+ * @deprecated Silent one-click recording. Use recordOfflineInstallmentPayment
+ * with an explicit installment selection. Kept only for compile-time callers
+ * during migration — always returns an error directing to the deliberate flow.
  */
 export async function recordInvoiceInstallmentReceived(
-  invoiceId: string,
+  _invoiceId: string,
 ): Promise<PaymentActionResult> {
-  const lookup = await withVenue(async (supabase, venueId) => {
-    const { data: schedule } = await supabase.from("payment_schedules")
-      .select("id")
-      .eq("invoice_id", invoiceId)
+  return {
+    ok: false,
+    message:
+      "Choose the installment, amount, method, and date before recording a payment.",
+  };
+}
+
+async function buildOfflineRecordSummary(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  scheduleId: string,
+  marked: {
+    amountRecorded: number;
+    newStatus: "partially_paid" | "paid";
+    installmentRemaining: number;
+    label: string;
+    alreadyRecorded?: boolean;
+  },
+  itemId: string,
+): Promise<OfflinePaymentRecordResult> {
+  const { data: schRaw } = await supabase.from("payment_schedules")
+    .select("invoice_id")
+    .eq("id", scheduleId)
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  const sch = schRaw as { invoice_id: string | null } | null;
+  const { data: lines } = await supabase.from("payment_line_items")
+    .select("status, amount, paid_amount")
+    .eq("schedule_id", scheduleId)
+    .eq("venue_id", venueId);
+  const items = ((lines ?? []) as Array<{
+    status: string;
+    amount: number;
+    paid_amount: number | null;
+  }>).map((l) => ({
+    status: l.status as PaymentLineItem["status"],
+    amount: Number(l.amount),
+    paidAmount: l.paid_amount != null ? Number(l.paid_amount) : null,
+  }));
+  let invoiceStatus: string | null = null;
+  let invoiceBalanceDue: number | null = null;
+  if (sch?.invoice_id) {
+    const { data: invRaw } = await supabase.from("invoices")
+      .select("status, balance_due")
+      .eq("id", sch.invoice_id)
       .eq("venue_id", venueId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle<{ id: string }>();
-    if (!schedule) {
-      return { ok: false as const, message: "This invoice has no payment schedule to record against." };
-    }
-    const { data: lines } = await supabase.from("payment_line_items")
-      .select("id, status, due_date, amount, stripe_payment_intent_id")
-      .eq("schedule_id", schedule.id)
-      .eq("venue_id", venueId);
-    const picked = selectCurrentUnpaidInstallment(
-      ((lines ?? []) as Array<{
-        id: string;
-        status: string;
-        due_date: string | null;
-        amount: number;
-        stripe_payment_intent_id: string | null;
-      }>).map((l) => ({
-        id: l.id,
-        status: l.status,
-        dueDate: l.due_date,
-        amount: Number(l.amount),
-        stripePaymentIntentId: l.stripe_payment_intent_id,
-      })),
-    );
-    if (!picked) {
-      return { ok: false as const, message: "No unpaid installment is waiting to be recorded." };
-    }
-    const tz = await getVenueTimezone(supabase, venueId);
-    return {
-      ok: true as const,
-      scheduleId: schedule.id,
-      itemId: picked.id,
-      paidAmount: picked.amount.toFixed(2),
-      paidDate: venueToday(tz),
-    };
-  });
-
-  if (!lookup || !("ok" in lookup)) {
-    return { ok: false, message: "Could not record this payment." };
+      .maybeSingle();
+    const inv = invRaw as { status: string; balance_due: number } | null;
+    invoiceStatus = inv?.status ?? null;
+    invoiceBalanceDue = inv != null ? Number(inv.balance_due) : null;
   }
-  if (!lookup.ok) return lookup;
-  if (!("itemId" in lookup)) {
-    return { ok: false, message: "Could not record this payment." };
-  }
-
-  return markLineItemPaid(lookup.itemId, lookup.scheduleId, {
-    paidAmount: lookup.paidAmount,
-    paymentMethod: "other",
-    referenceNumber: "",
-    paidDate: lookup.paidDate,
-    notes: "Recorded manually (offline collection).",
+  const plan = paymentPlanOverview({
+    invoiceStatus,
+    items,
   });
+  return {
+    itemId,
+    itemLabel: marked.label,
+    amountRecorded: marked.amountRecorded,
+    installmentStatus: marked.newStatus,
+    installmentRemaining: marked.installmentRemaining,
+    invoiceStatus,
+    invoiceBalanceDue,
+    planPaidInstallments: plan.paidInstallments,
+    planTotalInstallments: plan.totalInstallments,
+    planPaidAmount: plan.paidAmount,
+    planRemainingAmount: plan.remainingAmount,
+    alreadyRecorded: marked.alreadyRecorded,
+  };
 }
 
 export async function markLineItemPaid(itemId: string, scheduleId: string, input: MarkPaidInput): Promise<PaymentActionResult> {
@@ -573,19 +703,37 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
   const result = await withVenue(async (supabase, venueId) => {
     const marked = await repo.markItemPaid(supabase, venueId, itemId, input);
     if (!marked.ok) return marked as PaymentActionResult;
-    await cancelRemindersForPaymentLineItem(supabase, venueId, itemId);
-    const amount = parseFloat(input.paidAmount.replace(/[$,]/g, ""));
-    await repo.insertPaymentActivity(supabase, venueId, scheduleId, "payment_received",
-      `Payment received: $${amount.toLocaleString()}`,
-      input.paymentMethod ? `Via ${input.paymentMethod}` : undefined);
-    void enqueueQuickBooksSync(venueId, "payment", itemId, { paidAmount: amount });
 
-    // Reconcile the linked invoice's balance_due, if any
+    const amountRecorded = marked.amountRecorded;
+    const alreadyRecorded = Boolean(marked.alreadyRecorded);
+
+    // Reconcile always — even on idempotent retry — so UI sees current balances.
     const { data: sch } = await supabase.from("payment_schedules")
       .select("invoice_id, event_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null; event_id: string | null }>();
     if (sch?.invoice_id) {
       await repo.reconcileInvoiceBalance(supabase, venueId, sch.invoice_id);
     }
+
+    if (alreadyRecorded || amountRecorded <= 0) {
+      const offlineRecord = await buildOfflineRecordSummary(
+        supabase, venueId, scheduleId, marked, itemId,
+      );
+      return { ok: true, offlineRecord } as PaymentActionResult;
+    }
+
+    await cancelRemindersForPaymentLineItem(supabase, venueId, itemId);
+    await repo.insertPaymentActivity(
+      supabase,
+      venueId,
+      scheduleId,
+      "payment_received",
+      `Payment received: $${amountRecorded.toLocaleString()}`,
+      input.paymentMethod
+        ? `Via ${input.paymentMethod} · ${marked.label}`
+        : marked.label,
+    );
+    void enqueueQuickBooksSync(venueId, "payment", itemId, { paidAmount: amountRecorded });
+
     // "Pay final payment"-style Planning tasks complete themselves the
     // moment a payment actually lands — this was previously only logged as
     // an activity string, never wired (Vendor Management — Next Iteration,
@@ -663,7 +811,10 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       }
     }
 
-    return { ok: true, celebrated, obligationCelebrated, bookingCelebration } as PaymentActionResult;
+    const offlineRecord = await buildOfflineRecordSummary(
+      supabase, venueId, scheduleId, marked, itemId,
+    );
+    return { ok: true, celebrated, obligationCelebrated, bookingCelebration, offlineRecord } as PaymentActionResult;
   });
   return result as PaymentActionResult;
 }

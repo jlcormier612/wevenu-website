@@ -26,7 +26,9 @@ async function paymentLinesForClient(clientId: string) {
       obligationKind: line.obligationKind,
       status: line.status,
       amount: line.amount,
+      paidAmount: line.paidAmount,
       dueDate: line.dueDate,
+      label: line.label,
     })),
   );
 }

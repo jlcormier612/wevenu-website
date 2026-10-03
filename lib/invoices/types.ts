@@ -1,4 +1,4 @@
-export type InvoiceStatus = "draft" | "sent" | "paid" | "void";
+export type InvoiceStatus = "draft" | "sent" | "partially_paid" | "paid" | "void";
 
 export type InvoiceLineItemType =
   | "package" | "addon" | "inventory" | "discount" | "fee" | "tax" | "deposit" | "item";

@@ -24,6 +24,7 @@ export const STATUS_LABEL: Record<PaymentItemStatus, string> = {
   pending:            "Pending",
   processing:         "Processing",
   overdue:            "Overdue",
+  partially_paid:     "Partially Paid",
   paid:               "Paid",
   cancelled:          "Cancelled",
   partially_refunded: "Partially Refunded",
@@ -71,10 +72,65 @@ export function deriveScheduleStatus(
   return "on_track";
 }
 
+/**
+ * Payment-plan overview copy from authoritative installment + invoice state.
+ * Example: Sent / Partially Paid / 1 of 4 installments paid / $8,000 paid / $24,000 remaining.
+ */
+export function paymentPlanOverview(input: {
+  invoiceStatus: string | null | undefined;
+  items: readonly Pick<PaymentLineItem, "status" | "amount" | "paidAmount">[];
+}): {
+  invoiceLabel: string;
+  paidInstallments: number;
+  totalInstallments: number;
+  paidAmount: number;
+  remainingAmount: number;
+  summaryLine: string;
+} {
+  const active = input.items.filter((i) => i.status !== "cancelled");
+  const paidInstallments = active.filter((i) => i.status === "paid").length;
+  const totalInstallments = active.length;
+  const paidAmount = computeTotalPaid(active as PaymentLineItem[]);
+  const planTotal = active.reduce((sum, i) => sum + Number(i.amount), 0);
+  const remainingAmount = Math.max(0, planTotal - paidAmount);
+  let invoiceLabel = "Sent";
+  if (input.invoiceStatus === "paid" || remainingAmount <= 0) invoiceLabel = "Paid";
+  else if (input.invoiceStatus === "partially_paid" || paidAmount > 0) {
+    invoiceLabel = "Partially Paid";
+  } else if (input.invoiceStatus === "draft") invoiceLabel = "Draft";
+  else if (input.invoiceStatus === "void") invoiceLabel = "Void";
+  const money = (n: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+  const summaryLine = [
+    invoiceLabel,
+    totalInstallments > 0
+      ? `${paidInstallments} of ${totalInstallments} installments paid`
+      : null,
+    `${money(paidAmount)} paid`,
+    `${money(remainingAmount)} remaining`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return {
+    invoiceLabel,
+    paidInstallments,
+    totalInstallments,
+    paidAmount,
+    remainingAmount,
+    summaryLine,
+  };
+}
+
 /** Total amount actually retained across collected line items, net of any refund (TR-M3). */
 export function computeTotalPaid(items: PaymentLineItem[]): number {
   return items
-    .filter((i) => i.status === "paid" || i.status === "partially_refunded" || i.status === "refunded")
+    .filter(
+      (i) =>
+        i.status === "paid"
+        || i.status === "partially_paid"
+        || i.status === "partially_refunded"
+        || i.status === "refunded",
+    )
     .reduce((sum, i) => sum + (i.paidAmount ?? i.amount) - (i.refundedAmount ?? 0), 0);
 }
 

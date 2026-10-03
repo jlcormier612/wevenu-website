@@ -179,25 +179,42 @@ function MarkPaidForm({
   onCancel: () => void;
   pending: boolean;
 }) {
-  const [paidAmount, setPaidAmount] = React.useState(String(item.amount));
+  const remaining = item.status === "partially_paid"
+    ? Math.max(0, item.amount - (item.paidAmount ?? 0))
+    : item.amount;
+  const [paidAmount, setPaidAmount] = React.useState(String(remaining));
   const [method, setMethod] = React.useState("");
   const [ref, setRef] = React.useState("");
   const [paidDate, setPaidDate] = React.useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = React.useState("");
+  const [idempotencyKey] = React.useState(() => crypto.randomUUID());
+  const submitLock = React.useRef(false);
+  const amountNum = parseFloat(paidAmount.replace(/[$,]/g, ""));
+  const fullySatisfies = Number.isFinite(amountNum) && amountNum >= remaining - 0.009;
   return (
     <div className="rounded-lg border border-success/30 bg-success/5 p-4 space-y-3">
-      <p className="text-sm font-medium text-heading">Record Payment</p>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-heading">Record payment received</p>
+        <p className="text-xs text-muted-foreground">
+          Applying to <span className="font-medium text-foreground">{item.label}</span>
+          {" · "}
+          {formatMoney(remaining)} remaining on this installment
+          {item.status === "partially_paid" && item.paidAmount != null
+            ? ` (${formatMoney(item.paidAmount)} already received)`
+            : ""}
+        </p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-xs">Amount received *</Label>
-          <Input value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="0.00" />
+          <Input value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="0.00" disabled={pending} />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Date received *</Label>
-          <Input type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} />
+          <Input type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} disabled={pending} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Payment method</Label>
+          <Label className="text-xs">Payment method *</Label>
           <Select value={method} onValueChange={setMethod} items={PAYMENT_METHODS}>
             <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
             <SelectContent>
@@ -207,19 +224,41 @@ function MarkPaidForm({
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Reference # <span className="font-normal text-muted-foreground">(optional)</span></Label>
-          <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Check #, transaction ID…" />
+          <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Check #, transaction ID…" disabled={pending} />
         </div>
       </div>
         <div className="space-y-1.5">
           <Label className="text-xs">{internalNotesLabel("payment")}</Label>
           <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Check number, wire confirmation, coordinator reminder…" />
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Check number, wire confirmation, coordinator reminder…" disabled={pending} />
         </div>
+      <p className="text-xs text-muted-foreground">
+        {fullySatisfies
+          ? `This will mark ${item.label} Paid. Other installments are unchanged.`
+          : `This will partially satisfy ${item.label}. ${formatMoney(Math.max(0, remaining - (Number.isFinite(amountNum) ? amountNum : 0)))} will remain on this installment.`}
+      </p>
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
-        <Button type="button" size="sm" disabled={!paidAmount.trim() || !paidDate || pending}
-          onClick={() => onSave({ paidAmount, paymentMethod: method, referenceNumber: ref, paidDate, notes })}>
-          {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Recording…</> : "Record Payment"}
+        <Button
+          type="button"
+          size="sm"
+          disabled={!paidAmount.trim() || !paidDate || !method.trim() || pending}
+          onClick={() => {
+            if (submitLock.current || pending) return;
+            submitLock.current = true;
+            onSave({
+              paidAmount,
+              paymentMethod: method,
+              referenceNumber: ref,
+              paidDate,
+              notes,
+              idempotencyKey,
+            });
+          }}
+        >
+          {pending
+            ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Recording…</>
+            : `Record ${formatMoney(Number.isFinite(amountNum) ? amountNum : 0)} payment`}
         </Button>
       </div>
     </div>
@@ -307,6 +346,7 @@ function LineItemRow({
 
   const days = item.dueDate ? daysUntil(item.dueDate) : null;
   const isPaid = item.status === "paid";
+  const isPartiallyPaid = item.status === "partially_paid";
   const isCancelled = item.status === "cancelled";
   const isRefunded = item.status === "refunded";
   const isPartiallyRefunded = item.status === "partially_refunded";
@@ -319,6 +359,9 @@ function LineItemRow({
   // that the server was always going to reject. Cosmetic-only: the real
   // enforcement remains server-side, unchanged by this.
   const canRefund = (isPaid || isPartiallyRefunded) && currentUserRole === "owner";
+  const remainingOnItem = isPartiallyPaid
+    ? Math.max(0, item.amount - (item.paidAmount ?? 0))
+    : item.amount;
 
   function handleEdit(input: LineItemInput) {
     startEdit(async () => {
@@ -339,7 +382,19 @@ function LineItemRow({
     startPay(async () => {
       const result = await markPaidAction(item.id, scheduleId, input);
       if (result.ok) {
-        onMarkPaid(item.id);
+        const rec = result.offlineRecord;
+        if (rec) {
+          onUpdate(item.id, {
+            status: rec.installmentStatus,
+            paidAmount: rec.installmentStatus === "paid"
+              ? item.amount
+              : item.amount - rec.installmentRemaining,
+            paidAt: new Date().toISOString(),
+            paymentMethod: input.paymentMethod || null,
+          });
+        } else {
+          onMarkPaid(item.id);
+        }
         setPayMode(false);
         if (result.bookingCelebration) {
           const qs = new URLSearchParams({ eventId: result.bookingCelebration.eventId });
@@ -350,6 +405,16 @@ function LineItemRow({
           celebrateLuv(coordinatorCelebrationMessage("final_payment_received", scheduleTitle));
         } else if (result.obligationCelebrated) {
           celebrateLuv(coordinatorCelebrationMessage("final_payment_obligation_paid", scheduleTitle));
+        } else if (rec?.alreadyRecorded) {
+          toast.message("This payment was already recorded.");
+        } else if (rec) {
+          toast.success("Payment recorded", {
+            description: [
+              `${formatMoney(rec.amountRecorded)} applied to ${rec.itemLabel}`,
+              `Payment plan: ${rec.planPaidInstallments} of ${rec.planTotalInstallments} paid`,
+              `${formatMoney(rec.planRemainingAmount)} remaining`,
+            ].join(" · "),
+          });
         } else {
           toast.success("Payment recorded.");
         }
@@ -433,10 +498,13 @@ function LineItemRow({
                 </span>
               </>
             )}
+            {isPartiallyPaid && (
+              <><span className="text-border">·</span><span className="text-amber-700 dark:text-amber-400">{formatMoney(item.paidAmount ?? 0)} paid · {formatMoney(remainingOnItem)} remaining</span></>
+            )}
             {isPaid && item.paidAt && (
               <><span className="text-border">·</span><span className="text-success">Paid {formatDate(item.paidAt.slice(0, 10))}{item.paidAmount != null && item.paidAmount !== item.amount ? ` (${formatMoney(item.paidAmount)})` : ""}</span></>
             )}
-            {isPaid && item.paymentMethod && (
+            {(isPaid || isPartiallyPaid) && item.paymentMethod && (
               <><span className="text-border">·</span><span>{paymentMethodLabel(item.paymentMethod)}</span></>
             )}
             {isProcessing && (
@@ -467,8 +535,9 @@ function LineItemRow({
         {!isPaid && !isCancelled && !isRefunded && !isPartiallyRefunded && !isProcessing && (
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <Button type="button" size="sm" className="h-7 px-2 text-xs"
-              onClick={() => setPayMode(true)} disabled={cancelPending}>
-              <CreditCard className="mr-1 h-3 w-3" /> Pay
+              onClick={() => setPayMode(true)} disabled={cancelPending || payMode}>
+              <CreditCard className="mr-1 h-3 w-3" />
+              {isPartiallyPaid ? "Record remainder" : "Record payment"}
             </Button>
             {!planLocked && (
               <>
@@ -724,7 +793,10 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
               </Button>
             )}
           </div>
-          <CardDescription>Click "Pay" on any item to record a received payment.</CardDescription>
+          <CardDescription>
+            Use &quot;Record payment&quot; on an unpaid installment to enter amount, method, and date.
+            Paid installments cannot be recorded again.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {items.length === 0 && !showAdd && (

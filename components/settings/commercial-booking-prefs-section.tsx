@@ -220,6 +220,69 @@ export function CommercialBookingPrefsSection({
             />
           </div>
         </div>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-heading">
+            Accepted payment methods
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Venue Payment Collection Preferences are the source of truth for how clients are instructed to pay — including venues that do not accept online payments.
+          </p>
+          <div className="space-y-2">
+            {(
+              [
+                ["online", "Online payment"],
+                ["check", "Check"],
+                ["cash", "Cash"],
+                ["ach", "ACH / bank transfer"],
+                ["other", "Other / manual"],
+              ] as const
+            ).map(([value, label]) => {
+              const checked = prefs.acceptedPaymentMethods.includes(value);
+              return (
+                <label key={value} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={checked}
+                    onChange={(e) =>
+                      setPrefs((p) => {
+                        const next = e.target.checked
+                          ? [...new Set([...p.acceptedPaymentMethods, value])]
+                          : p.acceptedPaymentMethods.filter((m) => m !== value);
+                        return {
+                          ...p,
+                          acceptedPaymentMethods:
+                            next.length > 0 ? next : p.acceptedPaymentMethods,
+                        };
+                      })
+                    }
+                  />
+                  <span className="font-medium text-heading">{label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="client-payment-instructions" className="text-sm font-medium text-heading">
+            Client-facing payment instructions
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Shown when clients view an invoice or payment obligation. Do not rewrite these on every invoice.
+          </p>
+          <textarea
+            id="client-payment-instructions"
+            className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={prefs.clientPaymentInstructions ?? ""}
+            onChange={(e) =>
+              setPrefs((p) => ({
+                ...p,
+                clientPaymentInstructions: e.target.value.trim() ? e.target.value : null,
+              }))
+            }
+            placeholder="Example: Mail checks to … or send ACH to …"
+          />
+        </div>
       </section>
 
       <section className="space-y-3">

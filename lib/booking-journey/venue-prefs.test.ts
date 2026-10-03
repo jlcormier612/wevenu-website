@@ -69,6 +69,21 @@ describe("Venue commercial booking prefs", () => {
     assert.equal(prefs.remainingBalanceMode, "final");
   });
 
+  it("payment collection preferences accept methods + client instructions", () => {
+    const offline = normalizeCommercialBookingPrefs({
+      paymentCollection: "external",
+      clientPaymentInstructions: "  Mail checks to PO Box 12  ",
+    });
+    assert.deepEqual(offline.acceptedPaymentMethods, ["check", "cash", "ach", "other"]);
+    assert.equal(offline.clientPaymentInstructions, "Mail checks to PO Box 12");
+    const explicit = normalizeCommercialBookingPrefs({
+      acceptedPaymentMethods: ["check", "ach", "online"],
+      clientPaymentInstructions: "ACH to routing 123",
+    });
+    assert.deepEqual(explicit.acceptedPaymentMethods, ["check", "ach", "online"]);
+    assert.equal(explicit.clientPaymentInstructions, "ACH to routing 123");
+  });
+
   it("forces processOrder to agreement_first even when deposit_first is stored", () => {
     const prefs = normalizeCommercialBookingPrefs({ processOrder: "deposit_first" });
     assert.equal(prefs.processOrder, "agreement_first");

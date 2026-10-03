@@ -37,19 +37,24 @@ export function customerFacingVenueNote(input: {
 
 /**
  * Payment instructions shown once on the customer document.
- * Schedule notes win; invoice.notes only when they are genuine instructions
- * (not the system booking-commitment marker).
+ * Precedence:
+ * 1. Schedule notes (per-schedule override)
+ * 2. Invoice notes when they are genuine instructions
+ * 3. Venue Payment Collection Preferences (venue-level source of truth)
+ *
+ * System booking-commitment markers are never shown as instructions.
  */
 export function customerFacingPaymentInstructions(input: {
   scheduleNotes: string | null | undefined;
   invoiceNotes: string | null | undefined;
+  venuePaymentInstructions?: string | null | undefined;
 }): string | null {
   const schedule = input.scheduleNotes?.trim() || "";
   if (schedule) return schedule;
   const invoice = input.invoiceNotes?.trim() || "";
-  if (!invoice) return null;
-  if (isSystemBookingCommitmentNote(invoice)) return null;
-  return invoice;
+  if (invoice && !isSystemBookingCommitmentNote(invoice)) return invoice;
+  const venue = input.venuePaymentInstructions?.trim() || "";
+  return venue || null;
 }
 
 /** Customer-facing venue display name (not legal entity / businessName). */

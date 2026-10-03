@@ -13,6 +13,11 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  normalizeCommercialBookingPrefs,
+  VENUE_ACCEPTED_PAYMENT_METHODS,
+  type VenueAcceptedPaymentMethod,
+} from "@/lib/booking-journey/venue-prefs";
 import { selectCanonicalPaymentSchedules, type PortalPaymentScheduleLike } from "@/lib/portal/payment-schedules";
 import { venueToday } from "@/lib/venue/timezone";
 
@@ -28,6 +33,8 @@ export async function GET(request: Request) {
   // Same readiness rule as get_portal_checkout_context — surface before Pay is clickable.
   let onlinePaymentsReady = false;
   let businessToday: string | null = null;
+  let offlinePaymentMethods: { value: string; label: string }[] = [];
+  let offlinePaymentInstructions: string | null = null;
   try {
     const { createAdminClient } = await import("@/integrations/supabase/admin");
     const admin = createAdminClient();
@@ -39,13 +46,16 @@ export async function GET(request: Request) {
     if (session?.venue_id) {
       const { data: venue } = await admin
         .from("venues")
-        .select("stripe_account_id, stripe_onboarding_status, stripe_charges_enabled, timezone")
+        .select(
+          "stripe_account_id, stripe_onboarding_status, stripe_charges_enabled, timezone, commercial_booking_prefs",
+        )
         .eq("id", session.venue_id)
         .maybeSingle<{
           stripe_account_id: string | null;
           stripe_onboarding_status: string | null;
           stripe_charges_enabled: boolean | null;
           timezone: string | null;
+          commercial_booking_prefs: unknown;
         }>();
       onlinePaymentsReady = Boolean(
         venue?.stripe_account_id &&
@@ -55,6 +65,15 @@ export async function GET(request: Request) {
       if (venue?.timezone) {
         businessToday = venueToday(venue.timezone);
       }
+      const prefs = normalizeCommercialBookingPrefs(venue?.commercial_booking_prefs);
+      offlinePaymentInstructions = prefs.clientPaymentInstructions;
+      const offline: VenueAcceptedPaymentMethod[] = prefs.acceptedPaymentMethods.filter(
+        (m) => m !== "online",
+      );
+      offlinePaymentMethods = offline.map((value) => ({
+        value,
+        label: VENUE_ACCEPTED_PAYMENT_METHODS.find((m) => m.value === value)?.label ?? value,
+      }));
     }
   } catch {
     onlinePaymentsReady = false;
@@ -65,5 +84,7 @@ export async function GET(request: Request) {
     schedules: selectCanonicalPaymentSchedules(payload.schedules ?? []),
     onlinePaymentsReady,
     businessToday,
+    offlinePaymentMethods,
+    offlinePaymentInstructions,
   });
 }

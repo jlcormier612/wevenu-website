@@ -6,7 +6,9 @@ import {
   computeCancelledPlanAmount,
   computeInvoiceBalanceDue,
   computeNetPaid,
+  deriveInvoicePaymentStatus,
 } from "@/lib/payments/invoice-balance";
+import { paymentPlanOverview } from "@/lib/payments/constants";
 import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
 
 const deposit = (overrides: Partial<{ status: string; paidAmount: number; refundedAmount: number }> = {}) => ({
@@ -133,5 +135,64 @@ describe("invoice balance after payment-plan cancellation", () => {
     assert.equal(portal.planTotal, 800);
     assert.ok(!portal.planTotal.toString().includes("2400"));
     assert.equal(computeActivePlanTotal(lines), 800);
+  });
+});
+
+describe("partial payment invoice status + plan overview", () => {
+  it("$8k of $32k is Partially Paid — never Paid", () => {
+    const lines = [
+      { amount: 8000, status: "paid", paidAmount: 8000, refundedAmount: 0 },
+      { amount: 8000, status: "pending", paidAmount: null, refundedAmount: null },
+      { amount: 8000, status: "pending", paidAmount: null, refundedAmount: null },
+      { amount: 8000, status: "pending", paidAmount: null, refundedAmount: null },
+    ];
+    const balanceDue = computeInvoiceBalanceDue(32000, lines);
+    const netPaid = computeNetPaid(lines);
+    assert.equal(netPaid, 8000);
+    assert.equal(balanceDue, 24000);
+    assert.equal(
+      deriveInvoicePaymentStatus({
+        balanceDue,
+        netPaid,
+        currentStatus: "sent",
+      }),
+      "partially_paid",
+    );
+    const overview = paymentPlanOverview({
+      invoiceStatus: "partially_paid",
+      items: lines.map((l) => ({
+        status: l.status as "paid" | "pending",
+        amount: l.amount,
+        paidAmount: l.paidAmount,
+      })),
+    });
+    assert.equal(overview.invoiceLabel, "Partially Paid");
+    assert.equal(overview.paidInstallments, 1);
+    assert.equal(overview.totalInstallments, 4);
+    assert.equal(overview.paidAmount, 8000);
+    assert.equal(overview.remainingAmount, 24000);
+    assert.match(overview.summaryLine, /Partially Paid/);
+    assert.match(overview.summaryLine, /1 of 4 installments paid/);
+  });
+
+  it("final payment reaches Paid with zero balance", () => {
+    const lines = [
+      { amount: 8000, status: "paid", paidAmount: 8000, refundedAmount: 0 },
+      { amount: 8000, status: "paid", paidAmount: 8000, refundedAmount: 0 },
+      { amount: 8000, status: "paid", paidAmount: 8000, refundedAmount: 0 },
+      { amount: 8000, status: "paid", paidAmount: 8000, refundedAmount: 0 },
+    ];
+    const balanceDue = computeInvoiceBalanceDue(32000, lines);
+    const netPaid = computeNetPaid(lines);
+    assert.equal(balanceDue, 0);
+    assert.equal(netPaid, 32000);
+    assert.equal(
+      deriveInvoicePaymentStatus({
+        balanceDue,
+        netPaid,
+        currentStatus: "partially_paid",
+      }),
+      "paid",
+    );
   });
 });

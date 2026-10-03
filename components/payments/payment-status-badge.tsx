@@ -6,6 +6,7 @@ const VARIANT: Record<PaymentItemStatus, BadgeVariant> = {
   pending:            "muted",
   processing:         "default",
   overdue:            "destructive",
+  partially_paid:     "warning",
   paid:               "success",
   cancelled:          "outline",
   partially_refunded: "warning",

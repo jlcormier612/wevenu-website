@@ -44,4 +44,12 @@ describe("manual installment selection", () => {
       null,
     );
   });
+
+  it("prefers a partially paid installment over the next pending line", () => {
+    const picked = selectCurrentUnpaidInstallment([
+      { id: "partial", status: "partially_paid", dueDate: "2026-10-01", amount: 8000, paidAmount: 3000 },
+      { id: "next", status: "pending", dueDate: "2026-11-01", amount: 8000 },
+    ]);
+    assert.equal(picked?.id, "partial");
+  });
 });

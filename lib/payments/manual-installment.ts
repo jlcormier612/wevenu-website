@@ -9,6 +9,8 @@ export type ManualInstallmentCandidate = {
   status: string;
   dueDate: string | null;
   amount: number;
+  paidAmount?: number | null;
+  label?: string | null;
   stripePaymentIntentId?: string | null;
 };
 
@@ -18,17 +20,40 @@ function byDue(a: ManualInstallmentCandidate, b: ManualInstallmentCandidate): nu
   return ad.localeCompare(bd);
 }
 
-/** Overdue installment first, otherwise the next unpaid pending line. */
+/** Open installments that can still accept offline money. */
+export function isOpenOfflineInstallment(status: string): boolean {
+  return status === "overdue" || status === "pending" || status === "partially_paid";
+}
+
+/** Remaining dollars still owed on an installment. */
+export function installmentRemainingAmount(line: {
+  amount: number;
+  status: string;
+  paidAmount?: number | null;
+}): number {
+  const due = Number(line.amount);
+  if (line.status === "paid") return 0;
+  if (line.status === "partially_paid") {
+    return Math.max(0, Math.round((due - Number(line.paidAmount ?? 0)) * 100) / 100);
+  }
+  return due;
+}
+
+/**
+ * Overdue installment first, otherwise the next open pending/partial line.
+ * Used only as the default selection for a deliberate recording flow —
+ * never as a silent one-click target that can advance across installments.
+ */
 export function selectCurrentUnpaidInstallment(
   lines: readonly ManualInstallmentCandidate[],
 ): ManualInstallmentCandidate | null {
   const open = lines.filter(
-    (l) =>
-      (l.status === "overdue" || l.status === "pending")
-      && !l.stripePaymentIntentId,
+    (l) => isOpenOfflineInstallment(l.status) && !l.stripePaymentIntentId,
   );
   const overdue = open.filter((l) => l.status === "overdue").sort(byDue);
   if (overdue[0]) return overdue[0];
+  const partial = open.filter((l) => l.status === "partially_paid").sort(byDue);
+  if (partial[0]) return partial[0];
   const pending = open.filter((l) => l.status === "pending").sort(byDue);
   return pending[0] ?? null;
 }

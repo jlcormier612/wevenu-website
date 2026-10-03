@@ -455,13 +455,20 @@ async function fetchPortalPayments(token: string): Promise<{
   schedules: PortalPaymentSchedule[];
   invoices: PortalInvoiceRow[];
   onlinePaymentsReady: boolean;
+  offlinePaymentMethods: Array<{ value: string; label: string }>;
+  offlinePaymentInstructions: string | null;
 }> {
   const res = await fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`);
-  const data = await res.json() as PortalPaymentsPayload;
+  const data = await res.json() as PortalPaymentsPayload & {
+    offlinePaymentMethods?: Array<{ value: string; label: string }>;
+    offlinePaymentInstructions?: string | null;
+  };
   return {
     schedules: data.schedules ?? [],
     invoices: data.invoices ?? [],
     onlinePaymentsReady: data.onlinePaymentsReady === true,
+    offlinePaymentMethods: data.offlinePaymentMethods ?? [],
+    offlinePaymentInstructions: data.offlinePaymentInstructions ?? null,
   };
 }
 
@@ -469,6 +476,10 @@ export function PaymentSection({ token }: { token: string }) {
   const [schedules, setSchedules] = React.useState<PortalPaymentSchedule[] | null>(null);
   const [invoices, setInvoices] = React.useState<PortalInvoiceRow[]>([]);
   const [onlinePaymentsReady, setOnlinePaymentsReady] = React.useState(false);
+  const [offlinePaymentMethods, setOfflinePaymentMethods] = React.useState<
+    Array<{ value: string; label: string }>
+  >([]);
+  const [offlinePaymentInstructions, setOfflinePaymentInstructions] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [checkoutReturn, setCheckoutReturn] = React.useState<"success" | "cancelled" | null>(null);
   const [checkoutBaseline, setCheckoutBaseline] = React.useState<CheckoutBaseline | null>(null);
@@ -503,12 +514,16 @@ export function PaymentSection({ token }: { token: string }) {
         setSchedules(next.schedules);
         setInvoices(next.invoices);
         setOnlinePaymentsReady(next.onlinePaymentsReady);
+        setOfflinePaymentMethods(next.offlinePaymentMethods);
+        setOfflinePaymentInstructions(next.offlinePaymentInstructions);
       })
       .catch(() => {
         if (cancelled) return;
         setSchedules([]);
         setInvoices([]);
         setOnlinePaymentsReady(false);
+        setOfflinePaymentMethods([]);
+        setOfflinePaymentInstructions(null);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -538,6 +553,8 @@ export function PaymentSection({ token }: { token: string }) {
           setSchedules(next.schedules);
           setInvoices(next.invoices);
           setOnlinePaymentsReady(next.onlinePaymentsReady);
+          setOfflinePaymentMethods(next.offlinePaymentMethods);
+          setOfflinePaymentInstructions(next.offlinePaymentInstructions);
         }
       } catch {
         // Keep the current notice; next interval retries.
@@ -669,6 +686,26 @@ export function PaymentSection({ token }: { token: string }) {
           What you&apos;ve paid, what&apos;s next, and how to pay.
         </p>
       </div>
+
+      {!onlinePaymentsReady && (offlinePaymentMethods.length > 0 || offlinePaymentInstructions) && (
+        <div
+          className="rounded-xl px-4 py-3 space-y-2"
+          style={{ background: "#FAFAF9", border: "1px solid #E8E2D8" }}
+        >
+          <p className="text-sm font-semibold text-heading">How to pay</p>
+          {offlinePaymentMethods.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Accepted methods:{" "}
+              {offlinePaymentMethods.map((m) => m.label).join(", ").replace(/, ([^,]*)$/, ", and $1")}.
+            </p>
+          )}
+          {offlinePaymentInstructions?.trim() && (
+            <p className="whitespace-pre-line text-sm text-foreground">
+              {offlinePaymentInstructions.trim()}
+            </p>
+          )}
+        </div>
+      )}
 
       {scheduleList.map((row) => {
         const rowPaid = settledPaidTotal(row.lineItems);

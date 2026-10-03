@@ -91,6 +91,17 @@ describe("payment document note provenance", () => {
     );
   });
 
+  it("6. venue payment collection preferences fill instructions when invoice notes are system metadata", () => {
+    assert.equal(
+      customerFacingPaymentInstructions({
+        scheduleNotes: null,
+        invoiceNotes: SYSTEM,
+        venuePaymentInstructions: "Mail checks to PO Box 12",
+      }),
+      "Mail checks to PO Box 12",
+    );
+  });
+
   it("identical instructions + notes collapse Notes section", () => {
     assert.equal(
       customerFacingVenueNote({

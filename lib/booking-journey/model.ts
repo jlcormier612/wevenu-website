@@ -81,7 +81,9 @@ export type JourneyPaymentLine = {
   obligationKind: PaymentObligationKind | null;
   status: PaymentItemStatus;
   amount: number;
+  paidAmount?: number | null;
   dueDate?: string | null;
+  label?: string | null;
 };
 
 export type JourneyInputs = {

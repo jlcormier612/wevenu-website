@@ -26,7 +26,13 @@ export function computeCancelledPlanAmount(items: readonly BalanceLine[]): numbe
 /** Net retained collections — same rules as computeTotalPaid / portal. */
 export function computeNetPaid(items: readonly BalanceLine[]): number {
   return items
-    .filter((i) => i.status === "paid" || i.status === "partially_refunded" || i.status === "refunded")
+    .filter(
+      (i) =>
+        i.status === "paid"
+        || i.status === "partially_paid"
+        || i.status === "partially_refunded"
+        || i.status === "refunded",
+    )
     .reduce((sum, i) => {
       const paid = i.paidAmount != null ? Number(i.paidAmount) : Number(i.amount);
       const refunded = Number(i.refundedAmount ?? 0);
@@ -53,4 +59,30 @@ export function computeInvoiceBalanceDue(
   const cancelled = computeCancelledPlanAmount(scheduleLines);
   const netPaid = computeNetPaid(scheduleLines);
   return Math.max(0, Number(invoiceTotal) - cancelled - netPaid);
+}
+
+/**
+ * Authoritative invoice payment status from balance + net paid.
+ * - paid: balance is zero
+ * - partially_paid: some money retained and balance remains
+ * - otherwise leave the prior non-terminal status (typically sent)
+ *
+ * Never marks Paid when a balance remains.
+ */
+export function deriveInvoicePaymentStatus(input: {
+  balanceDue: number;
+  netPaid: number;
+  currentStatus: string;
+}): "paid" | "partially_paid" | "sent" | null {
+  const balanceDue = Number(input.balanceDue);
+  const netPaid = Number(input.netPaid);
+  if (input.currentStatus === "void" || input.currentStatus === "draft") {
+    return null;
+  }
+  if (balanceDue <= 0) return "paid";
+  if (netPaid > 0) return "partially_paid";
+  if (input.currentStatus === "paid" || input.currentStatus === "partially_paid") {
+    return "sent";
+  }
+  return null;
 }

@@ -3,7 +3,15 @@
  */
 
 /** "processing" — an ACH bank debit that's been initiated but hasn't settled yet (Stripe Connect, Sprint 4). Card payments go straight pending -> paid and never pass through it. */
-export type PaymentItemStatus = "pending" | "processing" | "overdue" | "paid" | "cancelled" | "partially_refunded" | "refunded";
+export type PaymentItemStatus =
+  | "pending"
+  | "processing"
+  | "overdue"
+  | "partially_paid"
+  | "paid"
+  | "cancelled"
+  | "partially_refunded"
+  | "refunded";
 
 /**
  * Authoritative role for a schedule line — set at creation from presets /
@@ -131,6 +139,26 @@ export type MarkPaidInput = {
   referenceNumber: string;
   paidDate: string;
   notes: string;
+  /**
+   * Optional client idempotency key. Identical retries for the same unpaid
+   * installment must not create a second financial movement.
+   */
+  idempotencyKey?: string;
+};
+
+export type OfflinePaymentRecordResult = {
+  itemId: string;
+  itemLabel: string;
+  amountRecorded: number;
+  installmentStatus: PaymentItemStatus;
+  installmentRemaining: number;
+  invoiceStatus: string | null;
+  invoiceBalanceDue: number | null;
+  planPaidInstallments: number;
+  planTotalInstallments: number;
+  planPaidAmount: number;
+  planRemainingAmount: number;
+  alreadyRecorded?: boolean;
 };
 
 export type PaymentErrors = Record<string, string>;
@@ -144,6 +172,8 @@ export type PaymentActionResult =
       obligationCelebrated?: boolean;
       /** Canonical booking transition just succeeded — celebrate once. */
       bookingCelebration?: { clientId: string; eventId: string };
+      /** Explicit offline recording summary for UI confirmation. */
+      offlineRecord?: OfflinePaymentRecordResult;
     }
   | { ok: false; errors?: PaymentErrors; message?: string };
 

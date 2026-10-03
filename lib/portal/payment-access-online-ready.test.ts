@@ -14,12 +14,22 @@ describe("payment-access online payments readiness", () => {
   it("payment access shell does not show actionable Pay when online payments are not ready", () => {
     const shell = readFileSync(resolve("components/portal/payment-access-shell.tsx"), "utf8");
     assert.match(shell, /onlinePaymentsReady/);
-    assert.match(shell, /Online payments unavailable/);
+    assert.match(shell, /How to pay/);
+    assert.match(shell, /offlinePaymentInstructions/);
     assert.match(shell, /canPayOnline/);
+    assert.doesNotMatch(shell, /Online payments unavailable/);
     assert.doesNotMatch(
       shell,
       /disabled=\{paying \|\| !nextOpen\}/,
     );
+  });
+
+  it("payments API surfaces offline methods and instructions from venue prefs", () => {
+    const route = readFileSync(resolve("app/api/portal/payments/route.ts"), "utf8");
+    assert.match(route, /offlinePaymentMethods/);
+    assert.match(route, /offlinePaymentInstructions/);
+    assert.match(route, /normalizeCommercialBookingPrefs/);
+    assert.match(route, /clientPaymentInstructions/);
   });
 
   it("portal payment section only renders Pay now when online payments are ready", () => {

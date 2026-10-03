@@ -11,7 +11,11 @@ import type {
   PaymentScheduleWithDetails,
 } from "@/lib/payments/types";
 import { computeTotalPaid, deriveScheduleStatus } from "@/lib/payments/constants";
-import { computeInvoiceBalanceDue } from "@/lib/payments/invoice-balance";
+import {
+  computeInvoiceBalanceDue,
+  computeNetPaid,
+  deriveInvoicePaymentStatus,
+} from "@/lib/payments/invoice-balance";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -275,27 +279,137 @@ export async function markItemPaid(
   venueId: string,
   itemId: string,
   input: MarkPaidInput,
-): Promise<{ ok: true } | { ok: false; message: string }> {
+): Promise<
+  | {
+      ok: true;
+      alreadyRecorded?: boolean;
+      amountRecorded: number;
+      newStatus: "partially_paid" | "paid";
+      paidAmountTotal: number;
+      installmentRemaining: number;
+      label: string;
+      amount: number;
+    }
+  | { ok: false; message: string }
+> {
   const { data: item } = await client.from("payment_line_items")
-    .select("status").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
-  if (item?.status === "paid") {
-    return { ok: false, message: "This payment has already been marked as received." };
-  }
-  if (item?.status === "cancelled") {
+    .select("id, status, amount, paid_amount, label, payment_method, reference_number, notes, offline_idempotency_key")
+    .eq("id", itemId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{
+      id: string;
+      status: string;
+      amount: number;
+      paid_amount: number | null;
+      label: string;
+      payment_method: string | null;
+      reference_number: string | null;
+      notes: string | null;
+      offline_idempotency_key: string | null;
+    }>();
+  if (!item) return { ok: false, message: "Payment installment not found." };
+  if (item.status === "cancelled") {
     return { ok: false, message: "This payment was cancelled and can't be marked as received." };
   }
+  if (item.status === "processing") {
+    return { ok: false, message: "An online payment is already in progress for this installment." };
+  }
+
+  const idempotencyKey = input.idempotencyKey?.trim() || "";
+  if (idempotencyKey && item.offline_idempotency_key === idempotencyKey) {
+    const due = Number(item.amount);
+    const paidTotal = Number(item.paid_amount ?? (item.status === "paid" ? due : 0));
+    const remaining = Math.max(0, Math.round((due - paidTotal) * 100) / 100);
+    return {
+      ok: true,
+      alreadyRecorded: true,
+      amountRecorded: 0,
+      newStatus: item.status === "paid" ? "paid" : "partially_paid",
+      paidAmountTotal: paidTotal,
+      installmentRemaining: remaining,
+      label: item.label,
+      amount: due,
+    };
+  }
+
+  if (item.status === "paid") {
+    // Idempotent: identical retry after success must not create another movement.
+    return {
+      ok: true,
+      alreadyRecorded: true,
+      amountRecorded: 0,
+      newStatus: "paid",
+      paidAmountTotal: Number(item.paid_amount ?? item.amount),
+      installmentRemaining: 0,
+      label: item.label,
+      amount: Number(item.amount),
+    };
+  }
+  if (!["pending", "overdue", "partially_paid"].includes(item.status)) {
+    return { ok: false, message: "This installment cannot accept a payment in its current state." };
+  }
+
+  const incoming = parseFloat(input.paidAmount.replace(/[$,]/g, ""));
+  if (!Number.isFinite(incoming) || incoming <= 0) {
+    return { ok: false, message: "Enter a valid amount greater than zero." };
+  }
+  const priorPaid = item.status === "partially_paid" ? Number(item.paid_amount ?? 0) : 0;
+  const due = Number(item.amount);
+  const remainingBefore = Math.max(0, due - priorPaid);
+  if (incoming - remainingBefore > 0.009) {
+    return {
+      ok: false,
+      message: `This installment only has $${remainingBefore.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining.`,
+    };
+  }
+  const paidAmountTotal = Math.round((priorPaid + incoming) * 100) / 100;
+  const fullyPaid = paidAmountTotal >= due - 0.009;
+  const newStatus: "partially_paid" | "paid" = fullyPaid ? "paid" : "partially_paid";
+  const installmentRemaining = Math.max(0, Math.round((due - paidAmountTotal) * 100) / 100);
+
+  // Optimistic lock on current status (+ paid_amount for partials) so concurrent
+  // double-submit cannot both apply money. Idempotency key stored on success.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("payment_line_items") as any)
+  let query = (client.from("payment_line_items") as any)
     .update({
-      status: "paid",
+      status: newStatus,
       paid_at: input.paidDate ? new Date(input.paidDate).toISOString() : new Date().toISOString(),
-      paid_amount: parseFloat(input.paidAmount.replace(/[$,]/g, "")),
+      paid_amount: fullyPaid ? due : paidAmountTotal,
       payment_method: input.paymentMethod || null,
       reference_number: input.referenceNumber.trim() || null,
       notes: input.notes.trim() || null,
-    }).eq("id", itemId).eq("venue_id", venueId);
+      ...(idempotencyKey ? { offline_idempotency_key: idempotencyKey } : {}),
+    })
+    .eq("id", itemId)
+    .eq("venue_id", venueId)
+    .eq("status", item.status);
+  if (item.status === "partially_paid") {
+    query = query.eq("paid_amount", priorPaid);
+  }
+  const { data: updated, error } = await query.select("id").maybeSingle();
   if (error) throw error;
-  return { ok: true };
+  if (!updated) {
+    // Lost the race to another successful write — treat as already recorded.
+    return {
+      ok: true,
+      alreadyRecorded: true,
+      amountRecorded: 0,
+      newStatus: fullyPaid ? "paid" : "partially_paid",
+      paidAmountTotal: fullyPaid ? due : paidAmountTotal,
+      installmentRemaining: fullyPaid ? 0 : installmentRemaining,
+      label: item.label,
+      amount: due,
+    };
+  }
+  return {
+    ok: true,
+    amountRecorded: incoming,
+    newStatus,
+    paidAmountTotal: fullyPaid ? due : paidAmountTotal,
+    installmentRemaining,
+    label: item.label,
+    amount: due,
+  };
 }
 
 /**
@@ -430,13 +544,14 @@ export async function reconcileInvoiceBalance(client: DbClient, venueId: string,
   }));
 
   const balanceDue = computeInvoiceBalanceDue(Number(inv.total), lines);
+  const netPaid = computeNetPaid(lines);
   const patch: Record<string, unknown> = { balance_due: balanceDue };
-  if (balanceDue <= 0) {
-    patch.status = "paid";
-  } else if (inv.status === "paid") {
-    // Refund (or cancel unwind) restored an amount owed — leave void alone.
-    patch.status = "sent";
-  }
+  const nextStatus = deriveInvoicePaymentStatus({
+    balanceDue,
+    netPaid,
+    currentStatus: inv.status,
+  });
+  if (nextStatus) patch.status = nextStatus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("invoices") as any).update(patch).eq("id", invoiceId).eq("venue_id", venueId);
 }

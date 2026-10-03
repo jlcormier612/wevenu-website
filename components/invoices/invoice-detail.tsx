@@ -9,7 +9,6 @@ import { toast } from "sonner";
 
 import {
   previewInvoiceAndPaymentPlanAction,
-  recordInvoiceInstallmentReceivedAction,
   sendInvoiceAndPaymentPlanAction,
   updateInvoiceDisplayNameAction,
   updateInvoiceStatusAction,
@@ -20,6 +19,7 @@ import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
+import { RecordOfflinePaymentDialog } from "@/components/invoices/record-offline-payment-dialog";
 import { PaymentPlanEditor, PaymentPlanNeedsReview } from "@/components/payments/payment-plan-editor";
 import { InvoicePrintDocument } from "@/components/invoices/invoice-print-document";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, invoiceLineTypesForVenue, invoiceStatusLabel, taxableAmountBeforeTax } from "@/lib/invoices/constants";
+import { paymentPlanOverview } from "@/lib/payments/constants";
 import {
   planTotalsReconcile,
   scheduleHasPaymentActivity,
@@ -50,6 +51,7 @@ import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: string } | null> = {
   draft: { next: "sent",  label: "Mark as issued" },
   sent:  { next: "paid",  label: "Mark as Paid" },
+  partially_paid: null, // payment recording uses the deliberate offline dialog
   paid:  null,
   void:  null,
 };
@@ -57,7 +59,11 @@ const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: st
 // Same "whose turn" question Contracts/Questionnaires/Messaging already
 // answer, generalized here (BA4, Step 1C).
 const INVOICE_WAITING_ON: Record<InvoiceStatus, WaitingOn> = {
-  draft: "venue", sent: "client", paid: "completed", void: "none",
+  draft: "venue",
+  sent: "client",
+  partially_paid: "client",
+  paid: "completed",
+  void: "none",
 };
 
 export function InvoiceDetail({
@@ -137,6 +143,7 @@ export function InvoiceDetail({
   }, [paymentRequestAlreadySent]);
   const [editingPlan, setEditingPlan] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
+  const [recordPaymentOpen, setRecordPaymentOpen] = React.useState(false);
   const humanTitle = invoiceHumanLabel({
     displayName: invoice.displayName,
     invoiceNumber: invoice.invoiceNumber,
@@ -161,6 +168,26 @@ export function InvoiceDetail({
   const planHasActivity = Boolean(
     scheduleLines && scheduleHasPaymentActivity(scheduleLines, status),
   );
+  const planOverview = scheduleLines && scheduleLines.length > 0
+    ? paymentPlanOverview({
+        invoiceStatus: status,
+        items: scheduleLines.map((l) => ({
+          status: l.status as import("@/lib/payments/types").PaymentItemStatus,
+          amount: l.amount,
+          paidAmount: l.paidAmount ?? null,
+        })),
+      })
+    : null;
+  const hasOpenOfflineInstallment = Boolean(
+    scheduleLines?.some((l) =>
+      (l.status === "pending" || l.status === "overdue" || l.status === "partially_paid")
+      && !l.stripePaymentIntentId
+    ),
+  );
+  const showRecordPayment =
+    Boolean(linkedScheduleId)
+    && hasOpenOfflineInstallment
+    && (status === "sent" || status === "partially_paid");
 
   function saveDisplayName() {
     startName(async () => {
@@ -229,17 +256,11 @@ export function InvoiceDetail({
   }
 
   function handleStatusChange(next: InvoiceStatus) {
+    if (next === "paid" && linkedScheduleId) {
+      setRecordPaymentOpen(true);
+      return;
+    }
     startTransition(async () => {
-      if (next === "paid" && linkedScheduleId) {
-        const recorded = await recordInvoiceInstallmentReceivedAction(invoice.id);
-        if (recorded.ok) {
-          toast.success("Payment recorded.");
-          router.refresh();
-        } else {
-          toast.error(recorded.message ?? "Could not record this payment.");
-        }
-        return;
-      }
       const result = await updateInvoiceStatusAction(invoice.id, next);
       if (result.ok) { setStatus(next); toast.success(`Invoice marked as ${invoiceStatusLabel(next)}.`); router.refresh(); }
       else toast.error(result.message ?? "Could not update status.");
@@ -248,6 +269,13 @@ export function InvoiceDetail({
 
   return (
     <div className="space-y-6">
+      <RecordOfflinePaymentDialog
+        invoiceId={invoice.id}
+        open={recordPaymentOpen}
+        onOpenChange={setRecordPaymentOpen}
+        onRecorded={() => router.refresh()}
+        acceptedMethods={venue.commercialBookingPrefs?.acceptedPaymentMethods ?? null}
+      />
       <BusinessAssetHeader
         backHref={backNav.href}
         backLabel={backNav.label}
@@ -263,15 +291,17 @@ export function InvoiceDetail({
         primaryAction={
           status === "draft" && invoice.clientId && linkedScheduleId && !paymentRequestSent
             ? null
-            : transition && (
-          <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
-            {pending
-              ? "Updating…"
-              : transition.next === "paid" && linkedScheduleId
-                ? "Record payment received"
-                : transition.label}
-          </Button>
-            )
+            : showRecordPayment
+              ? (
+                <Button type="button" size="sm" onClick={() => setRecordPaymentOpen(true)} disabled={pending}>
+                  Record payment received
+                </Button>
+              )
+              : transition && transition.next !== "paid" ? (
+                <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
+                  {pending ? "Updating…" : transition.label}
+                </Button>
+              ) : null
         }
       />
 
@@ -528,9 +558,19 @@ export function InvoiceDetail({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium text-heading">Payment plan</p>
-                    <p className="text-xs text-muted-foreground">
-                      Complete schedule for this booking. Preview shows what the client will receive. Send issues it and emails them — including a pay-now link when a payment is due now.
-                    </p>
+                    {planOverview ? (
+                      <p className="text-xs text-muted-foreground">
+                        {planOverview.paidInstallments} of {planOverview.totalInstallments} paid
+                        {" · "}
+                        {formatCurrency(planOverview.paidAmount)} paid
+                        {" · "}
+                        {formatCurrency(planOverview.remainingAmount)} remaining
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Complete schedule for this booking. Preview shows what the client will receive. Send issues it and emails them — including a pay-now link when a payment is due now.
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {!planHasActivity && (
@@ -684,6 +724,9 @@ export function InvoiceDetail({
             cancelledPlanAmount={cancelledPlanAmount}
             scheduleLines={scheduleLines}
             paymentInstructions={scheduleNotes ?? invoice.notes}
+            venuePaymentInstructions={
+              venue.commercialBookingPrefs?.clientPaymentInstructions ?? null
+            }
           />
         </div>
       </ArtifactReviewOverlay>
@@ -726,6 +769,9 @@ export function InvoiceDetail({
               cancelledPlanAmount={cancelledPlanAmount}
               scheduleLines={scheduleLines}
               paymentInstructions={scheduleNotes ?? invoice.notes}
+              venuePaymentInstructions={
+                venue.commercialBookingPrefs?.clientPaymentInstructions ?? null
+              }
             />
           </div>
         </div>

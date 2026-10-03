@@ -13,7 +13,11 @@ import {
   updateInvoiceDisplayName,
   updateInvoiceStatus,
 } from "@/lib/invoices/service";
-import { recordInvoiceInstallmentReceived } from "@/lib/payments/service";
+import {
+  listInvoiceOfflineInstallments,
+  recordOfflineInstallmentPayment,
+} from "@/lib/payments/service";
+import type { OfflinePaymentRecordResult } from "@/lib/payments/types";
 import type {
   AddLineItemResult,
   CreateInvoiceResult,
@@ -285,20 +289,52 @@ export async function previewInvoiceDocumentCopyAction(
   return { ok: true, preview: result.preview };
 }
 
-/** Record the current unpaid installment as received offline. Does not flip invoice status on its own. */
-export async function recordInvoiceInstallmentReceivedAction(
-  invoiceId: string,
-): Promise<InvoiceActionResult> {
-  const result = await recordInvoiceInstallmentReceived(invoiceId);
+/** Open installments for the deliberate offline recording dialog. */
+export async function listInvoiceOfflineInstallmentsAction(invoiceId: string) {
+  return listInvoiceOfflineInstallments(invoiceId);
+}
+
+/**
+ * Record offline payment against an explicit installment.
+ * Replaces the former one-click recordInvoiceInstallmentReceivedAction.
+ */
+export async function recordOfflineInstallmentPaymentAction(input: {
+  invoiceId: string;
+  scheduleId: string;
+  itemId: string;
+  paidAmount: string;
+  paymentMethod: string;
+  referenceNumber?: string;
+  paidDate: string;
+  notes?: string;
+  idempotencyKey?: string;
+}): Promise<
+  | { ok: true; offlineRecord?: OfflinePaymentRecordResult }
+  | { ok: false; message: string }
+> {
+  const result = await recordOfflineInstallmentPayment({
+    invoiceId: input.invoiceId,
+    scheduleId: input.scheduleId,
+    itemId: input.itemId,
+    paidAmount: input.paidAmount,
+    paymentMethod: input.paymentMethod,
+    referenceNumber: input.referenceNumber,
+    paidDate: input.paidDate,
+    notes: input.notes,
+    idempotencyKey: input.idempotencyKey,
+  });
   if (!result.ok) {
     const message = "message" in result && result.message
       ? result.message
-      : "Could not record this payment.";
+      : result.errors
+        ? Object.values(result.errors)[0] ?? "Could not record this payment."
+        : "Could not record this payment.";
     return { ok: false, message };
   }
-  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath(`/invoices/${input.invoiceId}`);
   revalidatePath("/invoices");
+  revalidatePath(`/payments/${input.scheduleId}`);
   revalidatePath("/payments");
   revalidatePath("/clients");
-  return { ok: true };
+  return { ok: true, offlineRecord: result.offlineRecord };
 }

@@ -52,6 +52,10 @@ type SchedulePayload = {
   onlinePaymentsReady?: boolean;
   /** Venue-local calendar date for amount-due-now gating. */
   businessToday?: string | null;
+  /** Offline/manual methods from Venue Payment Collection Preferences. */
+  offlinePaymentMethods?: Array<{ value: string; label: string }>;
+  /** Client-facing payment instructions from venue prefs. */
+  offlinePaymentInstructions?: string | null;
 };
 
 function isClosed(status: string): boolean {
@@ -359,11 +363,30 @@ export function PaymentAccessShell({
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 {!onlinePaymentsReady ? (
                   <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-4">
-                    <p className="text-sm font-medium text-heading">Online payments unavailable</p>
-                    <p className="text-sm text-muted-foreground">
-                      Your venue hasn&apos;t connected online payments yet. Please contact{" "}
-                      {context.venue.name} to arrange payment.
-                    </p>
+                    <p className="text-sm font-medium text-heading">How to pay</p>
+                    {(data?.offlinePaymentMethods?.length ?? 0) > 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        {context.venue.name} accepts{" "}
+                        {data!.offlinePaymentMethods!
+                          .map((m) => m.label)
+                          .join(", ")
+                          .replace(/, ([^,]*)$/, ", and $1")}
+                        .
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {context.venue.name} collects payment outside of online checkout.
+                      </p>
+                    )}
+                    {data?.offlinePaymentInstructions?.trim() ? (
+                      <p className="whitespace-pre-line text-sm text-foreground">
+                        {data.offlinePaymentInstructions.trim()}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Contact {context.venue.name} for payment details if you need help.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <Button

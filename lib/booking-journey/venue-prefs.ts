@@ -21,6 +21,24 @@ export type AgreementMethod = "offer" | "contract" | "either";
 export type ProcessOrder = "agreement_first" | "deposit_first";
 export type PaymentCollection = "online" | "external" | "either";
 export type RemainingBalanceMode = "final" | "plan" | "varies";
+/** Venue-accepted payment methods shown to clients / used when recording offline payment. */
+export type VenueAcceptedPaymentMethod =
+  | "online"
+  | "check"
+  | "cash"
+  | "ach"
+  | "other";
+
+export const VENUE_ACCEPTED_PAYMENT_METHODS: {
+  value: VenueAcceptedPaymentMethod;
+  label: string;
+}[] = [
+  { value: "online", label: "Online payment" },
+  { value: "check", label: "Check" },
+  { value: "cash", label: "Cash" },
+  { value: "ach", label: "ACH / bank transfer" },
+  { value: "other", label: "Other / manual" },
+];
 
 export type VenueCommercialBookingPrefs = {
   /** How the venue normally sells: Proposal (offer) / Contract / Either. */
@@ -42,6 +60,16 @@ export type VenueCommercialBookingPrefs = {
    */
   initialPaymentRequired: boolean;
   paymentCollection: PaymentCollection;
+  /**
+   * Venue Payment Collection Preferences — which methods this venue accepts.
+   * Source of truth for client-facing payment instructions + offline recording.
+   */
+  acceptedPaymentMethods: VenueAcceptedPaymentMethod[];
+  /**
+   * Client-facing instructions for how to pay (check address, ACH details, etc.).
+   * Shown on invoices / payment obligations; not an ad hoc per-invoice workaround.
+   */
+  clientPaymentInstructions: string | null;
   /** 0–100; used to suggest deposit when package/total is known. */
   defaultDepositPercent: number;
   remainingBalanceMode: RemainingBalanceMode;
@@ -68,6 +96,8 @@ export const DEFAULT_COMMERCIAL_BOOKING_PREFS: VenueCommercialBookingPrefs = {
   collectInitialPayment: true,
   initialPaymentRequired: true,
   paymentCollection: "either",
+  acceptedPaymentMethods: ["online", "check", "cash", "ach", "other"],
+  clientPaymentInstructions: null,
   defaultDepositPercent: 25,
   remainingBalanceMode: "final",
   defaultSchedulePresetId: null,
@@ -75,6 +105,24 @@ export const DEFAULT_COMMERCIAL_BOOKING_PREFS: VenueCommercialBookingPrefs = {
   useTaxes: false,
   useDiscounts: false,
 };
+
+function normalizeAcceptedPaymentMethods(
+  raw: unknown,
+  paymentCollection: PaymentCollection,
+): VenueAcceptedPaymentMethod[] {
+  const allowed = new Set(VENUE_ACCEPTED_PAYMENT_METHODS.map((m) => m.value));
+  if (Array.isArray(raw)) {
+    const picked = raw.filter(
+      (v): v is VenueAcceptedPaymentMethod =>
+        typeof v === "string" && allowed.has(v as VenueAcceptedPaymentMethod),
+    );
+    if (picked.length > 0) return [...new Set(picked)];
+  }
+  // Backcompat from high-level paymentCollection radio.
+  if (paymentCollection === "online") return ["online"];
+  if (paymentCollection === "external") return ["check", "cash", "ach", "other"];
+  return [...DEFAULT_COMMERCIAL_BOOKING_PREFS.acceptedPaymentMethods];
+}
 
 function asString(v: unknown): string | null {
   return typeof v === "string" ? v : null;
@@ -139,6 +187,17 @@ export function normalizeCommercialBookingPrefs(
     defaultCustomSchedule = custom;
   }
 
+  const resolvedCollection: PaymentCollection =
+    paymentCollection === "online"
+    || paymentCollection === "external"
+    || paymentCollection === "either"
+      ? paymentCollection
+      : DEFAULT_COMMERCIAL_BOOKING_PREFS.paymentCollection;
+
+  const instructionsRaw = asString(src.clientPaymentInstructions);
+  const clientPaymentInstructions =
+    instructionsRaw && instructionsRaw.trim() ? instructionsRaw.trim() : null;
+
   return {
     agreementMethod:
       agreementMethod === "offer" || agreementMethod === "contract" || agreementMethod === "either"
@@ -148,12 +207,12 @@ export function normalizeCommercialBookingPrefs(
     processOrder: "agreement_first",
     collectInitialPayment,
     initialPaymentRequired: collectInitialPayment,
-    paymentCollection:
-      paymentCollection === "online"
-      || paymentCollection === "external"
-      || paymentCollection === "either"
-        ? paymentCollection
-        : DEFAULT_COMMERCIAL_BOOKING_PREFS.paymentCollection,
+    paymentCollection: resolvedCollection,
+    acceptedPaymentMethods: normalizeAcceptedPaymentMethods(
+      src.acceptedPaymentMethods,
+      resolvedCollection,
+    ),
+    clientPaymentInstructions,
     defaultDepositPercent,
     remainingBalanceMode: remaining,
     defaultSchedulePresetId,

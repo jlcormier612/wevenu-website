@@ -20,6 +20,28 @@ const pageSrc = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8")
 const eoLinkSrc = readFileSync(resolve("components/event-orders/event-order-invoice-link.tsx"), "utf8");
 
 type Call = { table: string; method: string; args: unknown[] };
+type EqFilter = { column: string; value: unknown };
+type OrEqClause = { column: string; value: string };
+
+/** Deterministic PostgREST-style `.or("col.eq.val,col2.eq.val2")` evaluator for tests. */
+function parseOrEqPredicate(predicate: string): OrEqClause[] {
+  return predicate.split(",").map((part) => {
+    const [column, op, ...rest] = part.split(".");
+    assert.equal(op, "eq", `unsupported or-clause op in test fixture: ${part}`);
+    return { column, value: rest.join(".") };
+  });
+}
+
+function rowMatchesInvoiceFilters(
+  row: Record<string, unknown>,
+  eqFilters: EqFilter[],
+  orClauses: OrEqClause[],
+): boolean {
+  const eqOk = eqFilters.every((f) => row[f.column] === f.value);
+  if (!eqOk) return false;
+  if (orClauses.length === 0) return true;
+  return orClauses.some((c) => row[c.column] === c.value);
+}
 
 function makeClient(opts: {
   invoiceRows?: Record<string, unknown>[];
@@ -29,10 +51,20 @@ function makeClient(opts: {
   const invoiceRows = opts.invoiceRows ?? [];
   const markerRows = opts.markerRows ?? [];
 
-  function chain(table: string, terminal: () => Promise<{ data: unknown; error: null }>) {
+  function chain(
+    table: string,
+    terminal: (state: { eqFilters: EqFilter[]; orClauses: OrEqClause[] }) => Promise<{ data: unknown; error: null }>,
+  ) {
+    const eqFilters: EqFilter[] = [];
+    let orClauses: OrEqClause[] = [];
     const api: Record<string, (...a: unknown[]) => unknown> = {};
     const wrap = (method: string) => (...args: unknown[]) => {
       calls.push({ table, method, args });
+      if (method === "eq") {
+        eqFilters.push({ column: String(args[0]), value: args[1] });
+      } else if (method === "or") {
+        orClauses = parseOrEqPredicate(String(args[0]));
+      }
       return api;
     };
     api.select = wrap("select");
@@ -44,7 +76,7 @@ function makeClient(opts: {
     api.then = (...a: unknown[]) => {
       const resolveFn = a[0] as (v: unknown) => unknown;
       const rejectFn = a[1] as ((e: unknown) => unknown) | undefined;
-      return terminal().then(resolveFn, rejectFn);
+      return terminal({ eqFilters, orClauses }).then(resolveFn, rejectFn);
     };
     return api;
   }
@@ -53,7 +85,10 @@ function makeClient(opts: {
     calls,
     from(table: string) {
       if (table === "invoices") {
-        return chain(table, async () => ({ data: invoiceRows, error: null }));
+        return chain(table, async ({ eqFilters, orClauses }) => ({
+          data: invoiceRows.filter((row) => rowMatchesInvoiceFilters(row, eqFilters, orClauses)),
+          error: null,
+        }));
       }
       if (table === "invoice_line_items") {
         return chain(table, async () => ({ data: markerRows, error: null }));
@@ -126,12 +161,24 @@ function asInvoice(partial: Partial<Invoice> & Pick<Invoice, "id" | "status">): 
 }
 
 describe("Slice 3B — repository getInvoicesForClientOrEvent scope", () => {
-  it("issues client|event OR filter under venue_id", async () => {
+  it("includes client|event matches and excludes non-matches under venue_id", async () => {
     const sb = makeClient({
       invoiceRows: [
+        // 1. matching client + event_id null → included
         invoiceRow({ id: "client-only", client_id: "client-a", event_id: null }),
+        // 2. matching event + client_id null → included
         invoiceRow({ id: "event-only", client_id: null, event_id: "event-a" }),
+        // 3. both matching → included
         invoiceRow({ id: "both", client_id: "client-a", event_id: "event-a" }),
+        // 4. neither client nor event matches → excluded
+        invoiceRow({ id: "neither", client_id: "client-other", event_id: "event-other" }),
+        // 5. unrelated venue invoice → excluded (even if client|event would match)
+        invoiceRow({
+          id: "other-venue",
+          venue_id: "v2",
+          client_id: "client-a",
+          event_id: "event-a",
+        }),
       ],
     });
     const rows = await getInvoicesForClientOrEvent(sb as never, "v1", {
@@ -142,9 +189,12 @@ describe("Slice 3B — repository getInvoicesForClientOrEvent scope", () => {
     assert.ok(orCall);
     assert.equal(orCall.args[0], "client_id.eq.client-a,event_id.eq.event-a");
     assert.ok(sb.calls.some((c) => c.table === "invoices" && c.method === "eq" && c.args[0] === "venue_id" && c.args[1] === "v1"));
+
     assert.deepEqual(rows.map((r) => r.id).sort(), ["both", "client-only", "event-only"]);
     assert.equal(rows.find((r) => r.id === "client-only")?.eventId, null);
     assert.equal(rows.find((r) => r.id === "event-only")?.clientId, null);
+    assert.ok(!rows.some((r) => r.id === "neither"), "neither-matching invoice must be excluded");
+    assert.ok(!rows.some((r) => r.id === "other-venue"), "unrelated venue invoice must be excluded");
   });
 
   it("does not use client-only or event-only helpers for the workspace query", () => {

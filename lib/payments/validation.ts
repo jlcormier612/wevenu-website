@@ -43,8 +43,11 @@ export function validateMarkPaidInput(input: MarkPaidInput): PaymentErrors {
     errors.paidAmount = "Enter the amount received.";
   } else {
     const n = Number(input.paidAmount.replace(/[$,]/g, ""));
-    if (isNaN(n) || n < 0) errors.paidAmount = "Enter a valid amount.";
+    if (isNaN(n) || n <= 0) errors.paidAmount = "Enter a valid amount greater than zero.";
   }
   if (!input.paidDate) errors.paidDate = "Enter the payment date.";
+  if (!input.paymentMethod.trim()) {
+    errors.paymentMethod = "Select how this payment was received.";
+  }
   return errors;
 }

@@ -40,6 +40,7 @@ export function InvoicePrintDocument({
   cancelledPlanAmount = 0,
   scheduleLines = null,
   paymentInstructions = null,
+  venuePaymentInstructions = null,
 }: {
   invoice: InvoiceWithLineItems;
   venue: Venue;
@@ -51,8 +52,10 @@ export function InvoicePrintDocument({
   cancelledPlanAmount?: number;
   /** Complete payment plan — every installment, amount, due date, status. */
   scheduleLines?: InvoicePrintScheduleLine[] | null;
-  /** Venue-provided payment instructions (especially for external collection). */
+  /** Per-schedule / invoice override instructions. */
   paymentInstructions?: string | null;
+  /** Venue Payment Collection Preferences — client-facing instructions. */
+  venuePaymentInstructions?: string | null;
 }) {
   // Prefer branding frozen at send time; pre-existing sent invoices without a
   // snapshot fall back to live venue branding (documented — no silent backfill).
@@ -107,6 +110,7 @@ export function InvoicePrintDocument({
       ? null
       : paymentInstructions,
     invoiceNotes: invoice.notes,
+    venuePaymentInstructions,
   });
   const venueAuthoredNote = customerFacingVenueNote({
     invoiceNotes: invoice.notes,

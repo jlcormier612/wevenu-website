@@ -266,9 +266,9 @@ describe("commercial artifact states", () => {
       today: "2026-09-28",
     });
     const plan = facts.find((row) => row.key === "payment_plan");
-    assert.equal(plan?.state, "2 installments");
-    assert.match(plan?.detail ?? "", /\$4,500\.00 due today/);
-    assert.match(plan?.detail ?? "", /\$13,500\.00 due September 11, 2027/);
+    assert.equal(plan?.state, "0 of 2 paid");
+    assert.match(plan?.detail ?? "", /Initial payment — \$4,500\.00 due today/);
+    assert.match(plan?.detail ?? "", /Final payment — \$13,500\.00 due September 11, 2027/);
     const deposit = facts.find((row) => row.key === "deposit");
     assert.equal(deposit?.state, "$4,500.00 due today");
     assert.equal(deposit?.detail, "Included when you send");
@@ -285,7 +285,8 @@ describe("commercial artifact states", () => {
       today: "2026-10-02",
     });
     const plan = facts.find((row) => row.key === "payment_plan");
-    assert.match(plan?.detail ?? "", /\$400\.00 paid September 28, 2026/);
+    assert.equal(plan?.state, "1 of 1 paid");
+    assert.match(plan?.detail ?? "", /Initial payment — Paid/);
     assert.doesNotMatch(plan?.detail ?? "", /due September 28/);
   });
 

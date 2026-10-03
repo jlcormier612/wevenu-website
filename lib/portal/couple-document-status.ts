@@ -39,6 +39,9 @@ export function coupleInvoiceStatusBadge(status: string | null | undefined): Cou
   if (status === "sent") {
     return { label: invoiceStatusLabel("sent"), color: COLORS.issued };
   }
+  if (status === "partially_paid") {
+    return { label: invoiceStatusLabel("partially_paid"), color: COLORS.issued };
+  }
   if (status === "paid" || status === "draft") {
     return { label: invoiceStatusLabel(status as InvoiceStatus), color: COLORS[status === "paid" ? "paid" : "draft"] };
   }

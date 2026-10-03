@@ -204,17 +204,48 @@ export function paymentPlanFact(
       detail: null,
     };
   }
+  const paidInstallments = active.filter((line) => line.status === "paid").length;
+  const paidAmount = active.reduce((sum, line) => {
+    if (line.status === "paid" || line.status === "partially_paid" || line.status === "partially_refunded" || line.status === "refunded") {
+      return sum + (line.paidAmount ?? (line.status === "paid" ? line.amount : 0));
+    }
+    return sum;
+  }, 0);
+  const planTotal = active.reduce((sum, line) => sum + line.amount, 0);
+  const remainingAmount = Math.max(0, planTotal - paidAmount);
+  const nextOpen = active.find(
+    (line) => line.status === "overdue" || line.status === "partially_paid" || line.status === "pending",
+  );
   const installmentLines = active.map((line) => {
     const when = formatInstallmentDue(line.dueDate, today);
-    if (line.status === "paid") return `${formatCurrency(line.amount)} paid ${when}`;
-    if (line.status === "overdue") return `${formatCurrency(line.amount)} overdue · was due ${when}`;
-    return `${formatCurrency(line.amount)} due ${when}`;
+    const name = line.label?.trim() || (
+      line.obligationKind === "deposit" ? "Initial payment"
+        : line.obligationKind === "final" ? "Final payment"
+          : "Installment"
+    );
+    if (line.status === "paid") return `${name} — Paid (${formatCurrency(line.amount)})`;
+    if (line.status === "partially_paid") {
+      const received = line.paidAmount ?? 0;
+      return `${name} — ${formatCurrency(received)} paid · ${formatCurrency(Math.max(0, line.amount - received))} remaining · due ${when}`;
+    }
+    if (line.status === "overdue") return `${name} — ${formatCurrency(line.amount)} overdue · was due ${when}`;
+    return `${name} — ${formatCurrency(line.amount)} due ${when}`;
   });
+  const nextLine = nextOpen
+    ? `Next payment — Due ${formatInstallmentDue(nextOpen.dueDate, today)}`
+    : paidInstallments === active.length
+      ? "Paid in full"
+      : null;
+  const detail = [
+    `${formatCurrency(paidAmount)} paid · ${formatCurrency(remainingAmount)} remaining`,
+    ...installmentLines,
+    nextLine,
+  ].filter(Boolean).join("\n");
   return {
     key: "payment_plan",
     title: "Payment plan",
-    state: `${active.length} installment${active.length === 1 ? "" : "s"}`,
-    detail: installmentLines.join("\n"),
+    state: `${paidInstallments} of ${active.length} paid`,
+    detail,
   };
 }
 
