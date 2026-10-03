@@ -60,18 +60,22 @@ export function spacesEligibleForUse(spaces: VenueSpace[], useKey: string): Venu
 
 /**
  * Primary space for events.space_id / availability.
- * Reception is the occupancy anchor when it has a space. Ceremony is next.
- * Any other assigned use is the fallback. The same physical space may
- * appear on more than one use; we still persist one FK.
+ * Wedding family: reception → ceremony → other assigned space.
+ * Non-wedding: first assigned space in list order (relevant-use order).
+ * The same physical space may appear on more than one use; we still persist one FK.
  */
 export function primarySpaceIdFromAssignments(
   assignments: EventSpaceAssignmentInput[],
+  opts?: { weddingFamily?: boolean },
 ): string | null {
   const withSpace = assignments.filter((a) => a.spaceId.trim());
-  const reception = withSpace.find((a) => a.useKey === "reception");
-  if (reception) return reception.spaceId.trim();
-  const ceremony = withSpace.find((a) => a.useKey === "ceremony");
-  if (ceremony) return ceremony.spaceId.trim();
+  const weddingFamily = opts?.weddingFamily !== false;
+  if (weddingFamily) {
+    const reception = withSpace.find((a) => a.useKey === "reception");
+    if (reception) return reception.spaceId.trim();
+    const ceremony = withSpace.find((a) => a.useKey === "ceremony");
+    if (ceremony) return ceremony.spaceId.trim();
+  }
   return withSpace[0]?.spaceId.trim() || null;
 }
 

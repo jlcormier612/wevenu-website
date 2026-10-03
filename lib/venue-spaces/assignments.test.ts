@@ -45,8 +45,18 @@ describe("event space assignments", () => {
         { useKey: "ceremony", useLabel: "Ceremony", spaceId: "garden" },
         { useKey: "reception", useLabel: "Reception", spaceId: "barn" },
         { useKey: "cocktail_hour", useLabel: "Cocktail Hour", spaceId: "terrace" },
-      ]),
+      ], { weddingFamily: true }),
       "barn",
+    );
+  });
+
+  it("non-wedding occupancy uses the first assigned relevant space", () => {
+    assert.equal(
+      primarySpaceIdFromAssignments([
+        { useKey: "cocktail_hour", useLabel: "Cocktail Hour", spaceId: "patio" },
+        { useKey: "meeting", useLabel: "Meeting", spaceId: "barn" },
+      ], { weddingFamily: false }),
+      "patio",
     );
   });
 
@@ -82,6 +92,8 @@ describe("event space assignments", () => {
     const form = readFileSync(resolve("components/events/event-form.tsx"), "utf8");
     assert.match(form, /EventSpaceAssignmentsEditor/);
     assert.match(form, /spaceOperatingMode/);
+    assert.match(form, /relevantUsesForExperience/);
+    assert.match(form, /experience\.isWeddingSpecific/);
     const cal = readFileSync(resolve("components/calendar/calendar-view.tsx"), "utf8");
     assert.match(cal, /shouldShowCalendarSpaceFilter/);
     assert.match(cal, /venueSpaces/);

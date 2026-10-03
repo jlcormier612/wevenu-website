@@ -28,18 +28,21 @@ export function EventSpaceAssignmentsEditor({
   spaces,
   value,
   onChange,
+  uses: usesProp,
 }: {
   spaces: VenueSpace[];
   value: EventSpaceAssignmentInput[];
   onChange: (next: EventSpaceAssignmentInput[]) => void;
+  /** Relevant uses for this event. Defaults to all configured venue uses. */
+  uses?: Array<{ key: string; label: string }>;
 }) {
-  const uses = configuredUsesFromSpaces(spaces);
+  const uses = usesProp ?? configuredUsesFromSpaces(spaces);
 
   if (uses.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Configure permitted uses on your spaces in Availability settings to assign Ceremony,
-        Reception, and other uses for this event.
+        Configure permitted uses on your spaces in Availability settings to assign
+        spaces for this event.
       </p>
     );
   }

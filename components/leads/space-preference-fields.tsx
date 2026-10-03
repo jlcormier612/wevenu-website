@@ -10,18 +10,21 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { VenueSpace } from "@/lib/availability/types";
-import { ADDITIONAL_EVENT_SPACES_EXCLUDED_USE_KEYS } from "@/lib/contracts/event-spaces-merge";
-import type { LeadEventSpacePreference, LeadSpacePreferenceUseKey } from "@/lib/leads/space-preferences";
+import { resolveExperienceProfile } from "@/lib/event-experience";
+import type { LeadEventSpacePreference } from "@/lib/leads/space-preferences";
 import {
   normalizeLeadSpacePreference,
   occupancyAnchorSpaceIdFromPreferences,
-  shouldShowLeadSpacePreference,
 } from "@/lib/leads/space-preferences";
 import { spacesEligibleForUse } from "@/lib/venue-spaces/assignments";
+import {
+  allowsExternalLocation,
+  relevantUsesForExperience,
+} from "@/lib/venue-spaces/relevant-uses";
 import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
 import { labelForUseKey } from "@/lib/venue-spaces/uses";
 
-function emptyPref(useKey: LeadSpacePreferenceUseKey): LeadEventSpacePreference {
+function emptyPref(useKey: string): LeadEventSpacePreference {
   return { useKey, preferenceKind: "undecided", spaceId: null, externalLocation: null };
 }
 
@@ -38,7 +41,7 @@ function preferenceSelectValue(pref: LeadEventSpacePreference): string {
 }
 
 function preferenceFromSelectValue(
-  useKey: LeadSpacePreferenceUseKey,
+  useKey: string,
   raw: string,
   externalDraft: string,
 ): LeadEventSpacePreference {
@@ -63,12 +66,14 @@ function preferenceFromSelectValue(
 
 /**
  * Compact Lead header: WHERE is this event taking place?
- * Multi-mode only. Single-mode uses EventSpaceField separately.
+ * Multi-mode only, relevant configured uses for this event type.
+ * Single-mode / no relevant uses uses EventSpaceField separately.
  */
 export function LeadSpacePreferenceFields({
   leadId,
   spaces,
   spaceOperatingMode,
+  eventType,
   initial,
   assignments = [],
   readOnly = false,
@@ -77,43 +82,65 @@ export function LeadSpacePreferenceFields({
   leadId: string;
   spaces: VenueSpace[];
   spaceOperatingMode: SpaceOperatingMode;
+  eventType?: string | null;
   initial: LeadEventSpacePreference[];
-  /** Booked-event residual + ceremony/reception from event_space_assignments. */
   assignments?: LeadSpaceAssignmentDisplay[];
   readOnly?: boolean;
   onOccupancyAnchorChange?: (spaceId: string | null) => void;
 }) {
-  const showCeremony = shouldShowLeadSpacePreference(spaceOperatingMode, spaces, "ceremony");
-  const showReception = shouldShowLeadSpacePreference(spaceOperatingMode, spaces, "reception");
-  const [ceremony, setCeremony] = React.useState(
-    initial.find((p) => p.useKey === "ceremony") ?? emptyPref("ceremony"),
+  const profile = resolveExperienceProfile(eventType);
+  const relevant = React.useMemo(
+    () => relevantUsesForExperience(spaces, profile),
+    [spaces, profile, eventType],
   );
-  const [reception, setReception] = React.useState(
-    initial.find((p) => p.useKey === "reception") ?? emptyPref("reception"),
+  const [prefs, setPrefs] = React.useState<LeadEventSpacePreference[]>(() =>
+    relevant.map((use) => initial.find((p) => p.useKey === use.key) ?? emptyPref(use.key)),
   );
   const [pending, startTransition] = React.useTransition();
+  const relevantKey = relevant.map((use) => use.key).join(",");
 
-  const assignmentCeremony = assignments.find((a) => a.useKey === "ceremony");
-  const assignmentReception = assignments.find((a) => a.useKey === "reception");
-  const additional = assignments.filter(
-    (a) => !ADDITIONAL_EVENT_SPACES_EXCLUDED_USE_KEYS.has(a.useKey.trim()),
-  );
+  React.useEffect(() => {
+    setPrefs(relevant.map((use) => initial.find((p) => p.useKey === use.key) ?? emptyPref(use.key)));
+    // relevantKey tracks the use list; initial is the server snapshot for this lead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventType, relevantKey]);
 
-  const showCeremonyCol = readOnly ? Boolean(assignmentCeremony) : showCeremony;
-  const showReceptionCol = readOnly ? Boolean(assignmentReception) : showReception;
-  const showAdditional = additional.length > 0;
+  if (spaceOperatingMode !== "multi") return null;
 
-  if (!showCeremonyCol && !showReceptionCol && !showAdditional) return null;
+  if (readOnly) {
+    const assigned = assignments.filter((a) => a.useKey !== "event_space" && a.spaceName.trim());
+    if (assigned.length === 0) return null;
+    return (
+      <div className="w-full max-w-xl">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Space preferences
+        </p>
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+          {assigned.map((a) => (
+            <ReadOnlyColumn
+              key={`${a.useKey}:${a.spaceName}`}
+              label={labelForUseKey(a.useKey, a.useLabel)}
+              value={a.spaceName}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  function persist(nextCeremony: LeadEventSpacePreference, nextReception: LeadEventSpacePreference) {
-    const inputs = [
-      ...(showCeremony ? [nextCeremony] : []),
-      ...(showReception ? [nextReception] : []),
-    ];
-    if (inputs.some((input) => !normalizeLeadSpacePreference(input).ok)) return;
-    onOccupancyAnchorChange?.(occupancyAnchorSpaceIdFromPreferences(inputs));
+  if (relevant.length === 0) return null;
+
+  function persist(next: LeadEventSpacePreference[]) {
+    const allowedUseKeys = relevant.map((use) => use.key);
+    if (next.some((input) => !normalizeLeadSpacePreference(input, { allowedUseKeys, profile }).ok)) {
+      return;
+    }
+    onOccupancyAnchorChange?.(occupancyAnchorSpaceIdFromPreferences(next, {
+      weddingFamily: profile.isWeddingSpecific,
+      relevantUseKeys: allowedUseKeys,
+    }));
     startTransition(async () => {
-      const result = await saveLeadSpacePreferencesAction(leadId, inputs);
+      const result = await saveLeadSpacePreferencesAction(leadId, next);
       if (!result.ok) {
         toast.error(result.message ?? "Could not save space preferences.");
         return;
@@ -128,55 +155,28 @@ export function LeadSpacePreferenceFields({
         Space preferences
       </p>
       <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-        {showCeremonyCol && (
-          readOnly && assignmentCeremony ? (
-            <ReadOnlyColumn label="Ceremony" value={assignmentCeremony.spaceName} />
-          ) : (
+        {relevant.map((use) => {
+          const value = prefs.find((p) => p.useKey === use.key) ?? emptyPref(use.key);
+          return (
             <PreferenceColumn
-              label="Ceremony"
-              value={ceremony}
-              spaces={spacesEligibleForUse(spaces, "ceremony")}
+              key={use.key}
+              label={use.label}
+              value={value}
+              spaces={spacesEligibleForUse(spaces, use.key)}
+              allowExternal={allowsExternalLocation(use.key, profile)}
               disabled={pending}
-              onChange={(next) => {
-                setCeremony(next);
-                persist(next, reception);
+              onChange={(nextPref) => {
+                const next = relevant.map((u) =>
+                  u.key === nextPref.useKey
+                    ? nextPref
+                    : prefs.find((p) => p.useKey === u.key) ?? emptyPref(u.key),
+                );
+                setPrefs(next);
+                persist(next);
               }}
             />
-          )
-        )}
-        {showReceptionCol && (
-          readOnly && assignmentReception ? (
-            <ReadOnlyColumn label="Reception" value={assignmentReception.spaceName} />
-          ) : (
-            <PreferenceColumn
-              label="Reception"
-              value={reception}
-              spaces={spacesEligibleForUse(spaces, "reception")}
-              disabled={pending}
-              onChange={(next) => {
-                setReception(next);
-                persist(ceremony, next);
-              }}
-            />
-          )
-        )}
-        {showAdditional && (
-          <div className="min-w-[7.5rem] max-w-[12rem]">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Additional
-            </p>
-            <ul className="mt-1 space-y-0.5">
-              {additional.map((a) => (
-                <li key={`${a.useKey}:${a.spaceName}`} className="text-sm font-medium text-foreground leading-snug">
-                  {a.spaceName}
-                  <span className="block text-[10px] font-normal text-muted-foreground">
-                    {labelForUseKey(a.useKey, a.useLabel)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          );
+        })}
       </div>
     </div>
   );
@@ -195,12 +195,14 @@ function PreferenceColumn({
   label,
   value,
   spaces,
+  allowExternal,
   disabled,
   onChange,
 }: {
   label: string;
   value: LeadEventSpacePreference;
   spaces: VenueSpace[];
+  allowExternal: boolean;
   disabled: boolean;
   onChange: (next: LeadEventSpacePreference) => void;
 }) {
@@ -215,7 +217,7 @@ function PreferenceColumn({
       value: `space:${s.id}`,
       label: s.name,
     })),
-    { value: "external", label: "Outside the venue" },
+    ...(allowExternal ? [{ value: "external", label: "Outside the venue" }] : []),
   ];
 
   const selectValue = preferenceSelectValue(value);
@@ -229,7 +231,6 @@ function PreferenceColumn({
         value={selectValue}
         onValueChange={(raw) => {
           const next = preferenceFromSelectValue(value.useKey, raw, externalDraft);
-          // External without a name yet — keep draft editable; persist on blur.
           if (next.preferenceKind === "external" && !next.externalLocation) {
             onChange({ ...next, externalLocation: null });
             return;
@@ -247,7 +248,7 @@ function PreferenceColumn({
           ))}
         </SelectContent>
       </Select>
-      {value.preferenceKind === "external" && (
+      {allowExternal && value.preferenceKind === "external" && (
         <Input
           id={`pref-ext-${value.useKey}`}
           value={externalDraft}

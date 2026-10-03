@@ -21,6 +21,7 @@ import { startBookingFileAction } from "@/app/(app)/booking-journey/actions";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
 import { LeadSpacePreferenceFields } from "@/components/leads/space-preference-fields";
+import { relevantUsesForEventType } from "@/lib/venue-spaces/relevant-uses";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
@@ -182,6 +183,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const spaceNeededForBooked = maxSimultaneousEvents >= 2 && !!lead.eventDate;
   const spacesRequired = spaceNeededForBooked;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
+  const relevantSpaceUses = relevantUsesForEventType(spaces, lead.eventType);
+  const showUsePreferences = spaceOperatingMode === "multi" && (
+    relevantSpaceUses.length > 0 || Boolean(lead.linkedEventId && spaceAssignments.length > 0)
+  );
+  const showEventSpaceField = !showUsePreferences
+    && (spaceOperatingMode !== "multi" || relevantSpaceUses.length === 0)
+    && (spacesRequired || spaces.some((s) => s.isActive));
 
   async function handlePlannedSpaceChange(next: string) {
     const previous = bookingSpaceId;
@@ -499,11 +507,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {spaceOperatingMode === "multi" && (
+          {showUsePreferences && (
             <LeadSpacePreferenceFields
               leadId={lead.id}
               spaces={spaces}
               spaceOperatingMode={spaceOperatingMode}
+              eventType={lead.eventType}
               initial={spacePreferences}
               assignments={spaceAssignments}
               readOnly={Boolean(lead.linkedEventId)}
@@ -512,7 +521,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               }}
             />
           )}
-          {spaceOperatingMode !== "multi" && (spacesRequired || spaces.some((s) => s.isActive)) && (
+          {showEventSpaceField && (
             <div className="w-full min-w-56">
               <EventSpaceField
                 value={bookingSpaceId}

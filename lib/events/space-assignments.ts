@@ -13,6 +13,7 @@ import {
   type EventSpaceAssignment,
   type EventSpaceAssignmentInput,
 } from "@/lib/venue-spaces/assignments";
+import { resolveExperienceProfile } from "@/lib/event-experience";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type SpaceAssignmentsResult =
@@ -81,14 +82,16 @@ export async function replaceEventSpaceAssignments(
 
   const { data: event, error: eventErr } = await supabase
     .from("events")
-    .select("id")
+    .select("id, event_type")
     .eq("id", eventId)
     .eq("venue_id", venue.id)
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; event_type: string | null }>();
   if (eventErr || !event) return { ok: false, message: "Event not found." };
 
   const normalized = normalizeAssignmentInputs(assignments);
-  const primarySpaceId = primarySpaceIdFromAssignments(normalized);
+  const primarySpaceId = primarySpaceIdFromAssignments(normalized, {
+    weddingFamily: resolveExperienceProfile(event.event_type).isWeddingSpecific,
+  });
   const admin = createAdminClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

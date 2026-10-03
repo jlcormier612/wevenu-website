@@ -36,6 +36,15 @@ describe("venue-configured space uses", () => {
     );
   });
 
+  it("formats a corporate cocktail-hour assignment as Cocktail Hour: Stone Patio", () => {
+    assert.equal(
+      formatEventSpaceAssignmentsDisplay([
+        { useKey: "cocktail_hour", useLabel: "Cocktail Hour", spaceName: "Stone Patio" },
+      ]),
+      "Cocktail Hour: Stone Patio",
+    );
+  });
+
   it("drops legacy event_space backfill when configured uses are present", () => {
     assert.equal(
       formatEventSpaceAssignmentsDisplay([

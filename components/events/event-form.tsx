@@ -25,11 +25,12 @@ import { Separator } from "@/components/ui/separator";
 import type { EventErrors, EventInput } from "@/lib/events/types";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import type { VenueSpace } from "@/lib/availability/types";
+import { resolveExperienceProfile } from "@/lib/event-experience";
 import {
-  configuredUsesFromSpaces,
   primarySpaceIdFromAssignments,
   type EventSpaceAssignmentInput,
 } from "@/lib/venue-spaces/assignments";
+import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
 
 export function EventFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Create event",
@@ -53,12 +54,15 @@ export function EventFormFields({
   const [dateBlocked, setDateBlocked] = React.useState(false);
   const spacesRequired = maxSimultaneousEvents >= 2;
   const multi = spaceOperatingMode === "multi";
-  const configuredUses = multi ? configuredUsesFromSpaces(spaces) : [];
-  const showAssignments = multi && configuredUses.length > 0;
+  const experience = resolveExperienceProfile(input.eventType);
+  const relevantUses = multi ? relevantUsesForExperience(spaces, experience) : [];
+  const showAssignments = multi && relevantUses.length > 0;
   const assignments = input.spaceAssignments ?? [];
 
   function setAssignments(next: EventSpaceAssignmentInput[]) {
-    const primary = primarySpaceIdFromAssignments(next);
+    const primary = primarySpaceIdFromAssignments(next, {
+      weddingFamily: experience.isWeddingSpecific,
+    });
     set("spaceAssignments", next);
     set("spaceId", primary ?? "");
   }
@@ -103,6 +107,7 @@ export function EventFormFields({
           spaces={spaces}
           value={assignments}
           onChange={setAssignments}
+          uses={relevantUses}
         />
       ) : (
         <EventSpaceField
@@ -113,14 +118,14 @@ export function EventFormFields({
           error={errors.spaceId}
         />
       )}
-      {multi && configuredUses.length === 0 && (
+      {multi && relevantUses.length === 0 && (
         <p className="text-xs text-muted-foreground -mt-3">
           Multi-space mode is on. Add permitted uses on spaces in Availability settings to assign
-          Ceremony, Reception, and other uses. Until then, the primary event space field above still
+          spaces for this event. Until then, the primary event space field above still
           works.
         </p>
       )}
-      {multi && (
+      {multi && experience.isWeddingSpecific && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             label="External ceremony location"

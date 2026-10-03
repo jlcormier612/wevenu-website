@@ -1,9 +1,10 @@
 /**
- * Lead ceremony/reception space preferences — historical intent only.
+ * Lead space preferences — historical intent only.
  * Server-only. Never writes event_space_assignments.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { resolveExperienceProfile } from "@/lib/event-experience";
 import {
   normalizeLeadSpacePreference,
   occupancyAnchorSpaceIdFromPreferences,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/leads/space-preferences";
 import type { LeadActionResult } from "@/lib/leads/types";
 import { getSpaces } from "@/lib/availability/service";
+import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type PreferenceRow = {
@@ -22,14 +24,42 @@ type PreferenceRow = {
   external_location: string | null;
 };
 
-function mapRow(r: PreferenceRow): LeadEventSpacePreference | null {
+function mapRow(
+  r: PreferenceRow,
+  profile = resolveExperienceProfile("wedding"),
+): LeadEventSpacePreference | null {
   const normalized = normalizeLeadSpacePreference({
     useKey: r.use_key,
     preferenceKind: r.preference_kind,
     spaceId: r.space_id,
     externalLocation: r.external_location,
-  });
+  }, { profile });
   return normalized.ok ? normalized.value : null;
+}
+
+async function resolveLeadExperienceType(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadId: string,
+): Promise<{ eventType: string | null; leadFound: boolean }> {
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, event_type, linked_event_id")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ id: string; event_type: string | null; linked_event_id: string | null }>();
+  if (!lead) return { eventType: null, leadFound: false };
+  if (lead.linked_event_id) {
+    const { data: event } = await supabase
+      .from("events")
+      .select("event_type")
+      .eq("id", lead.linked_event_id)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ event_type: string | null }>();
+    const eventType = event?.event_type?.trim() || lead.event_type;
+    return { eventType, leadFound: true };
+  }
+  return { eventType: lead.event_type, leadFound: true };
 }
 
 export async function getLeadSpacePreferences(leadId: string): Promise<LeadEventSpacePreference[]> {
@@ -37,13 +67,19 @@ export async function getLeadSpacePreferences(leadId: string): Promise<LeadEvent
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
+  const { eventType } = await resolveLeadExperienceType(supabase, venue.id, leadId);
+  const profile = resolveExperienceProfile(eventType);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("lead_event_space_preferences") as any)
     .select("use_key, preference_kind, space_id, external_location")
     .eq("venue_id", venue.id)
     .eq("lead_id", leadId);
   if (error) throw error;
-  return ((data ?? []) as PreferenceRow[]).map(mapRow).filter((p): p is LeadEventSpacePreference => p != null);
+  const spaces = await getSpaces();
+  const allowed = new Set(relevantUsesForExperience(spaces, profile).map((use) => use.key));
+  return ((data ?? []) as PreferenceRow[])
+    .map((row) => mapRow(row, profile))
+    .filter((p): p is LeadEventSpacePreference => p != null && allowed.has(p.useKey));
 }
 
 export async function saveLeadSpacePreferences(
@@ -57,20 +93,18 @@ export async function saveLeadSpacePreferences(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Session expired. Please sign in again." };
 
-  const { data: lead } = await supabase
-    .from("leads")
-    .select("id")
-    .eq("id", leadId)
-    .eq("venue_id", venue.id)
-    .maybeSingle<{ id: string }>();
-  if (!lead) return { ok: false, message: "Lead not found." };
+  const { eventType, leadFound } = await resolveLeadExperienceType(supabase, venue.id, leadId);
+  if (!leadFound) return { ok: false, message: "Lead not found." };
 
   const spaces = await getSpaces();
+  const profile = resolveExperienceProfile(eventType);
+  const relevant = relevantUsesForExperience(spaces, profile);
+  const allowedUseKeys = relevant.map((use) => use.key);
   const values: LeadEventSpacePreference[] = [];
   for (const raw of inputs) {
-    const normalized = normalizeLeadSpacePreference(raw);
+    const normalized = normalizeLeadSpacePreference(raw, { allowedUseKeys, profile });
     if (!normalized.ok) return { ok: false, message: normalized.message };
-    if (!shouldShowLeadSpacePreference(venue.spaceOperatingMode, spaces, normalized.value.useKey)) {
+    if (!shouldShowLeadSpacePreference(venue.spaceOperatingMode, spaces, normalized.value.useKey, eventType)) {
       return { ok: false, message: "That space preference is not available for this venue." };
     }
     if (normalized.value.preferenceKind === "venue_space") {
@@ -84,7 +118,7 @@ export async function saveLeadSpacePreferences(
 
   const seen = new Set<string>();
   for (const value of values) {
-    if (seen.has(value.useKey)) return { ok: false, message: "Only one preference per ceremony or reception." };
+    if (seen.has(value.useKey)) return { ok: false, message: "Only one preference per space use." };
     seen.add(value.useKey);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from("lead_event_space_preferences") as any).upsert(
@@ -102,9 +136,21 @@ export async function saveLeadSpacePreferences(
     if (error) throw error;
   }
 
-  // Keep planned_event_space_id as occupancy/book anchor without exposing a
-  // redundant Event Space control in multi-mode Lead UI.
-  const anchor = occupancyAnchorSpaceIdFromPreferences(values);
+  if (allowedUseKeys.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let prune = (supabase.from("lead_event_space_preferences") as any)
+      .delete()
+      .eq("venue_id", venue.id)
+      .eq("lead_id", leadId);
+    prune = prune.not("use_key", "in", `(${allowedUseKeys.join(",")})`);
+    const { error: pruneErr } = await prune;
+    if (pruneErr) throw pruneErr;
+  }
+
+  const anchor = occupancyAnchorSpaceIdFromPreferences(values, {
+    weddingFamily: profile.isWeddingSpecific,
+    relevantUseKeys: allowedUseKeys,
+  });
   if (anchor) {
     const { error: plannedErr } = await supabase
       .from("leads")

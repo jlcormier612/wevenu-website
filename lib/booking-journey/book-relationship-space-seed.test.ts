@@ -7,9 +7,10 @@ const root = resolve(process.cwd());
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 
 const sql = read("supabase/migrations/20261410500000_lead_event_space_preferences.sql");
-const fn = sql.slice(
-  sql.indexOf("create or replace function public.book_relationship"),
-  sql.indexOf("$$;", sql.indexOf("create or replace function public.book_relationship")),
+const latest = read("supabase/migrations/20261411900000_event_type_aware_space_preferences.sql");
+const fn = latest.slice(
+  latest.indexOf("create or replace function public.book_relationship"),
+  latest.indexOf("$$;", latest.indexOf("create or replace function public.book_relationship")),
 );
 
 describe("Booking-E1 space preference seeding", () => {
@@ -40,6 +41,12 @@ describe("Booking-E1 space preference seeding", () => {
     assert.match(fn, /p\.use_key = any \(s\.permitted_uses\)/);
     assert.match(fn, /preference_kind = 'venue_space'/);
     assert.match(fn, /preference_kind = 'external'/);
+  });
+
+  it("seeds any configured venue_space use key, not only ceremony/reception", () => {
+    assert.doesNotMatch(fn, /p\.use_key in \('ceremony', 'reception'\)/);
+    assert.match(fn, /cocktail_hour/);
+    assert.match(sql, /lead_event_space_preferences/);
   });
 
   it("bookClient remains one RPC", () => {

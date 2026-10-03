@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import type { VenueSpace } from "@/lib/availability/types";
+import { EXPERIENCE_PROFILES } from "@/lib/event-experience";
 import {
   normalizeLeadSpacePreference,
   occupancyAnchorSpaceIdFromPreferences,
@@ -27,55 +28,57 @@ function space(partial: Partial<VenueSpace> & { id: string; permittedUses?: stri
   };
 }
 
+const fancyMix = [
+  space({ id: "barn", permittedUses: ["ceremony", "reception", "cocktail_hour", "rehearsal_dinner"] }),
+  space({ id: "patio", permittedUses: ["cocktail_hour"] }),
+];
+
 describe("lead space preference visibility", () => {
-  it("single mode never shows ceremony or reception preference UI", () => {
-    const spaces = [
-      space({ id: "garden", permittedUses: ["ceremony"] }),
-      space({ id: "barn", permittedUses: ["reception"] }),
-    ];
-    assert.equal(shouldShowLeadSpacePreference("single", spaces, "ceremony"), false);
-    assert.equal(shouldShowLeadSpacePreference("single", spaces, "reception"), false);
+  it("single mode never shows use-keyed preference UI", () => {
+    assert.equal(shouldShowLeadSpacePreference("single", fancyMix, "ceremony", "wedding"), false);
+    assert.equal(shouldShowLeadSpacePreference("single", fancyMix, "cocktail_hour", "corporate"), false);
   });
 
-  it("reception-only venue does not expose Ceremony", () => {
-    const spaces = [
-      space({ id: "barn", permittedUses: ["reception"] }),
-      space({ id: "patio", permittedUses: ["reception", "cocktail_hour"] }),
-    ];
-    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "ceremony"), false);
-    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "reception"), true);
-    assert.equal(venueOffersUse(spaces, "ceremony"), false);
+  it("wedding shows ceremony and reception first and keeps cocktail hour", () => {
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", "wedding"), true);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "wedding"), true);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", "wedding"), true);
   });
 
-  it("multi mode shows ceremony and reception when those uses exist", () => {
-    const spaces = [
-      space({ id: "garden", permittedUses: ["ceremony"] }),
-      space({ id: "barn", permittedUses: ["reception"] }),
-    ];
-    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "ceremony"), true);
-    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "reception"), true);
+  it("corporate hides ceremony/reception and shows cocktail hour", () => {
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", "corporate"), false);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "corporate"), false);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", "corporate"), true);
+  });
+
+  it("social and birthday match corporate filtering", () => {
+    for (const type of ["social_event", "birthday"] as const) {
+      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", type), false);
+      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", type), true);
+    }
   });
 
   it("inactive spaces do not invent a ceremony UI", () => {
     const spaces = [space({ id: "garden", permittedUses: ["ceremony"], isActive: false })];
-    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "ceremony"), false);
+    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "ceremony", "wedding"), false);
   });
 
-  it("unrestricted active space offers both uses", () => {
+  it("unrestricted spaces do not invent ceremony/reception columns", () => {
     const spaces = [space({ id: "hall", permittedUses: [] })];
-    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "ceremony"), true);
-    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "reception"), true);
+    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "ceremony", "wedding"), false);
+    assert.equal(shouldShowLeadSpacePreference("multi", spaces, "ceremony", "corporate"), false);
+    assert.equal(venueOffersUse(spaces, "ceremony"), true);
   });
 });
 
 describe("lead space preference shape", () => {
-  it("accepts venue_space, external, and undecided", () => {
+  it("accepts venue_space, external, and undecided for wedding ceremony", () => {
     assert.deepEqual(
       normalizeLeadSpacePreference({
         useKey: "ceremony",
         preferenceKind: "venue_space",
         spaceId: "garden",
-      }),
+      }, { profile: EXPERIENCE_PROFILES.wedding }),
       { ok: true, value: { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null } },
     );
     assert.deepEqual(
@@ -83,20 +86,41 @@ describe("lead space preference shape", () => {
         useKey: "reception",
         preferenceKind: "external",
         externalLocation: "  City Hall  ",
-      }),
+      }, { profile: EXPERIENCE_PROFILES.wedding }),
       { ok: true, value: { useKey: "reception", preferenceKind: "external", spaceId: null, externalLocation: "City Hall" } },
     );
     assert.deepEqual(
-      normalizeLeadSpacePreference({ useKey: "ceremony", preferenceKind: "undecided" }),
+      normalizeLeadSpacePreference({ useKey: "ceremony", preferenceKind: "undecided" }, { profile: EXPERIENCE_PROFILES.wedding }),
       { ok: true, value: { useKey: "ceremony", preferenceKind: "undecided", spaceId: null, externalLocation: null } },
     );
   });
 
-  it("rejects cocktail_hour and other use keys", () => {
+  it("accepts cocktail_hour as a configured use", () => {
     const result = normalizeLeadSpacePreference({
       useKey: "cocktail_hour",
-      preferenceKind: "undecided",
+      preferenceKind: "venue_space",
+      spaceId: "patio",
+    }, { allowedUseKeys: ["cocktail_hour"], profile: EXPERIENCE_PROFILES.corporate });
+    assert.deepEqual(result, {
+      ok: true,
+      value: { useKey: "cocktail_hour", preferenceKind: "venue_space", spaceId: "patio", externalLocation: null },
     });
+  });
+
+  it("rejects ceremony rows for a corporate allowed-use list", () => {
+    const result = normalizeLeadSpacePreference({
+      useKey: "ceremony",
+      preferenceKind: "undecided",
+    }, { allowedUseKeys: ["cocktail_hour"], profile: EXPERIENCE_PROFILES.corporate });
+    assert.equal(result.ok, false);
+  });
+
+  it("rejects external location on non-wedding uses", () => {
+    const result = normalizeLeadSpacePreference({
+      useKey: "cocktail_hour",
+      preferenceKind: "external",
+      externalLocation: "Hotel lobby",
+    }, { allowedUseKeys: ["cocktail_hour"], profile: EXPERIENCE_PROFILES.corporate });
     assert.equal(result.ok, false);
   });
 
@@ -111,23 +135,6 @@ describe("lead space preference shape", () => {
         preferenceKind: "venue_space",
         spaceId: "garden",
         externalLocation: "City Hall",
-      }).ok,
-      false,
-    );
-    assert.equal(
-      normalizeLeadSpacePreference({
-        useKey: "ceremony",
-        preferenceKind: "external",
-        spaceId: "garden",
-        externalLocation: "City Hall",
-      }).ok,
-      false,
-    );
-    assert.equal(
-      normalizeLeadSpacePreference({
-        useKey: "ceremony",
-        preferenceKind: "undecided",
-        spaceId: "garden",
       }).ok,
       false,
     );
@@ -156,23 +163,22 @@ describe("booking seed eligibility", () => {
 });
 
 describe("occupancy anchor from preferences", () => {
-  it("prefers reception venue-space over ceremony", () => {
+  it("wedding prefers reception venue-space over ceremony", () => {
     assert.equal(
       occupancyAnchorSpaceIdFromPreferences([
         { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null },
         { useKey: "reception", preferenceKind: "venue_space", spaceId: "barn", externalLocation: null },
-      ]),
+      ], { weddingFamily: true }),
       "barn",
     );
   });
 
-  it("falls back to ceremony when reception is not a venue space", () => {
+  it("corporate uses the first relevant venue-space preference", () => {
     assert.equal(
       occupancyAnchorSpaceIdFromPreferences([
-        { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null },
-        { useKey: "reception", preferenceKind: "undecided", spaceId: null, externalLocation: null },
-      ]),
-      "garden",
+        { useKey: "cocktail_hour", preferenceKind: "venue_space", spaceId: "patio", externalLocation: null },
+      ], { weddingFamily: false, relevantUseKeys: ["cocktail_hour", "meeting"] }),
+      "patio",
     );
   });
 
@@ -205,12 +211,13 @@ describe("preference is not an assignment", () => {
     assert.match(assignments, /space_id\s+uuid not null/);
   });
 
-  it("lead detail shows ceremony/reception in multi mode; Event Space only in single mode", () => {
+  it("lead detail shows relevant uses in multi mode; Event Space when none or single mode", () => {
     const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
     assert.match(detail, /LeadSpacePreferenceFields/);
-    assert.match(detail, /spaceOperatingMode === "multi"/);
-    assert.match(detail, /spaceOperatingMode !== "multi"/);
+    assert.match(detail, /relevantUsesForEventType/);
+    assert.match(detail, /showUsePreferences/);
+    assert.match(detail, /showEventSpaceField/);
     assert.match(detail, /EventSpaceField/);
-    assert.doesNotMatch(detail, /\{spacesRequired && \(/);
+    assert.match(detail, /eventType=\{lead\.eventType\}/);
   });
 });
