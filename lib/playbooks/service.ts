@@ -629,7 +629,7 @@ export async function createStandardVenueWorkflowTemplate(): Promise<CreatePlayb
     if (existing) {
       const templateId = await createFromReference(
         c, venueId, "Standard Wedding — Venue Planning (Copy)", "venue", "wedding",
-        "Runs your team's internal checklist, from booking through post-event.",
+        "Runs your team's internal checklist for a booked event, from planning through post-event.",
         STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
         null,
       );
@@ -637,7 +637,7 @@ export async function createStandardVenueWorkflowTemplate(): Promise<CreatePlayb
     }
     const templateId = await createFromReference(
       c, venueId, "Standard Wedding — Venue Planning", "venue", "wedding",
-      "Runs your team's internal checklist, from booking through post-event.",
+      "Runs your team's internal checklist for a booked event, from planning through post-event.",
       STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
       "PB-VENUE-01",
     );

@@ -21,7 +21,7 @@ export const PLAYBOOK_STARTER_MASTERS: readonly PlaybookStarterMaster[] = [
     key: "PB-VENUE-01",
     kind: "venue",
     name: "Standard Wedding — Venue Planning",
-    description: "An internal team checklist from booking through post-event, ready for your venue to customize.",
+    description: "An internal team checklist for a booked event, from planning through post-event, ready for your venue to customize.",
   },
 ];
 

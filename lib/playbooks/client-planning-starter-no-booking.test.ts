@@ -45,10 +45,11 @@ describe("Standard Wedding — Client Planning starter has no pre-booking milest
     assert.deepEqual(sortOrders, [0, 1, 2, 3, 4, 5, 6, 7]);
   });
 
-  it("does not change the Venue Planning starter Booking milestone", () => {
-    assert.equal(STANDARD_VENUE_WORKFLOW_MILESTONES[0]?.name, "Booking");
-    assert.ok(STANDARD_VENUE_WORKFLOW_TASKS.some((t) => t.title === "Send contract"));
-    assert.ok(STANDARD_VENUE_WORKFLOW_TASKS.some((t) => t.title === "Verify deposit"));
+  it("Venue Planning starter is planning work, not a Booking milestone", () => {
+    assert.equal(STANDARD_VENUE_WORKFLOW_MILESTONES[0]?.name, "Planning");
+    assert.ok(!STANDARD_VENUE_WORKFLOW_MILESTONES.some((m) => m.name === "Booking"));
+    assert.ok(!STANDARD_VENUE_WORKFLOW_TASKS.some((t) => t.title === "Send contract"));
+    assert.ok(!STANDARD_VENUE_WORKFLOW_TASKS.some((t) => t.title === "Verify deposit"));
   });
 
   it("createFromReference still seeds from these constants", () => {

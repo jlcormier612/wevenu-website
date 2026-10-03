@@ -239,20 +239,30 @@ export const STANDARD_CLIENT_PLANNING_TASKS: SeedTask[] = [
 // Client Planning editor, which never exposes any of that.
 
 export const STANDARD_VENUE_WORKFLOW_MILESTONES: SeedMilestone[] = [
-  { name: "Booking",       kind: null },
+  { name: "Planning",      kind: null },
   { name: "Final Details", kind: "final_stretch" },
   { name: "Wedding Day",   kind: "event_day" },
   { name: "Post-Event",    kind: null },
 ];
 
+/** Preparatory work — organizing the booked event. Not commercial booking. */
+export const VENUE_PLANNING_PREP_TASK_TITLES = [
+  "Build timeline",
+  "Create floor plan",
+  "Confirm rentals",
+] as const;
+
+/** Late-stage readiness confirmation — not general preparation. */
+export const VENUE_FINAL_DETAILS_TASK_TITLES = [
+  "Vendor COIs in file",
+] as const;
+
 export const STANDARD_VENUE_WORKFLOW_TASKS: SeedTask[] = [
-  { ...R, title: "Send contract",           description: null, ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -120, category: "document",  milestoneIndex: 0, autoCompleteTrigger: null,             isRequired: true, sortOrder: 0, dependsOnTaskId: null },
-  { ...R, title: "Verify deposit",          description: null, ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -115, category: "financial", milestoneIndex: 0, autoCompleteTrigger: "payment_received", isRequired: true, sortOrder: 1, dependsOnTaskId: null },
-  { ...R, title: "Build timeline",          description: "Build the complete day-of timeline.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -21, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "timeline_created", isRequired: true, sortOrder: 2, dependsOnTaskId: null },
-  { ...R, title: "Create floor plan",       description: null, ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -14, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "floor_plan_created", isRequired: true, sortOrder: 3, dependsOnTaskId: null },
-  { ...R, title: "Confirm rentals",         description: "Confirm final counts and delivery windows with rental vendors.", ownerType: "vendor", visibility: "vendor_owned", daysOffset: -14, category: "communication", milestoneIndex: 1, autoCompleteTrigger: null, isRequired: true, sortOrder: 4, dependsOnTaskId: null },
-  { ...R, title: "Vendor COIs in file",     description: "Ensure all required insurance certificates are uploaded.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -7, category: "document", milestoneIndex: 1, autoCompleteTrigger: "document_uploaded_insurance", isRequired: true, sortOrder: 5, dependsOnTaskId: null, escalationAfterDays: 2 },
-  { ...R, title: "Prepare venue",           description: null, ownerType: "team", visibility: "coordinator_only", daysOffset: 0, category: "meeting", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 6, dependsOnTaskId: null },
-  { ...R, title: "Day-of setup",            description: null, ownerType: "team", visibility: "coordinator_only", daysOffset: 0, category: "meeting", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 7, dependsOnTaskId: null },
-  { ...R, title: "Send thank-you note",     description: "Send a warm thank-you to the client.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: 3, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 8, dependsOnTaskId: null },
+  { ...R, title: "Build timeline",          description: "Build the complete day-of timeline.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -21, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "timeline_created", isRequired: true, sortOrder: 0, dependsOnTaskId: null },
+  { ...R, title: "Create floor plan",       description: null, ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -14, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "floor_plan_created", isRequired: true, sortOrder: 1, dependsOnTaskId: null },
+  { ...R, title: "Confirm rentals",         description: "Confirm final counts and delivery windows with rental vendors.", ownerType: "vendor", visibility: "vendor_owned", daysOffset: -14, category: "communication", milestoneIndex: 0, autoCompleteTrigger: null, isRequired: true, sortOrder: 2, dependsOnTaskId: null },
+  { ...R, title: "Vendor COIs in file",     description: "Ensure all required insurance certificates are uploaded.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -7, category: "document", milestoneIndex: 1, autoCompleteTrigger: "document_uploaded_insurance", isRequired: true, sortOrder: 3, dependsOnTaskId: null, escalationAfterDays: 2 },
+  { ...R, title: "Prepare venue",           description: null, ownerType: "team", visibility: "coordinator_only", daysOffset: 0, category: "meeting", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 4, dependsOnTaskId: null },
+  { ...R, title: "Day-of setup",            description: null, ownerType: "team", visibility: "coordinator_only", daysOffset: 0, category: "meeting", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 5, dependsOnTaskId: null },
+  { ...R, title: "Send thank-you note",     description: "Send a warm thank-you to the client.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: 3, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 6, dependsOnTaskId: null },
 ];

@@ -57,6 +57,39 @@ export function setupStepLabel(step: SetupStepKey): string {
   return STEP_LABEL[step];
 }
 
+/** How Overview presents one setup row. Derived only from the persisted decision. */
+export type SetupStepPresentation = "needs_decision" | "configured" | "skipped";
+
+export function setupStepPresentation(
+  decision: SetupDecision | null | undefined,
+): SetupStepPresentation {
+  if (decision === "set_up") return "configured";
+  if (decision === "skipped") return "skipped";
+  return "needs_decision";
+}
+
+export const SETUP_PRESENTATION_LABEL: Record<SetupStepPresentation, string> = {
+  needs_decision: "Needs a decision",
+  configured: "Configured",
+  skipped: "Skipped",
+};
+
+export function setupDecisionCounts(
+  applicable: readonly SetupStepKey[],
+  decisions: SetupDecisions,
+): { needsDecision: number; configured: number; skipped: number } {
+  let needsDecision = 0;
+  let configured = 0;
+  let skipped = 0;
+  for (const step of applicable) {
+    const presentation = setupStepPresentation(decisions[step]);
+    if (presentation === "configured") configured += 1;
+    else if (presentation === "skipped") skipped += 1;
+    else needsDecision += 1;
+  }
+  return { needsDecision, configured, skipped };
+}
+
 export function emptyEventSetupState(): EventSetupState {
   return { decisions: {}, collapsedAt: null };
 }

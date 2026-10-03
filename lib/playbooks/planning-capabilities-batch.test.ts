@@ -85,7 +85,8 @@ describe("PLAN-02/03 planning capabilities", () => {
       { ...ALL_ON, floorPlan: false, timeline: false },
     );
     assert.ok(!venueFiltered.some((t) => /floor plan|timeline/i.test(t.title)));
-    assert.ok(venueFiltered.some((t) => t.title === "Send contract" && t.isRequired));
+    assert.ok(!venueFiltered.some((t) => t.title === "Send contract"));
+    assert.ok(venueFiltered.some((t) => t.title === "Confirm rentals" && t.isRequired));
   });
 
   it("hides incomplete couple tasks for disabled capabilities but keeps completed", () => {

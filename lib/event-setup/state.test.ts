@@ -9,7 +9,9 @@ import type { ReadinessSection } from "@/lib/readiness/types";
 import {
   applicableSetupSteps,
   selectOverviewExceptions,
+  setupDecisionCounts,
   setupDecisionsComplete,
+  setupStepPresentation,
   undecidedSetupSteps,
   withSetupCollapsed,
   withSetupDecision,
@@ -77,6 +79,27 @@ describe("event setup state", () => {
     const hidden = withSetupCollapsed(opened);
     assert.ok(hidden.collapsedAt);
     assert.equal(hidden.decisions.planning, "set_up");
+  });
+
+  it("configured and skipped stay decided across reopen", () => {
+    const applicable: SetupStepKey[] = ["planning", "timeline"];
+    const configured = withSetupDecision(empty, applicable, "planning", "set_up");
+    const skipped = withSetupDecision(configured, applicable, "timeline", "skipped");
+    assert.equal(setupStepPresentation(skipped.decisions.planning), "configured");
+    assert.equal(setupStepPresentation(skipped.decisions.timeline), "skipped");
+    assert.equal(setupStepPresentation(undefined), "needs_decision");
+    const reopened = withSetupReopened(skipped);
+    assert.equal(reopened.decisions.planning, "set_up");
+    assert.equal(reopened.decisions.timeline, "skipped");
+    assert.deepEqual(setupDecisionCounts(applicable, reopened.decisions), {
+      needsDecision: 0,
+      configured: 1,
+      skipped: 1,
+    });
+    const panel = readFileSync(resolve("components/events/event-setup-panel.tsx"), "utf8");
+    assert.match(panel, /needs_decision/);
+    assert.match(panel, /Configured/);
+    assert.match(panel, /presentation === "needs_decision"/);
   });
 
   it("ignores a step the venue does not use", () => {

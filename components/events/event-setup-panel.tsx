@@ -13,10 +13,14 @@ import {
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  SETUP_PRESENTATION_LABEL,
+  setupDecisionCounts,
   setupDecisionsComplete,
   setupStepLabel,
+  setupStepPresentation,
   type EventSetupState,
   type SetupStepKey,
 } from "@/lib/event-setup/state";
@@ -62,6 +66,7 @@ export function EventSetupPanel({
   const [pending, startTransition] = React.useTransition();
   const complete = setupDecisionsComplete(applicableSteps, state.decisions);
   const collapsed = Boolean(state.collapsedAt) && complete;
+  const counts = setupDecisionCounts(applicableSteps, state.decisions);
 
   function decide(step: SetupStepKey, decision: "set_up" | "skipped") {
     startTransition(async () => {
@@ -106,7 +111,16 @@ export function EventSetupPanel({
         <div>
           <h2 className="text-base font-medium text-heading">Get this event ready</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Set up the pieces this event will use, or skip the ones it will not. Skipping does not remove anything already saved.
+            {complete
+              ? "Every setup area has a decision. Configured and skipped are finished choices."
+              : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {counts.needsDecision} need a decision
+            {" · "}
+            {counts.configured} configured
+            {" · "}
+            {counts.skipped} skipped
           </p>
         </div>
         {complete ? (
@@ -118,23 +132,34 @@ export function EventSetupPanel({
       <ul className="space-y-3">
         {applicableSteps.map((step) => {
           const decision = state.decisions[step] ?? null;
+          const presentation = setupStepPresentation(decision);
           return (
             <li key={step} className="rounded-lg border border-border px-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-heading">{setupStepLabel(step)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {decision === "set_up" ? "Set up" : decision === "skipped" ? "Skipped" : "Not decided"}
-                  </p>
+                  <Badge
+                    variant={
+                      presentation === "configured"
+                        ? "success"
+                        : presentation === "skipped"
+                          ? "outline"
+                          : "warning"
+                    }
+                  >
+                    {SETUP_PRESENTATION_LABEL[presentation]}
+                  </Badge>
                 </div>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant={decision === "set_up" ? "default" : "outline"} disabled={pending} onClick={() => decide(step, "set_up")}>
-                    Set up
-                  </Button>
-                  <Button type="button" size="sm" variant={decision === "skipped" ? "default" : "outline"} disabled={pending} onClick={() => decide(step, "skipped")}>
-                    Skip
-                  </Button>
-                </div>
+                {presentation === "needs_decision" ? (
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" disabled={pending} onClick={() => decide(step, "set_up")}>
+                      Set up
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => decide(step, "skipped")}>
+                      Skip
+                    </Button>
+                  </div>
+                ) : null}
               </div>
               {decision === "set_up" ? (
                 <div className="mt-3">

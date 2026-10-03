@@ -94,9 +94,15 @@ describe("Impl 7 — trigger / celebration naming", () => {
     assert.notEqual(row?.autoCompleteTrigger, "payment_received");
   });
 
-  it("Verify deposit stays on broad payment_received", () => {
-    const verify = STANDARD_VENUE_WORKFLOW_TASKS.find((t) => t.title === "Verify deposit");
-    assert.equal(verify?.autoCompleteTrigger, "payment_received");
+  it("Venue Planning starter does not treat deposit verification as a planning task", () => {
+    assert.equal(
+      STANDARD_VENUE_WORKFLOW_TASKS.find((t) => t.title === "Verify deposit"),
+      undefined,
+    );
+    assert.equal(
+      STANDARD_VENUE_WORKFLOW_TASKS.some((t) => t.autoCompleteTrigger === "payment_received"),
+      false,
+    );
   });
 
   it("celebration type is distinct from paid-in-full", () => {
