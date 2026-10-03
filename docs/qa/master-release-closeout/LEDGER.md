@@ -690,7 +690,8 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
   1. On Track included overdue unpaid schedules (Miss Piggy and others). Action Required was correct; On Track was not.
   2. Record dialog first paint said “no open installment” before the installment list loaded.
   3. After a successful record, the invoice badge stayed “Issued” until a full navigation; a reload showed “Partially Paid”.
-- **FIX (local, not sole RUNNING):** On Track requires `scheduleStatus === "on_track"`; dialog opens in a loading state; invoice status follows the refreshed server status; record-method lists use venue preferences (no invented card/Venmo/Stripe).
+- **FIX COMMIT:** `804fe393` — On Track requires `scheduleStatus === "on_track"`; dialog opens in a loading state; invoice status follows the refreshed server status; record-method lists use venue preferences (no invented card/Venmo/Stripe).
+- **FIX DEPLOY:** queued https://github.com/jlcormier612/wevenu-website/actions/runs/37084546058 — not sole RUNNING yet.
 - **AUTOMATED TEST EVIDENCE:** 90/90 PASS focused after the fix (`offline-recording`, `list-filters`, `attention-reasons`, invoice-balance, manual-installment, commercial-facts, venue-prefs, customer-facing-notes, portal payment-access).
 - **PRODUCTION:** untouched
 - **REMAINING WORK:** Deploy the fix; confirm it is the sole RUNNING image; re-check On Track, dialog first paint, and in-place Partially Paid badge. Then GREEN/CLOSED. Do not mark overall HTC GREEN.
