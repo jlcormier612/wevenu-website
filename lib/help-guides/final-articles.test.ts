@@ -30,13 +30,13 @@ describe("Help & Guides final IA", () => {
     assert.match(HELP_GUIDES_TAGLINE, /start with Getting Started if you're new here/);
   });
 
-  it("publishes all 35 staff editorial articles with none blocked", () => {
-    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 35);
+  it("publishes all 36 staff editorial articles with none blocked", () => {
+    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 36);
     assert.equal(BLOCKED_HELP_ARTICLES.length, 0);
     assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => !a.blocked));
     assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => (a.audience ?? "staff") !== "couple"));
     // Couple-portal how-tos live in the same canonical array but stay out of staff publish.
-    assert.ok(FINAL_HELP_ARTICLES.length > 35);
+    assert.ok(FINAL_HELP_ARTICLES.length > 36);
     assert.ok(FINAL_HELP_ARTICLES.some((a) => a.audience === "couple"));
   });
 
@@ -48,8 +48,9 @@ describe("Help & Guides final IA", () => {
     assert.ok(titles.includes("How to Connect Stripe for Online Payments"));
     assert.ok(titles.includes("How to Connect QuickBooks Online"));
     assert.ok(titles.includes("How to Connect Facebook & Instagram Lead Ads"));
-    assert.equal(new Set(titles).size, 35);
-    assert.equal(new Set(PUBLISHABLE_HELP_ARTICLES.map((a) => a.slug)).size, 35);
+    assert.ok(titles.includes("How Texting Setup Works"));
+    assert.equal(new Set(titles).size, 36);
+    assert.equal(new Set(PUBLISHABLE_HELP_ARTICLES.map((a) => a.slug)).size, 36);
   });
 
   it("does not publish stale Reporting or Booking language in publishable bodies", () => {
@@ -74,7 +75,7 @@ describe("Help & Guides final IA", () => {
       "Getting Started": 2,
       "Your Venue": 2,
       "Finding & Booking Clients": 6,
-      "Working With Clients": 2,
+      "Working With Clients": 3,
       "Contracts & Payments": 7,
       "Building the Event": 3,
       "Planning the Event": 7,
@@ -117,6 +118,7 @@ describe("Help & Guides final IA", () => {
       "how-to-connect-stripe-for-online-payments",
       "how-to-connect-quickbooks-online",
       "how-to-connect-facebook-instagram-lead-ads",
+      "how-texting-setup-works",
     ]);
     const historical = PUBLISHABLE_HELP_ARTICLES.filter((a) => !laterEditorialSlugs.has(a.slug));
     for (const a of historical) {

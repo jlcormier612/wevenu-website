@@ -14,8 +14,8 @@ function article(slug: string) {
 }
 
 describe("Integration setup guides (product-locked)", () => {
-  it("publishes exactly three setup guides in the final editorial set", () => {
-    assert.equal(INTEGRATION_SETUP_ARTICLES.length, 3);
+  it("publishes exactly four setup guides in the final editorial set", () => {
+    assert.equal(INTEGRATION_SETUP_ARTICLES.length, 4);
     for (const a of INTEGRATION_SETUP_ARTICLES) {
       assert.ok(FINAL_HELP_ARTICLES.some((f) => f.slug === a.slug));
       assert.ok(PUBLISHABLE_HELP_ARTICLES.some((f) => f.slug === a.slug));
@@ -110,7 +110,7 @@ describe("Integration setup guides (product-locked)", () => {
     assert.doesNotMatch(a.body, /\bOAuth\b|\bwebhook\b|\bscope\b|\baccess token\b/i);
   });
 
-  it("links each guide back to the matching Integrations card anchor", () => {
+  it("links each guide back to the matching Settings destination", () => {
     assert.deepEqual(article("how-to-connect-stripe-for-online-payments").relatedFeatures, [
       { href: "/settings/integrations#stripe", label: "Open Stripe settings" },
     ]);
@@ -120,5 +120,21 @@ describe("Integration setup guides (product-locked)", () => {
     assert.deepEqual(article("how-to-connect-facebook-instagram-lead-ads").relatedFeatures, [
       { href: "/settings/integrations#facebook", label: "Open Facebook & Instagram Lead Ads settings" },
     ]);
+    assert.deepEqual(article("how-texting-setup-works").relatedFeatures, [
+      { href: "/settings/communications#texting", label: "Open Text messaging setup" },
+    ]);
+  });
+
+  it("texting setup guide stays customer-safe (no provider jargon or invented ETAs)", () => {
+    const a = article("how-texting-setup-works");
+    assert.equal(a.title, "How Texting Setup Works");
+    assert.match(a.body, /What texting does/);
+    assert.match(a.body, /What we need from you/);
+    assert.match(a.body, /What Hello to Cheers handles/);
+    assert.match(a.body, /After you save/);
+    assert.match(a.body, /How you’ll know it’s ready/);
+    assert.match(a.body, /Communication Health/);
+    assert.doesNotMatch(a.body, /\bTwilio\b|\bA2P\b|\b10DLC\b|Trust Hub|Account SID|Auth Token/i);
+    assert.doesNotMatch(a.body, /\bETA\b|within \d+ (days|hours)|usually takes/i);
   });
 });

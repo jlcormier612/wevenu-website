@@ -10,6 +10,8 @@ import {
   startTextingSetupAction,
   submitTextingRegistrationAction,
 } from "@/app/(app)/settings/texting-registration-actions";
+import { SetupGuideLink } from "@/components/help/setup-guide-link";
+import { TextingSetupAskLuv } from "@/components/settings/texting-setup-ask-luv";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +23,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  TEXTING_HOW_YOU_KNOW_READY,
+  TEXTING_SETUP_GUIDE_HREF,
+  TEXTING_SETUP_GUIDE_LABEL,
+  TEXTING_WHAT_HTC_HANDLES,
+  TEXTING_WHAT_IT_ENABLES,
+  TEXTING_WHY_WE_COLLECT,
+  buildTextingPhaseStory,
+  buildTextingSetupLuvContext,
+  textingDisplayHeadline,
+} from "@/lib/texting-registration/human-facing";
 import { isBusinessIdentityComplete } from "@/lib/texting-registration/validation";
 import { maskRegistrationNumberLast4 } from "@/lib/texting-registration/sensitive-field";
 import type { TextingSetupBundle } from "@/lib/texting-registration/service";
@@ -33,8 +46,6 @@ import type {
 import {
   BUSINESS_TYPE_OPTIONS,
   INDUSTRY_OPTIONS,
-  INFORMATION_SAVED_STATUS_COPY,
-  TEXTING_SETUP_IN_PROGRESS_COPY,
   JOB_POSITION_OPTIONS,
   REGION_OPTIONS,
   REGISTRATION_ID_TYPE_OPTIONS,
@@ -49,33 +60,43 @@ const TONE_CLASS: Record<TextingPanelTone, string> = {
   paused: "text-amber-700",
 };
 
+function TextingOrientation() {
+  return (
+    <div
+      className="rounded-lg border border-border bg-muted/20 px-4 py-3.5 space-y-3"
+      data-testid="texting-setup-orientation"
+    >
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-heading">What texting does</p>
+        <p className="text-xs text-muted-foreground">{TEXTING_WHAT_IT_ENABLES}</p>
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-heading">What we need from you</p>
+        <p className="text-xs text-muted-foreground">{TEXTING_WHY_WE_COLLECT}</p>
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-heading">What Hello to Cheers handles</p>
+        <p className="text-xs text-muted-foreground">{TEXTING_WHAT_HTC_HANDLES}</p>
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-heading">How you’ll know it’s ready</p>
+        <p className="text-xs text-muted-foreground">{TEXTING_HOW_YOU_KNOW_READY}</p>
+      </div>
+      <SetupGuideLink href={TEXTING_SETUP_GUIDE_HREF} label={TEXTING_SETUP_GUIDE_LABEL} />
+    </div>
+  );
+}
+
 function StatusPanelView({ panel }: { panel: TextingStatusPanel }) {
   const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const story = buildTextingPhaseStory(panel);
+  const headline = textingDisplayHeadline(panel);
   const rows: { title: string; label: string; tone: TextingPanelTone }[] = [
     { title: "Business information", label: panel.businessInformation.label, tone: panel.businessInformation.tone },
     { title: "Texting setup", label: panel.messagingRegistration.label, tone: panel.messagingRegistration.tone },
     { title: "Texting number", label: panel.textingNumber.label, tone: panel.textingNumber.tone },
     { title: "Texting", label: panel.texting.label, tone: panel.texting.tone },
   ];
-
-  const headline =
-    panel.smsReady ? "Ready"
-      : panel.phase === "information_saved" ? "Setting up"
-        : panel.phase === "under_review" ? "Under review"
-          : panel.phase === "needs_attention" || panel.phase === "failed" ? "Needs attention"
-            : panel.phase === "paused" ? "Paused"
-              : panel.phase === "setting_up_number" ? "Setting up your texting number"
-                : "Not ready";
-
-  const nextStep =
-    panel.smsReady
-      ? "You’re ready to text from Inbox."
-      : panel.phase === "information_saved"
-        ? INFORMATION_SAVED_STATUS_COPY
-        : panel.phase === "under_review" || panel.phase === "setting_up_number"
-          ? TEXTING_SETUP_IN_PROGRESS_COPY
-          : panel.attention?.message
-            ?? "Complete the steps below to enable text messaging for your venue.";
 
   return (
     <div className="space-y-4">
@@ -90,15 +111,29 @@ function StatusPanelView({ panel }: { panel: TextingStatusPanel }) {
         </div>
       )}
 
-      <div className="rounded-lg border border-border bg-card px-4 py-3.5 space-y-2">
+      <div
+        className="rounded-lg border border-border bg-card px-4 py-3.5 space-y-2"
+        data-testid="texting-status-panel"
+        data-texting-phase={panel.phase}
+      >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-sm font-medium text-heading">Status</p>
           <p className={`text-sm font-medium ${TONE_CLASS[panel.texting.tone]}`}>{headline}</p>
         </div>
-        <p className="text-sm text-muted-foreground">{nextStep}</p>
-        <p className="text-xs text-muted-foreground">
-          HTC handles the technical setup for you. We use your business information to help establish texting for your venue.
-        </p>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            <span className="font-medium text-heading">What has happened: </span>
+            {story.whatHappened}
+          </p>
+          <p>
+            <span className="font-medium text-heading">What happens next: </span>
+            {story.whatHappensNext}
+          </p>
+          <p>
+            <span className="font-medium text-heading">Do you need to do anything? </span>
+            {story.ownerNeedsToDo}
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setDetailsOpen((v) => !v)}
@@ -319,11 +354,13 @@ export function TextMessagingSetupSection({
           Text messaging
         </CardTitle>
         <CardDescription>
-          Connect texting to your venue so you can communicate with clients and leads from HTC.
-          Hello to Cheers handles the complicated setup behind the scenes.
+          Connect texting to your venue so you can message clients and leads from Inbox.
+          Hello to Cheers handles the technical setup behind the scenes.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <TextingOrientation />
+
         {!canConfigure && (
           <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             Only a venue owner or manager can enable or change text messaging setup.
@@ -334,8 +371,8 @@ export function TextMessagingSetupSection({
         {showWizard && step === "intro" && (
           <div className="space-y-4">
             <p className="text-sm text-foreground">
-              We’ll connect your venue to a dedicated texting number. To register your business
-              for texting, we need a few details.
+              We’ll set up a dedicated texting number for your venue. To do that, we need a few
+              business and messaging details from you.
             </p>
             <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
               <li>Confirm your business name and address</li>
@@ -633,6 +670,12 @@ export function TextMessagingSetupSection({
               </p>
             </div>
             <StatusPanelView panel={bundle.statusPanel} />
+            <TextingSetupAskLuv
+              context={buildTextingSetupLuvContext({
+                panel: bundle.statusPanel,
+                canEdit: canConfigure && bundle.canEdit,
+              })}
+            />
             {(canConfigure && (phase === "needs_attention" || phase === "failed" || phase === "information_saved")) && (
               <Button
                 type="button"
@@ -648,12 +691,22 @@ export function TextMessagingSetupSection({
               </Button>
             )}
             <p className="text-xs text-muted-foreground">
-              Need help?{" "}
+              For day-to-day messaging readiness, see{" "}
               <Link href="/messaging/health" className="underline underline-offset-2 text-heading">
                 Communication Health
               </Link>
+              .
             </p>
           </div>
+        )}
+
+        {!showStatus && bundle && (
+          <TextingSetupAskLuv
+            context={buildTextingSetupLuvContext({
+              panel: bundle.statusPanel,
+              canEdit: canConfigure && bundle.canEdit,
+            })}
+          />
         )}
       </CardContent>
     </Card>

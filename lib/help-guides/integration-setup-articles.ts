@@ -325,4 +325,59 @@ You can return here later to:
 
 For Meta's own Lead Ads form creation help, see [Meta Business Help](https://www.facebook.com/business/help). Use the steps above as your Hello to Cheers setup path.`,
   },
+  {
+    slug: "how-texting-setup-works",
+    title: "How Texting Setup Works",
+    category: "Working With Clients",
+    relatedFeatures: [
+      { href: "/settings/communications#texting", label: "Open Text messaging setup" },
+    ],
+    body: `### What texting does
+
+Texting lets your venue message clients and leads from Inbox — tour reminders, booking questions, and event logistics — from a dedicated texting number for your venue.
+
+You do not enter provider credentials. Hello to Cheers handles the technical setup after you save your business information.
+
+### What we need from you
+
+Hello to Cheers needs your real business and messaging details so we can set up texting for your venue under your business identity. You choose each answer; we do not invent legal or registration information for you.
+
+You will typically:
+
+1. Confirm your business name and address
+2. Provide registration details needed for texting
+3. Tell us what you’ll text couples about, with sample messages and how people opt in
+
+### What Hello to Cheers handles
+
+After you save your information, Hello to Cheers works through texting setup behind the scenes — including assigning your texting number when it is ready.
+
+You do not manage carrier registration yourself, and this guide does not show timelines or approval ETAs.
+
+### After you save
+
+When your information is saved:
+
+- Your details have been received
+- Hello to Cheers is working through setup
+- A texting number may not be assigned yet
+- Texting is not ready to send until this page shows **Ready**
+- You usually do not need to do anything else unless the page asks for attention
+
+### How you’ll know it’s ready
+
+When texting is ready, **Your Venue → Settings → Communications & Automation → Text messaging** shows Ready and your assigned texting number.
+
+You can also confirm day-to-day messaging readiness in [Communication Health](/messaging/health) before sending a real text. Communication Health is for operational messaging health — this guide and the Text messaging page explain setup.
+
+### If setup needs attention
+
+If the page says setup needs attention, use **Update details & resubmit** on the Text messaging page, fix the details described there, and save again.
+
+### Consent and STOP
+
+People must give clear texting permission before you text them — a phone number alone is not permission. Permission is typically collected on your inquiry and tour forms.
+
+If someone replies STOP, texting to them becomes unavailable and you should not continue texting that number.`,
+  },
 ];
