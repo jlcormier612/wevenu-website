@@ -10,12 +10,12 @@ import {
 } from "@/app/(app)/settings/leads/setup-profiles/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EVENT_TYPES } from "@/lib/event-types/canonical";
 import {
   setupProfileUsedForLabel,
   type SetupProfileAssignment,
   type VenueSetupProfile,
 } from "@/lib/event-setup/profile";
+import type { SetupProfileUsedForOption } from "@/lib/event-setup/setup-profile-event-types";
 import {
   setupStepLabel,
   type SetupDecision,
@@ -54,6 +54,7 @@ export function SetupProfilesSection({
   steps,
   profiles,
   assignments,
+  usedForOptions,
   playbooks,
   timelines,
 }: {
@@ -61,6 +62,8 @@ export function SetupProfilesSection({
   steps: SetupStepKey[];
   profiles: VenueSetupProfile[];
   assignments: SetupProfileAssignment[];
+  /** Accepted event types ∩ catalog (wedding labeled All Weddings). */
+  usedForOptions: SetupProfileUsedForOption[];
   playbooks: NamedOption[];
   timelines: NamedOption[];
 }) {
@@ -74,13 +77,16 @@ export function SetupProfilesSection({
 
   function beginEdit(profile: VenueSetupProfile) {
     const mine = assignments.filter((row) => row.profileId === profile.id);
+    const acceptedKeys = new Set(usedForOptions.map((opt) => opt.value));
     setDraft({
       id: profile.id,
       name: profile.name,
       decisions: { ...profile.decisions },
       playbookId: profile.templateRefs.planningPlaybookTemplateId ?? "",
       timelineId: profile.templateRefs.timelineTemplateId ?? "",
-      eventTypes: mine.map((row) => row.eventType).filter((type): type is string => Boolean(type)),
+      eventTypes: mine
+        .map((row) => row.eventType)
+        .filter((type): type is string => Boolean(type) && acceptedKeys.has(type)),
       venueDefault: mine.some((row) => row.eventType == null),
     });
   }
@@ -243,25 +249,27 @@ export function SetupProfilesSection({
             </label>
           </div>
 
-          <fieldset className="space-y-2">
+          <fieldset className="space-y-2" data-testid="setup-profile-used-for">
             <legend className="text-sm font-medium text-heading">Used for</legend>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={draft.venueDefault}
                 onChange={(event) => setDraft({ ...draft, venueDefault: event.target.checked })}
+                data-testid="setup-profile-venue-default"
               />
               Venue default, when the event type has no profile of its own
             </label>
             <div className="grid gap-2 sm:grid-cols-2">
-              {EVENT_TYPES.map((type) => (
+              {usedForOptions.map((type) => (
                 <label key={type.value} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={draft.eventTypes.includes(type.value)}
                     onChange={() => toggleType(type.value)}
+                    data-event-type={type.value}
                   />
-                  {type.value === "wedding" ? "All Weddings" : type.label}
+                  {type.label}
                 </label>
               ))}
             </div>

@@ -5,6 +5,8 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { SetupProfilesSection } from "@/components/settings/setup-profiles-section";
 import { applicableSetupSteps } from "@/lib/event-setup/state";
 import { listVenueSetupProfiles } from "@/lib/event-setup/profiles";
+import { buildSetupProfileUsedForOptions } from "@/lib/event-setup/setup-profile-event-types";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { getTemplates as getPlaybookTemplates } from "@/lib/playbooks/service";
 import { getTemplates as getTimelineTemplates } from "@/lib/timeline-templates/service";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
@@ -16,9 +18,13 @@ export default async function SetupProfilesPage() {
   const role = await getCurrentUserRole();
   const canEdit = role === "owner" || role === "manager";
   const listed = venue ? await listVenueSetupProfiles(venue.id) : { profiles: [], assignments: [] };
-  const [playbooks, timelines] = venue
-    ? await Promise.all([getPlaybookTemplates(), getTimelineTemplates()])
-    : [[], []];
+  const [playbooks, timelines, inquirySettings] = venue
+    ? await Promise.all([
+      getPlaybookTemplates(),
+      getTimelineTemplates(),
+      getInquiryFormSettings(),
+    ])
+    : [[], [], null];
 
   const steps = applicableSetupSteps({
     timeline: venue?.planningTimelineEnabled ?? true,
@@ -26,6 +32,9 @@ export default async function SetupProfilesPage() {
     seating: venue?.planningSeatingEnabled ?? true,
     vendors: venue?.planningVendorsEnabled ?? true,
   });
+  const usedForOptions = buildSetupProfileUsedForOptions(
+    inquirySettings?.acceptedEventTypes ?? null,
+  );
 
   return (
     <div className="space-y-6">
@@ -40,6 +49,7 @@ export default async function SetupProfilesPage() {
           steps={steps}
           profiles={listed.profiles}
           assignments={listed.assignments}
+          usedForOptions={usedForOptions}
           playbooks={playbooks.filter((template) => template.kind === "venue" && !template.isArchived).map((template) => ({
             id: template.id,
             name: template.name,

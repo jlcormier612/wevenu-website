@@ -2,8 +2,8 @@
  * Venue Setup Profile persistence.
  * Writes profiles and assignments only. Never updates event_setup_states or event_tasks.
  */
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
-import { normalizeEventType } from "@/lib/event-types/canonical";
 import {
   missingProfileDecisions,
   parseSetupDecisions,
@@ -12,6 +12,7 @@ import {
   type SetupTemplateRefs,
   type VenueSetupProfile,
 } from "@/lib/event-setup/profile";
+import { validateSetupProfileEventTypes } from "@/lib/event-setup/setup-profile-event-types";
 import { applicableSetupSteps, type SetupDecisions, type SetupStepKey } from "@/lib/event-setup/state";
 import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
@@ -89,13 +90,21 @@ export async function saveVenueSetupProfile(
   const missing = missingProfileDecisions(input.applicable, input.decisions);
   if (missing.length > 0) return { ok: false, message: "Choose configured or skipped for every area." };
 
-  const eventTypes = [...new Set(
-    input.eventTypes
-      .map((type) => normalizeEventType(type))
-      .filter((type): type is string => Boolean(type)),
-  )];
-
   const supabase = await createClient();
+  const { data: venueRow, error: venueError } = await supabase
+    .from("venues")
+    .select("accepted_inquiry_event_types")
+    .eq("id", gate.venueId)
+    .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
+  if (venueError) return { ok: false, message: venueError.message };
+
+  const validated = validateSetupProfileEventTypes(
+    input.eventTypes,
+    venueRow?.accepted_inquiry_event_types,
+  );
+  if (!validated.ok) return validated;
+  const eventTypes = validated.eventTypes;
+
   const payload = {
     venue_id: gate.venueId,
     name,
@@ -162,6 +171,27 @@ export async function deleteVenueSetupProfile(
     .delete()
     .eq("id", profileId)
     .eq("venue_id", gate.venueId);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+/**
+ * Drop type-specific setup-profile assignments for event types no longer accepted.
+ * Leaves venue-default (event_type IS NULL) and profile rows untouched.
+ * Never touches event_setup_states.
+ */
+export async function pruneSetupProfileAssignmentsForRemovedEventTypes(
+  venueId: string,
+  removedEventTypes: readonly string[],
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const types = [...new Set(removedEventTypes.filter(Boolean))];
+  if (types.length === 0) return { ok: true };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("venue_setup_profile_assignments")
+    .delete()
+    .eq("venue_id", venueId)
+    .in("event_type", types);
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
