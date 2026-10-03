@@ -48,8 +48,9 @@ import {
   buildS3UnattendedInquiryObservation,
 } from "@/lib/luv/contextual-signals";
 import { evaluateCompletedTour } from "@/lib/luv/completed-tour-intelligence";
-import { buildTourAllSetObservation, isCustomerFacingContactMessage } from "@/lib/luv/observation-quality";
+import { buildTourAllSetObservation } from "@/lib/luv/observation-quality";
 import { isAuthoritativeProposalSentRecord } from "@/lib/luv/pipeline-stage-evidence";
+import { loadUnattendedInquiryContactEvidence } from "@/lib/luv/unattended-inquiry-contact";
 import { getInvoices } from "@/lib/invoices/repository";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import type { Invoice } from "@/lib/invoices/types";
@@ -1343,43 +1344,11 @@ export async function getLuvObservations(
     created_at: string; last_contacted_at: string | null;
     first_booked_at: string | null; lost_at: string | null; relationship_id: string | null;
   }[];
-  const s3LeadIds = s3Rows.map((r) => r.id);
-  const s3RelIds = [...new Set(s3Rows.map((r) => r.relationship_id).filter(Boolean))] as string[];
-  const contactedLeadIds = new Set<string>();
-  const tourStatusByLead = new Map<string, string>();
-  if (s3LeadIds.length > 0) {
-    const { data: s3Tours } = await supabase.from("tour_appointments")
-      .select("lead_id, status")
-      .eq("venue_id", venueId)
-      .in("lead_id", s3LeadIds)
-      .in("status", ["scheduled", "confirmed", "completed"]);
-    for (const t of (s3Tours ?? []) as { lead_id: string | null; status: string }[]) {
-      if (t.lead_id) tourStatusByLead.set(t.lead_id, t.status);
-    }
-  }
-  if (s3RelIds.length > 0) {
-    const { data: convs } = await supabase.from("conversations")
-      .select("id, relationship_id")
-      .eq("venue_id", venueId)
-      .in("relationship_id", s3RelIds);
-    const convIds = (convs ?? []).map((c: { id: string }) => c.id);
-    const relByConv = new Map((convs ?? []).map((c: { id: string; relationship_id: string }) => [c.id, c.relationship_id]));
-    if (convIds.length > 0) {
-      const { data: msgs } = await supabase.from("conversation_messages")
-        .select("conversation_id, sender_type, channel")
-        .eq("venue_id", venueId)
-        .in("conversation_id", convIds);
-      const relsWithMsg = new Set<string>();
-      for (const m of (msgs ?? []) as { conversation_id: string; sender_type: string; channel: string }[]) {
-        if (!isCustomerFacingContactMessage({ senderType: m.sender_type, channel: m.channel })) continue;
-        const rel = relByConv.get(m.conversation_id);
-        if (rel) relsWithMsg.add(rel);
-      }
-      for (const row of s3Rows) {
-        if (row.relationship_id && relsWithMsg.has(row.relationship_id)) contactedLeadIds.add(row.id);
-      }
-    }
-  }
+  const { contactedLeadIds, tourStatusByLeadId } = await loadUnattendedInquiryContactEvidence(
+    supabase,
+    venueId,
+    s3Rows,
+  );
   for (const row of s3Rows) {
     const s3 = buildS3UnattendedInquiryObservation(
       {
@@ -1391,7 +1360,7 @@ export async function getLuvObservations(
         createdAt: row.created_at,
         lastContactedAt: row.last_contacted_at,
         hasCustomerFacingMessage: contactedLeadIds.has(row.id),
-        tourStatus: tourStatusByLead.get(row.id) ?? null,
+        tourStatus: tourStatusByLeadId.get(row.id) ?? null,
         firstBookedAt: row.first_booked_at,
         lostAt: row.lost_at,
       },

@@ -65,6 +65,8 @@ function lead(
     createdAt: string;
     lastContactedAt: string | null;
     salesStage: string;
+    hasCustomerFacingMessage: boolean;
+    tourStatus: string | null;
   }> = {},
 ) {
   return {
@@ -75,6 +77,8 @@ function lead(
     salesStage: overrides.salesStage ?? "new_inquiry",
     createdAt: overrides.createdAt ?? hoursAgo(72),
     lastContactedAt: overrides.lastContactedAt === undefined ? null : overrides.lastContactedAt,
+    hasCustomerFacingMessage: overrides.hasCustomerFacingMessage,
+    tourStatus: overrides.tourStatus,
   };
 }
 
@@ -188,7 +192,13 @@ describe("P-A1 — unattended inquiry cluster", () => {
   it("reuses S3 semantics (contacted / tour record / too new excluded; stage is not)", () => {
     const contacted = lead("x", { lastContactedAt: hoursAgo(1) });
     const touringStageOnly = lead("y", { salesStage: "touring" });
-    const tourOnRecord = { ...lead("t"), tourStatus: "confirmed" };
+    const tourOnRecord = lead("t", { tourStatus: "confirmed" });
+    const withMessages = lead("m", { hasCustomerFacingMessage: true });
+    const completedTourPlusMessages = lead("j", {
+      salesStage: "tour_scheduled",
+      tourStatus: "completed",
+      hasCustomerFacingMessage: true,
+    });
     const fresh = lead("z", { createdAt: hoursAgo(12) });
     const ok = lead("ok");
     assert.equal(buildS3UnattendedInquiryObservation(contacted, { venueId: VENUE_A, nowMs: NOW }), null);
@@ -206,12 +216,54 @@ describe("P-A1 — unattended inquiry cluster", () => {
       false,
     );
     assert.equal(
+      isQualifyingUnattendedInquiryForCluster(withMessages, { venueId: VENUE_A, nowMs: NOW }),
+      false,
+      "last_contacted_at null with customer-facing messages is not unattended",
+    );
+    assert.equal(
+      isQualifyingUnattendedInquiryForCluster(completedTourPlusMessages, { venueId: VENUE_A, nowMs: NOW }),
+      false,
+      "completed tour + messages matches S3 exclusion (Jasmine-class)",
+    );
+    assert.equal(
       isQualifyingUnattendedInquiryForCluster(fresh, { venueId: VENUE_A, nowMs: NOW }),
       false,
     );
     assert.equal(
       isQualifyingUnattendedInquiryForCluster(ok, { venueId: VENUE_A, nowMs: NOW }),
       true,
+    );
+  });
+
+  it("mixed population — only genuinely unattended leads count toward the cluster", () => {
+    const untouchedA = lead("a");
+    const untouchedB = lead("b");
+    const untouchedC = lead("c");
+    const messaged = lead("grace", {
+      salesStage: "proposal_sent",
+      hasCustomerFacingMessage: true,
+    });
+    const tourCompletedMessaged = lead("jasmine", {
+      salesStage: "tour_scheduled",
+      tourStatus: "completed",
+      hasCustomerFacingMessage: true,
+    });
+    const systemMessaged = lead("goldi", { hasCustomerFacingMessage: true });
+    const active = evaluateUnattendedInquiryPattern(
+      [untouchedA, messaged, untouchedB, tourCompletedMessaged, systemMessaged, untouchedC],
+      { venueId: VENUE_A, nowMs: NOW, venueLeadHistoryCount: 20 },
+    );
+    assert.ok(active);
+    assert.equal(active!.metadata.lead_count, 3);
+    assert.match(active!.title, /3 recent inquiries/);
+
+    assert.equal(
+      evaluateUnattendedInquiryPattern(
+        [messaged, tourCompletedMessaged, systemMessaged],
+        { venueId: VENUE_A, nowMs: NOW, venueLeadHistoryCount: 20 },
+      ),
+      null,
+      "false-positive-only population clears the recommendation",
     );
   });
 
@@ -653,6 +705,22 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     const pa4Start = patterns.indexOf("export function evaluatePaymentAttentionPattern");
     const pa4End = patterns.indexOf("export function evaluateInquiryVolumeIncrease", pa4Start);
     assert.match(patterns.slice(pa4Start, pa4End), /\/payments\?filter=attention/);
+  });
+
+  it("P-A1 sync enriches candidates with S3 contact evidence before evaluating", () => {
+    const patterns = read("lib/luv/spot-patterns.ts");
+    const syncStart = patterns.indexOf("export async function syncPhase5SpotPatternRecommendations");
+    const sync = patterns.slice(syncStart);
+    assert.match(sync, /loadUnattendedInquiryContactEvidence/);
+    assert.match(sync, /relationship_id/);
+    assert.match(sync, /hasCustomerFacingMessage/);
+    assert.match(sync, /tourStatus/);
+    const observations = read("lib/luv/observations.ts");
+    assert.match(observations, /loadUnattendedInquiryContactEvidence/);
+    const shared = read("lib/luv/unattended-inquiry-contact.ts");
+    assert.match(shared, /isCustomerFacingContactMessage/);
+    assert.match(shared, /tour_appointments/);
+    assert.match(shared, /conversation_messages/);
   });
 
   it("tour volume for P-P1 does not use exclude_from_business_reporting", () => {

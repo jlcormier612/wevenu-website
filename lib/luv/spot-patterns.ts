@@ -37,6 +37,7 @@ import {
   enrichSpotPatternWithContext,
   type UnattendedContextLead,
 } from "./spot-pattern-context";
+import { loadUnattendedInquiryContactEvidence } from "./unattended-inquiry-contact";
 
 /** Shared cluster window / multiplicity (locked). */
 export const SPOT_PATTERN_WINDOW_DAYS = 14;
@@ -97,7 +98,8 @@ export function isQualifyingUnattendedInquiryForCluster(
 ): boolean {
   const nowMs = opts.nowMs ?? Date.now();
   const windowDays = opts.windowDays ?? SPOT_PATTERN_WINDOW_DAYS;
-  // Same authoritative S3 semantics — do not invent a second definition.
+  // Same authoritative S3 semantics (messages + tours + last_contacted_at).
+  // Sync must enrich candidates before calling this — do not invent a second definition.
   if (!buildS3UnattendedInquiryObservation(lead, { venueId: opts.venueId, nowMs })) {
     return false;
   }
@@ -445,7 +447,9 @@ export async function syncPhase5SpotPatternRecommendations(
       onlyBusinessReporting(
         supabase
           .from("leads")
-          .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, acquisition_source, first_booked_at, lost_at")
+          .select(
+            "id, first_name, last_name, sales_stage, created_at, last_contacted_at, acquisition_source, first_booked_at, lost_at, relationship_id",
+          )
           .eq("venue_id", venueId)
           .is("first_booked_at", null)
           .is("lost_at", null)
@@ -492,18 +496,24 @@ export async function syncPhase5SpotPatternRecommendations(
     const venueLeadHistoryCount = historyLeadsRes.count ?? 0;
     const venueEventHistoryCount = historyEventsRes.count ?? 0;
 
-    // P-A1
-    const unattendedLeads = (
-      (unattendedRes.data ?? []) as {
-        id: string;
-        first_name: string;
-        last_name: string;
-        sales_stage: string;
-        created_at: string;
-        last_contacted_at: string | null;
-        acquisition_source: string | null;
-      }[]
-    ).map((row) => ({
+    // P-A1 — candidate window uses last_contacted_at null for efficiency;
+    // qualification still requires the same S3 communication + tour enrichment.
+    const unattendedRows = (unattendedRes.data ?? []) as {
+      id: string;
+      first_name: string;
+      last_name: string;
+      sales_stage: string;
+      created_at: string;
+      last_contacted_at: string | null;
+      acquisition_source: string | null;
+      relationship_id: string | null;
+    }[];
+    const { contactedLeadIds, tourStatusByLeadId } = await loadUnattendedInquiryContactEvidence(
+      supabase,
+      venueId,
+      unattendedRows,
+    );
+    const unattendedLeads = unattendedRows.map((row) => ({
       id: row.id,
       venueId,
       firstName: row.first_name,
@@ -512,6 +522,8 @@ export async function syncPhase5SpotPatternRecommendations(
       createdAt: row.created_at,
       lastContactedAt: row.last_contacted_at,
       acquisitionSource: row.acquisition_source,
+      hasCustomerFacingMessage: contactedLeadIds.has(row.id),
+      tourStatus: tourStatusByLeadId.get(row.id) ?? null,
     }));
 
     const pA1 = evaluateUnattendedInquiryPattern(unattendedLeads, {
