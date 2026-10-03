@@ -49,9 +49,13 @@ export type ContractListFilterKey =
   | "cancelled"
   | "expired";
 
+/**
+ * Order is product-locked to match Payments: All first, then Action Required,
+ * then lifecycle statuses. Default selection remains Action Required.
+ */
 export const CONTRACT_LIST_FILTERS: { value: ContractListFilterKey; label: string }[] = [
-  { value: "action_required", label: "Action Required" },
   { value: "all", label: "All" },
+  { value: "action_required", label: "Action Required" },
   { value: "draft", label: "Draft" },
   { value: "sent_to_client", label: "Sent to Client" },
   { value: "awaiting_venue_signature", label: "Awaiting Venue Signature" },

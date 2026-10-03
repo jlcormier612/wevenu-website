@@ -5,6 +5,8 @@ import { resolve } from "node:path";
 
 import type { Contract } from "@/lib/contracts/types";
 import {
+  CONTRACT_LIST_FILTERS,
+  DEFAULT_CONTRACT_LIST_FILTER,
   contractMatchesListFilter,
   contractMatchesWorkflowSearch,
   contractSigningFilterKey,
@@ -41,6 +43,26 @@ function contract(overrides: Partial<Contract> = {}): Contract {
 }
 
 describe("contract list filters — venue action required", () => {
+  it("All is first; Action Required is second; default selection stays Action Required", () => {
+    assert.deepEqual(
+      CONTRACT_LIST_FILTERS.map((f) => f.value),
+      [
+        "all",
+        "action_required",
+        "draft",
+        "sent_to_client",
+        "awaiting_venue_signature",
+        "fully_signed",
+        "cancelled",
+        "expired",
+      ],
+    );
+    assert.equal(CONTRACT_LIST_FILTERS[0]?.label, "All");
+    assert.equal(CONTRACT_LIST_FILTERS[1]?.label, "Action Required");
+    assert.equal(DEFAULT_CONTRACT_LIST_FILTER, "action_required");
+    assert.equal(parseContractListFilter(undefined), "action_required");
+  });
+
   it("defaults to Action Required", () => {
     assert.equal(parseContractListFilter(undefined), "action_required");
     assert.equal(parseContractListFilter("nope"), "action_required");
