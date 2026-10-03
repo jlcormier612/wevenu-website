@@ -21,14 +21,14 @@ describe("payment attention reasons", () => {
   });
 });
 
-describe("payments default view is the attention queue", () => {
-  it("treats missing filter as attention and keeps ?filter=attention and Show all", () => {
+describe("payments list is not an attention-only queue", () => {
+  it("defaults to All and keeps Action Required as an explicit filter", () => {
     const page = readFileSync(resolve("app/(app)/payments/page.tsx"), "utf8");
-    assert.match(page, /filter !== "all"/);
-    assert.match(page, /filter=attention/);
-    assert.match(page, /filter=all/);
-    assert.match(page, /Show all/);
-    assert.match(page, /scheduleStatus === "attention"/);
-    assert.match(page, /excludeFromBusinessReporting/);
+    const filters = readFileSync(resolve("lib/payments/list-filters.ts"), "utf8");
+    assert.match(page, /All includes every payment plan/);
+    assert.match(filters, /value: "all", label: "All"/);
+    assert.match(filters, /value: "action_required", label: "Action Required"/);
+    assert.match(filters, /DEFAULT_PAYMENT_LIST_FILTER: PaymentListFilterKey = "all"/);
+    assert.doesNotMatch(page, /Show all/);
   });
 });

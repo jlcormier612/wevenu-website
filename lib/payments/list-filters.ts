@@ -53,6 +53,12 @@ export function paymentMatchesListFilter(
 ): boolean {
   if (filter === "all") return true;
   if (filter === "action_required") return isVenueActionRequiredSchedule(s);
+  // Overdue / refunded plans are Action Required. They are not On Track,
+  // even when no money has been received yet. Partially paid stays in
+  // Partially Paid (and also Action Required when a line is overdue).
+  if (filter === "on_track") {
+    return s.scheduleStatus === "on_track" && !isPartiallyPaidSchedule(s);
+  }
   return paymentScheduleFilterKey(s) === filter;
 }
 

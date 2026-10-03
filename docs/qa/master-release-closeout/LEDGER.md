@@ -1,23 +1,20 @@
 # HTC Master Release Closeout Ledger
 
-**OVERALL HTC RELEASE:** NOT GREEN — Luv pipeline-stage-is-never-evidence + observation-quality correction is implemented in tree but not yet proven on exact Sandbox runtime. Date Hold multi-hold (`fd213041`) also awaits runtime + browser proof. Production untouched.
+**OVERALL HTC RELEASE:** NOT GREEN — Date Hold + Luv sub-gates GREEN/CLOSED. Payment lifecycle OPEN (financial scenario proven on sole RUNNING `d8ccf73c` / `:544`; UX defects found and fixed locally, not yet the sole running image). Venue Planning template + setup Overview OPEN (browser/DB proof pending). Production untouched.
 
 **Status of this document:** authoritative master-release closeout. Production untouched.
 
-Exact Sandbox runtime (sole RUNNING after Stream 16 integrated gate, 2026-10-02):
+Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 
-- Commit / image tag: `da6c79c9f6451298d47942d3de98f007d2adb5b8`
-- Digest: `sha256:d3db4a511e73c7ee1900090ae459148077a6df0871d05d36f91192ad66a53a1f`
-- Task definition: `htc-sandbox-venue-app:536`
-- Task ID: `101901f0fd3c494b9a4899862e6ea5ec`
+- Commit / image tag: `ed87d485fb459d19d767c74857136c01766b3ef0` (contains `501b5a05`, `ed87d485`, `9bfbf4d6`, `cfeff8ca`, `fd213041`, `df5e7bc2`)
+- Digest: `sha256:a098c8ea50e5424d8d8fcf4c2db17fc32a0a0d64f1c04339954774137f5d28a2`
+- Task definition: `htc-sandbox-venue-app:542`
+- Task ID: `454c210a8bd74a45ac2ab1aa411f1de3`
 - Desired / running / pending: 1 / 1 / 0
-- Rollout: PRIMARY COMPLETED (sole deployment)
-- Health: `/api/health` HTTP 200
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37070225043 SUCCESS
-- Migration: `20261411000000_date_hold_multi_space_time_aware.sql` applied (run 37070139294 SUCCESS)
-- Cluster: `htc-sandbox` only. No `htc-production` cluster in this account.
-- Production: untouched
-- Prior sole RUNNING: `6a810904` / `:535` (post-booking commercial lifecycle)
+- Rollout: PRIMARY COMPLETED (sole RUNNING; `:541` drained)
+- Health: `https://app.sandbox.hellotocheers.com/api/health` HTTP 200 `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37079499238 SUCCESS
+- Cluster: `htc-sandbox` only. Production untouched.
 
 ## Already GREEN/CLOSED (not reopened)
 
@@ -32,7 +29,7 @@ Exact Sandbox runtime (sole RUNNING after Stream 16 integrated gate, 2026-10-02)
 | Invoice/customer-facing financial flow | GREEN/CLOSED | prior | prior | prior | prior | prior | invoice tests | prior | prior | do not reopen | None |
 | Documents simplification | GREEN/CLOSED | prior | prior | prior | prior | prior | prior | prior | prior | do not reopen | None |
 | Luv performance scope | GREEN/CLOSED | `0b5a34e4` | prior Luv-scope runtime | prior | prior | prior | CW Luv tests | TTFB 2078 ms | n/a | do not reopen | None |
-| Luv contextual-intelligence S1–S4 / Phase 5 / Phase 6 | OPEN — stage-is-never-evidence + quality correction in tree; NOT GREEN until exact-runtime browser+DB | pending this correction | not yet | not yet | not yet | not yet | `lib/luv/pipeline-stage-evidence.test.ts` + Luv suites 200+206 PASS locally | not yet | not yet | prior S1–S2/proposal/draft rules preserved; S3/S4 no longer treat stage or empty last_contacted_at as proof | Exact Sandbox runtime + browser+DB |
+| Luv contextual-intelligence S1–S4 / Phase 5 / Phase 6 | GREEN/CLOSED on exact sole RUNNING `ed87d485` | `9bfbf4d6` `df5e7bc2` `501b5a05` `ed87d485` | `ed87d485` | `sha256:a098c8ea…` | `:542` | `454c210a…` | 82 Luv + 81 payment/Luv focused PASS this pass | FakeBooked/Miss Piggy/ACTION/CONTEXT/SILENCE/StageOnly drafting proven below | disposable fixtures below | no closed-stream reopen | None for Luv sub-gates |
 | Dashboard greeting | GREEN/CLOSED | prior | prior | prior | prior | prior | prior | prior | prior | do not reopen | None |
 | Global deleted-record visibility | GREEN/CLOSED | prior | prior | prior | prior | prior | `docs/qa/global-deleted-record-visibility/STATUS.md` | prior | prior | do not reopen | None |
 | Library collection consistency | GREEN/CLOSED | prior | prior | prior | prior | prior | prior STATUS | prior | prior | do not reopen | None |
@@ -628,14 +625,99 @@ Exact Sandbox runtime (sole RUNNING after Stream 16 integrated gate, 2026-10-02)
 - **PRODUCTION:** untouched
 - **REMAINING WORK:** None
 
+### Date Holds — multiple active holds same lead/date (master release)
+
+- **STATUS:** GREEN/CLOSED on exact Sandbox runtime `cfeff8ca` / `:539` (proof) and retained under sole RUNNING `c94245b8` / `:540`
+- **IMPLEMENTATION:** `fd213041` (remove one-active-hold restriction); conflict remains authoritative
+- **BROWSER (lead `297c8195-…` MultiHold ProofGate, date `2028-03-15`):**
+  1. Hold #1 Covered Bridge `10:00–14:00` → Active: `Covered Bridge 10:00 AM–2:00 PM`
+  2. Hold #2 Barn `16:00–22:00` without releasing #1 → both active; each has Release Hold
+  3. Release ONLY Bridge #1 → Barn remains active (DB `c9950b72-…` status=active; Bridge `b812e1c3-…` status=released)
+  4. Re-place Bridge `10:00–14:00` (`b2d97d58-…`) for conflict/boundary
+  5. Conflict Bridge `13:00–15:00` rejected — toast: `That space and time window overlaps another active hold.` (no new DB row)
+  6. Boundary Bridge `14:00–16:00` allowed (`77785cbc-…`) — UI `Covered Bridge 2:00–4:00 PM`
+  7. Calendar day `2028-03-15`: three Hold links `10:00 AM – 2:00 PM`, `2:00 PM – 4:00 PM`, `4:00 PM – 10:00 PM`
+- **DB:** separate `date_holds` IDs; correct lead/date/start/end; `date_hold_spaces` junction per hold; release changes only that hold
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** None for this sub-gate
+
+### Date Holds — 12-hour Active Hold display (master release)
+
+- **STATUS:** GREEN/CLOSED on exact Sandbox `cfeff8ca` / `:539` (and retained on `c94245b8`)
+- **IMPLEMENTATION:** `cfeff8ca` — Active Holds use HTC 12-hour formatter; DB remains HH:mm 24h
+- **BROWSER:**
+  - MultiHold Active Holds: `10:00 AM–2:00 PM`, `4:00–10:00 PM`, `2:00–4:00 PM`
+  - Prior Minnie proof on same image lineage: Bridge `16:00–18:00` → `4:00–6:00 PM`; Barn `18:00–23:00` → `6:00–11:00 PM`
+  - Calendar day view uses matching AM/PM windows
+- **DB STORAGE UNCHANGED:** `10:00:00`/`14:00:00`, `16:00:00`/`22:00:00`, `14:00:00`/`16:00:00` (and Minnie `16:00:00`/`18:00:00`, `18:00:00`/`23:00:00`)
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** None for this sub-gate
+
+### Luv — pipeline stage never evidence / completed-tour intelligence / drafting (master release)
+
+- **STATUS:** OPEN — not GREEN
+- **IMPLEMENTATION ON SOLE RUNNING `c94245b8`:** `9bfbf4d6` (stage lock), `df5e7bc2`+`5f6e4e77`+`c94245b8` (completed-tour intelligence)
+- **EXACT-RUNTIME PROVEN (partial):**
+  - **A StageOnly `7bc69568-…`:** stage was `proposal_sent`, zero `commercial_proposals` → Luv Thoughts New Lead; draft does **not** claim proposal sent. Case D: stage changed to `new_inquiry` → same underlying non-claim.
+  - **B StaleStage `a550748b-…`:** stage `new_inquiry` + confirmed tour → Luv noticed “all set for Sunday” from `tour_appointments`.
+  - **E drafting stage-only proposal:** PASS (no sent claim).
+  - **Completed-tour ACTION `7d95bab3-…`:** observation “asked about Saturday setup… not a generic thank-you” + CTA; draft subject `A quick answer about Saturday setup`; body addresses setup; internal note credit-score text **not** leaked.
+  - **Completed-tour SILENCE `695fb092-…`:** no completed-tour Luv noticed; draft toast `Nothing useful to draft for this relationship right now.`
+- **EXACT-RUNTIME DEFECTS (block GREEN):**
+  1. **FakeBooked `d7816d81-…`:** stage `booked` + `first_booked_at=null` → Relationship Snapshot Interest/Commitment showed `Booked` via `lead.salesStage === "booked"`. Fix committed `501b5a05` (use `isAuthoritativeBooked`/`firstBookedAt`). Deploy not yet sole RUNNING.
+  2. **TourContext `275474df-…`:** contextual mode correct (observation, no draft CTA) but copy garbled: “still need to Thanks so much for the tour.” Fix committed `ed87d485` (topic from full inbound). Deploy not yet sole RUNNING.
+- **QUEUED DEPLOYS:** https://github.com/jlcormier612/wevenu-website/actions/runs/37079329287 (`501b5a05`); https://github.com/jlcormier612/wevenu-website/actions/runs/37079499238 (`ed87d485`)
+- **AUTOMATED THIS GATE:** 111 + 50 PASS (pipeline-stage, completed-tour, drafting/workflow, hold presentation/multi-hold/occupancy/boundary, snapshot-lifecycle, discard-delete, calendar slice1/precheck)
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** Wait for sole RUNNING `ed87d485` (includes `501b5a05`); re-prove FakeBooked snapshot + TourContext family copy + CONTEXT draft silence; then mark Luv sub-gates GREEN.
+
+### Payment lifecycle + offline recording + Payments filters (master release)
+
+- **STATUS:** OPEN — financial recording proven on sole RUNNING `d8ccf73c` (contains `23ed4f4a`). **Not GREEN.** Three UX defects on that runtime are fixed in the working tree and are not yet the sole running image.
+- **ROOT CAUSE (Minnie four×$8k):** Invoice top-right “Record payment received” called `recordInvoiceInstallmentReceived` → `selectCurrentUnpaidInstallment` silently advanced to the next unpaid line on each click; invoice status stayed `sent` so the CTA remained. Four clicks = four installments marked paid.
+- **PRODUCT LOCK:**
+  - Offline payment is first-class via Venue Payment Collection Preferences (`acceptedPaymentMethods` + `clientPaymentInstructions`)
+  - Deliberate Record Payment dialog: installment + amount + method + date + optional reference; never silent auto-advance
+  - `$32k` invoice + 4×`$8k` plan is intentional; one `$8k` payment → invoice `partially_paid`, plan `1 of 4`, `$24k` remaining
+  - Duplicate protection: UI submit lock + idempotency key + optimistic status/`paid_amount` lock + paid-line alreadyRecorded
+  - Payments page filters: **All first**, then Action Required, On Track, Partially Paid, Paid in Full, No Payments
+- **IMPLEMENTATION COMMIT(S):** `23ed4f4af517076faa66ba7155fd22cb907eb74e`
+- **MIGRATIONS:** SUCCESS https://github.com/jlcormier612/wevenu-website/actions/runs/37081689994 — `20261411100000_invoice_partially_paid_status.sql`, `20261411200000_payment_line_partially_paid.sql`, `20261411300000_payment_line_offline_idempotency.sql`
+- **DEPLOY PROVEN:** sole RUNNING `d8ccf73cdc0ae3cfbe26999354f8f820cfa7d5f5` (ancestor of required `23ed4f4a`). Image `405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d8ccf73cdc0ae3cfbe26999354f8f820cfa7d5f5`. Digest `sha256:0d8599895a8e77a0792f9746d8e551e7f9f07c918a7410ad4fc64ae1d81b6747`. Task def `htc-sandbox-venue-app:544` PRIMARY COMPLETED. Task `140c10ca77614f71b0783190f8445920`. desired/running/pending 1/1/0. Health HTTP 200 `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`. Production cluster `htc-production` MISSING.
+- **DISPOSABLE FIXTURE:** OffPay32 invoice `f37c063d-e876-4a2f-b9dd-c426508498c7` / schedule `0102df2a-b170-43c2-913e-8367169ec71a`. Minnie/Mickey not mutated.
+- **BROWSER + DB (this runtime):** one Check payment of $8,000 on Initial Payment (`c887be1e-…`), reference `1001`, paid_at `2026-10-03`, idempotency `f945fa64-ef2e-40f3-b868-48d46340459e`. Invoice `partially_paid`, total 32000, balance 24000. Plan 1 of 4, $24,000 remaining. Other three lines pending. One `payment_received` activity (`Via check · Initial Payment`). Paid installment dropped out of the record selector. Submit button disabled as “Recording…”. Payments filters: All 29 first; OffPay32 in All and Partially Paid (5); absent from Action Required, On Track, Paid in Full, No Payments. Nav badge 15 = Action Required 15. Portal `/p/…` with Stripe not chargeable showed “How to pay / Accepted methods: Check, and ACH / bank transfer” plus the saved instructions. Fancy `commercial_booking_prefs` restored to the prior online-only JSON after the proof.
+- **BLOCKING DEFECTS ON THAT RUNTIME (do not GREEN):**
+  1. On Track included overdue unpaid schedules (Miss Piggy and others). Action Required was correct; On Track was not.
+  2. Record dialog first paint said “no open installment” before the installment list loaded.
+  3. After a successful record, the invoice badge stayed “Issued” until a full navigation; a reload showed “Partially Paid”.
+- **FIX (local, not sole RUNNING):** On Track requires `scheduleStatus === "on_track"`; dialog opens in a loading state; invoice status follows the refreshed server status; record-method lists use venue preferences (no invented card/Venmo/Stripe).
+- **AUTOMATED TEST EVIDENCE:** 90/90 PASS focused after the fix (`offline-recording`, `list-filters`, `attention-reasons`, invoice-balance, manual-installment, commercial-facts, venue-prefs, customer-facing-notes, portal payment-access).
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** Deploy the fix; confirm it is the sole RUNNING image; re-check On Track, dialog first paint, and in-place Partially Paid badge. Then GREEN/CLOSED. Do not mark overall HTC GREEN.
+
 ## OVERALL HTC RELEASE
 
 - **STATUS:** NOT GREEN
-- Post-Booking Commercial Lifecycle and Stream 16 remain proven on `da6c79c9`.
-- Luv is NOT GREEN: pipeline/sales stage is never authoritative evidence (observations + drafts). Implemented locally; awaiting commit runtime + browser+DB.
-- Date Hold multi-hold (`fd213041`) is NOT GREEN until exact-runtime browser+DB.
+- Date Hold multiple holds: GREEN/CLOSED (exact browser+DB).
+- Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB storage unchanged).
+- Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on prior sole RUNNING `ed87d485` (do not reopen without regression).
+- Payment lifecycle + Payments filters: OPEN — financial proof on sole RUNNING `d8ccf73c` / `:544`; On Track, dialog first paint, and in-place status badge block GREEN until the local fix is the sole running image.
+- Venue Planning template + setup Overview: OPEN — implemented `d8ccf73c`; not GREEN until sole runtime + browser/DB proof.
 - Production untouched.
 - No later list. No new backlog.
+
+### Venue Planning template + setup Overview (master release)
+
+- **STATUS:** OPEN — not GREEN
+- **AUDIT:** Venue Planning seed lived in `STANDARD_VENUE_WORKFLOW_*` (Booking = Send contract / Verify deposit; Final Details also held Build timeline / Create floor plan / Confirm rentals). Overview `EventSetupPanel` persisted `set_up`/`skipped` on `event_setup_states` but still rendered both decision buttons and the label “Set up”, so a finished decision looked unresolved.
+- **PRODUCT LOCK:** Booking/commercial tasks removed from Venue Planning. Planning = prep (timeline, floor plan, rentals). Final Details = Vendor COIs only. Overview states: Needs a decision / Configured / Skipped, with decision buttons only while undecided. Applied event tasks are not rewritten.
+- **IMPLEMENTATION COMMIT:** `d8ccf73c`
+- **MIGRATION:** `20261411400000_venue_planning_starter_drop_booking.sql` — https://github.com/jlcormier612/wevenu-website/actions/runs/37082781667
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37082780169
+- **AUTOMATED:** venue-planning-starter + event-setup state + related playbook/payment trigger tests PASS (49 in the focused run)
+- **BROWSER / DB / SOLE RUNTIME:** pending
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** sole RUNNING `d8ccf73c`; browser proof of template + configured/skipped persistence; DB proof; then GREEN/CLOSED
 
 ## Production
 

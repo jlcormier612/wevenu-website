@@ -20,6 +20,25 @@ export function paymentMethodLabel(value: string | null): string {
   return PAYMENT_METHODS.find((m) => m.value === value)?.label ?? value;
 }
 
+/** Offline methods the venue preference surface can name. */
+const PREFERENCE_OFFLINE_METHODS = ["check", "cash", "bank_transfer", "other"];
+
+/**
+ * Methods a coordinator may record against. Uses Venue Payment Collection
+ * Preferences. Online-only or missing offline methods fall back to the
+ * preference offline set (check, cash, ACH, other) — not card, Venmo, or Stripe.
+ */
+export function offlineRecordMethodOptions(acceptedMethods?: string[] | null): Option[] {
+  const accepted = (acceptedMethods ?? [])
+    .map((m) => (m === "ach" ? "bank_transfer" : m))
+    .filter((m) => m !== "online");
+  const allowed = accepted.length > 0 ? accepted : PREFERENCE_OFFLINE_METHODS;
+  const filtered = PAYMENT_METHODS.filter((m) => allowed.includes(m.value));
+  return filtered.length > 0
+    ? filtered
+    : PAYMENT_METHODS.filter((m) => PREFERENCE_OFFLINE_METHODS.includes(m.value));
+}
+
 export const STATUS_LABEL: Record<PaymentItemStatus, string> = {
   pending:            "Pending",
   processing:         "Processing",

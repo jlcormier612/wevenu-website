@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/payments/constants";
+import { offlineRecordMethodOptions, paymentMethodLabel } from "@/lib/payments/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
 
 type InstallmentOption = {
@@ -54,6 +54,14 @@ export function RecordOfflinePaymentDialog({
   const [submitting, setSubmitting] = React.useState(false);
   const [scheduleId, setScheduleId] = React.useState<string | null>(null);
   const [installments, setInstallments] = React.useState<InstallmentOption[]>([]);
+  const [wasOpen, setWasOpen] = React.useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setLoading(true);
+      setInstallments([]);
+    }
+  }
   const [itemId, setItemId] = React.useState("");
   const [paidAmount, setPaidAmount] = React.useState("");
   const [method, setMethod] = React.useState("");
@@ -63,18 +71,10 @@ export function RecordOfflinePaymentDialog({
   const [idempotencyKey, setIdempotencyKey] = React.useState(() => crypto.randomUUID());
   const submitLock = React.useRef(false);
 
-  const methodOptions = React.useMemo(() => {
-    const offlineValues = new Set(["check", "cash", "bank_transfer", "other", "venmo", "credit_card"]);
-    const accepted = (acceptedMethods ?? [])
-      .map((m) => (m === "ach" ? "bank_transfer" : m))
-      .filter((m) => m !== "online");
-    const filtered = PAYMENT_METHODS.filter((m) => {
-      if (!offlineValues.has(m.value)) return false;
-      if (accepted.length === 0) return true;
-      return accepted.includes(m.value) || (m.value === "bank_transfer" && accepted.includes("ach"));
-    });
-    return filtered.length > 0 ? filtered : PAYMENT_METHODS.filter((m) => offlineValues.has(m.value));
-  }, [acceptedMethods]);
+  const methodOptions = React.useMemo(
+    () => offlineRecordMethodOptions(acceptedMethods),
+    [acceptedMethods],
+  );
 
   const selected = installments.find((i) => i.id === itemId) ?? null;
 

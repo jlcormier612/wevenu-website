@@ -117,6 +117,30 @@ describe("payment list filters", () => {
     assert.equal(paymentMatchesListSearch(b, "essential"), true);
   });
 
+  it("On Track excludes overdue attention schedules", () => {
+    const overdue = schedule({
+      scheduleStatus: "attention",
+      overdueCount: 1,
+      totalPaid: 0,
+      balance: 32000,
+    });
+    assert.equal(paymentMatchesListFilter(overdue, "on_track"), false);
+    assert.equal(paymentMatchesListFilter(overdue, "action_required"), true);
+    assert.equal(paymentMatchesListFilter(overdue, "all"), true);
+    const future = schedule({ scheduleStatus: "on_track", totalPaid: 0, balance: 32000 });
+    assert.equal(paymentMatchesListFilter(future, "on_track"), true);
+    const partialOverdue = schedule({
+      scheduleStatus: "attention",
+      overdueCount: 1,
+      totalPaid: 8000,
+      balance: 24000,
+    });
+    assert.equal(paymentMatchesListFilter(partialOverdue, "partially_paid"), true);
+    assert.equal(paymentMatchesListFilter(partialOverdue, "on_track"), false);
+    assert.equal(paymentMatchesListFilter(partialOverdue, "paid_in_full"), false);
+    assert.equal(paymentMatchesListFilter(partialOverdue, "action_required"), true);
+  });
+
   it("G-compatible — $8k of $32k is Partially Paid, not Paid in Full", () => {
     const s = schedule({ totalPaid: 8000, balance: 24000, scheduleStatus: "on_track" });
     assert.equal(paymentMatchesListFilter(s, "partially_paid"), true);

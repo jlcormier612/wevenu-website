@@ -130,6 +130,9 @@ export function InvoiceDetail({
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
+  React.useEffect(() => {
+    setStatus(invoice.status);
+  }, [invoice.status]);
   const [pending, startTransition] = React.useTransition();
   const [emailPending, startEmail] = React.useTransition();
   const [namePending, startName] = React.useTransition();

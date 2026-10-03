@@ -53,7 +53,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  PAYMENT_METHODS,
+  offlineRecordMethodOptions,
   OBLIGATION_KIND_OPTIONS,
   computeTotalPaid,
   daysUntil,
@@ -173,12 +173,15 @@ function MarkPaidForm({
   onSave,
   onCancel,
   pending,
+  acceptedMethods,
 }: {
   item: PaymentLineItem;
   onSave: (input: MarkPaidInput) => void;
   onCancel: () => void;
   pending: boolean;
+  acceptedMethods?: string[] | null;
 }) {
+  const methodOptions = offlineRecordMethodOptions(acceptedMethods);
   const remaining = item.status === "partially_paid"
     ? Math.max(0, item.amount - (item.paidAmount ?? 0))
     : item.amount;
@@ -215,10 +218,10 @@ function MarkPaidForm({
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Payment method *</Label>
-          <Select value={method} onValueChange={setMethod} items={PAYMENT_METHODS}>
+          <Select value={method} onValueChange={setMethod} items={methodOptions}>
             <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
             <SelectContent>
-              {PAYMENT_METHODS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              {methodOptions.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -324,6 +327,7 @@ function LineItemRow({
   onDelete,
   currentUserRole,
   planLocked = false,
+  acceptedMethods,
 }: {
   item: PaymentLineItem;
   scheduleId: string;
@@ -335,6 +339,7 @@ function LineItemRow({
   currentUserRole?: string | null;
   /** When true, schedule structure (edit/cancel/add) is locked; Pay remains available. */
   planLocked?: boolean;
+  acceptedMethods?: string[] | null;
 }) {
   const [editMode, setEditMode] = React.useState(false);
   const [payMode, setPayMode] = React.useState(false);
@@ -570,7 +575,7 @@ function LineItemRow({
       </div>
       {payMode && (
         <div className="mt-1.5">
-          <MarkPaidForm item={item} onSave={handleMarkPaid} onCancel={() => setPayMode(false)} pending={payPending} />
+          <MarkPaidForm item={item} onSave={handleMarkPaid} onCancel={() => setPayMode(false)} pending={payPending} acceptedMethods={acceptedMethods} />
         </div>
       )}
       {refundMode && (
@@ -584,7 +589,7 @@ function LineItemRow({
 
 // ---- Main component ---------------------------------------------------------
 
-export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null; currentUserRole?: string | null }) {
+export function PaymentScheduleDetail({ schedule, invoice, currentUserRole, acceptedPaymentMethods }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null; currentUserRole?: string | null; acceptedPaymentMethods?: string[] | null }) {
   const router = useRouter();
   const [items, setItems] = React.useState(schedule.lineItems);
   const [showAdd, setShowAdd] = React.useState(false);
@@ -808,7 +813,8 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
             <LineItemRow key={item.id} item={item} scheduleId={schedule.id} scheduleTitle={schedule.title}
               clientId={schedule.clientId}
               onUpdate={handleItemUpdate} onMarkPaid={handleMarkPaid} onDelete={handleDelete}
-              currentUserRole={currentUserRole} planLocked={planHasActivity} />
+              currentUserRole={currentUserRole} planLocked={planHasActivity}
+              acceptedMethods={acceptedPaymentMethods} />
           ))}
           {showAdd && !planHasActivity && (
             <div className="space-y-2">

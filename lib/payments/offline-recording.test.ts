@@ -12,7 +12,7 @@ import {
   computeNetPaid,
   deriveInvoicePaymentStatus,
 } from "@/lib/payments/invoice-balance";
-import { paymentPlanOverview } from "@/lib/payments/constants";
+import { offlineRecordMethodOptions, paymentPlanOverview } from "@/lib/payments/constants";
 import {
   installmentRemainingAmount,
   isOpenOfflineInstallment,
@@ -234,5 +234,15 @@ describe("offline recording semantics (A–N)", () => {
     const invoiceUi = readFileSync(resolve("components/invoices/invoice-detail.tsx"), "utf8");
     assert.match(invoiceUi, /RecordOfflinePaymentDialog/);
     assert.doesNotMatch(invoiceUi, /recordInvoiceInstallmentReceivedAction/);
+  });
+
+  it("record methods follow venue preferences and do not invent card or Venmo", () => {
+    const configured = offlineRecordMethodOptions(["check", "ach"]).map((m) => m.value);
+    assert.deepEqual(configured, ["check", "bank_transfer"]);
+    const onlineOnly = offlineRecordMethodOptions(["online"]).map((m) => m.value);
+    assert.deepEqual(onlineOnly, ["cash", "check", "bank_transfer", "other"]);
+    assert.equal(onlineOnly.includes("credit_card"), false);
+    assert.equal(onlineOnly.includes("venmo"), false);
+    assert.equal(onlineOnly.includes("stripe"), false);
   });
 });
