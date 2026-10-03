@@ -20,6 +20,10 @@ const questionnaireKindNamesMigration = readFileSync(
   join(root, "supabase/migrations/20261411700000_venue_documents_questionnaire_kind_names.sql"),
   "utf8",
 );
+const bookingScopeMigration = readFileSync(
+  join(root, "supabase/migrations/20261411800000_venue_documents_booking_relationship_scope.sql"),
+  "utf8",
+);
 
 describe("get_venue_documents workspace union", () => {
   it("unions generic documents, contracts, invoices, floor plans, questionnaires, and event orders", () => {
@@ -83,5 +87,21 @@ describe("get_venue_documents workspace union", () => {
       questionnaireKindNamesMigration,
       /'name',\s+'Final Details Questionnaire'/,
     );
+  });
+
+  it("booking scope includes client-only commercial docs without cross-event leak", () => {
+    assert.match(
+      bookingScopeMigration,
+      /when p_event_id is not null and p_client_id is not null then/,
+    );
+    assert.match(
+      bookingScopeMigration,
+      /\(c\.event_id = p_event_id\)\s+or \(c\.event_id is null and c\.client_id = p_client_id\)/,
+    );
+    assert.match(
+      bookingScopeMigration,
+      /\(i\.event_id = p_event_id\)\s+or \(i\.event_id is null and i\.client_id = p_client_id\)/,
+    );
+    assert.doesNotMatch(bookingScopeMigration, /conversation_message_attachments/);
   });
 });

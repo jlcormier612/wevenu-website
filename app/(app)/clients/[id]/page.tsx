@@ -367,7 +367,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     invoiceLineMarkers, activityLists, requestsById, taskContacts, teamMembers, clientChoicesRaw, contextualObservations,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), eventInvoicesPromise, getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
-    getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]),
+    getVenueWorkspaceDocuments({ eventId, clientId: id }), getPinnedDocumentKeys().then((s) => [...s]),
     questionnairesPromise,
     eventTasksPromise, getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getEventRecommendations(eventId),

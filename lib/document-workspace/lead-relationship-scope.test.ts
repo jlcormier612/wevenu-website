@@ -103,6 +103,7 @@ describe("Lead Documents relationship scope — get_venue_documents", () => {
   });
 
   it("8. Client/Event Documents — non-lead path keeps prior client_id / event_id filters", () => {
+    // Booking scope (both ids) is a dedicated branch; legacy else keeps AND filters.
     assert.match(repair, /p_client_id is null or c\.client_id = p_client_id/);
     assert.match(repair, /p_event_id\s+is null or c\.event_id\s+= p_event_id/);
     assert.match(repair, /p_client_id is null or e\.client_id = p_client_id/);
