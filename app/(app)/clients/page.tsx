@@ -5,6 +5,11 @@ import { Suspense } from "react";
 import { ClientList } from "@/components/clients/client-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
+import {
+  THREE_COUPLES_PORTAL_TARGET,
+  portalActivationState,
+} from "@/lib/activation/portal-open-milestone";
+import { getBookedClientPortalActivationRows } from "@/lib/activation/portal-open-milestone-service";
 import { getCanonicallyBookedClientIds } from "@/lib/booking-journey/canonical-booked";
 import { getClientAttentionFlags, getClients } from "@/lib/clients/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -20,6 +25,29 @@ export default async function ClientsPage() {
     getCanonicallyBookedClientIds(),
   ]);
   const today = venueToday(venue?.timezone ?? null);
+
+  const portalRows = venue
+    ? await getBookedClientPortalActivationRows(venue.id, bookedIds)
+    : new Map();
+  let openedCount = 0;
+  const portalActivationByClientId: Record<string, {
+    state: ReturnType<typeof portalActivationState>;
+    invitationId: string | null;
+    invitationStatus: "pending" | "accepted" | "revoked" | null;
+  }> = {};
+  for (const [clientId, row] of portalRows) {
+    const state = portalActivationState({
+      lastAccessedAt: row.lastAccessedAt,
+      invitationStatus: row.invitationStatus,
+    });
+    if (state === "opened") openedCount += 1;
+    portalActivationByClientId[clientId] = {
+      state,
+      invitationId: row.invitationId,
+      invitationStatus: row.invitationStatus,
+    };
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -38,6 +66,11 @@ export default async function ClientsPage() {
           attentionClientIds={attentionClientIds}
           bookedClientIds={bookedIds}
           today={today}
+          portalActivationByClientId={portalActivationByClientId}
+          portalActivationProgress={{
+            opened: openedCount,
+            target: THREE_COUPLES_PORTAL_TARGET,
+          }}
         />
       </Suspense>
     </div>

@@ -308,7 +308,8 @@ export function selectLuvDashboardEntry({
     });
     return {
       message: obs.message,
-      suggestion: obs.recommendation?.label ?? obs.detail ?? null,
+      // Descriptive copy only — never reuse the CTA label as the suggestion.
+      suggestion: obs.detail ?? null,
       actionLabel: obs.actionLabel ?? "View",
       actionHref: obs.recommendation?.link ?? obs.link,
       dismissObservationId: obs.id,

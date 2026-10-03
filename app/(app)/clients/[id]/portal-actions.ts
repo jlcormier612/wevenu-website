@@ -16,7 +16,10 @@ export async function inviteClientAction(
   clientId: string, email: string, coupleName: string,
 ): Promise<ClientAuthResult> {
   const result = await inviteClient(clientId, email, coupleName);
-  if (result.ok) revalidatePath(`/clients/${clientId}`);
+  if (result.ok) {
+    revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/clients");
+  }
   return result;
 }
 
@@ -24,7 +27,10 @@ export async function resendClientInvitationAction(
   clientId: string, invitationId: string,
 ): Promise<ClientAuthResult> {
   const result = await resendClientInvitation(invitationId);
-  if (result.ok) revalidatePath(`/clients/${clientId}`);
+  if (result.ok) {
+    revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/clients");
+  }
   return result;
 }
 

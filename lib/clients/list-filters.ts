@@ -12,9 +12,12 @@ export type ClientListFilterKey =
   | "coming_up"
   | "needs_attention"
   | "cancelled"
-  | "past";
+  | "past"
+  /** Luv portal-activation handoff — deep-link only, not a sticky list pill. */
+  | "portal_activation";
 
-export const CLIENT_LIST_FILTERS: { key: ClientListFilterKey; label: string }[] = [
+/** Filters shown as Clients list pills. portal_activation is deep-link only. */
+export const CLIENT_LIST_FILTERS: { key: Exclude<ClientListFilterKey, "portal_activation">; label: string }[] = [
   { key: "all", label: "All Bookings" },
   { key: "coming_up", label: "Coming up" },
   { key: "needs_attention", label: "Needs Attention" },
@@ -25,7 +28,10 @@ export const CLIENT_LIST_FILTERS: { key: ClientListFilterKey; label: string }[] 
 /** Coming up is today through the next 30 calendar days, inclusive. */
 export const COMING_UP_HORIZON_DAYS = 30;
 
-const FILTER_KEYS = new Set<string>(CLIENT_LIST_FILTERS.map((f) => f.key));
+const FILTER_KEYS = new Set<string>([
+  ...CLIENT_LIST_FILTERS.map((f) => f.key),
+  "portal_activation",
+]);
 
 /** Old Client-list URLs and saved chips. They are not buckets anymore. */
 const LEGACY_FILTERS: Record<string, ClientListFilterKey> = {
@@ -33,6 +39,14 @@ const LEGACY_FILTERS: Record<string, ClientListFilterKey> = {
   wedding_week: "coming_up",
   booked_business: "all",
 };
+
+export function isPortalActivationFilter(key: ClientListFilterKey): boolean {
+  return key === "portal_activation";
+}
+
+export function clientListPortalActivationHref(): string {
+  return "/clients?filter=portal_activation";
+}
 
 /** Minimum client shape the operational views need — Clients rows or dashboard client rows. */
 export type ClientListFilterRecord = {
@@ -115,14 +129,17 @@ export function clientMatchesListFilter(
       return isPastBooking(client, ctx);
     case "cancelled":
       return client.status === "cancelled";
+    case "portal_activation":
+      // Booked couples only — same population as the portal-open milestone.
+      return isBookedClient(client, ctx) && client.status !== "cancelled";
   }
 }
 
 export function countClientListFilters(
   clients: ClientListFilterRecord[],
   ctx: ClientListFilterContext,
-): Record<ClientListFilterKey, number> {
-  const counts = {} as Record<ClientListFilterKey, number>;
+): Record<Exclude<ClientListFilterKey, "portal_activation">, number> {
+  const counts = {} as Record<Exclude<ClientListFilterKey, "portal_activation">, number>;
   for (const { key } of CLIENT_LIST_FILTERS) {
     counts[key] = clients.filter((c) => clientMatchesListFilter(c, key, ctx)).length;
   }

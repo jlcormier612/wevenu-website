@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
+import { PortalActivationRowActions } from "@/components/clients/portal-activation-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { PortalActivationState } from "@/lib/activation/portal-open-milestone";
+import { portalActivationStateLabel } from "@/lib/activation/portal-open-milestone";
 import {
   clientDisplayName,
   eventTypeLabel,
@@ -28,6 +31,7 @@ import {
   CLIENT_LIST_FILTERS,
   clientMatchesListFilter,
   countClientListFilters,
+  isPortalActivationFilter,
   parseClientListFilter,
   comingUpHorizonEnd,
   type ClientListFilterKey,
@@ -75,33 +79,48 @@ export function ClientList({
   attentionClientIds = new Set(),
   bookedClientIds = new Set(),
   today,
+  portalActivationByClientId = {},
+  portalActivationProgress,
 }: {
   clients: Client[];
   attentionClientIds?: Set<string>;
   /** Clients with events.booked_at set and the event not cancelled. */
   bookedClientIds?: Set<string>;
   today: string;
+  portalActivationByClientId?: Record<string, {
+    state: PortalActivationState;
+    invitationId: string | null;
+    invitationStatus: "pending" | "accepted" | "revoked" | null;
+  }>;
+  portalActivationProgress?: { opened: number; target: number };
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlFilter = parseClientListFilter(searchParams.get("filter"));
   const [query, setQuery] = React.useState("");
-  const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => loadSavedFilter() ?? "all");
+  const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => {
+    const saved = loadSavedFilter();
+    if (saved && isPortalActivationFilter(saved)) return "all";
+    return saved ?? "all";
+  });
   const [sort, setSort] = React.useState<SortKey>("event_asc");
   const filter = urlFilter ?? storedFilter;
+  const portalMode = isPortalActivationFilter(filter);
 
   // URL is the source of truth while present (Dashboard deep-link). Persist
-  // it for the next visit without copying it into React state — filter is
-  // already `urlFilter ?? storedFilter`.
+  // sticky operational filters only — not the Luv portal-activation handoff.
   React.useEffect(() => {
     if (!urlFilter) return;
+    if (isPortalActivationFilter(urlFilter)) return;
     persistFilter(urlFilter);
   }, [urlFilter]);
 
   const setFilter = React.useCallback((next: ClientListFilterKey) => {
-    setStoredFilter(next);
-    persistFilter(next);
+    if (!isPortalActivationFilter(next)) {
+      setStoredFilter(next);
+      persistFilter(next);
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.set("filter", next);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -122,7 +141,17 @@ export function ClientList({
       return [c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName, c.email, c.eventType]
         .some((v) => v?.toLowerCase().includes(q));
     });
-    return [...base].sort((a, b) => {
+    const sorted = [...base].sort((a, b) => {
+      if (portalMode) {
+        const order: Record<PortalActivationState, number> = {
+          not_invited: 0,
+          invited_not_opened: 1,
+          opened: 2,
+        };
+        const aState = portalActivationByClientId[a.id]?.state ?? "not_invited";
+        const bState = portalActivationByClientId[b.id]?.state ?? "not_invited";
+        if (order[aState] !== order[bState]) return order[aState] - order[bState];
+      }
       switch (sort) {
         case "event_desc": return (b.eventDate ?? "") < (a.eventDate ?? "") ? -1 : 1;
         case "az":         return (a.firstName ?? "").localeCompare(b.firstName ?? "");
@@ -131,7 +160,8 @@ export function ClientList({
         default:           return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
       }
     });
-  }, [clients, query, filter, sort, filterCtx]);
+    return sorted;
+  }, [clients, query, filter, sort, filterCtx, portalMode, portalActivationByClientId]);
 
   const counts = React.useMemo(() => countClientListFilters(clients, filterCtx), [clients, filterCtx]);
 
@@ -143,7 +173,19 @@ export function ClientList({
 
   return (
     <div className="space-y-4">
-      {weddingDayToday > 0 && (
+      {portalMode && portalActivationProgress ? (
+        <div
+          className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-1"
+          data-testid="portal-activation-banner"
+        >
+          <p className="text-sm font-medium text-heading">Get 3 couples started in their portals</p>
+          <p className="text-xs text-muted-foreground">
+            {portalActivationProgress.opened} of {portalActivationProgress.target} booked couples have opened their planning portal.
+            Invite the rest, or resend if they haven’t opened yet.
+          </p>
+        </div>
+      ) : null}
+      {weddingDayToday > 0 && !portalMode && (
         <p className="text-sm font-medium text-heading">
           🎉 {`${weddingDayToday} wedding${weddingDayToday === 1 ? "" : "s"} today`}
         </p>
@@ -208,37 +250,65 @@ export function ClientList({
                 <TableHead>Client</TableHead>
                 <TableHead>Event Type</TableHead>
                 <TableHead>Event Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Guests</TableHead>
-                <TableHead className="w-16" />
+                {portalMode ? <TableHead>Portal</TableHead> : <TableHead>Status</TableHead>}
+                {!portalMode ? <TableHead>Guests</TableHead> : null}
+                <TableHead className={portalMode ? "min-w-[10rem]" : "w-16"} />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((client) => (
-                <TableRow key={client.id} className="group">
-                  <TableCell className="font-medium text-foreground">
-                    <Link href={`/clients/${client.id}`} className="hover:text-primary">
-                      {clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
-                    </Link>
-                    {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}
-                  </TableCell>
-                  <TableCell>
-                    {client.eventType
-                      ? <Badge variant="outline">{eventTypeLabel(client.eventType)}</Badge>
-                      : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {client.eventDate ? formatDate(client.eventDate) : <span className="text-muted-foreground">TBD</span>}
-                  </TableCell>
-                  <TableCell><ClientStatusBadge status={client.status} /></TableCell>
-                  <TableCell className="text-sm">
-                    {client.guestCount != null ? client.guestCount.toLocaleString() : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" render={<Link href={`/clients/${client.id}`} />}>View →</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.map((client) => {
+                const portal = portalActivationByClientId[client.id];
+                const portalState = portal?.state ?? "not_invited";
+                return (
+                  <TableRow key={client.id} className="group" data-portal-state={portalMode ? portalState : undefined}>
+                    <TableCell className="font-medium text-foreground">
+                      <Link href={`/clients/${client.id}`} className="hover:text-primary">
+                        {clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
+                      </Link>
+                      {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}
+                    </TableCell>
+                    <TableCell>
+                      {client.eventType
+                        ? <Badge variant="outline">{eventTypeLabel(client.eventType)}</Badge>
+                        : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {client.eventDate ? formatDate(client.eventDate) : <span className="text-muted-foreground">TBD</span>}
+                    </TableCell>
+                    {portalMode ? (
+                      <TableCell className="text-sm" data-testid={`portal-state-${client.id}`}>
+                        {portalActivationStateLabel(portalState)}
+                      </TableCell>
+                    ) : (
+                      <TableCell><ClientStatusBadge status={client.status} /></TableCell>
+                    )}
+                    {!portalMode ? (
+                      <TableCell className="text-sm">
+                        {client.guestCount != null ? client.guestCount.toLocaleString() : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    ) : null}
+                    <TableCell>
+                      {portalMode ? (
+                        <PortalActivationRowActions
+                          row={{
+                            clientId: client.id,
+                            firstName: client.firstName,
+                            lastName: client.lastName,
+                            partnerFirstName: client.partnerFirstName,
+                            partnerLastName: client.partnerLastName,
+                            email: client.email,
+                            state: portalState,
+                            invitationId: portal?.invitationId ?? null,
+                            invitationStatus: portal?.invitationStatus ?? null,
+                          }}
+                        />
+                      ) : (
+                        <Button variant="ghost" size="sm" render={<Link href={`/clients/${client.id}`} />}>View →</Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

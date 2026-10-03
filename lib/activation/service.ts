@@ -3,6 +3,8 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { applyPortalOpenMilestoneToChecklist } from "@/lib/activation/portal-open-milestone";
+import { getVenuePortalOpenMilestone } from "@/lib/activation/portal-open-milestone-service";
 import type {
   ActivationChecklistItem,
   ActivationScore,
@@ -25,7 +27,7 @@ export async function getActivationScore(venueId: string): Promise<ActivationSco
     .maybeSingle<Record<string, unknown>>();
 
   if (cached && new Date(cached.computed_at as string).getTime() > Date.now() - ONE_HOUR_MS) {
-    return mapScore(cached);
+    return enrichActivationScore(venueId, mapScore(cached));
   }
 
   // Recompute
@@ -33,7 +35,22 @@ export async function getActivationScore(venueId: string): Promise<ActivationSco
     p_venue_id: venueId,
   });
   if (error || !data) return null;
-  return mapScore(data as Record<string, unknown>);
+  return enrichActivationScore(venueId, mapScore(data as Record<string, unknown>));
+}
+
+/** Overlay the locked 3-couples portal-open milestone onto checklist + gaps. */
+async function enrichActivationScore(
+  venueId: string,
+  score: ActivationScore,
+): Promise<ActivationScore> {
+  const milestone = await getVenuePortalOpenMilestone(venueId);
+  const checklist = applyPortalOpenMilestoneToChecklist(score.checklist, milestone.complete);
+  const gaps = checklist
+    .filter((item) => !item.completed)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, 3)
+    .map((item) => ({ label: item.label, points: item.points, href: item.href }));
+  return { ...score, checklist, gaps };
 }
 
 // The SQL RPC (compute_venue_activation_score) builds each gap object with
