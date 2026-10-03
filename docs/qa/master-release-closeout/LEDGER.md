@@ -1,6 +1,6 @@
 # HTC Master Release Closeout Ledger
 
-**OVERALL HTC RELEASE:** NOT GREEN — Date Hold + Luv sub-gates GREEN/CLOSED. Payment lifecycle OPEN (financial scenario proven on sole RUNNING `d8ccf73c` / `:544`; UX defects found and fixed locally, not yet the sole running image). Venue Planning template + setup Overview OPEN (browser/DB proof pending). Production untouched.
+**OVERALL HTC RELEASE:** NOT GREEN — Date Hold + Luv sub-gates GREEN/CLOSED. Payment lifecycle OPEN (financial scenario proven on sole RUNNING `d8ccf73c` / `:544`; UX defects found and fixed locally, not yet the sole running image). Venue Planning template + setup Overview OPEN (browser/DB proof pending). Event Setup Profiles / venue defaults OPEN (implemented `d82f9817`; inheritance, override, browser, and database proof pending). Production untouched.
 
 **Status of this document:** authoritative master-release closeout. Production untouched.
 
@@ -704,6 +704,7 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 - Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on prior sole RUNNING `ed87d485` (do not reopen without regression).
 - Payment lifecycle + Payments filters: OPEN — financial proof on sole RUNNING `d8ccf73c` / `:544`; On Track, dialog first paint, and in-place status badge block GREEN until the local fix is the sole running image.
 - Venue Planning template + setup Overview: OPEN — implemented `d8ccf73c`; not GREEN until sole runtime + browser/DB proof.
+- Event Setup Profiles / venue defaults: OPEN — implemented `d82f9817`. Snapshot inheritance. Not GREEN until sole runtime, browser workflow, and database proof.
 - Production untouched.
 - No later list. No new backlog.
 
@@ -719,6 +720,20 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 - **BROWSER / DB / SOLE RUNTIME:** pending
 - **PRODUCTION:** untouched
 - **REMAINING WORK:** sole RUNNING `d8ccf73c`; browser proof of template + configured/skipped persistence; DB proof; then GREEN/CLOSED
+
+### Event Setup Profiles / venue defaults (master release)
+
+- **STATUS:** OPEN — not GREEN
+- **A. d8ccf73 Venue Planning + Setup Overview:** still OPEN. This stream does not close it.
+- **B. IMPLEMENTATION:** `d82f98173b4b19856b6f33b3ac50cce156aafdfe`. Settings → Leads & Booking → Setup Profiles. Tables `venue_setup_profiles`, `venue_setup_profile_assignments`. Event row stores `uses_profile`, `profile_id`, `profile_name`, `inherited_decisions`, `overrides`. `decisions` stays the no-profile path.
+- **PRODUCT LOCK:** A Setup Profile is the venue's normal Set up / Skip choice for an event type. It is not a commercial package. New events snapshot the matching profile (event type, else venue default). Overrides belong to the event. Profile edits apply to events created after the edit. Existing snapshots and overrides are not rewritten. Applied event checklists are not rewritten. No profile keeps Needs a decision → Set up / Skip.
+- **MIGRATION:** `20261411500000_venue_setup_profiles.sql` — not applied yet
+- **C. EVENT INHERITANCE:** not proven on Sandbox
+- **D. EVENT OVERRIDE:** not proven on Sandbox
+- **E. DATABASE:** not proven
+- **F. REGRESSION:** focused automated tests pass locally (`lib/event-setup/profile.test.ts` 8/8, plus event-setup state and venue-planning starter). Browser regression not proven.
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** apply migration; deploy; prove sole RUNNING image contains `d82f9817`; browser workflow (venue profile, new wedding inherits, override persists, second wedding uncontaminated, profile edit does not rewrite the override, no-profile Set up/Skip); database proof. Then this stream can be considered for GREEN. Do not mark overall HTC GREEN.
 
 ## Production
 
