@@ -86,7 +86,7 @@ export function SetupProfilesSection({
       timelineId: profile.templateRefs.timelineTemplateId ?? "",
       eventTypes: mine
         .map((row) => row.eventType)
-        .filter((type): type is string => Boolean(type) && acceptedKeys.has(type)),
+        .filter((type): type is string => typeof type === "string" && acceptedKeys.has(type)),
       venueDefault: mine.some((row) => row.eventType == null),
     });
   }

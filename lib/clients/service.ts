@@ -149,7 +149,9 @@ export async function getClientAttentionFlags(): Promise<Set<string>> {
   return repo.getClientAttentionFlags(await createClient(), venue.id, venueToday(venue.timezone));
 }
 
-const EMPTY_CLIENT_LIST_COUNTS: Record<ClientListFilterKey, number> = {
+type OperationalClientListCounts = Record<Exclude<ClientListFilterKey, "portal_activation">, number>;
+
+const EMPTY_CLIENT_LIST_COUNTS: OperationalClientListCounts = {
   all: 0,
   coming_up: 0,
   needs_attention: 0,
@@ -160,8 +162,9 @@ const EMPTY_CLIENT_LIST_COUNTS: Record<ClientListFilterKey, number> = {
 /**
  * Server-side counts for the Clients operational views. Dashboard tiles that
  * navigate to those views must use this — not a second, dashboard-only query.
+ * portal_activation is a Luv deep-link only and is not counted here.
  */
-export async function getClientListFilterCounts(): Promise<Record<ClientListFilterKey, number>> {
+export async function getClientListFilterCounts(): Promise<OperationalClientListCounts> {
   if (!isSupabaseConfigured) return EMPTY_CLIENT_LIST_COUNTS;
   const venue = await getCurrentVenue();
   if (!venue) return EMPTY_CLIENT_LIST_COUNTS;
