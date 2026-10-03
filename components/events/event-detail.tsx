@@ -571,49 +571,14 @@ export function EventDetail({
           2026-07-10 — rather than just landing on the event and leaving the
           coordinator to find the right tab themselves. */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as string); window.location.hash = v as string; }}>
+        {/* Top nav is relationship/ops chrome only. Planning / Timeline /
+            Floor Plans / Vendors / Event Order / Inventory stay addressable
+            via Setup cards + #hash deep links — TabsContent below is unchanged. */}
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="playbook">
-            Planning
-            {eventTasks.filter((t) => t.status === "overdue").length > 0 && (
-              <span className="ml-1 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">{eventTasks.filter((t) => t.status === "overdue").length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="timeline">
-            Timeline
-            {event.timeline.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.timeline.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="floorplan">
-            Floor Plans
-            {event.floorPlans.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.floorPlans.length}</span>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="documents">
             Documents
             {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="vendors">
-            Vendors
-            {event.vendorAssignments.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                {event.vendorAssignments.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="event-order">
-            Event Order
-            {eventOrder && eventOrder.lines.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventOrder.lines.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="inventory">
-            Inventory
-            {eventInventory && eventInventory.items.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventInventory.items.length}</span>
-            )}
           </TabsTrigger>
           <TabsTrigger value="invoice">
             Payments
