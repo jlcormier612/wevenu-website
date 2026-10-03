@@ -175,12 +175,13 @@ describe("Phase 6 P-A1 context", () => {
     assert.equal(clause!.evidence.acquisition_field, "acquisition_source");
     // Sync select list must not use mutable leads.source as acquisition truth.
     const syncSrc = readFileSync(resolve("lib/luv/spot-patterns.ts"), "utf8");
-    const unattendedSelect = syncSrc.slice(
-      syncSrc.indexOf('.select("id, first_name, last_name, sales_stage, created_at, last_contacted_at'),
-      syncSrc.indexOf('.is("first_booked_at", null)'),
+    const syncStart = syncSrc.indexOf("export async function syncPhase5SpotPatternRecommendations");
+    const unattendedBlock = syncSrc.slice(
+      syncStart,
+      syncSrc.indexOf("// P-P1", syncStart),
     );
-    assert.match(unattendedSelect, /acquisition_source/);
-    assert.doesNotMatch(unattendedSelect, /,\s*source[,\s"]/);
+    assert.match(unattendedBlock, /acquisition_source/);
+    assert.doesNotMatch(unattendedBlock, /select\([\s\S]*?,\s*source[,\s"]/);
   });
 
   it("6. venue isolation for P-A1 context", () => {
