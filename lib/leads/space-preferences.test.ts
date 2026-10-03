@@ -201,6 +201,8 @@ describe("preference is not an assignment", () => {
     assert.match(service, /lead_event_space_preferences/);
     assert.match(service, /occupancyAnchorSpaceIdFromPreferences/);
     assert.match(service, /planned_event_space_id/);
+    assert.doesNotMatch(service, /linked_event_id/);
+    assert.match(service, /eq\("lead_id", leadId\)/);
   });
 
   it("one catalog: space_id stays NOT NULL and no second space table is created", () => {

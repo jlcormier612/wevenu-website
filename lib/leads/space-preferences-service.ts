@@ -44,16 +44,22 @@ async function resolveLeadExperienceType(
 ): Promise<{ eventType: string | null; leadFound: boolean }> {
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, event_type, linked_event_id")
+    .select("id, event_type")
     .eq("id", leadId)
     .eq("venue_id", venueId)
-    .maybeSingle<{ id: string; event_type: string | null; linked_event_id: string | null }>();
+    .maybeSingle<{ id: string; event_type: string | null }>();
   if (!lead) return { eventType: null, leadFound: false };
-  if (lead.linked_event_id) {
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("lead_id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ id: string }>();
+  if (client?.id) {
     const { data: event } = await supabase
       .from("events")
       .select("event_type")
-      .eq("id", lead.linked_event_id)
+      .eq("client_id", client.id)
       .eq("venue_id", venueId)
       .maybeSingle<{ event_type: string | null }>();
     const eventType = event?.event_type?.trim() || lead.event_type;
