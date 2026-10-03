@@ -14,7 +14,8 @@ export type { ExperienceStatus, NextActor };
 export const EXPERIENCE_STATUS_LABEL: Record<ExperienceStatus, string> = {
   draft: "Draft",
   in_progress: "In Progress",
-  with_someone: "With Someone",
+  /** Internal key kept; customer-facing copy is Waiting on Client everywhere. */
+  with_someone: "Waiting on Client",
   review: "Review",
   changes_requested: "Changes Requested",
   complete: "Complete",
@@ -23,17 +24,15 @@ export const EXPERIENCE_STATUS_LABEL: Record<ExperienceStatus, string> = {
 };
 
 /**
- * Badge copy. Internal `with_someone` stays for contracts/questionnaires/
- * event orders/choices. Sent invoices use the same human label Invoice
- * Detail already shows ("Waiting on Client") — not "With Someone".
+ * Badge copy for Documents WorkspaceStatusBadge.
+ * Internal `with_someone` is never shown as "With Someone" — canonical
+ * customer-facing label is "Waiting on Client" for every producer type
+ * (questionnaires, contracts, invoices, event orders, client choices).
  */
 export function experienceBadgeLabel(
   experienceStatus: ExperienceStatus,
-  docType?: WorkspaceDocType,
+  _docType?: WorkspaceDocType,
 ): string {
-  if (docType === "invoice" && experienceStatus === "with_someone") {
-    return "Waiting on Client";
-  }
   return EXPERIENCE_STATUS_LABEL[experienceStatus];
 }
 

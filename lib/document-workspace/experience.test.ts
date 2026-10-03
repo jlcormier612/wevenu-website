@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { applyContractVersionLineage, normalizeWorkspaceDocument } from "@/lib/document-workspace/normalize";
-import { describeExperience, experienceBadgeLabel } from "@/lib/document-workspace/experience";
+import {
+  EXPERIENCE_STATUS_LABEL,
+  describeExperience,
+  experienceBadgeLabel,
+} from "@/lib/document-workspace/experience";
 
 function baseRow(over: Partial<Parameters<typeof normalizeWorkspaceDocument>[0]> = {}) {
   return {
@@ -56,21 +60,63 @@ describe("experience labels", () => {
     assert.match(awaitingVenue.nextActionLabel ?? "", /countersign/i);
   });
 
-  it("maps sent invoices to with_someone internally and Waiting on Client on the card", () => {
-    const sent = describeExperience({
-      docType: "invoice",
-      rawStatus: "sent",
-      eventId: "e1",
-      id: "i1",
-      relationshipName: "Lucy & Charlie",
-    });
-    assert.equal(sent.experienceStatus, "with_someone");
-    assert.equal(sent.nextActor, "couple");
-    assert.equal(sent.nextActionLabel, "Couple to pay");
-    assert.equal(sent.filterStatus, "action_needed");
-    assert.equal(experienceBadgeLabel(sent.experienceStatus, "invoice"), "Waiting on Client");
-    assert.notEqual(experienceBadgeLabel(sent.experienceStatus, "invoice"), "With Someone");
-    assert.equal(experienceBadgeLabel("with_someone", "contract"), "With Someone");
+  it("maps with_someone producers to Waiting on Client — never With Someone", () => {
+    const cases: Array<{
+      docType: Parameters<typeof describeExperience>[0]["docType"];
+      rawStatus: string;
+      id: string;
+    }> = [
+      { docType: "questionnaire", rawStatus: "sent", id: "q1" },
+      { docType: "contract", rawStatus: "sent", id: "c1" },
+      // Event Order producer status that maps to with_someone is "shared" (not a DB "sent").
+      { docType: "event_order", rawStatus: "shared", id: "eo1" },
+      { docType: "client_choices", rawStatus: "sent", id: "cc1" },
+      { docType: "invoice", rawStatus: "sent", id: "i1" },
+    ];
+    for (const c of cases) {
+      const view = describeExperience({
+        docType: c.docType,
+        rawStatus: c.rawStatus,
+        eventId: "e1",
+        id: c.id,
+        relationshipName: "Lucy & Charlie",
+        requiredClientTotal: 1,
+        requiredClientSigned: 0,
+        venueSigned: false,
+      });
+      assert.equal(view.experienceStatus, "with_someone", `${c.docType} keeps internal with_someone`);
+      assert.equal(
+        experienceBadgeLabel(view.experienceStatus, c.docType),
+        "Waiting on Client",
+        `${c.docType} badge`,
+      );
+      assert.notEqual(
+        experienceBadgeLabel(view.experienceStatus, c.docType),
+        "With Someone",
+        `${c.docType} must not say With Someone`,
+      );
+    }
+    // Unrelated experience labels and producer→filter mapping stay intact.
+    assert.equal(
+      describeExperience({ docType: "questionnaire", rawStatus: "sent", eventId: "e1", id: "q1" }).filterStatus,
+      "action_needed",
+    );
+    assert.equal(
+      describeExperience({ docType: "questionnaire", rawStatus: "draft", eventId: "e1", id: "q1" }).experienceStatus,
+      "draft",
+    );
+    assert.equal(
+      describeExperience({ docType: "questionnaire", rawStatus: "submitted", eventId: "e1", id: "q1" }).experienceStatus,
+      "review",
+    );
+    assert.equal(experienceBadgeLabel("draft"), "Draft");
+    assert.equal(experienceBadgeLabel("review"), "Review");
+    assert.equal(experienceBadgeLabel("complete"), "Complete");
+  });
+
+  it("customer-facing Documents label map never contains With Someone", () => {
+    assert.equal(Object.values(EXPERIENCE_STATUS_LABEL).includes("With Someone"), false);
+    assert.equal(EXPERIENCE_STATUS_LABEL.with_someone, "Waiting on Client");
   });
 
   it("maps signed+finalized contracts to Final and keeps companion uploads distinct", () => {
