@@ -162,4 +162,17 @@ describe("inbox working category", () => {
     const body = header.slice(header.indexOf("as $$"));
     assert.doesNotMatch(body, /couple_vendor_inquiry/);
   });
+
+  it("nav unread RPC uses the same working population as Inbox header unread", () => {
+    const navUnread = readFileSync(
+      resolve("supabase/migrations/20261411600000_nav_inbox_unread_working_population.sql"),
+      "utf8",
+    );
+    assert.match(navUnread, /get_conversation_unread_count/);
+    assert.match(navUnread, /inbox_conversation_in_working_population\(c\.id\)/);
+    assert.match(navUnread, /sum\(c\.venue_unread\)/);
+    // Executable body must count unread only — not reply-needed.
+    const body = navUnread.slice(navUnread.indexOf("as $$"), navUnread.lastIndexOf("$$"));
+    assert.doesNotMatch(body, /needs_response/);
+  });
 });

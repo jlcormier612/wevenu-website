@@ -71,6 +71,33 @@ export function formatAttentionBadge(count: number): string | null {
   return String(count);
 }
 
+/**
+ * Accessible meaning for a nav badge. Inbox is unread messages in the working
+ * Inbox population — never generic "attention" and never needs_response.
+ */
+export function navBadgeAriaLabel(itemId: string, badgeLabel: string): string {
+  switch (itemId) {
+    case "inbox":
+      return badgeLabel === "1" ? "1 unread message" : `${badgeLabel} unread messages`;
+    case "leads":
+      return badgeLabel === "1" ? "1 unseen lead" : `${badgeLabel} unseen leads`;
+    case "tours":
+      return badgeLabel === "1" ? "1 unseen tour" : `${badgeLabel} unseen tours`;
+    case "task-center":
+      return badgeLabel === "1" ? "1 past-due task" : `${badgeLabel} past-due tasks`;
+    case "payments":
+      return badgeLabel === "1"
+        ? "1 payment needing attention"
+        : `${badgeLabel} payments needing attention`;
+    case "contracts":
+      return badgeLabel === "1"
+        ? "1 contract needing attention"
+        : `${badgeLabel} contracts needing attention`;
+    default:
+      return `${badgeLabel} need attention`;
+  }
+}
+
 /** Destination when an attention badge is non-zero — same population as the count. */
 export function navAttentionHref(itemId: string, baseHref: string, count: number): string {
   if (count <= 0) return baseHref;

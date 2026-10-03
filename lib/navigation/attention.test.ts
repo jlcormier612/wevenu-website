@@ -10,6 +10,7 @@ import {
   countUnseenLeads,
   countUnseenTours,
   formatAttentionBadge,
+  INBOX_CATEGORY_OPTIONS,
   inboxCategoryFromConversation,
   inboxRelationshipParam,
   isPastDueStaffTask,
@@ -17,6 +18,7 @@ import {
   isUnseenLeadAttention,
   isUnseenTourAttention,
   NAV_ATTENTION_BADGE_CLASS,
+  navBadgeAriaLabel,
 } from "@/lib/navigation/attention";
 import type { PaymentLineItem } from "@/lib/payments/types";
 
@@ -255,6 +257,29 @@ describe("Badge presentation", () => {
     assert.doesNotMatch(nav, /bg-primary px-1 text-\[10px\]/);
     assert.match(NAV_ATTENTION_BADGE_CLASS, /bg-destructive/);
   });
+
+  it("Inbox badge aria-label is unread, not generic attention or needs-response", () => {
+    assert.equal(navBadgeAriaLabel("inbox", "2"), "2 unread messages");
+    assert.equal(navBadgeAriaLabel("inbox", "1"), "1 unread message");
+    assert.doesNotMatch(navBadgeAriaLabel("inbox", "2"), /need attention|needs response/i);
+    const nav = readFileSync(resolve("components/shell/sidebar-nav.tsx"), "utf8");
+    assert.match(nav, /navBadgeAriaLabel\(item\.id, badgeLabel\)/);
+    assert.doesNotMatch(nav, /\$\{badgeLabel\} need attention/);
+  });
+
+  it("nav Inbox count comes from get_conversation_unread_count (working-population unread)", () => {
+    const service = readFileSync(resolve("lib/navigation/attention-service.ts"), "utf8");
+    assert.match(service, /get_conversation_unread_count/);
+    assert.match(service, /working-population unread/);
+    const mig = readFileSync(
+      resolve("supabase/migrations/20261411600000_nav_inbox_unread_working_population.sql"),
+      "utf8",
+    );
+    assert.match(mig, /inbox_conversation_in_working_population\(c\.id\)/);
+    assert.match(mig, /sum\(c\.venue_unread\)/);
+    const body = mig.slice(mig.indexOf("as $$"), mig.lastIndexOf("$$"));
+    assert.doesNotMatch(body, /needs_response/);
+  });
 });
 
 describe("Inbox category organization", () => {
@@ -319,10 +344,11 @@ describe("Inbox category organization", () => {
 
   it("Inbox exposes Leads / Clients / Vendors category control", () => {
     const inbox = readFileSync(resolve("app/(app)/messaging/conversation-inbox.tsx"), "utf8");
-    assert.match(inbox, /Leads/);
-    assert.match(inbox, /Clients/);
-    assert.match(inbox, /Vendors/);
-    assert.match(inbox, /INBOX_CATEGORY_OPTIONS|inboxCategory/);
+    assert.match(inbox, /INBOX_CATEGORY_OPTIONS/);
+    assert.deepEqual(
+      INBOX_CATEGORY_OPTIONS.map((o) => o.label),
+      ["Leads", "Clients", "Vendors"],
+    );
   });
 
   it("inbox RPC migration classifies by inbox_owner_kind not open sales_stage", () => {

@@ -11,6 +11,7 @@ import {
   formatAttentionBadge,
   NAV_ATTENTION_BADGE_CLASS,
   navAttentionHref,
+  navBadgeAriaLabel,
   type NavAttentionCounts,
 } from "@/lib/navigation/attention";
 import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
@@ -92,7 +93,11 @@ export function SidebarNav({
                 />
                 <span className="flex-1 truncate">{item.title}</span>
                 {badgeLabel && (
-                  <span className={NAV_ATTENTION_BADGE_CLASS} aria-label={`${badgeLabel} need attention`}>
+                  <span
+                    className={NAV_ATTENTION_BADGE_CLASS}
+                    title={navBadgeAriaLabel(item.id, badgeLabel)}
+                    aria-label={navBadgeAriaLabel(item.id, badgeLabel)}
+                  >
                     {badgeLabel}
                   </span>
                 )}

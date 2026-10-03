@@ -188,6 +188,8 @@ export async function getNavAttentionCounts(): Promise<NavAttentionCounts> {
     eventTasksRes,
     leadTasksRes,
   ] = await Promise.all([
+    // Inbox badge = working-population unread (same filter as Inbox header).
+    // Distinct from reply-needed state; orphans / deleted-lead threads excluded.
     supabase.rpc("get_conversation_unread_count"),
     // Slim columns only — same unseen-open semantics as countUnseenLeads.
     supabase
