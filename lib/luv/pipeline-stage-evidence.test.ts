@@ -340,9 +340,11 @@ describe("source lock — Luv never treats sales_stage as proof", () => {
     assert.doesNotMatch(loadProposal.slice(0, 700), /sales_stage/);
     assert.match(loadProposal.slice(0, 700), /commercial_proposals/);
     assert.match(loadProposal.slice(0, 700), /offered_at/);
-    const loadTour = drafts.slice(drafts.indexOf("async function loadFollowUpTourState"));
-    assert.match(loadTour.slice(0, 500), /tour_appointments/);
-    assert.doesNotMatch(loadTour.slice(0, 500), /sales_stage/);
+    const loader = src("lib/luv/follow-up-tour-loader.ts");
+    assert.match(loader, /export async function loadFollowUpTourState/);
+    assert.match(loader, /tour_appointments/);
+    assert.doesNotMatch(loader, /sales_stage/);
+    assert.match(drafts, /loadFollowUpTourState/);
   });
 
   it("supersession and tour-followup pattern use stamps, not stage", () => {

@@ -253,8 +253,12 @@ export async function updateRelationshipAction(
   const result = await updateRelationshipFields(leadId, input, hints);
   if (result.ok) {
     revalidateLead(leadId);
-    // Tour scheduling is a commitment milestone — refresh scores immediately
-    if (hints.tourScheduled) void refreshLeadScore(leadId).catch(() => {});
+    // Tour schedule OR completion is a commitment milestone — refresh scores
+    // immediately so completed-tour credit (+15) is not left stale.
+    // Does not run post-tour automation / thank-you sequences.
+    if (hints.tourScheduled || input.tourCompleted) {
+      void refreshLeadScore(leadId).catch(() => {});
+    }
   }
   return result;
 }

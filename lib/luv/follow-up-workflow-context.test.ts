@@ -261,13 +261,15 @@ describe("buildFollowUpPrompt — workflow contract", () => {
 
   it("W8 unconstrained generic CTA menu is absent from drafts.ts", () => {
     const src = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
+    const loader = readFileSync(resolve("lib/luv/follow-up-tour-loader.ts"), "utf8");
     assert.doesNotMatch(
       src,
       /schedule a tour, answer questions, arrange a call/,
     );
     assert.match(src, /loadFollowUpTourState/);
-    assert.match(src, /classifyFollowUpTourState/);
-    assert.match(src, /deriveFollowUpWorkflowIntent/);
+    assert.match(loader, /export async function loadFollowUpTourState/);
+    assert.match(loader, /classifyFollowUpTourState/);
+    assert.match(src, /deriveFollowUpWorkflowIntent|resolveFollowUpDraftEligibility/);
   });
 
   it("Gate 2 still applied — Charlie relationship commentary withheld", () => {

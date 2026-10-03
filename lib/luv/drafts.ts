@@ -27,11 +27,11 @@ import {
   type CustomerFacingInquiryContext,
 } from "@/lib/luv/customer-facing-inquiry-context";
 import {
-  completedTourDraftAllowed,
   evaluateCompletedTour,
 } from "@/lib/luv/completed-tour-intelligence";
+import { resolveFollowUpDraftEligibility } from "@/lib/luv/follow-up-draft-eligibility";
+import { loadFollowUpTourState } from "@/lib/luv/follow-up-tour-loader";
 import {
-  classifyFollowUpTourState,
   deriveFollowUpProhibitions,
   deriveFollowUpWorkflowIntent,
   formatTourWorkflowFact,
@@ -315,41 +315,6 @@ async function loadProposalSentFact(
   });
 }
 
-/** Thin tour_appointments read — same canonical source as the lead workspace. */
-async function loadFollowUpTourState(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  venueId: string,
-  leadId: string,
-): Promise<{
-  tour: FollowUpTourState;
-  followUpSentAt: string | null;
-  occurredAt: string | null;
-}> {
-  const { data } = await supabase
-    .from("tour_appointments")
-    .select("scheduled_at, status, completed_at, follow_up_sent_at, actual_occurred_at")
-    .eq("venue_id", venueId)
-    .eq("lead_id", leadId)
-    .order("scheduled_at", { ascending: false })
-    .limit(10);
-  const rows = (data ?? []) as {
-    scheduled_at: string;
-    status: string;
-    completed_at: string | null;
-    follow_up_sent_at: string | null;
-    actual_occurred_at: string | null;
-  }[];
-  return {
-    tour: classifyFollowUpTourState(rows),
-    followUpSentAt: rows.find((r) => r.status === "completed")?.follow_up_sent_at ?? null,
-    occurredAt:
-      rows.find((r) => r.status === "completed")?.actual_occurred_at
-      ?? rows.find((r) => r.status === "completed")?.completed_at
-      ?? rows.find((r) => r.status === "completed")?.scheduled_at
-      ?? null,
-  };
-}
-
 async function loadLeadThreadMessages(
   supabase: Awaited<ReturnType<typeof createClient>>,
   venueId: string,
@@ -412,10 +377,8 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
     ]);
     const tour = tourState.tour;
     const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
-    let communicationPurpose: "unresolved_question" | "explicit_request" | "none" = "none";
-    let communicationExcerpt: string | null = null;
-    if (tour.kind === "completed") {
-      const decision = evaluateCompletedTour({
+    const completedDecision = tour.kind === "completed"
+      ? evaluateCompletedTour({
         tourId: "draft",
         leadId: lead.id,
         contactName: [lead.firstName, lead.partnerFirstName].filter(Boolean).join(" and ") || null,
@@ -425,21 +388,17 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
         messages,
         inquiryMessage: lead.inquiryMessage,
         inquiryOrigin,
-      });
-      if (!completedTourDraftAllowed(decision)) {
-        return { ok: false, message: "Nothing useful to draft for this relationship right now." };
-      }
-      communicationPurpose = decision.purpose;
-      communicationExcerpt = decision.excerpt;
-    }
-    const workflowIntent = deriveFollowUpWorkflowIntent({
+      })
+      : null;
+    const gate = resolveFollowUpDraftEligibility({
       tour,
       nextActionText: lead.nextActionText,
-      communicationPurpose,
+      completedDecision,
     });
-    if (workflowIntent === "no_outreach") {
+    if (!gate.eligible) {
       return { ok: false, message: "Nothing useful to draft for this relationship right now." };
     }
+    const { workflowIntent, communicationPurpose, communicationExcerpt } = gate;
     const prompt = buildFollowUpPrompt(
       lead,
       venue.name,

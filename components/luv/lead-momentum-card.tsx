@@ -10,6 +10,10 @@
  *
  * Authoritative lifecycle facts (contract / Booked) override weak score
  * language so a signed relationship is never described as "Still early".
+ *
+ * Authoritative FollowUpTourState (upcoming / completed) prevents a real
+ * tour milestone from being erased by the young-lead heuristic — without
+ * inventing tour sentiment or recommending outreach that contradicts SILENCE.
  */
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
@@ -27,6 +31,7 @@ import {
   snapshotResponsivenessDescriptor,
   type SnapshotLifecycleFacts,
 } from "@/lib/leads/snapshot-lifecycle";
+import type { FollowUpTourState } from "@/lib/luv/follow-up-workflow-context";
 
 const DUSTY_ROSE = "#D8A7AA";
 
@@ -91,6 +96,66 @@ function NewInquiryView({ firstName }: { firstName: string }) {
 
       <LuvCallout>
         No action needed yet — but leads who receive a warm, personal response early on tend to engage more deeply. This is a great moment to introduce yourself and share what makes your venue special.
+      </LuvCallout>
+    </LuvCard>
+  );
+}
+
+// ── Tour milestone (quiet, factual — no invented sentiment) ───────────────────
+
+function CompletedTourView({ firstName }: { firstName: string }) {
+  const name = firstName.trim() || "This couple";
+  return (
+    <LuvCard>
+      <LuvCardHeader />
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tour on record</p>
+        <p className="text-sm text-heading leading-relaxed">
+          {name} has toured the venue. I&apos;m not drawing conclusions about how it went.
+        </p>
+      </div>
+
+      <LuvCallout>
+        No outreach needed from me right now — I&apos;ll speak up if a concrete customer question or request needs a reply.
+      </LuvCallout>
+    </LuvCard>
+  );
+}
+
+function UpcomingTourView({
+  firstName,
+  scheduledAt,
+}: {
+  firstName: string;
+  scheduledAt: string;
+}) {
+  const name = firstName.trim() || "This couple";
+  const when = (() => {
+    try {
+      return new Date(scheduledAt).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return null;
+    }
+  })();
+  return (
+    <LuvCard>
+      <LuvCardHeader />
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tour scheduled</p>
+        <p className="text-sm text-heading leading-relaxed">
+          {name} has a venue tour scheduled{when ? ` for ${when}` : ""}. It has not taken place yet.
+        </p>
+      </div>
+
+      <LuvCallout>
+        Treat this as an upcoming visit — not a completed tour, and not a brand-new inquiry with no history.
       </LuvCallout>
     </LuvCard>
   );
@@ -228,6 +293,7 @@ export function LeadMomentumCard({
   lastContactedAt,
   createdAt,
   lifecycle = EMPTY_LIFECYCLE,
+  tour = { kind: "none" },
 }: {
   firstName: string;
   commitmentScore: number;
@@ -237,6 +303,8 @@ export function LeadMomentumCard({
   createdAt?: string | null;
   /** Authoritative contract / Booked facts — presentation precedence only. */
   lifecycle?: SnapshotLifecycleFacts;
+  /** Authoritative tour workflow state from tour_appointments. */
+  tour?: FollowUpTourState;
 }) {
   const daysSince = lastContactedAt
     ? Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000)
@@ -263,7 +331,17 @@ export function LeadMomentumCard({
     );
   }
 
+  // Real tour milestone > young-lead heuristic. Never Stage-1 NEW for
+  // upcoming/completed tours; never invent sentiment about the visit.
+  if (tour.kind === "completed") {
+    return <CompletedTourView firstName={firstName} />;
+  }
+  if (tour.kind === "upcoming") {
+    return <UpcomingTourView firstName={firstName} scheduledAt={tour.scheduledAt} />;
+  }
+
   // Force "new" stage if the lead is very young regardless of score thresholds
+  // (only for relationships with no upcoming/completed tour).
   const effectiveStage = (daysOld !== null && daysOld <= 3 && stage === "observing") ? "new" : stage;
 
   if (effectiveStage === "new") {
