@@ -10,6 +10,8 @@ import {
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
+import { getUnattendedInquiryLeadIdsForCurrentVenue } from "@/lib/luv/unattended-inquiry-population";
+import { UNATTENDED_INQUIRY_ATTENTION } from "@/lib/luv/unattended-inquiry";
 
 export const metadata: Metadata = { title: "Leads" };
 
@@ -26,7 +28,11 @@ export default async function LeadsPage({ searchParams }: Props) {
     : attention === "open" ? "open" as const
     : attention === "active" ? "open" as const
     : attention === "unseen" ? "unseen" as const
+    : attention === UNATTENDED_INQUIRY_ATTENTION ? "unattended_inquiry" as const
     : null;
+  const unattendedInquiryLeadIds = initialAttention === "unattended_inquiry"
+    ? await getUnattendedInquiryLeadIdsForCurrentVenue()
+    : [];
   return (
     <div className="space-y-6">
       <PageHeader
@@ -48,6 +54,7 @@ export default async function LeadsPage({ searchParams }: Props) {
         leads={leads}
         initialAttention={initialAttention}
         initialOutcome={initialOutcome}
+        unattendedInquiryLeadIds={unattendedInquiryLeadIds}
       />
     </div>
   );

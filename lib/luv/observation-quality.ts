@@ -35,6 +35,19 @@ export function isCustomerFacingContactMessage(msg: {
 }
 
 /**
+ * P-A1 first-response message: venue staff outbound on a customer-facing
+ * channel. System automations and customer inbound do not count.
+ * Do not use this for Inbox needs_response.
+ */
+export function isVenueStaffFirstResponseMessage(msg: {
+  channel?: string | null;
+  senderType?: string | null;
+}): boolean {
+  if (!isCustomerFacingContactChannel(msg.channel)) return false;
+  return msg.senderType === "venue_staff";
+}
+
+/**
  * Authoritative contact — not last_contacted_at alone, not sales_stage.
  * Confirmation emails, outbound/inbound customer messages, and an actual
  * scheduled/confirmed tour record all qualify.

@@ -406,7 +406,7 @@ export async function getLuvObservations(
       ? onlyBusinessReporting(
         (() => {
           let q = supabase.from("leads")
-            .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, first_booked_at, lost_at, relationship_id")
+            .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, first_booked_at, lost_at, relationship_id, inquiry_message_origin")
             .eq("venue_id", venueId)
             .is("first_booked_at", null)
             .is("lost_at", null)
@@ -1343,8 +1343,9 @@ export async function getLuvObservations(
     id: string; first_name: string; last_name: string; sales_stage: string;
     created_at: string; last_contacted_at: string | null;
     first_booked_at: string | null; lost_at: string | null; relationship_id: string | null;
+    inquiry_message_origin: string | null;
   }[];
-  const { contactedLeadIds, tourStatusByLeadId } = await loadUnattendedInquiryContactEvidence(
+  const { contactedLeadIds, tourStatusByLeadId, tourOriginByLeadId } = await loadUnattendedInquiryContactEvidence(
     supabase,
     venueId,
     s3Rows,
@@ -1359,8 +1360,10 @@ export async function getLuvObservations(
         salesStage: row.sales_stage,
         createdAt: row.created_at,
         lastContactedAt: row.last_contacted_at,
-        hasCustomerFacingMessage: contactedLeadIds.has(row.id),
+        inquiryMessageOrigin: row.inquiry_message_origin,
+        hasVenueStaffOutbound: contactedLeadIds.has(row.id),
         tourStatus: tourStatusByLeadId.get(row.id) ?? null,
+        tourOrigin: tourOriginByLeadId.get(row.id) ?? null,
         firstBookedAt: row.first_booked_at,
         lostAt: row.lost_at,
       },

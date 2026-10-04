@@ -32,6 +32,32 @@ export function isAuthoritativeTourScheduled(tour: {
   return tour.status === "scheduled" || tour.status === "confirmed";
 }
 
+/**
+ * P-A1 first-response contact via a tour appointment.
+ * Distinct from isAuthoritativeTourScheduled (upcoming occupancy only).
+ * Completed, cancelled, no-show, and walk-in completed all mean the venue
+ * already met / scheduled with them — not an unattended inquiry.
+ */
+export const UNATTENDED_INQUIRY_TOUR_CONTACT_STATUSES = [
+  "scheduled",
+  "confirmed",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+
+export function isAuthoritativeTourContactForUnattendedInquiry(tour: {
+  status?: string | null;
+  origin?: string | null;
+} | null | undefined): boolean {
+  if (!tour) return false;
+  if (tour.origin === "walk_in") return true;
+  if (!tour.status) return false;
+  return (UNATTENDED_INQUIRY_TOUR_CONTACT_STATUSES as readonly string[]).includes(
+    tour.status,
+  );
+}
+
 export function isAuthoritativeTourConfirmed(tour: {
   status?: string | null;
 } | null | undefined): boolean {

@@ -20,7 +20,6 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 import {
   buildS2EventPaymentObservation,
-  buildS3UnattendedInquiryObservation,
   type ContextualEvent,
   type ContextualLead,
   type ContextualPaymentAttention,
@@ -37,7 +36,17 @@ import {
   enrichSpotPatternWithContext,
   type UnattendedContextLead,
 } from "./spot-pattern-context";
-import { loadUnattendedInquiryContactEvidence } from "./unattended-inquiry-contact";
+import {
+  loadUnattendedInquiryClusterCandidates,
+} from "./unattended-inquiry-contact";
+import {
+  isQualifyingUnattendedInquiry,
+  uniqueQualifyingUnattendedInquiryIds,
+  UNATTENDED_INQUIRY_CTA_LABEL,
+  UNATTENDED_INQUIRY_LEADS_HREF,
+  UNATTENDED_INQUIRY_WINDOW_DAYS,
+  type UnattendedInquiryEvidence,
+} from "./unattended-inquiry";
 
 /** Shared cluster window / multiplicity (locked). */
 export const SPOT_PATTERN_WINDOW_DAYS = 14;
@@ -88,29 +97,41 @@ export function isPhase5SpotPatternRecommendation(
 
 // ── P-A1: unattended inquiry cluster ─────────────────────────────────────────
 
+function asUnattendedEvidence(
+  lead: ContextualLead & Partial<Pick<UnattendedContextLead, "acquisitionSource">> & Partial<UnattendedInquiryEvidence>,
+): UnattendedInquiryEvidence {
+  return {
+    id: lead.id,
+    venueId: lead.venueId,
+    createdAt: lead.createdAt,
+    inquiryMessageOrigin: lead.inquiryMessageOrigin,
+    firstBookedAt: lead.firstBookedAt,
+    lostAt: lead.lostAt,
+    lastContactedAt: lead.lastContactedAt,
+    hasVenueStaffOutbound: lead.hasVenueStaffOutbound ?? false,
+    tourStatus: lead.tourStatus,
+    tourOrigin: lead.tourOrigin,
+    acquisitionSource: lead.acquisitionSource ?? null,
+  };
+}
+
 export function isQualifyingUnattendedInquiryForCluster(
-  lead: ContextualLead,
+  lead: ContextualLead & Partial<UnattendedInquiryEvidence>,
   opts: {
     venueId: string;
     nowMs?: number;
     windowDays?: number;
   },
 ): boolean {
-  const nowMs = opts.nowMs ?? Date.now();
-  const windowDays = opts.windowDays ?? SPOT_PATTERN_WINDOW_DAYS;
-  // Same authoritative S3 semantics (messages + tours + last_contacted_at).
-  // Sync must enrich candidates before calling this — do not invent a second definition.
-  if (!buildS3UnattendedInquiryObservation(lead, { venueId: opts.venueId, nowMs })) {
-    return false;
-  }
-  const createdMs = Date.parse(lead.createdAt);
-  if (Number.isNaN(createdMs)) return false;
-  const windowStart = nowMs - windowDays * 24 * 60 * 60 * 1000;
-  return createdMs >= windowStart;
+  return isQualifyingUnattendedInquiry(asUnattendedEvidence(lead), {
+    venueId: opts.venueId,
+    nowMs: opts.nowMs,
+    window: "cluster",
+  });
 }
 
 export function evaluateUnattendedInquiryPattern(
-  leads: Array<ContextualLead & Partial<Pick<UnattendedContextLead, "acquisitionSource">>>,
+  leads: Array<ContextualLead & Partial<Pick<UnattendedContextLead, "acquisitionSource">> & Partial<UnattendedInquiryEvidence>>,
   opts: {
     venueId: string;
     nowMs?: number;
@@ -123,28 +144,37 @@ export function evaluateUnattendedInquiryPattern(
   const minCluster = opts.minCluster ?? SPOT_PATTERN_MIN_CLUSTER;
   if (opts.venueLeadHistoryCount < SPOT_PATTERN_MIN_VENUE_HISTORY) return null;
 
-  const qualifying = leads.filter((l) =>
-    isQualifyingUnattendedInquiryForCluster(l, {
+  const qualifyingIds = uniqueQualifyingUnattendedInquiryIds(
+    leads.map(asUnattendedEvidence),
+    {
       venueId: opts.venueId,
       nowMs: opts.nowMs,
-      windowDays: opts.windowDays,
-    }),
+      window: "cluster",
+    },
   );
-  const count = new Set(qualifying.map((l) => l.id)).size;
+  const count = qualifyingIds.length;
   if (count < minCluster) return null;
 
-  const windowDays = opts.windowDays ?? SPOT_PATTERN_WINDOW_DAYS;
+  const qualifying = leads.filter((l) => qualifyingIds.includes(l.id));
+  const windowDays = opts.windowDays ?? UNATTENDED_INQUIRY_WINDOW_DAYS;
   const base: SpotPatternRecommendation = {
     type: UNATTENDED_INQUIRY_PATTERN_TYPE,
     title: `${count} recent inquiries still need a first response`,
-    body: `These new inquiries have had no recorded contact for over 48 hours (last ${windowDays} days).`,
+    body: `These inquiries have had no venue response for over 48 hours (last ${windowDays} days).`,
     priority: SPOT_PATTERN_PRIORITY,
-    // Help on /leads — a same-surface navigate CTA is not a next action.
-    ctas: [],
+    ctas: [
+      {
+        label: UNATTENDED_INQUIRY_CTA_LABEL,
+        target: UNATTENDED_INQUIRY_LEADS_HREF,
+        type: "navigate",
+      },
+    ],
     metadata: {
       lead_count: count,
+      lead_ids: qualifyingIds,
       window_days: windowDays,
       pattern: "P-A1",
+      age_clock: "created_at",
     },
   };
 
@@ -414,18 +444,15 @@ export async function syncPhase5SpotPatternRecommendations(
     const venueId = venue.id;
     const nowMs = Date.now();
     const windowDays = SPOT_PATTERN_WINDOW_DAYS;
-    const windowStart = new Date(nowMs - windowDays * 86_400_000).toISOString();
     const priorStart = new Date(nowMs - 2 * windowDays * 86_400_000).toISOString();
     // Phase 6 sustained context needs a third adjacent window (42d lookback).
     const priorPriorStart = new Date(nowMs - 3 * windowDays * 86_400_000).toISOString();
     const today = venueToday(venue.timezone ?? null);
     const soon14 = new Date(nowMs + windowDays * 86_400_000).toISOString().slice(0, 10);
-    const fortyEightHoursAgo = new Date(nowMs - 48 * 3_600_000).toISOString();
 
     const [
       historyLeadsRes,
       historyEventsRes,
-      unattendedRes,
       volumeLeadsRes,
       bookingLeadsRes,
       tourApptsRes,
@@ -443,19 +470,6 @@ export async function syncPhase5SpotPatternRecommendations(
           .select("id", { count: "exact", head: true })
           .eq("venue_id", venueId)
           .not("status", "in", "(cancelled)"),
-      ),
-      onlyBusinessReporting(
-        supabase
-          .from("leads")
-          .select(
-            "id, first_name, last_name, sales_stage, created_at, last_contacted_at, acquisition_source, first_booked_at, lost_at, relationship_id",
-          )
-          .eq("venue_id", venueId)
-          .is("first_booked_at", null)
-          .is("lost_at", null)
-          .is("last_contacted_at", null)
-          .lte("created_at", fortyEightHoursAgo)
-          .gte("created_at", windowStart),
       ),
       onlyBusinessReporting(
         supabase
@@ -496,34 +510,24 @@ export async function syncPhase5SpotPatternRecommendations(
     const venueLeadHistoryCount = historyLeadsRes.count ?? 0;
     const venueEventHistoryCount = historyEventsRes.count ?? 0;
 
-    // P-A1 — candidate window uses last_contacted_at null for efficiency;
-    // qualification still requires the same S3 communication + tour enrichment.
-    const unattendedRows = (unattendedRes.data ?? []) as {
-      id: string;
-      first_name: string;
-      last_name: string;
-      sales_stage: string;
-      created_at: string;
-      last_contacted_at: string | null;
-      acquisition_source: string | null;
-      relationship_id: string | null;
-    }[];
-    const { contactedLeadIds, tourStatusByLeadId } = await loadUnattendedInquiryContactEvidence(
-      supabase,
-      venueId,
-      unattendedRows,
-    );
-    const unattendedLeads = unattendedRows.map((row) => ({
+    const unattendedEvidence = await loadUnattendedInquiryClusterCandidates(supabase, venueId, {
+      nowMs,
+    });
+    const unattendedLeads = unattendedEvidence.map((row) => ({
       id: row.id,
-      venueId,
-      firstName: row.first_name,
-      lastName: row.last_name,
-      salesStage: row.sales_stage,
-      createdAt: row.created_at,
-      lastContactedAt: row.last_contacted_at,
-      acquisitionSource: row.acquisition_source,
-      hasCustomerFacingMessage: contactedLeadIds.has(row.id),
-      tourStatus: tourStatusByLeadId.get(row.id) ?? null,
+      venueId: row.venueId,
+      firstName: "",
+      lastName: "",
+      salesStage: "",
+      createdAt: row.createdAt,
+      lastContactedAt: row.lastContactedAt ?? null,
+      inquiryMessageOrigin: row.inquiryMessageOrigin,
+      firstBookedAt: row.firstBookedAt,
+      lostAt: row.lostAt,
+      hasVenueStaffOutbound: row.hasVenueStaffOutbound,
+      tourStatus: row.tourStatus,
+      tourOrigin: row.tourOrigin,
+      acquisitionSource: row.acquisitionSource,
     }));
 
     const pA1 = evaluateUnattendedInquiryPattern(unattendedLeads, {

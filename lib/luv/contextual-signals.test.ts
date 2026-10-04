@@ -69,6 +69,7 @@ function lead(partial: Partial<ContextualLead> & Pick<ContextualLead, "id">): Co
     salesStage: "new_inquiry",
     createdAt: new Date(NOW - UNATTENDED_INQUIRY_HOURS * 3_600_000).toISOString(),
     lastContactedAt: null,
+    inquiryMessageOrigin: "customer",
     ...partial,
   };
 }
@@ -281,6 +282,41 @@ describe("S3 unattended inquiry", () => {
       }),
       null,
     );
+  });
+
+  it("unknown/venue origin cannot receive reached-out language; customer origin can", () => {
+    assert.equal(
+      buildS3UnattendedInquiryObservation(
+        lead({ id: "V1", inquiryMessageOrigin: "venue" }),
+        { venueId: VENUE, nowMs: NOW },
+      ),
+      null,
+    );
+    assert.equal(
+      buildS3UnattendedInquiryObservation(
+        lead({ id: "U1", inquiryMessageOrigin: "unknown" }),
+        { venueId: VENUE, nowMs: NOW },
+      ),
+      null,
+    );
+    const obs = buildS3UnattendedInquiryObservation(
+      lead({ id: "C1", inquiryMessageOrigin: "customer" }),
+      { venueId: VENUE, nowMs: NOW },
+    );
+    assert.ok(obs);
+    assert.match(obs!.message, /reached out/);
+  });
+
+  it("S3 has no 14-day cluster cap", () => {
+    const obs = buildS3UnattendedInquiryObservation(
+      lead({
+        id: "OLD",
+        createdAt: new Date(NOW - 20 * 86_400_000).toISOString(),
+        inquiryMessageOrigin: "customer",
+      }),
+      { venueId: VENUE, nowMs: NOW },
+    );
+    assert.ok(obs);
   });
 });
 

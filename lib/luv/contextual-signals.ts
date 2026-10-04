@@ -6,7 +6,10 @@
  */
 
 import type { LuvObservation } from "@/lib/luv/types";
-import { hasQualifyingCustomerContact } from "@/lib/luv/observation-quality";
+import {
+  isQualifyingUnattendedInquiry,
+  type UnattendedInquiryEvidence,
+} from "@/lib/luv/unattended-inquiry";
 
 export const CONTEXTUAL_EVENT_WINDOW_DAYS = 21;
 export const UNATTENDED_INQUIRY_HOURS = 48;
@@ -50,8 +53,13 @@ export type ContextualLead = {
   salesStage: string;
   createdAt: string;
   lastContactedAt: string | null;
+  /** Customer-origin gate. Missing/unknown/venue fail closed for P-A1/S3. */
+  inquiryMessageOrigin?: string | null;
+  /** Venue staff outbound only — not system, inbound, or internal_note. */
+  hasVenueStaffOutbound?: boolean;
   hasCustomerFacingMessage?: boolean;
   tourStatus?: string | null;
+  tourOrigin?: string | null;
   firstBookedAt?: string | null;
   lostAt?: string | null;
 };
@@ -202,14 +210,29 @@ export function buildS3UnattendedInquiryObservation(
   opts: ContextualEvalOpts,
 ): LuvObservation | null {
   if (lead.venueId !== opts.venueId) return null;
-  if (lead.firstBookedAt) return null;
-  if (lead.lostAt) return null;
-  if (hasQualifyingCustomerContact({
+  const evidence: UnattendedInquiryEvidence = {
+    id: lead.id,
+    venueId: lead.venueId,
+    createdAt: lead.createdAt,
+    inquiryMessageOrigin: lead.inquiryMessageOrigin,
+    firstBookedAt: lead.firstBookedAt,
+    lostAt: lead.lostAt,
     lastContactedAt: lead.lastContactedAt,
-    hasCustomerFacingMessage: lead.hasCustomerFacingMessage,
+    hasVenueStaffOutbound: lead.hasVenueStaffOutbound ?? false,
     tourStatus: lead.tourStatus,
-  })) return null;
-  if (!isUnattendedInquiryAge(lead.createdAt, opts)) return null;
+    tourOrigin: lead.tourOrigin,
+  };
+  // S3 shares P-A1 inquiry + contact + booked/lost gates. It does not use
+  // the 14-day cluster cap — only the 48-hour floor.
+  if (
+    !isQualifyingUnattendedInquiry(evidence, {
+      venueId: opts.venueId,
+      nowMs: opts.nowMs,
+      window: "observation",
+    })
+  ) {
+    return null;
+  }
 
   const name = leadDisplayName(lead);
   const ageHours = Math.floor(
@@ -221,7 +244,7 @@ export function buildS3UnattendedInquiryObservation(
     kind: "risk",
     priority: ageHours >= 72 ? "high" : "medium",
     message: `${name} reached out ${ageHours >= 48 ? "over 48 hours" : `${ageHours} hours`} ago and has not been contacted yet.`,
-    detail: "This inquiry has no recorded contact — they may still be waiting for a first response.",
+    detail: "This inquiry has no recorded venue first response — they may still be waiting.",
     link: `/leads/${lead.id}`,
     actionLabel: "Open Lead →",
     recommendation: {

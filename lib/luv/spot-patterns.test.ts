@@ -65,8 +65,13 @@ function lead(
     createdAt: string;
     lastContactedAt: string | null;
     salesStage: string;
+    hasVenueStaffOutbound: boolean;
     hasCustomerFacingMessage: boolean;
     tourStatus: string | null;
+    tourOrigin: string | null;
+    inquiryMessageOrigin: string | null;
+    firstBookedAt: string | null;
+    lostAt: string | null;
   }> = {},
 ) {
   return {
@@ -77,8 +82,12 @@ function lead(
     salesStage: overrides.salesStage ?? "new_inquiry",
     createdAt: overrides.createdAt ?? hoursAgo(72),
     lastContactedAt: overrides.lastContactedAt === undefined ? null : overrides.lastContactedAt,
-    hasCustomerFacingMessage: overrides.hasCustomerFacingMessage,
+    inquiryMessageOrigin: overrides.inquiryMessageOrigin === undefined ? "customer" : overrides.inquiryMessageOrigin,
+    hasVenueStaffOutbound: overrides.hasVenueStaffOutbound ?? overrides.hasCustomerFacingMessage,
     tourStatus: overrides.tourStatus,
+    tourOrigin: overrides.tourOrigin,
+    firstBookedAt: overrides.firstBookedAt,
+    lostAt: overrides.lostAt,
   };
 }
 
@@ -152,9 +161,11 @@ describe("P-A1 — unattended inquiry cluster", () => {
     assert.equal(active!.type, UNATTENDED_INQUIRY_PATTERN_TYPE);
     assert.equal(active!.metadata.lead_count, 3);
     assert.match(active!.title, /3 recent inquiries/);
+    assert.match(active!.body, /These inquiries have had no venue response for over 48 hours \(last 14 days\)\./);
+    assert.doesNotMatch(active!.body, /These new inquiries/);
   });
 
-  it("P-A1 Help on Leads — no same-surface /leads CTA and no replacement CTA", () => {
+  it("P-A1 CTA reviews the dedicated unattended-inquiry population", () => {
     const leads = [lead("a"), lead("b"), lead("c")];
     const active = evaluateUnattendedInquiryPattern(leads, {
       venueId: VENUE_A,
@@ -163,18 +174,19 @@ describe("P-A1 — unattended inquiry cluster", () => {
     });
     assert.ok(active);
     assert.equal(active!.type, UNATTENDED_INQUIRY_PATTERN_TYPE);
-    assert.deepEqual(active!.ctas, []);
-    assert.equal(
-      active!.ctas.some((cta) => cta.target === "/leads" || /review inquiries/i.test(cta.label)),
-      false,
-    );
+    assert.equal(active!.ctas.length, 1);
+    assert.equal(active!.ctas[0].label, "Review these inquiries");
+    assert.equal(active!.ctas[0].target, "/leads?attention=unattended_inquiry");
+    assert.deepEqual(active!.metadata.lead_ids, ["a", "b", "c"]);
+    assert.doesNotMatch(active!.ctas[0].target, /attention=unseen/);
+    assert.notEqual(active!.ctas[0].target, "/leads");
     const src = read("lib/luv/spot-patterns.ts");
     const fnStart = src.indexOf("export function evaluateUnattendedInquiryPattern");
     const fnEnd = src.indexOf("export type PaymentAttentionEventInput", fnStart);
     const fn = src.slice(fnStart, fnEnd);
-    assert.match(fn, /ctas:\s*\[\]/);
-    assert.doesNotMatch(fn, /Review inquiries/);
-    assert.doesNotMatch(fn, /target:\s*"\/leads"/);
+    assert.match(fn, /UNATTENDED_INQUIRY_CTA_LABEL/);
+    assert.match(fn, /UNATTENDED_INQUIRY_LEADS_HREF/);
+    assert.doesNotMatch(fn, /ctas:\s*\[\]/);
   });
 
   it("insufficient venue history → no pattern even at cluster size", () => {
@@ -193,11 +205,11 @@ describe("P-A1 — unattended inquiry cluster", () => {
     const contacted = lead("x", { lastContactedAt: hoursAgo(1) });
     const touringStageOnly = lead("y", { salesStage: "touring" });
     const tourOnRecord = lead("t", { tourStatus: "confirmed" });
-    const withMessages = lead("m", { hasCustomerFacingMessage: true });
+    const withMessages = lead("m", { hasVenueStaffOutbound: true });
     const completedTourPlusMessages = lead("j", {
       salesStage: "tour_scheduled",
       tourStatus: "completed",
-      hasCustomerFacingMessage: true,
+      hasVenueStaffOutbound: true,
     });
     const fresh = lead("z", { createdAt: hoursAgo(12) });
     const ok = lead("ok");
@@ -241,21 +253,21 @@ describe("P-A1 — unattended inquiry cluster", () => {
     const untouchedC = lead("c");
     const messaged = lead("grace", {
       salesStage: "proposal_sent",
-      hasCustomerFacingMessage: true,
+      hasVenueStaffOutbound: true,
     });
     const tourCompletedMessaged = lead("jasmine", {
       salesStage: "tour_scheduled",
       tourStatus: "completed",
-      hasCustomerFacingMessage: true,
+      hasVenueStaffOutbound: true,
     });
-    const systemMessaged = lead("goldi", { hasCustomerFacingMessage: true });
+    const systemMessaged = lead("goldi", { hasVenueStaffOutbound: false });
     const active = evaluateUnattendedInquiryPattern(
       [untouchedA, messaged, untouchedB, tourCompletedMessaged, systemMessaged, untouchedC],
       { venueId: VENUE_A, nowMs: NOW, venueLeadHistoryCount: 20 },
     );
     assert.ok(active);
-    assert.equal(active!.metadata.lead_count, 3);
-    assert.match(active!.title, /3 recent inquiries/);
+    assert.equal(active!.metadata.lead_count, 4);
+    assert.match(active!.title, /4 recent inquiries/);
 
     assert.equal(
       evaluateUnattendedInquiryPattern(
@@ -707,20 +719,28 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     assert.match(patterns.slice(pa4Start, pa4End), /\/payments\?filter=attention/);
   });
 
-  it("P-A1 sync enriches candidates with S3 contact evidence before evaluating", () => {
+  it("P-A1 sync enriches candidates with shared contact evidence before evaluating", () => {
     const patterns = read("lib/luv/spot-patterns.ts");
     const syncStart = patterns.indexOf("export async function syncPhase5SpotPatternRecommendations");
     const sync = patterns.slice(syncStart);
-    assert.match(sync, /loadUnattendedInquiryContactEvidence/);
-    assert.match(sync, /relationship_id/);
-    assert.match(sync, /hasCustomerFacingMessage/);
+    assert.match(sync, /loadUnattendedInquiryClusterCandidates/);
+    assert.match(sync, /hasVenueStaffOutbound/);
     assert.match(sync, /tourStatus/);
     const observations = read("lib/luv/observations.ts");
     assert.match(observations, /loadUnattendedInquiryContactEvidence/);
+    assert.match(observations, /inquiry_message_origin/);
     const shared = read("lib/luv/unattended-inquiry-contact.ts");
-    assert.match(shared, /isCustomerFacingContactMessage/);
+    assert.match(shared, /isVenueStaffFirstResponseMessage/);
     assert.match(shared, /tour_appointments/);
     assert.match(shared, /conversation_messages/);
+    assert.match(shared, /walk_in/);
+    assert.match(shared, /cancelled/);
+    const leadsPage = read("app/(app)/leads/page.tsx");
+    assert.match(leadsPage, /getUnattendedInquiryLeadIdsForCurrentVenue/);
+    assert.match(leadsPage, /unattended_inquiry/);
+    const list = read("components/leads/lead-list.tsx");
+    assert.match(list, /unattendedInquiryLeadIds/);
+    assert.match(list, /unattendedIdSet\.has/);
   });
 
   it("tour volume for P-P1 does not use exclude_from_business_reporting", () => {

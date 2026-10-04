@@ -26,6 +26,7 @@ import {
   isAuthoritativePaymentReceived,
   isAuthoritativeProposalSentRecord,
   isAuthoritativeTourConfirmed,
+  isAuthoritativeTourContactForUnattendedInquiry,
   isAuthoritativeTourScheduled,
   stageCannotProve,
 } from "@/lib/luv/pipeline-stage-evidence";
@@ -87,6 +88,18 @@ describe("pipeline stage is never evidence — primitives", () => {
     assert.equal(isAuthoritativeTourConfirmed({ status: "scheduled" }), false);
   });
 
+  it("P-A1 tour contact includes completed, cancelled, no_show, and walk-in", () => {
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry({ status: "scheduled" }), true);
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry({ status: "confirmed" }), true);
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry({ status: "completed" }), true);
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry({ status: "cancelled" }), true);
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry({ status: "no_show" }), true);
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry({ origin: "walk_in", status: "completed" }), true);
+    assert.equal(isAuthoritativeTourScheduled({ status: "completed" }), false);
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry({ status: "requested" }), false);
+    assert.equal(isAuthoritativeTourContactForUnattendedInquiry(null), false);
+  });
+
   it("proposal / contract / payment require workflow records", () => {
     assert.equal(
       isAuthoritativeProposalSentRecord({ status: "sent", offeredAt: "2026-09-20T12:00:00Z" }),
@@ -130,6 +143,7 @@ describe("changing / omitting / misordering stage cannot invent actions", () => 
           salesStage,
           createdAt: CREATED_48H,
           lastContactedAt: null,
+          inquiryMessageOrigin: "customer",
         },
         { venueId: VENUE, nowMs: NOW },
       );
@@ -148,6 +162,7 @@ describe("changing / omitting / misordering stage cannot invent actions", () => 
         salesStage: "",
         createdAt: CREATED_48H,
         lastContactedAt: null,
+        inquiryMessageOrigin: "customer",
       },
       { venueId: VENUE, nowMs: NOW },
     );
@@ -161,6 +176,7 @@ describe("changing / omitting / misordering stage cannot invent actions", () => 
         salesStage: "new_inquiry",
         createdAt: CREATED_48H,
         lastContactedAt: null,
+        inquiryMessageOrigin: "customer",
         tourStatus: "confirmed",
       },
       { venueId: VENUE, nowMs: NOW },
@@ -362,7 +378,7 @@ describe("source lock — Luv never treats sales_stage as proof", () => {
     const s3 = signals.slice(signals.indexOf("export function buildS3UnattendedInquiryObservation"));
     const body = s3.slice(0, s3.indexOf("export function buildS4TourPrepObservation"));
     assert.doesNotMatch(body, /salesStage/);
-    assert.match(body, /hasQualifyingCustomerContact/);
+    assert.match(body, /isQualifyingUnattendedInquiry/);
     assert.match(body, /firstBookedAt/);
   });
 });

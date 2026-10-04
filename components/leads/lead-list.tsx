@@ -89,24 +89,32 @@ export function LeadList({
   leads,
   initialAttention,
   initialOutcome = "active",
+  unattendedInquiryLeadIds = [],
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
-  initialAttention?: "stale_contact" | "open" | "active" | "unseen" | null;
+  initialAttention?: "stale_contact" | "open" | "active" | "unseen" | "unattended_inquiry" | null;
   /** lost = the Lost outcome list. Booked is a link to Clients, not a lead filter. */
   initialOutcome?: "active" | "lost";
+  /** Server-recomputed P-A1 qualifying IDs (same evaluator as the cluster). */
+  unattendedInquiryLeadIds?: readonly string[];
 }) {
   const router = useRouter();
+  const unattendedIdSet = React.useMemo(
+    () => new Set(unattendedInquiryLeadIds),
+    [unattendedInquiryLeadIds],
+  );
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>(initialOutcome === "lost" ? "lost" : "all");
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [sort, setSort] = React.useState<SortKey>(
     initialAttention === "stale_contact" ? "last_contacted" : "newest",
   );
-  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open" | "unseen">(
+  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open" | "unseen" | "unattended_inquiry">(
     initialAttention === "stale_contact" ? "stale_contact"
       : initialAttention === "open" ? "open"
       : initialAttention === "unseen" ? "unseen"
+      : initialAttention === "unattended_inquiry" ? "unattended_inquiry"
       : "all",
   );
 
@@ -135,6 +143,17 @@ export function LeadList({
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
     const nowMs = Date.now();
+    if (attentionFilter === "unattended_inquiry") {
+      const base = leads.filter((l) => {
+        if (!unattendedIdSet.has(l.id)) return false;
+        if (!q) return true;
+        return [
+          l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
+          l.email, l.phone, l.eventType, l.source,
+        ].some((v) => v?.toLowerCase().includes(q));
+      });
+      return sortLeads(base, sort);
+    }
     const base = (statusFilter === "lost" ? leads.filter(isLostLead) : queue).filter((l) => {
       const stage = l.salesStage ?? l.status;
       if (statusFilter !== "all" && statusFilter !== "lost") {
@@ -177,7 +196,7 @@ export function LeadList({
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter]);
+  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, unattendedIdSet]);
 
   const statusCounts = React.useMemo(() => {
     const population = attentionFilter === "open" || attentionFilter === "unseen"
@@ -268,6 +287,20 @@ export function LeadList({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
           <p className="text-foreground">
             Showing unseen open leads — same population as the Leads navigation badge.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAttentionFilter("all")}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Show all active leads
+          </button>
+        </div>
+      )}
+      {attentionFilter === "unattended_inquiry" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
+          <p className="text-foreground">
+            Showing inquiries that still need a first venue response (48 hours–14 days).
           </p>
           <button
             type="button"

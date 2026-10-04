@@ -68,6 +68,7 @@ function unattendedLead(
     createdAt: overrides.createdAt ?? hoursAgo(72),
     lastContactedAt:
       overrides.lastContactedAt === undefined ? null : overrides.lastContactedAt,
+    inquiryMessageOrigin: "customer",
     acquisitionSource: overrides.acquisitionSource ?? null,
   };
 }
@@ -174,14 +175,9 @@ describe("Phase 6 P-A1 context", () => {
     assert.equal(clause!.text, "Most came from your website.");
     assert.equal(clause!.evidence.acquisition_field, "acquisition_source");
     // Sync select list must not use mutable leads.source as acquisition truth.
-    const syncSrc = readFileSync(resolve("lib/luv/spot-patterns.ts"), "utf8");
-    const syncStart = syncSrc.indexOf("export async function syncPhase5SpotPatternRecommendations");
-    const unattendedBlock = syncSrc.slice(
-      syncStart,
-      syncSrc.indexOf("// P-P1", syncStart),
-    );
-    assert.match(unattendedBlock, /acquisition_source/);
-    assert.doesNotMatch(unattendedBlock, /select\([\s\S]*?,\s*source[,\s"]/);
+    const contactSrc = readFileSync(resolve("lib/luv/unattended-inquiry-contact.ts"), "utf8");
+    assert.match(contactSrc, /acquisition_source/);
+    assert.doesNotMatch(contactSrc, /select\([\s\S]*?,\s*source[,\s"]/);
   });
 
   it("6. venue isolation for P-A1 context", () => {

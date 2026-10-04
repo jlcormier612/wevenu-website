@@ -216,6 +216,8 @@ describe("Internal Notes rollup must not leak into customer-facing Luv or portal
     const portal = readFileSync(resolve("lib/conversations/portal-visibility.test.ts"), "utf8");
     assert.doesNotMatch(drafts, /internal-notes-rollup|buildInternalNotesRollup/);
     assert.doesNotMatch(loader, /internal-notes-rollup|buildInternalNotesRollup/);
+    const pa1 = readFileSync(resolve("lib/luv/unattended-inquiry.ts"), "utf8");
+    assert.doesNotMatch(pa1, /buildInternalNotesRollup/);
     assert.match(portal, /internal_note/);
   });
 
