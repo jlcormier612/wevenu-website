@@ -13,7 +13,7 @@ import { getClientTimelineEntries, getClientSections } from "@/lib/timeline/serv
 import { getFloorPlansForClient } from "@/lib/floor-plans/service";
 import { getEventOrderForClient } from "@/lib/event-orders/service";
 import { getClientVendorAssignments } from "@/lib/vendors/service";
-import { EventDetail } from "@/components/events/event-detail";
+import { buildInternalNotesRollup } from "@/lib/notes/internal-notes-rollup";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getSpaces } from "@/lib/availability/service";
@@ -334,25 +334,30 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const leadExtrasPromise = client.leadId
     ? (async () => {
         const supabase = await createClient();
-        const [leadRes, noteRes] = await Promise.all([
+        const [leadRes, noteRes, tourRes] = await Promise.all([
           supabase
             .from("leads")
-            .select("source, inquiry_message, inquiry_message_origin")
+            .select("source, inquiry_message, inquiry_message_origin, created_at")
             .eq("id", client.leadId!)
             .maybeSingle<{
               source: string | null;
               inquiry_message: string | null;
               inquiry_message_origin: string | null;
+              created_at: string;
             }>(),
           supabase
             .from("lead_notes")
-            .select("id, body, created_at")
+            .select("id, body, created_at, updated_at")
             .eq("lead_id", client.leadId!)
             .order("created_at", { ascending: false }),
+          supabase
+            .from("tour_appointments")
+            .select("id, notes, created_at, completed_at, actual_occurred_at, scheduled_at")
+            .eq("lead_id", client.leadId!),
         ]);
-        return { leadRow: leadRes.data, noteRows: noteRes.data };
+        return { leadRow: leadRes.data, noteRows: noteRes.data, tourRows: tourRes.data };
       })()
-    : Promise.resolve({ leadRow: null, noteRows: null });
+    : Promise.resolve({ leadRow: null, noteRows: null, tourRows: null });
 
   const [
     event, availableVendors, eventInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, questionnaires, eventTasks, allPlaybookTemplates,
@@ -469,7 +474,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     inquiryMessage: string | null;
     inquiryMessageOrigin?: string | null;
   } | null = null;
-  let leadNotes: { id: string; body: string; createdAt: string }[] = [];
+  let leadNotes: { id: string; body: string; createdAt: string; updatedAt?: string }[] = [];
   if (client.leadId) {
     const leadRow = leadExtras.leadRow;
     const sourceLabel = leadRow?.source
@@ -488,10 +493,11 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       inquiryMessage: leadRow?.inquiry_message ?? null,
       inquiryMessageOrigin: leadRow?.inquiry_message_origin ?? "unknown",
     };
-    leadNotes = ((leadExtras.noteRows ?? []) as { id: string; body: string; created_at: string }[]).map((n) => ({
+    leadNotes = ((leadExtras.noteRows ?? []) as { id: string; body: string; created_at: string; updated_at?: string }[]).map((n) => ({
       id: n.id,
       body: n.body,
       createdAt: n.created_at,
+      updatedAt: n.updated_at,
     }));
   } else {
     relationshipContact = {
@@ -510,6 +516,42 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
 
   const conversationId = conversationBundle.conversationId;
   const conversationMessages = conversationBundle.messages;
+  const internalNoteItems = buildInternalNotesRollup({
+    inquiry: client.leadId && leadExtras.leadRow
+      ? {
+          leadId: client.leadId,
+          body: leadExtras.leadRow.inquiry_message,
+          origin: leadExtras.leadRow.inquiry_message_origin,
+          createdAt: leadExtras.leadRow.created_at,
+        }
+      : null,
+    tours: ((leadExtras.tourRows ?? []) as Array<{
+      id: string;
+      notes: string | null;
+      created_at: string;
+      completed_at: string | null;
+      actual_occurred_at: string | null;
+      scheduled_at: string | null;
+    }>).map((t) => ({
+      id: t.id,
+      notes: t.notes,
+      createdAt: t.created_at,
+      completedAt: t.completed_at,
+      actualOccurredAt: t.actual_occurred_at,
+      scheduledAt: t.scheduled_at,
+    })),
+    leadNotes,
+    eventNotes: event.notes,
+    clientNotes: client.notes,
+    clientRecordNotes: {
+      clientId: client.id,
+      body: client.internalNotes,
+      createdAt: client.createdAt,
+    },
+    conversationNotes: conversationMessages
+      .filter((m) => m.channel === "internal_note")
+      .map((m) => ({ id: m.id, body: m.body, sentAt: m.sentAt })),
+  });
   const linkableConversationMessages: LinkableConversationMessage[] = conversationMessages.map((m) => ({
     id: m.id,
     label: m.channel === "internal_note" ? "Internal Note" : "Conversation",
@@ -579,6 +621,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       originatingLeadId={client.leadId}
       relationshipContact={relationshipContact}
       leadNotes={leadNotes}
+      internalNoteItems={internalNoteItems}
       questionnaire={questionnaire} questionnaires={questionnaires} questionnaireTemplates={questionnaireTemplates} questionnaireActivities={questionnaireActivities} questionnaireActivitiesById={questionnaireActivitiesById}
       coupleEmail={coupleEmail} eventTasks={eventTasks}
       playbookTemplates={playbookTemplates} playbookApplications={playbookApplications}

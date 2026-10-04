@@ -13,19 +13,24 @@ import {
 } from "@/app/(app)/leads/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { formatRelative } from "@/lib/leads/constants";
-import type { LeadNote } from "@/lib/leads/types";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { INTERNAL_NOTES_PRIVACY_HINT } from "@/lib/notes/internal-notes-copy";
+import {
+  formatInternalNoteOccurredOn,
+  type InternalNoteRollupItem,
+} from "@/lib/notes/internal-notes-rollup";
 
 export function NotesSection({
   leadId,
-  initialNotes,
+  items: initialItems,
+  venueTimezone = null,
 }: {
   leadId: string;
-  initialNotes: LeadNote[];
+  items: InternalNoteRollupItem[];
+  venueTimezone?: string | null;
 }) {
   const router = useRouter();
-  const [notes, setNotes] = React.useState(initialNotes);
+  const [items, setItems] = useSyncedState(initialItems);
   const [body, setBody] = React.useState("");
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editBody, setEditBody] = React.useState("");
@@ -33,7 +38,7 @@ export function NotesSection({
   const [savePending, startSave] = React.useTransition();
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
-  function startEdit(note: LeadNote) {
+  function startEdit(note: InternalNoteRollupItem) {
     setEditingId(note.id);
     setEditBody(note.body);
   }
@@ -48,11 +53,6 @@ export function NotesSection({
     startAdd(async () => {
       const result = await addNoteAction(leadId, body);
       if (result.ok) {
-        const optimistic: LeadNote = {
-          id: crypto.randomUUID(), venueId: "", leadId,
-          body: body.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        };
-        setNotes((prev) => [optimistic, ...prev]);
         setBody("");
         router.refresh();
       } else {
@@ -61,15 +61,15 @@ export function NotesSection({
     });
   }
 
-  function handleSaveEdit(noteId: string) {
-    if (!editBody.trim()) return;
+  function handleSaveEdit(note: InternalNoteRollupItem) {
+    if (!editBody.trim() || note.kind !== "lead_note") return;
     startSave(async () => {
-      const result = await updateNoteAction(noteId, leadId, editBody);
+      const result = await updateNoteAction(note.sourceId, leadId, editBody);
       if (result.ok) {
-        setNotes((prev) =>
+        setItems((prev) =>
           prev.map((n) =>
-            n.id === noteId
-              ? { ...n, body: editBody.trim(), updatedAt: new Date().toISOString() }
+            n.id === note.id
+              ? { ...n, body: editBody.trim(), edited: true }
               : n,
           ),
         );
@@ -81,10 +81,11 @@ export function NotesSection({
     });
   }
 
-  async function handleDelete(noteId: string) {
-    setDeletingId(noteId);
-    setNotes((prev) => prev.filter((n) => n.id !== noteId));
-    const result = await deleteNoteAction(noteId);
+  async function handleDelete(note: InternalNoteRollupItem) {
+    if (note.kind !== "lead_note") return;
+    setDeletingId(note.id);
+    setItems((prev) => prev.filter((n) => n.id !== note.id));
+    const result = await deleteNoteAction(note.sourceId);
     setDeletingId(null);
     if (!result.ok) {
       toast.error(result.message ?? "Could not delete note.");
@@ -97,7 +98,6 @@ export function NotesSection({
       <p className="text-xs text-muted-foreground">
         {INTERNAL_NOTES_PRIVACY_HINT}
       </p>
-      {/* Add note */}
       <div className="space-y-2">
         <Textarea
           value={body}
@@ -120,14 +120,14 @@ export function NotesSection({
         </div>
       </div>
 
-      {notes.length === 0 && (
+      {items.length === 0 && (
         <p className="py-4 text-center text-sm text-muted-foreground">
           No notes yet. Add one above.
         </p>
       )}
 
       <div className="space-y-3">
-        {notes.map((note) =>
+        {items.map((note) =>
           editingId === note.id ? (
             <div key={note.id} className="rounded-lg border border-ring bg-card p-4 space-y-2">
               <Textarea
@@ -137,14 +137,14 @@ export function NotesSection({
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Escape") cancelEdit();
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSaveEdit(note.id);
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSaveEdit(note);
                 }}
               />
               <div className="flex items-center justify-end gap-2">
                 <Button type="button" variant="ghost" size="sm" onClick={cancelEdit} disabled={savePending}>
                   <X className="mr-1 h-3.5 w-3.5" /> Cancel
                 </Button>
-                <Button type="button" size="sm" disabled={!editBody.trim() || savePending} onClick={() => handleSaveEdit(note.id)}>
+                <Button type="button" size="sm" disabled={!editBody.trim() || savePending} onClick={() => handleSaveEdit(note)}>
                   <Check className="mr-1 h-3.5 w-3.5" />
                   {savePending ? "Saving…" : "Save"}
                 </Button>
@@ -155,35 +155,36 @@ export function NotesSection({
               key={note.id}
               className="group relative rounded-lg border border-border bg-card p-4"
             >
-              <p className="whitespace-pre-wrap text-sm text-foreground">{note.body}</p>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p
-                  className="text-xs text-muted-foreground"
-                  title={new Date(note.createdAt).toLocaleString()}
-                >
-                  {formatRelative(note.createdAt)}
-                  {note.updatedAt !== note.createdAt ? " · edited" : ""}
-                </p>
-                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(note)}
-                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    aria-label="Edit note"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(note.id)}
-                    disabled={deletingId === note.id}
-                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    aria-label="Delete note"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+              <p className="text-xs text-muted-foreground" title={new Date(note.occurredAt).toLocaleString()}>
+                {formatInternalNoteOccurredOn(note.occurredAt, venueTimezone)} · {note.provenanceLabel}
+                {note.edited ? " · edited" : ""}
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{note.body}</p>
+              {(note.canEdit || note.canDelete) && (
+                <div className="mt-2 flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  {note.canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => startEdit(note)}
+                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label="Edit note"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {note.canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(note)}
+                      disabled={deletingId === note.id}
+                      className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Delete note"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           ),
         )}

@@ -107,6 +107,10 @@ import {
   inquiryMessageDisplayHint,
   inquiryMessageDisplayLabel,
 } from "@/lib/leads/inquiry-message-origin";
+import {
+  buildInternalNotesRollup,
+  type InternalNoteRollupItem,
+} from "@/lib/notes/internal-notes-rollup";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -135,7 +139,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpTour = { kind: "none" }, followUpDraftEligible = true }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpTour?: import("@/lib/luv/follow-up-workflow-context").FollowUpTourState; followUpDraftEligible?: boolean }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpTour = { kind: "none" }, followUpDraftEligible = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpTour?: import("@/lib/luv/follow-up-workflow-context").FollowUpTourState; followUpDraftEligible?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -385,6 +389,24 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   }));
 
   const openTaskCount = lead.tasks.filter((t) => !t.completed).length;
+  const internalNotes = internalNoteItems ?? buildInternalNotesRollup({
+    inquiry: {
+      leadId: lead.id,
+      body: lead.inquiryMessage,
+      origin: lead.inquiryMessageOrigin ?? null,
+      createdAt: lead.createdAt,
+    },
+    tours: tourAppointments.map((t) => ({
+      id: t.id,
+      notes: t.notes,
+      createdAt: t.createdAt,
+      completedAt: t.completedAt,
+      actualOccurredAt: t.actualOccurredAt,
+      scheduledAt: t.scheduledAt,
+    })),
+    leadNotes: lead.notes,
+    conversationNotes: conversationInternalNotes,
+  });
 
   return (
     <div className="space-y-5">
@@ -694,9 +716,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <TabsTrigger value="messages">Conversation</TabsTrigger>
           <TabsTrigger value="notes">
             {INTERNAL_NOTES_LABEL}
-            {lead.notes.length > 0 && (
+            {internalNotes.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                {lead.notes.length}
+                {internalNotes.length}
               </span>
             )}
           </TabsTrigger>
@@ -886,7 +908,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <NotesSection leadId={lead.id} initialNotes={lead.notes} />
+              <NotesSection leadId={lead.id} items={internalNotes} venueTimezone={venueTimezone} />
             </CardContent>
           </Card>
         </TabsContent>

@@ -18,6 +18,7 @@ import { getPackagesWithItems } from "@/lib/packages/service";
 import { getCurrentStaffMember, getTeamMembers } from "@/lib/team/service";
 import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
+import { loadConversationInternalNotes } from "@/lib/notes/load-conversation-internal-notes";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
 import { markLeadVenueSeen } from "@/lib/navigation/attention-service";
@@ -100,6 +101,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         venue ? getCurrentStaffMember(venue.id) : Promise.resolve(null),
         venue ? isSmsConfigured(venue.id) : Promise.resolve(false),
       ]);
+      const conversationInternalNotes = await loadConversationInternalNotes(conversationId);
       const bookingJourney = await loadBookingJourneyForLead({
         leadId: lead.id,
         linkedClientId: lead.linkedClientId,
@@ -123,6 +125,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         tourAppointments,
         packages,
         conversationId,
+        conversationInternalNotes,
         smsPermission,
         textingConfigured,
         duplicateReview,
@@ -179,6 +182,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       autoLuvDraft={autoLuvDraft}
       tourAppointments={page.tourAppointments}
       conversationId={page.conversationId}
+      conversationInternalNotes={page.conversationInternalNotes}
       bookingJourney={page.bookingJourney}
       packages={page.packages}
       smsPermission={page.smsPermission}

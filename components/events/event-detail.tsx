@@ -23,6 +23,7 @@ import { NeedsAttentionList } from "@/components/events/needs-attention";
 import { selectOverviewExceptions, type EventSetupState, type SetupStepKey } from "@/lib/event-setup/state";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
+import type { InternalNoteRollupItem } from "@/lib/notes/internal-notes-rollup";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
@@ -296,7 +297,8 @@ export function EventDetail({
   readinessSummary,
   originatingLeadId = null,
   relationshipContact = null,
-  leadNotes = [],
+  leadNotes: _leadNotes = [],
+  internalNoteItems = [],
   bookingJourney = null,
   packagesWithItems = [],
   selectedPackage = null,
@@ -388,6 +390,7 @@ export function EventDetail({
     inquiryMessageOrigin?: string | null;
   } | null;
   leadNotes?: { id: string; body: string; createdAt: string }[];
+  internalNoteItems?: InternalNoteRollupItem[];
   bookingJourney?: BookingJourneyModel | null;
   packagesWithItems?: PackageWithItems[];
   selectedPackage?: CommercialSelection | null;
@@ -588,8 +591,8 @@ export function EventDetail({
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="notes">
             {INTERNAL_NOTES_LABEL}
-            {event.notes.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.notes.length}</span>
+            {internalNoteItems.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{internalNoteItems.length}</span>
             )}
           </TabsTrigger>
           <TabsTrigger value="team">
@@ -1025,7 +1028,7 @@ export function EventDetail({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EventNotesSection eventId={event.id} initialNotes={event.notes} leadNotes={leadNotes} />
+              <EventNotesSection eventId={event.id} items={internalNoteItems} venueTimezone={venueTimezone} />
             </CardContent>
           </Card>
         </TabsContent>

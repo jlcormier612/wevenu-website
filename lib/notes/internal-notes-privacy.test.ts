@@ -100,6 +100,14 @@ describe("venue-internal notes privacy wiring", () => {
     assert.equal(NOTES_FROM_YOUR_VENUE_LABEL, "Notes from your venue");
   });
 
+  it("Lead Internal notes workspace projects the rollup, not only lead_notes", () => {
+    const card = read("components/leads/lead-detail.tsx");
+    const notes = read("components/leads/notes-section.tsx");
+    assert.match(card, /buildInternalNotesRollup/);
+    assert.match(notes, /items: InternalNoteRollupItem/);
+    assert.doesNotMatch(notes, /initialNotes: LeadNote/);
+  });
+
   it("Lead and Event workspace tabs are labeled Internal notes, not Notes", () => {
     for (const rel of [
       "components/leads/lead-detail.tsx",
