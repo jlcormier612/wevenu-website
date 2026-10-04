@@ -18,11 +18,13 @@
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import {
+  completedTourThoughtsSentence,
   generateMomentumLanguage,
   getConfidenceStage,
   getObservations,
   newLeadBeginningSentence,
   stillEarlySentence,
+  upcomingTourThoughtsSentence,
 } from "@/lib/leads/momentum";
 import {
   snapshotCommitmentDescriptor,
@@ -104,7 +106,6 @@ function NewInquiryView({ firstName }: { firstName: string }) {
 // ── Tour milestone (quiet, factual — no invented sentiment) ───────────────────
 
 function CompletedTourView({ firstName }: { firstName: string }) {
-  const name = firstName.trim() || "This couple";
   return (
     <LuvCard>
       <LuvCardHeader />
@@ -112,7 +113,7 @@ function CompletedTourView({ firstName }: { firstName: string }) {
       <div className="space-y-1.5">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tour on record</p>
         <p className="text-sm text-heading leading-relaxed">
-          {name} has toured the venue. I&apos;m not drawing conclusions about how it went.
+          {completedTourThoughtsSentence(firstName)}
         </p>
       </div>
 
@@ -130,7 +131,6 @@ function UpcomingTourView({
   firstName: string;
   scheduledAt: string;
 }) {
-  const name = firstName.trim() || "This couple";
   const when = (() => {
     try {
       return new Date(scheduledAt).toLocaleString("en-US", {
@@ -150,7 +150,7 @@ function UpcomingTourView({
       <div className="space-y-1.5">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tour scheduled</p>
         <p className="text-sm text-heading leading-relaxed">
-          {name} has a venue tour scheduled{when ? ` for ${when}` : ""}. It has not taken place yet.
+          {upcomingTourThoughtsSentence(firstName, when)}
         </p>
       </div>
 

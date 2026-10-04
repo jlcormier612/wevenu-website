@@ -48,6 +48,20 @@ export function stillEarlySentence(firstName: string): string {
   return `It's still early. I'll share more as ${name} engages.`;
 }
 
+export function completedTourThoughtsSentence(firstName: string): string {
+  const name = firstName.trim() || "This couple";
+  return `${name} has toured the venue. I'm not drawing conclusions about how it went.`;
+}
+
+export function upcomingTourThoughtsSentence(
+  firstName: string,
+  whenLabel: string | null,
+): string {
+  const name = firstName.trim() || "This couple";
+  const when = whenLabel ? ` for ${whenLabel}` : "";
+  return `${name} has a venue tour scheduled${when}. It has not taken place yet.`;
+}
+
 export type ConfidenceStage = "new" | "observing" | "insights";
 
 export function getConfidenceStage(

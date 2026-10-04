@@ -95,7 +95,8 @@ describe("completed-tour Thoughts presentation wiring", () => {
     assert.match(card, /tour\.kind === "completed"/);
     assert.match(card, /CompletedTourView/);
     assert.match(card, /Tour on record/);
-    assert.match(card, /has toured the venue/);
+    assert.match(card, /completedTourThoughtsSentence/);
+    assert.doesNotMatch(card, /\{name\} has toured/);
     assert.doesNotMatch(card, /loved the venue|excited|liked the|approved/i);
     // Completed/upcoming branches must precede the ≤3-day NEW override
     const completedIdx = card.indexOf('tour.kind === "completed"');
@@ -212,7 +213,7 @@ describe("completed-tour Thoughts presentation wiring", () => {
 
     assert.match(card, /tour\.kind === "upcoming"/);
     assert.match(card, /UpcomingTourView/);
-    assert.match(card, /has not taken place yet/);
+    assert.match(card, /upcomingTourThoughtsSentence/);
     assert.doesNotMatch(
       card.slice(card.indexOf("function UpcomingTourView")),
       /has toured the venue/,
