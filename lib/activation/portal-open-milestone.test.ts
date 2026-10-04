@@ -271,8 +271,8 @@ describe("Clients portal_activation filter", () => {
   });
 });
 
-describe("invite telemetry defect stays separate", () => {
-  it("inviteClient still does not record couple.portal_invite_sent (tracked separately)", () => {
+describe("inviteClient is not the first_portal_invite source of truth", () => {
+  it("inviteClient still does not record couple.portal_invite_sent", () => {
     const invite = readFileSync(resolve("lib/client-auth/service.ts"), "utf8");
     const start = invite.indexOf("export async function inviteClient");
     const fn = invite.slice(start, start + 1200);

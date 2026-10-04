@@ -3,6 +3,8 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { applyFirstPortalInviteToChecklist } from "@/lib/activation/first-portal-invite";
+import { getVenueFirstPortalInviteMilestone } from "@/lib/activation/first-portal-invite-service";
 import { applyPortalOpenMilestoneToChecklist } from "@/lib/activation/portal-open-milestone";
 import { getVenuePortalOpenMilestone } from "@/lib/activation/portal-open-milestone-service";
 import type {
@@ -38,13 +40,21 @@ export async function getActivationScore(venueId: string): Promise<ActivationSco
   return enrichActivationScore(venueId, mapScore(data as Record<string, unknown>));
 }
 
-/** Overlay the locked 3-couples portal-open milestone onto checklist + gaps. */
+/**
+ * Overlay locked portal milestones onto checklist + gaps.
+ * Invitation rows and portal sessions remain the sources of truth —
+ * activation stamps are derived telemetry only.
+ */
 async function enrichActivationScore(
   venueId: string,
   score: ActivationScore,
 ): Promise<ActivationScore> {
-  const milestone = await getVenuePortalOpenMilestone(venueId);
-  const checklist = applyPortalOpenMilestoneToChecklist(score.checklist, milestone.complete);
+  const [openMilestone, inviteMilestone] = await Promise.all([
+    getVenuePortalOpenMilestone(venueId),
+    getVenueFirstPortalInviteMilestone(venueId),
+  ]);
+  let checklist = applyPortalOpenMilestoneToChecklist(score.checklist, openMilestone.complete);
+  checklist = applyFirstPortalInviteToChecklist(checklist, inviteMilestone.complete);
   const gaps = checklist
     .filter((item) => !item.completed)
     .sort((a, b) => b.points - a.points)
