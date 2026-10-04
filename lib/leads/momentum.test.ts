@@ -46,7 +46,7 @@ describe("Luv new-lead name rendering", () => {
 
 describe("Luv Thoughts name/count word boundaries", () => {
   it("person name + toured stays spaced (completed tour helper)", () => {
-    assert.match(venueFacingCompletedTourThoughts("Wendy", null), /^Wendy toured the venue/);
+    assert.match(venueFacingCompletedTourThoughts("Wendy", null), /^Wendy has toured the venue/);
     assert.doesNotMatch(venueFacingCompletedTourThoughts("Wendy", null), /Wendytoured|Wendyhas/);
   });
 
