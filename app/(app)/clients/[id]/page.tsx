@@ -13,6 +13,7 @@ import { getClientTimelineEntries, getClientSections } from "@/lib/timeline/serv
 import { getFloorPlansForClient } from "@/lib/floor-plans/service";
 import { getEventOrderForClient } from "@/lib/event-orders/service";
 import { getClientVendorAssignments } from "@/lib/vendors/service";
+import { EventDetail } from "@/components/events/event-detail";
 import { buildInternalNotesRollup } from "@/lib/notes/internal-notes-rollup";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
