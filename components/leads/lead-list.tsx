@@ -90,6 +90,7 @@ export function LeadList({
   initialAttention,
   initialOutcome = "active",
   unattendedInquiryLeadIds = [],
+  currentBookedCount = 0,
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
@@ -98,6 +99,8 @@ export function LeadList({
   initialOutcome?: "active" | "lost";
   /** Server-recomputed P-A1 qualifying IDs (same evaluator as the cluster). */
   unattendedInquiryLeadIds?: readonly string[];
+  /** Current Booked membership — same population as Clients → All Bookings. */
+  currentBookedCount?: number;
 }) {
   const router = useRouter();
   const unattendedIdSet = React.useMemo(
@@ -125,10 +128,6 @@ export function LeadList({
 
   function isLostLead(lead: Lead): boolean {
     return String(lead.salesStage ?? lead.status) === "lost";
-  }
-  function isBookedLead(lead: Lead): boolean {
-    const stage = String(lead.salesStage ?? lead.status);
-    return stage === "booked" || stage === "won";
   }
 
   /** Same open definition as Dashboard Lead Flow — reporting category, not exclude flag. */
@@ -212,10 +211,10 @@ export function LeadList({
       const stage = l.salesStage ?? l.status;
       map.set(stage, (map.get(stage) ?? 0) + 1);
     });
-    map.set("booked", leads.filter(isBookedLead).length);
+    map.set("booked", currentBookedCount);
     map.set("lost", leads.filter(isLostLead).length);
     return map;
-  }, [queue, leads, attentionFilter]);
+  }, [queue, leads, attentionFilter, currentBookedCount]);
 
   type StageChip = { key: string; label: string; kind: "active" | "booked" | "lost" };
   const activeChips: StageChip[] = [

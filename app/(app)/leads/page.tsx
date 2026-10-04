@@ -9,6 +9,7 @@ import {
 } from "@/components/luv/spot-pattern-recommendations";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
+import { loadBookedMembershipSets } from "@/lib/booking-journey/booked-membership";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
 import { getUnattendedInquiryLeadIdsForCurrentVenue } from "@/lib/luv/unattended-inquiry-population";
 import { UNATTENDED_INQUIRY_ATTENTION } from "@/lib/luv/unattended-inquiry";
@@ -19,7 +20,10 @@ type Props = { searchParams: Promise<{ attention?: string; view?: string }> };
 
 export default async function LeadsPage({ searchParams }: Props) {
   await ensureStandardSalesPipelineForCurrentVenue();
-  const leads = await getLeads();
+  const [leads, bookedMembership] = await Promise.all([
+    getLeads(),
+    loadBookedMembershipSets(),
+  ]);
   const { attention, view } = await searchParams;
   const initialOutcome = view === "lost" ? "lost" as const : "active" as const;
   const initialAttention = initialOutcome === "lost"
@@ -55,6 +59,7 @@ export default async function LeadsPage({ searchParams }: Props) {
         initialAttention={initialAttention}
         initialOutcome={initialOutcome}
         unattendedInquiryLeadIds={unattendedInquiryLeadIds}
+        currentBookedCount={bookedMembership.currentClientIds.size}
       />
     </div>
   );

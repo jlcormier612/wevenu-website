@@ -5,7 +5,7 @@
  * No Upcoming card (Coming up above already covers events).
  * Venue-facing copy never hard-codes custom pipeline stage names.
  */
-import { getCanonicallyBookedClientIds } from "@/lib/booking-journey/canonical-booked";
+import { getCurrentBookedClientIds } from "@/lib/booking-journey/booked-membership";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { clientListFilterHref } from "@/lib/clients/list-filters";
@@ -214,7 +214,7 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
         .from("pipeline_stages")
         .select("id, canonical_stage")
         .eq("venue_id", venue.id),
-      getCanonicallyBookedClientIds(),
+      getCurrentBookedClientIds(),
       getGrossBookedRevenue(),
       getPaymentsCollected(),
       getOutstandingBalance(),

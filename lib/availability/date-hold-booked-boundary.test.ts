@@ -15,7 +15,7 @@ const convertFn = clients.slice(
   clients.indexOf("export async function updateClientInfo"),
 );
 const bookSql = read(
-  "supabase/migrations/20261410500000_lead_event_space_preferences.sql",
+  "supabase/migrations/20261412100000_authoritative_booked_membership.sql",
 );
 const bookFn = bookSql.slice(
   bookSql.indexOf("create or replace function public.book_relationship"),

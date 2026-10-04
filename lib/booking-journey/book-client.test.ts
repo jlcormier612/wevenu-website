@@ -12,7 +12,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 describe("one canonical booking transition", () => {
   it("bookClient is one database transaction, not a cleanup after several statements", () => {
     const book = read("lib/booking-journey/book-client.ts");
-    const sql = read("supabase/migrations/20261404200000_atomic_book_relationship.sql");
+    const sql = read("supabase/migrations/20261412100000_authoritative_booked_membership.sql");
     assert.match(book, /rpc\("book_relationship"/);
     assert.doesNotMatch(book, /ensureEventBookedAt/);
     assert.doesNotMatch(book, /insertEvent/);
@@ -24,7 +24,11 @@ describe("one canonical booking transition", () => {
     assert.match(sql, /booked_at = v_booked_on/);
     assert.match(sql, /first_booked_at = coalesce\(first_booked_at, now\(\)\)/);
     assert.match(sql, /set event_id = v_event_id/);
-    assert.doesNotMatch(sql, /set status = 'cancelled'/);
+    const bookFn = sql.slice(
+      sql.indexOf("create or replace function public.book_relationship"),
+      sql.indexOf("$$;", sql.indexOf("create or replace function public.book_relationship")),
+    );
+    assert.doesNotMatch(bookFn, /set status = 'cancelled'/);
     const availability = read("supabase/migrations/20261404100000_venue_controlled_availability.sql");
     assert.match(availability, /pg_advisory_xact_lock/);
   });
@@ -47,7 +51,7 @@ describe("one canonical booking transition", () => {
   });
 
   it("a second call does not create another event or another celebration", () => {
-    const sql = read("supabase/migrations/20261404200000_atomic_book_relationship.sql");
+    const sql = read("supabase/migrations/20261412100000_authoritative_booked_membership.sql");
     assert.match(sql, /v_existing_booked_at is not null/);
     assert.match(sql, /v_newly := false/);
     assert.match(sql, /This relationship is already Booked/);
@@ -59,9 +63,11 @@ describe("one canonical booking transition", () => {
   it("cancellation leaves the booked pipeline without clearing booked_at", () => {
     const events = read("lib/events/service.ts");
     const leads = read("lib/leads/service.ts");
-    assert.match(events, /leaveActiveBookedPipeline/);
-    assert.match(events, /before\.bookedAt/);
+    const sql = read("supabase/migrations/20261412100000_authoritative_booked_membership.sql");
+    assert.match(events, /cancel_booked_event_relationship/);
     assert.doesNotMatch(events, /booked_at:\s*null/);
+    assert.match(sql, /sales_stage = 'cancelled'/);
+    assert.match(sql, /pipeline_stage_id = null/);
     assert.match(leads, /CANCELLED_RELATIONSHIP_STAGE/);
     assert.match(leads, /pipeline_stage_id: null/);
     const ret = leads.slice(leads.indexOf("export async function returnLeadToBooked"));
@@ -85,7 +91,7 @@ describe("one canonical booking transition", () => {
   });
 
   it("booking attaches existing planning rows and does not insert a second copy", () => {
-    const sql = read("supabase/migrations/20261404200000_atomic_book_relationship.sql");
+    const sql = read("supabase/migrations/20261412100000_authoritative_booked_membership.sql");
     const start = sql.indexOf("create or replace function public.book_relationship");
     const end = sql.indexOf("$$;", start);
     const fn = sql.slice(start, end);

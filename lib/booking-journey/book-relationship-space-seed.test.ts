@@ -7,7 +7,7 @@ const root = resolve(process.cwd());
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 
 const sql = read("supabase/migrations/20261410500000_lead_event_space_preferences.sql");
-const latest = read("supabase/migrations/20261411900000_event_type_aware_space_preferences.sql");
+const latest = read("supabase/migrations/20261412100000_authoritative_booked_membership.sql");
 const fn = latest.slice(
   latest.indexOf("create or replace function public.book_relationship"),
   latest.indexOf("$$;", latest.indexOf("create or replace function public.book_relationship")),

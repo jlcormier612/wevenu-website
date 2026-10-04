@@ -170,6 +170,30 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
   if (!validateEventStatus(status)) return { ok: false, message: `"${status}" is not a valid status.` };
   const result = await withVenue(async (supabase, venueId) => {
     const before = await repo.getEvent(supabase, venueId, eventId);
+    if (status === "cancelled") {
+      const { data, error } = await supabase.rpc("cancel_booked_event_relationship", {
+        p_venue_id: venueId,
+        p_event_id: eventId,
+      });
+      if (error) {
+        const fail = occupancyActionFailure(error);
+        if (fail) return fail as EventActionResult;
+        throw error;
+      }
+      const row = data as { ok?: boolean; message?: string } | null;
+      if (row && row.ok === false) {
+        return { ok: false, message: row.message ?? "This event could not be cancelled." } as EventActionResult;
+      }
+      if (before && before.status !== status) {
+        await syncEventVendorAvailability(eventId, {
+          eventDate:    before.eventDate,
+          eventEndDate: before.eventEndDate,
+          eventName:    before.name,
+          status,
+        });
+      }
+      return { ok: true } as EventActionResult;
+    }
     try {
       await repo.updateEventStatus(supabase, venueId, eventId, status as EventStatus);
     } catch (err) {
@@ -177,8 +201,8 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
       if (fail) return fail as EventActionResult;
       throw err;
     }
-    // Cancel frees Booked days; restoring a cancelled event re-books them.
-    // Do NOT stamp booked_at here — status changes are not the booking commitment moment.
+    // Restoring a cancelled event re-books occupancy. Do NOT stamp booked_at
+    // here — status changes are not the booking commitment moment.
     if (before && before.status !== status) {
       await syncEventVendorAvailability(eventId, {
         eventDate:    before.eventDate,
@@ -186,19 +210,6 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
         eventName:    before.name,
         status,
       });
-    }
-    if (status === "cancelled" && before?.clientId) {
-      await supabase
-        .from("clients")
-        .update({ status: "cancelled" })
-        .eq("id", before.clientId)
-        .eq("venue_id", venueId);
-      // Booked pipeline state means the active relationship. Cancellation
-      // keeps events.booked_at and moves the lead off sales_stage booked.
-      if (before.bookedAt) {
-        const { leaveActiveBookedPipeline } = await import("@/lib/leads/service");
-        await leaveActiveBookedPipeline(supabase, venueId, before.clientId);
-      }
     }
     return { ok: true } as EventActionResult;
   });

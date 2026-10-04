@@ -291,7 +291,6 @@ export async function updateLeadSalesStage(
   leadId: string,
   stage: string,
   opts?: {
-    allowBooked?: boolean;
     clientId?: string | null;
     /** Required to leave Booked for a non-Lost sales-pipeline stage (Move back to Sales Pipeline). */
     allowLeaveBooked?: boolean;
@@ -303,10 +302,10 @@ export async function updateLeadSalesStage(
 ): Promise<LeadActionResult> {
   if (!validateStatus(stage) || !isSalesStage(stage))
     return { ok: false, message: `"${stage}" is not a valid sales stage.` };
-  if (stage === "booked" && !opts?.allowBooked) {
+  if (stage === "booked") {
     return { ok: false, message: "Move to Booked requires confirmation — use Confirm Booked move." };
   }
-  if (!opts?.allowBooked && !isManuallyAssignableSalesStage(stage)) {
+  if (!isManuallyAssignableSalesStage(stage)) {
     return { ok: false, message: "That stage cannot be set manually." };
   }
   if (stage === "lost") {
@@ -354,48 +353,6 @@ export async function updateLeadSalesStage(
           : undefined,
     );
 
-    if (stage === "booked") {
-      // Idempotent: already Booked → do not emit another lifecycle event.
-      // Booked → Lost → Booked emits rebooked via recordLifecycleBooking.
-      if (previousStage !== "booked") {
-        const { data: { user } } = await supabase.auth.getUser();
-        let clientId = opts?.clientId ?? null;
-        if (!clientId) {
-          const { data: linked } = await supabase.from("clients").select("id")
-            .eq("lead_id", leadId).eq("venue_id", venueId)
-            .maybeSingle<{ id: string }>();
-          clientId = linked?.id ?? null;
-        }
-        const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
-        const recorded = await recordLifecycleBooking(supabase, {
-          venueId,
-          leadId,
-          clientId,
-          origin: "pipeline",
-          actorUserId: user?.id ?? null,
-          previousSalesStage: previousStage,
-        });
-        if (!recorded.ok) {
-          console.error("Lifecycle booking record failed:", recorded.message);
-        }
-      }
-
-      const { data: tour } = await supabase
-        .from("tour_appointments")
-        .select("id")
-        .eq("lead_id", leadId)
-        .eq("venue_id", venueId)
-        .limit(1)
-        .maybeSingle<{ id: string }>();
-      if (tour) {
-        void supabase.from("lead_signal_events").insert({
-          venue_id: venueId, lead_id: leadId,
-          signal_type: "tour_converted", signal_strength: 3,
-          metadata: { appointment_id: tour.id },
-        }).then(null, () => {});
-      }
-    }
-
     const { data: lead } = await supabase.from("leads").select("relationship_id")
       .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
     if (lead?.relationship_id) {
@@ -406,15 +363,6 @@ export async function updateLeadSalesStage(
           );
         } catch (e) {
           console.error("Series exit (exited_lost) failed:", e);
-        }
-      }
-      if (stage === "booked") {
-        try {
-          await exitActiveEnrollmentsForRelationship(
-            supabase, venueId, lead.relationship_id, "exited_booking",
-          );
-        } catch (e) {
-          console.error("Series exit (exited_booking) failed:", e);
         }
       }
       void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", stage)
@@ -437,11 +385,16 @@ export async function updateLeadStatus(
 /**
  * Forward-only auto stage advance (tour booked, sequence enroll, etc.).
  * Never moves backward; never overrides Booked/Lost.
+ * Booked is structurally excluded — only bookClient / book_relationship
+ * may write sales_stage booked.
  */
 export async function advanceLeadSalesStageIfForward(
   leadId: string,
-  target: SalesStage,
+  target: Exclude<SalesStage, "booked">,
 ): Promise<LeadActionResult> {
+  if ((target as SalesStage) === "booked") {
+    return { ok: false, message: "Booked requires the canonical booking operation." };
+  }
   const result = await withVenue(async (supabase, venueId) => {
     const { data: row } = await supabase.from("leads").select("sales_stage")
       .eq("id", leadId).eq("venue_id", venueId)
@@ -452,7 +405,7 @@ export async function advanceLeadSalesStageIfForward(
     if (!isForwardSalesStageMove(row.sales_stage, target)) {
       return { ok: true } as LeadActionResult;
     }
-    return updateLeadSalesStage(leadId, target, { allowBooked: target === "booked" });
+    return updateLeadSalesStage(leadId, target);
   });
   return result as LeadActionResult;
 }

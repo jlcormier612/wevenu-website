@@ -17,7 +17,7 @@ const SPACES = resolve("supabase/migrations/20261410500000_lead_event_space_pref
 const TYPED = resolve("supabase/migrations/20261411900000_event_type_aware_space_preferences.sql");
 const NA = resolve("supabase/migrations/20261412000000_space_preference_not_applicable.sql");
 const AUTH = resolve("supabase/migrations/20261412100000_authoritative_booked_membership.sql");
-const CASES = resolve("lib/leads/space-preferences.db.sql");
+const CASES = resolve("lib/booking-journey/authoritative-booked.db.sql");
 
 function psql(args: string[], extra?: { timeoutMs?: number }): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync("psql", [LOCAL_URL, "-v", "ON_ERROR_STOP=1", ...args], {
@@ -46,8 +46,8 @@ function applySql(file: string): void {
   assert.equal(last.status, 0, last.stderr || last.stdout);
 }
 
-describe("spaces + Booking-E1 live writes", () => {
-  it("seeds venue_space/external/undecided, skips inactive, rolls back with the booking", (t: TestContext) => {
+describe("authoritative Booked live writes", () => {
+  it("rejects unauthorized booked writes and books lead-linked + lead-less in one transaction", (t: TestContext) => {
     if (!localDbAvailable()) {
       t.skip("local Postgres is not running");
       return;
@@ -69,7 +69,7 @@ describe("spaces + Booking-E1 live writes", () => {
         if (!/deadlock detected/i.test(`${run.stderr}\n${run.stdout}`)) break;
       }
       assert.equal(run.status, 0, run.stderr || run.stdout);
-      assert.match(`${run.stdout}\n${run.stderr}`, /spaces_booking_e1_ok/);
+      assert.match(`${run.stdout}\n${run.stderr}`, /authoritative_booked_ok/);
     });
   });
 });

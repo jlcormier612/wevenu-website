@@ -527,6 +527,17 @@ html:has(.htc-staff) [data-slot="table"] {
   h4 {
     @apply font-heading text-heading;
   }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--primary);
+  }
+
+  input[type="checkbox"]:focus-visible,
+  input[type="radio"]:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
 /*

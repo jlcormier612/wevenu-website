@@ -753,7 +753,7 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
   });
 
   it("manual and automation Lead→Booked share first_booked_at clock", () => {
-    const bookSql = read("supabase/migrations/20261408300000_book_relationship_consumes_date_holds.sql");
+    const bookSql = read("supabase/migrations/20261412100000_authoritative_booked_membership.sql");
     assert.match(bookSql, /first_booked_at = coalesce\(first_booked_at, now\(\)\)/);
     const lifecycle = read("lib/lifecycle-bookings/service.ts");
     assert.match(lifecycle, /\.update\(\{ first_booked_at: occurredAt \}\)/);

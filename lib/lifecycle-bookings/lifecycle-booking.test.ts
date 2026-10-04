@@ -73,9 +73,11 @@ describe("Lifecycle booking writers", () => {
   });
 
   it("pipeline Booked records lifecycle and skips when already Booked", () => {
-    assert.match(leadsSvc, /recordLifecycleBooking/);
-    assert.match(leadsSvc, /previousStage !== "booked"/);
-    assert.match(leadsSvc, /origin: "pipeline"/);
+    const book = readFileSync(resolve("lib/booking-journey/book-client.ts"), "utf8");
+    assert.match(book, /recordLifecycleBooking/);
+    assert.match(book, /previous_sales_stage !== "booked"/);
+    assert.match(book, /origin: input.lifecycleOrigin \?\? \(row.lead_id \? "pipeline" : "direct"\)/);
+    assert.doesNotMatch(leadsSvc, /recordLifecycleBooking/);
   });
 
   it("convertLeadToClient does not set pipeline Booked, and neither does a commercial stamp", () => {

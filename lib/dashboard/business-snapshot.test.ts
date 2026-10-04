@@ -215,7 +215,7 @@ describe("Dashboard Business Snapshot wiring", () => {
     assert.doesNotMatch(ui, /upcoming events/i);
     assert.doesNotMatch(snap, /key: "upcoming"/);
     assert.match(snap, /getPaymentsCollected/);
-    assert.match(snap, /getCanonicallyBookedClientIds/);
+    assert.match(snap, /getCurrentBookedClientIds/);
     assert.doesNotMatch(snap, /getCanonicalBookings/);
     assert.match(snap, /getOutstandingBalance/);
     assert.match(snap, /LEAD_FLOW_OPEN_HREF/);

@@ -7,6 +7,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isFirstPortalInviteComplete } from "@/lib/activation/first-portal-invite";
+import { loadBookedMembershipSets } from "@/lib/booking-journey/booked-membership";
 
 export type VenueFirstPortalInviteMilestone = {
   complete: boolean;
@@ -23,18 +24,7 @@ export async function getVenueFirstPortalInviteMilestone(
   if (!isSupabaseConfigured) return empty;
 
   const supabase = await createClient();
-  const { data: bookedRows, error: bookedError } = await supabase
-    .from("events")
-    .select("client_id")
-    .eq("venue_id", venueId)
-    .not("booked_at", "is", null)
-    .neq("status", "cancelled");
-  if (bookedError) throw bookedError;
-
-  const bookedClientIds = new Set<string>();
-  for (const row of (bookedRows ?? []) as { client_id: string | null }[]) {
-    if (row.client_id) bookedClientIds.add(row.client_id);
-  }
+  const bookedClientIds = (await loadBookedMembershipSets({ venueId })).currentClientIds;
   if (bookedClientIds.size === 0) return empty;
 
   const { data: invites, error: inviteError } = await supabase

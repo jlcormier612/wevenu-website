@@ -63,7 +63,7 @@ export type ClientListFilterContext = {
   comingUpOut: string;
   attentionClientIds: ReadonlySet<string>;
   /**
-   * Client IDs with `events.booked_at` set and the event not cancelled.
+   * Authoritative Booked client IDs (current ∪ past). Not events.booked_at.
    * When present, All Bookings / Coming up / Needs Attention / Past are
    * drawn from this set. Cancelled is status, because cancellation removes
    * the id from this set while keeping the relationship.
@@ -130,8 +130,8 @@ export function clientMatchesListFilter(
     case "cancelled":
       return client.status === "cancelled";
     case "portal_activation":
-      // Booked couples only — same population as the portal-open milestone.
-      return isBookedClient(client, ctx) && client.status !== "cancelled";
+      // Current Booked couples only — same population as the portal-open milestone.
+      return isAllBooking(client, ctx);
   }
 }
 
