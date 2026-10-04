@@ -74,6 +74,14 @@ export function CommercialFacts({
   const [withdrawOpen, setWithdrawOpen] = React.useState(false);
   const waitingOnCouple = proposal?.status === "sent" || proposal?.status === "selected";
   const proposalWithdrawn = proposal?.status === "withdrawn";
+  const venueManualTakeover =
+    proposalWithdrawn
+    && Boolean(selection)
+    && !selection?.proposalId
+    && !journey.contract;
+  const showCreateContract =
+    Boolean(selection && !journey.contract && (allowContract || venueManualTakeover));
+  const createContractPrimary = journey.primaryAction === "create_contract";
 
   function copyProposalLink() {
     const token = proposal?.acceptToken;
@@ -179,7 +187,7 @@ export function CommercialFacts({
                   ) : null}
                   {proposalWithdrawn && onCreateProposal && allowOffer ? (
                     <Button type="button" size="sm" variant="ghost" onClick={onCreateProposal}>
-                      Create proposal
+                      {selection ? "Start a new proposal" : "Create proposal"}
                     </Button>
                   ) : null}
                   {onResendProposalEmail && (proposal.status === "sent" || proposal.status === "selected") ? (
@@ -190,8 +198,14 @@ export function CommercialFacts({
                 </>
               ) : null}
 
-              {row.key === "contract" && !journey.contract && selection && allowContract && (
-                <Button type="button" size="sm" variant="outline" disabled={contractPending} onClick={onCreateContract}>
+              {row.key === "contract" && showCreateContract && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={createContractPrimary ? "default" : "outline"}
+                  disabled={contractPending}
+                  onClick={onCreateContract}
+                >
                   {contractPending ? "Preparing…" : "Create contract"}
                 </Button>
               )}

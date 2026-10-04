@@ -75,6 +75,20 @@ describe("resolveActiveCommercialSelection logic", () => {
     assert.equal(got?.id, "sel-linked");
   });
 
+  it("draft venue selection seeds a contract without accepted or proposal_id", () => {
+    const active = draft("sel-draft");
+    const got = resolveActive(
+      { selectionId: "sel-draft" },
+      new Map([[active.id, active]]),
+      new Map(),
+      new Map(),
+      new Map(),
+    );
+    assert.equal(got?.id, "sel-draft");
+    assert.equal(got?.status, "draft");
+    assert.notEqual(got?.status, "accepted");
+  });
+
   it("3. Explicit selectionId resolves that exact active selection", () => {
     const active = draft("sel-exact");
     const got = resolveActive(

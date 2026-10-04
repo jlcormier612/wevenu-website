@@ -24,8 +24,11 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
 
   it("Create contract preparation action exists", () => {
     const src = readFileSync(resolve("app/(app)/booking-journey/actions.ts"), "utf8");
+    const fn = src.slice(src.indexOf("export async function prepareCreateContractAction"));
     assert.match(src, /prepareCreateContractAction/);
     assert.match(src, /ensureCommercialCustomerForSelection/);
+    assert.match(fn, /selectionId/);
+    assert.doesNotMatch(fn.slice(0, 800), /status === "accepted"|proposal_id|proposalId/);
   });
 
   it("Set up payments ensures customer when clientId missing", () => {

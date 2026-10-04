@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildBookingJourney, commercialStepsComplete } from "@/lib/booking-journey/model";
+import { buildBookingJourney, commercialStepsComplete, isVenueManualTakeover } from "@/lib/booking-journey/model";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 
@@ -125,6 +125,122 @@ describe("Booking Journey derivation", () => {
     assert.equal(j.secondaryAction, undefined);
   });
 
+  it("1–12. withdrawn proposal + venue selection + no contract → Create contract is primary", () => {
+    const withdrawn = {
+      id: "prop-1",
+      status: "withdrawn" as const,
+      offeredAt: "2026-09-26T00:00:00Z",
+      acceptToken: "tok",
+      selectionId: null,
+    };
+    const venueSel = selection({ proposalId: null, status: "draft" });
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      clientId: "client-1",
+      selection: venueSel,
+      proposal: withdrawn,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "either" },
+    });
+    assert.equal(isVenueManualTakeover({ proposal: withdrawn, selection: venueSel, contract: null }), true);
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.primaryLabel, "Create contract");
+    assert.match(j.primaryHref ?? "", /selectionId=sel-1/);
+    assert.equal(j.secondaryAction, "create_proposal");
+    assert.equal(j.secondaryLabel, "Start a new proposal");
+    assert.equal(j.proposal?.status, "withdrawn");
+    assert.equal(j.selection?.proposalId, null);
+    assert.equal(j.selection?.status, "draft");
+    assert.doesNotMatch(j.direction, /waiting for the couple/i);
+    assert.doesNotMatch(j.direction, /Create a share link/i);
+    assert.equal(
+      commercialStepsComplete({ selection: venueSel, contract: null, paymentLines: [] }),
+      false,
+    );
+  });
+
+  it("13. offer-only takeover exposes Create contract as the scoped exception", () => {
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: selection({ proposalId: null, status: "draft" }),
+      proposal: {
+        id: "prop-1",
+        status: "withdrawn",
+        offeredAt: "2026-09-26T00:00:00Z",
+        acceptToken: "tok",
+        selectionId: null,
+      },
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
+    });
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.primaryLabel, "Create contract");
+    assert.equal(j.secondaryAction, "create_proposal");
+    assert.equal(j.secondaryLabel, "Start a new proposal");
+  });
+
+  it("14. offer-only normal workflow stays proposal-first without a withdrawn proposal", () => {
+    const start = buildBookingJourney({
+      leadId: "lead-1",
+      selection: null,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
+    });
+    assert.equal(start.primaryAction, "create_proposal");
+    assert.equal(start.secondaryAction, undefined);
+
+    const pathB = buildBookingJourney({
+      leadId: "lead-1",
+      selection: selection(),
+      proposal: null,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
+    });
+    assert.equal(pathB.primaryAction, "send_offer");
+    assert.notEqual(pathB.primaryAction, "create_contract");
+    assert.equal(pathB.secondaryAction, undefined);
+  });
+
+  it("15. couple-approved proposal path is not treated as manual takeover", () => {
+    const approved = {
+      id: "prop-1",
+      status: "approved" as const,
+      offeredAt: "2026-09-26T00:00:00Z",
+      acceptToken: "tok",
+      selectionId: "sel-1",
+    };
+    const coupleSel = selection({ proposalId: "prop-1", status: "accepted" });
+    assert.equal(
+      isVenueManualTakeover({ proposal: approved, selection: coupleSel, contract: null }),
+      false,
+    );
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      clientId: "client-1",
+      eventId: "event-1",
+      selection: coupleSel,
+      proposal: approved,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+    });
+    assert.equal(j.primaryAction, "setup_payments");
+    assert.notEqual(j.primaryAction, "create_contract");
+  });
+
   it("after package selected offers share link / Create contract", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",
@@ -154,6 +270,31 @@ describe("Booking Journey derivation", () => {
     });
     assert.equal(j.secondaryAction, "create_contract");
     assert.match(j.secondaryHref ?? "", /leadId=lead-1/);
+  });
+
+  it("manual takeover is not a couple acceptance and is not commercial-complete", () => {
+    const venueSel = selection({ proposalId: null, status: "draft" });
+    const withdrawn = {
+      id: "prop-1",
+      status: "withdrawn" as const,
+      offeredAt: "2026-09-26T00:00:00Z",
+      acceptToken: "tok",
+      selectionId: null,
+    };
+    assert.equal(
+      isVenueManualTakeover({
+        proposal: withdrawn,
+        selection: venueSel,
+        contract: { id: "c1", status: "draft" },
+      }),
+      false,
+    );
+    assert.equal(venueSel.proposalId, null);
+    assert.equal(venueSel.status, "draft");
+    assert.equal(
+      commercialStepsComplete({ selection: venueSel, contract: null, paymentLines: [] }),
+      false,
+    );
   });
 
   it("commercial steps are not complete on selection alone", () => {

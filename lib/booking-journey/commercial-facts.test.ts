@@ -152,6 +152,37 @@ describe("commercial artifact states", () => {
     assert.match(proposal?.detail ?? "", /Waiting for the couple/);
   });
 
+  it("withdrawn proposal + venue package still shows Selected internally and Withdrawn", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ proposalId: null, status: "draft" }),
+      proposal: {
+        id: "prop-1",
+        status: "withdrawn",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: null,
+      },
+      contract: null,
+      paymentLines: [],
+    });
+    const pkg = facts.find((row) => row.key === "package");
+    const proposal = facts.find((row) => row.key === "proposal");
+    const contract = facts.find((row) => row.key === "contract");
+    assert.equal(pkg?.state, "Essential Wedding · $15,000.00");
+    assert.equal(pkg?.detail, "Selected internally · Not yet shared");
+    assert.equal(proposal?.state, "Withdrawn");
+    assert.doesNotMatch(proposal?.detail ?? "", /Waiting for the couple/);
+    assert.equal(contract?.state, "Not created");
+    assert.equal(
+      commercialStepsComplete({
+        selection: selection({ proposalId: null, status: "draft" }),
+        contract: null,
+        paymentLines: [],
+      }),
+      false,
+    );
+  });
+
   it("a withdrawn proposal is history, not a waiting state", () => {
     const facts = describeCommercialFacts({
       selection: null,
@@ -368,5 +399,15 @@ describe("workspaces do not render the old Booking Journey", () => {
     const describe = readFileSync(resolve("lib/booking-journey/commercial-facts.ts"), "utf8");
     const fn = describe.slice(describe.indexOf("export function describeCommercialFacts"));
     assert.doesNotMatch(fn, /invoiceFact\(/);
+  });
+
+  it("manual takeover shows Create contract as primary and Start a new proposal as secondary", () => {
+    const factsUi = readFileSync(resolve("components/booking-journey/commercial-facts.tsx"), "utf8");
+    assert.match(factsUi, /venueManualTakeover/);
+    assert.match(factsUi, /allowContract \|\| venueManualTakeover/);
+    assert.match(factsUi, /createContractPrimary \? "default" : "outline"/);
+    assert.match(factsUi, /selection \? "Start a new proposal" : "Create proposal"/);
+    assert.match(factsUi, /Link no longer active/);
+    assert.doesNotMatch(factsUi, /reactivate|markProposalSent|status = "accepted"/);
   });
 });

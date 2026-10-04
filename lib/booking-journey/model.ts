@@ -170,6 +170,23 @@ function paymentsHref(input: JourneyInputs, selection: CommercialSelection | nul
   return base;
 }
 
+/**
+ * Continue manually → withdraw → venue-selected package → no contract.
+ * Scoped takeover: Create contract is the continuation even for offer-only venues.
+ * Does not apply to couple-approved selections (proposal_id set).
+ */
+export function isVenueManualTakeover(input: {
+  proposal?: JourneyProposal | null;
+  selection: CommercialSelection | null;
+  contract: JourneyContract | null;
+}): boolean {
+  if (input.proposal?.status !== "withdrawn") return false;
+  if (!input.selection || input.selection.status === "superseded") return false;
+  if (input.selection.proposalId) return false;
+  if (input.contract) return false;
+  return true;
+}
+
 function contractNewHref(input: JourneyInputs, selection: CommercialSelection): string {
   const params = new URLSearchParams();
   params.set("selectionId", selection.id);
@@ -339,7 +356,16 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryAction = "setup_payments";
     }
   } else if (currentKey === "agreement" && !agreementDone) {
-    if (input.contract?.status === "sent") {
+    if (isVenueManualTakeover({ proposal, selection, contract: input.contract })) {
+      direction = "You selected the package internally. Create a contract to continue.";
+      primaryLabel = "Create contract";
+      primaryAction = "create_contract";
+      primaryHref = contractNewHref(input, selection!);
+      if (allowOffer) {
+        secondaryLabel = "Start a new proposal";
+        secondaryAction = "create_proposal";
+      }
+    } else if (input.contract?.status === "sent") {
       direction = "Contract sent to the client — waiting for their signature. The venue signs after the client.";
       if (collectPayment && !paymentDone) {
         direction += " Collect the deposit after they sign.";

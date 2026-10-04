@@ -29,4 +29,16 @@ describe("proposal manual takeover", () => {
     assert.match(tokenFn, /status in \('sent', 'selected', 'approved'\)/);
     assert.doesNotMatch(tokenFn.slice(0, 800), /'withdrawn'/);
   });
+
+  it("Start a new proposal after takeover does not send or reactivate the withdrawn token", () => {
+    assert.match(facts, /Start a new proposal/);
+    const send = service.slice(service.indexOf("if (existing.status === \"superseded\" || existing.status === \"withdrawn\")"));
+    assert.match(send, /no longer active/);
+    const createStart = service.indexOf("export async function createCommercialProposal");
+    const createEnd = service.indexOf("export async function", createStart + 10);
+    const create = service.slice(createStart, createEnd);
+    assert.match(create, /insertProposal/);
+    assert.doesNotMatch(create, /status: "sent"/);
+    assert.doesNotMatch(create, /withdrawn/);
+  });
 });
