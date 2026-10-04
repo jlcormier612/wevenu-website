@@ -229,7 +229,7 @@ describe("texting Ask Luv grounded context", () => {
   });
 });
 
-describe("texting setup help link + Ask Luv entry in UI", () => {
+describe("texting setup help link + no Ask Luv branding", () => {
   it("help article exists and matches SetupGuideLink slug", () => {
     assert.equal(TEXTING_SETUP_GUIDE_HREF, `/help/${TEXTING_SETUP_GUIDE_SLUG}`);
     const article = INTEGRATION_SETUP_ARTICLES.find((a) => a.slug === TEXTING_SETUP_GUIDE_SLUG);
@@ -237,26 +237,19 @@ describe("texting setup help link + Ask Luv entry in UI", () => {
     assertNoProviderLeak(article!.body);
   });
 
-  it("Text messaging setup section includes guide link and Ask Luv entry", () => {
+  it("Text messaging setup section includes guide link and status story, not Ask Luv", () => {
     const source = readFileSync(
       resolve("components/settings/text-messaging-setup-section.tsx"),
       "utf8",
     );
     assert.match(source, /SetupGuideLink/);
     assert.match(source, /TEXTING_SETUP_GUIDE_HREF/);
-    assert.match(source, /TextingSetupAskLuv/);
     assert.match(source, /texting-setup-orientation/);
+    assert.match(source, /StatusPanelView/);
     assert.match(source, /Communication Health/);
+    assert.doesNotMatch(source, /TextingSetupAskLuv/);
+    assert.doesNotMatch(source, /Ask Luv about texting setup/);
+    assert.doesNotMatch(source, /texting-ask-luv/);
     assert.doesNotMatch(source, /\bTwilio\b|\bA2P\b|\b10DLC\b/);
-  });
-
-  it("Ask Luv component uses grounded answer helper", () => {
-    const source = readFileSync(
-      resolve("components/settings/texting-setup-ask-luv.tsx"),
-      "utf8",
-    );
-    assert.match(source, /answerTextingSetupLuvQuestion/);
-    assert.match(source, /texting-ask-luv-toggle/);
-    assert.match(source, /Ask Luv about texting setup/);
   });
 });

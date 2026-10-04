@@ -11,7 +11,6 @@ import {
   submitTextingRegistrationAction,
 } from "@/app/(app)/settings/texting-registration-actions";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
-import { TextingSetupAskLuv } from "@/components/settings/texting-setup-ask-luv";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,7 +30,6 @@ import {
   TEXTING_WHAT_IT_ENABLES,
   TEXTING_WHY_WE_COLLECT,
   buildTextingPhaseStory,
-  buildTextingSetupLuvContext,
   textingDisplayHeadline,
 } from "@/lib/texting-registration/human-facing";
 import { isBusinessIdentityComplete } from "@/lib/texting-registration/validation";
@@ -670,12 +668,6 @@ export function TextMessagingSetupSection({
               </p>
             </div>
             <StatusPanelView panel={bundle.statusPanel} />
-            <TextingSetupAskLuv
-              context={buildTextingSetupLuvContext({
-                panel: bundle.statusPanel,
-                canEdit: canConfigure && bundle.canEdit,
-              })}
-            />
             {(canConfigure && (phase === "needs_attention" || phase === "failed" || phase === "information_saved")) && (
               <Button
                 type="button"
@@ -700,14 +692,6 @@ export function TextMessagingSetupSection({
           </div>
         )}
 
-        {!showStatus && bundle && (
-          <TextingSetupAskLuv
-            context={buildTextingSetupLuvContext({
-              panel: bundle.statusPanel,
-              canEdit: canConfigure && bundle.canEdit,
-            })}
-          />
-        )}
       </CardContent>
     </Card>
   );

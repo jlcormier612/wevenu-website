@@ -10,7 +10,7 @@ import { getLeadCaptureStageStatus, getSetupHubState } from "@/lib/setup-hub/ser
 import { getTeamMembers } from "@/lib/team/service";
 import { getTourSettings } from "@/lib/tours/service";
 import { getCurrentVenue, getSetupReadyCounts } from "@/lib/venue/service";
-import { loadVenueReadiness } from "@/lib/luv/venue-readiness-load";
+import { loadSetupConciergeEntry } from "@/lib/setup-concierge/load";
 
 export const metadata: Metadata = { title: "Setup" };
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function SetupHubPage() {
 
   const [
     hubState, leadCapture, spaces, capacityRules, tourSettings,
-    importBatches, readyCounts, teamMembers, quickbooksConnection, venueReadiness, venueDocuments,
+    importBatches, readyCounts, teamMembers, quickbooksConnection, setupConcierge, venueDocuments,
   ] = await Promise.all([
     getSetupHubState(),
     getLeadCaptureStageStatus(),
@@ -32,7 +32,7 @@ export default async function SetupHubPage() {
     getSetupReadyCounts(venue.id),
     getTeamMembers(venue.id),
     getQuickBooksConnection(),
-    loadVenueReadiness(),
+    loadSetupConciergeEntry(),
     getVenueDocuments(),
   ]);
 
@@ -82,7 +82,7 @@ export default async function SetupHubPage() {
         activeTeamCount={activeTeamCount}
         stripeConnected={venue.stripeOnboardingStatus === "connected"}
         quickbooksConnected={quickbooksConnection?.status === "connected"}
-        venueReadiness={venueReadiness}
+        setupConcierge={setupConcierge}
         maxSimultaneousEvents={capacityRules?.maxSimultaneousEvents ?? null}
       />
     </div>

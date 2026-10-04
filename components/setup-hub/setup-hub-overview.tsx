@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { BringYourBusinessChoices } from "@/components/setup-hub/bring-your-business-choices";
 import { SetupReadiness } from "@/components/setup-hub/setup-readiness";
-import { OperationalReadinessCard } from "@/components/setup-hub/operational-readiness-card";
+import { SetupConciergeCard } from "@/components/setup-hub/setup-concierge-card";
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
 import {
   markStageReviewedAction,
@@ -19,7 +19,7 @@ import { STAGE_COPY } from "@/lib/setup-hub/stage-copy";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
-import type { VenueReadinessAssessment } from "@/lib/luv/venue-readiness";
+import type { SetupConciergeEntry } from "@/lib/setup-concierge/types";
 
 type StageRow = {
   key: keyof typeof STAGE_COPY;
@@ -50,7 +50,7 @@ export function SetupHubOverview({
   activeTeamCount,
   stripeConnected,
   quickbooksConnected,
-  venueReadiness,
+  setupConcierge,
   maxSimultaneousEvents,
 }: {
   venueName: string;
@@ -67,7 +67,7 @@ export function SetupHubOverview({
   activeTeamCount: number;
   stripeConnected: boolean;
   quickbooksConnected: boolean;
-  venueReadiness?: VenueReadinessAssessment | null;
+  setupConcierge?: SetupConciergeEntry | null;
   maxSimultaneousEvents?: number | null;
 }) {
   const yourVenueDone = !!hubState?.yourVenueReviewedAt;
@@ -235,6 +235,7 @@ export function SetupHubOverview({
           </p>
         ) : null}
       </div>
+      <SetupConciergeCard entry={setupConcierge ?? null} />
       <div className="space-y-3">
         {stages.map((s) => {
           const copy = STAGE_COPY[s.key];
@@ -296,7 +297,6 @@ export function SetupHubOverview({
         readyToInviteCouples={hubState?.readyToInviteCouples ?? false}
         readyToInviteCouplesAt={hubState?.readyToInviteCouplesAt ?? null}
       />
-      <OperationalReadinessCard assessment={venueReadiness ?? null} />
     </div>
   );
 }
