@@ -5,7 +5,9 @@
  * while it's fresh." Luv inspects authoritative relationship evidence and may
  * choose action, a contextual/positive note, or silence.
  *
- * Internal notes never enter observations or drafts.
+ * Internal notes never enter customer-facing drafts or ACTION/SILENCE
+ * classification. Venue-facing Thoughts may use tour_appointments.notes
+ * via venue-facing-tour-thoughts.ts — a separate surface.
  * Pipeline stage is never evidence.
  */
 import { customerFacingInquiryContext } from "@/lib/luv/customer-facing-inquiry-context";

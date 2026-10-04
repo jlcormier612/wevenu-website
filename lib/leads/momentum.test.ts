@@ -4,13 +4,13 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import {
-  completedTourThoughtsSentence,
   generateMomentumLanguage,
   getObservations,
   newLeadBeginningSentence,
   stillEarlySentence,
   upcomingTourThoughtsSentence,
 } from "@/lib/leads/momentum";
+import { venueFacingCompletedTourThoughts } from "@/lib/luv/venue-facing-tour-thoughts";
 
 const card = readFileSync(resolve("components/luv/lead-momentum-card.tsx"), "utf8");
 
@@ -45,13 +45,9 @@ describe("Luv new-lead name rendering", () => {
 });
 
 describe("Luv Thoughts name/count word boundaries", () => {
-  it("person name + has is a discrete sentence (completed tour)", () => {
-    assert.equal(
-      completedTourThoughtsSentence("Wendy"),
-      "Wendy has toured the venue. I'm not drawing conclusions about how it went.",
-    );
-    assert.doesNotMatch(completedTourThoughtsSentence("Wendy"), /Wendyhas/);
-    assert.match(completedTourThoughtsSentence("Mary Kate"), /^Mary Kate has toured/);
+  it("person name + toured stays spaced (completed tour helper)", () => {
+    assert.match(venueFacingCompletedTourThoughts("Wendy", null), /^Wendy toured the venue/);
+    assert.doesNotMatch(venueFacingCompletedTourThoughts("Wendy", null), /Wendytoured|Wendyhas/);
   });
 
   it("person name + has is a discrete sentence (upcoming tour)", () => {
@@ -102,7 +98,7 @@ describe("Luv Thoughts name/count word boundaries", () => {
   });
 
   it("Thoughts card uses copy helpers, not adjacent JSX `{name} has`", () => {
-    assert.match(card, /completedTourThoughtsSentence\(firstName\)/);
+    assert.match(card, /venueFacingCompletedTourThoughts\(/);
     assert.match(card, /upcomingTourThoughtsSentence\(firstName, when\)/);
     assert.doesNotMatch(card, /\{name\} has toured/);
     assert.doesNotMatch(card, /\{name\} has a venue tour/);

@@ -14,11 +14,13 @@
  * Authoritative FollowUpTourState (upcoming / completed) prevents a real
  * tour milestone from being erased by the young-lead heuristic — without
  * inventing tour sentiment or recommending outreach that contradicts SILENCE.
+ *
+ * Human-facing name+verb copy must be built in string helpers. Adjacent
+ * JSX interpolation plus a following verb drops the space (Wilma/Wendy class).
  */
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import {
-  completedTourThoughtsSentence,
   generateMomentumLanguage,
   getConfidenceStage,
   getObservations,
@@ -26,6 +28,7 @@ import {
   stillEarlySentence,
   upcomingTourThoughtsSentence,
 } from "@/lib/leads/momentum";
+import { venueFacingCompletedTourThoughts } from "@/lib/luv/venue-facing-tour-thoughts";
 import {
   snapshotCommitmentDescriptor,
   snapshotForcesInsightsStage,
@@ -105,7 +108,13 @@ function NewInquiryView({ firstName }: { firstName: string }) {
 
 // ── Tour milestone (quiet, factual — no invented sentiment) ───────────────────
 
-function CompletedTourView({ firstName }: { firstName: string }) {
+function CompletedTourView({
+  firstName,
+  internalTourNotes,
+}: {
+  firstName: string;
+  internalTourNotes?: string | null;
+}) {
   return (
     <LuvCard>
       <LuvCardHeader />
@@ -113,7 +122,7 @@ function CompletedTourView({ firstName }: { firstName: string }) {
       <div className="space-y-1.5">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tour on record</p>
         <p className="text-sm text-heading leading-relaxed">
-          {completedTourThoughtsSentence(firstName)}
+          {venueFacingCompletedTourThoughts(firstName, internalTourNotes)}
         </p>
       </div>
 
@@ -294,6 +303,7 @@ export function LeadMomentumCard({
   createdAt,
   lifecycle = EMPTY_LIFECYCLE,
   tour = { kind: "none" },
+  internalTourNotes = null,
 }: {
   firstName: string;
   commitmentScore: number;
@@ -305,6 +315,8 @@ export function LeadMomentumCard({
   lifecycle?: SnapshotLifecycleFacts;
   /** Authoritative tour workflow state from tour_appointments. */
   tour?: FollowUpTourState;
+  /** Venue-private tour_appointments.notes — never for customer drafts. */
+  internalTourNotes?: string | null;
 }) {
   const daysSince = lastContactedAt
     ? Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000)
@@ -334,7 +346,7 @@ export function LeadMomentumCard({
   // Real tour milestone > young-lead heuristic. Never Stage-1 NEW for
   // upcoming/completed tours; never invent sentiment about the visit.
   if (tour.kind === "completed") {
-    return <CompletedTourView firstName={firstName} />;
+    return <CompletedTourView firstName={firstName} internalTourNotes={internalTourNotes} />;
   }
   if (tour.kind === "upcoming") {
     return <UpcomingTourView firstName={firstName} scheduledAt={tour.scheduledAt} />;

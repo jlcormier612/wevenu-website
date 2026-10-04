@@ -79,6 +79,7 @@ import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { internalTourNotesForFollowUp } from "@/lib/luv/venue-facing-tour-thoughts";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { TourPanel } from "@/components/leads/tour-panel";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
@@ -955,6 +956,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 bookingJourney={bookingJourney}
                 followUpTour={followUpTour}
                 followUpDraftEligible={followUpDraftEligible}
+                internalTourNotes={internalTourNotesForFollowUp(tourAppointments)}
               />
             </CardContent>
           </Card>

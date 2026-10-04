@@ -192,6 +192,7 @@ export function LuvDraftPanel({
   bookingJourney = null,
   followUpTour = { kind: "none" },
   followUpDraftEligible = true,
+  internalTourNotes = null,
 }: {
   lead: Lead;
   initialDrafts: LuvDraft[];
@@ -211,6 +212,8 @@ export function LuvDraftPanel({
    * When false, hide the draft CTA (SILENCE / no_outreach).
    */
   followUpDraftEligible?: boolean;
+  /** Venue-private completed-tour notes for Thoughts only — never sent to draft generation. */
+  internalTourNotes?: string | null;
 }) {
   // Auto-trigger draft generation when arriving via a Luv recommendation link
   const [allDrafts, setAllDrafts] = React.useState(initialDrafts);
@@ -302,6 +305,7 @@ export function LuvDraftPanel({
         createdAt={lead.createdAt}
         lifecycle={snapshotLifecycle}
         tour={followUpTour}
+        internalTourNotes={internalTourNotes}
       />
 
       {/* Generate button — hidden when drafting engine would return SILENCE / nothing useful */}
