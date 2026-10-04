@@ -165,7 +165,7 @@ export function LeadSpacePreferenceFields({
         Which parts of the event are taking place at your venue?
       </p>
       <div
-        className="flex flex-col gap-2"
+        className="grid w-full min-w-0 grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
         data-testid="space-preference-grid"
         data-applicable-count={applicableCount}
       >
@@ -182,7 +182,7 @@ export function LeadSpacePreferenceFields({
               <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <input
                   type="checkbox"
-                  className="size-4 rounded border-border"
+                  className="size-4 shrink-0 rounded border-border"
                   checked={applicable}
                   disabled={pending}
                   data-testid={`space-pref-applicable-${use.key}`}
@@ -210,10 +210,10 @@ export function LeadSpacePreferenceFields({
                     persist(next);
                   }}
                 />
-                <span>{use.label}</span>
+                <span className="min-w-0 truncate">{use.label}</span>
               </label>
               {applicable && (
-                <div className="mt-1.5 max-w-xs pl-6">
+                <div className="mt-1.5 min-w-0">
                   <PreferenceSpaceControl
                     value={value}
                     spaces={spacesEligibleForUse(spaces, use.key)}
