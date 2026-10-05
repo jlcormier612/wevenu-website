@@ -4,6 +4,7 @@
  */
 import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
 import type { ReadinessNavTarget, ReadinessSection } from "@/lib/readiness/types";
+import type { SetupTemplateRefs } from "@/lib/event-setup/template-refs";
 
 export const SETUP_STEP_ORDER = [
   "planning",
@@ -34,6 +35,8 @@ export type EventSetupState = {
   profileId?: string | null;
   profileName?: string | null;
   inheritedDecisions?: SetupDecisions;
+  /** Book-time profile template_refs. Immutable. Not applied artifacts. */
+  inheritedTemplateRefs?: SetupTemplateRefs;
   overrides?: SetupDecisions;
 };
 
@@ -70,36 +73,36 @@ export function setupStepLabel(step: SetupStepKey): string {
 }
 
 /** How Overview presents one setup row. Derived only from the persisted decision. */
-export type SetupStepPresentation = "needs_decision" | "configured" | "skipped";
+export type SetupStepPresentation = "needs_decision" | "included" | "skipped";
 
 export function setupStepPresentation(
   decision: SetupDecision | null | undefined,
 ): SetupStepPresentation {
-  if (decision === "set_up") return "configured";
+  if (decision === "set_up") return "included";
   if (decision === "skipped") return "skipped";
   return "needs_decision";
 }
 
 export const SETUP_PRESENTATION_LABEL: Record<SetupStepPresentation, string> = {
   needs_decision: "Needs a decision",
-  configured: "Configured",
-  skipped: "Skipped",
+  included: "Included",
+  skipped: "Not included",
 };
 
 export function setupDecisionCounts(
   applicable: readonly SetupStepKey[],
   decisions: SetupDecisions,
-): { needsDecision: number; configured: number; skipped: number } {
+): { needsDecision: number; included: number; skipped: number } {
   let needsDecision = 0;
-  let configured = 0;
+  let included = 0;
   let skipped = 0;
   for (const step of applicable) {
     const presentation = setupStepPresentation(decisions[step]);
-    if (presentation === "configured") configured += 1;
+    if (presentation === "included") included += 1;
     else if (presentation === "skipped") skipped += 1;
     else needsDecision += 1;
   }
-  return { needsDecision, configured, skipped };
+  return { needsDecision, included, skipped };
 }
 
 export function emptyEventSetupState(): EventSetupState {
@@ -110,6 +113,7 @@ export function emptyEventSetupState(): EventSetupState {
     profileId: null,
     profileName: null,
     inheritedDecisions: {},
+    inheritedTemplateRefs: {},
     overrides: {},
   };
 }
@@ -142,6 +146,7 @@ export function effectiveSetupDecision(state: EventSetupState, step: SetupStepKe
 /** Venue capability off means the step is not offered. On does not mean this event must use it. */
 export function applicableSetupSteps(caps: VenuePlanningCapabilities): SetupStepKey[] {
   return SETUP_STEP_ORDER.filter((step) => {
+    if (step === "portal") return false;
     if (step === "timeline") return caps.timeline;
     if (step === "floor_plans") return caps.floorPlan;
     if (step === "vendors") return caps.vendors;

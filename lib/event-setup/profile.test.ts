@@ -41,7 +41,6 @@ function weddingDecisions(overrides: SetupDecisions = {}): SetupDecisions {
   const decisions: SetupDecisions = {};
   for (const step of STEPS) decisions[step] = "set_up";
   decisions.questionnaires = "skipped";
-  decisions.portal = "skipped";
   return { ...decisions, ...overrides };
 }
 
@@ -85,13 +84,26 @@ describe("venue setup profiles", () => {
     assert.deepEqual(inherited.overrides, {});
     const effective = effectiveDecisionMap(inherited);
     assert.equal(setupDecisionsComplete(STEPS, effective), true);
-    assert.equal(setupStepPresentation(effective.planning), "configured");
+    assert.equal(setupStepPresentation(effective.planning), "included");
     assert.equal(setupStepPresentation(effective.questionnaires), "skipped");
     assert.equal(setupStepSource(inherited, "planning"), "profile");
     const counts = setupDecisionCounts(STEPS, effective);
     assert.equal(counts.needsDecision, 0);
-    assert.ok(counts.configured >= 1);
+    assert.ok(counts.included >= 1);
     assert.ok(counts.skipped >= 1);
+    assert.equal(inherited.inheritedDecisions?.portal, undefined);
+    assert.deepEqual(inherited.inheritedTemplateRefs, {
+      planningPlaybookTemplateId: "pb-venue-1",
+      timelineTemplateId: null,
+      timelineTemplateIds: [],
+      floorPlanTemplateIds: [],
+      defaultFloorPlanTemplateId: null,
+      questionnaireTemplateIds: [],
+      inventoryTemplateId: null,
+      eventOrderTemplateId: null,
+      requiredVendorIds: [],
+      recommendedVendorIds: [],
+    });
     const panel = readFileSync(resolve("components/events/event-setup-panel.tsx"), "utf8");
     assert.match(panel, /Using:/);
     assert.match(panel, /presentation === "needs_decision"/);
@@ -118,8 +130,8 @@ describe("venue setup profiles", () => {
     const overridden = withProfileOverride(snapshotInheritedSetup(wedding), STEPS, "inventory", "skipped");
     const counts = setupDecisionCounts(STEPS, effectiveDecisionMap(overridden));
     assert.equal(counts.needsDecision, 0);
-    assert.equal(counts.configured + counts.skipped, STEPS.length);
-    assert.equal(counts.skipped, 3);
+    assert.equal(counts.included + counts.skipped, STEPS.length);
+    assert.equal(counts.skipped, 2);
   });
 
   it("N — refresh persistence keeps inherited and override apart", () => {
@@ -135,6 +147,7 @@ describe("venue setup profiles", () => {
       profile_id: stored.profile_id,
       profile_name: stored.profile_name,
       inherited_decisions: stored.inherited_decisions,
+      inherited_template_refs: stored.inherited_template_refs,
       overrides: stored.overrides,
     });
     assert.equal(effectiveSetupDecision(loaded, "inventory"), "skipped");
@@ -196,7 +209,16 @@ describe("venue setup profiles", () => {
   it("Q–S — playbook apply stays a snapshot and the venue starter is unchanged", () => {
     const inherit = readFileSync(resolve("lib/event-setup/inherit.ts"), "utf8");
     assert.match(inherit, /applyPlaybookToEvent/);
+    assert.match(inherit, /applyTimelineTemplateToEvent/);
+    assert.match(inherit, /inherited_template_refs/);
     assert.match(inherit, /if \(existing\) return/);
+    assert.doesNotMatch(inherit, /applyTemplateToEvent/);
+    assert.doesNotMatch(inherit, /upsertEventFloorPlanOffer/);
+    assert.doesNotMatch(inherit, /applyTemplate\(/);
+    assert.doesNotMatch(inherit, /event_vendor/);
+    assert.doesNotMatch(inherit, /event_inventor/);
+    assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
+    assert.doesNotMatch(inherit, /timelineTemplateIds/);
     const apply = readFileSync(resolve("lib/playbooks/repository.ts"), "utf8");
     assert.match(apply, /already_applied/);
     const migration = readFileSync(resolve("supabase/migrations/20261411500000_venue_setup_profiles.sql"), "utf8");

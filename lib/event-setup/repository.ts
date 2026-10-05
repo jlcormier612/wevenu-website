@@ -4,7 +4,7 @@ import { eventSetupFromColumns, eventSetupToColumns } from "@/lib/event-setup/pr
 import { type EventSetupState, type SetupDecision } from "@/lib/event-setup/state";
 
 const SETUP_COLUMNS =
-  "collapsed_at, decisions, uses_profile, profile_id, profile_name, inherited_decisions, overrides";
+  "collapsed_at, decisions, uses_profile, profile_id, profile_name, inherited_decisions, inherited_template_refs, overrides";
 
 type Row = {
   collapsed_at: string | null;
@@ -13,6 +13,7 @@ type Row = {
   profile_id: string | null;
   profile_name: string | null;
   inherited_decisions: unknown;
+  inherited_template_refs: unknown;
   overrides: unknown;
 };
 

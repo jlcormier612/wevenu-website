@@ -13,11 +13,14 @@ import {
   type SetupDecisions,
   type SetupStepKey,
 } from "@/lib/event-setup/state";
+import {
+  parseTemplateRefs,
+  serializeTemplateRefs,
+  type SetupTemplateRefs,
+} from "@/lib/event-setup/template-refs";
 
-export type SetupTemplateRefs = {
-  planningPlaybookTemplateId?: string | null;
-  timelineTemplateId?: string | null;
-};
+export type { SetupTemplateRefs };
+export { parseTemplateRefs, serializeTemplateRefs };
 
 export type VenueSetupProfile = {
   id: string;
@@ -37,18 +40,10 @@ export function parseSetupDecisions(raw: unknown): SetupDecisions {
   const out: SetupDecisions = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!isSetupStepKey(key)) continue;
+    if (key === "portal") continue;
     if (value === "set_up" || value === "skipped") out[key] = value;
   }
   return out;
-}
-
-export function parseTemplateRefs(raw: unknown): SetupTemplateRefs {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
-  const row = raw as Record<string, unknown>;
-  return {
-    planningPlaybookTemplateId: typeof row.planningPlaybookTemplateId === "string" ? row.planningPlaybookTemplateId : null,
-    timelineTemplateId: typeof row.timelineTemplateId === "string" ? row.timelineTemplateId : null,
-  };
 }
 
 /**
@@ -71,13 +66,16 @@ export function resolveSetupProfile(
 }
 
 export function snapshotInheritedSetup(profile: VenueSetupProfile): EventSetupState {
+  const inheritedDecisions: SetupDecisions = { ...profile.decisions };
+  delete inheritedDecisions.portal;
   return {
     decisions: {},
     collapsedAt: null,
     usesProfile: true,
     profileId: profile.id,
     profileName: profile.name,
-    inheritedDecisions: { ...profile.decisions },
+    inheritedDecisions,
+    inheritedTemplateRefs: serializeTemplateRefs(profile.templateRefs),
     overrides: {},
   };
 }
@@ -87,12 +85,15 @@ export function reassignInheritedSetup(
   current: EventSetupState,
   profile: VenueSetupProfile,
 ): EventSetupState {
+  const inheritedDecisions: SetupDecisions = { ...profile.decisions };
+  delete inheritedDecisions.portal;
   return {
     ...current,
     usesProfile: true,
     profileId: profile.id,
     profileName: profile.name,
-    inheritedDecisions: { ...profile.decisions },
+    inheritedDecisions,
+    inheritedTemplateRefs: serializeTemplateRefs(profile.templateRefs),
     overrides: { ...(current.overrides ?? {}) },
     decisions: {},
   };
@@ -102,7 +103,10 @@ export function missingProfileDecisions(
   applicable: readonly SetupStepKey[],
   decisions: SetupDecisions,
 ): SetupStepKey[] {
-  return applicable.filter((step) => decisions[step] !== "set_up" && decisions[step] !== "skipped");
+  return applicable.filter((step) => {
+    if (step === "portal") return false;
+    return decisions[step] !== "set_up" && decisions[step] !== "skipped";
+  });
 }
 
 export function profileDecides(
@@ -130,6 +134,7 @@ export function eventSetupFromColumns(row: {
   profile_id?: string | null;
   profile_name?: string | null;
   inherited_decisions?: unknown;
+  inherited_template_refs?: unknown;
   overrides?: unknown;
 } | null): EventSetupState {
   if (!row) {
@@ -140,6 +145,7 @@ export function eventSetupFromColumns(row: {
       profileId: null,
       profileName: null,
       inheritedDecisions: {},
+      inheritedTemplateRefs: {},
       overrides: {},
     };
   }
@@ -150,6 +156,7 @@ export function eventSetupFromColumns(row: {
     profileId: row.profile_id ?? null,
     profileName: row.profile_name ?? null,
     inheritedDecisions: parseSetupDecisions(row.inherited_decisions),
+    inheritedTemplateRefs: parseTemplateRefs(row.inherited_template_refs),
     overrides: parseSetupDecisions(row.overrides),
   };
 }
@@ -162,15 +169,19 @@ export function eventSetupToColumns(state: EventSetupState): {
   profile_id: string | null;
   profile_name: string | null;
   inherited_decisions: SetupDecisions;
+  inherited_template_refs: SetupTemplateRefs;
   overrides: SetupDecisions;
 } {
+  const inheritedDecisions = { ...(state.inheritedDecisions ?? {}) };
+  delete inheritedDecisions.portal;
   return {
     collapsed_at: state.collapsedAt,
-    decisions: state.usesProfile ? {} : state.decisions,
+    decisions: state.usesProfile ? {} : parseSetupDecisions(state.decisions),
     uses_profile: state.usesProfile === true,
     profile_id: state.profileId ?? null,
     profile_name: state.profileName ?? null,
-    inherited_decisions: state.inheritedDecisions ?? {},
-    overrides: state.overrides ?? {},
+    inherited_decisions: inheritedDecisions,
+    inherited_template_refs: serializeTemplateRefs(state.inheritedTemplateRefs ?? {}),
+    overrides: parseSetupDecisions(state.overrides ?? {}),
   };
 }

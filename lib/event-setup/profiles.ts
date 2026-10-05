@@ -8,6 +8,7 @@ import {
   missingProfileDecisions,
   parseSetupDecisions,
   parseTemplateRefs,
+  serializeTemplateRefs,
   type SetupProfileAssignment,
   type SetupTemplateRefs,
   type VenueSetupProfile,
@@ -88,7 +89,7 @@ export async function saveVenueSetupProfile(
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Name this setup profile." };
   const missing = missingProfileDecisions(input.applicable, input.decisions);
-  if (missing.length > 0) return { ok: false, message: "Choose configured or skipped for every area." };
+  if (missing.length > 0) return { ok: false, message: "Choose included or not included for every area." };
 
   const supabase = await createClient();
   const { data: venueRow, error: venueError } = await supabase
@@ -105,14 +106,14 @@ export async function saveVenueSetupProfile(
   if (!validated.ok) return validated;
   const eventTypes = validated.eventTypes;
 
+  const decisions = parseSetupDecisions(input.decisions);
+  delete decisions.portal;
+
   const payload = {
     venue_id: gate.venueId,
     name,
-    decisions: input.decisions,
-    template_refs: {
-      planningPlaybookTemplateId: input.templateRefs.planningPlaybookTemplateId || null,
-      timelineTemplateId: input.templateRefs.timelineTemplateId || null,
-    },
+    decisions,
+    template_refs: serializeTemplateRefs(input.templateRefs),
     updated_at: new Date().toISOString(),
   };
 

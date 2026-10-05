@@ -122,22 +122,22 @@ export function EventSetupPanel({
             <>
               <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Most areas are already configured from your venue&apos;s standard setup. Change an area only if this event is different.
+                Most areas follow this venue&apos;s standard starting setup. Change an area only if this event is different.
               </p>
             </>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">
               {complete
-                ? "Every setup area has a decision. Configured and skipped are finished choices."
+                ? "Every setup area has a decision. Included and not included are finished choices."
                 : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
             </p>
           )}
           <p className="mt-1 text-xs text-muted-foreground">
             {counts.needsDecision} need a decision
             {" · "}
-            {counts.configured} configured
+            {counts.included} included
             {" · "}
-            {counts.skipped} skipped
+            {counts.skipped} not included
           </p>
         </div>
         {complete ? (
@@ -160,7 +160,7 @@ export function EventSetupPanel({
                   <p className="text-sm font-medium text-heading">{setupStepLabel(step)}</p>
                   <Badge
                     variant={
-                      presentation === "configured"
+                      presentation === "included"
                         ? "success"
                         : presentation === "skipped"
                           ? "outline"
@@ -220,6 +220,23 @@ export function EventSetupPanel({
             </li>
           );
         })}
+        {clientId ? (
+          <li className="rounded-lg border border-border px-3 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-heading">Client portal</p>
+                <Badge variant="success">Always included</Badge>
+              </div>
+            </div>
+            <div className="mt-3">
+              <PortalLinkWidget
+                clientId={clientId}
+                coupleName={clientName?.trim() || "your client"}
+                primaryEmail={clientEmail}
+              />
+            </div>
+          </li>
+        ) : null}
       </ul>
     </section>
   );
@@ -295,14 +312,5 @@ function SetupTool(props: {
   if (step === "questionnaires") return <OpenTab label="Open Questionnaires" tab="questionnaires" onNavigateTab={onNavigateTab} />;
   if (step === "inventory") return <OpenTab label="Open Inventory" tab="inventory" onNavigateTab={onNavigateTab} />;
   if (step === "event_order") return <OpenTab label="Open Event Order" tab="event-order" onNavigateTab={onNavigateTab} />;
-  if (step === "portal" && props.clientId) {
-    return (
-      <PortalLinkWidget
-        clientId={props.clientId}
-        coupleName={props.clientName?.trim() || "your client"}
-        primaryEmail={props.clientEmail}
-      />
-    );
-  }
   return null;
 }

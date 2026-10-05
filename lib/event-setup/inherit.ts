@@ -85,6 +85,7 @@ export async function inheritSetupProfileForNewEvent(
     profile_id: snapshot.profileId,
     profile_name: snapshot.profileName,
     inherited_decisions: snapshot.inheritedDecisions,
+    inherited_template_refs: snapshot.inheritedTemplateRefs ?? {},
     overrides: {},
   });
   if (insertError) {
@@ -126,6 +127,7 @@ async function applyInheritedTemplates(
       .limit(1);
     if (entries && entries.length > 0) return;
     const { applyTimelineTemplateToEvent } = await import("@/lib/timeline-templates/apply");
+    // Default timeline only. Additional timeline templates are references, never merged.
     await applyTimelineTemplateToEvent(eventId, timelineId, startTime);
   } catch (err) {
     console.error("Setup profile timeline apply failed:", err);

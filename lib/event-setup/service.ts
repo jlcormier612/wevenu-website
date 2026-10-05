@@ -44,6 +44,7 @@ export async function decideEventSetup(
   step: string,
   decision: string,
 ): Promise<{ ok: true; state: EventSetupState } | { ok: false; message: string }> {
+  if (step === "portal") return { ok: false, message: "The client portal cannot be skipped." };
   if (!isSetupStepKey(step)) return { ok: false, message: "Unknown setup step." };
   const chosen = decisionValue(decision);
   if (!chosen) return { ok: false, message: "Choose set up or skip." };
