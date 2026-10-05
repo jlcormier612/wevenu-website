@@ -157,7 +157,7 @@ describe("Commercial steps vs Booked", () => {
         paymentLines: [],
         prefs,
       }),
-      true,
+      false,
     );
     const j = buildBookingJourney({
       leadId: "lead-1",
@@ -231,7 +231,7 @@ describe("Commercial steps vs Booked", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", invoiceId: "inv-1" }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 800 }],
       portalInvited: false,
       planningStarted: false,

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
-import { commercialStepsComplete } from "@/lib/booking-journey/model";
+import { canCreateContract, commercialStepsComplete } from "@/lib/booking-journey/model";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 import { readFileSync } from "node:fs";
@@ -401,13 +401,102 @@ describe("workspaces do not render the old Booking Journey", () => {
     assert.doesNotMatch(fn, /invoiceFact\(/);
   });
 
-  it("manual takeover shows Create contract as primary and Start a new proposal as secondary", () => {
+  it("manual takeover and resolved packages share the canonical Create contract control", () => {
     const factsUi = readFileSync(resolve("components/booking-journey/commercial-facts.tsx"), "utf8");
-    assert.match(factsUi, /venueManualTakeover/);
-    assert.match(factsUi, /allowContract \|\| venueManualTakeover/);
+    assert.match(factsUi, /canCreateContract\(/);
     assert.match(factsUi, /createContractPrimary \? "default" : "outline"/);
+    assert.match(factsUi, /\{contractPending \? "Preparing…" : "Create contract"\}/);
     assert.match(factsUi, /selection \? "Start a new proposal" : "Create proposal"/);
     assert.match(factsUi, /Link no longer active/);
     assert.doesNotMatch(factsUi, /reactivate|markProposalSent|status = "accepted"/);
+    assert.doesNotMatch(factsUi, /allowContract \|\| venueManualTakeover/);
+  });
+});
+
+describe("Booking Details contract row after approval", () => {
+  it("approved proposal + accepted selection + no contract stays Not created", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({
+        proposalId: "prop-1",
+        status: "accepted",
+        acceptedAt: "2026-10-01T18:00:00.000Z",
+      }),
+      proposal: {
+        id: "prop-1",
+        status: "approved",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: "sel-1",
+      },
+      contract: null,
+      paymentLines: [],
+    });
+    const contract = facts.find((row) => row.key === "contract");
+    assert.equal(contract?.title, "Contract");
+    assert.equal(contract?.state, "Not created");
+    assert.equal(contract?.detail, "Accepting a package does not execute the contract.");
+    assert.equal(
+      canCreateContract({
+        selection: selection({ proposalId: "prop-1", status: "accepted" }),
+        proposal: {
+          id: "prop-1",
+          status: "approved",
+          offeredAt: "2026-09-19T19:42:00.000Z",
+          acceptToken: "tok",
+          selectionId: "sel-1",
+        },
+        contract: null,
+        prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
+      }),
+      true,
+    );
+  });
+
+  it("contract row follows the actual signing lifecycle after creation", () => {
+    const draft = describeCommercialFacts({
+      selection: selection({ status: "accepted" }),
+      contract: { id: "c1", status: "draft" },
+      paymentLines: [],
+    }).find((row) => row.key === "contract");
+    assert.equal(draft?.state, "Draft");
+
+    const sent = describeCommercialFacts({
+      selection: selection({ status: "accepted" }),
+      contract: {
+        id: "c1",
+        status: "sent",
+        venueSigned: false,
+        requiredClientTotal: 1,
+        requiredClientSigned: 0,
+      },
+      paymentLines: [],
+    }).find((row) => row.key === "contract");
+    assert.equal(sent?.state, "Sent to Client");
+
+    const awaitingVenue = describeCommercialFacts({
+      selection: selection({ status: "accepted" }),
+      contract: {
+        id: "c1",
+        status: "sent",
+        venueSigned: false,
+        requiredClientTotal: 1,
+        requiredClientSigned: 1,
+      },
+      paymentLines: [],
+    }).find((row) => row.key === "contract");
+    assert.equal(awaitingVenue?.state, "Awaiting Venue Signature");
+
+    const executed = describeCommercialFacts({
+      selection: selection({ status: "accepted" }),
+      contract: {
+        id: "c1",
+        status: "signed",
+        venueSigned: true,
+        requiredClientTotal: 1,
+        requiredClientSigned: 1,
+      },
+      paymentLines: [],
+    }).find((row) => row.key === "contract");
+    assert.equal(executed?.state, "Fully Executed");
   });
 });

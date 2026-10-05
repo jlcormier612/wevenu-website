@@ -33,7 +33,7 @@ describe("Pipeline terminology — Booking Started vs commercial Booked", () => 
     assert.match(facts, /You mark a relationship Booked when you/);
     assert.match(facts, /payment does not decide it/i);
     const panel = read("components/booking-journey/booking-journey-panel.tsx");
-    assert.doesNotMatch(panel, /BookingJourneyStrip|Booking Journey/);
+    assert.doesNotMatch(panel, /BookingJourneyStrip/);
     assert.doesNotMatch(panel, /Send proposal/);
     const lead = read("components/leads/lead-detail.tsx");
     const event = read("components/events/event-detail.tsx");
@@ -111,7 +111,7 @@ describe("Commercial steps (not Booked)", () => {
     assert.equal(
       commercialStepsComplete({
         selection: selection(),
-        contract: null,
+        contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 2000 }],
       }),
       true,
@@ -129,7 +129,7 @@ describe("Commercial steps (not Booked)", () => {
   it("journey ready stage never claims Booked", () => {
     const j = buildBookingJourney({
       selection: selection(),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 2000 }],
       portalInvited: false,
       planningStarted: false,

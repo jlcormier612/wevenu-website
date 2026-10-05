@@ -37,7 +37,7 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
 const prefs = DEFAULT_COMMERCIAL_BOOKING_PREFS;
 
 describe("Commercial variants A–F (simplified)", () => {
-  it("A — accept is not commercially ready until deposit paid; never Booked", () => {
+  it("A — accept is not commercially ready until the contract is signed and the deposit is paid; never Booked", () => {
     assert.equal(
       commercialStepsComplete({
         selection: selection({ status: "accepted" }),
@@ -56,13 +56,14 @@ describe("Commercial variants A–F (simplified)", () => {
       planningStarted: false,
       prefs,
     });
-    assert.equal(unpaid.currentKey, "deposit");
+    assert.equal(unpaid.currentKey, "agreement");
+    assert.equal(unpaid.primaryAction, "create_contract");
     assert.equal(unpaid.commercialReady, false);
     assert.ok(unpaid.stages.some((s) => s.key === "deposit"));
     assert.equal(
       commercialStepsComplete({
         selection: selection({ status: "accepted" }),
-        contract: null,
+        contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
         prefs,
       }),
@@ -74,7 +75,7 @@ describe("Commercial variants A–F (simplified)", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", depositAmount: 3200 }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 3200 }],
       portalInvited: false,
       planningStarted: false,
@@ -126,7 +127,7 @@ describe("Commercial variants A–F (simplified)", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", invoiceId: "inv-1" }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 800 }],
       portalInvited: false,
       planningStarted: false,
@@ -146,7 +147,7 @@ describe("Commercial variants A–F (simplified)", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", depositAmount: 0 }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [],
       portalInvited: false,
       planningStarted: false,
@@ -159,7 +160,7 @@ describe("Commercial variants A–F (simplified)", () => {
     assert.match(j.direction, /Mark them Booked when you're ready/i);
   });
 
-  it("selection acceptance completes agreement without a contract", () => {
+  it("selection acceptance does not complete agreement without a signed contract", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted" }),
@@ -169,8 +170,9 @@ describe("Commercial variants A–F (simplified)", () => {
       planningStarted: false,
       prefs,
     });
-    assert.equal(j.stages.find((s) => s.key === "agreement")?.state, "complete");
-    assert.equal(j.commercialReady, true);
+    assert.equal(j.stages.find((s) => s.key === "agreement")?.state, "current");
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.commercialReady, false);
   });
 
   it("draft selection is not commercially ready", () => {

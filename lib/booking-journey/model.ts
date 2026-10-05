@@ -103,20 +103,16 @@ export type JourneyInputs = {
 };
 
 /**
- * Agreement is complete when the venue's method is satisfied.
- * "contract" requires a signed contract — an accepted selection is not enough.
- * "offer" and "either" treat an accepted selection or a signed contract as agreement.
+ * Agreement is complete when the contract is fully executed.
+ * Proposal approval / package acceptance is not a signed contract
+ * and is not Booked. agreementMethod only chooses how the journey starts.
  */
 function agreementComplete(
-  selection: CommercialSelection | null,
+  _selection: CommercialSelection | null,
   contract: JourneyContract | null,
-  prefs?: VenueCommercialBookingPrefs | null,
+  _prefs?: VenueCommercialBookingPrefs | null,
 ): boolean {
-  const method = (prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS).agreementMethod;
-  const contractSigned = contract?.status === "signed";
-  if (method === "contract") return contractSigned;
-  if (selection?.status === "accepted") return true;
-  return contractSigned;
+  return contract?.status === "signed";
 }
 
 function depositPaid(lines: JourneyPaymentLine[]): boolean {
@@ -185,6 +181,34 @@ export function isVenueManualTakeover(input: {
   if (input.selection.proposalId) return false;
   if (input.contract) return false;
   return true;
+}
+
+/**
+ * Create contract is available once a package/proposal is resolved
+ * and no contract exists. agreementMethod does not hide this step.
+ * Payment, invoice, deposit, and Booked are not required.
+ */
+export function canCreateContract(input: {
+  selection: CommercialSelection | null;
+  proposal?: JourneyProposal | null;
+  contract: JourneyContract | null;
+  prefs?: VenueCommercialBookingPrefs | null;
+}): boolean {
+  const selection = input.selection;
+  if (!selection || selection.status === "superseded") return false;
+  if (input.contract) return false;
+  const method = (input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS).agreementMethod;
+  return (
+    input.proposal?.status === "approved"
+    || selection.status === "accepted"
+    || isVenueManualTakeover({
+      proposal: input.proposal ?? null,
+      selection,
+      contract: input.contract,
+    })
+    || method === "contract"
+    || method === "either"
+  );
 }
 
 function contractNewHref(input: JourneyInputs, selection: CommercialSelection): string {
@@ -347,10 +371,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       }
     } else if (needsPaymentSetup || !depositExists(input.paymentLines)) {
       const depositAmt = selection!.depositAmount;
-      const agreementLine = selection?.status === "accepted"
-        ? `They accepted. Collect the ${formatCurrency(depositAmt)} deposit.`
-        : `The agreement is complete for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Collect the ${formatCurrency(depositAmt)} deposit.`;
-      direction = `${agreementLine} ${formatCurrency(remaining!)} will remain on the payment plan.`;
+      direction = `The agreement is complete for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Collect the ${formatCurrency(depositAmt)} deposit. ${formatCurrency(remaining!)} will remain on the payment plan.`;
       primaryLabel = "Set up payments";
       primaryHref = paymentsHref(input, selection);
       primaryAction = "setup_payments";
@@ -378,17 +399,15 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       primaryLabel = "Open contract";
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
-    } else if (selection!.status === "accepted" && prefs.agreementMethod === "contract") {
-      direction = "They accepted. This venue still requires a signed contract. Acceptance is not a contract, and they are not Booked until you mark them Booked.";
-      if (input.contract) {
-        primaryLabel = "Open contract";
-        primaryHref = `/contracts/${input.contract.id}`;
-        primaryAction = null;
-      } else {
-        primaryLabel = "Create contract";
-        primaryAction = "create_contract";
-        primaryHref = contractNewHref(input, selection!);
-      }
+    } else if (
+      selection
+      && canCreateContract({ selection, proposal, contract: input.contract, prefs })
+      && (selection.status === "accepted" || proposal?.status === "approved")
+    ) {
+      direction = "Create a contract to continue. Accepting a package does not execute the contract.";
+      primaryLabel = "Create contract";
+      primaryAction = "create_contract";
+      primaryHref = contractNewHref(input, selection);
     } else if (selection!.status === "offered") {
       const isL1 = Boolean(selection!.proposalId);
       direction = isL1

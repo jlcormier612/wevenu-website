@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
 import { appendInvoiceReturnTo } from "@/lib/invoices/return-path";
+import { canCreateContract } from "@/lib/booking-journey/model";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import { publicAppOrigin } from "@/lib/env";
 import { toast } from "sonner";
@@ -65,7 +66,6 @@ export function CommercialFacts({
     today,
   });
   const allowOffer = journey.prefs.agreementMethod === "offer" || journey.prefs.agreementMethod === "either";
-  const allowContract = journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either";
   const allowSelectPackage =
     journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either";
   const activePaymentLines = journey.paymentLines.filter((line) => line.status !== "cancelled");
@@ -74,13 +74,12 @@ export function CommercialFacts({
   const [withdrawOpen, setWithdrawOpen] = React.useState(false);
   const waitingOnCouple = proposal?.status === "sent" || proposal?.status === "selected";
   const proposalWithdrawn = proposal?.status === "withdrawn";
-  const venueManualTakeover =
-    proposalWithdrawn
-    && Boolean(selection)
-    && !selection?.proposalId
-    && !journey.contract;
-  const showCreateContract =
-    Boolean(selection && !journey.contract && (allowContract || venueManualTakeover));
+  const showCreateContract = canCreateContract({
+    selection,
+    proposal,
+    contract: journey.contract,
+    prefs: journey.prefs,
+  });
   const createContractPrimary = journey.primaryAction === "create_contract";
 
   function copyProposalLink() {

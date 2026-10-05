@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildBookingJourney, commercialStepsComplete, isVenueManualTakeover } from "@/lib/booking-journey/model";
+import {
+  buildBookingJourney,
+  canCreateContract,
+  commercialStepsComplete,
+  isVenueManualTakeover,
+} from "@/lib/booking-journey/model";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 
@@ -213,7 +218,7 @@ describe("Booking Journey derivation", () => {
     assert.equal(pathB.secondaryAction, undefined);
   });
 
-  it("15. couple-approved proposal path is not treated as manual takeover", () => {
+  it("15. couple-approved proposal is not takeover; Create contract is the next step", () => {
     const approved = {
       id: "prop-1",
       status: "approved" as const,
@@ -236,9 +241,15 @@ describe("Booking Journey derivation", () => {
       paymentLines: [],
       portalInvited: false,
       planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
     });
-    assert.equal(j.primaryAction, "setup_payments");
-    assert.notEqual(j.primaryAction, "create_contract");
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.primaryLabel, "Create contract");
+    assert.match(j.primaryHref ?? "", /\/contracts\/new\?/);
+    assert.match(j.primaryHref ?? "", /selectionId=sel-1/);
+    assert.equal(j.currentKey, "agreement");
+    assert.equal(j.commercialReady, false);
+    assert.doesNotMatch(j.direction, /Collect the .* deposit/i);
   });
 
   it("after package selected offers share link / Create contract", () => {
@@ -326,14 +337,14 @@ describe("Booking Journey derivation", () => {
     );
   });
 
-  it("commercial steps complete when accepted + deposit paid — still not Booked", () => {
+  it("accepted + deposit paid is not commercially complete without a signed contract", () => {
     assert.equal(
       commercialStepsComplete({
         selection: selection({ status: "accepted" }),
         contract: null,
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
       }),
-      true,
+      false,
     );
   });
 
@@ -348,7 +359,7 @@ describe("Booking Journey derivation", () => {
     );
   });
 
-  it("after accept shows Set up payments with deposit language", () => {
+  it("after accept shows Create contract — acceptance is not the deposit step", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       eventId: "event-1",
@@ -357,19 +368,21 @@ describe("Booking Journey derivation", () => {
       paymentLines: [],
       portalInvited: false,
       planningStarted: false,
+      prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
     });
-    assert.equal(j.currentKey, "deposit");
-    assert.equal(j.primaryAction, "setup_payments");
-    assert.match(j.direction, /accepted/i);
-    assert.match(j.direction, /Collect the \$800\.00 deposit/i);
-    assert.match(j.direction, /\$2,400\.00/);
+    assert.equal(j.currentKey, "agreement");
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.primaryLabel, "Create contract");
+    assert.match(j.direction, /Create a contract to continue/i);
+    assert.match(j.direction, /does not execute the contract/i);
+    assert.doesNotMatch(j.direction, /They accepted\. Collect the/i);
   });
 
   it("deposit pending never claims Booked from payment", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", invoiceId: "inv-1" }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 800 }],
       portalInvited: false,
       planningStarted: false,
@@ -385,7 +398,7 @@ describe("Booking Journey derivation", () => {
       clientId: "client-1",
       eventId: "event-1",
       selection: selection({ status: "accepted" }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
       portalInvited: false,
       planningStarted: false,
@@ -411,8 +424,215 @@ describe("Booking Journey derivation", () => {
         processOrder: "deposit_first",
       },
     });
-    // Deterministic: agreement first — but accepted means agreement done → deposit
-    assert.equal(j.currentKey, "deposit");
+    assert.equal(j.currentKey, "agreement");
+    assert.equal(j.primaryAction, "create_contract");
     assert.ok(!j.stages.some((s) => s.key === "deposit" && j.stages.indexOf(s) < j.stages.findIndex((x) => x.key === "agreement")));
+  });
+});
+
+describe("Create contract after proposal / package resolution", () => {
+  const offerPrefs = { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" as const };
+  const approved = {
+    id: "prop-1",
+    status: "approved" as const,
+    offeredAt: "2026-09-26T00:00:00Z",
+    acceptToken: "tok",
+    selectionId: "sel-1",
+  };
+
+  it("venue-authored proposal sent then couple-accepted makes Create contract available", () => {
+    const sent = buildBookingJourney({
+      leadId: "lead-1",
+      selection: null,
+      proposal: { id: "prop-1", status: "sent", offeredAt: "2026-09-26T00:00:00Z", acceptToken: "tok", selectionId: null },
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: offerPrefs,
+    });
+    assert.equal(sent.primaryAction, "copy_proposal_link");
+    assert.notEqual(sent.primaryAction, "create_contract");
+
+    const acceptedSel = selection({ proposalId: "prop-1", status: "accepted" });
+    assert.equal(
+      canCreateContract({ selection: acceptedSel, proposal: approved, contract: null, prefs: offerPrefs }),
+      true,
+    );
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      clientId: "client-1",
+      selection: acceptedSel,
+      proposal: approved,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: offerPrefs,
+    });
+    assert.equal(j.primaryAction, "create_contract");
+    assert.match(j.primaryHref ?? "", /\/contracts\/new\?/);
+    assert.match(j.primaryHref ?? "", /selectionId=sel-1/);
+  });
+
+  it("couple-chosen accepted option makes Create contract available without payment", () => {
+    const coupleSel = selection({
+      proposalId: "prop-1",
+      status: "accepted",
+      invoiceId: null,
+      contractId: null,
+    });
+    assert.equal(
+      canCreateContract({ selection: coupleSel, proposal: approved, contract: null, prefs: offerPrefs }),
+      true,
+    );
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: coupleSel,
+      proposal: approved,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: offerPrefs,
+    });
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.commercialReady, false);
+    assert.doesNotMatch(j.direction, /Collect the .* deposit/i);
+  });
+
+  it("take-back then venue-resolved package makes Create contract available", () => {
+    const withdrawn = {
+      id: "prop-1",
+      status: "withdrawn" as const,
+      offeredAt: "2026-09-26T00:00:00Z",
+      acceptToken: "tok",
+      selectionId: null,
+    };
+    const waiting = buildBookingJourney({
+      leadId: "lead-1",
+      selection: null,
+      proposal: withdrawn,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: offerPrefs,
+    });
+    assert.equal(waiting.primaryAction, "select_package");
+
+    const venueSel = selection({ proposalId: null, status: "draft" });
+    assert.equal(
+      canCreateContract({ selection: venueSel, proposal: withdrawn, contract: null, prefs: offerPrefs }),
+      true,
+    );
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: venueSel,
+      proposal: withdrawn,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: offerPrefs,
+    });
+    assert.equal(j.primaryAction, "create_contract");
+    assert.match(j.primaryHref ?? "", /\/contracts\/new\?/);
+  });
+
+  it("approved + no contract cannot dead-end for offer, contract, or either", () => {
+    const coupleSel = selection({ proposalId: "prop-1", status: "accepted" });
+    for (const method of ["offer", "contract", "either"] as const) {
+      const prefs = { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: method };
+      assert.equal(
+        canCreateContract({ selection: coupleSel, proposal: approved, contract: null, prefs }),
+        true,
+      );
+      const j = buildBookingJourney({
+        leadId: "lead-1",
+        selection: coupleSel,
+        proposal: approved,
+        contract: null,
+        paymentLines: [],
+        portalInvited: false,
+        planningStarted: false,
+        prefs,
+      });
+      assert.equal(j.primaryAction, "create_contract", method);
+      assert.equal(j.currentKey, "agreement", method);
+    }
+  });
+
+  it("Create contract does not require payment, payment plan, invoice, or Booked", () => {
+    const coupleSel = selection({
+      proposalId: "prop-1",
+      status: "accepted",
+      invoiceId: null,
+      contractId: null,
+    });
+    assert.equal(
+      canCreateContract({ selection: coupleSel, proposal: approved, contract: null, prefs: offerPrefs }),
+      true,
+    );
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: coupleSel,
+      proposal: approved,
+      contract: null,
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: offerPrefs,
+    });
+    assert.equal(j.primaryAction, "create_contract");
+    assert.notEqual(j.primaryAction, "setup_payments");
+    assert.equal(j.commercialReady, false);
+  });
+
+  it("superseded selection or existing contract hides Create contract", () => {
+    assert.equal(
+      canCreateContract({
+        selection: selection({ status: "superseded" }),
+        proposal: approved,
+        contract: null,
+        prefs: offerPrefs,
+      }),
+      false,
+    );
+    assert.equal(
+      canCreateContract({
+        selection: selection({ status: "accepted" }),
+        proposal: approved,
+        contract: { id: "c1", status: "draft" },
+        prefs: offerPrefs,
+      }),
+      false,
+    );
+  });
+
+  it("approval is not a signed contract and is not Booked", () => {
+    const coupleSel = selection({ proposalId: "prop-1", status: "accepted" });
+    assert.equal(
+      commercialStepsComplete({
+        selection: coupleSel,
+        contract: null,
+        paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
+        prefs: offerPrefs,
+      }),
+      false,
+    );
+    const j = buildBookingJourney({
+      leadId: "lead-1",
+      selection: coupleSel,
+      proposal: approved,
+      contract: null,
+      paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: offerPrefs,
+    });
+    assert.equal(j.stages.find((s) => s.key === "agreement")?.state, "current");
+    assert.equal(j.commercialReady, false);
+    assert.doesNotMatch(j.direction, /Mark them Booked when you're ready/i);
   });
 });
