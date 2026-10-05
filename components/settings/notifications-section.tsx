@@ -135,6 +135,9 @@ export function NotificationsSection({
               {`${stats.dueNow} ${waitingNoun} waiting to send`}
             </p>
             <p className="text-xs text-amber-700 mt-0.5">{waitingBody}</p>
+            <p className="text-xs text-amber-700 mt-1">
+              Reminders send on the first automatic check after their scheduled time.
+            </p>
           </div>
         </div>
       ) : (
@@ -144,6 +147,9 @@ export function NotificationsSection({
             <p className="text-sm font-medium text-amber-900">Some notifications failed to send</p>
             <p className="text-xs text-amber-700 mt-0.5">
               {`${stats.failedLast24h} failed deliver${stats.failedLast24h !== 1 ? "ies" : "y"} in the last 24 hours. Hello to Cheers will keep retrying automatically.`}
+            </p>
+            <p className="text-xs text-amber-700 mt-1">
+              Reminders send on the first automatic check after their scheduled time.
             </p>
           </div>
         </div>

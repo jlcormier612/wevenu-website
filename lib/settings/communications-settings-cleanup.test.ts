@@ -107,6 +107,10 @@ describe("reminder scheduled vs due semantics", () => {
     assert.doesNotMatch(notifSection, /automatically at their scheduled time/);
     assert.match(notifSection, /stats\.dueNow > 0/);
     assert.match(notifSection, /nextLabel/);
+    assert.match(
+      notifSection,
+      /stats\.dueNow > 0 \? \([\s\S]*Reminders send on the first automatic check after their scheduled time/,
+    );
   });
 });
 
