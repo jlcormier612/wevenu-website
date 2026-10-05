@@ -12,6 +12,7 @@ export const SUGGESTED_SPACE_USES = [
   { key: "cocktail_hour", label: "Cocktail Hour" },
   { key: "getting_ready", label: "Getting Ready" },
   { key: "rehearsal_dinner", label: "Rehearsal Dinner" },
+  { key: "rehearsal_dinner_only", label: "Rehearsal Dinner Only" },
   { key: "meeting", label: "Meeting" },
   { key: "conference", label: "Conference" },
   { key: "dining", label: "Dining" },

@@ -80,6 +80,17 @@ describe("event space assignments", () => {
     assert.deepEqual(forReception, ["barn", "suite"]);
   });
 
+  it("Rehearsal Dinner Only uses the same spaces as Rehearsal Dinner", () => {
+    const spaces = [
+      space({ id: "barn", name: "Barn", permittedUses: ["rehearsal_dinner"] }),
+      space({ id: "hall", name: "Hall", permittedUses: ["ceremony"] }),
+    ];
+    assert.deepEqual(
+      spacesEligibleForUse(spaces, "rehearsal_dinner_only").map((s) => s.id),
+      ["barn"],
+    );
+  });
+
   it("calendar space filter only when multi and at least two spaces", () => {
     assert.equal(shouldShowCalendarSpaceFilter("single"), false);
     assert.equal(shouldShowCalendarSpaceFilter("multi"), true);

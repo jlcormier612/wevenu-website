@@ -6,6 +6,12 @@
 import type { VenueSpace } from "@/lib/availability/types";
 import { labelForUseKey, SUGGESTED_SPACE_USES } from "@/lib/venue-spaces/uses";
 
+/** Exclusive wedding-component keys share the sibling use's physical spaces. */
+export function spaceUseEligibilityKey(useKey: string): string {
+  if (useKey === "rehearsal_dinner_only") return "rehearsal_dinner";
+  return useKey;
+}
+
 export type EventSpaceAssignmentInput = {
   useKey: string;
   useLabel: string;
@@ -50,11 +56,12 @@ export function configuredUsesFromSpaces(
 
 /** Spaces that may be chosen for a use (empty permittedUses = unrestricted). */
 export function spacesEligibleForUse(spaces: VenueSpace[], useKey: string): VenueSpace[] {
+  const eligibilityKey = spaceUseEligibilityKey(useKey);
   return spaces.filter((s) => {
     if (!s.isActive) return false;
     const uses = s.permittedUses ?? [];
     if (uses.length === 0) return true;
-    return uses.includes(useKey);
+    return uses.includes(eligibilityKey);
   });
 }
 

@@ -15,6 +15,7 @@ export const WEDDING_OCCASION_USE_KEYS = [
   "reception",
   "getting_ready",
   "rehearsal_dinner",
+  "rehearsal_dinner_only",
 ] as const;
 
 export type WeddingOccasionUseKey = (typeof WEDDING_OCCASION_USE_KEYS)[number];
@@ -28,8 +29,25 @@ export function relevantUsesForExperience(
   profile: Pick<ExperienceProfileDefinition, "isWeddingSpecific">,
 ): Array<{ key: string; label: string }> {
   const configured = configuredUsesFromSpaces(spaces);
-  if (profile.isWeddingSpecific) return configured;
-  return configured.filter((use) => !isWeddingOccasionUseKey(use.key));
+  if (!profile.isWeddingSpecific) {
+    return configured.filter((use) => !isWeddingOccasionUseKey(use.key));
+  }
+  // Wedding components stay venue-configured. Rehearsal Dinner Only uses the
+  // same persistence pattern as a configured use, and is offered whenever
+  // Rehearsal Dinner is — it is not an accepted_event_types filter.
+  const out: Array<{ key: string; label: string }> = [];
+  const seen = new Set<string>();
+  for (const use of configured) {
+    if (!seen.has(use.key)) {
+      seen.add(use.key);
+      out.push(use);
+    }
+    if (use.key === "rehearsal_dinner" && !seen.has("rehearsal_dinner_only")) {
+      seen.add("rehearsal_dinner_only");
+      out.push({ key: "rehearsal_dinner_only", label: "Rehearsal Dinner Only" });
+    }
+  }
+  return out;
 }
 
 export function relevantUsesForEventType(

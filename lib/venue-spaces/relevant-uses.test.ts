@@ -35,7 +35,7 @@ describe("relevantUsesForExperience", () => {
     const uses = relevantUsesForExperience(fancyMix, EXPERIENCE_PROFILES.wedding);
     assert.deepEqual(
       uses.map((u) => u.key),
-      ["ceremony", "reception", "cocktail_hour", "rehearsal_dinner"],
+      ["ceremony", "reception", "cocktail_hour", "rehearsal_dinner", "rehearsal_dinner_only"],
     );
   });
 
@@ -84,5 +84,17 @@ describe("relevantUsesForExperience", () => {
     const uses = relevantUsesForEventType(fancyMix, "elopement");
     assert.equal(uses[0]?.key, "ceremony");
     assert.equal(uses[1]?.key, "reception");
+  });
+
+  it("offers Rehearsal Dinner Only next to Rehearsal Dinner for wedding family", () => {
+    const uses = relevantUsesForEventType(fancyMix, "wedding");
+    assert.ok(uses.some((u) => u.key === "rehearsal_dinner" && u.label === "Rehearsal Dinner"));
+    assert.ok(uses.some((u) => u.key === "rehearsal_dinner_only" && u.label === "Rehearsal Dinner Only"));
+    assert.ok(uses.some((u) => u.key === "reception" && u.label === "Reception"));
+  });
+
+  it("does not offer wedding-only components on corporate from accepted event types", () => {
+    const uses = relevantUsesForEventType(fancyMix, "corporate");
+    assert.ok(!uses.some((u) => u.key === "rehearsal_dinner" || u.key === "rehearsal_dinner_only"));
   });
 });

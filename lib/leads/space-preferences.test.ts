@@ -43,11 +43,14 @@ describe("lead space preference visibility", () => {
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", "wedding"), true);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "wedding"), true);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", "wedding"), true);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner", "wedding"), true);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", "wedding"), true);
   });
 
   it("corporate hides ceremony/reception and shows cocktail hour", () => {
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", "corporate"), false);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "corporate"), false);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", "corporate"), false);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", "corporate"), true);
   });
 
