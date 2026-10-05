@@ -4,7 +4,9 @@
  * Include:
  * - open-lifecycle + overdue follow-up
  * - open-lifecycle + follow-up due today
- * - open-lifecycle new_inquiry older than 48h with no follow-up
+ * - open-lifecycle stale inquiry older than 48h with no follow-up,
+ *   still in early lifecycle (sales_stage is membership only; contract /
+ *   booked / lost evidence veto the "new inquiry" copy)
  * - non-completed tours from today through today + 14 days
  *
  * Exclude: terminal leads. No arbitrary LIMIT.

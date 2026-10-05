@@ -37,7 +37,11 @@ export function FocusAttentionRow({ item }: { item: ClassifiedItem }): ReactNode
 
   return (
     <div className="flex items-start gap-2 py-3 -mx-2 px-2 rounded-lg hover:bg-muted/40 transition-colors">
-      <Link href={item.href} className="min-w-0 flex-1 flex items-start justify-between gap-4">
+      <Link
+        href={item.href}
+        data-testid="todays-focus-item-link"
+        className="min-w-0 flex-1 flex items-start justify-between gap-4"
+      >
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="truncate text-sm font-medium text-foreground">{item.label}</p>
           {item.detail && <p className="text-xs text-muted-foreground truncate">{item.detail}</p>}

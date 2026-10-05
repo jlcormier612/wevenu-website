@@ -32,6 +32,7 @@ import {
   leadBelongsInFocusPopulation,
   leadMatchesFocusTourRules,
 } from "@/lib/dashboard/focus-lead-membership";
+import { qualifiesAsStaleNewInquiryAttention } from "@/lib/dashboard/stale-inquiry-attention";
 import {
   forensicCount,
   forensicSetVenue,
@@ -61,6 +62,7 @@ type LeadRow = Record<string, unknown> & {
   inquiry_message: string | null; inquiry_date: string;
   next_action_text: string | null; next_action_due: string | null;
   follow_up_date: string | null; last_contacted_at: string | null;
+  first_booked_at: string | null; lost_at: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -76,7 +78,7 @@ type DashTaskRow = {
 };
 
 const LEAD_FOCUS_SELECT =
-  "id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, exclude_from_business_reporting, relationship_id";
+  "id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, first_booked_at, lost_at, created_at, updated_at, exclude_from_business_reporting, relationship_id";
 
 const EMPTY_CLIENT_COUNTS = {
   all: 0,
@@ -109,8 +111,8 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     intakeConfidence: null,
     lostReason: null,
     lostReasonDetail: null,
-    lostAt: null,
-    firstBookedAt: null,
+    lostAt: r.lost_at,
+    firstBookedAt: r.first_booked_at,
     venueSeenAt: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
@@ -131,6 +133,51 @@ function attentionReason(lead: Lead, today: string): string {
   const ageMs = Date.now() - new Date(lead.createdAt).getTime();
   const ageDays = Math.floor(ageMs / 86_400_000);
   return `New inquiry ${ageDays} day${ageDays === 1 ? "" : "s"} old — no follow-up scheduled`;
+}
+
+type FocusContractRow = { client_id: string | null; status: string | null };
+
+async function loadContractStatusByLeadId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  venueId: string,
+  leadIds: string[],
+): Promise<Map<string, string>> {
+  const byLead = new Map<string, string>();
+  if (leadIds.length === 0) return byLead;
+  const { data: clientRows, error: clientError } = await supabase
+    .from("clients")
+    .select("id, lead_id")
+    .eq("venue_id", venueId)
+    .in("lead_id", leadIds);
+  if (clientError) throw clientError;
+  const clientToLead = new Map<string, string>();
+  for (const row of (clientRows ?? []) as { id: string; lead_id: string | null }[]) {
+    if (row.lead_id) clientToLead.set(row.id, row.lead_id);
+  }
+  const clientIds = [...clientToLead.keys()];
+  if (clientIds.length === 0) return byLead;
+  const { data, error } = await supabase
+    .from("contracts")
+    .select("client_id, status")
+    .eq("venue_id", venueId)
+    .in("client_id", clientIds)
+    .not("status", "in", "(cancelled,void)");
+  if (error) throw error;
+  const rank = (status: string | null): number => {
+    if (status === "signed") return 4;
+    if (status === "sent") return 3;
+    if (status === "draft") return 1;
+    return 0;
+  };
+  for (const row of (data ?? []) as FocusContractRow[]) {
+    if (!row.client_id || !row.status) continue;
+    const leadId = clientToLead.get(row.client_id);
+    if (!leadId) continue;
+    const prev = byLead.get(leadId);
+    if (!prev || rank(row.status) > rank(prev)) byLead.set(leadId, row.status);
+  }
+  return byLead;
 }
 
 function addDaysIso(isoDate: string, days: number): string {
@@ -346,18 +393,38 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // ---- Needs Attention -------------------------------------------------------
   const businessLeads = leads.filter((l) => !l.excludeFromBusinessReporting);
+  const staleInquiryCandidates = businessLeads.filter((l) => {
+    const stage = l.salesStage ?? l.status;
+    return (
+      isOpenLeadLifecycle(stage) &&
+      !l.followUpDate &&
+      new Date(l.createdAt).getTime() < twoDaysAgoMs
+    );
+  });
+  const contractByLeadId = await forensicTime("focus_contract_lifecycle", () =>
+    loadContractStatusByLeadId(
+      supabase,
+      venue.id,
+      staleInquiryCandidates.map((l) => l.id),
+    ),
+  );
   const needsAttentionLeads = businessLeads.filter((l) => {
     const stage = l.salesStage ?? l.status;
     if (!isOpenLeadLifecycle(stage)) return false;
     if (l.followUpDate && l.followUpDate < today) return true;
-    if (
-      stage === "new_inquiry" &&
-      !l.followUpDate &&
-      new Date(l.createdAt).getTime() < twoDaysAgoMs
-    ) {
-      return true;
-    }
-    return false;
+    // Stage is membership for this copy pattern, never proof the lead is
+    // still an inquiry — lifecycle facts below can veto.
+    if (stage !== "new_inquiry") return false;
+    return qualifiesAsStaleNewInquiryAttention(
+      l,
+      {
+        firstBookedAt: l.firstBookedAt,
+        lostAt: l.lostAt,
+        contractStatus: contractByLeadId.get(l.id) ?? null,
+      },
+      today,
+      twoDaysAgoMs,
+    );
   });
 
   const needsAttention: AttentionLead[] = needsAttentionLeads
