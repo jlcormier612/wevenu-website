@@ -57,6 +57,8 @@ begin
       where id = v_enrollment.id;
   end if;
 
+  -- null p_is_owner = ownership not yet chosen (webhook). Venue only.
+  -- explicit true/false = activation. Insert that membership if missing.
   if p_is_owner is null or p_owner_user_id is null then
     return v_venue_id;
   end if;
@@ -1453,8 +1455,7 @@ declare
   v_venue_id uuid;
 begin
   v_venue_id := public.current_user_venue_id();
-
-  if not found then
+  if v_venue_id is null then
     return jsonb_build_object('ok', false, 'error', 'not_found');
   end if;
 
@@ -1481,8 +1482,7 @@ declare
   v_venue_id uuid;
 begin
   v_venue_id := public.current_user_venue_id();
-
-  if not found then
+  if v_venue_id is null then
     return jsonb_build_object('ok', false, 'error', 'not_found');
   end if;
 

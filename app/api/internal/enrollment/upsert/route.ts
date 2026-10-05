@@ -246,21 +246,22 @@ export async function POST(request: Request) {
           sessionId &&
           existingSub.stripe_checkout_session_id !== sessionId
         ) {
+          // Session B is a different checkout. Do not return enrollment A.
+          // Fall through to insert session B.
+        } else if (existingSub.status === "activated") {
           return NextResponse.json(identityJson(existingSub));
+        } else {
+          const tokenError = await tokenPatch(admin, body, existingSub, patch);
+          if (tokenError) return tokenError;
+          const { data: updated, error: updErr } = await admin
+            .from("venue_enrollments")
+            .update(patch)
+            .eq("id", existingSub.id)
+            .select(IDENTITY_COLUMNS)
+            .single<EnrollmentIdentity>();
+          if (updErr) throw updErr;
+          row = updated;
         }
-        if (existingSub.status === "activated") {
-          return NextResponse.json(identityJson(existingSub));
-        }
-        const tokenError = await tokenPatch(admin, body, existingSub, patch);
-        if (tokenError) return tokenError;
-        const { data: updated, error: updErr } = await admin
-          .from("venue_enrollments")
-          .update(patch)
-          .eq("id", existingSub.id)
-          .select(IDENTITY_COLUMNS)
-          .single<EnrollmentIdentity>();
-        if (updErr) throw updErr;
-        row = updated;
       }
     }
 

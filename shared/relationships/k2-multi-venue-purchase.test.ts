@@ -112,15 +112,44 @@ describe("K2 purchase match", () => {
     }
   });
 
-  it("subscription id reuses that purchase before the venue-name rule", () => {
-    const decision = decidePurchaseMatch([sally], [], {
+  it("subscription id reuses only when the existing row has no other session", () => {
+    const pending = rel({
+      id: "rel_pending",
+      owner: { email: "owner@example.com" },
+      venue: { name: "Sally Sunshine Events" },
+      stripeCheckoutSessionId: null,
+      stripeSubscriptionId: "sub_pending",
+      activationToken: "act_pending",
+    });
+    const filled = decidePurchaseMatch([pending], [], {
+      email: "owner@example.com",
+      venueName: "Sally Sunshine Events",
+      stripeCheckoutSessionId: "cs_pending",
+      stripeSubscriptionId: "sub_pending",
+    });
+    assert.equal(filled.action, "reuse");
+    if (filled.action === "reuse") assert.equal(filled.via, "subscription");
+  });
+
+  it("a new session with an existing subscription does not reuse enrollment A", () => {
+    const differentName = decidePurchaseMatch([sally], [], {
       email: "owner@example.com",
       venueName: "Daisy Farm & Barn",
       stripeCheckoutSessionId: "cs_other",
       stripeSubscriptionId: "sub_sally",
     });
-    assert.equal(decision.action, "reuse");
-    if (decision.action === "reuse") assert.equal(decision.via, "subscription");
+    assert.equal(differentName.action, "create");
+
+    const sameName = decidePurchaseMatch([sally], [], {
+      email: "owner@example.com",
+      venueName: "Sally Sunshine Events",
+      stripeCheckoutSessionId: "cs_other",
+      stripeSubscriptionId: "sub_sally",
+    });
+    assert.equal(sameName.action, "hold");
+    if (sameName.action === "hold") {
+      assert.equal(sameName.relationship.stripeCheckoutSessionId, "cs_sally");
+    }
   });
 
   it("R findExisting stays email-first and purchase matching is a separate path", () => {
@@ -137,6 +166,7 @@ describe("K2 purchase match", () => {
     assert.match(src, /stripeCustomerId: undefined/);
     const ingest = readFileSync(resolve("shared/relationships/ingest.ts"), "utf8");
     assert.match(ingest, /purchaseMatch: true/);
+    assert.match(ingest, /stripeSubscriptionId: input\.stripeSubscriptionId/);
     assert.match(ingest, /if \(result\.purchaseHold\)/);
     const contact = ingest.slice(
       ingest.indexOf("export async function ingestContactForm"),
@@ -232,6 +262,8 @@ describe("K2 provisioning, activation, webhook, and schema", () => {
 
   it("workspace creates a venue only through the shared enrollment operation", () => {
     assert.match(workspace, /provision_enrollment_venue/);
+    assert.doesNotMatch(workspace, /p_is_owner:\s*true/);
+    assert.match(workspace, /p_enrollment_id: enrollment\.id/);
     assert.doesNotMatch(workspace, /\.eq\("owner_user_id"/);
     assert.doesNotMatch(workspace, /from\("venues"\)/);
     assert.doesNotMatch(workspace, /from\("venue_staff"\)/);
@@ -290,6 +322,18 @@ describe("K2 provisioning, activation, webhook, and schema", () => {
       assert.ok(at > 0 && at < dropAt, name);
     }
     assert.match(migration, /v_venue_id := public\.current_user_venue_id\(\)/);
+    const referral = migration.slice(
+      migration.indexOf("function public.update_referral_status"),
+      migration.indexOf("function public.approve_couple_memory"),
+    );
+    const memory = migration.slice(
+      migration.indexOf("function public.approve_couple_memory"),
+      migration.indexOf("function public.get_venue_notifications"),
+    );
+    assert.match(referral, /if v_venue_id is null then/);
+    assert.doesNotMatch(referral, /if not found then/);
+    assert.match(memory, /if v_venue_id is null then/);
+    assert.doesNotMatch(memory, /if not found then/);
     assert.match(migration, /active_venue_required/);
     assert.doesNotMatch(
       migration.slice(migration.indexOf("function public.get_actor_context")),
@@ -317,6 +361,18 @@ describe("K2 provisioning, activation, webhook, and schema", () => {
     assert.match(upsert, /activation_token_belongs_to_another_enrollment/);
     assert.match(upsert, /purchase_hold/);
     assert.match(upsert, /welcome_email_sent_at/);
+    assert.match(upsert, /Fall through to insert session B/);
+  });
+
+  it("welcome send uses a per-session Resend idempotency key", () => {
+    const client = readFileSync(resolve("shared/email/client.ts"), "utf8");
+    const enrollment = readFileSync(resolve("shared/email/enrollment.ts"), "utf8");
+    assert.match(client, /Idempotency-Key/);
+    assert.match(enrollment, /htc-welcome:\$\{sessionKey\}:\$\{templateId\}/);
+    assert.match(
+      readFileSync(resolve("marketing/lib/crm/service.ts"), "utf8"),
+      /stripeCheckoutSessionId: record\.stripeCheckoutSessionId/,
+    );
   });
 
   it("P success lookup is session-specific", () => {

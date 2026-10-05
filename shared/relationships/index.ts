@@ -142,6 +142,8 @@ export {
   appendNotification,
   markNotificationsRead,
   mutateRelationship,
+  decidePurchaseMatch,
+  subscriptionMatchAllowsReuse,
   syncRelationshipFromProduct,
   resolveWelcomeBackVerification,
   resolveOpenFeedback,

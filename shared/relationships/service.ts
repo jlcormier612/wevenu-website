@@ -112,9 +112,25 @@ export type PurchaseMatchDecision<T extends PurchaseIdentity> =
   | { action: "hold"; relationship: T };
 
 /**
+ * Subscription id may reconcile a purchase whose session is not stored yet
+ * (subscription.created arrived first, or the first write omitted the session).
+ * It must not attach Checkout Session B to enrollment A when A already has a
+ * different session. Success lookup is session-specific.
+ */
+export function subscriptionMatchAllowsReuse(
+  existingSessionId: string | null | undefined,
+  incomingSessionId: string | null | undefined,
+): boolean {
+  const existing = existingSessionId?.trim() || "";
+  const incoming = incomingSessionId?.trim() || "";
+  if (!existing || !incoming) return true;
+  return existing === incoming;
+}
+
+/**
  * Purchase-only identity. Does not change findExisting (inquiry/contact/newsletter/support).
- * Session id, then subscription id, then a new session is a new purchase unless the
- * normalized venue name matches an existing relationship for that email — that case holds.
+ * Session id, then subscription id when that row has no other session, then a new
+ * session is a new purchase unless the normalized venue name matches — that case holds.
  */
 export function decidePurchaseMatch<T extends PurchaseIdentity>(
   relationships: T[],
@@ -148,13 +164,20 @@ export function decidePurchaseMatch<T extends PurchaseIdentity>(
     const bySub =
       relationships.find((r) => r.stripeSubscriptionId?.trim() === subscriptionId) ??
       null;
-    if (bySub) return { action: "reuse", relationship: bySub, via: "subscription" };
+    if (bySub && subscriptionMatchAllowsReuse(bySub.stripeCheckoutSessionId, sessionId)) {
+      return { action: "reuse", relationship: bySub, via: "subscription" };
+    }
     const child = subscriptions.find(
       (s) => s.stripeSubscriptionId?.trim() === subscriptionId,
     );
     if (child) {
       const rel = relationships.find((r) => r.id === child.relationshipId);
-      if (rel) return { action: "reuse", relationship: rel, via: "subscription" };
+      if (
+        rel &&
+        subscriptionMatchAllowsReuse(rel.stripeCheckoutSessionId, sessionId)
+      ) {
+        return { action: "reuse", relationship: rel, via: "subscription" };
+      }
     }
   }
 

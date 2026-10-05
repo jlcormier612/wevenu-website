@@ -39,6 +39,8 @@ export type SendRelationshipEmailInput = {
   replyTo?: string;
   /** Extra timeline meta merged with delivery flags. */
   meta?: Record<string, string | number | boolean | null>;
+  /** Forwarded to Resend as Idempotency-Key when the transport is live. */
+  idempotencyKey?: string;
   /**
    * When false, skip timeline/comms (rare — prefer always logging).
    * Default true.
@@ -102,6 +104,7 @@ export async function sendRelationshipEmail(
       { name: "template", value: input.templateId },
       { name: "relationship", value: input.relationshipId.slice(0, 48) },
     ],
+    idempotencyKey: input.idempotencyKey,
   });
 
   const delivery = sendResult.ok

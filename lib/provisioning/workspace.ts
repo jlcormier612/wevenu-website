@@ -90,12 +90,14 @@ export async function provisionWorkspaceFromEnrollment(
   const alreadyProvisioned = Boolean(enrollment.venue_id);
   let intakeToken = enrollment.intake_token;
 
+  // Webhook/purchase time does not know purchaser-is-owner. Create the
+  // venue and leave membership unset until activation passes an explicit
+  // p_purchaser_is_owner. p_is_owner omitted → SQL null → no staff insert.
   const { data: provisionedVenueId, error: provisionErr } = await admin.rpc(
     "provision_enrollment_venue",
     {
       p_enrollment_id: enrollment.id,
       p_owner_user_id: ownerUserId,
-      p_is_owner: true,
     },
   );
   if (provisionErr) {

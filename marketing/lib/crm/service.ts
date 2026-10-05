@@ -27,6 +27,7 @@ import type { CreateVenueEnrollmentInput, VenueEnrollmentRecord } from "@/lib/cr
 import { onboardingLabel, yesNo } from "@/lib/marketing/enrollment";
 import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
 import { syncEnrollmentToRelationship } from "@/lib/relationships/bridge";
+import { subscriptionMatchAllowsReuse } from "@shared/relationships";
 import {
   resolveWelcomeEmailAttempt,
   welcomeBatchSucceeded,
@@ -43,14 +44,30 @@ import {
 export async function createVenueEnrollment(
   input: CreateVenueEnrollmentInput,
 ): Promise<VenueEnrollmentRecord> {
+  const bySession = await findEnrollmentByCheckoutSessionId(
+    input.stripeCheckoutSessionId,
+  );
+  const bySubscription = bySession
+    ? null
+    : await findEnrollmentBySubscriptionId(input.stripeSubscriptionId);
   const existing =
-    (await findEnrollmentByCheckoutSessionId(input.stripeCheckoutSessionId)) ||
-    (await findEnrollmentBySubscriptionId(input.stripeSubscriptionId));
+    bySession ||
+    (bySubscription &&
+    subscriptionMatchAllowsReuse(
+      bySubscription.stripeCheckoutSessionId,
+      input.stripeCheckoutSessionId,
+    )
+      ? bySubscription
+      : null);
 
   const now = new Date().toISOString();
   const record: VenueEnrollmentRecord = existing
     ? {
         ...existing,
+        stripeCheckoutSessionId:
+          input.stripeCheckoutSessionId?.trim() || existing.stripeCheckoutSessionId,
+        stripeSubscriptionId:
+          input.stripeSubscriptionId?.trim() || existing.stripeSubscriptionId,
         // Prefer fresh webhook payload for CRM sync fields that may have been
         // missing on a partial first attempt.
         venueName: input.venueName?.trim() || existing.venueName,
@@ -237,6 +254,7 @@ export async function createVenueEnrollment(
             onboardingType: record.onboardingType,
             activateUrl,
             intakeUrl,
+            stripeCheckoutSessionId: record.stripeCheckoutSessionId,
           });
           console.info("[crm] enrollment product emails", {
             enrollmentId: record.id,

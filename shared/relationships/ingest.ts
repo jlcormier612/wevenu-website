@@ -426,6 +426,7 @@ export async function ingestSubscriptionPurchased(input: {
       referralSource: "Stripe checkout",
       stripeCustomerId: input.stripeCustomerId,
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+      stripeSubscriptionId: input.stripeSubscriptionId,
     },
     forceStatus: "subscribed",
     patch: {
