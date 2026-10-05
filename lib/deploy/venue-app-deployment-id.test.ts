@@ -56,4 +56,33 @@ describe("venue-app NEXT_DEPLOYMENT_ID", () => {
     );
     assert.doesNotMatch(marketing, /NEXT_DEPLOYMENT_ID/);
   });
+
+  it("injects TOUR_ORIGIN_SIGNING_SECRET from a dedicated Secrets Manager secret", () => {
+    const venue = stack.slice(
+      stack.indexOf('"VenueAppTaskDefinition"'),
+      stack.indexOf('"MarketingTaskDefinition"'),
+    );
+    assert.match(venue, /"Name":"TOUR_ORIGIN_SIGNING_SECRET"/);
+    assert.match(venue, /"Fn::Sub":"\$\{TourOriginSigningSecret\}:value::"/);
+    assert.match(
+      stack,
+      /"Name":\{"Fn::Sub":"htc\/\$\{EnvironmentName\}\/tour-origin-signing-secret"\}/,
+    );
+    assert.match(stack, /"GenerateSecretString":\{/);
+    assert.doesNotMatch(
+      venue,
+      /TOUR_ORIGIN_SIGNING_SECRET[\s\S]{0,200}CRON_SECRET/,
+    );
+    assert.doesNotMatch(venue, /TOUR_ORIGIN_SIGNING_SECRET[\s\S]{0,200}SUPABASE_SERVICE_ROLE_KEY/);
+    const marketing = stack.slice(
+      stack.indexOf('"MarketingTaskDefinition"'),
+      stack.indexOf('"WorkspaceTaskDefinition"'),
+    );
+    const workspace = stack.slice(
+      stack.indexOf('"WorkspaceTaskDefinition"'),
+      stack.indexOf('"SchedulerTaskDefinition"'),
+    );
+    assert.doesNotMatch(marketing, /TOUR_ORIGIN_SIGNING_SECRET/);
+    assert.doesNotMatch(workspace, /TOUR_ORIGIN_SIGNING_SECRET/);
+  });
 });
