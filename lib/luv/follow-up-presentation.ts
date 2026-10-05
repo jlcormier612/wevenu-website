@@ -22,6 +22,8 @@ import { getCurrentVenue } from "@/lib/venue/service";
 export type LeadFollowUpPresentation = {
   tour: FollowUpTourState;
   draftEligible: boolean;
+  /** Authoritative commercial_proposals.status=sent AND offered_at — never sales_stage. */
+  proposalSent: boolean;
 };
 
 /** Map workspace TourAppointment rows into FollowUpTourState (no second classifier). */
@@ -89,11 +91,11 @@ export async function loadLeadFollowUpPresentation(
   lead: Lead,
 ): Promise<LeadFollowUpPresentation> {
   if (!isSupabaseConfigured) {
-    return { tour: { kind: "none" }, draftEligible: false };
+    return { tour: { kind: "none" }, draftEligible: false, proposalSent: false };
   }
   const venue = await getCurrentVenue();
   if (!venue) {
-    return { tour: { kind: "none" }, draftEligible: false };
+    return { tour: { kind: "none" }, draftEligible: false, proposalSent: false };
   }
   const supabase = await createClient();
   const [proposalSent, tourState, messages] = await Promise.all([
@@ -125,5 +127,5 @@ export async function loadLeadFollowUpPresentation(
     completedDecision,
   });
 
-  return { tour, draftEligible: gate.eligible };
+  return { tour, draftEligible: gate.eligible, proposalSent };
 }

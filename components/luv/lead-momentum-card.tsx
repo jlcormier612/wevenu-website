@@ -46,6 +46,7 @@ const EMPTY_LIFECYCLE: SnapshotLifecycleFacts = {
   venueSigned: false,
   requiredClientTotal: 1,
   requiredClientSigned: 0,
+  proposalSent: false,
 };
 
 // ── Shared card shell ──────────────────────────────────────────────────────────
@@ -328,9 +329,17 @@ export function LeadMomentumCard({
 
   const stage = getConfidenceStage(interestScore, responsivenessScore, commitmentScore);
 
-  // Force insights when authoritative lifecycle milestones exist — never
-  // describe a signed contract with "new" / "still early" shells.
-  if (snapshotForcesInsightsStage(lifecycle)) {
+  // Contract / booked / authoritative proposal-sent force insights — never
+  // describe those relationships with "new" / "just beginning" shells.
+  // Real tour milestones still win over proposal-only when there is no
+  // stronger contract/booked fact (tour is a concrete visit milestone).
+  const lifecycleMilestoneForcesInsights = snapshotForcesInsightsStage(lifecycle);
+  const proposalOnly =
+    lifecycle.proposalSent === true
+    && !lifecycle.isBooked
+    && !lifecycle.contractStatus;
+
+  if (lifecycleMilestoneForcesInsights && !proposalOnly) {
     return (
       <InsightsView
         firstName={firstName}
@@ -350,6 +359,20 @@ export function LeadMomentumCard({
   }
   if (tour.kind === "upcoming") {
     return <UpcomingTourView firstName={firstName} scheduledAt={tour.scheduledAt} />;
+  }
+
+  // Authoritative proposal sent (no tour / no contract) — never "New Lead".
+  if (proposalOnly || lifecycleMilestoneForcesInsights) {
+    return (
+      <InsightsView
+        firstName={firstName}
+        interestScore={interestScore}
+        responsivenessScore={responsivenessScore}
+        commitmentScore={commitmentScore}
+        daysSinceContact={daysSince}
+        lifecycle={lifecycle}
+      />
+    );
   }
 
   // Force "new" stage if the lead is very young regardless of score thresholds

@@ -38,6 +38,16 @@ describe("Luv new-lead name rendering", () => {
     assert.match(card, /stillEarlySentence\(firstName\)/);
   });
 
+  it("authoritative proposalSent forces Insights — never New Lead / just beginning", () => {
+    assert.match(card, /proposalOnly|proposalSent/);
+    assert.match(card, /snapshotForcesInsightsStage\(lifecycle\)/);
+    // NewInquiryView remains for true new leads, but proposal path must
+    // reach InsightsView before the young-lead NewInquiryView branch.
+    const newIdx = card.indexOf("effectiveStage === \"new\"");
+    const proposalIdx = card.indexOf("proposalOnly");
+    assert.ok(proposalIdx >= 0 && newIdx >= 0 && proposalIdx < newIdx);
+  });
+
   it("still-early copy keeps the name as its own token", () => {
     assert.equal(stillEarlySentence("Wilma"), "It's still early. I'll share more as Wilma engages.");
     assert.doesNotMatch(stillEarlySentence("Wilma"), /asWilma/);

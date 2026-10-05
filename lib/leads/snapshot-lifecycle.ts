@@ -27,6 +27,12 @@ export type SnapshotLifecycleFacts = {
   requiredClientSigned: number;
   /** Optional payment context — never redefines Booked. */
   hasPaymentOutstanding?: boolean;
+  /**
+   * Authoritative commercial proposal sent:
+   * commercial_proposals.status = 'sent' AND offered_at IS NOT NULL.
+   * Never inferred from sales_stage alone.
+   */
+  proposalSent?: boolean;
 };
 
 export type SnapshotLifecycleMilestone =
@@ -34,6 +40,7 @@ export type SnapshotLifecycleMilestone =
   | "fully_executed"
   | "client_signed"
   | "contract_sent"
+  | "proposal_sent"
   | "early";
 
 export function classifySnapshotLifecycleMilestone(
@@ -41,19 +48,21 @@ export function classifySnapshotLifecycleMilestone(
 ): SnapshotLifecycleMilestone {
   if (facts.isBooked) return "booked";
 
-  if (!facts.contractStatus) return "early";
+  if (facts.contractStatus) {
+    const { state } = deriveContractSigningUiState({
+      status: facts.contractStatus,
+      venueSigned: facts.venueSigned,
+      requiredClientTotal: facts.requiredClientTotal,
+      requiredClientSigned: facts.requiredClientSigned,
+      expiresAt: null,
+    });
 
-  const { state } = deriveContractSigningUiState({
-    status: facts.contractStatus,
-    venueSigned: facts.venueSigned,
-    requiredClientTotal: facts.requiredClientTotal,
-    requiredClientSigned: facts.requiredClientSigned,
-    expiresAt: null,
-  });
+    if (state === "fully_signed") return "fully_executed";
+    if (state === "awaiting_venue_signature") return "client_signed";
+    if (state === "sent_to_client") return "contract_sent";
+  }
 
-  if (state === "fully_signed") return "fully_executed";
-  if (state === "awaiting_venue_signature") return "client_signed";
-  if (state === "sent_to_client") return "contract_sent";
+  if (facts.proposalSent) return "proposal_sent";
   return "early";
 }
 
@@ -94,6 +103,8 @@ export function snapshotInterestDescriptor(
       return "Contract signed";
     case "contract_sent":
       return "Contract sent";
+    case "proposal_sent":
+      return "Proposal sent";
     case "early":
     default:
       return scoreDescriptor("interest", interestScore);
@@ -124,6 +135,8 @@ export function snapshotCommitmentDescriptor(
       );
     case "contract_sent":
       return "Contract sent · Awaiting signatures";
+    case "proposal_sent":
+      return "Proposal sent · Awaiting next step";
     case "early":
     default:
       return scoreDescriptor("commitment", commitmentScore);
@@ -136,8 +149,9 @@ export function snapshotResponsivenessDescriptor(responsivenessScore: number): s
 }
 
 /**
- * A signed / executed / booked relationship must not render the early
- * "new" / "observing" card shells that say "still early".
+ * A proposal-sent / signed / executed / booked relationship must not render
+ * the early "new" / "observing" card shells that say "still early" / "just beginning".
+ * Never driven by sales_stage alone — callers must pass authoritative facts.
  */
 export function snapshotForcesInsightsStage(facts: SnapshotLifecycleFacts): boolean {
   const milestone = classifySnapshotLifecycleMilestone(facts);
@@ -146,5 +160,6 @@ export function snapshotForcesInsightsStage(facts: SnapshotLifecycleFacts): bool
     || milestone === "fully_executed"
     || milestone === "client_signed"
     || milestone === "contract_sent"
+    || milestone === "proposal_sent"
   );
 }

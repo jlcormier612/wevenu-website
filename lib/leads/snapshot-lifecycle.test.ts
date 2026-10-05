@@ -158,4 +158,33 @@ describe("Relationship Snapshot lifecycle precedence", () => {
       "No pattern yet",
     );
   });
+
+  it("9. authoritative proposal sent — never early / just-beginning language", () => {
+    const f = facts({ proposalSent: true });
+    assert.equal(classifySnapshotLifecycleMilestone(f), "proposal_sent");
+    assert.equal(snapshotInterestDescriptor(f, 5), "Proposal sent");
+    assert.equal(
+      snapshotCommitmentDescriptor(f, 10),
+      "Proposal sent · Awaiting next step",
+    );
+    assert.equal(snapshotForcesInsightsStage(f), true);
+    assert.doesNotMatch(snapshotInterestDescriptor(f, 5), /Still early/i);
+    assert.doesNotMatch(snapshotCommitmentDescriptor(f, 10), /Just getting started/i);
+  });
+
+  it("10. sales_stage cannot invent proposal_sent without the authoritative flag", () => {
+    const f = facts({ proposalSent: false });
+    assert.equal(classifySnapshotLifecycleMilestone(f), "early");
+    assert.equal(snapshotForcesInsightsStage(f), false);
+  });
+
+  it("11. contract milestone outranks proposal_sent", () => {
+    const f = facts({
+      proposalSent: true,
+      contractStatus: "sent",
+      requiredClientSigned: 0,
+    });
+    assert.equal(classifySnapshotLifecycleMilestone(f), "contract_sent");
+    assert.equal(snapshotInterestDescriptor(f, 5), "Contract sent");
+  });
 });

@@ -193,6 +193,7 @@ export function LuvDraftPanel({
   followUpTour = { kind: "none" },
   followUpDraftEligible = true,
   internalTourNotes = null,
+  proposalSent = false,
 }: {
   lead: Lead;
   initialDrafts: LuvDraft[];
@@ -214,6 +215,8 @@ export function LuvDraftPanel({
   followUpDraftEligible?: boolean;
   /** Venue-private completed-tour notes for Thoughts only — never sent to draft generation. */
   internalTourNotes?: string | null;
+  /** Authoritative commercial_proposals sent+offered_at — never sales_stage. */
+  proposalSent?: boolean;
 }) {
   // Auto-trigger draft generation when arriving via a Luv recommendation link
   const [allDrafts, setAllDrafts] = React.useState(initialDrafts);
@@ -260,8 +263,9 @@ export function LuvDraftPanel({
       requiredClientTotal: contract?.requiredClientTotal ?? 1,
       requiredClientSigned: contract?.requiredClientSigned ?? 0,
       hasPaymentOutstanding,
+      proposalSent,
     };
-  }, [bookingJourney, lead.firstBookedAt]);
+  }, [bookingJourney, lead.firstBookedAt, proposalSent]);
 
   function handleGenerate() {
     startGenerate(async () => {
