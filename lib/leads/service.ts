@@ -330,7 +330,6 @@ export async function updateLeadSalesStage(
     // Lost remains available from Booked (deal died after booking).
     if (
       previousStage === "booked"
-      && stage !== "booked"
       && stage !== "lost"
       && !opts?.allowLeaveBooked
     ) {
