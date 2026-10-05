@@ -33,10 +33,28 @@ export type UpsertEnrollmentInput = {
   onboardingType: OnboardingType;
   /** Absent for white_glove — matches existing behavior (no activation URL). */
   activationToken?: string | null;
+  /** Same-name new session. Persist the session and do not provision. */
+  purchaseHold?: boolean;
+  /** Set welcome_email_sent_at only after the transport reports sent. */
+  recordWelcomeEmailSent?: boolean;
+  /** Claim the per-session send so a crash or overlap does not double-send. */
+  claimWelcomeEmail?: boolean;
+  /** Release a claim when the transport did not succeed. */
+  releaseWelcomeEmailClaim?: boolean;
 };
 
 export type UpsertEnrollmentResult =
-  | { ok: true; id: string; status: "pending" | "provisioned" | "activated" }
+  | {
+      ok: true;
+      id: string;
+      status: "pending" | "provisioned" | "activated";
+      welcomeEmailSentAt?: string | null;
+      welcomeEmailClaimedAt?: string | null;
+      purchaseHold?: boolean;
+      claimed?: boolean;
+      venueId?: string | null;
+      activationToken?: string | null;
+    }
   | { ok: false; error: string };
 
 export type ProvisionEnrollmentResult =

@@ -27,6 +27,10 @@ import type { CreateVenueEnrollmentInput, VenueEnrollmentRecord } from "@/lib/cr
 import { onboardingLabel, yesNo } from "@/lib/marketing/enrollment";
 import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
 import { syncEnrollmentToRelationship } from "@/lib/relationships/bridge";
+import {
+  resolveWelcomeEmailAttempt,
+  welcomeBatchSucceeded,
+} from "@shared/relationships/welcome-email";
 
 /**
  * Create a CRM venue enrollment record when a subscription succeeds.
@@ -90,18 +94,48 @@ export async function createVenueEnrollment(
     });
   } else {
     await storeVenueEnrollment(record);
-    await notifySubscriptionEnrollment(record);
   }
 
   const synced = await syncEnrollmentToRelationship(record, {
     firstName: record.customerFirstName,
     lastName: record.customerLastName,
   });
+  if (!synced?.relationshipId || !record.customerEmail) {
+    throw new Error(
+      "Could not sync purchase to Relationship CRM. Stripe webhook should retry.",
+    );
+  }
+
+  if (synced.purchaseHold) {
+    const held = await upsertVenueEnrollment({
+      stripeCheckoutSessionId: record.stripeCheckoutSessionId,
+      stripeCustomerId: record.stripeCustomerId,
+      stripeSubscriptionId: record.stripeSubscriptionId,
+      venueName: record.venueName,
+      ownerEmail: record.customerEmail,
+      ownerFirstName: record.customerFirstName,
+      ownerLastName: record.customerLastName,
+      plan: record.plan,
+      onboardingType: record.onboardingType === "white_glove" ? "white_glove" : "self_setup",
+      activationToken: null,
+      purchaseHold: true,
+    });
+    if (!held.ok) {
+      throw new Error(
+        `Could not persist held purchase: ${held.error}. Stripe webhook should retry.`,
+      );
+    }
+    return record;
+  }
+
+  if (!existing) {
+    await notifySubscriptionEnrollment(record);
+  }
 
   // Order: token minted in enterOnboardingAfterPurchase → durable Postgres
-  // venue_enrollments (product SoT) → welcome email → product sync (Launch
-  // Yourself only). Marketing no longer keeps a parallel JSONL enrollment file.
-  if (synced?.relationshipId && record.customerEmail) {
+  // venue_enrollments (product SoT) → provision → welcome email.
+  // Marketing no longer keeps a parallel JSONL enrollment file.
+  if (synced.relationshipId && record.customerEmail) {
     const isLaunchYourself = record.onboardingType !== "white_glove";
     const activateUrl =
       isLaunchYourself && synced.activationToken
@@ -154,9 +188,11 @@ export async function createVenueEnrollment(
         const { bindCrmProductVenueId } = await import("@shared/relationships");
         await bindCrmProductVenueId({
           productVenueId: provisioned.venueId,
+          relationshipId: synced.relationshipId,
           ownerEmail: record.customerEmail,
           stripeCustomerId: record.stripeCustomerId,
           stripeSubscriptionId: record.stripeSubscriptionId,
+          stripeCheckoutSessionId: record.stripeCheckoutSessionId,
         });
       } catch (bindErr) {
         console.error("[crm] productSync.venueId bind failed", bindErr);
@@ -168,40 +204,88 @@ export async function createVenueEnrollment(
         ? whiteGloveIntakeUrlFromToken(provisioned.intakeToken)
         : null;
 
-    // Webhook retries must re-sync CRM + ensure enrollment, but must not
-    // re-send welcome emails or re-notify ops.
-    if (!existing) {
-      try {
-        const emailResults = await sendEnrollmentProductEmails({
-          relationshipId: synced.relationshipId,
-          customerEmail: record.customerEmail,
-          venueName: synced.venueName || record.venueName,
-          planName: record.planName || getPlanDisplayName(record.plan),
-          firstName: record.customerFirstName || synced.firstName || null,
-          fullName:
-            record.customerFirstName && record.customerLastName
-              ? `${record.customerFirstName} ${record.customerLastName}`
-              : null,
-          foundingMember: record.foundingMember,
-          welcomeBackRequested: record.welcomeBackRequested,
-          onboardingType: record.onboardingType,
-          activateUrl,
-          intakeUrl,
-        });
-        console.info("[crm] enrollment product emails", {
-          enrollmentId: record.id,
-          relationshipId: synced.relationshipId,
-          hasActivateUrl: Boolean(activateUrl),
-          hasIntakeUrl: Boolean(intakeUrl),
-          venueId: provisioned.venueId,
-          results: emailResults.map((r) => ({
-            templateId: r.templateId,
-            delivery: r.delivery,
-            ok: r.ok,
-          })),
-        });
-      } catch (error) {
-        console.error("[crm] enrollment product emails failed", record.id, error);
+    const emailAttempt = resolveWelcomeEmailAttempt({
+      sentAt: bridged.welcomeEmailSentAt,
+      claimedAt: bridged.welcomeEmailClaimedAt,
+      now: Date.now(),
+    });
+    if (emailAttempt === "send") {
+      const claim = await upsertVenueEnrollment({
+        stripeCheckoutSessionId: record.stripeCheckoutSessionId,
+        stripeCustomerId: record.stripeCustomerId,
+        stripeSubscriptionId: record.stripeSubscriptionId,
+        venueName: record.venueName,
+        ownerEmail: record.customerEmail,
+        plan: record.plan,
+        onboardingType: isLaunchYourself ? "self_setup" : "white_glove",
+        claimWelcomeEmail: true,
+      });
+      if (claim.ok && claim.claimed) {
+        try {
+          const emailResults = await sendEnrollmentProductEmails({
+            relationshipId: synced.relationshipId,
+            customerEmail: record.customerEmail,
+            venueName: synced.venueName || record.venueName,
+            planName: record.planName || getPlanDisplayName(record.plan),
+            firstName: record.customerFirstName || synced.firstName || null,
+            fullName:
+              record.customerFirstName && record.customerLastName
+                ? `${record.customerFirstName} ${record.customerLastName}`
+                : null,
+            foundingMember: record.foundingMember,
+            welcomeBackRequested: record.welcomeBackRequested,
+            onboardingType: record.onboardingType,
+            activateUrl,
+            intakeUrl,
+          });
+          console.info("[crm] enrollment product emails", {
+            enrollmentId: record.id,
+            relationshipId: synced.relationshipId,
+            hasActivateUrl: Boolean(activateUrl),
+            hasIntakeUrl: Boolean(intakeUrl),
+            venueId: provisioned.venueId,
+            results: emailResults.map((r) => ({
+              templateId: r.templateId,
+              delivery: r.delivery,
+              ok: r.ok,
+            })),
+          });
+          if (welcomeBatchSucceeded(emailResults)) {
+            await upsertVenueEnrollment({
+              stripeCheckoutSessionId: record.stripeCheckoutSessionId,
+              stripeCustomerId: record.stripeCustomerId,
+              stripeSubscriptionId: record.stripeSubscriptionId,
+              venueName: record.venueName,
+              ownerEmail: record.customerEmail,
+              plan: record.plan,
+              onboardingType: isLaunchYourself ? "self_setup" : "white_glove",
+              recordWelcomeEmailSent: true,
+            });
+          } else {
+            await upsertVenueEnrollment({
+              stripeCheckoutSessionId: record.stripeCheckoutSessionId,
+              stripeCustomerId: record.stripeCustomerId,
+              stripeSubscriptionId: record.stripeSubscriptionId,
+              venueName: record.venueName,
+              ownerEmail: record.customerEmail,
+              plan: record.plan,
+              onboardingType: isLaunchYourself ? "self_setup" : "white_glove",
+              releaseWelcomeEmailClaim: true,
+            });
+          }
+        } catch (error) {
+          console.error("[crm] enrollment product emails failed", record.id, error);
+          await upsertVenueEnrollment({
+            stripeCheckoutSessionId: record.stripeCheckoutSessionId,
+            stripeCustomerId: record.stripeCustomerId,
+            stripeSubscriptionId: record.stripeSubscriptionId,
+            venueName: record.venueName,
+            ownerEmail: record.customerEmail,
+            plan: record.plan,
+            onboardingType: isLaunchYourself ? "self_setup" : "white_glove",
+            releaseWelcomeEmailClaim: true,
+          });
+        }
       }
     }
   }

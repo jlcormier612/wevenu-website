@@ -484,6 +484,7 @@ export async function ingestSubscriptionPurchased(input: {
       stripeCustomerId: input.stripeCustomerId,
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
     },
+    purchaseMatch: true,
     notification: {
       type: isWhiteGlove
         ? "white_glove_purchased"
@@ -501,6 +502,10 @@ export async function ingestSubscriptionPurchased(input: {
       createdAt: now,
     },
   }))!;
+
+  if (result.purchaseHold) {
+    return result;
+  }
 
   if (!input.deferOnboardingEntry && result.relationship) {
     const { enterOnboardingAfterPurchase } = await import("./lifecycle");

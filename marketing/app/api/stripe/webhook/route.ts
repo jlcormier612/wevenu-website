@@ -274,6 +274,7 @@ async function handleCheckoutCompleted(
     });
   } catch (error) {
     console.error("[stripe] failed to create venue enrollment", error);
+    throw error;
   }
 }
 

@@ -93,7 +93,83 @@ const WELCOME_BACK_VERIFIED_RANK: Record<
 export type FindOrCreateResult = {
   relationship: Relationship;
   created: boolean;
+  /** Same-email, same-name, new checkout session. Relationship was not mutated. */
+  purchaseHold?: boolean;
 };
+
+export type PurchaseIdentity = {
+  id: string;
+  owner: { email?: string | null };
+  venue: { name?: string | null };
+  stripeCheckoutSessionId?: string | null;
+  stripeSubscriptionId?: string | null;
+  activationToken?: string | null;
+};
+
+export type PurchaseMatchDecision<T extends PurchaseIdentity> =
+  | { action: "reuse"; relationship: T; via: "session" | "subscription" }
+  | { action: "create" }
+  | { action: "hold"; relationship: T };
+
+/**
+ * Purchase-only identity. Does not change findExisting (inquiry/contact/newsletter/support).
+ * Session id, then subscription id, then a new session is a new purchase unless the
+ * normalized venue name matches an existing relationship for that email — that case holds.
+ */
+export function decidePurchaseMatch<T extends PurchaseIdentity>(
+  relationships: T[],
+  subscriptions: Array<{
+    relationshipId: string;
+    stripeSubscriptionId?: string | null;
+    stripeCheckoutSessionId?: string | null;
+  }>,
+  input: FindOrCreateInput,
+): PurchaseMatchDecision<T> {
+  const sessionId = input.stripeCheckoutSessionId?.trim() || "";
+  const subscriptionId = input.stripeSubscriptionId?.trim() || "";
+  const email = normalizeEmail(input.email);
+  const venueKey = normalizeVenueName(input.venueName);
+
+  if (sessionId) {
+    const bySession =
+      relationships.find((r) => r.stripeCheckoutSessionId?.trim() === sessionId) ??
+      null;
+    if (bySession) return { action: "reuse", relationship: bySession, via: "session" };
+    const child = subscriptions.find(
+      (s) => s.stripeCheckoutSessionId?.trim() === sessionId,
+    );
+    if (child) {
+      const rel = relationships.find((r) => r.id === child.relationshipId);
+      if (rel) return { action: "reuse", relationship: rel, via: "session" };
+    }
+  }
+
+  if (subscriptionId) {
+    const bySub =
+      relationships.find((r) => r.stripeSubscriptionId?.trim() === subscriptionId) ??
+      null;
+    if (bySub) return { action: "reuse", relationship: bySub, via: "subscription" };
+    const child = subscriptions.find(
+      (s) => s.stripeSubscriptionId?.trim() === subscriptionId,
+    );
+    if (child) {
+      const rel = relationships.find((r) => r.id === child.relationshipId);
+      if (rel) return { action: "reuse", relationship: rel, via: "subscription" };
+    }
+  }
+
+  if (email) {
+    const sameEmail = relationships.filter(
+      (r) => normalizeEmail(r.owner.email) === email,
+    );
+    const sameName = sameEmail.find(
+      (r) => normalizeVenueName(r.venue.name) === venueKey,
+    );
+    if (sameName) return { action: "hold", relationship: sameName };
+  }
+
+  return { action: "create" };
+}
 
 function findExisting(
   store: LiveRelationshipStore,
@@ -1400,6 +1476,11 @@ export async function mutateRelationship(opts: {
   productVenueId?: string | null;
   /** When true, return null instead of creating a new Relationship. */
   updateOnly?: boolean;
+  /**
+   * Purchase ingestion only. Uses decidePurchaseMatch instead of findExisting.
+   * Inquiry and other ingest paths must leave this unset.
+   */
+  purchaseMatch?: boolean;
   event?: Omit<TimelineEvent, "id" | "relationshipId">;
   /** Additional timeline rows written in the same locked transaction. */
   extraEvents?: Array<Omit<TimelineEvent, "id" | "relationshipId">>;
@@ -1431,35 +1512,101 @@ export async function mutateRelationship(opts: {
   const { result } = await withLiveStore((store) => {
     const now = new Date().toISOString();
     let created = false;
-    let relationship = findExisting(store, opts.find);
-    if (!relationship) {
-      if (opts.updateOnly) return null;
-      relationship = createRelationship(opts.find, now);
-      if (stripeCustomerId) relationship.stripeCustomerId = stripeCustomerId;
-      if (stripeCheckoutSessionId) {
-        relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
+    let relationship: Relationship | undefined;
+
+    if (opts.purchaseMatch) {
+      const decision = decidePurchaseMatch(
+        store.relationships,
+        store.subscriptions,
+        opts.find,
+      );
+      if (decision.action === "hold") {
+        return {
+          relationship: decision.relationship,
+          created: false,
+          purchaseHold: true,
+        };
       }
-      if (stripeSubscriptionId) {
-        relationship.stripeSubscriptionId = stripeSubscriptionId;
+      if (decision.action === "reuse") {
+        relationship = decision.relationship;
+        applyOwnerVenueDefaults(relationship, opts.find);
+        if (stripeCustomerId && !relationship.stripeCustomerId) {
+          relationship.stripeCustomerId = stripeCustomerId;
+        }
+        if (stripeCheckoutSessionId && !relationship.stripeCheckoutSessionId) {
+          relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
+        }
+        if (stripeSubscriptionId && !relationship.stripeSubscriptionId) {
+          relationship.stripeSubscriptionId = stripeSubscriptionId;
+        }
+        absorbStripeDrafts(store, relationship, {
+          ...opts.find,
+          stripeCustomerId: undefined,
+        });
+      } else {
+        if (opts.updateOnly) return null;
+        relationship = createRelationship(opts.find, now);
+        if (stripeCustomerId) relationship.stripeCustomerId = stripeCustomerId;
+        if (stripeCheckoutSessionId) {
+          relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
+        }
+        if (stripeSubscriptionId) {
+          relationship.stripeSubscriptionId = stripeSubscriptionId;
+        }
+        store.relationships.push(relationship);
+        created = true;
+        absorbStripeDrafts(store, relationship, {
+          ...opts.find,
+          stripeCustomerId: undefined,
+        });
       }
-      store.relationships.push(relationship);
-      created = true;
     } else {
-      applyOwnerVenueDefaults(relationship, opts.find);
-      if (stripeCustomerId && !relationship.stripeCustomerId) {
-        relationship.stripeCustomerId = stripeCustomerId;
+      relationship = findExisting(store, opts.find);
+      if (!relationship) {
+        if (opts.updateOnly) return null;
+        relationship = createRelationship(opts.find, now);
+        if (stripeCustomerId) relationship.stripeCustomerId = stripeCustomerId;
+        if (stripeCheckoutSessionId) {
+          relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
+        }
+        if (stripeSubscriptionId) {
+          relationship.stripeSubscriptionId = stripeSubscriptionId;
+        }
+        store.relationships.push(relationship);
+        created = true;
+      } else {
+        applyOwnerVenueDefaults(relationship, opts.find);
+        if (stripeCustomerId && !relationship.stripeCustomerId) {
+          relationship.stripeCustomerId = stripeCustomerId;
+        }
+        if (stripeCheckoutSessionId && !relationship.stripeCheckoutSessionId) {
+          relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
+        }
+        if (stripeSubscriptionId && !relationship.stripeSubscriptionId) {
+          relationship.stripeSubscriptionId = stripeSubscriptionId;
+        }
+        absorbStripeDrafts(store, relationship, opts.find);
       }
-      if (stripeCheckoutSessionId && !relationship.stripeCheckoutSessionId) {
-        relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
-      }
-      if (stripeSubscriptionId && !relationship.stripeSubscriptionId) {
-        relationship.stripeSubscriptionId = stripeSubscriptionId;
-      }
-      absorbStripeDrafts(store, relationship, opts.find);
     }
 
-    if (opts.patch) {
-      applyFieldPatch(relationship, opts.patch);
+    const fieldPatch =
+      opts.purchaseMatch && !created && opts.patch
+        ? {
+            ...opts.patch,
+            stripeCustomerId: relationship.stripeCustomerId
+              ? undefined
+              : opts.patch.stripeCustomerId,
+            stripeSubscriptionId: relationship.stripeSubscriptionId
+              ? undefined
+              : opts.patch.stripeSubscriptionId,
+            stripeCheckoutSessionId: relationship.stripeCheckoutSessionId
+              ? undefined
+              : opts.patch.stripeCheckoutSessionId,
+          }
+        : opts.patch;
+
+    if (fieldPatch) {
+      applyFieldPatch(relationship, fieldPatch);
     }
 
     // New relationships created into a highlightable Sales stage (contact / walkthrough ingest).

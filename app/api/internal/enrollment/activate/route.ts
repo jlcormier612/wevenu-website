@@ -106,11 +106,25 @@ export async function POST(request: Request) {
 
     const userId = await resolveUserIdForEmail(enrollment.owner_email);
 
-    // Password updates stay retry-safe: an already-activated owner who
-    // re-submits the form gets a working credential again. Venue creation
-    // itself stays idempotent inside activate_venue_enrollment().
-    const { error: pwErr } = await admin.auth.admin.updateUserById(userId, { password });
-    if (pwErr) throw pwErr;
+    // First activation of a user with no other accepted membership sets the
+    // submitted password. A second venue, or a replay after activation, does not.
+    let otherMemberships = admin
+      .from("venue_staff")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .not("accepted_at", "is", null);
+    if (enrollment.venue_id) {
+      otherMemberships = otherMemberships.neq("venue_id", enrollment.venue_id);
+    }
+    const { count: otherCount, error: memberErr } = await otherMemberships;
+    if (memberErr) throw memberErr;
+    const alreadyHasLogin =
+      enrollment.status === "activated" || (otherCount ?? 0) > 0;
+    if (!alreadyHasLogin) {
+      const { error: pwErr } = await admin.auth.admin.updateUserById(userId, { password });
+      if (pwErr) throw pwErr;
+    }
 
     // Always call the RPC — including on already-activated retries — so
     // the owner venue_staff row is upserted/repaired. Older activations
