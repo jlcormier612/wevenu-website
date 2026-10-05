@@ -81,6 +81,21 @@ describe("buildVenueEventTypeOptions", () => {
     );
   });
 
+  it("accepted Rehearsal Dinner Only uses the same catalog pattern as Reception Only", () => {
+    const options = buildVenueEventTypeOptions({
+      acceptedRaw: ["wedding", "reception", "rehearsal_dinner", "corporate"],
+    });
+    assert.deepEqual(
+      options.map((o) => ({ value: o.value, label: o.label })),
+      [
+        { value: "wedding", label: "Wedding" },
+        { value: "rehearsal_dinner", label: "Rehearsal Dinner Only" },
+        { value: "reception", label: "Reception Only" },
+        { value: "corporate", label: "Corporate Event" },
+      ],
+    );
+  });
+
   it("unknown/invalid stored value: still selectable without crashing", () => {
     const options = buildVenueEventTypeOptions({
       acceptedRaw: OBSERVED_ACCEPTED,

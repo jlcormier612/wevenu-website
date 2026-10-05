@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import {
@@ -48,5 +50,27 @@ describe("canonical event types", () => {
     for (const value of DEFAULT_ACCEPTED_EVENT_TYPES) {
       assert.equal(normalizeEventType(value), value);
     }
+  });
+
+  it("Reception Only and Rehearsal Dinner Only are event types, not space uses", () => {
+    const reception = EVENT_TYPES.find((t) => t.value === "reception");
+    const rehearsal = EVENT_TYPES.find((t) => t.value === "rehearsal_dinner");
+    assert.equal(reception?.label, "Reception Only");
+    assert.equal(rehearsal?.label, "Rehearsal Dinner Only");
+    assert.ok(!EVENT_TYPES.some((t) => t.value === "rehearsal_dinner_only"));
+    assert.equal(normalizeEventType("reception"), "reception");
+    assert.equal(normalizeEventType("Reception Only"), "reception");
+    assert.equal(normalizeEventType("rehearsal_dinner"), "rehearsal_dinner");
+    assert.equal(normalizeEventType("Rehearsal Dinner Only"), "rehearsal_dinner");
+    assert.equal(normalizeEventType("Rehearsal Dinner"), "rehearsal_dinner");
+    assert.equal(eventTypeLabel("rehearsal_dinner"), "Rehearsal Dinner Only");
+    assert.equal(eventTypeLabel("reception"), "Reception Only");
+  });
+
+  it("Setup accepted-type checkboxes render the canonical catalog labels", () => {
+    const section = readFileSync(resolve("components/settings/inquiry-form-config-section.tsx"), "utf8");
+    assert.match(section, /EVENT_TYPES\.map/);
+    assert.match(section, /Event types this venue accepts/);
+    assert.match(section, /\{t\.label\}/);
   });
 });

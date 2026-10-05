@@ -15,6 +15,8 @@ describe("venue-configured space uses", () => {
     const src = readFileSync(resolve("lib/venue-spaces/uses.ts"), "utf8");
     assert.match(src, /SUGGESTED_SPACE_USES/);
     assert.match(src, /venue chooses/);
+    assert.doesNotMatch(src, /rehearsal_dinner_only/);
+    assert.match(src, /\{ key: "rehearsal_dinner", label: "Rehearsal Dinner" \}/);
   });
 
   it("formats single event_space as the space name only", () => {

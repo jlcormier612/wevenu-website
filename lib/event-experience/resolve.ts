@@ -54,6 +54,7 @@ const EVENT_TYPE_LABEL_TO_PROFILE: Record<string, ExperienceProfileId> = {
   elopement: "wedding",
   "engagement party": "wedding",
   "rehearsal dinner": "wedding",
+  "rehearsal dinner only": "wedding",
   "reception only": "wedding",
 
   "celebration of life": "celebration_of_life",

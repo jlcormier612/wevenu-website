@@ -44,12 +44,13 @@ describe("lead space preference visibility", () => {
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "wedding"), true);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", "wedding"), true);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner", "wedding"), true);
-    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", "wedding"), true);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", "wedding"), false);
   });
 
   it("corporate hides ceremony/reception and shows cocktail hour", () => {
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", "corporate"), false);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "corporate"), false);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner", "corporate"), false);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", "corporate"), false);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", "corporate"), true);
   });
@@ -289,5 +290,7 @@ describe("preference is not an assignment", () => {
     assert.match(detail, /showEventSpaceField/);
     assert.match(detail, /EventSpaceField/);
     assert.match(detail, /eventType=\{lead\.eventType\}/);
+    const fields = readFileSync(resolve("components/leads/space-preference-fields.tsx"), "utf8");
+    assert.doesNotMatch(fields, /rehearsal_dinner_only|Rehearsal Dinner Only/);
   });
 });
