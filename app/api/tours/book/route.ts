@@ -11,6 +11,7 @@ type BookPayload = {
   turnstileToken?: string | null;
   qrCampaignId?: string | null;
   sourceData?: Record<string, unknown>;
+  originToken?: string | null;
   preferredCommunicationChannels?: unknown;
   smsPermissionGranted?: boolean;
 };
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
       firstName: body.firstName, lastName: body.lastName, partnerName: body.partnerName ?? "",
       email: body.email, phone: body.phone ?? "", eventType: body.eventType ?? "",
       eventDate: body.eventDate ?? "", guestCount: body.guestCount ?? null, notes: body.notes ?? "",
-    }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null, sourceData: body.sourceData ?? {} });
+    }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null, sourceData: body.sourceData ?? {}, originToken: body.originToken ?? null });
 
     if (result.ok && result.appointmentId) {
       void runTourBookedSideEffects(result);

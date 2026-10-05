@@ -8,3 +8,14 @@ export function publicTourSchedulingPath(tourEmbedKey: string | null | undefined
   if (!key) return null;
   return `/book/${encodeURIComponent(key)}`;
 }
+
+/** Lead-scoped public scheduler. `originToken` is the opaque HMAC query `o`. */
+export function publicTourSchedulingPathForLead(
+  tourEmbedKey: string | null | undefined,
+  originToken: string | null | undefined,
+): string | null {
+  const base = publicTourSchedulingPath(tourEmbedKey);
+  const token = originToken?.trim();
+  if (!base || !token) return null;
+  return `${base}?o=${encodeURIComponent(token)}`;
+}

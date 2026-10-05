@@ -12,6 +12,7 @@ import {
   NAV_ATTENTION_BADGE_CLASS,
   navAttentionHref,
   navBadgeAriaLabel,
+  UNSEEN_LEADS_ATTENTION_HREF,
   type NavAttentionCounts,
 } from "@/lib/navigation/attention";
 import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
@@ -69,30 +70,44 @@ export function SidebarNav({
             const href = navAttentionHref(item.id, item.href, badgeCount);
 
             return (
-              <Link
+              <div
                 key={item.id}
-                href={href}
-                onClick={onNavigate}
-                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "group/nav flex items-center gap-3 rounded-sm px-3 py-2.5 text-base tracking-wide transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                  "focus-within:outline-none focus-within:ring-2 focus-within:ring-sidebar-ring",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     : "text-sidebar-foreground",
                 )}
               >
-                <Icon
-                  className={cn(
-                    "h-4 w-4 shrink-0 transition-colors",
-                    isActive
-                      ? "text-sidebar-primary"
-                      : "text-sidebar-foreground/70 group-hover/nav:text-sidebar-accent-foreground",
-                  )}
-                />
-                <span className="flex-1 truncate">{item.title}</span>
-                {badgeLabel && (
+                <Link
+                  href={href}
+                  onClick={onNavigate}
+                  aria-current={isActive ? "page" : undefined}
+                  className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none"
+                >
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-colors",
+                      isActive
+                        ? "text-sidebar-primary"
+                        : "text-sidebar-foreground/70 group-hover/nav:text-sidebar-accent-foreground",
+                    )}
+                  />
+                  <span className="flex-1 truncate">{item.title}</span>
+                </Link>
+                {badgeLabel && item.id === "leads" ? (
+                  <Link
+                    href={UNSEEN_LEADS_ATTENTION_HREF}
+                    onClick={onNavigate}
+                    className={NAV_ATTENTION_BADGE_CLASS}
+                    title={navBadgeAriaLabel(item.id, badgeLabel)}
+                    aria-label={navBadgeAriaLabel(item.id, badgeLabel)}
+                  >
+                    {badgeLabel}
+                  </Link>
+                ) : badgeLabel ? (
                   <span
                     className={NAV_ATTENTION_BADGE_CLASS}
                     title={navBadgeAriaLabel(item.id, badgeLabel)}
@@ -100,8 +115,8 @@ export function SidebarNav({
                   >
                     {badgeLabel}
                   </span>
-                )}
-              </Link>
+                ) : null}
+              </div>
             );
           })}
         </div>

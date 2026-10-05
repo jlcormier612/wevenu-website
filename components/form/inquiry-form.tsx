@@ -280,11 +280,13 @@ export function InquiryForm({
   config,
   initialMode = null,
   initialEventDate,
+  tourOriginToken = null,
 }: {
   embedKey: string;
   config: PublicInquiryFormConfig;
   initialMode?: InquiryMode | null;
   initialEventDate?: string;
+  tourOriginToken?: string | null;
 }) {
   const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm, tourProtectionRequired, tourProtectionKind, tourProtectionFeeCents } = config;
   const primary = venue.primaryColor || "#5D6F5D";
@@ -521,6 +523,8 @@ export function InquiryForm({
             turnstileToken,
             qrCampaignId,
             sourceData,
+            originToken: tourOriginToken
+              ?? new URLSearchParams(window.location.search).get("o"),
             preferredCommunicationChannels,
             smsPermissionGranted: smsPermissionGranted && !!phone.trim(),
           }),

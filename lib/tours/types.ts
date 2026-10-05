@@ -138,6 +138,8 @@ export type BookingResult = {
   protectionRequired?: boolean;
   checkoutUrl?: string;
   protectionRequestId?: string;
+  /** Public booking attached to an existing Lead — not a new opportunity. */
+  attachedExistingLead?: boolean;
 };
 
 // Coordinator Tour Scheduling — the Lead already exists, so there's no

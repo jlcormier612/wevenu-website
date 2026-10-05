@@ -12,11 +12,11 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
+import { CalendarClock, ChevronLeft, ChevronRight, Clock, Link2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  getCoordinatorTourSlotsAction, previewRescheduleTourEmailAction, previewScheduleTourEmailAction, previewTourConfirmationRequestAction, requestTourConfirmationAction, rescheduleTourAction, scheduleTourAction, updateTourStatusAction,
+  getCoordinatorTourSlotsAction, getLeadPublicTourSchedulingUrlAction, previewRescheduleTourEmailAction, previewScheduleTourEmailAction, previewTourConfirmationRequestAction, requestTourConfirmationAction, rescheduleTourAction, scheduleTourAction, updateTourStatusAction,
 } from "@/app/(app)/leads/[id]/actions";
 import { TourSendPreview } from "@/components/leads/tour-send-preview";
 import { Button } from "@/components/ui/button";
@@ -346,6 +346,7 @@ export function TourPanel({ leadId, tourAppointments, now, venueTimezone = null 
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [rescheduleId, setRescheduleId] = React.useState<string | null>(null);
   const [instanceKey, setInstanceKey] = React.useState(0);
+  const [copyingLink, setCopyingLink] = React.useState(false);
   const router = useRouter();
 
   // A fresh instanceKey each open remounts SlotPickerBody with clean state
@@ -365,9 +366,33 @@ export function TourPanel({ leadId, tourAppointments, now, venueTimezone = null 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Tours</CardTitle>
-          <Button size="sm" onClick={openSchedule}>
-            <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={copyingLink}
+              onClick={async () => {
+                setCopyingLink(true);
+                try {
+                  const path = await getLeadPublicTourSchedulingUrlAction(leadId);
+                  if (!path) {
+                    toast.error("Tour scheduling link is not available for this lead.");
+                    return;
+                  }
+                  const url = `${window.location.origin}${path}`;
+                  await navigator.clipboard.writeText(url);
+                  toast.success("Tour scheduling link copied.");
+                } finally {
+                  setCopyingLink(false);
+                }
+              }}
+            >
+              <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy scheduling link
+            </Button>
+            <Button size="sm" onClick={openSchedule}>
+              <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
+            </Button>
+          </div>
         </CardHeader>
         {sorted.length > 0 && (
           <CardContent className="divide-y divide-border/50 pt-0">

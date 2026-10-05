@@ -64,8 +64,10 @@ async function sendCoordinatorNotification(result: BookingResult): Promise<void>
       `Duration: ${result.duration ?? 60} minutes`,
       result.contactName ? `Contact: ${result.contactName}` : null,
       "",
-      "A new lead has been created in Hello to Cheers.",
-      `${appUrl}/leads`,
+      result.attachedExistingLead
+        ? "A tour was scheduled on an existing lead in Hello to Cheers."
+        : "A new lead has been created in Hello to Cheers.",
+      result.leadId ? `${appUrl}/leads/${result.leadId}` : `${appUrl}/leads`,
     ].filter(Boolean).join("\n"),
   });
   if (result.intakeAttemptId) {

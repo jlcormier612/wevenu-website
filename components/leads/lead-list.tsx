@@ -198,13 +198,7 @@ export function LeadList({
   }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, unattendedIdSet]);
 
   const statusCounts = React.useMemo(() => {
-    const population = attentionFilter === "open" || attentionFilter === "unseen"
-      ? queue.filter((l) => {
-        if (!leadIsOpenOpportunity(l)) return false;
-        if (attentionFilter === "unseen" && l.venueSeenAt) return false;
-        return true;
-      })
-      : queue;
+    const population = queue;
     const map = new Map<string, number>([["all", population.length]]);
     ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
     population.forEach((l) => {
@@ -214,7 +208,7 @@ export function LeadList({
     map.set("booked", currentBookedCount);
     map.set("lost", leads.filter(isLostLead).length);
     return map;
-  }, [queue, leads, attentionFilter, currentBookedCount]);
+  }, [queue, leads, currentBookedCount]);
 
   type StageChip = { key: string; label: string; kind: "active" | "booked" | "lost" };
   const activeChips: StageChip[] = [
@@ -232,13 +226,7 @@ export function LeadList({
   ];
 
   const activeEventTypes = React.useMemo(() => {
-    const population = attentionFilter === "open" || attentionFilter === "unseen"
-      ? queue.filter((l) => {
-        if (!leadIsOpenOpportunity(l)) return false;
-        if (attentionFilter === "unseen" && l.venueSeenAt) return false;
-        return true;
-      })
-      : queue;
+    const population = queue;
     const seen = new Map<string, number>();
     population.forEach((l) => {
       const key = normalizeEventType(l.eventType);
@@ -246,10 +234,16 @@ export function LeadList({
       seen.set(key, (seen.get(key) ?? 0) + 1);
     });
     return [...seen.entries()].sort((a, b) => b[1] - a[1]);
-  }, [queue, attentionFilter]);
+  }, [queue]);
 
   const hasActiveFilters =
     statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
+
+  function showAllActiveLeads() {
+    setAttentionFilter("all");
+    setStatusFilter("all");
+    router.replace("/leads");
+  }
 
   return (
     <div className="space-y-4">
@@ -261,7 +255,7 @@ export function LeadList({
           </p>
           <button
             type="button"
-            onClick={() => setAttentionFilter("all")}
+            onClick={() => showAllActiveLeads()}
             className="text-xs font-medium text-primary hover:underline"
           >
             Show all active leads
@@ -275,7 +269,7 @@ export function LeadList({
           </p>
           <button
             type="button"
-            onClick={() => setAttentionFilter("all")}
+            onClick={() => showAllActiveLeads()}
             className="text-xs font-medium text-primary hover:underline"
           >
             Show all active leads
@@ -289,7 +283,7 @@ export function LeadList({
           </p>
           <button
             type="button"
-            onClick={() => setAttentionFilter("all")}
+            onClick={() => showAllActiveLeads()}
             className="text-xs font-medium text-primary hover:underline"
           >
             Show all active leads
@@ -303,7 +297,7 @@ export function LeadList({
           </p>
           <button
             type="button"
-            onClick={() => setAttentionFilter("all")}
+            onClick={() => showAllActiveLeads()}
             className="text-xs font-medium text-primary hover:underline"
           >
             Show all active leads
@@ -355,12 +349,18 @@ export function LeadList({
               </Link>
             );
           }
-          const active = statusFilter === chip.key;
+          const active = chip.key === "all"
+            ? attentionFilter === "all" && statusFilter === "all"
+            : statusFilter === chip.key;
           return (
             <button
               key={chip.key}
               type="button"
               onClick={() => {
+                if (chip.key === "all") {
+                  showAllActiveLeads();
+                  return;
+                }
                 setStatusFilter(chip.key);
                 if (chip.kind === "lost") router.replace("/leads?view=lost");
                 else if (initialOutcome === "lost") router.replace("/leads");
@@ -397,7 +397,7 @@ export function LeadList({
       )}
 
       {hasActiveFilters && (
-        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); setAttentionFilter("all"); }}
+        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); showAllActiveLeads(); }}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
           Clear all filters
         </button>

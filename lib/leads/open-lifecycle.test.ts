@@ -117,10 +117,10 @@ describe("Leads surfaces", () => {
     assert.match(pipelinePage, /PipelineBoard leads=\{inventory\}/);
     assert.doesNotMatch(pipelinePage, /activeSalesLeads\(inventory\)/);
     assert.match(list, /isOpenLeadLifecycle/);
+    assert.match(list, /isOpenLeadOpportunity/);
     assert.match(list, /kind: "booked"/);
     assert.match(list, /href="\/clients\?filter=all"/);
     assert.match(list, /view=lost/);
-    assert.match(list, /transitionKindForCanonical/);
     assert.doesNotMatch(list, /scope === "closed"/);
 
     const getLeadsFn = repo.slice(repo.indexOf("export async function getLeads"), repo.indexOf("export async function getLead"));

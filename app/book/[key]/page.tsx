@@ -5,7 +5,7 @@ import { InquiryForm } from "@/components/form/inquiry-form";
 import { getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
 import { createClient } from "@/integrations/supabase/server";
 
-type Props = { params: Promise<{ key: string }> };
+type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ o?: string; qr?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { key } = await params;
@@ -19,8 +19,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function TourBookingPage({ params }: Props) {
+export default async function TourBookingPage({ params, searchParams }: Props) {
   const { key } = await params;
+  const { o: tourOriginToken } = await searchParams;
   const supabase = await createClient();
   const { data: venueRow } = await supabase
     .from("venues")
@@ -43,6 +44,7 @@ export default async function TourBookingPage({ params }: Props) {
       embedKey={venueRow.embed_key}
       config={config}
       initialMode="schedule_tour"
+      tourOriginToken={tourOriginToken ?? null}
     />
   );
 }

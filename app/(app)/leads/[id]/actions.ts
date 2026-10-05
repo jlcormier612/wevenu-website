@@ -41,6 +41,7 @@ import {
   requestTourConfirmation,
   rescheduleTour,
   scheduleTourForLead,
+  getLeadPublicTourSchedulingUrl,
   updateTourStatus,
 } from "@/lib/tours/service";
 import type { TourSendPreviewResult } from "@/lib/tours/service";
@@ -286,6 +287,10 @@ export async function completeFollowUpAction(
 
 export async function getCoordinatorTourSlotsAction(startDate: string, endDate: string): Promise<TourSlot[]> {
   return getCoordinatorTourSlots(startDate, endDate);
+}
+
+export async function getLeadPublicTourSchedulingUrlAction(leadId: string): Promise<string | null> {
+  return getLeadPublicTourSchedulingUrl(leadId);
 }
 
 export async function scheduleTourAction(leadId: string, slotStart: string, notes?: string): Promise<CoordinatorTourResult> {

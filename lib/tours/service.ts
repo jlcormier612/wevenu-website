@@ -18,6 +18,22 @@ import {
 import { advanceLeadSalesStageIfForward } from "@/lib/leads/service";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+import { checkRateLimit, isNearRateLimit } from "@/lib/lead-intake/rate-limit";
+import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/lead-intake/turnstile";
+import { isForwardSalesStageMove, isSalesStage } from "@/lib/leads/sales-stages";
+import { normalizeEmail } from "@/lib/leads/duplicate-detection";
+import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
+import { triggerSequencesForRelationship } from "@/lib/message-sequences/service";
+import {
+  createTourOriginToken,
+  tourOriginSigningSecret,
+  verifyTourOriginToken,
+} from "@/lib/tours/origin-context";
+import { publicTourSchedulingPathForLead } from "@/lib/tours/public-link";
+import {
+  decidePublicTourAttach,
+  type PublicTourLeadRow,
+} from "@/lib/tours/public-tour-attach";
 import { loadVenueProtectionByTourKey, startProtectedTour, venueRequiresPublicProtection } from "@/lib/tours/protection";
 import { isConnectEligible, type TourProtectionMode } from "@/lib/tours/protection-rules";
 import { canHardDeleteTourAppointment } from "@/lib/tours/delete-guard";
@@ -151,15 +167,238 @@ const TOUR_BOOK_ERRORS: Record<string, string> = {
   slot_too_far: "This slot is too far in the future.",
   invalid_key: "This booking link is not valid.",
   event_type_required: "Event type is required.",
+  event_type_not_accepted: "That event type is not accepted for this venue.",
   date_unavailable: "That date is no longer available. Please choose another date.",
   protection_required: "This venue requires a payment step before the tour can be booked.",
+  lead_not_found: "This scheduling link is not valid.",
+  lead_not_open: "This scheduling link is no longer valid.",
 };
+
+function mapLeadAttachRow(row: {
+  id: string;
+  venue_id: string;
+  sales_stage: string | null;
+  email: string | null;
+  partner_email: string | null;
+  relationship_id: string | null;
+}): PublicTourLeadRow {
+  return {
+    id: row.id,
+    venueId: row.venue_id,
+    salesStage: row.sales_stage,
+    email: row.email,
+    partnerEmail: row.partner_email,
+    relationshipId: row.relationship_id,
+  };
+}
+
+async function loadOriginLeadForToken(
+  admin: ReturnType<typeof createAdminClient>,
+  originToken: string | null | undefined,
+): Promise<{ originLead: PublicTourLeadRow | null }> {
+  const token = originToken?.trim();
+  if (!token) return { originLead: null };
+  const secret = tourOriginSigningSecret();
+  if (!secret) return { originLead: null };
+  const payload = verifyTourOriginToken(token, secret);
+  if (!payload) return { originLead: null, reject: true };
+  const { data } = await admin
+    .from("leads")
+    .select("id, venue_id, sales_stage, email, partner_email, relationship_id")
+    .eq("id", payload.leadId)
+    .maybeSingle<{
+      id: string;
+      venue_id: string;
+      sales_stage: string | null;
+      email: string | null;
+      partner_email: string | null;
+      relationship_id: string | null;
+    }>();
+  return { originLead: data ? mapLeadAttachRow(data) : null };
+}
+
+async function loadOpenEmailMatches(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  email: string | null | undefined,
+): Promise<PublicTourLeadRow[]> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return [];
+  const escaped = normalized.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  const { data } = await admin
+    .from("leads")
+    .select("id, venue_id, sales_stage, email, partner_email, relationship_id")
+    .eq("venue_id", venueId)
+    .or(`email.ilike.${escaped},partner_email.ilike.${escaped}`);
+  return ((data ?? []) as Array<{
+    id: string;
+    venue_id: string;
+    sales_stage: string | null;
+    email: string | null;
+    partner_email: string | null;
+    relationship_id: string | null;
+  }>)
+    .map(mapLeadAttachRow)
+    .filter((row) => isOpenLeadLifecycle(row.salesStage));
+}
+
+export async function resolvePublicTourAttachDecision(opts: {
+  admin: ReturnType<typeof createAdminClient>;
+  venueId: string;
+  originToken?: string | null;
+  email?: string | null;
+}): Promise<ReturnType<typeof decidePublicTourAttach>> {
+  const { originLead } = await loadOriginLeadForToken(opts.admin, opts.originToken);
+  const openEmailMatches = opts.originToken?.trim()
+    ? []
+    : await loadOpenEmailMatches(opts.admin, opts.venueId, opts.email);
+  return decidePublicTourAttach({
+    venueId: opts.venueId,
+    originToken: opts.originToken,
+    signingSecret: tourOriginSigningSecret(),
+    originLead,
+    email: opts.email,
+    openEmailMatches,
+  });
+}
+
+async function enforcePublicTourIntakeGuards(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  opts?: { turnstileToken?: string | null; ipAddress?: string | null },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rateLimit = await checkRateLimit(admin, { venueId, ipAddress: opts?.ipAddress ?? null });
+  if (!rateLimit.withinLimit) return { ok: false, error: rateLimit.reason };
+  if (isTurnstileConfigured()) {
+    const nearLimit = await isNearRateLimit(admin, { venueId, ipAddress: opts?.ipAddress ?? null });
+    const turnstileOk = await verifyTurnstileToken(opts?.turnstileToken ?? null, opts?.ipAddress ?? null);
+    if (nearLimit && !turnstileOk) {
+      return { ok: false, error: "Please complete the verification challenge and try again." };
+    }
+  }
+  return { ok: true };
+}
+
+async function advanceAttachedLeadToTourScheduled(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  leadId: string,
+): Promise<void> {
+  const { data: row } = await admin
+    .from("leads")
+    .select("sales_stage, relationship_id")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ sales_stage: string | null; relationship_id: string | null }>();
+  if (!row?.sales_stage || !isSalesStage(row.sales_stage)) return;
+  if (!isForwardSalesStageMove(row.sales_stage, "tour_scheduled")) return;
+  await admin
+    .from("leads")
+    .update({ sales_stage: "tour_scheduled" })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (row.relationship_id) {
+    void triggerSequencesForRelationship(
+      admin,
+      venueId,
+      row.relationship_id,
+      "lead_stage_changed",
+      "tour_scheduled",
+    ).catch((err) => console.error("Series enrollment (lead_stage_changed) failed:", err));
+  }
+}
+
+async function bookPublicTourOntoExistingLead(opts: {
+  admin: ReturnType<typeof createAdminClient>;
+  key: string;
+  venueId: string;
+  leadId: string;
+  slotStart: string;
+  fields: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    notes: string;
+  };
+}): Promise<BookingResult> {
+  const { data, error } = await opts.admin.rpc("book_public_tour_for_lead", {
+    p_embed_key: opts.key,
+    p_lead_id: opts.leadId,
+    p_slot_start: opts.slotStart,
+    p_notes: opts.fields.notes ?? null,
+  });
+  if (error) {
+    const fail = tourCapacityFailureFromUnknown(error);
+    return { ok: false, error: fail ? TOUR_BOOK_ERRORS.slot_unavailable : error.message };
+  }
+  const d = data as Record<string, unknown>;
+  if (!d?.ok) {
+    return { ok: false, error: TOUR_BOOK_ERRORS[d?.error as string] ?? "Could not book this slot. Please try again." };
+  }
+  const appointmentId = d.appointmentId as string;
+  const leadId = d.leadId as string;
+  const relationshipId = (d.relationshipId as string | null) ?? null;
+  const scheduledAt = d.scheduledAt as string;
+  const duration = d.duration as number;
+  const venueName = d.venueName as string;
+
+  const { data: apptRow } = await opts.admin
+    .from("tour_appointments")
+    .select("contact_email, contact_name, contact_phone, confirm_token, venues(email, primary_color)")
+    .eq("id", appointmentId)
+    .maybeSingle<{
+      contact_email: string | null;
+      contact_name: string | null;
+      contact_phone: string | null;
+      confirm_token: string;
+      venues: { email: string | null; primary_color: string | null } | null;
+    }>();
+
+  await advanceAttachedLeadToTourScheduled(opts.admin, opts.venueId, leadId);
+
+  if (apptRow?.confirm_token) {
+    void sendTourScheduled({
+      venueId: opts.venueId,
+      leadId,
+      relationshipId,
+      contactEmail: apptRow.contact_email ?? opts.fields.email,
+      contactName: apptRow.contact_name ?? `${opts.fields.firstName} ${opts.fields.lastName}`.trim(),
+      venueName,
+      primaryColor: apptRow.venues?.primary_color ?? null,
+      scheduledAt,
+      durationMinutes: duration,
+      confirmToken: apptRow.confirm_token,
+      timezone: null,
+    }).catch((err) => console.error("sendTourScheduled failed:", err));
+  }
+
+  return {
+    ok: true,
+    leadId,
+    relationshipId,
+    appointmentId,
+    scheduledAt,
+    venueName,
+    duration,
+    venueId: opts.venueId,
+    attachedExistingLead: true,
+    venueEmail: apptRow?.venues?.email ?? null,
+    venuePhone: d.venuePhone as string | null | undefined,
+    addressLine1: d.addressLine1 as string | null | undefined,
+    city: d.city as string | null | undefined,
+    stateRegion: d.stateRegion as string | null | undefined,
+    contactEmail: apptRow?.contact_email ?? opts.fields.email,
+    contactName: apptRow?.contact_name ?? `${opts.fields.firstName} ${opts.fields.lastName}`.trim(),
+    contactPhone: apptRow?.contact_phone ?? opts.fields.phone,
+  };
+}
 
 export async function bookTour(
   key: string,
   slotStart: string,
   fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: number | null; notes: string },
-  opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null; sourceData?: Record<string, unknown> },
+  opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null; sourceData?: Record<string, unknown>; originToken?: string | null },
 ): Promise<BookingResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
 
@@ -180,8 +419,37 @@ export async function bookTour(
     return { ok: false, error: TOUR_BOOK_ERRORS.invalid_key };
   }
 
+  const attach = await resolvePublicTourAttachDecision({
+    admin,
+    venueId: venueRow.id,
+    originToken: opts?.originToken,
+    email: fields.email,
+  });
+  if (attach.action === "reject") {
+    return { ok: false, error: attach.error };
+  }
+
   if (venueRequiresPublicProtection(venueRow)) {
-    return startProtectedTour({ key, slotStart, fields, ...opts });
+    return startProtectedTour({
+      key,
+      slotStart,
+      fields,
+      ...opts,
+      attachLeadId: attach.action === "attach" ? attach.leadId : null,
+    });
+  }
+
+  if (attach.action === "attach") {
+    const guards = await enforcePublicTourIntakeGuards(admin, venueRow.id, opts);
+    if (!guards.ok) return guards;
+    return bookPublicTourOntoExistingLead({
+      admin,
+      key,
+      venueId: venueRow.id,
+      leadId: attach.leadId,
+      slotStart,
+      fields,
+    });
   }
 
   // book_tour's own response carries booking-specific fields (appointmentId,
@@ -828,6 +1096,31 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
     .catch((err) => console.error("Lead stage advance on tour scheduling failed:", err));
 
   return { ...result, confirmationEmail };
+}
+
+/** Staff-generated, venue-bound public scheduler for an existing Lead. */
+export async function getLeadPublicTourSchedulingUrl(leadId: string): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, sales_stage")
+    .eq("id", leadId)
+    .eq("venue_id", venue.id)
+    .maybeSingle<{ id: string; sales_stage: string | null }>();
+  if (!lead || !isOpenLeadLifecycle(lead.sales_stage)) return null;
+  const { data: settings } = await supabase
+    .from("venues")
+    .select("tour_embed_key, tour_scheduling_enabled")
+    .eq("id", venue.id)
+    .maybeSingle<{ tour_embed_key: string | null; tour_scheduling_enabled: boolean }>();
+  if (!settings?.tour_scheduling_enabled || !settings.tour_embed_key) return null;
+  const secret = tourOriginSigningSecret();
+  if (!secret) return null;
+  const token = createTourOriginToken({ venueId: venue.id, leadId: lead.id }, secret);
+  return publicTourSchedulingPathForLead(settings.tour_embed_key, token);
 }
 
 export async function rescheduleTour(appointmentId: string, newSlotStart: string): Promise<CoordinatorTourResult> {

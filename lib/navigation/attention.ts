@@ -98,12 +98,16 @@ export function navBadgeAriaLabel(itemId: string, badgeLabel: string): string {
   }
 }
 
+export const UNSEEN_LEADS_ATTENTION_HREF = "/leads?attention=unseen";
+
 /** Destination when an attention badge is non-zero — same population as the count. */
 export function navAttentionHref(itemId: string, baseHref: string, count: number): string {
   if (count <= 0) return baseHref;
   switch (itemId) {
     case "leads":
-      return "/leads?attention=unseen";
+      // Unseen is a badge + explicit /leads?attention=unseen view.
+      // The Leads item itself always opens the full All population.
+      return baseHref;
     case "payments":
       return "/payments?filter=attention";
     case "contracts":

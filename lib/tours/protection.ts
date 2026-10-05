@@ -125,6 +125,8 @@ export async function startProtectedTour(opts: {
   ipAddress?: string | null;
   qrCampaignId?: string | null;
   sourceData?: Record<string, unknown>;
+  originToken?: string | null;
+  attachLeadId?: string | null;
 }): Promise<BookingResult> {
   const admin = createAdminClient();
   const venue = await loadVenueProtectionByTourKey(admin, opts.key);
@@ -137,67 +139,88 @@ export async function startProtectedTour(opts: {
   const feeCents = mode === "fee" ? venue.tour_protection_fee_cents : 0;
   const contactName = `${opts.fields.firstName} ${opts.fields.lastName}`.trim();
 
-  const outcome = await ingestLead({
-    supabase: admin,
-    venueId: venue.id,
-    source: "tour_scheduling",
-    trustTier: "direct",
-    ipAddress: opts.ipAddress ?? null,
-    turnstileToken: opts.turnstileToken ?? null,
-    rawPayload: { key: opts.key, slotStart: opts.slotStart, fields: opts.fields, protection: mode },
-    input: {
-      firstName: opts.fields.firstName,
-      lastName: opts.fields.lastName,
-      partnerFirstName: opts.fields.partnerName,
-      email: opts.fields.email,
-      phone: opts.fields.phone,
-      eventType: opts.fields.eventType,
-      eventDate: opts.fields.eventDate || null,
-      guestCount: opts.fields.guestCount,
-      inquiryMessage: opts.fields.notes,
-    },
-    create: async (normalized) => {
-      const { data, error } = await admin.rpc("ingest_lead", {
-        p_venue_id: venue.id,
-        p_source: "tour_scheduling",
-        p_input: {
-          firstName: normalized.firstName,
-          lastName: normalized.lastName,
-          partnerFirstName: normalized.partnerFirstName ?? opts.fields.partnerName,
-          email: normalized.email ?? "",
-          phone: normalized.phone ?? "",
-          eventType: normalized.eventType ?? "",
-          eventDate: normalized.eventDate,
-          guestCount: normalized.guestCount,
-          inquiryMessage: normalized.inquiryMessage ?? "",
-          inquiryMessageOrigin: "customer",
-          sourceData: {
-            ...(opts.sourceData ?? {}),
-            inquiry_mode: "schedule_tour",
-            slot: opts.slotStart,
-            tour_protection: mode,
-            custom_answers: (opts.sourceData?.custom_answers as Record<string, unknown> | undefined) ?? undefined,
-          },
-        },
-      });
-      if (error || !(data as { ok?: boolean } | null)?.ok) {
-        return { ok: false, error: (data as { error?: string } | null)?.error ?? error?.message ?? "Could not save your information." };
-      }
-      const created = data as { leadId: string; relationshipId: string; isReturningRelationship?: boolean };
-      return {
-        ok: true,
-        leadId: created.leadId,
-        relationshipId: created.relationshipId,
-        isReturningRelationship: created.isReturningRelationship === true,
-      };
-    },
-  });
+  let leadId: string;
+  let relationshipId: string | null;
+  let intakeAttemptId: string | null | undefined;
+  let attachedExistingLead = false;
 
-  if (!outcome.ok) return { ok: false, error: outcome.error };
+  if (opts.attachLeadId) {
+    const { data: existing } = await admin
+      .from("leads")
+      .select("id, relationship_id, sales_stage")
+      .eq("id", opts.attachLeadId)
+      .eq("venue_id", venue.id)
+      .maybeSingle<{ id: string; relationship_id: string | null; sales_stage: string | null }>();
+    if (!existing) return { ok: false, error: "This scheduling link is not valid." };
+    leadId = existing.id;
+    relationshipId = existing.relationship_id;
+    attachedExistingLead = true;
+  } else {
+    const outcome = await ingestLead({
+      supabase: admin,
+      venueId: venue.id,
+      source: "tour_scheduling",
+      trustTier: "direct",
+      ipAddress: opts.ipAddress ?? null,
+      turnstileToken: opts.turnstileToken ?? null,
+      rawPayload: { key: opts.key, slotStart: opts.slotStart, fields: opts.fields, protection: mode },
+      input: {
+        firstName: opts.fields.firstName,
+        lastName: opts.fields.lastName,
+        partnerFirstName: opts.fields.partnerName,
+        email: opts.fields.email,
+        phone: opts.fields.phone,
+        eventType: opts.fields.eventType,
+        eventDate: opts.fields.eventDate || null,
+        guestCount: opts.fields.guestCount,
+        inquiryMessage: opts.fields.notes,
+      },
+      create: async (normalized) => {
+        const { data, error } = await admin.rpc("ingest_lead", {
+          p_venue_id: venue.id,
+          p_source: "tour_scheduling",
+          p_input: {
+            firstName: normalized.firstName,
+            lastName: normalized.lastName,
+            partnerFirstName: normalized.partnerFirstName ?? opts.fields.partnerName,
+            email: normalized.email ?? "",
+            phone: normalized.phone ?? "",
+            eventType: normalized.eventType ?? "",
+            eventDate: normalized.eventDate,
+            guestCount: normalized.guestCount,
+            inquiryMessage: normalized.inquiryMessage ?? "",
+            inquiryMessageOrigin: "customer",
+            sourceData: {
+              ...(opts.sourceData ?? {}),
+              inquiry_mode: "schedule_tour",
+              slot: opts.slotStart,
+              tour_protection: mode,
+              custom_answers: (opts.sourceData?.custom_answers as Record<string, unknown> | undefined) ?? undefined,
+            },
+          },
+        });
+        if (error || !(data as { ok?: boolean } | null)?.ok) {
+          return { ok: false, error: (data as { error?: string } | null)?.error ?? error?.message ?? "Could not save your information." };
+        }
+        const created = data as { leadId: string; relationshipId: string; isReturningRelationship?: boolean };
+        return {
+          ok: true,
+          leadId: created.leadId,
+          relationshipId: created.relationshipId,
+          isReturningRelationship: created.isReturningRelationship === true,
+        };
+      },
+    });
+
+    if (!outcome.ok) return { ok: false, error: outcome.error };
+    leadId = outcome.leadId;
+    relationshipId = outcome.relationshipId;
+    intakeAttemptId = outcome.attemptId;
+  }
 
   const insert = await admin.from("tour_protection_requests").insert({
     venue_id: venue.id,
-    lead_id: outcome.leadId,
+    lead_id: leadId,
     stripe_account_id: venue.stripe_account_id,
     mode,
     fee_cents: feeCents,
@@ -223,7 +246,7 @@ export async function startProtectedTour(opts: {
     stripeAccountId: venue.stripe_account_id,
     requestId,
     venueId: venue.id,
-    leadId: outcome.leadId,
+    leadId,
     embedKey: opts.key,
     mode,
     feeCents,
@@ -252,14 +275,15 @@ export async function startProtectedTour(opts: {
 
   return {
     ok: true,
-    leadId: outcome.leadId,
-    relationshipId: outcome.relationshipId,
+    leadId,
+    relationshipId,
     venueId: venue.id,
     venueName: venue.name,
     contactEmail: opts.fields.email,
     contactName,
     contactPhone: opts.fields.phone,
-    intakeAttemptId: outcome.attemptId,
+    intakeAttemptId,
+    attachedExistingLead,
     protectionRequired: true,
     checkoutUrl: session.checkoutUrl,
     protectionRequestId: requestId,

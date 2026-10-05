@@ -3,11 +3,12 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
-import { publicTourSchedulingPath } from "@/lib/tours/public-link";
+import { publicTourSchedulingPath, publicTourSchedulingPathForLead } from "@/lib/tours/public-link";
 
 describe("public tour scheduling link", () => {
   it("uses the existing /book/{tour_embed_key} route and rejects a blank key", () => {
     assert.equal(publicTourSchedulingPath("abc key"), "/book/abc%20key");
+    assert.equal(publicTourSchedulingPathForLead("abc key", "tok"), "/book/abc%20key?o=tok");
     assert.equal(publicTourSchedulingPath("  "), null);
     assert.equal(publicTourSchedulingPath(null), null);
   });
