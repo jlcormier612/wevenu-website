@@ -202,7 +202,7 @@ async function loadOriginLeadForToken(
   const secret = tourOriginSigningSecret();
   if (!secret) return { originLead: null };
   const payload = verifyTourOriginToken(token, secret);
-  if (!payload) return { originLead: null, reject: true };
+  if (!payload) return { originLead: null };
   const { data } = await admin
     .from("leads")
     .select("id, venue_id, sales_stage, email, partner_email, relationship_id")
