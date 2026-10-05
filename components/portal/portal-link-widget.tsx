@@ -12,6 +12,7 @@ import {
 } from "@/app/(app)/clients/[id]/portal-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { initialPortalInviteEmail } from "@/lib/client-auth/initial-portal-invite-email";
 import type { ClientInvitation, SupportAccessGrant } from "@/lib/client-auth/types";
 
 const ROSE = "#D8A7AA";
@@ -26,14 +27,17 @@ const ROSE = "#D8A7AA";
 export function PortalLinkWidget({
   clientId,
   coupleName,
+  primaryEmail = null,
 }: {
   clientId: string;
   coupleName: string;
+  /** `clients.email` — initial invitation destination only. Not written back. */
+  primaryEmail?: string | null;
 }) {
   const [invitation, setInvitation] = React.useState<ClientInvitation | null>(null);
   const [grants, setGrants] = React.useState<SupportAccessGrant[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState(() => initialPortalInviteEmail(primaryEmail));
   const [inviting, setInviting] = React.useState(false);
   const [resending, setResending] = React.useState(false);
   const [revoking, setRevoking] = React.useState(false);
@@ -111,7 +115,7 @@ export function PortalLinkWidget({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Input type="email" placeholder="couple@example.com" value={email}
+            <Input type="email" value={email}
               onChange={(e) => setEmail(e.target.value)} className="h-9" />
             <Button type="button" size="sm" onClick={handleInvite} disabled={inviting}>
               {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Invite"}

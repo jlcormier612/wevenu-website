@@ -231,6 +231,28 @@ export async function updateEvent(client: DbClient, venueId: string, eventId: st
   }
 }
 
+/**
+ * Synchronized representation of the event date on the client row.
+ * Only event_date / end_date — never status, booked_at, or lifecycle fields.
+ */
+export async function syncClientEventDate(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+  eventDate: string,
+  endDate: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("clients") as any)
+    .update({
+      event_date: eventDate,
+      end_date: endDate && endDate !== eventDate ? endDate : null,
+    })
+    .eq("id", clientId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 export async function updateEventStatus(client: DbClient, venueId: string, eventId: string, status: EventStatus): Promise<void> {
   const { error } = await client.from("events").update({ status }).eq("id", eventId).eq("venue_id", venueId);
   if (error) {

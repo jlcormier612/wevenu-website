@@ -36,6 +36,7 @@ export function EventSetupPanel({
   eventDate,
   eventName,
   clientName,
+  clientEmail,
   eventType,
   spaceId,
   eventStartTime,
@@ -53,6 +54,7 @@ export function EventSetupPanel({
   eventDate: string;
   eventName: string;
   clientName: string | null;
+  clientEmail: string | null;
   eventType: string | null;
   spaceId: string | null;
   eventStartTime: string | null;
@@ -202,6 +204,7 @@ export function EventSetupPanel({
                     eventDate={eventDate}
                     eventName={eventName}
                     clientName={clientName}
+                    clientEmail={clientEmail}
                     eventType={eventType}
                     spaceId={spaceId}
                     eventStartTime={eventStartTime}
@@ -238,6 +241,7 @@ function SetupTool(props: {
   eventDate: string;
   eventName: string;
   clientName: string | null;
+  clientEmail: string | null;
   eventType: string | null;
   spaceId: string | null;
   eventStartTime: string | null;
@@ -292,7 +296,13 @@ function SetupTool(props: {
   if (step === "inventory") return <OpenTab label="Open Inventory" tab="inventory" onNavigateTab={onNavigateTab} />;
   if (step === "event_order") return <OpenTab label="Open Event Order" tab="event-order" onNavigateTab={onNavigateTab} />;
   if (step === "portal" && props.clientId) {
-    return <PortalLinkWidget clientId={props.clientId} coupleName={props.clientName?.trim() || "your client"} />;
+    return (
+      <PortalLinkWidget
+        clientId={props.clientId}
+        coupleName={props.clientName?.trim() || "your client"}
+        primaryEmail={props.clientEmail}
+      />
+    );
   }
   return null;
 }

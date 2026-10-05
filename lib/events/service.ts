@@ -17,6 +17,7 @@ import type {
 } from "@/lib/events/types";
 import { validateEventInput, validateEventStatus, validateTeamMemberInput } from "@/lib/events/validation";
 import { normalizeEventEndDate } from "@/lib/events/constants";
+import { clientEventDateSyncPatch } from "@/lib/events/sync-client-event-date";
 import { syncEventVendorAvailability } from "@/lib/vendor-availability/sync";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
@@ -138,6 +139,30 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
     }
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
 
+    const nextEnd = normalizeEventEndDate(input.eventDate, input.eventEndDate);
+
+    // Keep clients.event_date synchronized with the authoritative event date.
+    // Clients list Past / All Bookings split still reads the client copy.
+    if (before) {
+      const clientDatePatch = clientEventDateSyncPatch({
+        clientId: before.clientId,
+        eventStatus: before.status,
+        previousEventDate: before.eventDate,
+        previousEventEndDate: before.eventEndDate,
+        nextEventDate: input.eventDate,
+        nextEventEndDate: nextEnd,
+      });
+      if (clientDatePatch) {
+        await repo.syncClientEventDate(
+          supabase,
+          venueId,
+          clientDatePatch.clientId,
+          clientDatePatch.eventDate,
+          clientDatePatch.endDate,
+        );
+      }
+    }
+
     // Product Decisions (2026-07-08): relative due dates stay synchronized
     // with the event date automatically, until a task is explicitly
     // overridden. lib/playbooks handles which tasks that applies to.
@@ -146,7 +171,6 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
     }
 
     // Move Booked availability when the secured event date range (or name) changes.
-    const nextEnd = normalizeEventEndDate(input.eventDate, input.eventEndDate);
     if (
       before &&
       (before.eventDate !== input.eventDate

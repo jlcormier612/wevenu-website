@@ -616,6 +616,7 @@ export function EventDetail({
             eventDate={event.eventDate}
             eventName={event.name}
             clientName={event.clientName}
+            clientEmail={coupleEmail}
             eventType={event.eventType}
             spaceId={event.spaceId}
             eventStartTime={event.startTime}
