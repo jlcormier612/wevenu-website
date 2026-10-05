@@ -290,7 +290,16 @@ export async function getCoordinatorTourSlotsAction(startDate: string, endDate: 
 }
 
 export async function getLeadPublicTourSchedulingUrlAction(leadId: string): Promise<string | null> {
-  return getLeadPublicTourSchedulingUrl(leadId);
+  try {
+    return await getLeadPublicTourSchedulingUrl(leadId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("TOUR_ORIGIN_SIGNING_SECRET")) {
+      console.error("TOUR_ORIGIN_SIGNING_SECRET is not configured.");
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function scheduleTourAction(leadId: string, slotStart: string, notes?: string): Promise<CoordinatorTourResult> {

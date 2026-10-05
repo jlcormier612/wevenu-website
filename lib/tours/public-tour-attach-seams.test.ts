@@ -42,6 +42,9 @@ describe("public tour attach seams", () => {
     const origin = read("lib/tours/origin-context.ts");
     assert.match(origin, /createHmac\("sha256"/);
     assert.match(origin, /timingSafeEqual/);
+    assert.match(origin, /TOUR_ORIGIN_SIGNING_SECRET/);
+    assert.doesNotMatch(origin, /env\.CRON_SECRET/);
+    assert.doesNotMatch(origin, /env\.SUPABASE_SERVICE_ROLE_KEY/);
     const link = read("lib/tours/public-link.ts");
     assert.match(link, /publicTourSchedulingPathForLead/);
     assert.match(link, /\?o=/);

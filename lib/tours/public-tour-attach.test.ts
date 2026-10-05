@@ -150,6 +150,25 @@ describe("public tour attach decision", () => {
     );
   });
 
+  it("missing dedicated signing secret rejects originating context instead of guessing", () => {
+    const token = createTourOriginToken(
+      { venueId: VENUE, leadId: "lead-orig", nowMs: 1_000, ttlMs: 60_000 },
+      SECRET,
+    );
+    assert.equal(
+      decidePublicTourAttach({
+        venueId: VENUE,
+        originToken: token,
+        signingSecret: null,
+        originLead: openLead({ id: "lead-orig" }),
+        email: "couple@example.com",
+        openEmailMatches: [openLead({ id: "lead-orig" })],
+        nowMs: 1_500,
+      }).action,
+      "reject",
+    );
+  });
+
   it("does not attach by name only", () => {
     assert.deepEqual(
       decidePublicTourAttach({

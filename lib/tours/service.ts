@@ -26,6 +26,7 @@ import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
 import { triggerSequencesForRelationship } from "@/lib/message-sequences/service";
 import {
   createTourOriginToken,
+  requireTourOriginSigningSecret,
   tourOriginSigningSecret,
   verifyTourOriginToken,
 } from "@/lib/tours/origin-context";
@@ -1117,8 +1118,7 @@ export async function getLeadPublicTourSchedulingUrl(leadId: string): Promise<st
     .eq("id", venue.id)
     .maybeSingle<{ tour_embed_key: string | null; tour_scheduling_enabled: boolean }>();
   if (!settings?.tour_scheduling_enabled || !settings.tour_embed_key) return null;
-  const secret = tourOriginSigningSecret();
-  if (!secret) return null;
+  const secret = requireTourOriginSigningSecret();
   const token = createTourOriginToken({ venueId: venue.id, leadId: lead.id }, secret);
   return publicTourSchedulingPathForLead(settings.tour_embed_key, token);
 }

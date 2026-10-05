@@ -3,11 +3,18 @@
  *
  * The public URL must not accept a raw unsigned leadId. Payload is
  * venue-bound HMAC (SHA-256). Query param is `o`, not leadId.
+ *
+ * Signing and verification use only TOUR_ORIGIN_SIGNING_SECRET. There is
+ * no fallback to CRON_SECRET, SUPABASE_SERVICE_ROLE_KEY, or any other
+ * credential. This module is server-only — never import from Client Components.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const TOKEN_VERSION = "v1";
 const DEFAULT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+export const TOUR_ORIGIN_SIGNING_SECRET_ENV = "TOUR_ORIGIN_SIGNING_SECRET";
+export const TOUR_ORIGIN_SIGNING_SECRET_MISSING =
+  "TOUR_ORIGIN_SIGNING_SECRET is not configured.";
 
 export type TourOriginPayload = {
   venueId: string;
@@ -18,12 +25,19 @@ export type TourOriginPayload = {
 export function tourOriginSigningSecret(
   env: NodeJS.ProcessEnv = process.env,
 ): string | null {
-  const secret =
-    env.TOUR_ORIGIN_SIGNING_SECRET?.trim() ||
-    env.CRON_SECRET?.trim() ||
-    env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "";
+  const secret = env.TOUR_ORIGIN_SIGNING_SECRET?.trim() ?? "";
   return secret.length > 0 ? secret : null;
+}
+
+/** Throws when the dedicated signing secret is missing. Never substitutes. */
+export function requireTourOriginSigningSecret(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const secret = tourOriginSigningSecret(env);
+  if (!secret) {
+    throw new Error(TOUR_ORIGIN_SIGNING_SECRET_MISSING);
+  }
+  return secret;
 }
 
 function sign(body: string, secret: string): string {
