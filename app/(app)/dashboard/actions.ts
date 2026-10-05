@@ -2,9 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 
+import { dismissDashboardAttentionItem } from "@/lib/dashboard-system/attention-dismiss";
 import { dismissOnboarding, markLuvIntroSeen, getCurrentVenue } from "@/lib/venue/service";
 import { markMilestoneShown } from "@/lib/activation/service";
 import { isSupabaseConfigured } from "@/lib/env";
+
+export async function dismissDashboardAttentionAction(
+  itemKey: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await dismissDashboardAttentionItem(itemKey);
+  if (result.ok) revalidatePath("/dashboard");
+  return result;
+}
 
 /**
  * Server action: permanently dismiss the legacy Getting Started onboarding

@@ -11,6 +11,8 @@ const engine = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), 
 describe("Dashboard page information architecture", () => {
   it("renders Today's Focus with the NOW definition", () => {
     assert.match(page, /title="Today's Focus"/);
+    assert.match(page, /FocusAttentionRow/);
+    assert.match(page, /filterDismissedFocusItems/);
     assert.match(page, /What requires attention today/);
     assert.doesNotMatch(page, /title="Morning Briefing"/);
     assert.doesNotMatch(page, /title="Today's Attention"/);

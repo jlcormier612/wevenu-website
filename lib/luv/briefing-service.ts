@@ -25,6 +25,11 @@ import {
   paymentsAttentionHref,
   requestsAttentionHref,
 } from "@/lib/luv/briefing-attention-links";
+import {
+  contractsAttentionDismissalKey,
+  paymentsAttentionDismissalKey,
+  requestsAttentionDismissalKey,
+} from "@/lib/dashboard-system/attention-identity";
 import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 import { createClient } from "@/integrations/supabase/server";
 import { getContracts } from "@/lib/contracts/repository";
@@ -62,7 +67,7 @@ function buildNeedsAttentionNow(input: {
   contracts: Contract[];
   invoices: Invoice[];
   requests: PortalRequest[];
-  scheduleLinesByEventId: Map<string, { status: string; dueDate: string | null; amount: number }[]>;
+  scheduleLinesByEventId: Map<string, { id: string; status: string; dueDate: string | null; amount: number }[]>;
 }): BriefingItem[] {
   const contractsByEvent = byEventId(input.contracts as (Contract & { eventId: string | null })[]);
   const invoicesByEvent = byEventId(input.invoices as (Invoice & { eventId: string | null })[]);
@@ -84,6 +89,10 @@ function buildNeedsAttentionNow(input: {
           id: `briefing-contract-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
           label: section.label, detail: section.detail,
           link: contractAttentionHref(eventContracts, clientId),
+          conditionKey: contractsAttentionDismissalKey(
+            event.id,
+            eventContracts.map((c) => ({ id: c.id, status: c.status })),
+          ),
         });
       }
     }
@@ -96,6 +105,7 @@ function buildNeedsAttentionNow(input: {
           id: `briefing-payments-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
           label: section.label, detail: section.detail,
           link: paymentsAttentionHref(eventInvoices, clientId),
+          conditionKey: paymentsAttentionDismissalKey(event.id, eventScheduleLines),
         });
       }
     }
@@ -106,6 +116,10 @@ function buildNeedsAttentionNow(input: {
           id: `briefing-requests-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
           label: section.label, detail: section.detail,
           link: requestsAttentionHref(eventRequests, clientId),
+          conditionKey: requestsAttentionDismissalKey(
+            event.id,
+            eventRequests.map((r) => ({ id: r.id, status: r.status, dueDate: r.dueDate ?? null })),
+          ),
         });
       }
     }
@@ -138,10 +152,11 @@ async function loadReadinessInputs(supabase: DbClient, venueId: string) {
     list.push(line);
     linesByScheduleId.set(line.scheduleId, list);
   }
-  const scheduleLinesByEventId = new Map<string, { status: string; dueDate: string | null; amount: number }[]>();
+  const scheduleLinesByEventId = new Map<string, { id: string; status: string; dueDate: string | null; amount: number }[]>();
   for (const schedule of schedules) {
     if (!schedule.eventId) continue;
     const lines = (linesByScheduleId.get(schedule.id) ?? []).map((l) => ({
+      id: l.id,
       status: l.status,
       dueDate: l.dueDate,
       amount: l.amount,

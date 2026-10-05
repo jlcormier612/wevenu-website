@@ -29,6 +29,14 @@ import { formatDate as formatEventDate } from "@/lib/events/constants";
 import { formatDate as formatPaymentDate, formatMoney } from "@/lib/payments/constants";
 import type { DashboardData } from "@/lib/dashboard/types";
 import { formatVenueLocalClock } from "@/lib/venue/timezone";
+import {
+  eventTodayDismissalKey,
+  leadAttentionDismissalKey,
+  leadFollowUpTodayDismissalKey,
+  leadTaskDismissalKey,
+  paymentDueTodayDismissalKey,
+  tourTodayDismissalKey,
+} from "@/lib/dashboard-system/attention-identity";
 
 /** The certified 7-tier Priority Hierarchy (architecture doc §5) — only the 4 this Dashboard is allowed to surface are used here (Historical/Learning/Celebration are Reports/Luv territory, per the same doc's own routing table). */
 export type Priority = "critical" | "needs_attention_today" | "upcoming" | "informational";
@@ -53,6 +61,11 @@ export type ClassifiedItem = {
    * has a comparable item.
    */
   crossSectionSubject: string | null;
+  /**
+   * Stable Focus dismissal fingerprint for this recommendation condition.
+   * Not rendered copy. Not a list index.
+   */
+  dismissalKey?: string;
 };
 
 /** Collects the non-null cross-section subjects already claimed by a set of items. */
@@ -98,6 +111,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightSeverity: "warning",
       sortDate: null,
       crossSectionSubject: `lead:${lead.id}`,
+      dismissalKey: leadAttentionDismissalKey(lead, today),
     });
   }
 
@@ -123,6 +137,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightSeverity: "warning",
       sortDate: today,
       crossSectionSubject: `lead:${lead.id}`,
+      dismissalKey: leadFollowUpTodayDismissalKey(lead.id, lead.followUpDate ?? today),
     });
   }
 
@@ -142,6 +157,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightSeverity: "critical",
       sortDate: task.dueDate,
       crossSectionSubject: null,
+      dismissalKey: leadTaskDismissalKey(task.id, task.dueDate),
     });
   }
 
@@ -176,6 +192,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       // follow-up are different obligations about the same lead. Suppressing
       // the follow-up because a tour is showing would lose real information.
       crossSectionSubject: null,
+      dismissalKey: tourTodayDismissalKey(lead.id, lead.tourDate ?? today),
     });
   }
 
@@ -197,6 +214,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       rightSeverity: "critical",
       sortDate: item.eventDate,
       crossSectionSubject: null,
+      dismissalKey: item.conditionKey ?? item.id,
     });
   }
 
@@ -233,6 +251,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       // Same reasoning as today's tour item above: not the same obligation
       // as a lead follow-up, even for the same lead.
       crossSectionSubject: null,
+      dismissalKey: tourTodayDismissalKey(lead.id, lead.tourDate ?? today),
     });
   }
 
@@ -248,6 +267,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       sortDate: event.eventDate,
       // No other section currently emits a comparable per-event key.
       crossSectionSubject: null,
+      dismissalKey: eventTodayDismissalKey(event.id, event.eventDate),
     });
   }
 
@@ -267,6 +287,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       // payment items are overdue/today-only), so the match is honest and
       // future-proof rather than a coincidence of the current date filter.
       crossSectionSubject: `payment:${payment.scheduleId}`,
+      dismissalKey: paymentDueTodayDismissalKey(payment.id, payment.dueDate),
     });
   }
 
@@ -299,6 +320,7 @@ export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {
       rightLabel: formatEventDate(event.eventDate),
       sortDate: event.eventDate,
       crossSectionSubject: null,
+      dismissalKey: eventTodayDismissalKey(event.id, event.eventDate),
     });
   }
   return items.sort((a, b) => (a.sortDate ?? "9999").localeCompare(b.sortDate ?? "9999"));

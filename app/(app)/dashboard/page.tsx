@@ -9,6 +9,7 @@ import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
 import { BusinessSnapshotSection } from "@/components/dashboard/business-snapshot";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
+import { FocusAttentionRow } from "@/components/dashboard-system/focus-attention-row";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
 import { getBusinessSnapshot } from "@/lib/dashboard/business-snapshot";
@@ -23,6 +24,8 @@ import {
   classifyBriefingItems, classifyUpcomingItems,
   collectCrossSectionSubjects, excludeByCrossSectionSubject,
 } from "@/lib/dashboard-system/decision-engine";
+import { listDismissedDashboardAttentionKeys } from "@/lib/dashboard-system/attention-dismiss";
+import { filterDismissedFocusItems } from "@/lib/dashboard-system/attention-identity";
 import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
 import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
@@ -74,7 +77,8 @@ export default async function DashboardPage({ searchParams }: Props) {
   }
 
   const assembly = await forensicTime("rsc_focus_l1_assembly", async () => {
-    const allFocusItems = classifyBriefingItems(data);
+    const dismissedKeys = new Set(await listDismissedDashboardAttentionKeys());
+    const allFocusItems = filterDismissedFocusItems(classifyBriefingItems(data), dismissedKeys);
     const focusItems = allFocusItems.slice(0, 10);
 
     const claimedSubjects = collectCrossSectionSubjects(allFocusItems);
@@ -137,7 +141,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               Nothing urgent today — you&apos;re all caught up.
             </p>
           }
-          renderRow={(item) => <ClassifiedRow item={item} />}
+          renderRow={(item) => <FocusAttentionRow item={item} />}
         />
       </section>
 
