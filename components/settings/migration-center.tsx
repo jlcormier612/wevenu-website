@@ -19,6 +19,7 @@
  */
 import * as React from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -60,9 +61,13 @@ import {
 } from "@/lib/migration/review-display";
 import { formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
 import {
+  DEFAULT_SOURCE_SELECTION_LANE,
+  IMPORT_HISTORY_COPY,
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
+  laneAllowsImport,
   laneForRecognizedSource,
+  laneFromSourceQuery,
   namedSourceProfiles,
   sourceHistoryLabel,
   sourceKeyForLane,
@@ -71,7 +76,7 @@ import {
 } from "@/lib/migration/source-selection";
 import { recognizeSource } from "@/lib/migration/source-profiles";
 import type {
-  MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceProfile,
+  MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceKey, SourceProfile,
 } from "@/lib/migration/types";
 import type { CutoverPrerequisite } from "@/lib/setup-hub/bring-your-business";
 import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
@@ -412,10 +417,13 @@ export function MigrationCenter({
   sourceProfiles,
   cutover,
   venueId,
+  initialSource = null,
 }: {
   sourceProfiles: SourceProfile[];
   cutover: CutoverPrerequisite;
   venueId: string;
+  /** URL `?source=` — first-class lane including starting_fresh / honeybook / … */
+  initialSource?: string | null;
 }) {
   const [sessions, setSessions] = React.useState<MigrationSession[]>([]);
   const [activeSessionId, setActiveSessionId] = React.useState<string | null>(null);
@@ -426,9 +434,15 @@ export function MigrationCenter({
   const [loading, startLoading] = React.useTransition();
   const [starting, setStarting] = React.useState(false);
 
+  const router = useRouter();
+  const pathname = usePathname();
   const namedProfiles = React.useMemo(() => namedSourceProfiles(sourceProfiles), [sourceProfiles]);
-  const [lane, setLane] = React.useState<SourceSelectionLane>("another_system");
+  const [lane, setLaneState] = React.useState<SourceSelectionLane>(() =>
+    laneFromSourceQuery(initialSource),
+  );
+  const allowsImport = laneAllowsImport(lane);
   const sourceKey = sourceKeyForLane(lane);
+  const importSourceKey: SourceKey = sourceKey ?? "generic_csv";
   const [entityType, setEntityType] = React.useState<MigrationEntityType>("client");
   const [headers, setHeaders] = React.useState<string[]>([]);
   const [rows, setRows] = React.useState<CsvRow[]>([]);
@@ -442,8 +456,28 @@ export function MigrationCenter({
   const [commitmentDraft, setCommitmentDraft] = React.useState<NormalizedActiveCommitment | null>(null);
   const smartFileRef = React.useRef<HTMLInputElement>(null);
 
-  const selectedProfile = sourceProfiles.find((p) => p.key === sourceKey) ?? sourceProfiles[0];
-  const guidance = sourceSelectionGuidance(lane, selectedProfile ?? null);
+  const setLane = React.useCallback(
+    (next: SourceSelectionLane) => {
+      setLaneState(next);
+      if (next === DEFAULT_SOURCE_SELECTION_LANE) {
+        router.replace(pathname, { scroll: false });
+      } else {
+        router.replace(`${pathname}?source=${encodeURIComponent(next)}`, { scroll: false });
+      }
+    },
+    [pathname, router],
+  );
+
+  React.useEffect(() => {
+    const fromQuery = laneFromSourceQuery(initialSource);
+    setLaneState((current) => (current === fromQuery ? current : fromQuery));
+  }, [initialSource]);
+
+  const selectedProfile =
+    (sourceKey ? sourceProfiles.find((p) => p.key === sourceKey) : null) ??
+    sourceProfiles.find((p) => p.key === "generic_csv") ??
+    sourceProfiles[0];
+  const guidance = sourceSelectionGuidance(lane, allowsImport ? selectedProfile ?? null : null);
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const refreshSessions = React.useCallback(() => {
@@ -580,6 +614,10 @@ export function MigrationCenter({
   }
 
   async function handleStartAndUpload() {
+    if (!allowsImport) {
+      toast.error("Choose where you're moving from, or select I'm starting from scratch if you don't need to import yet.");
+      return;
+    }
     if (eventImportBlocked) {
       toast.error(cutover.message ?? "Add Event Spaces before importing dated Events.");
       return;
@@ -587,7 +625,7 @@ export function MigrationCenter({
     if (rows.length === 0) { toast.error("Choose a file first."); return; }
     setStarting(true);
     try {
-      const started = await startMigrationSessionAction(sourceKey);
+      const started = await startMigrationSessionAction(importSourceKey);
       if (!started.ok) { toast.error(started.message); return; }
       const sourceFile = pendingFile;
       const retained = sourceFile ? await uploadSourceFile(started.session.id, sourceFile) : null;
@@ -707,7 +745,7 @@ export function MigrationCenter({
     if (!commitmentDraft) return;
     setSmartWorking(true);
     try {
-      const result = await commitReviewedActiveCommitmentAction(sourceKey, commitmentDraft);
+      const result = await commitReviewedActiveCommitmentAction(importSourceKey, commitmentDraft);
       if (!result.ok) {
         toast.error("message" in result ? result.message : "Could not import this commitment.");
         return;
@@ -765,6 +803,8 @@ export function MigrationCenter({
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{guidance.body}</p>
           </div>
 
+          {allowsImport ? (
+          <>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-heading">What are you bringing over?</p>
             <Select value={entityType} onValueChange={(v) => setEntityType(v as MigrationEntityType)} items={COMMITTABLE_ENTITIES.map((e) => ({ value: e, label: ENTITY_LABEL[e] }))}>
@@ -827,11 +867,34 @@ export function MigrationCenter({
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-dashed border-border p-4">
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="text-sm" disabled={eventImportBlocked} />
-            <p className="mt-1 text-[11px] text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-border p-4 space-y-2">
+            <p className="text-xs font-medium text-heading">CSV file</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={eventImportBlocked}
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                Choose file
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFile}
+                className="sr-only"
+                disabled={eventImportBlocked}
+              />
+              <p className="text-xs text-muted-foreground">
+                {pendingFile ? pendingFile.name : "CSV"}
+              </p>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
               CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
-              We&apos;ll keep a copy of this file with your migration history. This never connects to or logs into another platform on your behalf.
+              We&apos;ll keep a copy of this file with your import history. This never connects to or logs into another platform on your behalf.
             </p>
           </div>
 
@@ -865,6 +928,8 @@ export function MigrationCenter({
               </div>
             </div>
           )}
+          </>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -992,10 +1057,10 @@ export function MigrationCenter({
         </Card>
       )}
 
-      {venueId ? (
+      {venueId && allowsImport ? (
         <FloorPlanMigrationImport
           venueId={venueId}
-          sourceKey={sourceKey}
+          sourceKey={importSourceKey}
           onSessionReady={(id) => {
             setActiveSessionId(id);
             openSession(id);
@@ -1008,12 +1073,12 @@ export function MigrationCenter({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">History</CardTitle>
-          <CardDescription>Every migration you've started, with what happened — leave and come back any time.</CardDescription>
+          <CardTitle className="text-base">{IMPORT_HISTORY_COPY.title}</CardTitle>
+          <CardDescription>{IMPORT_HISTORY_COPY.description}</CardDescription>
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No migrations started yet.</p>
+            <p className="text-sm text-muted-foreground">{IMPORT_HISTORY_COPY.empty}</p>
           ) : (
             <div className="space-y-1.5">
               {sessions.map((s) => {

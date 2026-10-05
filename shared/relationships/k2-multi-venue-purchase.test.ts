@@ -283,6 +283,24 @@ describe("K2 provisioning, activation, webhook, and schema", () => {
     assert.match(activateRoute, /parseExplicitPurchaserIsOwner/);
   });
 
+  it("replay immutability migration locks purchaser_is_owner after activation", () => {
+    const replay = readFileSync(
+      resolve("supabase/migrations/20261412600000_activation_replay_ownership_immutable.sql"),
+      "utf8",
+    );
+    const activateFn = replay.slice(
+      replay.indexOf("create or replace function public.activate_venue_enrollment("),
+      replay.indexOf("create or replace function public.activate_venue_enrollment(\n  p_activation_token text,\n  p_owner_user_id uuid\n)"),
+    );
+    const activatedAt = activateFn.indexOf("if v_enrollment.status = 'activated'");
+    const updateAt = activateFn.indexOf("set purchaser_is_owner = v_purchaser_is_owner");
+    assert.ok(activatedAt > 0 && updateAt > activatedAt);
+    assert.match(
+      activateFn,
+      /provision_enrollment_venue\(\s*v_enrollment\.id,\s*p_owner_user_id,\s*v_enrollment\.purchaser_is_owner\s*\)/,
+    );
+  });
+
   it("two provisions of one enrollment are serialized on the enrollment row", () => {
     const provision = migration.slice(
       migration.indexOf("create or replace function public.provision_enrollment_venue"),

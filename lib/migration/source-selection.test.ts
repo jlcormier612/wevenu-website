@@ -5,11 +5,15 @@ import { describe, it } from "node:test";
 
 import type { SourceProfile } from "@/lib/migration/types";
 import {
+  DEFAULT_SOURCE_SELECTION_LANE,
+  IMPORT_HISTORY_COPY,
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
   genericSourceProfile,
   hasSourceSpecificAcceleration,
+  laneAllowsImport,
   laneForRecognizedSource,
+  laneFromSourceQuery,
   namedSourceProfiles,
   sourceHistoryLabel,
   sourceKeyForLane,
@@ -59,23 +63,43 @@ describe("Migration Center source selection", () => {
     assert.doesNotMatch(labels, /Weven|The Knot|WeddingWire|Planning Pod|Event Temple|Aisle Planner|Perfect Venue|Eventbrite/i);
   });
 
-  it("exposes HoneyBook, Tripleseat, and Another system as first-class radios", () => {
+  it("exposes HoneyBook, Tripleseat, Another system, and starting from scratch as first-class radios", () => {
     assert.deepEqual(
       SOURCE_SELECTION_LANES.map((l) => l.id),
-      ["honeybook", "tripleseat", "another_system"],
+      ["honeybook", "tripleseat", "another_system", "starting_fresh"],
     );
     assert.equal(SOURCE_SELECTION_LANES.some((l) => l.label === "A system we recognize"), false);
     assert.equal(SOURCE_SELECTION_LANES.some((l) => /not sure/i.test(l.label)), false);
+    assert.match(
+      SOURCE_SELECTION_LANES.find((l) => l.id === "starting_fresh")!.label,
+      /starting from scratch/i,
+    );
+  });
+
+  it("defaults to starting from scratch as the reversible neutral state", () => {
+    assert.equal(DEFAULT_SOURCE_SELECTION_LANE, "starting_fresh");
+    assert.equal(laneAllowsImport("starting_fresh"), false);
+    assert.equal(sourceKeyForLane("starting_fresh"), null);
+    assert.equal(laneFromSourceQuery(null), "starting_fresh");
+    assert.equal(laneFromSourceQuery(""), "starting_fresh");
+    assert.equal(laneFromSourceQuery("starting_fresh"), "starting_fresh");
+    assert.equal(laneFromSourceQuery("not_sure"), "starting_fresh");
   });
 
   it("treats another system (and legacy not_sure) as first-class generic_csv paths", () => {
     assert.equal(sourceKeyForLane("another_system"), "generic_csv");
     assert.equal(sourceKeyForLane("not_sure"), "generic_csv");
+    assert.equal(laneAllowsImport("another_system"), true);
+    assert.equal(laneAllowsImport("honeybook"), true);
   });
 
   it("maps HoneyBook and Tripleseat lanes to their real source keys", () => {
     assert.equal(sourceKeyForLane("honeybook"), "honeybook");
     assert.equal(sourceKeyForLane("tripleseat"), "tripleseat");
+    assert.equal(laneFromSourceQuery("honeybook"), "honeybook");
+    assert.equal(laneFromSourceQuery("tripleseat"), "tripleseat");
+    assert.equal(laneFromSourceQuery("another_system"), "another_system");
+    assert.equal(laneFromSourceQuery("generic_csv"), "another_system");
   });
 
   it("detects real adapter acceleration only for HoneyBook and Tripleseat", () => {
@@ -99,10 +123,12 @@ describe("Migration Center source selection", () => {
   it("never frames generic or unsure paths as failure", () => {
     const another = sourceSelectionGuidance("another_system", genericSourceProfile(PROFILES));
     const unsure = sourceSelectionGuidance("not_sure", genericSourceProfile(PROFILES));
+    const fresh = sourceSelectionGuidance("starting_fresh", null);
     assert.match(another.body.toLowerCase(), /export|match/);
     assert.doesNotMatch(another.body.toLowerCase(), /unsupported|not available|cannot migrate/);
     assert.match(unsure.body.toLowerCase(), /guide|spreadsheet|csv/);
     assert.doesNotMatch(unsure.body.toLowerCase(), /unsupported|dead end/);
+    assert.match(fresh.body.toLowerCase(), /import later|change your mind/);
   });
 
   it("offers stronger guidance only for HoneyBook and Tripleseat", () => {
@@ -138,6 +164,13 @@ describe("Migration Center source selection", () => {
       "HoneyBook",
     );
   });
+
+  it("uses customer-facing import history copy", () => {
+    assert.equal(IMPORT_HISTORY_COPY.title, "Your import history");
+    assert.match(IMPORT_HISTORY_COPY.description, /Hello to Cheers/);
+    assert.doesNotMatch(IMPORT_HISTORY_COPY.description, /leave and come back/i);
+    assert.equal(IMPORT_HISTORY_COPY.empty, "No imports yet.");
+  });
 });
 
 describe("Migration Center UI matches adapter reality", () => {
@@ -151,9 +184,26 @@ describe("Migration Center UI matches adapter reality", () => {
     assert.doesNotMatch(ui, /lane === "recognized"/);
   });
 
-  it("still asks what you are bringing over and uploads a CSV", () => {
+  it("still asks what you are bringing over and uploads a CSV with designed control", () => {
     assert.match(ui, /What are you bringing over\?/);
     assert.match(ui, /accept="\.csv"/);
+    assert.match(ui, /Choose file/);
+    assert.match(ui, /className="sr-only"/);
+    assert.match(ui, /laneAllowsImport/);
+    assert.match(ui, /starting_fresh/);
+  });
+
+  it("renders reversible starting-from-scratch as a first-class radio", () => {
+    assert.match(ui, /SOURCE_SELECTION_LANES\.map/);
+    assert.match(ui, /DEFAULT_SOURCE_SELECTION_LANE/);
+    assert.match(ui, /initialSource/);
+    assert.match(page, /initialSource/);
+  });
+
+  it("uses import history copy, not migration jargon empty state", () => {
+    assert.match(ui, /IMPORT_HISTORY_COPY/);
+    assert.doesNotMatch(ui, /No migrations started yet/);
+    assert.doesNotMatch(ui, /leave and come back any time/);
   });
 
   it("does not name unverified systems on the page", () => {

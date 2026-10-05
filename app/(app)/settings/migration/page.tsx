@@ -11,7 +11,15 @@ import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Migration Center — Settings" };
 
-export default async function MigrationCenterPage() {
+export default async function MigrationCenterPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const sourceParam = params.source;
+  const initialSource = Array.isArray(sourceParam) ? sourceParam[0] ?? null : sourceParam ?? null;
+
   const [sourceProfiles, spaces, capacityRules, venue] = await Promise.all([
     getSourceProfilesAction(),
     getSpaces(),
@@ -36,6 +44,7 @@ export default async function MigrationCenterPage() {
         sourceProfiles={sourceProfiles}
         cutover={cutover}
         venueId={venue?.id ?? ""}
+        initialSource={initialSource}
       />
     </div>
   );
