@@ -131,9 +131,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         duplicateReview,
         bookingJourney,
         contextualObservations,
-        followUpTour: followUpPresentation.tour,
         followUpDraftEligible: followUpPresentation.draftEligible,
-        proposalSent: followUpPresentation.proposalSent,
         venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
         staffOptions: teamMembers.map((m) => ({ id: m.id, name: m.name })),
         currentStaffId: currentStaff?.id ?? null,
@@ -195,9 +193,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       photoUrl={photo?.displayedPhotoUrl ?? null}
       venueTimezone={page.venueTimezone}
       contextualObservations={page.contextualObservations}
-      followUpTour={page.followUpTour}
       followUpDraftEligible={page.followUpDraftEligible}
-      proposalSent={page.proposalSent}
       spaceOperatingMode={page.spaceOperatingMode}
       spacePreferences={page.spacePreferences}
       spaceAssignments={page.spaceAssignments}

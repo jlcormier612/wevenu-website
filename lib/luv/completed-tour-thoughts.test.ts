@@ -255,9 +255,12 @@ describe("completed-tour Thoughts presentation wiring", () => {
     assert.equal(gate.workflowIntent, "no_outreach");
   });
 
-  it("10. Shared architecture: Thoughts + drafts use FollowUpTourState / loadFollowUpTourState", () => {
+  it("10. Shared architecture: drafts use FollowUpTourState / loadFollowUpTourState; Thoughts card is not mounted", () => {
     assert.match(card, /FollowUpTourState/);
-    assert.match(panel, /followUpTour/);
+    assert.doesNotMatch(panel, /LeadMomentumCard/);
+    assert.match(panel, /ContextualLuvObservationsPanel/);
+    assert.match(panel, /Ask Luv to draft a follow-up/);
+    assert.doesNotMatch(panel, /emptyHint/);
     const drafts = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
     assert.match(drafts, /from "@\/lib\/luv\/follow-up-tour-loader"/);
     assert.match(drafts, /resolveFollowUpDraftEligibility/);
