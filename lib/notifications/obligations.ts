@@ -8,12 +8,14 @@
  * can import them without pulling next/headers via the Supabase server client.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { scheduledReminderAt } from "@/lib/notifications/schedule-times";
 import {
   CADENCE_DEFAULTS,
   coerceOffsetArray,
   normalizeBeforeDueOffsets,
   type ReminderCadence,
 } from "@/lib/notifications/reminder-cadence";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 
 export {
   BEFORE_DUE_OFFSET_OPTIONS,
@@ -48,23 +50,17 @@ export async function getReminderCadence(): Promise<ReminderCadence> {
   };
 }
 
-function offsetDatetime(datetimeStr: string, days: number): string {
-  const d = new Date(datetimeStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
-}
-
 function buildUpcomingReminderRows(opts: {
   venueId: string;
   dueDate: string;
   offsets: number[];
+  timezone: string | null;
   paymentLineItemId?: string;
   contractId?: string;
 }): Record<string, unknown>[] {
   const normalized = normalizeBeforeDueOffsets(opts.offsets);
   if (normalized.length === 0) return [];
 
-  const dueMidnight = opts.dueDate + "T08:00:00Z";
   const now = new Date();
   return normalized
     .map((days) => {
@@ -72,7 +68,7 @@ function buildUpcomingReminderRows(opts: {
         venue_id: opts.venueId,
         reminder_type: "upcoming",
         notify_role: "couple",
-        scheduled_for: offsetDatetime(dueMidnight, days),
+        scheduled_for: scheduledReminderAt(opts.dueDate, days, opts.timezone),
       };
       if (opts.paymentLineItemId) row.payment_line_item_id = opts.paymentLineItemId;
       if (opts.contractId) row.contract_id = opts.contractId;
@@ -100,10 +96,12 @@ export async function createRemindersForPaymentLineItem(
   await cancelUpcomingRemindersForPaymentLineItem(client, venueId, lineItemId);
   if (!dueDate) return;
 
+  const timezone = await getVenueTimezone(client, venueId);
   const reminders = buildUpcomingReminderRows({
     venueId,
     dueDate,
     offsets: cadence.paymentBeforeDueOffsets,
+    timezone,
     paymentLineItemId: lineItemId,
   });
   if (!reminders.length) return;
@@ -159,10 +157,12 @@ export async function createRemindersForContract(
   await cancelUpcomingRemindersForContract(client, venueId, contractId);
   if (!expiresAt) return;
 
+  const timezone = await getVenueTimezone(client, venueId);
   const reminders = buildUpcomingReminderRows({
     venueId,
     dueDate: expiresAt,
     offsets: cadence.contractBeforeDueOffsets,
+    timezone,
     contractId,
   });
   if (!reminders.length) return;

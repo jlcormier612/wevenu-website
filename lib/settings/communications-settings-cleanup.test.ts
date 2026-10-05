@@ -90,14 +90,23 @@ describe("reminder scheduled vs due semantics", () => {
     assert.equal(classifyPendingReminder("2026-09-21T18:00:00.000Z", now), "due_now");
   });
 
-  it("Settings UI labels future count as scheduled, not waiting to send", () => {
+  it("Settings UI labels future count as scheduled and due rows as waiting to send", () => {
     assert.match(notifSection, /label="scheduled"/);
-    assert.doesNotMatch(notifSection, /waiting to send/);
+    assert.match(notifSection, /label="waiting to send"/);
+    assert.match(notifSection, /waiting to send/);
     assert.match(
       notifSection,
-      /Scheduled reminders are sent automatically at their scheduled time/,
+      /Reminders send on the first automatic check after their scheduled time/,
     );
     assert.match(notifSection, /Processes reminders that are due now \(not future ones\)/);
+    assert.match(
+      notifSection,
+      /Automatic reminders are checked about every 30 minutes\. A reminder is sent on the first check after its scheduled time/,
+    );
+    assert.doesNotMatch(notifSection, /not stuck/);
+    assert.doesNotMatch(notifSection, /automatically at their scheduled time/);
+    assert.match(notifSection, /stats\.dueNow > 0/);
+    assert.match(notifSection, /nextLabel/);
   });
 });
 

@@ -19,8 +19,10 @@ import { createClient } from "@supabase/supabase-js";
 
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { appendEmailSignatureText, emailBrandFromVenue, escapeHtml } from "@/lib/email/venue-brand";
+import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
 import { buildReminderEmail } from "@/lib/notifications/templates";
 import { determineChannel, type NotificationRole, type ProcessResult } from "@/lib/notifications/types";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 
 const BATCH_SIZE = 50;  // reminders per run
 
@@ -254,12 +256,15 @@ export async function processReminders(): Promise<ProcessResult> {
         task.status !== "complete" &&
         task.status !== "waived"
       ) {
-        const next = new Date();
-        next.setDate(next.getDate() + reminder.after_due_recur_interval_days);
+        const timezone = await getVenueTimezone(supabase, reminder.venue_id);
         await supabase.from("task_reminders").insert({
           venue_id: reminder.venue_id, event_task_id: reminder.event_task_id,
           reminder_type: "overdue", notify_role: role,
-          scheduled_for: next.toISOString(),
+          scheduled_for: nextRecurringReminderAt(
+            reminder.scheduled_for,
+            reminder.after_due_recur_interval_days,
+            timezone,
+          ),
           after_due_recur_interval_days: reminder.after_due_recur_interval_days,
         });
       }

@@ -15,8 +15,10 @@ import { sendEmail } from "@/lib/email/send";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
 import type { ProcessResult } from "@/lib/notifications/types";
 import { cadenceIntervalDays, type CadenceLabel } from "@/lib/notifications/obligations";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 
 const BATCH_SIZE = 50;
 
@@ -25,12 +27,6 @@ function getServiceClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY for obligation engine.");
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
-
-function offsetDatetime(datetimeStr: string, days: number): string {
-  const d = new Date(datetimeStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
 }
 
 // ── Client-facing: payment/contract reminder sends + recurrence ────────────
@@ -150,10 +146,15 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
       // Recurrence: only "overdue"-phase rows carry an interval, and only
       // while the item is still genuinely unpaid.
       if (reminder.after_due_recur_interval_days && item.status === "pending") {
+        const timezone = await getVenueTimezone(supabase, reminder.venue_id);
         await supabase.from("task_reminders").insert({
           venue_id: reminder.venue_id, payment_line_item_id: item.id,
           reminder_type: "overdue", notify_role: "couple",
-          scheduled_for: offsetDatetime(now, reminder.after_due_recur_interval_days),
+          scheduled_for: nextRecurringReminderAt(
+            reminder.scheduled_for,
+            reminder.after_due_recur_interval_days,
+            timezone,
+          ),
           after_due_recur_interval_days: reminder.after_due_recur_interval_days,
         });
       }

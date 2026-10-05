@@ -19,6 +19,8 @@ import {
   presetToBeforeDueOffsets,
   reconcileVenueBeforeDueReminders,
 } from "@/lib/notifications/obligations";
+import { daysBetween } from "@/lib/playbooks/due-dates";
+import { utcToVenueLocalParts } from "@/lib/venue/timezone";
 
 describe("cadenceIntervalDays", () => {
   it("maps daily to 1", () => { assert.equal(cadenceIntervalDays("daily"), 1); });
@@ -70,7 +72,7 @@ describe("normalizeBeforeDueOffsets", () => {
   });
 });
 
-function mockInsertClient() {
+function mockInsertClient(timezone = "America/New_York") {
   const inserted: Record<string, unknown>[][] = [];
   const cancelled: { filters: [string, unknown][] }[] = [];
   const chain = {
@@ -80,14 +82,12 @@ function mockInsertClient() {
     },
     update: () => chain,
     eq: (col: string, val: unknown) => {
-      // collect cancel filter calls on the update path
       const last = cancelled[cancelled.length - 1];
       if (last) last.filters.push([col, val]);
       return chain;
     },
     then: (resolve: (v: unknown) => void) => resolve({ error: null }),
   };
-  // Each update() starts a new cancel call record
   const originalUpdate = chain.update;
   chain.update = () => {
     cancelled.push({ filters: [] });
@@ -95,16 +95,32 @@ function mockInsertClient() {
   };
 
   return {
-    client: { from: () => chain } as never,
+    client: {
+      from: (table: string) => {
+        if (table === "venues") {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({ data: { timezone } }),
+              }),
+            }),
+          };
+        }
+        return chain;
+      },
+    } as never,
     inserted,
     cancelled,
   };
 }
 
-function scheduledOffsets(rows: Record<string, unknown>[], dueDate: string): number[] {
-  const due = new Date(dueDate + "T08:00:00Z").getTime();
+function scheduledOffsets(rows: Record<string, unknown>[], dueDate: string, timezone = "America/New_York"): number[] {
   return rows
-    .map((r) => Math.round((new Date(r.scheduled_for as string).getTime() - due) / 86_400_000))
+    .map((r) => {
+      const { date, time } = utcToVenueLocalParts(r.scheduled_for as string, timezone);
+      assert.equal(time, "10:00");
+      return daysBetween(dueDate, date);
+    })
     .sort((a, b) => a - b);
 }
 
@@ -268,6 +284,15 @@ describe("reconcileVenueBeforeDueReminders (changing a schedule)", () => {
     const paidItems = [{ id: "pay-paid", due_date: "2030-01-01", status: "paid" }]; // must not appear in pending query
 
     function tableClient(table: string) {
+      if (table === "venues") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { timezone: "America/New_York" } }),
+            }),
+          }),
+        };
+      }
       if (table === "payment_line_items") {
         const chain: Record<string, unknown> = {};
         const self = () => chain;

@@ -109,7 +109,11 @@ export default async function CommunicationsAutomationSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NotificationsSection initialStats={notifStats} emailConfigured={isEmailConfigured()} />
+          <NotificationsSection
+            initialStats={notifStats}
+            emailConfigured={isEmailConfigured()}
+            venueTimezone={venue?.timezone ?? null}
+          />
         </CardContent>
       </Card>
 

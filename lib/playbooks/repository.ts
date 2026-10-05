@@ -1,6 +1,8 @@
 import { createClient } from "@/integrations/supabase/server";
 import { cadenceIntervalDays, getReminderCadence } from "@/lib/notifications/obligations";
+import { scheduledReminderAt } from "@/lib/notifications/schedule-times";
 import { clampDaysOffset, daysBetween, offsetDate } from "@/lib/playbooks/due-dates";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 import type {
   EventPlaybookApplication,
   EventReadiness,
@@ -738,11 +740,11 @@ async function createRemindersForTask(
     : "coordinator";
 
   const beforeDays = task.reminderBeforeDays ?? DEFAULT_REMINDER_BEFORE_DAYS;
-  const dueMidnight = dueDate + "T08:00:00Z"; // send reminder at 8am UTC on that day
+  const timezone = await getVenueTimezone(client, venueId);
 
   // Pre-due-date reminders (e.g., 7 days before, 3 days before, 1 day before)
   for (const days of beforeDays) {
-    const scheduledFor = offsetDatetime(dueMidnight, -days);
+    const scheduledFor = scheduledReminderAt(dueDate, -days, timezone);
     // Only schedule if the reminder is in the future
     if (new Date(scheduledFor) > new Date()) {
       reminders.push({
@@ -757,7 +759,7 @@ async function createRemindersForTask(
   reminders.push({
     venue_id: venueId, event_task_id: eventTaskId,
     reminder_type: "due_today", notify_role: notifyRole,
-    scheduled_for: dueMidnight,
+    scheduled_for: scheduledReminderAt(dueDate, 0, timezone),
   });
 
   // Overdue escalation (always to coordinator regardless of task owner)
@@ -765,14 +767,14 @@ async function createRemindersForTask(
     reminders.push({
       venue_id: venueId, event_task_id: eventTaskId,
       reminder_type: "escalation", notify_role: "coordinator",
-      scheduled_for: offsetDatetime(dueMidnight, task.escalationAfterDays),
+      scheduled_for: scheduledReminderAt(dueDate, task.escalationAfterDays, timezone),
     });
   } else {
     // Default: escalate to coordinator 3 days after overdue if no custom rule
     reminders.push({
       venue_id: venueId, event_task_id: eventTaskId,
       reminder_type: "overdue", notify_role: "coordinator",
-      scheduled_for: offsetDatetime(dueMidnight, 3),
+      scheduled_for: scheduledReminderAt(dueDate, 3, timezone),
     });
   }
 
@@ -788,7 +790,7 @@ async function createRemindersForTask(
       reminders.push({
         venue_id: venueId, event_task_id: eventTaskId,
         reminder_type: "overdue", notify_role: "couple",
-        scheduled_for: offsetDatetime(dueMidnight, 1),
+        scheduled_for: scheduledReminderAt(dueDate, 1, timezone),
         after_due_recur_interval_days: interval,
       });
     }
@@ -918,12 +920,6 @@ export async function updateEventTaskDueDate(
       notifyOnAssign: false,
     });
   }
-}
-
-function offsetDatetime(datetimeStr: string, days: number): string {
-  const d = new Date(datetimeStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
 }
 
 export async function completeEventTask(
