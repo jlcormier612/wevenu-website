@@ -180,6 +180,8 @@ export default async function WorkspaceLayout({
       venueLogo={venue.logoUrl}
       staffRole={staffRole}
       pathname={pathname}
+      activeVenueId={boot.status === "ready" ? boot.venueId : venue.id}
+      memberships={boot.memberships}
     >
       {children}
     </WorkspaceShell>

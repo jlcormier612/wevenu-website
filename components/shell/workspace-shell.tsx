@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { WorkspaceShellHeader } from "@/components/shell/workspace-shell-header";
+import type { VenueMembershipSummary } from "@/lib/venue/active-context";
 import { cn } from "@/lib/utils";
 
 /**
@@ -32,6 +33,8 @@ export function WorkspaceShell({
   venueLogo,
   staffRole = null,
   pathname,
+  activeVenueId,
+  memberships = [],
   children,
 }: {
   email: string;
@@ -39,6 +42,8 @@ export function WorkspaceShell({
   venueLogo?: string | null;
   staffRole?: string | null;
   pathname: string;
+  activeVenueId?: string;
+  memberships?: VenueMembershipSummary[];
   children: ReactNode;
 }) {
   const isInboxWorkspace = pathname === "/messaging";
@@ -64,6 +69,8 @@ export function WorkspaceShell({
           venueName={venueName}
           venueLogo={venueLogo}
           staffRole={staffRole}
+          activeVenueId={activeVenueId}
+          memberships={memberships}
         />
 
         <main
