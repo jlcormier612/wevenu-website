@@ -118,3 +118,14 @@ export function bringBusinessMigrationHref(
   if (choice === "tripleseat") return "/settings/migration?source=tripleseat";
   return "/settings/migration?source=another_system";
 }
+
+/** Hub acknowledgement of the intake Bring Business answer — not a new source of truth. */
+export function bringBusinessIntakeHeading(
+  choice: BringBusinessChoice | null | undefined,
+): string | null {
+  if (choice === "honeybook") return "Bring your HoneyBook business into Hello to Cheers";
+  if (choice === "tripleseat") return "Bring your Tripleseat business into Hello to Cheers";
+  if (choice === "another_system") return "Bring your existing business into Hello to Cheers";
+  if (choice === "starting_fresh") return "Start fresh";
+  return null;
+}

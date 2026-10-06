@@ -10,7 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { useSetupReadyCounts } from "@/components/setup/setup-migration-steps";
+import { getLeadCaptureStepDataAction, getSetupReadyCountsAction } from "@/app/setup/actions";
 
 import { Field, SummaryRow } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -40,11 +40,11 @@ import type {
   VenueSetupInput,
 } from "@/lib/venue/types";
 import { type SetupStepId } from "@/lib/venue/validation";
-import { getLeadCaptureStepDataAction } from "@/app/setup/actions";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import type { Venue } from "@/lib/venue/types";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
+import type { SetupReadyCounts } from "@/lib/venue/service";
 
 /**
  * Shared onboarding guidance (2026-08-17) — every step tells the venue what
@@ -272,12 +272,10 @@ function SelectField({
 // Pre-Launch Commercial Readiness, Initiative 1 (2026-08-03) — replaces the
 // old two-screen Welcome→Origin sequence with one combined "Welcome. Let's
 // get your venue ready." screen offering exactly the two paths the
-// initiative specifies. The "where specifically are you coming from" detail
-// (Weven / another platform / spreadsheets / files) moved to the Bring Your
-// Business stage's own source picker, where the initiative's Part 4 actually
-// asks for it — this screen only needs to know fresh-start vs. bringing a
-// business, so onboarding_persona is set to "new" or "switching" here and
-// may be refined to "weven_returning" later if Weven is picked as a source.
+// initiative specifies. Setup Hub now owns Bring Your Business source
+// continuity from intake (HoneyBook / Tripleseat / another system / start
+// fresh). This screen only distinguishes a fresh start from bringing a
+// business, so onboarding_persona is set to "new" or "switching" here.
 // Deliberately outside SETUP_STEPS, like before — no field validation, and
 // nothing to persist until a real venue row exists.
 
@@ -786,6 +784,14 @@ function ReviewSection({
 // ---- Ready to Go summary (Pre-Launch Commercial Readiness, Initiative 1, 2026-08-03) ----
 // Real counts only — queried live via getSetupReadyCountsAction. A domain
 // with 0 is simply omitted, never shown as a fabricated accomplishment.
+
+function useSetupReadyCounts() {
+  const [counts, setCounts] = React.useState<SetupReadyCounts | null>(null);
+  React.useEffect(() => {
+    void getSetupReadyCountsAction().then(setCounts);
+  }, []);
+  return counts;
+}
 
 function ReadyToGoSummary({ ownerFirstName }: { ownerFirstName: string }) {
   const counts = useSetupReadyCounts();

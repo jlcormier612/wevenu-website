@@ -65,4 +65,18 @@ describe("Bring Your Business choices — three equal paths", () => {
     assert.match(src, /setBringYourBusinessPathAction\("skipped"\)/);
     assert.match(src, /spreadsheetImport|\/settings\/import/);
   });
+
+  it("acknowledges the intake Bring Business choice without writing a new source of truth", () => {
+    const src = readFileSync(join(process.cwd(), "components/setup-hub/bring-your-business-choices.tsx"), "utf8");
+    assert.match(src, /intakeBringBusinessChoice/);
+    assert.match(src, /bringBusinessIntakeHeading/);
+    assert.match(src, /bringBusinessMigrationHref/);
+    assert.match(src, /You already chose this during setup/);
+    assert.match(src, /Start fresh — that matches what you told us at setup/);
+    assert.doesNotMatch(src, /from\("venue_setup_hub_state"\)/);
+    const overview = readFileSync(join(process.cwd(), "components/setup-hub/setup-hub-overview.tsx"), "utf8");
+    assert.match(overview, /intakeBringBusinessChoice/);
+    const page = readFileSync(join(process.cwd(), "app/(app)/setup-hub/page.tsx"), "utf8");
+    assert.match(page, /getIntakeForVenue/);
+  });
 });

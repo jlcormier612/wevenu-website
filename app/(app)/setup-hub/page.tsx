@@ -10,6 +10,7 @@ import { getLeadCaptureStageStatus, getSetupHubState } from "@/lib/setup-hub/ser
 import { getTeamMembers } from "@/lib/team/service";
 import { getTourSettings } from "@/lib/tours/service";
 import { getCurrentVenue, getSetupReadyCounts, getVenueSettings } from "@/lib/venue/service";
+import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
 import { loadSetupConciergeEntry } from "@/lib/setup-concierge/load";
 
 export const metadata: Metadata = { title: "Setup" };
@@ -21,7 +22,7 @@ export default async function SetupHubPage() {
 
   const [
     hubState, leadCapture, spaces, capacityRules, tourSettings,
-    importBatches, readyCounts, teamMembers, quickbooksConnection, setupConcierge, venueDocuments, venueSettings,
+    importBatches, readyCounts, teamMembers, quickbooksConnection, setupConcierge, venueDocuments, venueSettings, intake,
   ] = await Promise.all([
     getSetupHubState(),
     getLeadCaptureStageStatus(),
@@ -35,14 +36,14 @@ export default async function SetupHubPage() {
     loadSetupConciergeEntry(),
     getVenueDocuments(),
     getVenueSettings(),
+    getIntakeForVenue(venue.id),
   ]);
 
   const activeTeamCount = teamMembers.filter((m) => !m.isOwner && m.isActive && m.acceptedAt).length;
   const hasActiveOwner = teamMembers.some((m) => m.isOwner && m.isActive);
   const hasImportedData = importBatches.some((b) => !b.rolledBackAt && b.importedCount > 0);
-  // Raw files brought over during onboarding (setup-migration-steps.tsx's
-  // DocumentsUploadStep) that haven't been turned into a real Contract/
-  // Message Template/Playbook yet — see the client-experience stage nudge.
+  // Raw files tagged setup_import that haven't been turned into a real Contract /
+  // Message Template / Playbook yet — see the client-experience stage nudge.
   const uploadedMaterialsCount = venueDocuments.filter((d) => d.tags.includes("setup_import")).length;
   const owner = teamMembers.find((m) => m.isOwner);
   const ownerFirstName = owner?.name?.split(" ")[0] ?? null;
@@ -97,6 +98,7 @@ export default async function SetupHubPage() {
           heroImageUrl: venue.heroImageUrl,
           primaryColor: venue.primaryColor,
         }}
+        intakeBringBusinessChoice={intake?.bringBusinessChoice ?? null}
       />
     </div>
   );

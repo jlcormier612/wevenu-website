@@ -7,6 +7,7 @@ import { describe, it } from "node:test";
 import {
   BRING_BUSINESS_OPTIONS,
   INQUIRY_SOURCE_OPTIONS,
+  bringBusinessIntakeHeading,
   bringBusinessMigrationHref,
 } from "./types";
 
@@ -40,6 +41,23 @@ describe("onboarding intake customer-facing choices", () => {
     assert.match(bringBusinessMigrationHref("honeybook")!, /honeybook/);
     assert.match(bringBusinessMigrationHref("tripleseat")!, /tripleseat/);
     assert.match(bringBusinessMigrationHref("another_system")!, /another_system/);
+  });
+
+  it("echoes the intake Bring Business answer without inventing a new source of truth", () => {
+    assert.equal(
+      bringBusinessIntakeHeading("honeybook"),
+      "Bring your HoneyBook business into Hello to Cheers",
+    );
+    assert.equal(
+      bringBusinessIntakeHeading("tripleseat"),
+      "Bring your Tripleseat business into Hello to Cheers",
+    );
+    assert.equal(
+      bringBusinessIntakeHeading("another_system"),
+      "Bring your existing business into Hello to Cheers",
+    );
+    assert.equal(bringBusinessIntakeHeading("starting_fresh"), "Start fresh");
+    assert.equal(bringBusinessIntakeHeading(null), null);
   });
 
   it("exposes inquiry sources without A mix of these", () => {

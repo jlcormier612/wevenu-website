@@ -159,7 +159,7 @@ describe("inline attachment fields — documents lead", () => {
   it("does not regress the venue-scoped path fixes committed separately", () => {
     for (const p of [
       "components/communication/template-attachments-field.tsx",
-      "components/setup/setup-migration-steps.tsx",
+      "components/playbooks/playbook-builder.tsx",
     ]) {
       const src = read(p);
       assert.doesNotMatch(src, /`venue\/\$\{/);

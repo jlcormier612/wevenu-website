@@ -82,10 +82,9 @@ describe("venue-level document storage paths", () => {
   });
 });
 
-describe("the three repaired uploaders", () => {
+describe("the repaired uploaders", () => {
   const files = {
     "Message Template attachments": "components/communication/template-attachments-field.tsx",
-    "Setup migration upload": "components/setup/setup-migration-steps.tsx",
     "Planning Template task attachments": "components/playbooks/playbook-builder.tsx",
   } as const;
 
@@ -119,15 +118,6 @@ describe("the three repaired uploaders", () => {
       });
     });
   }
-
-  it("preserves the Setup step's setup_import tag and per-file error handling", () => {
-    const src = readFileSync(resolve(files["Setup migration upload"]), "utf8");
-    assert.match(src, /tags: "setup_import"/);
-    // A path failure skips that one file rather than aborting the batch.
-    const block = src.match(/const pathResult = await venueDocumentUploadPathAction[\s\S]*?\n {6}\}/)?.[0];
-    assert.ok(block, "expected the path guard block");
-    assert.match(block, /continue;/);
-  });
 
   it("preserves the Template field's single-file abort", () => {
     const src = readFileSync(resolve(files["Message Template attachments"]), "utf8");

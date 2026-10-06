@@ -31,4 +31,17 @@ describe("availability editor uses the persisted exception id", () => {
     assert.match(deletion, /\.select\("id"\)/);
     assert.match(deletion, /data\?\.length/);
   });
+
+  it("makes weekly window Remove a pending form change and blocked-date Remove immediate", () => {
+    assert.match(editor, /function removeWindow\(key: string\) \{\n    setWindows/);
+    assert.doesNotMatch(
+      editor.slice(editor.indexOf("function removeWindow"), editor.indexOf("function updateWindow")),
+      /replaceTourAvailabilityWindowsAction/,
+    );
+    assert.match(editor, /Removing a window or turning a day off stays on this form until you click Save changes/);
+    assert.match(editor, /aria-label="Remove window from this form — Save changes to apply"/);
+    assert.match(editor, /Removing a blocked date is saved immediately/);
+    assert.match(editor, /aria-label="Remove blocked date now"/);
+    assert.match(editor, /removeTourAvailabilityExceptionAction\(id\)/);
+  });
 });

@@ -31,6 +31,7 @@ import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
 import type { SetupConciergeEntry } from "@/lib/setup-concierge/types";
 import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
+import type { BringBusinessChoice } from "@/lib/onboarding/types";
 
 type StageRow = {
   key: keyof typeof STAGE_COPY;
@@ -66,6 +67,7 @@ export function SetupHubOverview({
   maxSimultaneousEvents,
   spaceOperatingMode,
   yourVenueFacts,
+  intakeBringBusinessChoice = null,
 }: {
   venueName: string;
   ownerFirstName: string | null;
@@ -86,6 +88,7 @@ export function SetupHubOverview({
   maxSimultaneousEvents?: number | null;
   spaceOperatingMode: SpaceOperatingMode | null;
   yourVenueFacts: YourVenueFacts;
+  intakeBringBusinessChoice?: BringBusinessChoice | null;
 }) {
   const yourVenueDone = isYourVenueComplete(yourVenueFacts);
   const calendarDone = isCalendarAvailabilityComplete({ spaceOperatingMode, spacesCount });
@@ -160,6 +163,7 @@ export function SetupHubOverview({
           hasImportedData={hasImportedData}
           path={bybPath}
           calendarReadyHint={calendarReadyHint}
+          intakeBringBusinessChoice={intakeBringBusinessChoice}
         />
       ),
     },

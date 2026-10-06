@@ -164,7 +164,7 @@ export function TourAvailabilityEditor({
       <div className="space-y-3">
         <div>
           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weekly Availability</Label>
-          <p className="text-xs text-muted-foreground">Set the days and hours tours can be booked. Add more than one window per day if you want a midday gap.</p>
+          <p className="text-xs text-muted-foreground">Set the days and hours tours can be booked. Add more than one window per day if you want a midday gap. Removing a window or turning a day off stays on this form until you click Save changes.</p>
         </div>
         <div className="space-y-2">
           {MONDAY_FIRST_DAYS.map((day) => {
@@ -184,7 +184,7 @@ export function TourAvailabilityEditor({
                         <Input type="time" value={w.startTime} onChange={(e) => updateWindow(w.key, { startTime: e.target.value })} className="w-32" aria-label={`${day.label} window start`} />
                         <span className="text-sm text-muted-foreground">to</span>
                         <Input type="time" value={w.endTime} onChange={(e) => updateWindow(w.key, { endTime: e.target.value })} className="w-32" aria-label={`${day.label} window end`} />
-                        <button type="button" onClick={() => removeWindow(w.key)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove window">
+                        <button type="button" onClick={() => removeWindow(w.key)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove window from this form — Save changes to apply" title="Removes this window from the form. Click Save changes to apply.">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -214,7 +214,7 @@ export function TourAvailabilityEditor({
       <div className="space-y-3">
         <div>
           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Blocked Dates</Label>
-          <p className="text-xs text-muted-foreground">Holidays, venue closures, or any date range tours shouldn&apos;t be offered — regardless of your weekly schedule above.</p>
+          <p className="text-xs text-muted-foreground">Holidays, venue closures, or any date range tours shouldn&apos;t be offered — regardless of your weekly schedule above. Removing a blocked date is saved immediately.</p>
         </div>
         {exceptions.length === 0 && (
           <p className="text-xs text-muted-foreground italic">No blocked dates yet.</p>
@@ -229,7 +229,7 @@ export function TourAvailabilityEditor({
                   </span>
                   {exc.label && <span className="ml-2 text-muted-foreground">{exc.label}</span>}
                 </div>
-                <button type="button" onClick={() => handleRemoveException(exc.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove blocked date" disabled={savingException}>
+                <button type="button" onClick={() => handleRemoveException(exc.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove blocked date now" title="Removes this blocked date immediately." disabled={savingException}>
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
