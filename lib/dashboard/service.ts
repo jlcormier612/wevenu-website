@@ -20,7 +20,6 @@ import { computeSetupGapObservations } from "@/lib/luv/setup-observations";
 import { loadVenueReadiness } from "@/lib/luv/venue-readiness-load";
 import { readinessDashboardObservations } from "@/lib/luv/venue-readiness";
 import { getFocusNeedsAttentionBriefing } from "@/lib/luv/briefing-service";
-import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { isOpenLeadLifecycle, TERMINAL_LEAD_LIFECYCLE_STATES } from "@/lib/leads/open-lifecycle";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/leads/repository";
@@ -291,14 +290,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (!venue) return null;
   forensicSetVenue(venue.id);
 
-  // Ready-gate and client creation are independent — run together.
-  const [readyToInviteCouples, supabase] = await forensicTime("ready_gate_and_client", () =>
-    Promise.all([
-      isVenueReadyToInviteCouples(venue.id),
-      createClient(),
-    ]),
-  );
-  if (!readyToInviteCouples) return null;
+  const supabase = await forensicTime("create_client", () => createClient());
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
   // on this string, so an Eastern venue checking the dashboard after 8pm
@@ -567,7 +559,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     ownerFirstName,
     todayIso: today,
     onboarding: await forensicTime("guided_setup_checklist", () =>
-      buildGuidedSetupChecklist(venue, activationScore, readyToInviteCouples),
+      buildGuidedSetupChecklist(venue, activationScore),
     ),
     briefing,
     needsAttention,
@@ -611,8 +603,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
  * Presentation layer over the Activation Engine's own checklist.
  * Articles are loaded only when the checklist card would actually show.
  */
-async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null, readyToInviteCouples: boolean): Promise<OnboardingStatus> {
-  void readyToInviteCouples;
+async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null): Promise<OnboardingStatus> {
   const items = activationScore?.checklist ?? [];
 
   // Continuous Setup Experience: this card stays hidden (show: false).

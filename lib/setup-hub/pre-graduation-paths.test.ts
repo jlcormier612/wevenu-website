@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { isPreGraduationAllowedPath } from "./pre-graduation-paths";
 
-describe("isPreGraduationAllowedPath — Setup Hub destinations before graduation", () => {
+describe("isPreGraduationAllowedPath — Setup Hub destinations, not a workspace wall", () => {
   it("allows Setup Hub itself and nested stages", () => {
     assert.equal(isPreGraduationAllowedPath("/setup-hub"), true);
     assert.equal(isPreGraduationAllowedPath("/setup-hub/lead-capture"), true);
@@ -36,7 +36,7 @@ describe("isPreGraduationAllowedPath — Setup Hub destinations before graduatio
     );
   });
 
-  it("still gates operational workspace areas", () => {
+  it("does not treat operational workspace routes as Setup destinations", () => {
     for (const path of [
       "/dashboard",
       "/leads",

@@ -6,30 +6,38 @@ import { describe, it } from "node:test";
 import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
 
 const page = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
+const layout = readFileSync(resolve("app/(app)/layout.tsx"), "utf8");
 const hub = readFileSync(resolve("app/(app)/setup-hub/page.tsx"), "utf8");
 const dashboardService = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
 const repository = readFileSync(resolve("lib/setup-hub/repository.ts"), "utf8");
-const paths = readFileSync(resolve("lib/setup-hub/pre-graduation-paths.ts"), "utf8");
+const setupPage = readFileSync(resolve("app/setup/page.tsx"), "utf8");
 
-describe("pre-graduation dashboard redirect", () => {
-  it("sends a venue that is not ready to invite couples to Setup Hub", () => {
-    assert.match(page, /import \{ redirect \} from "next\/navigation"/);
-    assert.match(page, /isVenueReadyToInviteCouples/);
-    const gate = page.indexOf("isVenueReadyToInviteCouples(venue.id)");
-    const redirectAt = page.indexOf('redirect("/setup-hub")');
-    const loadAt = page.indexOf("getDashboardData()");
-    const deadEnd = page.indexOf("Dashboard unavailable.");
-    assert.ok(gate > 0 && redirectAt > gate && loadAt > redirectAt && deadEnd > loadAt);
+describe("ready_to_invite_couples is not a workspace access wall", () => {
+  it("does not redirect Dashboard when the venue has not declared readiness", () => {
+    assert.doesNotMatch(page, /isVenueReadyToInviteCouples/);
+    assert.doesNotMatch(page, /import \{ redirect \} from "next\/navigation"/);
+    assert.doesNotMatch(page, /redirect\("\/setup-hub"\)/);
+    assert.match(page, /getDashboardData\(\)/);
     assert.match(page, /title="Today's Focus"/);
   });
 
-  it("keeps the readiness gate that withholds dashboard data", () => {
-    assert.match(dashboardService, /if \(!readyToInviteCouples\) return null/);
+  it("does not withhold Dashboard data because the flag is false", () => {
+    assert.doesNotMatch(dashboardService, /isVenueReadyToInviteCouples/);
+    assert.doesNotMatch(dashboardService, /if \(!readyToInviteCouples\) return null/);
     assert.match(repository, /return data\?\.ready_to_invite_couples === true/);
-    assert.match(repository, /No row yet means the venue has never declared readiness/);
-    assert.doesNotMatch(paths, /"\/dashboard"/);
-    assert.equal(isPreGraduationAllowedPath("/dashboard"), false);
-    assert.equal(isPreGraduationAllowedPath("/setup-hub"), true);
+    assert.match(repository, /This flag does not gate the workspace/);
+  });
+
+  it("does not redirect operational routes from the workspace layout for readiness", () => {
+    assert.doesNotMatch(layout, /isVenueReadyToInviteCouples/);
+    assert.doesNotMatch(layout, /isPreGraduationAllowedPath/);
+    assert.doesNotMatch(layout, /redirect\("\/setup-hub"\)/);
+  });
+
+  it("legacy /setup always continues to Setup Hub after auth, not Dashboard", () => {
+    assert.doesNotMatch(setupPage, /isVenueReadyToInviteCouples/);
+    assert.match(setupPage, /redirect\("\/setup-hub"\)/);
+    assert.doesNotMatch(setupPage, /redirect\("\/dashboard"\)/);
   });
 
   it("does not bounce Setup Hub back to Dashboard or switch the active venue", () => {

@@ -66,11 +66,11 @@ describe("Lead Workspace conversation recipient sync", () => {
   it("workspace layout recovers pathname from Referer when x-pathname is missing", () => {
     assert.match(layout, /x-pathname/);
     assert.match(layout, /referer/i);
-    assert.match(layout, /isVenueReadyToInviteCouples/);
-    assert.match(layout, /redirect\("\/setup-hub"\)/);
+    assert.doesNotMatch(layout, /isVenueReadyToInviteCouples/);
+    assert.doesNotMatch(layout, /redirect\("\/setup-hub"\)/);
   });
 
-  it("Lead Workspace paths are not pre-graduation allowed — graduation must stay true for acceptance", () => {
+  it("Lead Workspace is not a Setup Hub destination — operational access is independent of readiness", () => {
     const paths = readFileSync(resolve("lib/setup-hub/pre-graduation-paths.ts"), "utf8");
     assert.doesNotMatch(paths, /"\/leads"/);
   });

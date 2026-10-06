@@ -19,7 +19,7 @@ describe("Bring Your Business Hub routing", () => {
     assert.equal(BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport, "/settings/import");
   });
 
-  it("both destinations remain reachable under the pre-graduation gate", () => {
+  it("both destinations remain Setup Hub destinations, not operational-workspace routes", () => {
     assert.equal(isPreGraduationAllowedPath(BRING_YOUR_BUSINESS_ROUTES.migrationCenter), true);
     assert.equal(isPreGraduationAllowedPath(BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport), true);
     assert.equal(isPreGraduationAllowedPath("/dashboard"), false);

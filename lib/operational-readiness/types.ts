@@ -10,9 +10,10 @@
  * tables. Not a rename or an extension of Event Readiness; a sibling.
  *
  * Also deliberately separate from, and never a gate on, Setup Hub's own
- * self-declared `ready_to_invite_couples` graduation flag — that flag stays
- * exactly as it is. This answers a narrower question with computed, real
- * product state instead of a click-through.
+ * self-declared `ready_to_invite_couples` signal. That flag is an owner
+ * declaration used for setup guidance — not a workspace access wall.
+ * This module answers a narrower question with computed, real product
+ * state instead of a click-through.
  */
 
 export type OperationalReadinessDomainKey =

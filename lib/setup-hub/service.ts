@@ -128,10 +128,9 @@ export async function setReadyToInviteCouples(ready: boolean): Promise<{ ok: boo
 }
 
 /**
- * Setup Hub -> Dashboard graduation signal. Takes venueId directly (not the
- * withVenue "current user's venue" pattern) since callers — the app layout
- * gate and the dashboard's own data guard — already have the venue from
- * their own getCurrentVenue() call and would otherwise redo it.
+ * Owner-declared Setup Hub signal: the venue is ready to invite couples.
+ * Guidance and next-step presentation may use this. It does not hide
+ * Dashboard, Calendar, Leads, or the rest of the operational workspace.
  */
 export async function isVenueReadyToInviteCouples(venueId: string): Promise<boolean> {
   if (!isSupabaseConfigured) return false;

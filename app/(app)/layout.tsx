@@ -5,8 +5,6 @@ import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
-import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
-import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
 import { needsInitialOwnershipStep } from "@/lib/onboarding/initial-ownership";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
@@ -19,7 +17,7 @@ export const dynamic = "force-dynamic";
 /**
  * Protected layout for the venue workspace.
  * Wave 2: bootstraps DB-backed active venue context before any venue-scoped work.
- * Graduation gate: ready_to_invite_couples only (not venues.setup_completed).
+ * Ready to invite couples is a Setup Hub declaration, not a workspace wall.
  * White Glove customers without completed handoff/activation stay out of the
  * product workspace (waiting / intake is token-scoped outside this layout).
  */
@@ -42,8 +40,8 @@ export default async function WorkspaceLayout({
   }
 
   // Proxy sets x-pathname on document navigations. Server Action / RSC refreshes
-  // can omit it; fall back to Referer so graduation/venue gates do not see "" and
-  // fail closed into /setup-hub while the user is still on a Lead Workspace URL.
+  // can omit it; fall back to Referer so ownership/intake/venue gates do not see ""
+  // and fail closed while the user is still on a Lead Workspace URL.
   const headerList = await headers();
   const pathname = (() => {
     const direct = headerList.get("x-pathname")?.trim() ?? "";
@@ -157,13 +155,6 @@ export default async function WorkspaceLayout({
     !pathname.startsWith("/onboarding")
   ) {
     redirect("/onboarding/intake");
-  }
-
-  const ready = await isVenueReadyToInviteCouples(venue.id);
-  if (!ready) {
-    if (!isPreGraduationAllowedPath(pathname)) {
-      redirect("/setup-hub");
-    }
   }
 
   if (venue.accessDisabled || venue.accountStatus === "suspended") {
