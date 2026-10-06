@@ -57,7 +57,8 @@ import * as documentsRepo from "@/lib/documents/repository";
 import { dedupe, findBySourceId } from "@/lib/migration/dedupe";
 import { fetchAllPages } from "@/lib/migration/pagination";
 import { getSourceAdapter } from "@/lib/migration/source-profiles";
-import { createImportBatch, createImportBatchForVenue, finalizeImportBatch, stampImportBatch } from "@/lib/import/batches";
+import { acceptCreatedImportRow, compensateUntrackedImportRow, createImportBatch, createImportBatchForVenue, finalizeImportBatch } from "@/lib/import/batches";
+import { IMPORT_BATCH_RECORD_NOT_CREATED, IMPORT_DUPLICATE_CHECK_FAILED } from "@/lib/import/historical-guard";
 import { resolveClientIdByEmail, resolveLeadIdByEmail, resolveSpaceId } from "@/lib/migration/resolve-refs";
 import type {
   CommitOutcome,
@@ -283,7 +284,16 @@ export async function runDedupe(client: AnyDbClient, session: MigrationSession):
       continue;
     }
 
-    const result = await dedupe(client, session.venueId, record.targetEntityType, record.normalizedPayload);
+    let result;
+    try {
+      result = await dedupe(client, session.venueId, record.targetEntityType, record.normalizedPayload);
+    } catch {
+      await repo.updateRecord(client, record.id, {
+        status: "needs_review",
+        validationErrors: [IMPORT_DUPLICATE_CHECK_FAILED],
+      });
+      continue;
+    }
     if (result.matchType === "exact") {
       await repo.updateRecord(client, record.id, {
         status: "duplicate_exact", matchType: "exact",
@@ -518,11 +528,23 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
       const batchEntityType = BATCH_ENTITY[entityType];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const batchClient = client as any;
-      const batchId = batchEntityType
+      const batch = batchEntityType
         ? (session.createdByType === "hq_staff"
           ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, candidates.length, actorId ?? "unknown", session.engagementId, session.id)
           : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, candidates.length, batchClient, session.id))
         : null;
+      if (batchEntityType && (!batch || !batch.ok)) {
+        for (const candidate of candidates) {
+          await repo.updateRecord(client, candidate.id, {
+            status: "needs_review",
+            validationErrors: [IMPORT_BATCH_RECORD_NOT_CREATED],
+            ...CLEAR_MATCH_METADATA,
+          });
+          outcome.failed++;
+        }
+        continue;
+      }
+      const batchId = batch && batch.ok ? batch.id : null;
 
       const createdIds: string[] = [];
       let claimedCount = 0;
@@ -552,6 +574,25 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
         try {
           const result = await commitOneRecord(client, session, entityType, record);
           if (result.ok) {
+            if (batchEntityType && batchId) {
+              const accepted = await acceptCreatedImportRow({
+                entityType: batchEntityType,
+                batchId,
+                createdId: result.entityId,
+                venueId: session.venueId,
+                rowNumber: 0,
+                client: batchClient,
+              });
+              if (!accepted.accepted) {
+                await repo.updateRecord(client, record.id, {
+                  status: "needs_review",
+                  validationErrors: [accepted.error.message],
+                  ...CLEAR_MATCH_METADATA,
+                });
+                outcome.failed++;
+                continue;
+              }
+            }
             await repo.updateRecord(client, record.id, {
               status: "committed",
               createdEntityId: result.entityId,
@@ -582,7 +623,6 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
         }
       }
       if (claimedCount === 0) continue;
-      if (batchEntityType && createdIds.length > 0) await stampImportBatch(batchEntityType, batchId, createdIds, batchClient);
       await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: claimedCount - createdIds.length }, batchClient);
     }
   } catch (err) {
@@ -657,6 +697,7 @@ export async function retryOwnRecord(
   }
 
   let result: { ok: true; entityId: string } | { ok: false; error: string };
+  let committedOk = false;
   try {
     try {
       result = await commitOneRecord(actor.client, session, record.targetEntityType, record);
@@ -665,13 +706,50 @@ export async function retryOwnRecord(
       result = { ok: false, error: unexpectedCommitErrorMessage(err) };
     }
     if (result.ok) {
-      await repo.updateRecord(actor.client, record.id, {
-        status: "committed",
-        createdEntityId: result.entityId,
-        committedAt: new Date().toISOString(),
-        validationErrors: null,
-        ...CLEAR_MATCH_METADATA,
-      });
+      const batchEntityType = BATCH_ENTITY[record.targetEntityType];
+      let associationError: string | null = null;
+      if (batchEntityType) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const batchClient = actor.client as any;
+        const batch = session.createdByType === "hq_staff"
+          ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, 1, actor.createdBy ?? "unknown", session.engagementId, session.id)
+          : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, 1, batchClient, session.id);
+        if (!batch.ok) {
+          await compensateUntrackedImportRow(batchEntityType, result.entityId, session.venueId, batchClient);
+          associationError = IMPORT_BATCH_RECORD_NOT_CREATED;
+        } else {
+          const accepted = await acceptCreatedImportRow({
+            entityType: batchEntityType,
+            batchId: batch.id,
+            createdId: result.entityId,
+            venueId: session.venueId,
+            rowNumber: 0,
+            client: batchClient,
+          });
+          if (!accepted.accepted) {
+            associationError = accepted.error.message;
+          } else {
+            await finalizeImportBatch(batch.id, { imported: 1, skipped: 0, errors: 0 }, batchClient);
+          }
+        }
+      }
+      if (associationError) {
+        await repo.updateRecord(actor.client, record.id, {
+          status: "needs_review",
+          validationErrors: [associationError],
+          ...CLEAR_MATCH_METADATA,
+        });
+        result = { ok: false, error: associationError };
+      } else {
+        committedOk = true;
+        await repo.updateRecord(actor.client, record.id, {
+          status: "committed",
+          createdEntityId: result.entityId,
+          committedAt: new Date().toISOString(),
+          validationErrors: null,
+          ...CLEAR_MATCH_METADATA,
+        });
+      }
     } else {
       await repo.updateRecord(actor.client, record.id, {
         status: "needs_review",
@@ -689,9 +767,9 @@ export async function retryOwnRecord(
   const stillUnresolvedAfter = allRecordsAfter.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;
   const inFlightAfter = await repo.countInFlightClaims(actor.client, session.id);
   const retryOutcome: CommitOutcome = {
-    committed: result.ok ? 1 : 0,
+    committed: committedOk ? 1 : 0,
     skipped: 0,
-    failed: result.ok ? 0 : 1,
+    failed: committedOk ? 0 : 1,
   };
   await repo.updateSessionStatus(
     actor.client,

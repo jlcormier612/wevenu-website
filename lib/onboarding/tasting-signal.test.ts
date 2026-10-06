@@ -22,7 +22,13 @@ describe("optional tasting or appointment signal", () => {
     assert.doesNotMatch(form, /Please tell us about tastings or other appointments/);
     assert.match(form, /Do you offer tastings or other appointments\?/);
     assert.match(form, /Optional — this helps us understand how your venue works/);
-    assert.match(form, /Yes, we offer tastings or other appointments/);
+    assert.match(form, /name="tastings"/);
+    assert.match(form, /setOffersTastingsOrAppointments\(true\)/);
+    assert.match(form, /setOffersTastingsOrAppointments\(false\)/);
+    assert.match(form, /offersTastingsOrAppointments === true/);
+    assert.match(form, /offersTastingsOrAppointments === false/);
+    assert.doesNotMatch(form, /e\.target\.checked \? true : null/);
+    assert.doesNotMatch(form, /Yes, we offer tastings or other appointments/);
     assert.doesNotMatch(form, /other_appointments|Neither/);
   });
 

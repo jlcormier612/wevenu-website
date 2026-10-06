@@ -82,7 +82,7 @@ export type ImportRowError = { row: number; message: string; kind: "skipped" | "
 export type ImportResult = {
   imported: number;
   errors: ImportRowError[];
-  /** Migration Center — the batch this run created, for history/rollback. Null if the batch itself couldn't be recorded (never blocks the import). */
+  /** Batch this run created. Null when the import did not produce durable history. */
   batchId: string | null;
 };
 

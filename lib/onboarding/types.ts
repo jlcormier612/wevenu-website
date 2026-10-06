@@ -3,7 +3,14 @@
  * Customer-facing choices match the Setup & White Glove product specification.
  */
 
+import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
+
 export type SpaceMode = "one" | "multiple";
+
+/** Maps intake spaceMode onto venues.space_operating_mode. */
+export function spaceOperatingModeFromIntake(mode: SpaceMode): SpaceOperatingMode {
+  return mode === "multiple" ? "multi" : "single";
+}
 
 export type IntakeSpace = {
   name: string;

@@ -291,7 +291,8 @@ export async function findActiveDuplicateClient(
   q = trimmedEmail
     ? q.ilike("email", trimmedEmail)
     : q.ilike("first_name", firstName.trim()).ilike("last_name", lastName.trim());
-  const { data } = await q.limit(1).maybeSingle<{ id: string }>();
+  const { data, error } = await q.limit(1).maybeSingle<{ id: string }>();
+  if (error) throw error;
   return data ?? null;
 }
 

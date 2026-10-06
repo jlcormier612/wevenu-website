@@ -254,7 +254,8 @@ export async function findActiveDuplicateVendor(
   q = trimmedEmail
     ? q.ilike("vendors.email", trimmedEmail)
     : q.ilike("vendors.business_name", businessName.trim());
-  const { data } = await q.limit(1).maybeSingle<{ vendor_id: string }>();
+  const { data, error } = await q.limit(1).maybeSingle<{ vendor_id: string }>();
+  if (error) throw error;
   return data ? { id: data.vendor_id } : null;
 }
 

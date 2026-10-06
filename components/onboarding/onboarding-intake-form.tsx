@@ -322,15 +322,26 @@ export function OnboardingIntakeForm({
             Optional — this helps us understand how your venue works. You can
             configure scheduling details later.
           </p>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="tastings"
-              checked={offersTastingsOrAppointments === true}
-              onChange={(e) => setOffersTastingsOrAppointments(e.target.checked ? true : null)}
-            />
-            Yes, we offer tastings or other appointments
-          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="tastings"
+                checked={offersTastingsOrAppointments === true}
+                onChange={() => setOffersTastingsOrAppointments(true)}
+              />
+              Yes
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="tastings"
+                checked={offersTastingsOrAppointments === false}
+                onChange={() => setOffersTastingsOrAppointments(false)}
+              />
+              No
+            </label>
+          </div>
         </div>
       </section>
 

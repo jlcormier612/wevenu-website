@@ -8,8 +8,12 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  associationFailureError,
+  type CreateImportBatchResult,
+} from "@/lib/import/historical-guard";
 import { getCurrentVenue } from "@/lib/venue/service";
-import type { EntityType, ImportBatch } from "@/lib/import/types";
+import type { EntityType, ImportBatch, ImportRowError } from "@/lib/import/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -38,7 +42,7 @@ function mapBatch(r: Record<string, unknown>): ImportBatch {
   };
 }
 
-/** Creates the batch row for a self-service (venue-session) import. Never throws — a failed batch record must never block the import itself. */
+/** Creates the batch row for a self-service (venue-session) import. Callers must not create imported records unless this returns ok. */
 export async function createImportBatch(
   venueId: string,
   entityType: EntityType,
@@ -47,7 +51,7 @@ export async function createImportBatch(
   client?: DbClient,
   /** Migration Center — links this batch back to the migration_sessions row that produced it. Null for a plain self-service wizard run, exactly as before. */
   migrationSessionId?: string | null,
-): Promise<string | null> {
+): Promise<CreateImportBatchResult> {
   try {
     const supabase = client ?? await createClient();
     const { data, error } = await supabase.from("import_batches")
@@ -57,10 +61,11 @@ export async function createImportBatch(
       })
       .select("id").single<{ id: string }>();
     if (error) throw error;
-    return data.id;
+    if (!data?.id) throw new Error("import_batches insert returned no id");
+    return { ok: true, id: data.id };
   } catch (err) {
     console.error("Could not create import batch:", err);
-    return null;
+    return { ok: false, message: err instanceof Error ? err.message : "Could not create import batch." };
   }
 }
 
@@ -84,7 +89,7 @@ export async function createImportBatchForVenue(
   engagementId: string | null,
   /** Migration Center — see createImportBatch's doc comment. */
   migrationSessionId?: string | null,
-): Promise<string | null> {
+): Promise<CreateImportBatchResult> {
   try {
     const { data, error } = await client.from("import_batches")
       .insert({
@@ -94,10 +99,11 @@ export async function createImportBatchForVenue(
       })
       .select("id").single<{ id: string }>();
     if (error) throw error;
-    return data.id;
+    if (!data?.id) throw new Error("import_batches insert returned no id");
+    return { ok: true, id: data.id };
   } catch (err) {
     console.error("Could not create import batch:", err);
-    return null;
+    return { ok: false, message: err instanceof Error ? err.message : "Could not create import batch." };
   }
 }
 
@@ -119,10 +125,15 @@ export async function finalizeImportBatch(
   }
 }
 
+export type StampImportBatchResult = {
+  ok: boolean;
+  stampedIds: string[];
+  message?: string;
+};
+
 /**
- * Stamps import_batch_id on every row this run actually created. A separate
- * follow-up write (not threaded through each entity's own create path) so
- * it works uniformly whether that path is a plain insert or an atomic RPC.
+ * Stamps import_batch_id on created rows. Callers must treat a non-ok result
+ * as an untracked create — never count those ids as successfully imported.
  *
  * Also records `stamped_at` — the moment this stamp itself lands, per this
  * table's own updated_at trigger — as the batch's rollback baseline.
@@ -136,22 +147,113 @@ export async function stampImportBatch(
   batchId: string | null,
   ids: string[],
   client?: DbClient,
-): Promise<void> {
-  if (!batchId || ids.length === 0) return;
+): Promise<StampImportBatchResult> {
+  if (!batchId) {
+    return { ok: false, stampedIds: [], message: "No import batch to associate." };
+  }
+  if (ids.length === 0) return { ok: true, stampedIds: [] };
   try {
     const supabase = client ?? await createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase.from(REAL_TABLE[entityType]) as any)
+    const { data, error } = await (supabase.from(REAL_TABLE[entityType]) as any)
       .update({ import_batch_id: batchId })
       .in("id", ids)
-      .select("updated_at");
-    const stampedAt = ((data ?? []) as { updated_at: string }[])
-      .reduce((latest, r) => (r.updated_at > latest ? r.updated_at : latest), new Date(0).toISOString());
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("import_batches") as any).update({ stamped_at: stampedAt }).eq("id", batchId);
+      .select("id, updated_at");
+    if (error) throw error;
+    const rows = (data ?? []) as { id: string; updated_at: string }[];
+    const stampedIds = rows.map((r) => r.id);
+    if (stampedIds.length > 0) {
+      const stampedAt = rows
+        .reduce((latest, r) => (r.updated_at > latest ? r.updated_at : latest), new Date(0).toISOString());
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: stampErr } = await (supabase.from("import_batches") as any)
+        .update({ stamped_at: stampedAt })
+        .eq("id", batchId);
+      if (stampErr) {
+        console.error("Could not record import batch stamped_at:", stampErr);
+      }
+    }
+    if (stampedIds.length !== ids.length || ids.some((id) => !stampedIds.includes(id))) {
+      return {
+        ok: false,
+        stampedIds,
+        message: "Could not associate every created record with this import.",
+      };
+    }
+    return { ok: true, stampedIds };
   } catch (err) {
     console.error("Could not stamp import batch on created rows:", err);
+    return {
+      ok: false,
+      stampedIds: [],
+      message: err instanceof Error ? err.message : "Could not associate created records with this import.",
+    };
   }
+}
+
+/**
+ * Undo a just-created row that never received import_batch_id.
+ * Only deletes when import_batch_id is still null. Vendors undo the venue
+ * relationship only, matching rollbackImportBatch.
+ */
+export async function compensateUntrackedImportRow(
+  entityType: EntityType,
+  id: string,
+  venueId: string,
+  client?: DbClient,
+): Promise<boolean> {
+  try {
+    const supabase = client ?? await createClient();
+    const table = REAL_TABLE[entityType];
+    if (entityType === "vendors") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from("vendors") as any)
+        .select("id, import_batch_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data || data.import_batch_id) return false;
+      const { error: relError } = await supabase.from("venue_vendor_relationships")
+        .delete()
+        .eq("venue_id", venueId)
+        .eq("vendor_id", id);
+      if (relError) throw relError;
+      return true;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from(table) as any)
+      .delete()
+      .eq("id", id)
+      .eq("venue_id", venueId)
+      .is("import_batch_id", null)
+      .select("id");
+    if (error) throw error;
+    return ((data ?? []) as { id: string }[]).length > 0;
+  } catch (err) {
+    console.error("Could not compensate untracked import row:", err);
+    return false;
+  }
+}
+
+export async function acceptCreatedImportRow(opts: {
+  entityType: EntityType;
+  batchId: string;
+  createdId: string;
+  venueId: string;
+  rowNumber: number;
+  client?: DbClient;
+}): Promise<{ accepted: true } | { accepted: false; error: ImportRowError }> {
+  const stamp = await stampImportBatch(opts.entityType, opts.batchId, [opts.createdId], opts.client);
+  if (stamp.ok && stamp.stampedIds.includes(opts.createdId)) {
+    return { accepted: true };
+  }
+  const undone = await compensateUntrackedImportRow(
+    opts.entityType,
+    opts.createdId,
+    opts.venueId,
+    opts.client,
+  );
+  return { accepted: false, error: associationFailureError(opts.rowNumber, undone) };
 }
 
 export async function getImportBatches(entityType?: EntityType): Promise<ImportBatch[]> {

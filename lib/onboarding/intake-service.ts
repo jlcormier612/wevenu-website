@@ -4,12 +4,13 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
-import type {
-  BringBusinessChoice,
-  InquirySourceKey,
-  OnboardingIntakeInput,
-  OnboardingIntakeRecord,
-  SpaceMode,
+import {
+  spaceOperatingModeFromIntake,
+  type BringBusinessChoice,
+  type InquirySourceKey,
+  type OnboardingIntakeInput,
+  type OnboardingIntakeRecord,
+  type SpaceMode,
 } from "@/lib/onboarding/types";
 
 type IntakeRow = {
@@ -175,6 +176,7 @@ export async function submitOnboardingIntake(input: {
       state_region: intake.stateRegion?.trim() || null,
       postal_code: intake.postalCode?.trim() || null,
       country: intake.country?.trim() || null,
+      space_operating_mode: spaceOperatingModeFromIntake(intake.spaceMode),
     })
     .eq("id", input.venueId);
 
