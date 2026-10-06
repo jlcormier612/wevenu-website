@@ -144,6 +144,8 @@ export {
   mutateRelationship,
   decidePurchaseMatch,
   subscriptionMatchAllowsReuse,
+  isEstablishedPurchaseRelationship,
+  resolveSubscriptionLifecycleRelationship,
   syncRelationshipFromProduct,
   resolveWelcomeBackVerification,
   resolveOpenFeedback,

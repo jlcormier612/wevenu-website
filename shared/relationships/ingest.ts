@@ -5,6 +5,7 @@ import {
 import {
   mutateRelationship,
   personFromFields,
+  resolveSubscriptionLifecycleRelationship,
   type FindOrCreateResult,
 } from "./service";
 import { loadLiveStore, withLiveStore } from "./store";
@@ -334,6 +335,7 @@ export async function ingestCheckoutStarted(input: {
           : undefined,
       stripeCheckoutSessionId: checkoutSessionId,
     },
+    checkoutStartGuard: true,
     event: {
       type: "checkout_started",
       title: "Checkout started",
@@ -583,25 +585,14 @@ export async function ingestSubscriptionLifecycle(input: {
   const existingSub = store.subscriptions.find(
     (s) => s.stripeSubscriptionId === stripeSubscriptionId,
   );
-  const existingRel =
-    store.relationships.find(
-      (r) => r.stripeSubscriptionId?.trim() === stripeSubscriptionId,
-    ) ||
-    (input.stripeCustomerId
-      ? store.relationships.find(
-          (r) => r.stripeCustomerId?.trim() === input.stripeCustomerId?.trim(),
-        )
-      : undefined) ||
-    (input.email
-      ? store.relationships.find(
-          (r) =>
-            (r.owner.email || "").trim().toLowerCase() ===
-            input.email!.trim().toLowerCase(),
-        )
-      : undefined) ||
-    (existingSub
-      ? store.relationships.find((r) => r.id === existingSub.relationshipId)
-      : undefined);
+  const existingRel = resolveSubscriptionLifecycleRelationship(
+    store.relationships,
+    store.subscriptions,
+    {
+      stripeSubscriptionId,
+      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+    },
+  );
 
   const previousStatus = existingSub?.status;
   const statusChanged = !previousStatus || previousStatus !== nextStatus;
@@ -614,10 +605,10 @@ export async function ingestSubscriptionLifecycle(input: {
   const resolvedPlanId =
     planId !== "none" ? planId : existingRel?.planId ?? "none";
 
-  const allowCreate =
-    input.allowCreate ?? Boolean(input.email?.trim() || input.venueName?.trim());
-
-  if (!existingRel && !allowCreate) {
+  // A new subscription that is not already this purchase, and not this
+  // session's unpaid draft, stays unattached until checkout.session.completed
+  // classifies it. Do not create or email-match here.
+  if (!existingRel) {
     return null;
   }
 
@@ -668,16 +659,19 @@ export async function ingestSubscriptionLifecycle(input: {
     }
   }
 
+  const matchedByThisSubscription =
+    existingRel.stripeSubscriptionId?.trim() === stripeSubscriptionId;
+  const storedSession = existingRel.stripeCheckoutSessionId?.trim() || "";
+  const incomingSession = input.stripeCheckoutSessionId?.trim() || "";
+  const sessionForPatch =
+    !incomingSession || !storedSession || incomingSession === storedSession
+      ? incomingSession || undefined
+      : undefined;
   const result = await mutateRelationship({
-    find: {
-      email: input.email,
-      venueName: input.venueName || existingRel?.venue.name,
-      referralSource: "Stripe subscription",
-      stripeCustomerId: input.stripeCustomerId,
-      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
-      stripeSubscriptionId,
-    },
-    updateOnly: !allowCreate,
+    find: matchedByThisSubscription
+      ? { stripeSubscriptionId }
+      : { stripeCheckoutSessionId: input.stripeCheckoutSessionId },
+    updateOnly: true,
     forceStatus: isCancelled ? "former_customer" : undefined,
     patch: {
       planId: resolvedPlanId === "none" ? undefined : resolvedPlanId,
@@ -690,7 +684,7 @@ export async function ingestSubscriptionLifecycle(input: {
           : undefined,
       stripeCustomerId: input.stripeCustomerId,
       stripeSubscriptionId,
-      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+      stripeCheckoutSessionId: sessionForPatch,
       currentStageLabel: isCancelled ? "Former Customer" : undefined,
       ownerEmail: input.email,
       venueName: input.venueName,
@@ -712,7 +706,7 @@ export async function ingestSubscriptionLifecycle(input: {
           : (existingSub?.foundingMember ?? existingRel?.foundingMember ?? false),
       stripeSubscriptionId,
       stripeCustomerId: input.stripeCustomerId,
-      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+      stripeCheckoutSessionId: sessionForPatch,
     },
   });
 

@@ -128,6 +128,91 @@ export function subscriptionMatchAllowsReuse(
 }
 
 /**
+ * A relationship already represents a completed or in-force purchase.
+ * Email, name, and venue name are not this signal. A bare checkout session
+ * on a draft is not enough — that session may still be unpaid.
+ */
+export function isEstablishedPurchaseRelationship(
+  relationship: {
+    id?: string;
+    stripeSubscriptionId?: string | null;
+    subscribedAt?: string | null;
+    activationToken?: string | null;
+    activationCompletedAt?: string | null;
+    productSync?: { venueId?: string | null } | null;
+  },
+  subscriptions: Array<{ relationshipId: string; stripeSubscriptionId?: string | null }> = [],
+): boolean {
+  if (relationship.stripeSubscriptionId?.trim()) return true;
+  if (relationship.subscribedAt?.trim()) return true;
+  if (relationship.activationToken?.trim()) return true;
+  if (relationship.activationCompletedAt?.trim()) return true;
+  if (relationship.productSync?.venueId?.trim()) return true;
+  const id = relationship.id;
+  if (
+    id &&
+    subscriptions.some(
+      (s) => s.relationshipId === id && Boolean(s.stripeSubscriptionId?.trim()),
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * subscription.created / updated may enrich the purchase that already owns
+ * this subscription id, or a not-yet-purchased draft that already owns this
+ * checkout session. It must not email-match an established purchase.
+ */
+export function resolveSubscriptionLifecycleRelationship<
+  T extends {
+    id: string;
+    stripeSubscriptionId?: string | null;
+    stripeCheckoutSessionId?: string | null;
+    subscribedAt?: string | null;
+    activationToken?: string | null;
+    activationCompletedAt?: string | null;
+    productSync?: { venueId?: string | null } | null;
+  },
+>(
+  relationships: T[],
+  subscriptions: Array<{
+    relationshipId: string;
+    stripeSubscriptionId?: string | null;
+  }>,
+  input: {
+    stripeSubscriptionId: string;
+    stripeCheckoutSessionId?: string | null;
+  },
+): T | null {
+  const subId = input.stripeSubscriptionId.trim();
+  if (!subId) return null;
+  const sessionId = input.stripeCheckoutSessionId?.trim() || "";
+  const bySub =
+    relationships.find((r) => r.stripeSubscriptionId?.trim() === subId) ?? null;
+  if (bySub) return bySub;
+  const child = subscriptions.find((s) => s.stripeSubscriptionId?.trim() === subId);
+  if (child) {
+    const rel = relationships.find((r) => r.id === child.relationshipId) ?? null;
+    if (
+      rel &&
+      (rel.stripeSubscriptionId?.trim() === subId ||
+        !isEstablishedPurchaseRelationship(rel, subscriptions))
+    ) {
+      return rel;
+    }
+  }
+  if (!sessionId) return null;
+  const bySession =
+    relationships.find((r) => r.stripeCheckoutSessionId?.trim() === sessionId) ?? null;
+  if (!bySession) return null;
+  if (bySession.stripeSubscriptionId?.trim() === subId) return bySession;
+  if (!isEstablishedPurchaseRelationship(bySession, subscriptions)) return bySession;
+  return null;
+}
+
+/**
  * Purchase-only identity. Does not change findExisting (inquiry/contact/newsletter/support).
  * Session id, then subscription id when that row has no other session, then a new
  * session is a new purchase unless the normalized venue name matches — that case holds.
@@ -1504,6 +1589,11 @@ export async function mutateRelationship(opts: {
    * Inquiry and other ingest paths must leave this unset.
    */
   purchaseMatch?: boolean;
+  /**
+   * Checkout Session create. If findExisting lands on an established purchase,
+   * return it unchanged — a new session must not overwrite that purchase.
+   */
+  checkoutStartGuard?: boolean;
   event?: Omit<TimelineEvent, "id" | "relationshipId">;
   /** Additional timeline rows written in the same locked transaction. */
   extraEvents?: Array<Omit<TimelineEvent, "id" | "relationshipId">>;
@@ -1536,6 +1626,16 @@ export async function mutateRelationship(opts: {
     const now = new Date().toISOString();
     let created = false;
     let relationship: Relationship | undefined;
+
+    if (opts.checkoutStartGuard && !opts.purchaseMatch) {
+      const existingPurchase = findExisting(store, opts.find);
+      if (
+        existingPurchase &&
+        isEstablishedPurchaseRelationship(existingPurchase, store.subscriptions)
+      ) {
+        return { relationship: existingPurchase, created: false };
+      }
+    }
 
     if (opts.purchaseMatch) {
       const decision = decidePurchaseMatch(
