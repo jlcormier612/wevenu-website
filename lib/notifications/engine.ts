@@ -20,6 +20,7 @@ import { createClient } from "@supabase/supabase-js";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { appendEmailSignatureText, emailBrandFromVenue, escapeHtml } from "@/lib/email/venue-brand";
 import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
+import { buildTourReminderCoupleEmail } from "@/lib/notifications/tour-reminder-email";
 import { buildReminderEmail } from "@/lib/notifications/templates";
 import { determineChannel, type NotificationRole, type ProcessResult } from "@/lib/notifications/types";
 import { getVenueTimezone } from "@/lib/venue/timezone";
@@ -137,18 +138,21 @@ export async function processReminders(): Promise<ProcessResult> {
         const venueColor = brand.primaryColor;
 
         let emailContent: { subject: string; html: string; text: string };
+        let coupleHtmlAlreadyBranded = false;
         if (isTourReminder && tourAppt) {
           // Tour reminder email — venue timezone, human 12h clock.
           const { getVenueTimezone, formatVenueLocalTourDisplay } = await import("@/lib/venue/timezone");
           const tz = await getVenueTimezone(supabase, reminder.venue_id);
           const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(tourAppt.scheduled_at, tz);
-          const subj = role === "coordinator"
-            ? `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateLabel} at ${timeLabel}`
-            : `Your tour at ${venueName} is tomorrow — ${dateLabel} at ${timeLabel}`;
-          const body = role === "coordinator"
-            ? `You have a venue tour tomorrow at ${timeLabel} with ${tourAppt.contact_name ?? "a prospective client"}. Duration: ${tourAppt.duration_minutes} minutes.`
-            : `Just a reminder that your tour at ${venueName} is tomorrow at ${timeLabel}. We look forward to meeting you!`;
-          emailContent = { subject: subj, html: `<p>${body}</p><p>— ${venueName}</p>`, text: body };
+          if (role === "couple") {
+            // Customer-facing: shared venue-branded shell (logo when logo_url set).
+            emailContent = buildTourReminderCoupleEmail({ brand, dateLabel, timeLabel });
+            coupleHtmlAlreadyBranded = true;
+          } else {
+            const subj = `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateLabel} at ${timeLabel}`;
+            const body = `You have a venue tour tomorrow at ${timeLabel} with ${tourAppt.contact_name ?? "a prospective client"}. Duration: ${tourAppt.duration_minutes} minutes.`;
+            emailContent = { subject: subj, html: `<p>${escapeHtml(body)}</p><p>— ${escapeHtml(venueName)}</p>`, text: body };
+          }
         } else {
           // Task reminder email
           const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ");
@@ -163,7 +167,8 @@ export async function processReminders(): Promise<ProcessResult> {
         }
 
         // Couple-facing emails get the venue signature; coordinator alerts stay internal-shaped.
-        if (role === "couple") {
+        // Tour reminder couple HTML already includes signature via the branded shell.
+        if (role === "couple" && !coupleHtmlAlreadyBranded) {
           emailContent.text = appendEmailSignatureText(emailContent.text, brand);
           const sig = brand.emailSignature?.trim();
           const contact = brand.replyContact?.trim();

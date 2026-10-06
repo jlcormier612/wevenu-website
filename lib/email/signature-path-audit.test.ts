@@ -24,7 +24,16 @@ describe("email branding/signature path audit", () => {
     },
     {
       file: "lib/notifications/engine.ts",
-      mustInclude: [/emailBrandFromVenue/, /appendEmailSignatureText/, /email_signature/],
+      mustInclude: [
+        /emailBrandFromVenue/,
+        /appendEmailSignatureText/,
+        /email_signature/,
+        /buildTourReminderCoupleEmail/,
+      ],
+    },
+    {
+      file: "lib/notifications/tour-reminder-email.ts",
+      mustInclude: [/wrapConversationMessageHtml/, /appendEmailSignatureText/],
     },
     {
       file: "lib/contracts/service.ts",
