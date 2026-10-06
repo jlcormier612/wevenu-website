@@ -844,6 +844,23 @@ export async function updateLeadInfo(
       if (healError) throw healError;
     }
   }
+
+  // Keep attached tour snapshots on the same identity as the Lead. Reminders,
+  // confirmation copy, and Luv read tour_appointments.contact_name; Tours UI
+  // also prefers live Lead identity, but the column must not stay stale.
+  const { tourContactNameFromLeadIdentity } = await import("@/lib/tours/contact-display");
+  const tourContactName = tourContactNameFromLeadIdentity({
+    firstName: input.firstName,
+    lastName: input.lastName,
+    partnerFirstName: input.partnerFirstName,
+    partnerLastName: input.partnerLastName,
+  });
+  const { error: tourNameError } = await client
+    .from("tour_appointments")
+    .update({ contact_name: tourContactName })
+    .eq("lead_id", leadId)
+    .eq("venue_id", venueId);
+  if (tourNameError) throw tourNameError;
 }
 
 /** Persist the inquiry's planned Event Space. Does not create an Event. */

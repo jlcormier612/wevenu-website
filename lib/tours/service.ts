@@ -7,7 +7,8 @@ import { parseCoordinatorTourAvailability, type TourAvailabilityLoad } from "@/l
 import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourCustomerSendPreview, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
-import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
+import { eventTypeLabel } from "@/lib/leads/constants";
+import { resolveTourContactDisplayName } from "@/lib/tours/contact-display";
 import {
   previewTourConfirmationRequest,
   previewTourScheduled,
@@ -67,7 +68,7 @@ export async function getTourCalendarEntries(
   const windowEnd = venueLocalToUtcIso(nextIso, "00:00", tz);
 
   const select =
-    "id, scheduled_at, actual_occurred_at, origin, status, lead_id, event_type, contact_name, leads(first_name, last_name, partner_first_name)";
+    "id, scheduled_at, actual_occurred_at, origin, status, lead_id, event_type, contact_name, leads(first_name, last_name, partner_first_name, partner_last_name)";
 
   // Occupying scheduled/confirmed render from scheduled_at.
   // Walk-ins and completed tours with an actual clock render from actual_occurred_at.
@@ -101,10 +102,13 @@ export async function getTourCalendarEntries(
   }
 
   return rows.map((t) => {
-    const lead = t.leads as { first_name: string; last_name: string; partner_first_name: string | null } | null;
-    const name = lead
-      ? [lead.first_name, lead.last_name].join(" ") + (lead.partner_first_name ? ` & ${lead.partner_first_name}` : "")
-      : (t.contact_name ?? "Unknown");
+    const lead = t.leads as {
+      first_name: string;
+      last_name: string;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+    } | null;
+    const name = resolveTourContactDisplayName({ contactName: t.contact_name, lead }) ?? "Unknown";
     const clockIso =
       t.origin === "walk_in" || !t.scheduled_at || (t.status === "completed" && t.actual_occurred_at)
         ? (t.actual_occurred_at as string)
@@ -723,16 +727,17 @@ function enrichAppointmentContact(
   r: any,
 ): import("@/lib/tours/types").TourAppointment {
   const appt = mapAppointment(r);
-  if (!appt.contactName && r.leads) {
-    appt.contactName = leadDisplayName(
-      r.leads.first_name,
-      r.leads.last_name,
-      r.leads.partner_first_name,
-      null,
-    );
-  }
+  // Prefer live Lead identity when lead_id resolves. Stale contact_name must
+  // not win over an attached Lead after a rename.
+  appt.contactName = resolveTourContactDisplayName({
+    contactName: appt.contactName,
+    lead: r.leads ?? null,
+  });
   return appt;
 }
+
+const TOUR_LIST_SELECT =
+  "*, leads(first_name,last_name,partner_first_name,partner_last_name)";
 
 export async function getTourAppointments(): Promise<import("@/lib/tours/types").TourAppointment[]> {
   if (!isSupabaseConfigured) return [];
@@ -743,7 +748,7 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
   // separately so a long past cannot push upcoming out of a single limit.
   // Archived tours are excluded here — list hygiene, not status change.
   const nowIso = new Date().toISOString();
-  const select = "*, leads(first_name,last_name,partner_first_name)";
+  const select = TOUR_LIST_SELECT;
   const [{ data: upcomingRows }, { data: completedRows }, { data: overdueRows }] = await Promise.all([
     supabase
       .from("tour_appointments")
@@ -795,7 +800,7 @@ export async function getArchivedTourAppointments(): Promise<import("@/lib/tours
   const supabase = await createClient();
   const { data } = await supabase
     .from("tour_appointments")
-    .select("*, leads(first_name,last_name,partner_first_name)")
+    .select(TOUR_LIST_SELECT)
     .eq("venue_id", venue.id)
     .eq("is_archived", true)
     .order("scheduled_at", { ascending: false })
@@ -810,9 +815,14 @@ export async function getTourAppointmentsForLead(leadId: string): Promise<import
   if (!venue) return [];
   const supabase = await createClient();
   // Lead panel shows full tour history including archived rows.
-  const { data } = await supabase.from("tour_appointments").select("*").eq("venue_id", venue.id).eq("lead_id", leadId).order("scheduled_at");
+  const { data } = await supabase
+    .from("tour_appointments")
+    .select(TOUR_LIST_SELECT)
+    .eq("venue_id", venue.id)
+    .eq("lead_id", leadId)
+    .order("scheduled_at");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map(mapAppointment);
+  return ((data ?? []) as any[]).map(enrichAppointmentContact);
 }
 
 export type TourArchiveActionResult = { ok: true } | { ok: false; message: string };
