@@ -16,10 +16,21 @@ import {
   setYourTeamSoloAction,
 } from "@/app/(app)/setup-hub/actions";
 import { STAGE_COPY } from "@/lib/setup-hub/stage-copy";
+import {
+  isBringYourBusinessComplete,
+  isCalendarAvailabilityComplete,
+  isClientExperienceComplete,
+  isFinancialsComplete,
+  isYourOfferingsComplete,
+  isYourPeopleComplete,
+  isYourVenueComplete,
+  type YourVenueFacts,
+} from "@/lib/setup-hub/stage-completion";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
 import type { SetupConciergeEntry } from "@/lib/setup-concierge/types";
+import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
 
 type StageRow = {
   key: keyof typeof STAGE_COPY;
@@ -48,10 +59,13 @@ export function SetupHubOverview({
   readyCounts,
   uploadedMaterialsCount,
   activeTeamCount,
+  hasActiveOwner,
   stripeConnected,
   quickbooksConnected,
   setupConcierge,
   maxSimultaneousEvents,
+  spaceOperatingMode,
+  yourVenueFacts,
 }: {
   venueName: string;
   ownerFirstName: string | null;
@@ -65,30 +79,45 @@ export function SetupHubOverview({
   /** Raw files brought over during setup (contracts/wording/checklists uploaded as-is), not yet turned into a Contract/Message Template/Playbook — the "you brought this over, now what?" nudge on Client Experience. */
   uploadedMaterialsCount: number;
   activeTeamCount: number;
+  hasActiveOwner: boolean;
   stripeConnected: boolean;
   quickbooksConnected: boolean;
   setupConcierge?: SetupConciergeEntry | null;
   maxSimultaneousEvents?: number | null;
+  spaceOperatingMode: SpaceOperatingMode | null;
+  yourVenueFacts: YourVenueFacts;
 }) {
-  const yourVenueDone = !!hubState?.yourVenueReviewedAt;
-  const calendarDone = !!hubState?.calendarAvailabilityReviewedAt;
+  const yourVenueDone = isYourVenueComplete(yourVenueFacts);
+  const calendarDone = isCalendarAvailabilityComplete({ spaceOperatingMode, spacesCount });
   const bybPath = hubState?.bringYourBusinessPath ?? null;
-  const bringYourBusinessDone = hasImportedData || bybPath === "individual" || bybPath === "skipped";
+  const bringYourBusinessDone = isBringYourBusinessComplete({ hasImportedData, path: bybPath });
   const calendarReadyHint = evaluateCutoverPrerequisites({
     spacesCount,
     hasCapacityRules,
     maxSimultaneousEvents,
   }).message;
-  const offeringsCount = readyCounts.packages + readyCounts.inventory;
-  const offeringsDone = offeringsCount > 0 || !!hubState?.yourOfferingsReviewedAt;
+  const offeringsDone = isYourOfferingsComplete({
+    authoredPackageCount: readyCounts.packages,
+    authoredInventoryCount: readyCounts.inventory,
+    reviewedAt: hubState?.yourOfferingsReviewedAt,
+  });
   const clientExperienceCount =
     readyCounts.contractTemplates + readyCounts.communicationTemplates +
     readyCounts.questionnaireTemplates + readyCounts.playbookTemplates;
-  const clientExperienceDone = clientExperienceCount > 0 || !!hubState?.clientExperienceReviewedAt;
+  const clientExperienceDone = isClientExperienceComplete({
+    authoredTemplateCount: clientExperienceCount,
+    reviewedAt: hubState?.clientExperienceReviewedAt,
+  });
   const yourTeamSolo = !!hubState?.yourTeamSoloConfirmedAt;
-  const yourTeamDone = activeTeamCount > 0 || yourTeamSolo;
-  const financialsReviewed = !!hubState?.financialsReviewedAt;
-  const financialsDone = stripeConnected || financialsReviewed;
+  const yourTeamDone = isYourPeopleComplete({
+    additionalTeamCount: activeTeamCount,
+    hasActiveOwner,
+    soloConfirmed: yourTeamSolo,
+  });
+  const financialsDone = isFinancialsComplete({
+    stripeConnected,
+    reviewedAt: hubState?.financialsReviewedAt,
+  });
 
   const toursLabel = tourSchedulingEnabled ? "offered" : "Not offered";
 
@@ -99,14 +128,10 @@ export function SetupHubOverview({
       href: STAGE_COPY["your-venue"].destinationHref,
       hrefLabel: STAGE_COPY["your-venue"].destinationLabel,
       status: yourVenueDone ? "complete" : null,
-      detail: yourVenueDone ? "You've looked this over." : "Take a look whenever you're ready.",
+      detail: yourVenueDone
+        ? "Venue name, contact details, business hours, logo, hero image, and brand colors are in place."
+        : "Open Business & Brand to finish the details this card names.",
       required: STAGE_COPY["your-venue"].required,
-      action: !yourVenueDone ? (
-        <StageAcknowledgeButton
-          action={() => markStageReviewedAction("your-venue")}
-          label="This looks good for now"
-        />
-      ) : undefined,
     },
     {
       key: "calendar-availability",
@@ -116,12 +141,6 @@ export function SetupHubOverview({
       status: calendarDone ? "complete" : null,
       detail: `${spacesCount} space${spacesCount === 1 ? "" : "s"} · Scheduling capacity ${hasCapacityRules ? "set" : "using defaults"} · Tours ${toursLabel}.`,
       required: STAGE_COPY["calendar-availability"].required,
-      action: !calendarDone ? (
-        <StageAcknowledgeButton
-          action={() => markStageReviewedAction("calendar-availability")}
-          label="I've thought this through"
-        />
-      ) : undefined,
     },
     {
       key: "bring-your-business",
@@ -198,7 +217,7 @@ export function SetupHubOverview({
       status: yourTeamDone ? "complete" : null,
       detail: activeTeamCount > 0
         ? `${activeTeamCount} team member${activeTeamCount === 1 ? "" : "s"} with you here.`
-        : yourTeamSolo
+        : hasActiveOwner || yourTeamSolo
           ? "Running things solo for now — that's the plan."
           : "Just you here so far. Solo is fine whenever you're ready to say so.",
       required: STAGE_COPY["your-team"].required,

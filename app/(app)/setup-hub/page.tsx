@@ -9,7 +9,7 @@ import { getQuickBooksConnection } from "@/lib/quickbooks/service";
 import { getLeadCaptureStageStatus, getSetupHubState } from "@/lib/setup-hub/service";
 import { getTeamMembers } from "@/lib/team/service";
 import { getTourSettings } from "@/lib/tours/service";
-import { getCurrentVenue, getSetupReadyCounts } from "@/lib/venue/service";
+import { getCurrentVenue, getSetupReadyCounts, getVenueSettings } from "@/lib/venue/service";
 import { loadSetupConciergeEntry } from "@/lib/setup-concierge/load";
 
 export const metadata: Metadata = { title: "Setup" };
@@ -21,7 +21,7 @@ export default async function SetupHubPage() {
 
   const [
     hubState, leadCapture, spaces, capacityRules, tourSettings,
-    importBatches, readyCounts, teamMembers, quickbooksConnection, setupConcierge, venueDocuments,
+    importBatches, readyCounts, teamMembers, quickbooksConnection, setupConcierge, venueDocuments, venueSettings,
   ] = await Promise.all([
     getSetupHubState(),
     getLeadCaptureStageStatus(),
@@ -34,9 +34,11 @@ export default async function SetupHubPage() {
     getQuickBooksConnection(),
     loadSetupConciergeEntry(),
     getVenueDocuments(),
+    getVenueSettings(),
   ]);
 
   const activeTeamCount = teamMembers.filter((m) => !m.isOwner && m.isActive && m.acceptedAt).length;
+  const hasActiveOwner = teamMembers.some((m) => m.isOwner && m.isActive);
   const hasImportedData = importBatches.some((b) => !b.rolledBackAt && b.importedCount > 0);
   // Raw files brought over during onboarding (setup-migration-steps.tsx's
   // DocumentsUploadStep) that haven't been turned into a real Contract/
@@ -80,10 +82,21 @@ export default async function SetupHubPage() {
         readyCounts={readyCounts}
         uploadedMaterialsCount={uploadedMaterialsCount}
         activeTeamCount={activeTeamCount}
+        hasActiveOwner={hasActiveOwner}
         stripeConnected={venue.stripeOnboardingStatus === "connected"}
         quickbooksConnected={quickbooksConnection?.status === "connected"}
         setupConcierge={setupConcierge}
         maxSimultaneousEvents={capacityRules?.maxSimultaneousEvents ?? null}
+        spaceOperatingMode={venue.spaceOperatingMode}
+        yourVenueFacts={{
+          name: venue.name,
+          email: venue.email,
+          phone: venue.phone,
+          businessHours: venueSettings?.input.businessHours ?? [],
+          logoUrl: venue.logoUrl,
+          heroImageUrl: venue.heroImageUrl,
+          primaryColor: venue.primaryColor,
+        }}
       />
     </div>
   );

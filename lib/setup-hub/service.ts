@@ -8,7 +8,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/setup-hub/repository";
-import { CHANNEL_HAS_VERIFICATION } from "@/lib/setup-hub/types";
+import { isLeadCaptureComplete } from "@/lib/setup-hub/stage-completion";
 import type { BringYourBusinessPath, LeadCaptureChannelKey, LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -29,31 +29,7 @@ export async function getLeadCaptureStageStatus(): Promise<LeadCaptureStageStatu
       repo.getOrCreateState(client, venueId),
       repo.getLeadCaptureChannels(client, venueId),
     ]);
-    return { path: state.leadCapturePath, channels, complete: computeLeadCaptureComplete(state.leadCapturePath, channels) };
-  });
-}
-
-/**
- * Approved completion model (plan §D), applied literally:
- * "A. The venue configures and, where applicable, verifies at least one
- * automated intake channel they intend to use. OR B. The venue explicitly
- * chooses a valid manual/external workflow for now."
- *
- * A channel counts toward (A) only when it's configured AND — for channels
- * where an on-demand verify action is practical (CHANNEL_HAS_VERIFICATION)
- * — also verified. For channels with no practical verify path (manual,
- * QR scan-dependent), configuration alone is the bar.
- */
-function computeLeadCaptureComplete(
-  path: SetupHubState["leadCapturePath"],
-  channels: LeadCaptureStageStatus["channels"],
-): boolean {
-  if (path === "manual_external") return true;
-  if (path !== "automated") return false;
-  return channels.some((c) => {
-    if (!c.configuredAt) return false;
-    if (CHANNEL_HAS_VERIFICATION[c.channel]) return c.verifiedAt != null;
-    return true;
+    return { path: state.leadCapturePath, channels, complete: isLeadCaptureComplete(state.leadCapturePath, channels) };
   });
 }
 

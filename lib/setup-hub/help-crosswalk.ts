@@ -60,7 +60,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     ...help("where-do-my-venue-colors-actually-show-up"),
     required: true,
     canBeNotApplicable: false,
-    completionSignal: "Deliberate review (your_venue_reviewed_at), after visiting Business & Brand (name, contact, hours, logo, hero, colors).",
+    completionSignal: "Authoritative venue fields named by the card: name, email, phone, business hours, logo, hero, brand colors. Not Venue Guide. Not your_venue_reviewed_at.",
   },
   {
     stage: "calendar-availability",
@@ -71,7 +71,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     ...help("how-do-i-set-my-tour-availability"),
     required: true,
     canBeNotApplicable: true, // tours may be Not offered; spaces/capacity still apply
-    completionSignal: "Deliberate review (calendar_availability_reviewed_at). Tours off = Not offered, not incomplete.",
+    completionSignal: "Multi-space venues need ≥1 space. Single-space venues are satisfied. Tours off is Not offered. Not calendar_availability_reviewed_at.",
   },
   {
     stage: "bring-your-business",
@@ -128,7 +128,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     helpTitle: null,
     required: false,
     canBeNotApplicable: true, // solo venue
-    completionSignal: "Active non-owner team member OR solo confirmation. Optional — solo is complete.",
+    completionSignal: "Active owner (solo) OR additional accepted teammate OR solo confirmation. Optional. Visit is irrelevant.",
   },
   {
     stage: "financials",
