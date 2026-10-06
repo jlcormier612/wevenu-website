@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { signOutToAcceptInviteAction } from "@/app/join/actions";
+import { peekPendingInvitationEmail } from "@/lib/team/invitation-peek";
 import { acceptTeamInvitation } from "@/lib/team/service";
+import { safeLoginEmailPrefill } from "@/lib/auth/login-email-prefill";
 import {
   Card,
   CardContent,
@@ -50,7 +52,13 @@ export default async function JoinPage({ searchParams }: Props) {
       // /vendor/accept relies on to return an invitation claimer to the
       // right place after signing in. This previously used `?redirect=`,
       // a param /login never reads, silently stranding every invitee here.
-      redirect(`/login?next=${encodeURIComponent(`/join?token=${token}`)}`);
+      const invitedEmail = safeLoginEmailPrefill(
+        await peekPendingInvitationEmail(token),
+      );
+      const login = new URLSearchParams();
+      login.set("next", `/join?token=${token}`);
+      if (invitedEmail) login.set("email", invitedEmail);
+      redirect(`/login?${login.toString()}`);
     }
 
     // Accept the invitation
@@ -61,24 +69,55 @@ export default async function JoinPage({ searchParams }: Props) {
     }
 
     if (result.error === "email_mismatch") {
+      const invitedEmail = safeLoginEmailPrefill(
+        await peekPendingInvitationEmail(token),
+      );
+      const currentEmail = user.email?.trim().toLowerCase() || "";
       return (
         <main className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-12">
           <div className="flex w-full max-w-sm flex-col gap-6">
             <div className="flex justify-center"><Wordmark /></div>
-            <Card>
+            <Card data-invite-mismatch>
               <CardHeader className="text-center">
-                <CardTitle>Wrong Email Address</CardTitle>
-                <CardDescription>
-                  This invitation was sent to a different email address.
-                  Sign in with that email, or ask your venue owner to resend
-                  the invitation to the correct address.
+                <CardTitle>Wrong account</CardTitle>
+                <CardDescription className="space-y-3 text-left">
+                    {invitedEmail ? (
+                      <p>
+                        This invitation was sent to:
+                        <br />
+                        <span data-invited-email className="font-medium text-foreground">
+                          {invitedEmail}
+                        </span>
+                      </p>
+                    ) : (
+                      <p>This invitation was sent to a different email address.</p>
+                    )}
+                    {currentEmail ? (
+                      <p>
+                        You&apos;re currently signed in as:
+                        <br />
+                        <span data-current-email className="font-medium text-foreground">
+                          {currentEmail}
+                        </span>
+                      </p>
+                    ) : null}
+                    <p>
+                      Sign out and sign in with the invited email address to
+                      accept this invitation.
+                    </p>
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
                 <form action={signOutToAcceptInviteAction}>
                   <input type="hidden" name="token" value={token} />
-                  <button type="submit" className="text-sm text-primary hover:underline">
-                    Sign in with the invited email
+                  {invitedEmail ? (
+                    <input type="hidden" name="invitedEmail" value={invitedEmail} />
+                  ) : null}
+                  <button
+                    type="submit"
+                    className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    Switch account
                   </button>
                 </form>
               </CardContent>

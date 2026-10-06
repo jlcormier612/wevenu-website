@@ -31,7 +31,7 @@ function SubmitButton({ redirecting }: { redirecting: boolean }) {
   );
 }
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, defaultEmail }: { next?: string; defaultEmail?: string }) {
   const [state, formAction] = React.useActionState(signIn, INITIAL_STATE);
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -65,6 +65,7 @@ export function LoginForm({ next }: { next?: string }) {
           type="email"
           autoComplete="email"
           placeholder="you@venue.com"
+          defaultValue={defaultEmail}
           required
         />
       </div>

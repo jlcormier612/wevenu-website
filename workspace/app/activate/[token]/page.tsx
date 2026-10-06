@@ -142,15 +142,23 @@ export default async function ActivateAccountPage({
         <p className="mt-3 text-[1.05rem] leading-relaxed ws-muted">
           Your Hello to Cheers experience is waiting for you.
         </p>
-        <p className="mt-5 text-sm leading-relaxed ws-muted">
-          Create your password below, and we&apos;ll get everything ready for
-          your first visit.
-        </p>
+        {lookup.alreadyHasLogin ? (
+          <p className="mt-5 text-sm leading-relaxed ws-muted">
+            You already have a Hello to Cheers account. After activation,
+            you&apos;ll sign in with your existing account.
+          </p>
+        ) : (
+          <p className="mt-5 text-sm leading-relaxed ws-muted">
+            Create your password below, and we&apos;ll get everything ready for
+            your first visit.
+          </p>
+        )}
         <ActivateAccountForm
           token={token}
           email={email}
           venueName={venueName}
           setupPersonName={setupPersonName}
+          alreadyHasLogin={lookup.alreadyHasLogin === true}
         />
       </div>
     </div>

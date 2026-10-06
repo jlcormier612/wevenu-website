@@ -99,6 +99,7 @@ export type TokenLookupResult =
       ownerEmail: string;
       ownerFirstName?: string | null;
       ownerLastName?: string | null;
+      alreadyHasLogin?: boolean;
     }
   | { ok: false; error: string };
 

@@ -66,12 +66,14 @@ export function ActivateAccountForm({
   venueName,
   setupPersonName,
   relationshipId,
+  alreadyHasLogin = false,
 }: {
   token: string;
   email: string;
   venueName: string;
   setupPersonName?: string;
   relationshipId?: string | null;
+  alreadyHasLogin?: boolean;
 }) {
   const [state, action, pending] = useActionState(activateAccountAction, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -117,6 +119,7 @@ export function ActivateAccountForm({
     ownershipChoice,
     invitedOwnerName,
     invitedOwnerEmail,
+    alreadyHasLogin,
   });
 
   return (
@@ -129,6 +132,9 @@ export function ActivateAccountForm({
     >
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="email" value={email} />
+      {alreadyHasLogin ? (
+        <input type="hidden" name="alreadyHasLogin" value="true" />
+      ) : null}
       {relationshipId ? (
         <input type="hidden" name="relationshipId" value={relationshipId} />
       ) : null}
@@ -258,6 +264,23 @@ export function ActivateAccountForm({
           className="ws-control-muted mt-2 w-full cursor-default rounded-sm px-3 py-2.5 text-sm outline-none"
         />
       </label>
+      {alreadyHasLogin ? (
+        <div
+          data-activate-existing-login
+          className="space-y-2 rounded-sm border border-border/60 bg-muted/60 px-4 py-3 text-sm leading-relaxed"
+        >
+          <p className="font-medium text-foreground">
+            You already have a Hello to Cheers account.
+          </p>
+          <p className="ws-muted">
+            Your existing password will continue to work when you sign in.
+          </p>
+          <p className="ws-muted">
+            After activation, you&apos;ll sign in with your existing account.
+          </p>
+        </div>
+      ) : (
+        <>
       <div>
         <label htmlFor="activate-password" className="block">
           <span className="ws-eyebrow">Create password</span>
@@ -320,6 +343,8 @@ export function ActivateAccountForm({
           </button>
         </div>
       </div>
+        </>
+      )}
       <div className="flex items-start gap-3 text-sm leading-relaxed text-foreground">
         <input
           id="activate-legal-accepted"

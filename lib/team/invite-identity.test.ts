@@ -59,7 +59,14 @@ describe("accept_team_invitation identity boundary", () => {
     assert.match(joinPage, /signOutToAcceptInviteAction/);
     assert.match(joinActions, /signOutToAcceptInviteAction/);
     assert.match(joinActions, /\/join\?token=/);
+    assert.match(joinPage, /Switch account/);
+    assert.match(joinPage, /This invitation was sent to:/);
+    assert.match(joinPage, /You&apos;re currently signed in as:/);
+    assert.match(joinPage, /peekPendingInvitationEmail/);
+    assert.match(joinActions, /invitedEmail/);
+    assert.match(joinActions, /login\.set\("email"/);
     assert.doesNotMatch(joinPage, /Sign in with a different account/);
+    assert.doesNotMatch(joinPage, /acceptTeamInvitation\(token\)[\s\S]*Switch account[\s\S]*acceptTeamInvitation/);
   });
 
   it("invitation cannot be replayed after a successful consume", () => {

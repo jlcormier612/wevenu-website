@@ -139,6 +139,40 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
     assert.equal(ok.ok, true);
   });
 
+  it("existing HTC login skips password creation without changing validation for new users", () => {
+    const existing = validateActivateAccountFields({
+      password: "",
+      confirm: "",
+      legalAccepted: true,
+      ownershipChoice: "owner",
+      alreadyHasLogin: true,
+    });
+    assert.equal(existing.ok, true);
+    assert.equal(
+      canSubmitActivateAccount({
+        password: "",
+        confirm: "",
+        legalAccepted: true,
+        ownershipChoice: "owner",
+        alreadyHasLogin: true,
+      }),
+      true,
+    );
+    const gated = gateActivateAccountSubmission(
+      formDataFrom({
+        token: "tok_existing",
+        email: "jlcormier612@gmail.com",
+        legalAccepted: "true",
+        ownershipChoice: "owner",
+        alreadyHasLogin: "true",
+      }),
+    );
+    assert.equal(gated.ok, true);
+    if (gated.ok) {
+      assert.equal(gated.password, "");
+    }
+  });
+
   it("missing ownership choice is rejected — does not default to Owner", () => {
     const missing = validateActivateAccountFields({
       password: VALID_PASSWORD,
@@ -354,5 +388,20 @@ describe("activation page customer branding", () => {
     assert.match(formSrc, /name="ownershipChoice"/);
     assert.match(formSrc, /Yes, I&apos;m an owner/);
     assert.match(actionSrc, /activateVenueAccount\(\{/);
+  });
+
+  it("existing-login activation hides Create password and tells the truth", () => {
+    assert.match(formSrc, /alreadyHasLogin/);
+    assert.match(formSrc, /data-activate-existing-login/);
+    assert.match(formSrc, /You already have a Hello to Cheers account/);
+    assert.match(formSrc, /Your existing password will continue to work when you sign in/);
+    assert.match(formSrc, /name="alreadyHasLogin"/);
+    const pageSrc = readFileSync(
+      resolve("workspace/app/activate/[token]/page.tsx"),
+      "utf8",
+    );
+    assert.match(pageSrc, /lookup\.alreadyHasLogin/);
+    assert.match(pageSrc, /Create your password below/);
+    assert.match(pageSrc, /alreadyHasLogin=\{lookup\.alreadyHasLogin === true\}/);
   });
 });

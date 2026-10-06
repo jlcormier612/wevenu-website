@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/integrations/supabase/server";
+import { safeLoginEmailPrefill } from "@/lib/auth/login-email-prefill";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export async function signOutToAcceptInviteAction(formData: FormData): Promise<void> {
@@ -12,5 +13,9 @@ export async function signOutToAcceptInviteAction(formData: FormData): Promise<v
     const supabase = await createClient("venue");
     await supabase.auth.signOut();
   }
-  redirect(`/login?next=${encodeURIComponent(`/join?token=${token}`)}`);
+  const invitedEmail = safeLoginEmailPrefill(formData.get("invitedEmail"));
+  const login = new URLSearchParams();
+  login.set("next", `/join?token=${token}`);
+  if (invitedEmail) login.set("email", invitedEmail);
+  redirect(`/login?${login.toString()}`);
 }

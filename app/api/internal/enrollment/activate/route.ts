@@ -78,9 +78,6 @@ export async function POST(request: Request) {
   if (!token) {
     return NextResponse.json({ error: "token is required" }, { status: 400 });
   }
-  if (password.length < 8) {
-    return NextResponse.json({ error: "password must be at least 8 characters" }, { status: 400 });
-  }
   if (!purchaserIsOwner && ((invitedOwnerName && !invitedOwnerEmail) || (!invitedOwnerName && invitedOwnerEmail))) {
     return NextResponse.json(
       { error: "Owner name and email must both be provided, or both left blank to add later." },
@@ -122,6 +119,12 @@ export async function POST(request: Request) {
     if (memberErr) throw memberErr;
     const alreadyHasLogin =
       enrollment.status === "activated" || (otherCount ?? 0) > 0;
+    if (!alreadyHasLogin && password.length < 8) {
+      return NextResponse.json(
+        { error: "password must be at least 8 characters" },
+        { status: 400 },
+      );
+    }
     if (!alreadyHasLogin) {
       const { error: pwErr } = await admin.auth.admin.updateUserById(userId, { password });
       if (pwErr) throw pwErr;

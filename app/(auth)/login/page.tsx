@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import { LoginForm } from "@/components/auth/login-form";
 import { Wordmark } from "@/components/brand/wordmark";
+import { safeLoginEmailPrefill } from "@/lib/auth/login-email-prefill";
 import {
   Card,
   CardContent,
@@ -44,12 +45,13 @@ const LIGHT_THEME_VARS = {
   "--ring": "var(--heritage-sage)",
 } as CSSProperties;
 
-type Props = { searchParams: Promise<{ next?: string; activated?: string }> };
+type Props = { searchParams: Promise<{ next?: string; activated?: string; email?: string }> };
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { next, activated } = await searchParams;
+  const { next, activated, email } = await searchParams;
   const justActivated = activated === "1";
   const nextPath = next || (justActivated ? "/setup-hub" : undefined);
+  const defaultEmail = safeLoginEmailPrefill(email);
 
   return (
     <main
@@ -85,7 +87,7 @@ export default async function LoginPage({ searchParams }: Props) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm next={nextPath} />
+            <LoginForm next={nextPath} defaultEmail={defaultEmail} />
           </CardContent>
         </Card>
 

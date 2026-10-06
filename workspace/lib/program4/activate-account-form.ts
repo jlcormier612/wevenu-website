@@ -28,6 +28,7 @@ export type ActivateAccountFieldState = {
   invitedOwnerName?: string;
   invitedOwnerEmail?: string;
   inviteOwnerNow?: boolean;
+  alreadyHasLogin?: boolean;
   pending?: boolean;
 };
 
@@ -53,6 +54,7 @@ export function parseActivateAccountFormData(formData: FormData): {
   invitedOwnerName: string;
   invitedOwnerEmail: string;
   inviteOwnerNow: boolean;
+  alreadyHasLogin: boolean;
 } {
   const rawChoice = String(formData.get("ownershipChoice") || "").trim();
   const ownershipChoice: ActivateOwnershipChoice | "" =
@@ -68,6 +70,7 @@ export function parseActivateAccountFormData(formData: FormData): {
     invitedOwnerName: String(formData.get("invitedOwnerName") || "").trim(),
     invitedOwnerEmail: String(formData.get("invitedOwnerEmail") || "").trim().toLowerCase(),
     inviteOwnerNow: String(formData.get("inviteOwnerNow") || "") === "now",
+    alreadyHasLogin: String(formData.get("alreadyHasLogin") || "").trim() === "true",
   };
 }
 
@@ -80,16 +83,19 @@ export function validateActivateAccountFields(
     | "ownershipChoice"
     | "invitedOwnerName"
     | "invitedOwnerEmail"
+    | "alreadyHasLogin"
   >,
 ): ActivateAccountFieldsResult {
   if (!input.legalAccepted) {
     return { ok: false, error: ACTIVATE_LEGAL_ERROR };
   }
-  if (input.password.length < ACTIVATE_PASSWORD_MIN_LENGTH) {
-    return { ok: false, error: ACTIVATE_PASSWORD_LENGTH_ERROR };
-  }
-  if (input.password !== input.confirm) {
-    return { ok: false, error: ACTIVATE_PASSWORD_MISMATCH_ERROR };
+  if (!input.alreadyHasLogin) {
+    if (input.password.length < ACTIVATE_PASSWORD_MIN_LENGTH) {
+      return { ok: false, error: ACTIVATE_PASSWORD_LENGTH_ERROR };
+    }
+    if (input.password !== input.confirm) {
+      return { ok: false, error: ACTIVATE_PASSWORD_MISMATCH_ERROR };
+    }
   }
   if (input.ownershipChoice !== "owner" && input.ownershipChoice !== "on_behalf") {
     return { ok: false, error: ACTIVATE_OWNERSHIP_REQUIRED_ERROR };
