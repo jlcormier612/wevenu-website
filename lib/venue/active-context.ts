@@ -11,6 +11,7 @@ import {
   syncActiveVenueCookieFromDb,
 } from "@/lib/venue/active-context-cookie";
 import { classifyActiveVenueCase } from "@/lib/venue/active-context-logic";
+import { consumeOnboardingHandoff } from "@/lib/venue/onboarding-handoff";
 
 export type VenueMembershipSummary = {
   venueId: string;
@@ -75,6 +76,11 @@ export const bootstrapActiveVenueContext = cache(async (): Promise<ActiveVenueBo
     await clearActiveVenueCookie();
     return { status: "unauthenticated" };
   }
+
+  // One-time onboarding handoff (purchase activation) — establish the
+  // intended venue before ordinary classification. No-op when none exists.
+  // Does not change B_keep_valid for users without a pending handoff.
+  await consumeOnboardingHandoff();
 
   // Clear stale DB context when membership no longer valid (Case E cleanup).
   await supabase.rpc("clear_stale_active_venue_context");

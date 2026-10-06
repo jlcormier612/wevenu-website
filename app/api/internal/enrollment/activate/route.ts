@@ -8,6 +8,7 @@ import {
 } from "@/lib/activation/purchaser-ownership";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveUserIdForEmail } from "@/lib/legal/service";
+import { createPurchaseOnboardingHandoff } from "@/lib/venue/onboarding-handoff";
 
 export const runtime = "nodejs";
 
@@ -161,6 +162,17 @@ export async function POST(request: Request) {
     }
 
     const row = result as { venue_id: string; already_activated: boolean };
+
+    if (row.venue_id) {
+      const handoff = await createPurchaseOnboardingHandoff({
+        userId,
+        intendedEmail: enrollment.owner_email,
+        venueId: row.venue_id,
+      });
+      if (!handoff.ok) {
+        console.error("[enrollment/activate] onboarding handoff failed", handoff.error);
+      }
+    }
 
     // Shared provisioning: starters + Setup Hub state (idempotent).
     // Must run after the venue exists so Self-Setup and White Glove share

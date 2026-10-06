@@ -578,6 +578,11 @@ export async function acceptTeamInvitation(
     actorId: user?.id,
   });
 
+  if (data.venueId) {
+    const { setActiveVenue } = await import("@/lib/venue/active-context");
+    await setActiveVenue(data.venueId);
+  }
+
   return { ok: true, venueId: data.venueId };
 }
 

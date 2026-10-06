@@ -49,6 +49,7 @@ describe("productPostActivationLoginUrl — must land on product login then Setu
       "https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub",
     );
     assert.doesNotMatch(url, /workspace\.sandbox/);
+    assert.doesNotMatch(url, /venueId=/);
   });
 });
 

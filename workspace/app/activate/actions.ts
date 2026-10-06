@@ -73,5 +73,7 @@ export async function activateAccountAction(
     console.error("[activate] local relationship activation threw after real account succeeded", error);
   }
 
+  // Product activate already stored a server-trusted one-time handoff for
+  // bridged.venueId. Do not put a raw venue id on the login URL.
   redirect(productPostActivationLoginUrl());
 }

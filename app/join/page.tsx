@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { signOutToAcceptInviteAction } from "@/app/join/actions";
 import { acceptTeamInvitation } from "@/lib/team/service";
 import {
   Card,
@@ -56,7 +57,7 @@ export default async function JoinPage({ searchParams }: Props) {
     const result = await acceptTeamInvitation(token);
 
     if (result.ok) {
-      redirect("/");
+      redirect("/setup-hub");
     }
 
     if (result.error === "email_mismatch") {
@@ -74,7 +75,12 @@ export default async function JoinPage({ searchParams }: Props) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Link href="/login" className="text-sm text-primary hover:underline">Sign in with a different account</Link>
+                <form action={signOutToAcceptInviteAction}>
+                  <input type="hidden" name="token" value={token} />
+                  <button type="submit" className="text-sm text-primary hover:underline">
+                    Sign in with the invited email
+                  </button>
+                </form>
               </CardContent>
             </Card>
           </div>
