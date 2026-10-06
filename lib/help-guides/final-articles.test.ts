@@ -77,6 +77,18 @@ describe("Help & Guides final IA", () => {
     assert.match(article.body, /\*\*By Person\*\*/);
     assert.match(article.body, /\*\*All Team Work\*\*/);
     assert.doesNotMatch(article.body, /My Tasks/);
+
+    // The published row wins over the editorial source, so the copy correction
+    // only reaches the live article if the companion migration carries it too.
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20261412800000_help_task_center_lenses_copy.sql"),
+      "utf8",
+    );
+    assert.match(sql, /how-does-task-center-work/);
+    assert.match(sql, /\*\*My Work\*\*/);
+    assert.match(sql, /\*\*By Person\*\*/);
+    assert.match(sql, /\*\*All Team Work\*\*/);
+    assert.doesNotMatch(sql, /insert into public\.success_library_articles/);
   });
 
   it("matches expected publishable counts per category", () => {
