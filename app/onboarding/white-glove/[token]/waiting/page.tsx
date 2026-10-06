@@ -1,3 +1,5 @@
+import { WhiteGloveBrandChrome } from "@/components/onboarding/white-glove-brand-chrome";
+
 export const dynamic = "force-dynamic";
 
 type PageProps = { params: Promise<{ token: string }> };
@@ -6,6 +8,7 @@ export default async function WhiteGloveWaitingPage({ params }: PageProps) {
   await params;
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-16">
+      <WhiteGloveBrandChrome />
       <h1 className="font-heading text-3xl font-medium tracking-tight">
         We&apos;re getting your venue ready
       </h1>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createVendorClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { Wordmark } from "@/components/brand/wordmark";
 import { VendorAcceptAuthedPanel } from "@/components/vendor-app/vendor-accept-authed-panel";
 import { VendorAcceptUnauthPanel } from "@/components/vendor-app/vendor-accept-unauth-panel";
 
@@ -79,6 +80,9 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md bg-background border border-border rounded-2xl p-8 shadow-sm space-y-6">
+        <div className="flex justify-center">
+          <Wordmark />
+        </div>
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             {venueName ? `Invitation from ${venueName}` : "You've been invited"}
@@ -132,6 +136,9 @@ function InvalidToken() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <div className="w-full max-w-md bg-background border border-border rounded-2xl p-8 shadow-sm text-center space-y-3">
+        <div className="flex justify-center">
+          <Wordmark />
+        </div>
         <h1 className="font-heading text-2xl font-medium text-heading">Link invalid or expired</h1>
         <p className="text-sm text-muted-foreground">
           This invitation link has already been used, expired, or is no longer valid.

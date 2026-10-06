@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { WhiteGloveBrandChrome } from "@/components/onboarding/white-glove-brand-chrome";
 import { WhiteGloveIntakeClient } from "@/components/onboarding/white-glove-intake-client";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export default async function WhiteGloveIntakePage({ params }: PageProps) {
   if (!isSupabaseConfigured || !token) {
     return (
       <main className="mx-auto max-w-xl px-4 py-16">
+        <WhiteGloveBrandChrome />
         <h1 className="text-2xl font-medium">Link unavailable</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           This intake link is invalid or expired. Reply to your welcome email and we&apos;ll
@@ -39,6 +41,7 @@ export default async function WhiteGloveIntakePage({ params }: PageProps) {
   ) {
     return (
       <main className="mx-auto max-w-xl px-4 py-16">
+        <WhiteGloveBrandChrome />
         <h1 className="text-2xl font-medium">Link unavailable</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           This intake link is invalid or your workspace access has already been activated.
@@ -63,6 +66,9 @@ export default async function WhiteGloveIntakePage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-background px-4 py-10">
+      <div className="mx-auto max-w-xl">
+        <WhiteGloveBrandChrome />
+      </div>
       <WhiteGloveIntakeClient
         intakeToken={token}
         prefill={{

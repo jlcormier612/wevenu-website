@@ -115,7 +115,6 @@ export function wrapHelloHtml(title: string, bodyHtml: string): string {
     <tr>
       <td style="background:#fffdf9;border-radius:4px;padding:40px 36px;border:1px solid #e5ddd0">
         ${logoHeader}
-        <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6b7a6b">Hello to Cheers</p>
         <h1 style="margin:0 0 24px;font-size:24px;line-height:1.3;color:#2f3d2f;font-weight:normal">${escapeHtml(title)}</h1>
         ${bodyHtml}
         <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:#6b7a6b">With care,<br/>Jennifer &amp; the Hello to Cheers team</p>

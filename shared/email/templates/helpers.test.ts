@@ -104,9 +104,14 @@ describe("wrapHelloHtml — shared HTC product-email shell", () => {
     assert.match(html, /width="200"/);
   });
 
-  it("keeps the Hello to Cheers eyebrow, title, and Jennifer sign-off", () => {
+  it("keeps the title and Jennifer sign-off without a redundant Hello to Cheers wordmark", () => {
     const html = wrapHelloHtml("Welcome Back", "<p>Hi Sally,</p>");
-    assert.match(html, /Hello to Cheers/);
+    assert.match(html, /hello-to-cheers-logo-primary-transparent\.png/);
+    assert.match(html, /alt="Hello to Cheers"/);
+    assert.doesNotMatch(
+      html,
+      /letter-spacing:0\.14em;text-transform:uppercase[^>]*>Hello to Cheers</,
+    );
     assert.match(html, />Welcome Back</);
     assert.match(html, /Hi Sally/);
     assert.match(html, /Jennifer &amp; the Hello to Cheers team/);

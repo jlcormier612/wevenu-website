@@ -49,6 +49,10 @@ describe("founder_welcome — Founding Member copy", () => {
   it("keeps the canonical HTC logo in the branded email header", () => {
     assert.match(rendered.html, /alt="Hello to Cheers"/);
     assert.match(rendered.html, /hello-to-cheers-logo-primary-transparent\.png/);
+    assert.doesNotMatch(
+      rendered.html,
+      /letter-spacing:0\.14em;text-transform:uppercase[^>]*>Hello to Cheers</,
+    );
   });
 
   it("points next steps at the existing activation URL", () => {
