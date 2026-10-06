@@ -536,6 +536,7 @@ export function BusinessHoursStep({ input, errors, setHour }: StepProps) {
               {h.isOpen ? (
                 <div className="flex items-center gap-2">
                   <Input
+                    id={`hours-${day.value}-open`}
                     type="time"
                     value={h.openTime}
                     aria-label={`${day.label} opening time`}
@@ -590,7 +591,7 @@ export function BrandStep({ input, errors, set }: StepProps) {
       {/* 4-color palette */}
       <div className="grid gap-5 sm:grid-cols-2">
         {COLOR_ROLES.map(({ key, label, hint }) => (
-          <Field key={key} label={label} hint={hint} error={errors[key]}>
+          <Field key={key} id={key} label={label} hint={hint} error={errors[key]}>
             <ColorPickerTrigger
               value={input[key]}
               onChange={(v) => set(key, v)}

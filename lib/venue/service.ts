@@ -15,7 +15,7 @@ import type {
   VenueSetupErrors,
   VenueSetupInput,
 } from "@/lib/venue/types";
-import { validateStep, validateVenueSetup } from "@/lib/venue/validation";
+import { validateGeneralSettings, validateStep, validateVenueSetup } from "@/lib/venue/validation";
 import type {
   ProductVenueProfileFields,
   SyncVenueProfileReason,
@@ -420,24 +420,17 @@ export async function saveBrandSection(
   });
 }
 
-/** Save: owner name/title/email and general settings (currency, week start). */
+/** Save the General settings card: currency and week start only. */
 export async function saveOwnerSection(
   input: VenueSetupInput,
 ): Promise<SaveSectionResult> {
-  const errors = validateStep("owner", input);
+  const errors = validateGeneralSettings(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return withVenue(async (supabase, venueId) => {
-    await Promise.all([
-      repository.updateOwnerStaff(supabase, venueId, {
-        full_name: input.ownerFullName.trim(),
-        title: input.ownerTitle.trim() || null,
-        email: input.ownerEmail.trim() || null,
-      }),
-      repository.updateVenueFields(supabase, venueId, {
-        currency: input.currency,
-        week_starts_on: input.weekStartsOn,
-      }),
-    ]);
+    await repository.updateVenueFields(supabase, venueId, {
+      currency: input.currency,
+      week_starts_on: input.weekStartsOn,
+    });
     pushVenueProfileToCrm(venueId, input, "settings");
     return { ok: true };
   });

@@ -212,3 +212,38 @@ export function validateStep(
 export function isStepValid(step: SetupStepId, input: VenueSetupInput): boolean {
   return Object.keys(validateStep(step, input)).length === 0;
 }
+
+/**
+ * Settings → Business & Brand → General settings.
+ * That card only edits currency and week start. Owner name and email stay
+ * on the owner step (`validateStep("owner")`) and the Owners card.
+ */
+export const GENERAL_SETTINGS_FIELDS = ["currency", "weekStartsOn"] as const;
+
+export function validateGeneralSettings(input: VenueSetupInput): VenueSetupErrors {
+  const all = validateVenueSetup(input);
+  const out: VenueSetupErrors = {};
+  for (const key of GENERAL_SETTINGS_FIELDS) {
+    if (all[key]) out[key] = all[key];
+  }
+  return out;
+}
+
+/**
+ * Section save notice. The toast always carries the validator's own
+ * sentences. Focus only a key the section actually renders.
+ */
+export function sectionSaveNotice(
+  errors: VenueSetupErrors | undefined,
+  renders: (key: string) => boolean,
+  message?: string,
+): { toast: string; focusKey: string | null } {
+  const entries = Object.entries(errors ?? {}).filter(([, text]) => text.trim());
+  if (entries.length === 0) {
+    return { toast: message?.trim() || "Could not save.", focusKey: null };
+  }
+  return {
+    toast: entries.map(([, text]) => text).join(" "),
+    focusKey: entries.find(([key]) => renders(key))?.[0] ?? null,
+  };
+}
