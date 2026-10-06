@@ -109,10 +109,11 @@ describe("Juniper owner identity sandbox repair", () => {
     assert.match(sql, /af2d6aa1-0eb2-4e65-aa6f-c066cb71a4b6/);
     assert.match(sql, /jyagnesak@yahoo\.com/);
     assert.match(sql, /2fa73101-337b-4530-8c77-f3c272c5463e/);
+    assert.match(sql, /htc\.allow_last_owner_change/);
     assert.match(sql, /user_id = null/);
     assert.match(sql, /accepted_at = null/);
     assert.match(sql, /owner_invite_pending = true/);
-    assert.doesNotMatch(sql, /is_owner = false/);
+    assert.match(sql, /is_owner = false/);
     assert.match(sql, /6721694e-3f38-45e6-9afa-383ba1fd7564/);
     assert.doesNotMatch(sql, /drop table/i);
   });
