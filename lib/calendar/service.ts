@@ -21,6 +21,11 @@ import { durationInDays, expandOccurrenceStarts, occurrenceDates } from "@/lib/c
 import { calendarDatesForProtectedEvent } from "@/lib/calendar/event-display";
 import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { toScheduleRelationOption, type ScheduleRelationRow } from "@/lib/calendar/schedule-relation-search";
+import {
+  blockedTimeDates,
+  projectTourAvailabilityExceptions,
+  type TourAvailabilityExceptionRow,
+} from "@/lib/calendar/tour-exception-projection";
 
 // Calendar Booking Placeholder — hold on availability, not a booked Event.
 function bookingPlaceholderSubtitle(guestCount: number | null, estimatedRevenue: number | string | null, convertedLeadId: string | null): string | null {
@@ -114,7 +119,7 @@ export async function getCalendarData(
 
   // Venue Calendar — scheduled things + availability only (no planning tasks).
   const [
-    eventsRes, tourItems, holdsRes, blocksRes,
+    eventsRes, tourItems, holdsRes, blocksRes, exceptionsRes,
   ] = await Promise.all([
     // 1. Official booked events only — pre-booking shells stay off the calendar.
     supabase.from("events")
@@ -153,6 +158,14 @@ export async function getCalendarData(
       .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads!calendar_blocks_lead_id_fkey(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id, schedule_item_type_id, blocks_availability")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
+
+    // Tour/date exceptions stay in tour_availability_exceptions. This read
+    // only projects them onto the calendar. Inclusive overlap with the month.
+    supabase.from("tour_availability_exceptions")
+      .select("id, start_date, end_date, label")
+      .eq("venue_id", venue.id)
+      .lte("start_date", end)
+      .gte("end_date", start),
   ]);
 
   const items: CalendarItem[] = [];
@@ -334,6 +347,13 @@ export async function getCalendarData(
       }
     }
   }
+
+  items.push(...projectTourAvailabilityExceptions({
+    exceptions: (exceptionsRes.data ?? []) as TourAvailabilityExceptionRow[],
+    rangeStart: start,
+    rangeEnd: end,
+    occupiedBlockedDates: blockedTimeDates(items),
+  }));
 
   // Sort by date then time
   items.sort((a, b) => {

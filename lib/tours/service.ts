@@ -690,15 +690,18 @@ export async function getTourAvailabilityExceptions(): Promise<TourAvailabilityE
   return result.exceptions;
 }
 
-export async function addTourAvailabilityException(input: TourAvailabilityExceptionInput): Promise<{ ok: boolean }> {
+export async function addTourAvailabilityException(
+  input: TourAvailabilityExceptionInput,
+): Promise<{ ok: true; id: string } | { ok: false }> {
   if (!isSupabaseConfigured) return { ok: false };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false };
   const supabase = await createClient();
-  const { error } = await supabase.from("tour_availability_exceptions").insert({
+  const { data, error } = await supabase.from("tour_availability_exceptions").insert({
     venue_id: venue.id, start_date: input.startDate, end_date: input.endDate, label: input.label?.trim() || null,
-  });
-  return { ok: !error };
+  }).select("id").single<{ id: string }>();
+  if (error || !data?.id) return { ok: false };
+  return { ok: true, id: data.id };
 }
 
 export async function removeTourAvailabilityException(id: string): Promise<{ ok: boolean }> {
@@ -706,8 +709,13 @@ export async function removeTourAvailabilityException(id: string): Promise<{ ok:
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false };
   const supabase = await createClient();
-  const { error } = await supabase.from("tour_availability_exceptions").delete().eq("id", id).eq("venue_id", venue.id);
-  return { ok: !error };
+  const { data, error } = await supabase
+    .from("tour_availability_exceptions")
+    .delete()
+    .eq("id", id)
+    .eq("venue_id", venue.id)
+    .select("id");
+  return { ok: !error && (data?.length ?? 0) > 0 };
 }
 
 function enrichAppointmentContact(

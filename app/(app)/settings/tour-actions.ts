@@ -39,7 +39,7 @@ export async function replaceTourAvailabilityWindowsAction(
 
 export async function addTourAvailabilityExceptionAction(
   input: TourAvailabilityExceptionInput,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: true; id: string } | { ok: false }> {
   const result = await addTourAvailabilityException(input);
   if (result.ok) revalidateTourAvailabilitySurfaces();
   return result;

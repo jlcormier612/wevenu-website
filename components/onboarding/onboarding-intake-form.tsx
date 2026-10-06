@@ -13,7 +13,6 @@ import {
   type InquirySourceKey,
   type OnboardingIntakeInput,
   type SpaceMode,
-  type TastingAppointmentChoice,
 } from "@/lib/onboarding/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,8 +77,10 @@ export function OnboardingIntakeForm({
   const [offersTours, setOffersTours] = React.useState<boolean | null>(
     typeof prefill.offersTours === "boolean" ? prefill.offersTours : null,
   );
-  const [tastingChoice, setTastingChoice] = React.useState<TastingAppointmentChoice | null>(
-    prefill.tastingAppointmentChoice ?? null,
+  const [offersTastingsOrAppointments, setOffersTastingsOrAppointments] = React.useState<boolean | null>(
+    typeof prefill.offersTastingsOrAppointments === "boolean"
+      ? prefill.offersTastingsOrAppointments
+      : null,
   );
   const [inquirySources, setInquirySources] = React.useState<InquirySourceKey[]>(
     prefill.inquirySources ?? [],
@@ -104,10 +105,6 @@ export function OnboardingIntakeForm({
     }
     if (offersTours === null) {
       setError("Please tell us whether you offer tours.");
-      return;
-    }
-    if (!tastingChoice) {
-      setError("Please tell us about tastings or other appointments.");
       return;
     }
     if (inquirySources.length === 0) {
@@ -151,7 +148,7 @@ export function OnboardingIntakeForm({
       spaceMode,
       spaces,
       offersTours,
-      tastingAppointmentChoice: tastingChoice,
+      offersTastingsOrAppointments,
       inquirySources,
       inquirySourcesOther: inquiryOther.trim() || null,
       bringBusinessChoice: bringBusiness,
@@ -321,30 +318,19 @@ export function OnboardingIntakeForm({
 
         <div className="space-y-2 pt-2">
           <p className="text-sm font-medium">Do you offer tastings or other appointments?</p>
-          {(
-            [
-              ["tastings", "Tastings"],
-              ["other_appointments", "Other appointments"],
-              ["both", "Both"],
-              ["neither", "Neither"],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="tastings"
-                checked={tastingChoice === value}
-                onChange={() => setTastingChoice(value)}
-              />
-              {label}
-            </label>
-          ))}
-          {tastingChoice && tastingChoice !== "neither" ? (
-            <p className="text-xs text-muted-foreground">
-              Scheduling details can be refined in your calendar settings when you&apos;re
-              ready.
-            </p>
-          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Optional — this helps us understand how your venue works. You can
+            configure scheduling details later.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="tastings"
+              checked={offersTastingsOrAppointments === true}
+              onChange={(e) => setOffersTastingsOrAppointments(e.target.checked ? true : null)}
+            />
+            Yes, we offer tastings or other appointments
+          </label>
         </div>
       </section>
 

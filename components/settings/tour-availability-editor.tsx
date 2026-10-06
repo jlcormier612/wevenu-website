@@ -125,8 +125,9 @@ export function TourAvailabilityEditor({
       });
       if (result.ok) {
         toast.success("Blocked date added.");
+        const persistedId = result.id;
         setExceptions((prev) => [...prev, {
-          id: crypto.randomUUID(), startDate: newException.startDate, endDate, label: newException.label.trim() || null,
+          id: persistedId, startDate: newException.startDate, endDate, label: newException.label.trim() || null,
         }].sort((a, b) => a.startDate.localeCompare(b.startDate)));
         setNewException({ startDate: "", endDate: "", label: "" });
         onAvailabilityChanged?.();

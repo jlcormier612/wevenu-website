@@ -10,12 +10,6 @@ export type IntakeSpace = {
   maxCapacity: number | null;
 };
 
-export type TastingAppointmentChoice =
-  | "tastings"
-  | "other_appointments"
-  | "both"
-  | "neither";
-
 export type InquirySourceKey =
   | "website"
   | "email_phone"
@@ -88,7 +82,11 @@ export type OnboardingIntakeInput = {
   spaceMode: SpaceMode;
   spaces: IntakeSpace[];
   offersTours: boolean;
-  tastingAppointmentChoice: TastingAppointmentChoice;
+  /**
+   * Optional operator signal. Null means unanswered.
+   * True does not configure appointment scheduling.
+   */
+  offersTastingsOrAppointments: boolean | null;
   inquirySources: InquirySourceKey[];
   inquirySourcesOther?: string | null;
   bringBusinessChoice: BringBusinessChoice;

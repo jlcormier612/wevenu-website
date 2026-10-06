@@ -10,7 +10,6 @@ import type {
   OnboardingIntakeInput,
   OnboardingIntakeRecord,
   SpaceMode,
-  TastingAppointmentChoice,
 } from "@/lib/onboarding/types";
 
 type IntakeRow = {
@@ -32,7 +31,7 @@ type IntakeRow = {
   space_mode: SpaceMode | null;
   spaces: unknown;
   offers_tours: boolean | null;
-  tasting_appointment_choice: TastingAppointmentChoice | null;
+  offers_tastings_or_appointments: boolean | null;
   inquiry_sources: string[] | null;
   inquiry_sources_other: string | null;
   bring_business_choice: BringBusinessChoice | null;
@@ -76,7 +75,7 @@ function mapRow(r: IntakeRow): OnboardingIntakeRecord {
     spaceMode: r.space_mode ?? "one",
     spaces: mapSpaces(r.spaces),
     offersTours: r.offers_tours ?? false,
-    tastingAppointmentChoice: r.tasting_appointment_choice ?? "neither",
+    offersTastingsOrAppointments: r.offers_tastings_or_appointments,
     inquirySources: (r.inquiry_sources ?? []) as InquirySourceKey[],
     inquirySourcesOther: r.inquiry_sources_other,
     bringBusinessChoice: r.bring_business_choice ?? "starting_fresh",
@@ -141,7 +140,7 @@ export async function submitOnboardingIntake(input: {
     space_mode: intake.spaceMode,
     spaces: spacesJson,
     offers_tours: intake.offersTours,
-    tasting_appointment_choice: intake.tastingAppointmentChoice,
+    offers_tastings_or_appointments: intake.offersTastingsOrAppointments,
     inquiry_sources: intake.inquirySources,
     inquiry_sources_other:
       intake.inquirySources.includes("other")

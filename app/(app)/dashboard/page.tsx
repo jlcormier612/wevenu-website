@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarClock, ChevronRight } from "lucide-react";
 
 import { Greeting } from "@/components/dashboard/greeting";
@@ -12,6 +13,8 @@ import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { FocusAttentionRow } from "@/components/dashboard-system/focus-attention-row";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
+import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
+import { getCurrentVenue } from "@/lib/venue/service";
 import { getBusinessSnapshot } from "@/lib/dashboard/business-snapshot";
 import {
   forensicCount,
@@ -55,6 +58,11 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
 export default async function DashboardPage({ searchParams }: Props) {
   // Phase 3B timer-only forensic — temporary; does not change page semantics.
   return withDashboardForensic(async () => {
+  const venue = await forensicTime("pre_graduation_venue", () => getCurrentVenue());
+  if (venue && !(await forensicTime("pre_graduation_ready", () => isVenueReadyToInviteCouples(venue.id)))) {
+    redirect("/setup-hub");
+  }
+
   const [data, snapshot] = await Promise.all([
     forensicTime("get_dashboard_data", () => getDashboardData()),
     forensicTime("business_snapshot", () => getBusinessSnapshot()),

@@ -4,6 +4,10 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
+import {
+  tastingAppointmentSignalLabel,
+  whiteGloveCalendarCanBeFinished,
+} from "@/lib/onboarding/tasting-signal";
 import { validateWhiteGloveHandoff } from "@/lib/onboarding/white-glove-handoff";
 import type { OperatorStageRow } from "@/components/hq/white-glove-operator-panel";
 
@@ -59,10 +63,12 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     {
       key: "calendar",
       title: "Calendar model",
-      status:
-        intake?.offersTours === false && intake?.tastingAppointmentChoice === "neither"
-          ? "we_can_finish"
-          : "decision_needed",
+      status: whiteGloveCalendarCanBeFinished({
+        offersTours: intake?.offersTours,
+        offersTastingsOrAppointments: intake?.offersTastingsOrAppointments,
+      })
+        ? "we_can_finish"
+        : "decision_needed",
       detail:
         spacesCount > 0
           ? `${spacesCount} space(s) configured`
@@ -115,7 +121,7 @@ export async function getWhiteGloveOperatorView(venueId: string) {
   const intakeSummary = intake
     ? [
         `Contact: ${intake.primaryContactName ?? "—"} · ${intake.contactEmail ?? "—"} · ${intake.contactPhone ?? "—"}`,
-        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Tastings/appointments: ${intake.tastingAppointmentChoice}`,
+        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Tastings/appointments: ${tastingAppointmentSignalLabel(intake.offersTastingsOrAppointments)}`,
         `Inquiry sources: ${(intake.inquirySources ?? []).join(", ") || "—"}`,
         intake.inquirySourcesOther ? `Other: ${intake.inquirySourcesOther}` : null,
         `Bring business: ${intake.bringBusinessChoice}`,
