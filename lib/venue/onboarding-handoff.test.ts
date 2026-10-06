@@ -112,7 +112,7 @@ describe("Juniper owner identity sandbox repair", () => {
     assert.match(sql, /user_id = null/);
     assert.match(sql, /accepted_at = null/);
     assert.match(sql, /owner_invite_pending = true/);
-    assert.match(sql, /is_owner = false/);
+    assert.doesNotMatch(sql, /is_owner = false/);
     assert.match(sql, /6721694e-3f38-45e6-9afa-383ba1fd7564/);
     assert.doesNotMatch(sql, /drop table/i);
   });
