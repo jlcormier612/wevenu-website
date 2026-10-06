@@ -327,3 +327,32 @@ describe("Let's go submit path", () => {
     assert.ok(validateIdx > 0 && bridgeIdx > validateIdx);
   });
 });
+
+describe("activation page customer branding", () => {
+  const pageSrc = readFileSync(
+    resolve("workspace/app/activate/[token]/page.tsx"),
+    "utf8",
+  );
+  const markSrc = readFileSync(
+    resolve("workspace/components/activate/activation-brand-mark.tsx"),
+    "utf8",
+  );
+
+  it("uses the canonical HTC logo and no standalone Hello to Cheers wordmark", () => {
+    assert.match(pageSrc, /ActivationBrandMark/);
+    assert.match(pageSrc, /Let&apos;s get you started/);
+    assert.match(pageSrc, /Your Hello to Cheers experience is waiting for you/);
+    assert.doesNotMatch(pageSrc, /ws-eyebrow">Hello to Cheers/);
+    assert.match(markSrc, /HTC_LOGO_PUBLIC_PATH/);
+    assert.match(markSrc, /HTC_LOGO_ALT/);
+    const logoSrc = readFileSync(resolve("shared/brand/logo.ts"), "utf8");
+    assert.match(logoSrc, /hello-to-cheers-logo-primary-transparent\.png/);
+    assert.doesNotMatch(markSrc, /ws-eyebrow/);
+  });
+
+  it("does not change activate form ownership or submit wiring", () => {
+    assert.match(formSrc, /name="ownershipChoice"/);
+    assert.match(formSrc, /Yes, I&apos;m an owner/);
+    assert.match(actionSrc, /activateVenueAccount\(\{/);
+  });
+});

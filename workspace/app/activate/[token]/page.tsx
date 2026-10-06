@@ -5,6 +5,7 @@ import { productAppBaseUrl } from "@shared/email";
 import { getEnrollmentByActivationToken } from "@shared/product-account";
 
 import { ActivateAccountForm } from "@/components/activate/activate-account-form";
+import { ActivationBrandMark } from "@/components/activate/activation-brand-mark";
 
 export const metadata = { title: "Let's get you started" };
 
@@ -49,7 +50,7 @@ function ActivationErrorPanel({
       style={LIGHT_THEME_VARS}
     >
       <div className="ws-panel ws-enter w-full max-w-md p-8 md:p-10">
-        <p className="ws-eyebrow">Hello to Cheers</p>
+        <ActivationBrandMark />
         <h1 className="mt-3 font-heading text-3xl tracking-tight text-heading">
           {title}
         </h1>
@@ -134,7 +135,7 @@ export default async function ActivateAccountPage({
       style={LIGHT_THEME_VARS}
     >
       <div className="ws-panel ws-enter w-full max-w-md p-8 md:p-10">
-        <p className="ws-eyebrow">Hello to Cheers</p>
+        <ActivationBrandMark />
         <h1 className="mt-3 font-heading text-4xl tracking-tight text-heading">
           Let&apos;s get you started
         </h1>
