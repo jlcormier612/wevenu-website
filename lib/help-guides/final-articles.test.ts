@@ -70,6 +70,15 @@ describe("Help & Guides final IA", () => {
     assert.doesNotMatch(leadClient.body, /Booked does not automatically mean the contract is signed/);
   });
 
+  it("Task Center article names current My Work / By Person / All Team Work lenses", () => {
+    const article = PUBLISHABLE_HELP_ARTICLES.find((a) => a.slug === "how-does-task-center-work");
+    assert.ok(article);
+    assert.match(article.body, /\*\*My Work\*\*/);
+    assert.match(article.body, /\*\*By Person\*\*/);
+    assert.match(article.body, /\*\*All Team Work\*\*/);
+    assert.doesNotMatch(article.body, /My Tasks/);
+  });
+
   it("matches expected publishable counts per category", () => {
     const expected: Record<string, number> = {
       "Getting Started": 2,

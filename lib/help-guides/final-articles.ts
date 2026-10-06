@@ -671,9 +671,13 @@ That distinction is important because your template describes the way your venue
     category: "Planning the Event",
     body: `Task Center is where your venue team manages the work that needs to happen across your events.
 
-Use the task views to see the work that belongs to you, your team, or the broader venue task list.
+Choose a lens:
 
-The exact views may be labeled according to the current Task Center interface, but the underlying idea is simple:
+* **My Work** — work assigned to you
+* **By Person** — work grouped by who it's assigned to
+* **All Team Work** — the full venue task list
+
+These lenses are different views over the same tasks. They are not separate permission boundaries.
 
 **Task Center = work that needs to happen.**
 
