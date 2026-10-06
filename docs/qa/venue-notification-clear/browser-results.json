@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "dpl": "cb0e66ae517acd2d9a236e6b11c315d173645217",
+  "apiCalls": [
+    "GET /api/notifications",
+    "POST /api/notifications/read",
+    "POST /api/notifications/clear",
+    "POST /api/notifications/clear",
+    "GET /api/notifications",
+    "POST /api/notifications/read"
+  ],
+  "results": {
+    "seed.browser_rows": {
+      "ok": true,
+      "detail": "browser-notif-clear-1791320618634"
+    },
+    "serving.data_dpl_id_prefix": {
+      "ok": true,
+      "detail": "data-dpl-id=cb0e66ae517acd2d9a236e6b11c315d173645217"
+    },
+    "ui.bell_visible": {
+      "ok": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/dashboard"
+    },
+    "ui.clear_all_visible": {
+      "ok": true,
+      "detail": "clearAll=1"
+    },
+    "ui.dismiss_visible": {
+      "ok": true,
+      "detail": "dismiss=3"
+    },
+    "ui.footer_no_30_day_claim": {
+      "ok": true,
+      "detail": "footer"
+    },
+    "ui.mark_all_read_clicked": {
+      "ok": true,
+      "detail": "mark all gone after click"
+    },
+    "ui.clear_one_removes_row": {
+      "ok": true,
+      "detail": "before=3 after=2"
+    },
+    "ui.clear_all_empties": {
+      "ok": true,
+      "detail": "caughtUp=2"
+    },
+    "ui.badge_cleared": {
+      "ok": true,
+      "detail": "unreadBadge=0"
+    },
+    "ui.notification_navigation": {
+      "ok": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/leads"
+    },
+    "ui.venue_endpoints_only": {
+      "ok": true,
+      "detail": "GET /api/notifications | POST /api/notifications/read | POST /api/notifications/clear | POST /api/notifications/clear | GET /api/notifications | POST /api/notifications/read"
+    },
+    "static.vendor_untouched_endpoints": {
+      "ok": true,
+      "detail": "vendor"
+    },
+    "static.couple_untouched_endpoints": {
+      "ok": true,
+      "detail": "couple"
+    }
+  },
+  "at": "2026-10-06T21:04:05.225Z"
+}
