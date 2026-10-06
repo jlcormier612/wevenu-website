@@ -61,6 +61,8 @@ describe("public routes never reach Supabase Auth", () => {
       "/dashboard",
       "/leads",
       "/api/notifications",
+      "/api/notifications/read",
+      "/api/notifications/clear",
       "/vendor/dashboard",
       "/admin/venues",
       "/welcome",

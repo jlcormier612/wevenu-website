@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 
 import { normalizeVenueNotificationHref } from "@/lib/notifications/venue-deep-links";
 import { useBackoffPoll } from "@/lib/polling/use-backoff-poll";
@@ -121,7 +121,30 @@ export function NotificationBell() {
     });
   }
 
+  async function clearAll() {
+    setNotifications([]);
+    setUnreadCount(0);
+    await fetch("/api/notifications/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [] }),
+    });
+  }
+
+  async function clearOne(id: string, wasUnread: boolean) {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    if (wasUnread) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+    await fetch("/api/notifications/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [id] }),
+    });
+  }
+
   const hasUnread = unreadCount > 0;
+  const hasNotifications = notifications.length > 0;
 
   return (
     <div className="relative" ref={panelRef}>
@@ -159,14 +182,28 @@ export function NotificationBell() {
                 </span>
               )}
             </div>
-            {hasUnread && (
-              <button
-                onClick={markAllRead}
-                className="text-xs text-primary hover:underline"
-              >
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {hasUnread && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
+              {hasNotifications && (
+                <button
+                  type="button"
+                  onClick={() => void clearAll()}
+                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                  aria-label="Clear all notifications"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
@@ -203,12 +240,27 @@ export function NotificationBell() {
                           <p className={`text-sm leading-snug ${isUnread ? "font-semibold text-heading" : "font-medium text-foreground/80"}`}>
                             {n.title}
                           </p>
-                          {isUnread && (
-                            <span
-                              className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
-                              aria-hidden="true"
-                            />
-                          )}
+                          <div className="flex shrink-0 items-start gap-1">
+                            {isUnread && (
+                              <span
+                                className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"
+                                aria-hidden="true"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                void clearOne(n.id, isUnread);
+                              }}
+                              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                              aria-label="Dismiss"
+                              title="Dismiss"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                         {n.body && (
                           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
@@ -239,11 +291,11 @@ export function NotificationBell() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer — list is the latest 40 rows; there is no age-based expiry job. */}
           {!loading && notifications.length > 0 && (
             <div className="border-t px-4 py-2">
               <p className="text-center text-[10px] text-muted-foreground">
-                {notifications.length} most recent · older notifications expire after 30 days
+                {notifications.length} most recent
               </p>
             </div>
           )}
