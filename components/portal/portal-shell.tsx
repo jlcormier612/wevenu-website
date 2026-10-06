@@ -30,6 +30,12 @@ import {
 import { toast } from "sonner";
 
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { sessionDeviceLabel } from "@/lib/client-auth/session-label";
 import { countUnreadVenueMessages } from "@/lib/portal/unread-messages";
 
@@ -4478,6 +4484,13 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "vendors",     icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors",  available: true, group: "venue" },
 ];
 
+/**
+ * Narrow viewports cannot fit the desktop tab row. These stay directly
+ * tappable; every other available NAV_ITEMS destination is in the More sheet.
+ * Order follows NAV_ITEMS. None are removed.
+ */
+const PORTAL_MOBILE_PRIMARY_IDS = ["overview", "tasks", "messages", "payments"] as const;
+
 export function PortalShell({
   token, context, initialTasks, initialVendorTasks = [], initialTimelineSections = [], initialTimelineEntries = [],
   initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
@@ -4508,6 +4521,7 @@ export function PortalShell({
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
   const [needsLegalAcceptance, setNeedsLegalAcceptance] = React.useState(
     () => initialLegalGate?.needsAcceptance ?? true,
   );
@@ -4806,6 +4820,15 @@ export function PortalShell({
     || activeSection === "timeline"
     || activeSection === "documents"
     || activeSection === "guide";
+  const mobilePrimaryItems = PORTAL_MOBILE_PRIMARY_IDS
+    .map((id) => navItems.find((item) => item.id === id))
+    .filter((item): item is (typeof navItems)[number] => Boolean(item));
+  const mobileMoreItems = navItems.filter(
+    (item) => !PORTAL_MOBILE_PRIMARY_IDS.includes(
+      item.id as (typeof PORTAL_MOBILE_PRIMARY_IDS)[number],
+    ),
+  );
+  const moreIsActive = mobileMoreItems.some((item) => item.id === activeSection);
 
   return (
     <div
@@ -4847,7 +4870,8 @@ export function PortalShell({
             <a
               href={`/api/portal/export?token=${encodeURIComponent(token)}`}
               download
-              className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-2"
+              data-portal-export="header"
+              className="hidden text-[11px] font-medium text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground lg:inline"
               title="Download a copy of your guest list, budget, and seating data"
             >
               Export my data
@@ -4874,7 +4898,7 @@ export function PortalShell({
             only. "Your Wedding" destinations (Website/Guests/Seating/Budget/
             Our Story/Plans) stay on dashboard launch cards. Floor Plan is
             venue-shared and lives in this top row with other venue surfaces. */}
-        <div className="max-w-6xl mx-auto px-2 sm:px-3">
+        <div className="mx-auto hidden max-w-6xl px-2 sm:px-3 lg:block" data-portal-nav="desktop">
           <nav className="flex items-stretch justify-between gap-0 py-0.5" aria-label="Portal">
             {navItems.map(item => {
               const isActive = activeSection === item.id;
@@ -4918,6 +4942,96 @@ export function PortalShell({
                 </button>
               );
             })}
+          </nav>
+        </div>
+        <div className="mx-auto max-w-6xl px-2 lg:hidden" data-portal-nav="mobile">
+          <nav className="flex items-center justify-between gap-1 py-0.5" aria-label="Portal">
+            {mobilePrimaryItems.map((item) => {
+              const isActive = activeSection === item.id;
+              const badge =
+                item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
+                  : item.id === "payments" ? paymentsOverdueCount
+                    : item.id === "messages" ? messagesUnreadCount
+                      : 0;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  data-portal-primary={item.id}
+                  onClick={() => navigateTo(item.id)}
+                  title={item.label}
+                  className="whitespace-nowrap rounded-md px-1.5 py-2 text-[13px] font-medium"
+                  style={{
+                    color: isActive ? SAGE : "#3D3833",
+                    background: isActive ? "color-mix(in srgb, var(--venue-primary) 9%, transparent)" : "transparent",
+                    fontWeight: isActive ? 700 : 500,
+                  }}
+                >
+                  {item.label}
+                  {badge > 0 ? (
+                    <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[8px] font-bold text-white" style={{ background: ROSE }}>
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+            <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+              <button
+                type="button"
+                data-portal-more-trigger
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen(true)}
+                className="whitespace-nowrap rounded-md px-1.5 py-2 text-[13px] font-medium"
+                style={{
+                  color: moreIsActive ? SAGE : "#3D3833",
+                  background: moreIsActive ? "color-mix(in srgb, var(--venue-primary) 9%, transparent)" : "transparent",
+                  fontWeight: moreIsActive ? 700 : 500,
+                }}
+              >
+                More
+              </button>
+              <SheetContent side="left" className="w-[min(100%,18rem)] border-border bg-card p-0 text-foreground">
+                <SheetHeader className="border-b border-border px-5 py-4 text-left">
+                  <SheetTitle>More</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-1 px-3 py-4" aria-label="More portal destinations">
+                  {mobileMoreItems.map((item) => {
+                    const isActive = activeSection === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        data-portal-more-item={item.id}
+                        onClick={() => {
+                          setMoreOpen(false);
+                          navigateTo(item.id);
+                        }}
+                        className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium"
+                        style={{
+                          color: isActive ? SAGE : "#3D3833",
+                          background: isActive ? "color-mix(in srgb, var(--venue-primary) 9%, transparent)" : "transparent",
+                          fontWeight: isActive ? 700 : 500,
+                        }}
+                      >
+                        <span aria-hidden>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+                <div className="mt-auto border-t border-border px-5 py-4">
+                  <a
+                    href={`/api/portal/export?token=${encodeURIComponent(token)}`}
+                    download
+                    data-portal-export="menu"
+                    className="text-sm font-medium text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+                  >
+                    Export my data
+                  </a>
+                </div>
+              </SheetContent>
+            </Sheet>
           </nav>
         </div>
       </header>

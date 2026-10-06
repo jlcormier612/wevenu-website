@@ -20,7 +20,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--taupe-medium)]/40 bg-[var(--header-linen)]/95 backdrop-blur-md">
       <div className="mx-auto flex h-[5.2rem] max-w-6xl items-center justify-between gap-4 px-6 md:h-28">
-        <Link href="/" className="relative flex h-16 w-[230px] shrink-0 items-center md:h-[4.6rem] md:w-[276px]">
+        <Link href="/" className="relative flex h-16 w-[230px] max-w-[calc(100%-3.5rem)] min-w-0 shrink items-center md:h-[4.6rem] md:w-[276px] md:max-w-none md:shrink-0">
           <Image
             src={MARKETING_MEDIA.logo}
             alt="Hello to Cheers"
