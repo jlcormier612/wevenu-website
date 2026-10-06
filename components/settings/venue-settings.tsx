@@ -25,6 +25,7 @@ import {
   VenueInfoStep,
 } from "@/components/setup/setup-steps";
 import { VenueOwnersSection } from "@/components/settings/venue-owners-section";
+import type { ActorOwnersClarity } from "@/lib/team/owner-display";
 import type { StaffMember } from "@/lib/team/types";
 import { CURRENCIES, WEEK_START_OPTIONS } from "@/lib/venue/constants";
 import { sectionSaveNotice } from "@/lib/venue/validation";
@@ -132,6 +133,7 @@ export function VenueSettings({
   actorIsOwner = false,
   actorCanManageOwners,
   actorStaffId = null,
+  actorClarity = null,
 }: {
   initial: VenueSetupInput;
   venueId: string;
@@ -140,6 +142,7 @@ export function VenueSettings({
   actorIsOwner?: boolean;
   actorCanManageOwners?: boolean;
   actorStaffId?: string | null;
+  actorClarity?: ActorOwnersClarity | null;
 }) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
   const [publicReviewUrl, setPublicReviewUrl] = React.useState(initialReviewUrl);
@@ -353,6 +356,7 @@ export function VenueSettings({
         actorIsOwner={actorIsOwner}
         actorCanManageOwners={actorCanManageOwners ?? actorIsOwner}
         actorStaffId={actorStaffId}
+        actorClarity={actorClarity}
       />
 
       {/* General settings (currency / week) — owner profile fields no longer edited here */}

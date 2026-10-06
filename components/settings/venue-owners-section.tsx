@@ -6,11 +6,18 @@ import { toast } from "sonner";
 
 import type { StaffMember } from "@/lib/team/types";
 import {
+  currentActorNonOwnerLabel,
+  ownerStatusLabel,
+  shouldShowCurrentActorOutsideOwnersList,
+  type ActorOwnersClarity,
+} from "@/lib/team/owner-display";
+import {
   inviteTeamMemberAction,
   inviteRecordedOwnerAction,
   recordOwnerMemberAction,
   removeTeamMemberAction,
 } from "@/app/(app)/settings/team/actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,23 +33,6 @@ import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-
 
 type OwnerAccessChoice = "record_only" | "invite_now";
 
-function ownerStatusLabel(
-  owner: StaffMember,
-  actorStaffId: string | null,
-): { line: string; isYou: boolean } {
-  if (owner.acceptedAt) {
-    const isYou = !!actorStaffId && owner.id === actorStaffId;
-    return { line: isYou ? "You" : "Owner", isYou };
-  }
-  if (owner.ownerInvitePending) {
-    return { line: "Invitation sent", isYou: false };
-  }
-  if (owner.isOwner) {
-    return { line: "Owner access not yet invited", isYou: false };
-  }
-  return { line: "Owner", isYou: false };
-}
-
 /**
  * Business & Brand — Owners.
  * Ownership and invitation are separate decisions on the same venue_staff
@@ -53,12 +43,15 @@ export function VenueOwnersSection({
   actorIsOwner,
   actorCanManageOwners,
   actorStaffId = null,
+  actorClarity = null,
   setupMode = false,
 }: {
   initialOwners: StaffMember[];
   actorIsOwner: boolean;
   actorCanManageOwners?: boolean;
   actorStaffId?: string | null;
+  /** Authenticated membership for display clarity — never mutates ownership. */
+  actorClarity?: ActorOwnersClarity | null;
   setupMode?: boolean;
 }) {
   const canManage = actorCanManageOwners ?? actorIsOwner;
@@ -74,6 +67,14 @@ export function VenueOwnersSection({
 
   const listedOwners = owners.filter(
     (o) => o.isActive && (o.isOwner || o.ownerInvitePending),
+  );
+  const listedOwnerIds = React.useMemo(
+    () => new Set(listedOwners.map((o) => o.id)),
+    [listedOwners],
+  );
+  const showActorOutsideOwners = shouldShowCurrentActorOutsideOwnersList(
+    actorClarity,
+    listedOwnerIds,
   );
 
   function resetForm() {
@@ -240,10 +241,26 @@ export function VenueOwnersSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {listedOwners.length === 0 ? (
+          {listedOwners.length === 0 && !showActorOutsideOwners ? (
             <p className="text-sm text-muted-foreground">No owners on record.</p>
           ) : (
             <ul className="space-y-2">
+              {showActorOutsideOwners && actorClarity && (
+                <li className="flex flex-col gap-1 border-b py-2.5 last:border-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-sm font-medium">{actorClarity.name}</p>
+                    <Badge variant="secondary" className="shrink-0">
+                      You
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {currentActorNonOwnerLabel(actorClarity.accessTitle)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Not an owner of this venue.
+                  </p>
+                </li>
+              )}
               {listedOwners.map((owner) => {
                 const status = ownerStatusLabel(owner, actorStaffId);
                 const canInviteLater =
@@ -266,7 +283,14 @@ export function VenueOwnersSection({
                     className="flex flex-col gap-2 border-b py-2.5 last:border-0 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{owner.name}</p>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate text-sm font-medium">{owner.name}</p>
+                        {status.isYou ? (
+                          <Badge variant="secondary" className="shrink-0">
+                            You
+                          </Badge>
+                        ) : null}
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">
                         Owner{owner.email ? ` · ${owner.email}` : ""}
                       </p>

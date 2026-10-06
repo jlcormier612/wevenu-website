@@ -26,7 +26,7 @@ import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/le
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueLocalToUtcIso, venueToday } from "@/lib/venue/timezone";
 import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
-import { resolveDashboardOwnerFirstName } from "@/lib/dashboard/owner-greeting";
+import { resolveDashboardGreetingFirstName } from "@/lib/dashboard/owner-greeting";
 import {
   leadBelongsInFocusPopulation,
   leadMatchesFocusTourRules,
@@ -37,6 +37,7 @@ import {
   forensicSetVenue,
   forensicTime,
 } from "@/lib/dashboard/forensic-timing";
+import { getCurrentStaffMember } from "@/lib/team/service";
 import type {
   AttentionLead,
   DashboardData,
@@ -317,7 +318,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     tasksRes,
     eventsRes,
     paymentsRes,
-    staffRes,
+    currentStaff,
     luvSettings,
     briefing,
   ] = await forensicTime("wave1_parallel_wall", () =>
@@ -358,13 +359,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
           .order("due_date", { ascending: true })
           .limit(15),
       ),
-      forensicTime("staff_query", () =>
-        supabase
-          .from("venue_staff")
-          .select("full_name, title, accepted_at, owner_invite_pending, user_id")
-          .eq("venue_id", venue.id)
-          .eq("is_owner", true),
-      ),
+      // Authenticated staff membership — greeting uses this person, not a preferred owner.
+      forensicTime("current_staff", () => getCurrentStaffMember(venue.id)),
       forensicTime("luv_settings", () => getLuvSettings().catch(() => null)),
       forensicTime("get_focus_briefing", () =>
         getFocusNeedsAttentionBriefing(venue.id).catch(() => emptyBriefing),
@@ -489,15 +485,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
   const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
 
-  const ownerFirstName = resolveDashboardOwnerFirstName(
-    (staffRes.data ?? []) as {
-      full_name: string | null;
-      title: string | null;
-      accepted_at: string | null;
-      owner_invite_pending: boolean | null;
-      user_id: string | null;
-    }[],
-  );
+  const ownerFirstName = resolveDashboardGreetingFirstName({
+    fullName: currentStaff?.name ?? null,
+    venueName: venue.name,
+  });
 
   // Live L1 sources only — no broad observation engine, no insights compute,
   // no persisted-recommendation read. Contract/document families have no other

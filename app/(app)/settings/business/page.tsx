@@ -41,6 +41,14 @@ export default async function BusinessBrandSettingsPage() {
       actorEmail: membership?.email,
       enrollment,
     });
+  const actorClarity = membership
+    ? {
+        staffId: membership.staffId,
+        name: membership.fullName,
+        accessTitle: membership.accessTitle,
+        isOwner: membership.isOwner,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -58,6 +66,7 @@ export default async function BusinessBrandSettingsPage() {
           actorIsOwner={actorIsOwner}
           actorCanManageOwners={actorCanManageOwners}
           actorStaffId={membership?.staffId ?? null}
+          actorClarity={actorClarity}
         />
       ) : (
         <p className="text-sm text-muted-foreground">

@@ -1,33 +1,26 @@
 /**
- * Resolve the Dashboard greeting first name from venue_staff owner rows.
- * Uses the same multi-owner preference as message coordinator selection:
- * accepted/linked owners beat pending owner invitations.
+ * Resolve the Dashboard greeting first name from the authenticated
+ * venue_staff membership — not from venue name, email, or a preferred owner.
  */
-import { pickOwnerStaffForCoordinator } from "@/lib/scheduled-messages/coordinator-display";
-
-export type DashboardOwnerStaffRow = {
-  full_name: string | null;
-  title?: string | null;
-  accepted_at?: string | null;
-  owner_invite_pending?: boolean | null;
-  user_id?: string | null;
-};
-
-export function resolveDashboardOwnerFirstName(
-  rows: DashboardOwnerStaffRow[] | null | undefined,
-): string | null {
-  if (!rows?.length) return null;
-  const preferred = pickOwnerStaffForCoordinator(
-    rows.map((r) => ({
-      full_name: r.full_name?.trim() || "",
-      title: r.title ?? null,
-      accepted_at: r.accepted_at,
-      owner_invite_pending: r.owner_invite_pending,
-      user_id: r.user_id,
-    })).filter((r) => r.full_name.length > 0),
-  );
-  const fullName = preferred?.full_name?.trim();
+export function resolveDashboardGreetingFirstName(opts: {
+  fullName: string | null | undefined;
+  venueName?: string | null | undefined;
+}): string | null {
+  const fullName = (opts.fullName ?? "").trim();
   if (!fullName) return null;
-  const first = fullName.split(/\s+/)[0];
-  return first || null;
+
+  // Never greet with an email address or email-shaped token.
+  if (fullName.includes("@")) return null;
+
+  const first = fullName.split(/\s+/).find((part) => part.length > 0) ?? "";
+  if (!first || first.includes("@")) return null;
+
+  const venueName = (opts.venueName ?? "").trim().toLowerCase();
+  if (venueName) {
+    const firstLower = first.toLowerCase();
+    const fullLower = fullName.toLowerCase();
+    if (fullLower === venueName || firstLower === venueName) return null;
+  }
+
+  return first;
 }

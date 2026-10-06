@@ -99,6 +99,12 @@ export function InitialOwnershipClient({
             actorIsOwner={false}
             actorCanManageOwners
             actorStaffId={actorStaffId}
+            actorClarity={{
+              staffId: actorStaffId,
+              name: setupPersonName,
+              accessTitle: "administrator",
+              isOwner: false,
+            }}
             setupMode
           />
           {owners.length > 0 ? (
