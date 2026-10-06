@@ -2,6 +2,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { sendTourScheduled } from "@/lib/tours/communication";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { notifyPaidUnbookedTour, runTourBookedSideEffects } from "@/lib/tours/booked-side-effects";
 import { createTourProtectionCheckoutSession } from "@/lib/tours/protection-checkout";
 import {
@@ -371,12 +372,13 @@ export async function completeProtectedTourFromWebhook(opts: {
   }
   const result = data as Record<string, unknown>;
   const venue = await admin.from("venues")
-    .select("name, email, phone, address_line1, city, state_region, primary_color, timezone")
+    .select("name, email, phone, address_line1, city, state_region, primary_color, timezone, logo_url, email_signature")
     .eq("id", request.venue_id)
     .maybeSingle<{
       name: string; email: string | null; phone: string | null;
       address_line1: string | null; city: string | null; state_region: string | null;
       primary_color: string | null; timezone: string | null;
+      logo_url: string | null; email_signature: string | null;
     }>();
 
   if (result?.ok === true && result.appointmentId) {
@@ -412,6 +414,7 @@ export async function completeProtectedTourFromWebhook(opts: {
           contactName: request.contact_name,
           venueName: booking.venueName ?? "Venue",
           primaryColor: venue.data?.primary_color ?? null,
+          brand: emailBrandFromVenue(venue.data),
           scheduledAt: booking.scheduledAt!,
           durationMinutes: booking.duration ?? 60,
           confirmToken: apptToken.confirm_token,

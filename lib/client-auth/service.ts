@@ -14,6 +14,12 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
+import {
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+} from "@/lib/email/venue-brand";
 import { resolveInvitationAccountEmail } from "@/lib/client-auth/resolve-invitation-email";
 import type {
   ClientInvitation, ClientAuthResult, AcceptClientInvitationResult,
@@ -58,8 +64,10 @@ export async function getClientInvitation(clientId: string): Promise<ClientInvit
 }
 
 async function sendClientInviteEmail(
-  email: string, coupleName: string, venueName: string, primaryColor: string, token: string,
+  email: string, coupleName: string, venue: { name: string | null; primaryColor: string; logoUrl?: string | null; emailSignature?: string | null; email?: string | null; phone?: string | null }, token: string,
 ): Promise<void> {
+  const venueName = venue.name ?? "Your venue";
+  const brand = emailBrandFromVenue(venue);
   const acceptUrl = portalAcceptUrl("client", token);
   await sendEmail({
     to: email,
@@ -80,25 +88,16 @@ async function sendClientInviteEmail(
       "",
       venueName,
     ].join("\n"),
-    html: [
+    html: renderBrandedEmailHtml(brand, [
       `<p>Hi ${escapeHtml(coupleName)},</p>`,
       `<p><strong>${escapeHtml(venueName)}</strong> invited you to join your private planning space on Hello to Cheers.</p>`,
       `<p>Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.</p>`,
       `<p>Create your account to get started.</p>`,
-      `<p><a href="${acceptUrl}" style="background:${primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
+      `<p>${brandButtonHtml(brand, acceptUrl, "Create Your Account")}</p>`,
       `<p style="color:#888;font-size:12px;">By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.</p>`,
       `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
-      `<p style="color:#888;font-size:12px;">${escapeHtml(venueName)}</p>`,
-    ].join(""),
+    ].join("")),
   });
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 /**
@@ -132,7 +131,7 @@ export async function inviteClient(
   }).select("token").single<{ token: string }>();
   if (error) return { ok: false, error: error.message };
 
-  await sendClientInviteEmail(email.trim(), coupleName, venue.name ?? "Your venue", venue.primaryColor, data.token);
+  await sendClientInviteEmail(email.trim(), coupleName, venue, data.token);
   return { ok: true };
 }
 
@@ -155,7 +154,7 @@ export async function resendClientInvitation(invitationId: string): Promise<Clie
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (inv as any).clients as { first_name: string; partner_first_name: string | null } | null;
   const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ") || "there";
-  await sendClientInviteEmail(inv.email, coupleName, venue.name ?? "Your venue", venue.primaryColor, inv.token);
+  await sendClientInviteEmail(inv.email, coupleName, venue, inv.token);
   return { ok: true };
 }
 

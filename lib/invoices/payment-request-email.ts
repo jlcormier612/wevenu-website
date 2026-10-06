@@ -3,6 +3,13 @@
  */
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
+import {
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+  type EmailVenueBrand,
+} from "@/lib/email/venue-brand";
 
 export type PaymentRequestEmailInput = {
   clientFirstName: string;
@@ -18,6 +25,7 @@ export type PaymentRequestEmailInput = {
   remainingAfter: number;
   balanceDue: number;
   portalPayUrl: string | null;
+  brand?: EmailVenueBrand;
 };
 
 export type PaymentRequestEmailContent = {
@@ -36,14 +44,6 @@ export type PaymentRequestEmailContent = {
   venueName: string;
   paymentUrl: string | null;
 };
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 export function buildPaymentRequestEmail(input: PaymentRequestEmailInput): PaymentRequestEmailContent {
   const amountDueLabel =
@@ -89,7 +89,11 @@ export function buildPaymentRequestEmail(input: PaymentRequestEmailInput): Payme
     input.venueEmail ?? "",
   ].filter((line) => line !== null);
 
-  const html = [
+  const brand = input.brand ?? emailBrandFromVenue({
+    name: input.venueName,
+    email: input.venueEmail,
+  });
+  const inner = [
     `<p>Hi ${escapeHtml(input.clientFirstName)},</p>`,
     `<p>${escapeHtml(input.venueName)} is requesting payment for your <strong>${escapeHtml(input.invoiceLabel)}</strong>.</p>`,
     `<p style="font-size:18px;margin:16px 0"><strong>${escapeHtml(amountDueLabel)}: ${escapeHtml(amountDueValue)}</strong></p>`,
@@ -98,7 +102,7 @@ export function buildPaymentRequestEmail(input: PaymentRequestEmailInput): Payme
     `Paid to date: ${escapeHtml(formatCurrency(input.paidToDate))}<br/>`,
     `${escapeHtml(remainingLine)}</p>`,
     input.portalPayUrl
-      ? `<p><a href="${escapeHtml(input.portalPayUrl)}" style="display:inline-block;padding:12px 20px;background:#5D6F5D;color:#fff;text-decoration:none;border-radius:6px">Pay ${escapeHtml(amountDueValue)}</a></p><p style="font-size:12px;color:#666">${escapeHtml(input.portalPayUrl)}</p>`
+      ? `<p>${brandButtonHtml(brand, input.portalPayUrl, `Pay ${amountDueValue}`)}</p><p style="font-size:12px;color:#666">${escapeHtml(input.portalPayUrl)}</p>`
       : "",
     `<p style="font-size:12px;color:#666">Reference: ${escapeHtml(input.invoiceNumber)}</p>`,
     `<p>Warm regards,<br/>${escapeHtml(input.venueName)}</p>`,
@@ -110,7 +114,7 @@ export function buildPaymentRequestEmail(input: PaymentRequestEmailInput): Payme
     to: input.clientEmail,
     subject: `Your ${input.invoiceLabel} payment request — ${input.venueName}`,
     text: textLines.join("\n"),
-    html,
+    html: renderBrandedEmailHtml(brand, inner),
     replyTo: input.venueEmail ?? undefined,
     recipient: input.clientEmail,
     clientName: input.clientFirstName,

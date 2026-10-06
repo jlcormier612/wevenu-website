@@ -1,5 +1,13 @@
 import type { NotificationRole } from "@/lib/notifications/types";
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
+import {
+  appendEmailSignatureText,
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+  type EmailVenueBrand,
+} from "@/lib/email/venue-brand";
 
 const SAGE = "#5D6F5D";
 const LINEN = "#F7F5F1";
@@ -26,6 +34,7 @@ type ReminderEmailContext = {
   venueName: string;
   /** Venue Brand Experience Phase 1 — used for the couple-facing branch only; the coordinator branch stays Hello to Cheers' own palette. */
   venueColor?: string;
+  brand?: EmailVenueBrand;
 };
 
 export function buildReminderEmail(ctx: ReminderEmailContext): { subject: string; html: string; text: string } {
@@ -53,53 +62,64 @@ export function buildReminderEmail(ctx: ReminderEmailContext): { subject: string
     ? `Due today: "${ctx.taskTitle}" — ${ctx.eventName}`
     : `Reminder: "${ctx.taskTitle}" due ${du === 1 ? "tomorrow" : `in ${du} days`} — ${ctx.eventName}`;
 
-  const html = `<!DOCTYPE html>
+  const brand = ctx.brand ?? emailBrandFromVenue({
+    name: ctx.venueName,
+    primaryColor: ctx.venueColor,
+  });
+  const coupleCopy = isOverdue
+    ? "This planning step is past due. Please complete it when you get a chance so your planning stays on track."
+    : "Your planning workspace has a step that needs your attention.";
+  const coordinatorCopy = isOverdue
+    ? "This task requires attention. You can mark it complete, waive it, or reassign the due date."
+    : "This task is coming up. Review and take action in Hello to Cheers.";
+
+  const html = isCoordinator
+    ? `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:${LINEN};font-family:Georgia,'Times New Roman',serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${LINEN};padding:32px 16px;">
     <tr><td>
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #DED6CA;">
-        ${isCoordinator ? `<tr><td style="background:#fff;padding:20px 28px 8px;">${htcEmailLogoHeaderHtml()}</td></tr>` : ""}
+        <tr><td style="background:#fff;padding:20px 28px 8px;">${htcEmailLogoHeaderHtml()}</td></tr>
         <!-- Header -->
         <tr><td style="background:${headerColor};padding:20px 28px;">
-          <p style="margin:0;color:#fff;font-size:13px;letter-spacing:0.05em;">${ctx.venueName}</p>
-          <p style="margin:4px 0 0;color:rgba(255,255,255,0.75);font-size:12px;">${ctx.eventName}</p>
+          <p style="margin:0;color:#fff;font-size:13px;letter-spacing:0.05em;">${escapeHtml(ctx.venueName)}</p>
+          <p style="margin:4px 0 0;color:rgba(255,255,255,0.75);font-size:12px;">${escapeHtml(ctx.eventName)}</p>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:28px;">
-          <p style="margin:0 0 6px;font-size:20px;font-weight:600;color:#1a1a1a;">${ctx.taskTitle}</p>
-          <p style="margin:0 0 20px;font-size:13px;color:${isOverdue ? "#C0392B" : isCoordinator ? SAGE : "#666"};">${urgencyLine}</p>
-          ${ctx.role === "couple" ? `
+          <p style="margin:0 0 6px;font-size:20px;font-weight:600;color:#1a1a1a;">${escapeHtml(ctx.taskTitle)}</p>
+          <p style="margin:0 0 20px;font-size:13px;color:${isOverdue ? "#C0392B" : SAGE};">${escapeHtml(urgencyLine)}</p>
           <p style="margin:0 0 20px;font-size:14px;color:#444;line-height:1.6;">
-            ${isOverdue
-              ? "This planning step is past due. Please complete it when you get a chance so your planning stays on track."
-              : "Your planning workspace has a step that needs your attention."
-            }
-          </p>` : `
-          <p style="margin:0 0 20px;font-size:14px;color:#444;line-height:1.6;">
-            ${isOverdue
-              ? "This task requires attention. You can mark it complete, waive it, or reassign the due date."
-              : "This task is coming up. Review and take action in Hello to Cheers."
-            }
-          </p>`}
-          <a href="${actionUrl}" style="display:inline-block;background:${headerColor};color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:500;">${actionLabel}</a>
+            ${coordinatorCopy}
+          </p>
+          <a href="${escapeHtml(actionUrl)}" style="display:inline-block;background:${headerColor};color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:500;">${actionLabel}</a>
         </td></tr>
         <!-- Footer -->
         <tr><td style="padding:16px 28px;border-top:1px solid #F0EDE9;">
           <p style="margin:0;font-size:11px;color:#B8AEA1;">
-            ${isCoordinator
-              ? `Sent by ${ctx.venueName} via Hello to Cheers.`
-              : `${ctx.venueName}. <a href="${ctx.venueBaseUrl}/p/${ctx.portalToken ?? ""}" style="color:${headerColor};text-decoration:none;">Manage your workspace</a>`}
+            Sent by ${escapeHtml(ctx.venueName)} via Hello to Cheers.
           </p>
         </td></tr>
       </table>
     </td></tr>
   </table>
 </body>
-</html>`;
+</html>`
+    : renderBrandedEmailHtml(brand, [
+        `<p style="margin:0 0 6px;font-size:20px;font-weight:600;color:#1a1a1a;">${escapeHtml(ctx.taskTitle)}</p>`,
+        `<p style="margin:0 0 20px;font-size:13px;color:${isOverdue ? "#C0392B" : "#666"};">${escapeHtml(urgencyLine)}</p>`,
+        `<p style="margin:0 0 20px;font-size:14px;color:#444;line-height:1.6;">${coupleCopy}</p>`,
+        `<p style="margin:0 0 16px">${brandButtonHtml(brand, actionUrl, actionLabel)}</p>`,
+        `<p style="margin:0;font-size:12px;color:#6b7280">${escapeHtml(ctx.venueName)}. <a href="${escapeHtml(`${ctx.venueBaseUrl}/p/${ctx.portalToken ?? ""}`)}" style="color:${escapeHtml(headerColor)};text-decoration:none;">Manage your workspace</a></p>`,
+      ].join(""));
 
   const text = `${ctx.venueName} — ${ctx.eventName}\n\n${ctx.taskTitle}\n${urgencyLine}\n\n${actionLabel}\n${actionUrl}`;
 
-  return { subject, html, text };
+  return {
+    subject,
+    html,
+    text: isCoordinator ? text : appendEmailSignatureText(text, brand),
+  };
 }

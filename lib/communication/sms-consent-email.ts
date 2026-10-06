@@ -31,6 +31,13 @@ import {
   SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST,
 } from "@/lib/communication/sms-consent";
 import { sendEmail, isEmailConfigured } from "@/lib/email/send";
+import {
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+  type EmailVenueBrand,
+} from "@/lib/email/venue-brand";
 import { getLead } from "@/lib/leads/service";
 import { isSmsConfigured } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
@@ -54,6 +61,7 @@ export function buildSmsConsentEmailBodies(input: {
   venueName: string;
   firstName: string;
   consentUrl: string;
+  brand?: EmailVenueBrand;
 }): { subject: string; text: string; html: string } {
   const subject = `${input.venueName} — text message permission request`;
   const text = [
@@ -71,24 +79,17 @@ export function buildSmsConsentEmailBodies(input: {
     `— ${input.venueName}`,
   ].join("\n");
 
-  const html = [
+  const brand = input.brand ?? emailBrandFromVenue({ name: input.venueName });
+  const inner = [
     `<p>Hi ${escapeHtml(input.firstName)},</p>`,
     `<p><strong>${escapeHtml(input.venueName)}</strong> is asking whether you would like to receive text messages from them about your event.</p>`,
     `<p>You are <strong>not opted in yet</strong>. Texts will only be sent if you choose to allow them.</p>`,
-    `<p><a href="${escapeHtml(input.consentUrl)}" style="display:inline-block;padding:12px 20px;background:#5D6F5D;color:#fff;text-decoration:none;border-radius:6px">Review text permission</a></p>`,
+    `<p>${brandButtonHtml(brand, input.consentUrl, "Review text permission")}</p>`,
     `<p style="font-size:12px;color:#666">If you did not expect this, you can ignore this email — nothing will change.</p>`,
     `<p>— ${escapeHtml(input.venueName)}</p>`,
   ].join("\n");
 
-  return { subject, text, html };
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return { subject, text, html: renderBrandedEmailHtml(brand, inner) };
 }
 
 export async function requestSmsConsentEmailForLead(
@@ -201,6 +202,7 @@ export async function requestSmsConsentEmailForLead(
     venueName: venue.name,
     firstName: lead.firstName || "there",
     consentUrl,
+    brand: emailBrandFromVenue(venue),
   });
 
   const sent = await sendEmail({

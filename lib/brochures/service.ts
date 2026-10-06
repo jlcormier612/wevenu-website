@@ -20,6 +20,11 @@ import { getPackages } from "@/lib/packages/service";
 import { getLead } from "@/lib/leads/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { sendEmail } from "@/lib/email/send";
+import {
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+} from "@/lib/email/venue-brand";
 
 /** Client-facing brochure FAQ visibility — shared by authenticated preview and public token render. */
 export type VenueGuideFaq = {
@@ -315,7 +320,12 @@ export async function sendBrochureToLead(brochureId: string, leadId: string, cus
       to: lead.email,
       subject: `${brochure.name} — ${venueName}`,
       text: `Hi ${lead.firstName || recipientName},\n\n${intro}\n\nView it here: ${url}\n\n— ${venueName}`,
-      html: `<p>Hi ${lead.firstName || recipientName},</p><p>${intro}</p><p><a href="${url}">View ${brochure.name}</a></p><p>— ${venueName}</p>`,
+      html: renderBrandedEmailHtml(emailBrandFromVenue(venue), [
+        `<p>Hi ${escapeHtml(lead.firstName || recipientName)},</p>`,
+        `<p>${escapeHtml(intro)}</p>`,
+        `<p><a href="${escapeHtml(url)}">View ${escapeHtml(brochure.name)}</a></p>`,
+        `<p>— ${escapeHtml(venueName)}</p>`,
+      ].join("")),
     });
     if (!sendResult.ok) return { ok: false, message: sendResult.message } as BrochureActionResult;
 

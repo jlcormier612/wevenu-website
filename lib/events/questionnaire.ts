@@ -7,6 +7,8 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
+import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { kindLabel, getQuestionnaireMasterByKind, masterIncludedFieldIds, masterRequiredFieldIds, type QuestionnaireKind } from "@/lib/questionnaire-family/definitions";
 import {
   sanitizeCustomFields,
@@ -239,20 +241,23 @@ export async function sendQuestionnaireToCouple(
   const defaultText = share.body.replace(/\{\{event\}\}/g, eventName);
 
   if (process.env.RESEND_API_KEY && process.env.FROM_EMAIL) {
+    const text = [
+      `Hi ${coupleName},`,
+      "",
+      customMessage?.trim() || defaultText,
+      "",
+      formUrl,
+      "",
+      `Everything goes directly to ${venue.name} — no PDFs, no attachments.`,
+      "",
+      venue.name,
+    ].join("\n");
+    const brand = emailBrandFromVenue(venue);
     const emailResult = await sendEmail({
       to: coupleEmail,
       subject: share.subject.replace(/\{\{event\}\}/g, eventName),
-      text: [
-        `Hi ${coupleName},`,
-        "",
-        customMessage?.trim() || defaultText,
-        "",
-        formUrl,
-        "",
-        `Everything goes directly to ${venue.name} — no PDFs, no attachments.`,
-        "",
-        venue.name,
-      ].join("\n"),
+      text,
+      html: wrapConversationMessageHtml(brand, text),
       replyTo: venue.email ?? undefined,
     });
     if (!emailResult.ok) {

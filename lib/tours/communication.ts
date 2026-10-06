@@ -19,6 +19,13 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
+import {
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+  type EmailVenueBrand,
+} from "@/lib/email/venue-brand";
 import { publicAppOrigin } from "@/lib/env";
 import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
 import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
@@ -34,6 +41,7 @@ export type TourScheduledParams = {
   contactName: string | null;
   venueName: string;
   primaryColor?: string | null;
+  brand?: EmailVenueBrand;
   scheduledAt: string;
   durationMinutes: number;
   /** tour_appointments.confirm_token — Confirm my tour CTA credential. */
@@ -50,6 +58,7 @@ export type TourConfirmationParams = {
   venueName: string;
   /** Venue Brand Experience Phase 1 — falls back to Hello to Cheers' own default if the caller doesn't have it handy. */
   primaryColor?: string | null;
+  brand?: EmailVenueBrand;
   scheduledAt: string;
   durationMinutes: number;
   /** IANA zone for the printed date/time. Defaults to Eastern if omitted. */
@@ -63,12 +72,24 @@ export type TourConfirmationRequestParams = {
   contactName: string | null;
   venueName: string;
   primaryColor?: string | null;
+  brand?: EmailVenueBrand;
   scheduledAt: string;
   durationMinutes: number;
   /** tour_appointments.confirm_token — the public confirm link's only credential. */
   confirmToken: string;
   timezone?: string | null;
 };
+
+function resolveTourEmailBrand(params: {
+  venueName: string;
+  primaryColor?: string | null;
+  brand?: EmailVenueBrand;
+}): EmailVenueBrand {
+  return params.brand ?? emailBrandFromVenue({
+    name: params.venueName,
+    primaryColor: params.primaryColor,
+  });
+}
 
 function formatTourWhen(scheduledAt: string, timezone?: string | null): { dateStr: string; timeStr: string } {
   const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(scheduledAt, timezone ?? null);
@@ -113,20 +134,25 @@ function buildScheduledContent(params: TourScheduledParams): { subject: string; 
     "If you need to reschedule or have questions, just reply to this email.",
   ].join("\n");
 
-  const html = [
-    `<p>Hi ${name},</p>`,
-    `<p>You're scheduled for a <strong>${params.durationMinutes}-minute tour</strong> at <strong>${params.venueName}</strong>.</p>`,
+  const brand = resolveTourEmailBrand(params);
+  const venueHtml = escapeHtml(params.venueName);
+  const inner = [
+    `<p>Hi ${escapeHtml(name)},</p>`,
+    `<p>You're scheduled for a <strong>${params.durationMinutes}-minute tour</strong> at <strong>${venueHtml}</strong>.</p>`,
     `<table style="border:1px solid #E5E0D9;border-radius:12px;padding:16px 20px;margin:16px 0;border-spacing:0">`,
-    `  <tr><td style="padding:4px 0;font-size:14px">📅 <strong>${dateStr}</strong></td></tr>`,
-    `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${timeStr}</strong></td></tr>`,
-    `  <tr><td style="padding:4px 0;font-size:14px">📍 ${params.venueName}</td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📅 <strong>${escapeHtml(dateStr)}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${escapeHtml(timeStr)}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📍 ${venueHtml}</td></tr>`,
     `</table>`,
-    `<p style="margin-top:16px"><a href="${confirmUrl}" style="background:${params.primaryColor ?? "#5D6F5D"};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-size:14px">Confirm my tour</a></p>`,
+    `<p style="margin-top:16px">${brandButtonHtml(brand, confirmUrl, "Confirm my tour")}</p>`,
     `<p style="color:#888;font-size:13px;margin-top:24px">If you need to reschedule, just reply to this email.</p>`,
-    `<p style="color:#888;font-size:12px">${params.venueName}</p>`,
   ].join("\n");
 
-  return { subject: `Your tour is scheduled — ${dateStr} at ${params.venueName}`, text, html };
+  return {
+    subject: `Your tour is scheduled — ${dateStr} at ${params.venueName}`,
+    text,
+    html: renderBrandedEmailHtml(brand, inner),
+  };
 }
 
 /** Post-confirmation email — only after status becomes confirmed. */
@@ -151,20 +177,25 @@ function buildConfirmationContent(params: TourConfirmationParams): { subject: st
     "If you need to reschedule or have questions, just reply to this email.",
   ].join("\n");
 
-  const html = [
-    `<p>Hi ${name},</p>`,
-    `<p>Your <strong>${params.durationMinutes}-minute tour</strong> at <strong>${params.venueName}</strong> is confirmed.</p>`,
+  const brand = resolveTourEmailBrand(params);
+  const venueHtml = escapeHtml(params.venueName);
+  const inner = [
+    `<p>Hi ${escapeHtml(name)},</p>`,
+    `<p>Your <strong>${params.durationMinutes}-minute tour</strong> at <strong>${venueHtml}</strong> is confirmed.</p>`,
     `<table style="border:1px solid #E5E0D9;border-radius:12px;padding:16px 20px;margin:16px 0;border-spacing:0">`,
-    `  <tr><td style="padding:4px 0;font-size:14px">📅 <strong>${dateStr}</strong></td></tr>`,
-    `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${timeStr}</strong></td></tr>`,
-    `  <tr><td style="padding:4px 0;font-size:14px">📍 ${params.venueName}</td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📅 <strong>${escapeHtml(dateStr)}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${escapeHtml(timeStr)}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📍 ${venueHtml}</td></tr>`,
     `</table>`,
-    `<p style="margin-top:16px"><a href="${gcalUrl}" style="background:${params.primaryColor ?? "#5D6F5D"};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-size:14px">Add to Calendar</a></p>`,
+    `<p style="margin-top:16px">${brandButtonHtml(brand, gcalUrl, "Add to Calendar")}</p>`,
     `<p style="color:#888;font-size:13px;margin-top:24px">We're looking forward to meeting you! If you need to reschedule, just reply to this email.</p>`,
-    `<p style="color:#888;font-size:12px">${params.venueName}</p>`,
   ].join("\n");
 
-  return { subject: `Tour confirmed — ${dateStr} at ${params.venueName}`, text, html };
+  return {
+    subject: `Tour confirmed — ${dateStr} at ${params.venueName}`,
+    text,
+    html: renderBrandedEmailHtml(brand, inner),
+  };
 }
 
 function buildConfirmationRequestContent(params: TourConfirmationRequestParams): { subject: string; text: string; html: string } {
@@ -186,20 +217,25 @@ function buildConfirmationRequestContent(params: TourConfirmationRequestParams):
     "If you need to reschedule or have questions, just reply to this email.",
   ].join("\n");
 
-  const html = [
-    `<p>Hi ${name},</p>`,
-    `<p>Please confirm your upcoming <strong>${params.durationMinutes}-minute tour</strong> at <strong>${params.venueName}</strong>.</p>`,
+  const brand = resolveTourEmailBrand(params);
+  const venueHtml = escapeHtml(params.venueName);
+  const inner = [
+    `<p>Hi ${escapeHtml(name)},</p>`,
+    `<p>Please confirm your upcoming <strong>${params.durationMinutes}-minute tour</strong> at <strong>${venueHtml}</strong>.</p>`,
     `<table style="border:1px solid #E5E0D9;border-radius:12px;padding:16px 20px;margin:16px 0;border-spacing:0">`,
-    `  <tr><td style="padding:4px 0;font-size:14px">📅 <strong>${dateStr}</strong></td></tr>`,
-    `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${timeStr}</strong></td></tr>`,
-    `  <tr><td style="padding:4px 0;font-size:14px">📍 ${params.venueName}</td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📅 <strong>${escapeHtml(dateStr)}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${escapeHtml(timeStr)}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📍 ${venueHtml}</td></tr>`,
     `</table>`,
-    `<p style="margin-top:16px"><a href="${confirmUrl}" style="background:${params.primaryColor ?? "#5D6F5D"};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-size:14px">Confirm my tour</a></p>`,
+    `<p style="margin-top:16px">${brandButtonHtml(brand, confirmUrl, "Confirm my tour")}</p>`,
     `<p style="color:#888;font-size:13px;margin-top:24px">If you need to reschedule, just reply to this email.</p>`,
-    `<p style="color:#888;font-size:12px">${params.venueName}</p>`,
   ].join("\n");
 
-  return { subject: `Please confirm your tour — ${dateStr} at ${params.venueName}`, text, html };
+  return {
+    subject: `Please confirm your tour — ${dateStr} at ${params.venueName}`,
+    text,
+    html: renderBrandedEmailHtml(brand, inner),
+  };
 }
 
 export function previewTourScheduled(

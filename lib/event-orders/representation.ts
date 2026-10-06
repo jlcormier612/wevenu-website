@@ -188,10 +188,14 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
         const mergeData = buildMergeData({ venueName: venue.name ?? "Your venue", clientName: clientName ?? "", coordinatorName: venue.name ?? "", eventDate: event.eventDate, eventName: event.name });
         const defaultText = `We've shared your Event Order for ${event.name}. Please review it when you have a chance.`;
         const bodyText = customMessage?.trim() ? mergeContent(customMessage, mergeData) : defaultText;
+        const text = [`Hi ${client.firstName},`, "", bodyText, "", portalUrl, "", venue.name ?? ""].join("\n");
+        const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
+        const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
         await sendEmail({
           to: client.email,
           subject: `${venue.name ?? "Your venue"}: Event Order for ${event.name}`,
-          text: [`Hi ${client.firstName},`, "", bodyText, "", portalUrl, "", venue.name ?? ""].join("\n"),
+          text,
+          html: wrapConversationMessageHtml(emailBrandFromVenue(venue), text),
           replyTo: venue.email ?? undefined,
         });
       }

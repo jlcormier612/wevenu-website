@@ -29,11 +29,52 @@ describe("email branding/signature path audit", () => {
         /appendEmailSignatureText/,
         /email_signature/,
         /buildTourReminderCoupleEmail/,
+        /coupleHtmlAlreadyBranded/,
       ],
     },
     {
       file: "lib/notifications/tour-reminder-email.ts",
       mustInclude: [/wrapConversationMessageHtml/, /appendEmailSignatureText/],
+    },
+    {
+      file: "lib/tours/communication.ts",
+      mustInclude: [/emailBrandFromVenue/, /renderBrandedEmailHtml/, /brandButtonHtml/],
+    },
+    {
+      file: "lib/notifications/templates.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/, /htcEmailLogoHeaderHtml/],
+    },
+    {
+      file: "lib/invoices/payment-request-email.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
+    },
+    {
+      file: "lib/invoices/invoice-document-email.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
+    },
+    {
+      file: "lib/communication/sms-consent-email.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
+    },
+    {
+      file: "lib/brochures/service.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
+    },
+    {
+      file: "lib/client-auth/service.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
+    },
+    {
+      file: "lib/contacts/service.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
+    },
+    {
+      file: "lib/events/questionnaire.ts",
+      mustInclude: [/wrapConversationMessageHtml/, /emailBrandFromVenue/],
+    },
+    {
+      file: "lib/event-orders/representation.ts",
+      mustInclude: [/wrapConversationMessageHtml/, /emailBrandFromVenue/],
     },
     {
       file: "lib/contracts/service.ts",

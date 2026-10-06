@@ -162,8 +162,9 @@ export async function processReminders(): Promise<ProcessResult> {
             eventDate: event?.event_date ?? "",
             dueDate: task!.due_date,
             role, reminderType: reminder.reminder_type,
-            portalToken, venueBaseUrl: getBaseUrl(), venueName, venueColor,
+            portalToken, venueBaseUrl: getBaseUrl(), venueName, venueColor, brand,
           });
+          if (role === "couple") coupleHtmlAlreadyBranded = true;
         }
 
         // Couple-facing emails get the venue signature; coordinator alerts stay internal-shaped.

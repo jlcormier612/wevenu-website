@@ -2,6 +2,12 @@
  * Full payment-plan / invoice document email — not a first-payment request.
  */
 import { formatCurrency } from "@/lib/invoices/constants";
+import {
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+  type EmailVenueBrand,
+} from "@/lib/email/venue-brand";
 
 export type InvoiceDocumentScheduleLine = {
   label: string;
@@ -24,6 +30,7 @@ export type InvoiceDocumentEmailInput = {
   balanceDue: number;
   scheduleLines: InvoiceDocumentScheduleLine[];
   documentsUrl: string | null;
+  brand?: EmailVenueBrand;
 };
 
 export type InvoiceDocumentEmailContent = {
@@ -33,14 +40,6 @@ export type InvoiceDocumentEmailContent = {
   html: string;
   replyTo?: string;
 };
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function formatDue(dueDate: string | null): string {
   if (!dueDate) return "Date TBD";
@@ -91,7 +90,11 @@ export function buildInvoiceDocumentEmail(input: InvoiceDocumentEmailInput): Inv
       </table>`
     : "<p>No installment schedule is on file.</p>";
 
-  const html = [
+  const brand = input.brand ?? emailBrandFromVenue({
+    name: input.venueName,
+    email: input.venueEmail,
+  });
+  const inner = [
     `<p>Hi ${escapeHtml(input.clientFirstName)},</p>`,
     `<p>${escapeHtml(input.venueName)} has shared your payment plan and invoice.</p>`,
     `<p>Client: ${escapeHtml(input.clientName)}<br/>`,
@@ -113,7 +116,7 @@ export function buildInvoiceDocumentEmail(input: InvoiceDocumentEmailInput): Inv
     to: input.clientEmail,
     subject: `Your payment plan and invoice — ${input.venueName}`,
     text,
-    html,
+    html: renderBrandedEmailHtml(brand, inner),
     replyTo: input.venueEmail ?? undefined,
   };
 }
