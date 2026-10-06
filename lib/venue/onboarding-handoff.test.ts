@@ -99,6 +99,46 @@ describe("one-time venue onboarding handoff", () => {
     assert.doesNotMatch(selectAction, /searchParams/);
     assert.match(switcher, /set_active_venue/);
   });
+
+  it("handoff expire and replay are rejected without a client venue id", () => {
+    const consumeStart = sql.indexOf(
+      "create or replace function public.consume_venue_onboarding_handoff()",
+    );
+    const consume = sql.slice(consumeStart);
+    assert.match(consume, /expires_at > now\(\)/);
+    assert.match(consume, /consumed_at is null/);
+    assert.match(consume, /already_consumed|not found/);
+    assert.doesNotMatch(consume, /p_venue_id/);
+  });
+
+  it("handoff cannot be consumed by a different authenticated user", () => {
+    const consumeStart = sql.indexOf(
+      "create or replace function public.consume_venue_onboarding_handoff()",
+    );
+    const consume = sql.slice(consumeStart);
+    assert.match(consume, /where user_id = v_uid/);
+    assert.match(consume, /email_mismatch/);
+    assert.match(consume, /from public\.venue_staff s/);
+  });
+
+  it("ordinary login still keeps a valid prior venue, not newest-wins", () => {
+    assert.equal(
+      classifyActiveVenueCase({
+        memberships: [{ venueId: "prior" }, { venueId: "newest" }],
+        dbContextVenueId: "prior",
+        dbContextMembershipValid: true,
+      }),
+      "B_keep_valid",
+    );
+    assert.notEqual(
+      classifyActiveVenueCase({
+        memberships: [{ venueId: "prior" }, { venueId: "newest" }],
+        dbContextVenueId: "prior",
+        dbContextMembershipValid: true,
+      }),
+      "A_auto_single",
+    );
+  });
 });
 
 describe("Juniper owner identity sandbox repair", () => {

@@ -61,4 +61,16 @@ describe("accept_team_invitation identity boundary", () => {
     assert.match(joinActions, /\/join\?token=/);
     assert.doesNotMatch(joinPage, /Sign in with a different account/);
   });
+
+  it("invitation cannot be replayed after a successful consume", () => {
+    assert.match(sql, /invite_token = null/);
+    assert.match(sql, /accepted_at is null/);
+    assert.match(sql, /invalid_or_expired_token/);
+  });
+
+  it("correct invited identity is the only user bound on success", () => {
+    const update = sql.slice(sql.indexOf("update public.venue_staff"));
+    assert.match(update, /user_id\s*=\s*v_uid/);
+    assert.match(sql, /v_email <> v_invited_email/);
+  });
 });
