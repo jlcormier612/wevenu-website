@@ -190,7 +190,7 @@ export function SetupHubOverview({
       status: clientExperienceDone ? "complete" : null,
       detail: `${clientExperienceCount} item${clientExperienceCount === 1 ? "" : "s"} of your own across contracts, questionnaires, messages, and planning guides.`
         + (uploadedMaterialsCount > 0
-          ? ` You also brought over ${uploadedMaterialsCount} file${uploadedMaterialsCount === 1 ? "" : "s"} during setup — head to Library to turn the ones that matter into templates.`
+          ? ` You also brought over ${uploadedMaterialsCount} file${uploadedMaterialsCount === 1 ? "" : "s"} during setup — head to Library to turn the ${uploadedMaterialsCount === 1 ? "one that matters" : "ones that matter"} into templates.`
           : ""),
       required: STAGE_COPY["client-experience"].required,
       action: !clientExperienceDone ? (

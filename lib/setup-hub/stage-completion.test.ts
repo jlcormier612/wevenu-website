@@ -144,6 +144,15 @@ describe("other category completion", () => {
     const src = readFileSync(resolve("lib/setup-hub/stage-completion.ts"), "utf8");
     assert.match(src, /ready_to_invite_couples is independent/);
   });
+
+  it("Setup Hub uploaded-materials copy uses one/ones with file/files", () => {
+    const overview = readFileSync(resolve("components/setup-hub/setup-hub-overview.tsx"), "utf8");
+    assert.match(
+      overview,
+      /turn the \$\{uploadedMaterialsCount === 1 \? "one that matters" : "ones that matter"\} into templates/,
+    );
+    assert.match(overview, /file\$\{uploadedMaterialsCount === 1 \? "" : "s"\}/);
+  });
 });
 
 describe("operational access is unchanged by category completion", () => {
