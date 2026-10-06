@@ -9,10 +9,11 @@ import {
 } from "@/lib/event-experience";
 import { configuredUsesFromSpaces } from "@/lib/venue-spaces/assignments";
 
-/** Wedding-occasion keys already in SUGGESTED_SPACE_USES — not a new vocabulary. */
+/**
+ * Wedding-only uses already in SUGGESTED_SPACE_USES — not a new vocabulary.
+ * Ceremony and reception are venue capabilities, not wedding-only keys.
+ */
 export const WEDDING_OCCASION_USE_KEYS = [
-  "ceremony",
-  "reception",
   "getting_ready",
   "rehearsal_dinner",
 ] as const;

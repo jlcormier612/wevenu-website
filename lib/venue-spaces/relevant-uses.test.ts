@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import type { VenueSpace } from "@/lib/availability/types";
 import { EXPERIENCE_PROFILES } from "@/lib/event-experience";
 import {
+  WEDDING_OCCASION_USE_KEYS,
   relevantUsesForEventType,
   relevantUsesForExperience,
 } from "@/lib/venue-spaces/relevant-uses";
@@ -31,6 +34,13 @@ const fancyMix = [
 ];
 
 describe("relevantUsesForExperience", () => {
+  it("treats only getting_ready and rehearsal_dinner as wedding-only uses", () => {
+    const src = readFileSync(resolve("lib/venue-spaces/relevant-uses.ts"), "utf8");
+    assert.deepEqual([...WEDDING_OCCASION_USE_KEYS], ["getting_ready", "rehearsal_dinner"]);
+    assert.doesNotMatch(src, /rehearsal_dinner_only/);
+    assert.match(src, /Ceremony and reception are venue capabilities/);
+  });
+
   it("keeps all configured uses for wedding family, ceremony/reception first", () => {
     const uses = relevantUsesForExperience(fancyMix, EXPERIENCE_PROFILES.wedding);
     assert.deepEqual(
@@ -39,20 +49,20 @@ describe("relevantUsesForExperience", () => {
     );
   });
 
-  it("excludes wedding-occasion keys for corporate and keeps cocktail hour", () => {
+  it("keeps ceremony and reception for non-wedding when the venue offers them", () => {
     const uses = relevantUsesForEventType(fancyMix, "corporate");
-    assert.deepEqual(uses.map((u) => u.key), ["cocktail_hour"]);
-    assert.ok(!uses.some((u) => u.key === "ceremony" || u.key === "reception"));
+    assert.deepEqual(uses.map((u) => u.key), ["ceremony", "reception", "cocktail_hour"]);
+    assert.ok(!uses.some((u) => u.key === "getting_ready" || u.key === "rehearsal_dinner"));
   });
 
-  it("social and birthday match corporate filtering", () => {
+  it("social event exposes ceremony, reception, and cocktail hour — not wedding-only uses", () => {
     assert.deepEqual(
       relevantUsesForEventType(fancyMix, "social_event").map((u) => u.key),
-      ["cocktail_hour"],
+      ["ceremony", "reception", "cocktail_hour"],
     );
     assert.deepEqual(
       relevantUsesForEventType(fancyMix, "birthday").map((u) => u.key),
-      ["cocktail_hour"],
+      ["ceremony", "reception", "cocktail_hour"],
     );
   });
 
@@ -63,13 +73,13 @@ describe("relevantUsesForExperience", () => {
     const uses = relevantUsesForEventType(spaces, "corporate");
     assert.deepEqual(
       uses.map((u) => u.key),
-      ["meeting", "conference", "dining", "loft_lounge"],
+      ["ceremony", "meeting", "conference", "dining", "loft_lounge"],
     );
   });
 
-  it("returns empty when only wedding-occasion uses are configured for a corporate event", () => {
+  it("returns empty when only wedding-only uses are configured for a corporate event", () => {
     const spaces = [
-      space({ id: "barn", permittedUses: ["ceremony", "reception"] }),
+      space({ id: "suite", permittedUses: ["getting_ready", "rehearsal_dinner"] }),
     ];
     assert.deepEqual(relevantUsesForEventType(spaces, "corporate"), []);
   });
@@ -93,10 +103,30 @@ describe("relevantUsesForExperience", () => {
     assert.ok(!uses.some((u) => u.key === "rehearsal_dinner_only" || u.label === "Rehearsal Dinner Only"));
   });
 
-  it("does not leak wedding-occasion uses into corporate or social preferences", () => {
+  it("hides getting_ready and rehearsal_dinner on social even when the venue offers them", () => {
+    const spaces = [
+      space({
+        id: "barn",
+        permittedUses: ["ceremony", "reception", "cocktail_hour", "getting_ready", "rehearsal_dinner"],
+      }),
+    ];
+    const social = relevantUsesForEventType(spaces, "social_event").map((u) => u.key);
+    assert.deepEqual(social, ["ceremony", "reception", "cocktail_hour"]);
+    const wedding = relevantUsesForEventType(spaces, "wedding").map((u) => u.key);
+    assert.deepEqual(wedding, [
+      "ceremony",
+      "reception",
+      "cocktail_hour",
+      "getting_ready",
+      "rehearsal_dinner",
+    ]);
+  });
+
+  it("does not leak wedding-only uses into corporate or social preferences", () => {
     for (const type of ["corporate", "social_event"] as const) {
       const uses = relevantUsesForEventType(fancyMix, type);
       assert.ok(!uses.some((u) => u.key === "rehearsal_dinner" || u.key === "rehearsal_dinner_only"));
+      assert.ok(!uses.some((u) => u.key === "getting_ready"));
       assert.ok(!uses.some((u) => u.label === "Rehearsal Dinner Only"));
     }
   });

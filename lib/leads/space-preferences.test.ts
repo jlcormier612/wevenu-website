@@ -47,18 +47,23 @@ describe("lead space preference visibility", () => {
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", "wedding"), false);
   });
 
-  it("corporate hides ceremony/reception and shows cocktail hour", () => {
-    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", "corporate"), false);
-    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "corporate"), false);
+  it("corporate keeps ceremony/reception when configured and hides wedding-only uses", () => {
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", "corporate"), true);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", "corporate"), true);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner", "corporate"), false);
+    assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "getting_ready", "corporate"), false);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", "corporate"), false);
     assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", "corporate"), true);
   });
 
-  it("social and birthday match corporate filtering", () => {
+  it("social event is not restricted to cocktail hour", () => {
     for (const type of ["social_event", "birthday"] as const) {
-      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", type), false);
+      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "ceremony", type), true);
+      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "reception", type), true);
       assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "cocktail_hour", type), true);
+      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "getting_ready", type), false);
+      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner", type), false);
+      assert.equal(shouldShowLeadSpacePreference("multi", fancyMix, "rehearsal_dinner_only", type), false);
     }
   });
 
@@ -143,6 +148,32 @@ describe("lead space preference shape", () => {
       ok: true,
       value: { useKey: "cocktail_hour", preferenceKind: "venue_space", spaceId: "patio", externalLocation: null },
     });
+  });
+
+  it("keeps a persisted ceremony preference valid for social when the venue offers it", () => {
+    const result = normalizeLeadSpacePreference({
+      useKey: "ceremony",
+      preferenceKind: "venue_space",
+      spaceId: "lawn",
+    }, {
+      allowedUseKeys: ["ceremony", "reception", "cocktail_hour"],
+      profile: EXPERIENCE_PROFILES.general_event,
+    });
+    assert.deepEqual(result, {
+      ok: true,
+      value: { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "lawn", externalLocation: null },
+    });
+  });
+
+  it("does not invent rehearsal_dinner_only as a persistable use", () => {
+    const result = normalizeLeadSpacePreference({
+      useKey: "rehearsal_dinner_only",
+      preferenceKind: "undecided",
+    }, {
+      allowedUseKeys: ["ceremony", "reception", "cocktail_hour"],
+      profile: EXPERIENCE_PROFILES.general_event,
+    });
+    assert.equal(result.ok, false);
   });
 
   it("rejects ceremony rows for a corporate allowed-use list", () => {
