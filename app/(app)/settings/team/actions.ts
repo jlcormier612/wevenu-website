@@ -18,6 +18,7 @@ import type {
   TeamActionResult,
 } from "@/lib/team/types";
 import type { AccessTitle } from "@/lib/authorization";
+import { saveVenueContactRepresentation } from "@/lib/venue/service";
 
 export async function inviteTeamMemberAction(
   input: StaffInviteInput | StaffInput,
@@ -110,6 +111,18 @@ export async function transferOwnershipAction(
     revalidatePath("/settings/business");
   }
   return result as TeamActionResult;
+}
+
+export async function saveVenueRepresentationAction(input: {
+  email: string;
+  phone: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await saveVenueContactRepresentation(input);
+  if (result.ok) {
+    revalidatePath("/settings/team");
+    revalidatePath("/settings/business");
+  }
+  return result;
 }
 
 function legacyRoleToAccessTitle(role: StaffRole): AccessTitle {

@@ -60,10 +60,6 @@ export default async function WhiteGloveIntakePage({ params }: PageProps) {
     redirect(`/onboarding/white-glove/${encodeURIComponent(token)}/waiting`);
   }
 
-  const contactName = [enrollment.owner_first_name, enrollment.owner_last_name]
-    .filter(Boolean)
-    .join(" ");
-
   return (
     <main className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto max-w-xl">
@@ -73,8 +69,7 @@ export default async function WhiteGloveIntakePage({ params }: PageProps) {
         intakeToken={token}
         prefill={{
           venueName: enrollment.venue_name,
-          contactEmail: enrollment.owner_email,
-          primaryContactName: contactName || undefined,
+          // Purchaser identity is not venue contact — collect venue phone/website only.
         }}
       />
     </main>

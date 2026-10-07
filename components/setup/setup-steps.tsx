@@ -384,17 +384,18 @@ export function VenueInfoStep({ input, errors, set }: StepProps) {
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField
           id="email"
-          label="Email"
+          label="Venue contact email"
           type="email"
           value={input.email}
           onChange={(v) => set("email", v)}
           error={errors.email}
+          hint="Optional. Used for couple-facing and venue communications — not the logged-in person's login email."
           placeholder="hello@wildflower.com"
           autoComplete="email"
         />
         <TextField
           id="phone"
-          label="Phone"
+          label="Venue phone"
           type="tel"
           value={input.phone}
           onChange={(v) => set("phone", v)}

@@ -21,23 +21,18 @@ export default async function SelfSetupIntakePage() {
   const admin = createAdminClient();
   const { data: enrollment } = await admin
     .from("venue_enrollments")
-    .select("owner_first_name, owner_last_name, owner_email, venue_name")
+    .select("venue_name")
     .eq("venue_id", venue.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  const contactName = [enrollment?.owner_first_name, enrollment?.owner_last_name]
-    .filter(Boolean)
-    .join(" ");
 
   return (
     <div className="px-4 py-8">
       <SelfSetupIntakeClient
         prefill={{
           venueName: enrollment?.venue_name || venue.name,
-          contactEmail: enrollment?.owner_email || venue.email || undefined,
-          primaryContactName: contactName || undefined,
+          // Do not prefill purchaser name/email into venue-contact fields.
           contactPhone: venue.phone || undefined,
           addressLine1: venue.addressLine1 || undefined,
           city: venue.city || undefined,

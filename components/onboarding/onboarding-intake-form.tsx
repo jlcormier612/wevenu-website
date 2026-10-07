@@ -21,8 +21,6 @@ import { Textarea } from "@/components/ui/textarea";
 
 export type IntakePrefill = Partial<OnboardingIntakeInput> & {
   venueName?: string;
-  contactEmail?: string;
-  primaryContactName?: string;
 };
 
 type Props = {
@@ -49,10 +47,6 @@ export function OnboardingIntakeForm({
   const [city, setCity] = React.useState(prefill.city ?? "");
   const [stateRegion, setStateRegion] = React.useState(prefill.stateRegion ?? "");
   const [postalCode, setPostalCode] = React.useState(prefill.postalCode ?? "");
-  const [primaryContactName, setPrimaryContactName] = React.useState(
-    prefill.primaryContactName ?? "",
-  );
-  const [contactEmail, setContactEmail] = React.useState(prefill.contactEmail ?? "");
   const [contactPhone, setContactPhone] = React.useState(prefill.contactPhone ?? "");
   const [website, setWebsite] = React.useState(prefill.website ?? "");
 
@@ -141,8 +135,10 @@ export function OnboardingIntakeForm({
       city: city.trim() || null,
       stateRegion: stateRegion.trim() || null,
       postalCode: postalCode.trim() || null,
-      primaryContactName: primaryContactName.trim() || null,
-      contactEmail: contactEmail.trim() || null,
+      // Person identity comes from the authenticated user + Owner invite flow —
+      // never re-ask the setup person for their own name/email here.
+      primaryContactName: null,
+      contactEmail: null,
       contactPhone: contactPhone.trim() || null,
       website: website.trim() || null,
       spaceMode,
@@ -204,13 +200,7 @@ export function OnboardingIntakeForm({
           <Field label="State" value={stateRegion} onChange={setStateRegion} />
           <Field label="Postal code" value={postalCode} onChange={setPostalCode} />
         </div>
-        <Field
-          label="Primary owner/contact"
-          value={primaryContactName}
-          onChange={setPrimaryContactName}
-        />
-        <Field label="Contact email" value={contactEmail} onChange={setContactEmail} type="email" />
-        <Field label="Contact phone" value={contactPhone} onChange={setContactPhone} />
+        <Field label="Venue phone" value={contactPhone} onChange={setContactPhone} />
         {mode === "white_glove" ? (
           <Field label="Website" value={website} onChange={setWebsite} />
         ) : null}

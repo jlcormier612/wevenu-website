@@ -162,23 +162,25 @@ export async function submitOnboardingIntake(input: {
     .single<{ id: string }>();
   if (error) return { ok: false, error: error.message };
 
-  // Apply venue basics
-  await admin
-    .from("venues")
-    .update({
-      name: intake.venueName.trim(),
-      email: intake.contactEmail?.trim().toLowerCase() || undefined,
-      phone: intake.contactPhone?.trim() || null,
-      website: intake.website?.trim() || null,
-      address_line1: intake.addressLine1?.trim() || null,
-      address_line2: intake.addressLine2?.trim() || null,
-      city: intake.city?.trim() || null,
-      state_region: intake.stateRegion?.trim() || null,
-      postal_code: intake.postalCode?.trim() || null,
-      country: intake.country?.trim() || null,
-      space_operating_mode: spaceOperatingModeFromIntake(intake.spaceMode),
-    })
-    .eq("id", input.venueId);
+  // Apply venue basics. Do not overwrite venues.email with purchaser identity —
+  // venue contact email is optional and configured in Team / Business settings.
+  const venueBasics: Record<string, unknown> = {
+    name: intake.venueName.trim(),
+    phone: intake.contactPhone?.trim() || null,
+    website: intake.website?.trim() || null,
+    address_line1: intake.addressLine1?.trim() || null,
+    address_line2: intake.addressLine2?.trim() || null,
+    city: intake.city?.trim() || null,
+    state_region: intake.stateRegion?.trim() || null,
+    postal_code: intake.postalCode?.trim() || null,
+    country: intake.country?.trim() || null,
+    space_operating_mode: spaceOperatingModeFromIntake(intake.spaceMode),
+  };
+  const explicitVenueEmail = intake.contactEmail?.trim().toLowerCase() || "";
+  if (explicitVenueEmail) {
+    venueBasics.email = explicitVenueEmail;
+  }
+  await admin.from("venues").update(venueBasics).eq("id", input.venueId);
 
   // Spaces — create missing by name (idempotent)
   const { data: existingSpaces } = await admin

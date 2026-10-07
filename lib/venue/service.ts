@@ -15,7 +15,12 @@ import type {
   VenueSetupErrors,
   VenueSetupInput,
 } from "@/lib/venue/types";
-import { validateGeneralSettings, validateStep, validateVenueSetup } from "@/lib/venue/validation";
+import {
+  isValidEmail,
+  validateGeneralSettings,
+  validateStep,
+  validateVenueSetup,
+} from "@/lib/venue/validation";
 import type {
   ProductVenueProfileFields,
   SyncVenueProfileReason,
@@ -486,6 +491,34 @@ export async function updateVenueStory(story: string): Promise<void> {
   const venue = await getCurrentVenue();
   if (!venue) return;
   await repository.updateVenueFields(supabase, venue.id, { story: story.trim() || null });
+}
+
+/**
+ * Optional venue-level contact representation (venues.email / venues.phone).
+ * Does not change Owner membership, authenticated identity, or email signatures.
+ */
+export async function saveVenueContactRepresentation(input: {
+  email: string;
+  phone: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const email = input.email.trim().toLowerCase();
+  const phone = input.phone.trim();
+  if (email && !isValidEmail(email)) {
+    return { ok: false, error: "Enter a valid venue contact email, or leave it blank." };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Session expired. Please sign in again." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Venue not found." };
+  await repository.updateVenueFields(supabase, venue.id, {
+    email: email || null,
+    phone: phone || null,
+  });
+  return { ok: true };
 }
 
 /** Save: plain-text email signature/footer for outbound client emails. */
