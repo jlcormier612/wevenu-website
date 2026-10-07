@@ -15,6 +15,10 @@ import {
 import { toast } from "sonner";
 
 import { updateEventStatusAction, returnClientToBookedAction } from "@/app/(app)/events/[id]/actions";
+import { getBookingConfirmationDraftForClientAction } from "@/app/(app)/leads/[id]/actions";
+import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
+import type { BookingConfirmationDraft } from "@/lib/booking-journey/confirmation-draft";
+import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
@@ -403,6 +407,9 @@ export function EventDetail({
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
+  const [returnBookedOpen, setReturnBookedOpen] = React.useState(false);
+  const [returnDraft, setReturnDraft] = React.useState<BookingConfirmationDraft | null>(null);
+  const [returnDraftError, setReturnDraftError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState(openSetupPayments ? "invoice" : "overview");
   const [setupPaymentsOpen, setSetupPaymentsOpen] = React.useState(openSetupPayments);
   // useLayoutEffect so /clients/{id}#documents selects Documents before paint
@@ -458,6 +465,31 @@ export function EventDetail({
 
   return (
     <div className="space-y-5">
+      <PipelineBookedConfirmDialog
+        open={returnBookedOpen}
+        confirming={statusPending}
+        draft={returnDraft}
+        loadError={returnDraftError}
+        onCancel={() => {
+          setReturnBookedOpen(false);
+          setReturnDraft(null);
+          setReturnDraftError(null);
+        }}
+        onConfirm={(occupancy: ConfirmedBookingOccupancy) => {
+          const clientId = event.clientId;
+          if (!clientId) return;
+          startStatus(async () => {
+            const result = await returnClientToBookedAction(clientId, occupancy);
+            if (result.ok) {
+              setReturnBookedOpen(false);
+              toast.success("Returned to Booked.");
+              router.refresh();
+            } else {
+              toast.error(result.message ?? "Could not return to Booked.");
+            }
+          });
+        }}
+      />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
@@ -502,17 +534,17 @@ export function EventDetail({
               size="sm"
               disabled={statusPending}
               onClick={() => {
-                if (!confirm("Return this client to Booked? This restores the existing client, event, and calendar. It is not a new booking.")) return;
                 const clientId = event.clientId;
                 if (!clientId) return;
-                startStatus(async () => {
-                  const result = await returnClientToBookedAction(clientId);
-                  if (result.ok) {
-                    toast.success("Returned to Booked.");
-                    router.refresh();
-                  } else {
-                    toast.error(result.message ?? "Could not return to Booked.");
+                setReturnDraft(null);
+                setReturnDraftError(null);
+                setReturnBookedOpen(true);
+                void getBookingConfirmationDraftForClientAction(clientId).then((loaded) => {
+                  if (!loaded.ok) {
+                    setReturnDraftError(loaded.message);
+                    return;
                   }
+                  setReturnDraft(loaded.draft);
                 });
               }}
             >

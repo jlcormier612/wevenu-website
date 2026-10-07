@@ -22,6 +22,7 @@
  */
 import type { createClient } from "@/integrations/supabase/server";
 import { calendarBlockFailureFromUnknown, occupancyFailureFromUnknown } from "@/lib/availability/event-occupancy";
+import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -47,6 +48,11 @@ export type BookClientInput = {
     guestCount?: string;
   };
   lifecycleOrigin?: "pipeline" | "direct" | "import";
+  /**
+   * Set only when the venue submitted the booking confirmation.
+   * Create Event and import omit it and keep the previous coalesce path.
+   */
+  confirmedOccupancy?: ConfirmedBookingOccupancy | null;
 };
 
 export type BookClientResult =
@@ -84,21 +90,36 @@ export async function bookClient(
 
   const guest = emptyToNull(input.event?.guestCount);
   const parsedGuest = guest ? Number.parseInt(guest, 10) : Number.NaN;
+  const confirmed = input.confirmedOccupancy ?? null;
   const { data, error } = await supabase.rpc("book_relationship", {
     p_venue_id: venueId,
     p_client_id: clientId,
-    p_space_id: emptyToNull(input.spaceId),
+    p_space_id: confirmed ? emptyToNull(confirmed.spaceId) : emptyToNull(input.spaceId),
     p_pipeline_stage_id: emptyToNull(input.pipelineStageId),
     p_name: emptyToNull(input.event?.name),
     p_event_type: emptyToNull(input.event?.eventType),
-    p_event_date: emptyToNull(input.event?.eventDate),
-    p_event_end_date: emptyToNull(input.event?.eventEndDate),
-    p_start_time: emptyToNull(input.event?.startTime),
-    p_end_time: emptyToNull(input.event?.endTime),
+    p_event_date: confirmed ? emptyToNull(confirmed.eventDate) : emptyToNull(input.event?.eventDate),
+    p_event_end_date: confirmed ? emptyToNull(confirmed.eventEndDate) : emptyToNull(input.event?.eventEndDate),
+    p_start_time: confirmed ? emptyToNull(confirmed.startTime) : emptyToNull(input.event?.startTime),
+    p_end_time: confirmed ? emptyToNull(confirmed.endTime) : emptyToNull(input.event?.endTime),
     p_setup_time: emptyToNull(input.event?.setupTime),
     p_teardown_time: emptyToNull(input.event?.teardownTime),
     p_guest_count: Number.isFinite(parsedGuest) ? parsedGuest : null,
     p_lifecycle_origin: input.lifecycleOrigin ?? null,
+    p_confirmed_occupancy: confirmed
+      ? {
+          eventDate: confirmed.eventDate,
+          eventEndDate: confirmed.eventEndDate,
+          startTime: confirmed.startTime,
+          endTime: confirmed.endTime,
+          spaceId: confirmed.spaceId,
+          assignments: confirmed.assignments.map((row) => ({
+            useKey: row.useKey,
+            useLabel: row.useLabel,
+            spaceId: row.spaceId,
+          })),
+        }
+      : null,
   });
   if (error) {
     const fail = occupancyFailureFromUnknown(error) ?? calendarBlockFailureFromUnknown(error);

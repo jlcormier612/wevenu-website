@@ -35,8 +35,11 @@ export async function updateEventStatusAction(eventId: string, status: string): 
   return result;
 }
 
-export async function returnClientToBookedAction(clientId: string): Promise<EventActionResult> {
-  const result = await returnClientToBooked(clientId);
+export async function returnClientToBookedAction(
+  clientId: string,
+  occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy,
+): Promise<EventActionResult> {
+  const result = await returnClientToBooked(clientId, occupancy);
   if (result.ok) {
     revalidatePath("/clients");
     revalidatePath(`/clients/${clientId}`);

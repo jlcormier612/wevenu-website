@@ -7,10 +7,13 @@ import { toast } from "sonner";
 
 import {
   confirmPipelineBookedMoveAction,
+  getBookingConfirmationDraftAction,
   markLeadLostAction,
   updateLeadPipelineStageAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
+import type { BookingConfirmationDraft } from "@/lib/booking-journey/confirmation-draft";
+import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
 import { LostReasonDialog } from "@/components/leads/lost-reason-dialog";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
@@ -58,6 +61,8 @@ export function PipelineBoard({
   } | null>(null);
   const [lostMove, setLostMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
   const [bookedMove, setBookedMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
+  const [bookingDraft, setBookingDraft] = React.useState<BookingConfirmationDraft | null>(null);
+  const [bookingDraftError, setBookingDraftError] = React.useState<string | null>(null);
   const [lifecyclePending, setLifecyclePending] = React.useState(false);
 
   const { columns, currentKeyByLead } = React.useMemo(() => {
@@ -116,7 +121,16 @@ export function PipelineBoard({
     const kind = resolveTransitionKind({ targetKey });
 
     if (kind === "booked") {
+      setBookingDraft(null);
+      setBookingDraftError(null);
       setBookedMove({ leadId, targetKey, label: targetMeta.label });
+      void getBookingConfirmationDraftAction(leadId).then((loaded) => {
+        if (!loaded.ok) {
+          setBookingDraftError(loaded.message);
+          return;
+        }
+        setBookingDraft(loaded.draft);
+      });
       return;
     }
     if (kind === "lost") {
@@ -159,11 +173,11 @@ export function PipelineBoard({
     router.refresh();
   }
 
-  async function confirmBooked() {
+  async function confirmBooked(occupancy: ConfirmedBookingOccupancy) {
     if (!bookedMove) return;
     const { leadId, targetKey } = bookedMove;
     setLifecyclePending(true);
-    const result = await confirmPipelineBookedMoveAction(leadId, targetKey);
+    const result = await confirmPipelineBookedMoveAction(leadId, targetKey, { occupancy });
     setLifecyclePending(false);
     if (!result.ok) {
       toast.error(result.message ?? "Could not move this lead to Booked.");
@@ -282,9 +296,14 @@ export function PipelineBoard({
 
       <PipelineBookedConfirmDialog
         open={bookedMove != null}
-        stageLabel={bookedMove?.label}
         confirming={lifecyclePending}
-        onCancel={() => setBookedMove(null)}
+        draft={bookingDraft}
+        loadError={bookingDraftError}
+        onCancel={() => {
+          setBookedMove(null);
+          setBookingDraft(null);
+          setBookingDraftError(null);
+        }}
         onConfirm={confirmBooked}
       />
     </>

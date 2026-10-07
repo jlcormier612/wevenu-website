@@ -53,8 +53,8 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.match(fn, /bookClient/);
     assert.match(fn, /source: "manual"/);
     assert.match(fn, /no client linked/i);
-    assert.match(fn, /planned_event_space_id/);
-    assert.match(fn, /spaceId: leadRow\?\.planned_event_space_id/);
+    assert.match(fn, /confirmedOccupancy: occupancy/);
+    assert.match(fn, /Confirm the event date, spaces, and times/);
   });
 
   it("convertLeadToClient creates the workspace without pipeline Booked", () => {
@@ -79,8 +79,9 @@ describe("Sales → Booking lifecycle product rules", () => {
 
   it("UI exposes Mark as Booked through the same bookClient transition", () => {
     assert.match(detail, /Mark as Booked/);
-    assert.match(detail, /Mark as Booked\?/);
-    assert.match(detail, /open the client workspace/i);
+    assert.match(detail, /PipelineBookedConfirmDialog/);
+    assert.match(detail, /confirmMarkAsBooked\(occupancy/);
+    assert.match(detail, /prefillBookingConfirmation/);
     assert.doesNotMatch(detail, /Return to Booked/);
     assert.doesNotMatch(detail, /Open booking file →/);
     assert.match(actions, /returnLeadToBookedAction/);

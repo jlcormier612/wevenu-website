@@ -34,6 +34,7 @@ export type LeadSpaceAssignmentDisplay = {
   useKey: string;
   useLabel: string;
   spaceName: string;
+  spaceId?: string;
 };
 
 function preferenceSelectValue(pref: LeadEventSpacePreference): string {

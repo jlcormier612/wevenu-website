@@ -47,6 +47,8 @@ import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-banner";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
+import { prefillBookingConfirmation } from "@/lib/booking-journey/confirmation-draft";
+import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
 import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
 import type { LostReasonValue } from "@/lib/leads/lost-reasons";
 import { lostReasonLabel } from "@/lib/leads/lost-reasons";
@@ -255,10 +257,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
-  function confirmMarkAsBooked() {
-    setConfirmReturnBookedOpen(false);
+  function confirmMarkAsBooked(occupancy: ConfirmedBookingOccupancy) {
     startLifecycle(async () => {
-      const result = await returnLeadToBookedAction(lead.id);
+      const result = await returnLeadToBookedAction(lead.id, occupancy);
       if (!result.ok) {
         toast.error(result.message ?? "Could not mark this relationship Booked.");
         return;
@@ -286,14 +287,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     const label = LEAD_STATUSES.find((s) => s.value === status)?.label ?? status;
 
     if (kind === "booked") {
-      if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
-        toast.error("Assign an Event Space before moving to Booked.");
-        return;
-      }
-      if (lead.eventDate && eventDateBlocked) {
-        toast.error("That date is already protected. Resolve the conflict before moving to Booked.");
-        return;
-      }
       setBookedMove({ targetKey: status, label });
       return;
     }
@@ -349,11 +342,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
-  async function confirmBookedFromStage() {
+  async function confirmBookedFromStage(occupancy: ConfirmedBookingOccupancy) {
     if (!bookedMove) return;
     startLifecycle(async () => {
       const result = await confirmPipelineBookedMoveAction(lead.id, bookedMove.targetKey, {
-        spaceId: bookingSpaceId || undefined,
+        occupancy,
         selectionId: bookingJourney.selection?.id,
       });
       if (!result.ok) {
@@ -361,6 +354,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         return;
       }
       setBookedMove(null);
+      setConfirmReturnBookedOpen(false);
       if (result.warning) toast.warning(result.warning);
       if (!result.newlyBooked) {
         toast.success("Already booked.");
@@ -407,6 +401,26 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     conversationNotes: conversationInternalNotes,
   });
 
+  const prefilled = prefillBookingConfirmation({
+    eventType: lead.eventType,
+    eventDate: lead.eventDate,
+    endDate: lead.endDate,
+    plannedSpaceId: bookingSpaceId || lead.plannedEventSpaceId || null,
+    holds,
+    preferences: spacePreferences,
+    assignments: spaceAssignments.flatMap((row) => (
+      row.spaceId
+        ? [{ useKey: row.useKey, useLabel: row.useLabel, spaceId: row.spaceId }]
+        : []
+    )),
+  });
+  const bookingDraft = {
+    ...prefilled,
+    spaces,
+    maxSimultaneousEvents,
+    spaceOperatingMode,
+  };
+
   return (
     <div className="space-y-5">
       <PipelineAutomationConfirmDialog
@@ -442,12 +456,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         onCancel={() => setConfirmMoveBackOpen(false)}
         onConfirm={confirmMoveBack}
       />
-      <LeadLifecycleConfirmDialog
+      <PipelineBookedConfirmDialog
         open={confirmReturnBookedOpen}
-        title="Mark as Booked?"
-        description="This will move this relationship from Leads to Booked and open the client workspace. Your existing contract, event details, documents, messages, and payments will stay in place."
-        confirmLabel="Mark as Booked"
         confirming={lifecyclePending}
+        draft={bookingDraft}
         onCancel={() => setConfirmReturnBookedOpen(false)}
         onConfirm={confirmMarkAsBooked}
       />
@@ -460,8 +472,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       />
       <PipelineBookedConfirmDialog
         open={bookedMove != null}
-        stageLabel={bookedMove?.label}
         confirming={lifecyclePending}
+        draft={bookingDraft}
         onCancel={() => setBookedMove(null)}
         onConfirm={confirmBookedFromStage}
       />

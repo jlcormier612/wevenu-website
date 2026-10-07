@@ -27,6 +27,10 @@ import {
 } from "@/lib/leads/service";
 import type { FollowUpCompletionInput } from "@/lib/leads/follow-up-completion";
 import { refreshLeadScore } from "@/lib/leads/scores";
+import {
+  loadBookingConfirmationDraft,
+  loadBookingConfirmationDraftForClient,
+} from "@/lib/booking-journey/confirmation-draft-load";
 import type {
   LeadActionResult,
   RelationshipInput,
@@ -111,7 +115,11 @@ export async function setLeadPlannedEventSpaceAction(
 export async function confirmPipelineBookedMoveAction(
   leadId: string,
   stageKeyOrId: string,
-  opts?: { spaceId?: string; selectionId?: string },
+  opts?: {
+    spaceId?: string;
+    selectionId?: string;
+    occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy;
+  },
 ): Promise<
   | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; newlyBooked: boolean }
   | { ok: false; message: string }
@@ -147,11 +155,12 @@ export async function moveLeadBackToSalesPipelineAction(
 
 export async function returnLeadToBookedAction(
   leadId: string,
+  occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy,
 ): Promise<
   | { ok: true; clientId: string; eventId: string | null; newlyBooked: boolean }
   | { ok: false; message: string }
 > {
-  const result = await returnLeadToBooked(leadId);
+  const result = await returnLeadToBooked(leadId, occupancy);
   if (result.ok) {
     revalidateLead(leadId);
     revalidatePath(`/clients`);
@@ -160,6 +169,14 @@ export async function returnLeadToBookedAction(
     void refreshLeadScore(leadId).catch(() => {});
   }
   return result;
+}
+
+export async function getBookingConfirmationDraftAction(leadId: string) {
+  return loadBookingConfirmationDraft(leadId);
+}
+
+export async function getBookingConfirmationDraftForClientAction(clientId: string) {
+  return loadBookingConfirmationDraftForClient(clientId);
 }
 
 /** Preview before commit — does not move the lead or enroll anyone. */

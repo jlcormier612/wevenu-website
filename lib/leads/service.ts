@@ -557,7 +557,11 @@ export async function markLeadLost(
 export async function confirmPipelineBookedMove(
   leadId: string,
   stageKeyOrId: string,
-  opts?: { spaceId?: string; selectionId?: string },
+  opts?: {
+    spaceId?: string;
+    selectionId?: string;
+    occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy;
+  },
 ): Promise<
   | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; newlyBooked: boolean }
   | { ok: false; message: string }
@@ -597,7 +601,24 @@ export async function confirmPipelineBookedMove(
     const lead = await repo.getLead(supabase, venueId, leadId);
     if (!lead) return { ok: false as const, message: "Lead not found." };
 
-    const spaceId = opts?.spaceId?.trim() || lead.plannedEventSpaceId || undefined;
+    const occupancy = opts?.occupancy;
+    if (!occupancy?.eventDate?.trim()) {
+      return { ok: false as const, message: "Confirm the event date, spaces, and times before booking this relationship." };
+    }
+    const { bookingConfirmationError } = await import("@/lib/booking-journey/confirmed-occupancy");
+    const { data: rules } = await supabase
+      .from("venue_capacity_rules")
+      .select("max_simultaneous_events")
+      .eq("venue_id", venueId)
+      .maybeSingle<{ max_simultaneous_events: number | null }>();
+    const { effectiveMaxSimultaneousEvents } = await import("@/lib/availability/event-occupancy");
+    const occupancyError = bookingConfirmationError(
+      occupancy,
+      effectiveMaxSimultaneousEvents({ maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1 }),
+    );
+    if (occupancyError) return { ok: false as const, message: occupancyError };
+
+    const spaceId = occupancy.spaceId?.trim() || undefined;
 
     const { convertLeadToClient } = await import("@/lib/clients/service");
     const converted = await convertLeadToClient(lead, { spaceId });
@@ -632,6 +653,7 @@ export async function confirmPipelineBookedMove(
       pipelineStageId,
       source: "manual",
       spaceId,
+      confirmedOccupancy: occupancy,
     });
     if (!booked.ok) {
       return { ok: false as const, message: booked.message };
@@ -743,7 +765,10 @@ export async function leaveActiveBookedPipeline(
  * (even if sales_stage was left on booked) calls bookClient.
  * Same canonical bookClient transition as pipeline Mark as Booked.
  */
-export async function returnLeadToBooked(leadId: string): Promise<
+export async function returnLeadToBooked(
+  leadId: string,
+  occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy,
+): Promise<
   | { ok: true; clientId: string; eventId: string | null; newlyBooked: boolean }
   | { ok: false; message: string }
 > {
@@ -780,9 +805,21 @@ export async function returnLeadToBooked(leadId: string): Promise<
       }
     }
 
-    const { data: leadRow } = await supabase.from("leads").select("planned_event_space_id")
-      .eq("id", leadId).eq("venue_id", venueId)
-      .maybeSingle<{ planned_event_space_id: string | null }>();
+    if (!occupancy?.eventDate?.trim()) {
+      return { ok: false as const, message: "Confirm the event date, spaces, and times before booking this relationship." };
+    }
+    const { bookingConfirmationError } = await import("@/lib/booking-journey/confirmed-occupancy");
+    const { data: rules } = await supabase
+      .from("venue_capacity_rules")
+      .select("max_simultaneous_events")
+      .eq("venue_id", venueId)
+      .maybeSingle<{ max_simultaneous_events: number | null }>();
+    const { effectiveMaxSimultaneousEvents } = await import("@/lib/availability/event-occupancy");
+    const occupancyError = bookingConfirmationError(
+      occupancy,
+      effectiveMaxSimultaneousEvents({ maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1 }),
+    );
+    if (occupancyError) return { ok: false as const, message: occupancyError };
 
     const { bookClient } = await import("@/lib/booking-journey/book-client");
     const booked = await bookClient(supabase, {
@@ -790,7 +827,8 @@ export async function returnLeadToBooked(leadId: string): Promise<
       clientId: linked.id,
       leadId,
       source: "manual",
-      spaceId: leadRow?.planned_event_space_id ?? null,
+      spaceId: occupancy.spaceId,
+      confirmedOccupancy: occupancy,
     });
     if (!booked.ok) return { ok: false as const, message: booked.message };
     return {
@@ -809,13 +847,33 @@ export async function returnLeadToBooked(leadId: string): Promise<
  * Same canonical bookClient transition as Return to Booked, starting from
  * the client rather than the lead. Does not create records.
  */
-export async function returnClientToBooked(clientId: string): Promise<LeadActionResult> {
+export async function returnClientToBooked(
+  clientId: string,
+  occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy,
+): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    if (!occupancy?.eventDate?.trim()) {
+      return { ok: false, message: "Confirm the event date, spaces, and times before booking this relationship." } as LeadActionResult;
+    }
+    const { bookingConfirmationError } = await import("@/lib/booking-journey/confirmed-occupancy");
+    const { data: rules } = await supabase
+      .from("venue_capacity_rules")
+      .select("max_simultaneous_events")
+      .eq("venue_id", venueId)
+      .maybeSingle<{ max_simultaneous_events: number | null }>();
+    const { effectiveMaxSimultaneousEvents } = await import("@/lib/availability/event-occupancy");
+    const occupancyError = bookingConfirmationError(
+      occupancy,
+      effectiveMaxSimultaneousEvents({ maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1 }),
+    );
+    if (occupancyError) return { ok: false, message: occupancyError } as LeadActionResult;
     const { bookClient } = await import("@/lib/booking-journey/book-client");
     const booked = await bookClient(supabase, {
       venueId,
       clientId,
       source: "manual",
+      spaceId: occupancy.spaceId,
+      confirmedOccupancy: occupancy,
     });
     if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;
     return { ok: true } as LeadActionResult;

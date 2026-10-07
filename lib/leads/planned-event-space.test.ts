@@ -49,8 +49,11 @@ describe("planned event space persistence", () => {
     assert.doesNotMatch(body, /bookClient/);
   });
 
-  it("booking uses the explicit space, otherwise the latest planned space", () => {
-    assert.match(bookMove, /opts\?\.spaceId\?\.trim\(\) \|\| lead\.plannedEventSpaceId/);
+  it("booking uses the venue's confirmed space; planned space stays a prefill", () => {
+    assert.match(bookMove, /confirmedOccupancy: occupancy/);
+    assert.match(bookMove, /occupancy\.spaceId/);
+    assert.doesNotMatch(bookMove, /lead\.plannedEventSpaceId/);
     assert.match(booking, /spaceId\?\.trim\(\) \|\| lead\.plannedEventSpaceId/);
+    assert.match(detail, /prefillBookingConfirmation/);
   });
 });

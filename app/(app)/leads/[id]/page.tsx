@@ -83,6 +83,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         ? (await getEventSpaceAssignments(lead.linkedEventId)).map((a) => ({
             useKey: a.useKey,
             useLabel: a.useLabel,
+            spaceId: a.spaceId,
             spaceName: a.spaceName?.trim() || spaces.find((s) => s.id === a.spaceId)?.name?.trim() || "",
           })).filter((a) => a.spaceName)
         : [];
