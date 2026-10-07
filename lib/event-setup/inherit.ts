@@ -93,11 +93,12 @@ export async function inheritSetupProfileForNewEvent(
     throw insertError;
   }
 
-  await applyInheritedTemplates(supabase, eventId, event.event_date, event.start_time, profile);
+  await applyInheritedTemplates(supabase, venueId, eventId, event.event_date, event.start_time, profile);
 }
 
 async function applyInheritedTemplates(
   supabase: DbClient,
+  venueId: string,
   eventId: string,
   eventDate: string | null,
   startTime: string | null,
@@ -118,18 +119,108 @@ async function applyInheritedTemplates(
   const timelineId = profile.decisions.timeline === "set_up"
     ? profile.templateRefs.timelineTemplateId
     : null;
-  if (!timelineId) return;
+  if (timelineId) {
+    try {
+      const { data: entries } = await supabase
+        .from("timeline_entries")
+        .select("id")
+        .eq("event_id", eventId)
+        .limit(1);
+      if (!entries || entries.length === 0) {
+        const { applyTimelineTemplateToEvent } = await import("@/lib/timeline-templates/apply");
+        // Default timeline only. Additional timeline templates are references, never merged.
+        await applyTimelineTemplateToEvent(eventId, timelineId, startTime);
+      }
+    } catch (err) {
+      console.error("Setup profile timeline apply failed:", err);
+    }
+  }
+
+  if (profile.decisions.floor_plans === "set_up") {
+    await applyInheritedFloorPlanOffers(supabase, venueId, eventId, profile);
+  }
+
+  if (profile.decisions.questionnaires === "set_up") {
+    await applyInheritedQuestionnaires(eventId, profile);
+  }
+
+  if (profile.decisions.vendors === "set_up") {
+    await applyInheritedVendorRecommendations(supabase, venueId, eventId, profile);
+  }
+}
+
+/** Offer selected floor-plan templates to the client; preferred sorts first. */
+async function applyInheritedFloorPlanOffers(
+  supabase: DbClient,
+  venueId: string,
+  eventId: string,
+  profile: VenueSetupProfile,
+): Promise<void> {
+  const preferred = profile.templateRefs.defaultFloorPlanTemplateId ?? null;
+  const selected = new Set(profile.templateRefs.floorPlanTemplateIds ?? []);
+  if (preferred) selected.add(preferred);
+  if (selected.size === 0) return;
+
   try {
-    const { data: entries } = await supabase
-      .from("timeline_entries")
+    const { data: existing } = await supabase
+      .from("event_floor_plan_offers")
       .select("id")
       .eq("event_id", eventId)
+      .eq("venue_id", venueId)
       .limit(1);
-    if (entries && entries.length > 0) return;
-    const { applyTimelineTemplateToEvent } = await import("@/lib/timeline-templates/apply");
-    // Default timeline only. Additional timeline templates are references, never merged.
-    await applyTimelineTemplateToEvent(eventId, timelineId, startTime);
+    if (existing && existing.length > 0) return;
+
+    const { upsertOffer } = await import("@/lib/floor-plan-offers/repository");
+    const ordered = [
+      ...(preferred ? [preferred] : []),
+      ...[...selected].filter((id) => id !== preferred),
+    ];
+    for (let i = 0; i < ordered.length; i += 1) {
+      await upsertOffer(supabase, venueId, eventId, {
+        templateId: ordered[i]!,
+        sortOrder: i,
+        isOffered: true,
+      });
+    }
   } catch (err) {
-    console.error("Setup profile timeline apply failed:", err);
+    console.error("Setup profile floor-plan offers apply failed:", err);
+  }
+}
+
+/**
+ * Snapshot selected questionnaire templates onto the event as drafts.
+ * Does not send — staff still send when ready; portal only shows sent forms.
+ */
+async function applyInheritedQuestionnaires(
+  eventId: string,
+  profile: VenueSetupProfile,
+): Promise<void> {
+  const ids = profile.templateRefs.questionnaireTemplateIds ?? [];
+  if (ids.length === 0) return;
+  try {
+    const { applyTemplateToEvent } = await import("@/lib/questionnaire-templates/service");
+    for (const templateId of ids) {
+      await applyTemplateToEvent(templateId, eventId);
+    }
+  } catch (err) {
+    console.error("Setup profile questionnaire apply failed:", err);
+  }
+}
+
+async function applyInheritedVendorRecommendations(
+  supabase: DbClient,
+  venueId: string,
+  eventId: string,
+  profile: VenueSetupProfile,
+): Promise<void> {
+  const recommended = profile.templateRefs.recommendedVendorIds ?? [];
+  if (recommended.length === 0) return;
+  try {
+    const { addRecommendation } = await import("@/lib/vendor-recommendations/repository");
+    for (const vendorId of recommended) {
+      await addRecommendation(supabase, venueId, eventId, vendorId, null);
+    }
+  } catch (err) {
+    console.error("Setup profile vendor recommendations apply failed:", err);
   }
 }

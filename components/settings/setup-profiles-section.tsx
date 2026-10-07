@@ -188,10 +188,21 @@ export function SetupProfilesSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          A Setup Profile is how this venue normally starts an event of this type — included capabilities and starting defaults. It is not the couple&apos;s later selections.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-2xl space-y-2" data-testid="setup-profile-explanation">
+          <p className="text-sm font-medium text-heading">Set up the client experience</p>
+          <p className="text-sm text-muted-foreground">
+            Choose what you want to have ready for your clients when you invite them into Hello to Cheers.
+            These settings determine the tools, templates, and information that will be preset in their client portal.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            These are starting choices — you and your team can change or add more on any specific event later.
+            They do not lock the client or your team into only what you pick here.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Once you&apos;re happy with your setup, use <span className="font-medium text-heading">Invite to portal</span> from the client&apos;s event to invite them.
+          </p>
+        </div>
         {canEdit && !draft ? (
           <Button type="button" onClick={beginCreate}>New setup profile</Button>
         ) : null}
@@ -233,8 +244,11 @@ export function SetupProfilesSection({
           </div>
 
           <fieldset className="space-y-3">
-            <legend className="text-sm font-medium text-heading">Capabilities</legend>
-            <p className="text-xs text-muted-foreground">Included means this is part of the normal workflow. Defaults are starting intent, not completed work.</p>
+            <legend className="text-sm font-medium text-heading">What to include for this event type</legend>
+            <p className="text-xs text-muted-foreground">
+              Mark each area Included when it should be part of the normal starting experience for this event type.
+              Defaults below are what gets ready for the client or your team — you can still change them on the event.
+            </p>
             <ul className="space-y-3">
               {decisionSteps.map((step) => {
                 const included = draft.decisions[step] === "set_up";
@@ -346,32 +360,35 @@ function CapabilityDefaults({
   if (step === "planning") {
     return (
       <label className="block space-y-1 text-sm">
-        <span className="font-medium text-heading">Default planning checklist</span>
+        <span className="font-medium text-heading">Starting client planning checklist</span>
         <select
           className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
           value={refs.planningPlaybookTemplateId ?? ""}
           onChange={(event) => patchRefs({ planningPlaybookTemplateId: event.target.value || null })}
+          data-testid="setup-profile-default-planning"
         >
           <option value="">None</option>
           {playbooks.map((option) => (
             <option key={option.id} value={option.id}>{option.name}</option>
           ))}
         </select>
-        <span className="block text-xs text-muted-foreground">Applied once to a new event when Planning is included.</span>
+        <span className="block text-xs text-muted-foreground">
+          Applied once when a new event is booked. Your team can edit or release it to the client later.
+          Options come from active Client Planning templates in your library.
+        </span>
       </label>
     );
   }
   if (step === "timeline") {
     return (
       <label className="block space-y-1 text-sm">
-        <span className="font-medium text-heading">Default timeline</span>
+        <span className="font-medium text-heading">Starting timeline</span>
         <select
           className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
           value={refs.timelineTemplateId ?? ""}
           onChange={(event) =>
             patchRefs({
               timelineTemplateId: event.target.value || null,
-              // Library is the availability source — stop maintaining a second list.
               timelineTemplateIds: [],
             })
           }
@@ -383,46 +400,83 @@ function CapabilityDefaults({
           ))}
         </select>
         <span className="block text-xs text-muted-foreground">
-          Applied once when a new event has no timeline yet. Every active timeline template in your library is available here.
+          Applied once when a new event has no timeline yet. Your team can edit it on the event afterward.
         </span>
       </label>
     );
   }
   if (step === "floor_plans") {
+    const preferred = refs.defaultFloorPlanTemplateId ?? null;
+    const selected = Array.from(new Set([
+      ...(refs.floorPlanTemplateIds ?? []),
+      ...(preferred ? [preferred] : []),
+    ]));
     return (
-      <label className="block space-y-1 text-sm">
-        <span className="font-medium text-heading">Starting floor plan</span>
-        <select
-          className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-          value={refs.defaultFloorPlanTemplateId ?? ""}
-          onChange={(event) =>
-            patchRefs({
-              defaultFloorPlanTemplateId: event.target.value || null,
-              // Library is the availability source — stop maintaining a second list.
-              floorPlanTemplateIds: [],
-            })
-          }
-          data-testid="setup-profile-default-floor-plan"
-        >
-          <option value="">None</option>
-          {floorPlans.map((option) => (
-            <option key={option.id} value={option.id}>{option.name}</option>
+      <div className="space-y-3" data-testid="setup-profile-floor-plans">
+        <fieldset className="space-y-1">
+          <legend className="text-sm font-medium text-heading">Floor plans clients can choose from</legend>
+          <p className="text-xs text-muted-foreground">
+            Select every layout you want available in the client portal (for example Ceremony + Reception, Reception Only, Rain Plan).
+            When the event is booked, these become the client&apos;s floor-plan options.
+          </p>
+          {floorPlans.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No floor-plan templates in the library yet.</p>
+          ) : floorPlans.map((option) => (
+            <label key={option.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={selected.includes(option.id)}
+                onChange={() => {
+                  const next = toggleId(selected, option.id);
+                  patchRefs({
+                    floorPlanTemplateIds: next,
+                    defaultFloorPlanTemplateId:
+                      preferred && next.includes(preferred) ? preferred : (next[0] ?? null),
+                  });
+                }}
+              />
+              {option.name}
+            </label>
           ))}
-        </select>
-        <span className="block text-xs text-muted-foreground">
-          Default starting floor plan for this profile. Booking does not create the event floor plan. Every active floor-plan template in your library is available here.
-        </span>
-      </label>
+        </fieldset>
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium text-heading">Preferred starting plan</span>
+          <select
+            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            value={preferred ?? ""}
+            onChange={(event) => {
+              const id = event.target.value || null;
+              const nextIds = id && !selected.includes(id) ? [...selected, id] : selected;
+              patchRefs({
+                defaultFloorPlanTemplateId: id,
+                floorPlanTemplateIds: nextIds,
+              });
+            }}
+            data-testid="setup-profile-default-floor-plan"
+          >
+            <option value="">None</option>
+            {(selected.length ? floorPlans.filter((o) => selected.includes(o.id)) : floorPlans).map((option) => (
+              <option key={option.id} value={option.id}>{option.name}</option>
+            ))}
+          </select>
+          <span className="block text-xs text-muted-foreground">
+            Shown first among the options. The client can still pick a different offered plan; your team can change the selection later.
+          </span>
+        </label>
+      </div>
     );
   }
   if (step === "vendors") {
     const required = refs.requiredVendorIds ?? [];
     const recommended = refs.recommendedVendorIds ?? [];
     return (
-      <div className="space-y-3">
-        <p className="text-xs text-muted-foreground">These are library references. Booking does not assign vendors or create recommendation rows.</p>
+      <div className="space-y-3" data-testid="setup-profile-vendors">
         <fieldset className="space-y-1">
-          <legend className="text-sm font-medium text-heading">Required vendors</legend>
+          <legend className="text-sm font-medium text-heading">Vendors your team expects to book</legend>
+          <p className="text-xs text-muted-foreground">
+            Library vendors your team typically needs for this event type. These are for your team&apos;s workflow —
+            they are not assigned to the event automatically and are not shown to the client as recommendations.
+          </p>
           {vendors.length === 0 ? <p className="text-sm text-muted-foreground">No vendors in the library yet.</p> : vendors.map((option) => (
             <label key={option.id} className="flex items-center gap-2 text-sm">
               <input
@@ -435,7 +489,11 @@ function CapabilityDefaults({
           ))}
         </fieldset>
         <fieldset className="space-y-1">
-          <legend className="text-sm font-medium text-heading">Working / recommended vendor list</legend>
+          <legend className="text-sm font-medium text-heading">Recommended vendors for the client</legend>
+          <p className="text-xs text-muted-foreground">
+            Vendors from your library to recommend to the client. When the event is booked, these appear as recommendations the client can review.
+            Your team can add or remove recommendations on the event later.
+          </p>
           {vendors.map((option) => (
             <label key={option.id} className="flex items-center gap-2 text-sm">
               <input
@@ -453,9 +511,13 @@ function CapabilityDefaults({
   if (step === "questionnaires") {
     const selected = refs.questionnaireTemplateIds ?? [];
     return (
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-heading">Default questionnaires</p>
-        <p className="text-xs text-muted-foreground">Venue default/reference only. Booking does not create or send questionnaires.</p>
+      <div className="space-y-1" data-testid="setup-profile-questionnaires">
+        <p className="text-sm font-medium text-heading">Questionnaires to prepare for the client</p>
+        <p className="text-xs text-muted-foreground">
+          Choose which questionnaires should be prepared on the event when it is booked.
+          They are set up as drafts for your team — nothing is emailed or shown in the client portal until you send them.
+          You can select more than one (for example planning, final details, and post-event feedback).
+        </p>
         {questionnaires.length === 0 ? (
           <p className="text-sm text-muted-foreground">No questionnaire templates yet.</p>
         ) : questionnaires.map((option) => (
@@ -485,7 +547,9 @@ function CapabilityDefaults({
             <option key={option.id} value={option.id}>{option.name}</option>
           ))}
         </select>
-        <span className="block text-xs text-muted-foreground">Reference only. Booking does not create event inventory or commit items.</span>
+        <span className="block text-xs text-muted-foreground">
+          Reminder for your team of the usual inventory starting point. Booking does not commit inventory to the event.
+        </span>
       </label>
     );
   }
@@ -503,7 +567,9 @@ function CapabilityDefaults({
             <option key={option.id} value={option.id}>{option.name}</option>
           ))}
         </select>
-        <span className="block text-xs text-muted-foreground">Reference only. Booking does not start, send, or lock an event order.</span>
+        <span className="block text-xs text-muted-foreground">
+          Reminder for your team of the usual package. Booking does not start or send an event order.
+        </span>
       </label>
     );
   }

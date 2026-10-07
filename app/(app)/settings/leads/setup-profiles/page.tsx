@@ -60,7 +60,7 @@ export default async function SetupProfilesPage() {
           profiles={listed.profiles}
           assignments={listed.assignments}
           usedForOptions={usedForOptions}
-          playbooks={playbooks.filter((template) => template.kind === "venue" && !template.isArchived).map((template) => ({
+          playbooks={playbooks.filter((template) => template.kind === "client" && !template.isArchived).map((template) => ({
             id: template.id,
             name: template.name,
           }))}

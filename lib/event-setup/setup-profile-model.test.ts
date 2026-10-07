@@ -89,7 +89,6 @@ describe("Portal is foundational", () => {
     const section = read("components/settings/setup-profiles-section.tsx");
     // Setup Profile no longer surfaces a portal configuration warning card.
     assert.doesNotMatch(section, /cannot be skipped/);
-    assert.doesNotMatch(section, /Client portal/);
     assert.ok(!STEPS.includes("portal"));
     assert.equal(setupStepPresentation("set_up"), "included");
     assert.doesNotMatch(section, /setDecision\("portal"/);
@@ -106,19 +105,18 @@ describe("accepted event-type filtering", () => {
 });
 
 describe("selected defaults visible and editable on the profile", () => {
-  it("nests one-default dropdowns under Included — no second availability list", () => {
+  it("nests capability defaults under Included with client-experience controls", () => {
     const section = read("components/settings/setup-profiles-section.tsx");
-    assert.match(section, /Default planning checklist/);
-    assert.match(section, /Default timeline/);
+    assert.match(section, /Starting client planning checklist/);
+    assert.match(section, /Starting timeline/);
     assert.match(section, /setup-profile-default-timeline/);
-    assert.match(section, /Starting floor plan/);
+    assert.match(section, /Floor plans clients can choose from/);
+    assert.match(section, /Preferred starting plan/);
     assert.match(section, /setup-profile-default-floor-plan/);
     assert.doesNotMatch(section, /Additional available timelines/);
-    assert.doesNotMatch(section, /Starting floor-plan options/);
-    assert.doesNotMatch(section, /Preferred starting plan/);
-    assert.match(section, /Required vendors/);
-    assert.match(section, /Working \/ recommended vendor list/);
-    assert.match(section, /Default questionnaires/);
+    assert.match(section, /Vendors your team expects to book/);
+    assert.match(section, /Recommended vendors for the client/);
+    assert.match(section, /Questionnaires to prepare for the client/);
     assert.match(section, /Starting inventory offering/);
     assert.match(section, /Starting event-order package/);
     assert.match(section, /CapabilityDefaults/);
@@ -132,9 +130,10 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(page, /!template\.isArchived/);
     assert.match(page, /timelines=\{timelines\.filter/);
     assert.match(page, /floorPlans=\{floorPlans\.filter/);
+    assert.match(page, /template\.kind === "client"/);
   });
 
-  it("preferred floor-plan default no longer requires a checkbox list membership", () => {
+  it("preferred floor-plan default may stand alone without a multi-select membership list", () => {
     const refs = parseTemplateRefs({
       defaultFloorPlanTemplateId: "fp-alone",
       floorPlanTemplateIds: [],
@@ -144,28 +143,33 @@ describe("selected defaults visible and editable on the profile", () => {
   });
 });
 
-describe("automatic inheritance is planning + default timeline only", () => {
+describe("automatic inheritance applies client-experience presets", () => {
   const inherit = read("lib/event-setup/inherit.ts");
 
-  it("applies the venue playbook and default timeline", () => {
+  it("applies the client planning checklist and default timeline", () => {
     assert.match(inherit, /applyPlaybookToEvent/);
     assert.match(inherit, /applyTimelineTemplateToEvent/);
     assert.match(inherit, /Default timeline only/);
   });
 
-  it("does not instantiate other capability artifacts", () => {
-    assert.doesNotMatch(inherit, /applyTemplateToEvent/);
-    assert.doesNotMatch(inherit, /upsertEventFloorPlanOffer/);
-    assert.doesNotMatch(inherit, /withdrawEventFloorPlanOffer/);
-    assert.doesNotMatch(inherit, /from\("event_floor_plan_offers"\)/);
-    assert.doesNotMatch(inherit, /from\("floor_plans"\)/);
+  it("applies floor-plan offers, questionnaire drafts, and recommended vendors", () => {
+    assert.match(inherit, /applyInheritedFloorPlanOffers/);
+    assert.match(inherit, /upsertOffer/);
+    assert.match(inherit, /event_floor_plan_offers/);
+    assert.match(inherit, /applyInheritedQuestionnaires/);
+    assert.match(inherit, /applyTemplateToEvent/);
+    assert.match(inherit, /applyInheritedVendorRecommendations/);
+    assert.match(inherit, /addRecommendation/);
+  });
+
+  it("does not auto-assign required vendors or invent inventory/event-order artifacts", () => {
+    assert.doesNotMatch(inherit, /assignVendor/);
     assert.doesNotMatch(inherit, /from\("event_vendor_assignments"\)/);
-    assert.doesNotMatch(inherit, /from\("event_vendor_recommendations"\)/);
-    assert.doesNotMatch(inherit, /from\("event_questionnaires"\)/);
     assert.doesNotMatch(inherit, /from\("event_inventories"\)/);
     assert.doesNotMatch(inherit, /from\("event_orders"\)/);
     assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
     assert.doesNotMatch(inherit, /applyTemplateItems/);
+    assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);
   });
 
   it("additional timeline templates are stored, never merged at inherit", () => {
@@ -216,7 +220,10 @@ describe("null / empty / missing template refs never apply artifacts", () => {
   it("does not apply playbook or timeline when the snapshot has no ids", () => {
     const inherit = read("lib/event-setup/inherit.ts");
     assert.match(inherit, /if \(playbookId && eventDate\)/);
-    assert.match(inherit, /if \(!timelineId\) return/);
+    assert.match(inherit, /if \(timelineId\) \{/);
+    assert.match(inherit, /if \(selected\.size === 0\) return/);
+    assert.match(inherit, /if \(ids\.length === 0\) return/);
+    assert.match(inherit, /if \(recommended\.length === 0\) return/);
     const includedNoRefs = snapshotInheritedSetup(profile({ templateRefs: {} }));
     assertNoConfiguredRefs(includedNoRefs.inheritedTemplateRefs ?? {});
     assert.equal(includedNoRefs.inheritedDecisions?.planning, "set_up");

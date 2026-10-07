@@ -212,13 +212,14 @@ describe("venue setup profiles", () => {
     assert.match(inherit, /applyTimelineTemplateToEvent/);
     assert.match(inherit, /inherited_template_refs/);
     assert.match(inherit, /if \(existing\) return/);
-    assert.doesNotMatch(inherit, /applyTemplateToEvent/);
-    assert.doesNotMatch(inherit, /upsertEventFloorPlanOffer/);
-    assert.doesNotMatch(inherit, /applyTemplate\(/);
-    assert.doesNotMatch(inherit, /event_vendor/);
+    assert.match(inherit, /applyTemplateToEvent/);
+    assert.match(inherit, /upsertOffer/);
+    assert.match(inherit, /addRecommendation/);
+    assert.doesNotMatch(inherit, /assignVendor/);
     assert.doesNotMatch(inherit, /event_inventor/);
     assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
     assert.doesNotMatch(inherit, /timelineTemplateIds/);
+    assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);
     const apply = readFileSync(resolve("lib/playbooks/repository.ts"), "utf8");
     assert.match(apply, /already_applied/);
     const migration = readFileSync(resolve("supabase/migrations/20261411500000_venue_setup_profiles.sql"), "utf8");
