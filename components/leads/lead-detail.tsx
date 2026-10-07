@@ -85,6 +85,7 @@ import { RelationshipConversationTab } from "@/components/conversations/relation
 import { TourPanel } from "@/components/leads/tour-panel";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
 import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
+import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -977,7 +978,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-1.5"><LuvHeart size={14} /> Luv</CardTitle>
-              <CardDescription>Your venue assistant can help draft a follow-up. You review, edit, and send it yourself.</CardDescription>
+              <CardDescription>{luvPanelDescription(followUpDraftEligible)}</CardDescription>
             </CardHeader>
             <CardContent>
               <LuvDraftPanel
