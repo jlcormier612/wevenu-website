@@ -124,7 +124,12 @@ describe("initial ownership — purchaser vs owner", () => {
       resolve("components/settings/venue-owners-section.tsx"),
       "utf8",
     );
+    assert.match(ownersUi, /Owners &amp; Administrators/);
     assert.match(ownersUi, /Owners have ownership-level access to this venue/);
+    assert.match(
+      ownersUi,
+      /Administrators manage\s+the Hello to Cheers account and venue operations/,
+    );
     assert.doesNotMatch(
       ownersUi,
       /Who owns this venue\? Owners have full access/,

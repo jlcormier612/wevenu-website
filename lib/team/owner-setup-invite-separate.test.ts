@@ -35,11 +35,16 @@ describe("Owner setup — ownership vs invitation", () => {
     assert.match(ownersUi, /How should this owner access Hello to Cheers/);
     assert.doesNotMatch(ownersUi, /They'll receive an Owner invitation and get full access/);
     assert.doesNotMatch(ownersUi, /Send Owner invitation/);
+    // CTA remains owner-only — the form never adds a non-owner Administrator.
+    assert.match(ownersUi, />\s*Add owner\s*</);
+    assert.doesNotMatch(ownersUi, /Add owner or administrator/);
   });
 
   it("shows customer-facing owner states (not owner_invite_pending)", () => {
-    assert.match(ownersUi, /Owner access not yet invited/);
-    assert.match(ownersUi, /Invitation sent/);
+    const display = readFileSync(resolve("lib/team/owner-display.ts"), "utf8");
+    assert.match(display, /Owner access not yet invited/);
+    assert.match(display, /Invitation sent/);
+    assert.match(ownersUi, /ownerStatusLabel/);
     assert.match(ownersUi, /You/);
     assert.doesNotMatch(ownersUi, /Owner invite pending/);
     assert.match(roster, /Invitation sent/);

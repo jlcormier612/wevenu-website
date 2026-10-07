@@ -91,4 +91,19 @@ describe("Owners display clarity — You marker", () => {
     assert.match(ui, /shouldShowCurrentActorOutsideOwnersList/);
     assert.match(ui, /Not an owner of this venue/);
   });
+
+  it("Owners & Administrators heading and model copy are present; CTA stays owner-only", () => {
+    const ui = readFileSync(resolve("components/settings/venue-owners-section.tsx"), "utf8");
+    assert.match(ui, /Owners &amp; Administrators/);
+    assert.match(
+      ui,
+      /Adding\s+an owner or administrator does not change who purchased the account or\s+who is currently signed in/,
+    );
+    // Add flow still only creates Owners (isOwner: true / recordOwnerMember) —
+    // do not relabel the CTA as if non-owner Administrators can be added here.
+    assert.match(ui, />\s*Add owner\s*</);
+    assert.doesNotMatch(ui, /Add owner or administrator/);
+    assert.match(ui, /isOwner:\s*true/);
+    assert.match(ui, /recordOwnerMemberAction/);
+  });
 });

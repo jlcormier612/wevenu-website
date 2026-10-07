@@ -34,9 +34,10 @@ import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-
 type OwnerAccessChoice = "record_only" | "invite_now";
 
 /**
- * Business & Brand — Owners.
- * Ownership and invitation are separate decisions on the same venue_staff
- * model (is_owner / owner_invite_pending).
+ * Business & Brand — Owners & Administrators (display).
+ * Lists ownership-level people and, when relevant, the signed-in Administrator
+ * who is not an Owner. The add flow still creates Owners only
+ * (is_owner / owner_invite_pending) — it does not add a non-owner Administrator.
  */
 export function VenueOwnersSection({
   initialOwners,
@@ -233,11 +234,13 @@ export function VenueOwnersSection({
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Owners</CardTitle>
+          <CardTitle className="text-lg">Owners &amp; Administrators</CardTitle>
           <CardDescription>
-            Owners have ownership-level access to this venue. Add another owner,
-            invite them now, or record them and invite later. This does not
-            change who purchased or administers the Hello to Cheers account.
+            Owners have ownership-level access to this venue. Administrators manage
+            the Hello to Cheers account and venue operations. Add another owner or
+            administrator, invite them now, or record them and invite later. Adding
+            an owner or administrator does not change who purchased the account or
+            who is currently signed in.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
