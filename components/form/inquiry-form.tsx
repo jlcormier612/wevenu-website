@@ -42,6 +42,7 @@ import {
   validateConfigurableFields,
   validateCustomAnswers,
 } from "@/lib/inquiry-form/validation";
+import { INQUIRY_FORM_PREVIEW_BANNER } from "@/lib/inquiry-form/preview-config";
 import {
   INQUIRY_SMS_CONSENT_OPTIONAL_HINT,
   SMS_PUBLIC_CONSENT_DISCLOSURES,
@@ -281,12 +282,15 @@ export function InquiryForm({
   initialMode = null,
   initialEventDate,
   tourOriginToken = null,
+  preview = false,
 }: {
   embedKey: string;
   config: PublicInquiryFormConfig;
   initialMode?: InquiryMode | null;
   initialEventDate?: string;
   tourOriginToken?: string | null;
+  /** Authenticated builder preview — same renderer, submissions disabled. */
+  preview?: boolean;
 }) {
   const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm, tourProtectionRequired, tourProtectionKind, tourProtectionFeeCents } = config;
   const primary = venue.primaryColor || "#5D6F5D";
@@ -348,6 +352,7 @@ export function InquiryForm({
     const start = isoDate(eventYear, eventMonth, 1);
     const last = new Date(eventYear, eventMonth + 1, 0).getDate();
     const end = isoDate(eventYear, eventMonth, last);
+    // Read-only availability — safe for builder preview (no lead/write side effects).
     fetch(`/api/public/inquiry-available-dates?key=${embedKey}&start=${start}&end=${end}`)
       .then((r) => r.json())
       .then((d: { dates?: string[] }) => setAvailableEventDates(new Set(d.dates ?? [])))
@@ -370,8 +375,9 @@ export function InquiryForm({
 
   // First-touch UTM/referrer snapshot (sessionStorage only — no visitor DB).
   React.useEffect(() => {
+    if (preview) return;
     captureFirstTouchAttribution(embedKey);
-  }, [embedKey]);
+  }, [preview, embedKey]);
 
   const tourAvailableDates = new Set(tourSlots.map((s) => s.date));
   const tourSlotsForDate = selectedTourDate ? tourSlots.filter((s) => s.date === selectedTourDate) : [];
@@ -466,6 +472,10 @@ export function InquiryForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (preview) {
+      setError(INQUIRY_FORM_PREVIEW_BANNER);
+      return;
+    }
     if (honeypot || !mode) return;
     if (!validate()) return;
 
@@ -577,15 +587,24 @@ export function InquiryForm({
     <div
       data-theme-lock="light"
       data-venue-brand="public-book"
-      className="min-h-screen"
+      data-testid={preview ? "inquiry-form-preview" : "inquiry-form-public"}
+      className={preview ? "" : "min-h-screen"}
       style={publicFormSurfaceStyle(formBrand)}
     >
+      {preview && (
+        <div
+          data-testid="inquiry-form-preview-banner"
+          className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-950"
+        >
+          {INQUIRY_FORM_PREVIEW_BANNER}
+        </div>
+      )}
       <div className="py-8 px-4 text-center" style={{ backgroundColor: primary, color: inkOn(primary) }}>
         {venue.logoUrl && (
           <img src={venue.logoUrl} alt={venue.name} className="h-12 w-12 object-contain rounded-lg mx-auto mb-3" style={{ background: "rgba(255,255,255,0.15)" }} />
         )}
         <h1 className="text-xl font-semibold">{venue.name}</h1>
-        <p className="text-sm mt-1">Inquiry Form</p>
+        <p className="text-sm mt-1">{preview ? "Inquiry Form (Preview)" : "Inquiry Form"}</p>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
@@ -858,31 +877,38 @@ export function InquiryForm({
 
             {(state === "error" || error) && <p className="text-sm text-red-600 text-center">{error}</p>}
 
-            <div className="flex justify-center">
-              <TurnstileWidget onToken={setTurnstileToken} />
-            </div>
+            {!preview && (
+              <div className="flex justify-center">
+                <TurnstileWidget onToken={setTurnstileToken} />
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={state === "submitting"}
-              className="w-full rounded-lg py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-100 flex items-center justify-center gap-2"
+              disabled={preview || state === "submitting"}
+              data-testid={preview ? "inquiry-form-preview-submit" : undefined}
+              className="w-full rounded-lg py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
               style={{ backgroundColor: primary, color: inkOn(primary) }}
             >
-              {state === "submitting"
-                ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</>
-                : mode === "schedule_tour"
-                  ? (tourProtectionRequired
-                    ? (tourProtectionKind === "fee" ? "Continue to payment" : "Continue to save a card")
-                    : "Confirm Tour")
-                  : "Send Inquiry"}
+              {preview
+                ? "Preview only — submissions disabled"
+                : state === "submitting"
+                  ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</>
+                  : mode === "schedule_tour"
+                    ? (tourProtectionRequired
+                      ? (tourProtectionKind === "fee" ? "Continue to payment" : "Continue to save a card")
+                      : "Confirm Tour")
+                    : "Send Inquiry"}
             </button>
 
             <p className="text-center text-xs text-muted-foreground">Your information is used only to respond to your inquiry.</p>
-            <VenueFormAnalyticsConsent
-              venueId={venue.id}
-              measurementId={config.ga4MeasurementId}
-              primaryColor={primary}
-            />
+            {!preview && (
+              <VenueFormAnalyticsConsent
+                venueId={venue.id}
+                measurementId={config.ga4MeasurementId}
+                primaryColor={primary}
+              />
+            )}
           </form>
         )}
         <HtcPlatformMark className="pt-2 pb-2" />

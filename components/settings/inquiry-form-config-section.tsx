@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_ACCEPTED_EVENT_TYPES, EVENT_TYPES } from "@/lib/event-types/canonical";
 import { STANDARD_FIELD_LABELS } from "@/lib/inquiry-form/constants";
+import type { InquiryFormBuilderDraft } from "@/lib/inquiry-form/preview-config";
 import type {
   FieldVisibility,
   InquiryEventDateMode,
@@ -88,6 +89,8 @@ export function InquiryFormConfigSection({
   initialCommunicationSettings = DEFAULT_INQUIRY_COMMUNICATION_SETTINGS,
   smsConsentOfferAvailable = false,
   canEdit = true,
+  registerDraftGetter,
+  onPreviewForm,
 }: {
   initialEventDateMode: InquiryEventDateMode;
   initialFields: InquiryFormFieldsConfig;
@@ -98,6 +101,9 @@ export function InquiryFormConfigSection({
   smsConsentOfferAvailable?: boolean;
   /** Owner/Manager; when false, controls are read-only. */
   canEdit?: boolean;
+  /** Lets the parent open Preview with the live unsaved builder draft. */
+  registerDraftGetter?: (getDraft: () => InquiryFormBuilderDraft) => void;
+  onPreviewForm?: () => void;
 }) {
   const [baseline, setBaseline] = React.useState(() =>
     serializeState(
@@ -121,6 +127,32 @@ export function InquiryFormConfigSection({
 
   const dirty = serializeState(eventDateMode, fields, acceptedEventTypes, questions, communication) !== baseline;
   useLibraryUnsavedGuard(dirty && canEdit);
+
+  const buildDraft = React.useCallback((): InquiryFormBuilderDraft => {
+    const customQuestions = questions
+      .filter((q) => q.questionText.trim())
+      .map((q, i) => ({
+        id: q.id ?? `draft-preview-${i}`,
+        questionText: q.questionText.trim(),
+        questionType: q.questionType,
+        required: q.required,
+        options: q.questionType === "single_select" || q.questionType === "multiple_select"
+          ? q.options.split("\n").map((o) => o.trim()).filter(Boolean)
+          : [],
+        sortOrder: i,
+      }));
+    return {
+      inquiryEventDateMode: eventDateMode,
+      inquiryFormFields: fields,
+      acceptedEventTypes,
+      customQuestions,
+      inquiryCommunicationSettings: communication,
+    };
+  }, [eventDateMode, fields, acceptedEventTypes, questions, communication]);
+
+  React.useEffect(() => {
+    registerDraftGetter?.(buildDraft);
+  }, [registerDraftGetter, buildDraft]);
 
   React.useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -222,6 +254,12 @@ export function InquiryFormConfigSection({
   const saveBar = canEdit && (
     <div className="flex flex-wrap items-center gap-3">
       <LibrarySaveStatus status={saveStatus} model="explicit" className="mr-auto" />
+      {onPreviewForm && (
+        <Button type="button" variant="outline" onClick={onPreviewForm} data-testid="inquiry-form-preview-open-builder">
+          <Eye className="mr-1 h-3.5 w-3.5" />
+          Preview form
+        </Button>
+      )}
       <Button type="button" onClick={handleSave} disabled={pending || !dirty}>
         {pending ? (
           <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{LIBRARY_LABELS.saving}</>
@@ -244,6 +282,15 @@ export function InquiryFormConfigSection({
         <p className="text-xs text-muted-foreground">
           Only an Owner or Manager can change inquiry form settings. You can view the current configuration here.
         </p>
+      )}
+
+      {onPreviewForm && !(canEdit && dirty) && (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={onPreviewForm} data-testid="inquiry-form-preview-open-builder">
+            <Eye className="mr-1 h-3.5 w-3.5" />
+            Preview form
+          </Button>
+        </div>
       )}
 
       <div className="space-y-3">

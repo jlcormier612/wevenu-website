@@ -17,7 +17,7 @@ import {
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
-import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
+import { getInquiryFormSettings, getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
 import { getTourSettings } from "@/lib/tours/service";
 
 export const metadata: Metadata = { title: "Leads & Booking — Settings" };
@@ -26,6 +26,9 @@ export default async function LeadsBookingSettingsPage() {
   const [venue, emailIntakeStatus, tourSettings, inquiryFormSettings, role] = await Promise.all([
     getCurrentVenue(), getEmailIntakeStatus(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
   ]);
+  const previewBaseConfig = venue?.embedKey
+    ? await getPublicInquiryFormConfig(venue.embedKey)
+    : null;
   const canEditInquiryForm = role === "owner" || role === "manager";
   const planningCapabilities = {
     timeline: venue?.planningTimelineEnabled ?? true,
@@ -99,6 +102,7 @@ export default async function LeadsBookingSettingsPage() {
               emailIntakeStatus={emailIntakeStatus}
               inquiryFormSettings={inquiryFormSettings}
               canEditInquiryForm={canEditInquiryForm}
+              previewBaseConfig={previewBaseConfig}
             />
           </CardContent>
         </Card>
