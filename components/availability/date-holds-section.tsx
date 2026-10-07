@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/availability/constants";
 import { defaultHoldDateFromDesiredEventDate } from "@/lib/availability/hold-defaults";
+import { venueCalendarDateFromValue } from "@/lib/venue/timezone";
 import { defaultHoldSpaceIdsFromPreferences } from "@/lib/availability/hold-occupancy";
 import {
   activeHolds as selectActiveHolds,
@@ -28,14 +29,10 @@ import {
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { DateHold, DateHoldInput, DateHoldUpdateInput, VenueSpace } from "@/lib/availability/types";
 
-function holdExpiresDateInput(expiresAt: string | null): string {
+function holdExpiresDateInput(expiresAt: string | null, timezone: string | null): string {
   if (!expiresAt) return "";
-  const d = new Date(expiresAt);
-  if (Number.isNaN(d.getTime())) return expiresAt.slice(0, 10);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) return expiresAt;
+  return venueCalendarDateFromValue(expiresAt, timezone);
 }
 
 export type HoldSpacePreferenceSeed = {
@@ -51,6 +48,7 @@ export function DateHoldsSection({
   initialHolds,
   spaces,
   spacePreferences = [],
+  venueTimezone = null,
 }: {
   leadId: string;
   leadName: string;
@@ -60,6 +58,8 @@ export function DateHoldsSection({
   spaces: VenueSpace[];
   /** Lead ceremony/reception prefs — default selected spaces when venue_space. */
   spacePreferences?: HoldSpacePreferenceSeed[];
+  /** Venue IANA zone. Expiration dates are that zone's end of day, not the browser's. */
+  venueTimezone?: string | null;
 }) {
   const router = useRouter();
   // See lib/hooks/use-synced-state.ts — TasksSection may refresh siblings
@@ -117,7 +117,7 @@ export function DateHoldsSection({
     setSelectedSpaceIds(hold.spaceIds);
     setStartTime(hold.startTime ?? "");
     setEndTime(hold.endTime ?? "");
-    setExpiresAt(holdExpiresDateInput(hold.expiresAt));
+    setExpiresAt(holdExpiresDateInput(hold.expiresAt, venueTimezone));
     setEditingHoldId(hold.id);
     setFormMode("edit");
   }
@@ -142,7 +142,7 @@ export function DateHoldsSection({
         startTime,
         endTime,
         notes: "",
-        expiresAt: expiresAt ? new Date(expiresAt + "T23:59:59").toISOString() : "",
+        expiresAt,
       };
       const result = await createHoldAction(input);
       if (result.ok) {
@@ -187,7 +187,7 @@ export function DateHoldsSection({
         holdDate,
         startTime,
         endTime,
-        expiresAt: expiresAt ? new Date(expiresAt + "T23:59:59").toISOString() : "",
+        expiresAt,
       };
       const result = await updateHoldAction(editingHoldId, input);
       if (result.ok) {

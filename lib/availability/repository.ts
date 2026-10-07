@@ -204,10 +204,21 @@ export async function assertEventAvailability(
 
 // ---- Date Holds -------------------------------------------------------------
 
+/** Persist elapsed active holds as status='expired'. Readers also filter expires_at. */
+export async function expireElapsedDateHolds(client: DbClient, venueId: string): Promise<void> {
+  const { error } = await client.rpc("expire_elapsed_date_holds", { p_venue_id: venueId });
+  if (error) console.error("[date_holds] expire_elapsed_date_holds:", error.message);
+}
+
+function unexpiredActiveHoldClause(): string {
+  return `expires_at.is.null,expires_at.gt.${new Date().toISOString()}`;
+}
+
 export async function getHolds(client: DbClient, venueId: string, opts?: { leadId?: string; activeOnly?: boolean }): Promise<DateHold[]> {
+  await expireElapsedDateHolds(client, venueId);
   let q = client.from("date_holds").select("*, leads(first_name, last_name), venue_spaces(name)").eq("venue_id", venueId);
   if (opts?.leadId) q = q.eq("lead_id", opts.leadId);
-  if (opts?.activeOnly) q = q.eq("status", "active");
+  if (opts?.activeOnly) q = q.eq("status", "active").or(unexpiredActiveHoldClause());
   const { data, error } = await q.order("hold_date").order("created_at");
   if (error) throw error;
   const rows = data as unknown as HoldRow[];
@@ -216,8 +227,11 @@ export async function getHolds(client: DbClient, venueId: string, opts?: { leadI
 }
 
 export async function getHoldsForDates(client: DbClient, venueId: string, start: string, end: string): Promise<DateHold[]> {
+  await expireElapsedDateHolds(client, venueId);
   const { data, error } = await client.from("date_holds").select("*, leads(first_name, last_name), venue_spaces(name)")
-    .eq("venue_id", venueId).eq("status", "active")
+    .eq("venue_id", venueId)
+    .eq("status", "active")
+    .or(unexpiredActiveHoldClause())
     .gte("hold_date", start).lte("hold_date", end);
   if (error) throw error;
   const rows = data as unknown as HoldRow[];
@@ -486,6 +500,7 @@ export async function checkAvailability(
       hold_blocks_availability: boolean | null;
     }>();
   const timezone = opts.timezone ?? venueRow?.timezone ?? null;
+  await expireElapsedDateHolds(client, venueId);
   const tourDurationMinutes = venueRow?.tour_duration_minutes && venueRow.tour_duration_minutes > 0
     ? venueRow.tour_duration_minutes
     : 60;

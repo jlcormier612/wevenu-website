@@ -13,6 +13,7 @@ import {
   windowsOverlap,
   type OccupancyEvent,
 } from "@/lib/availability/event-occupancy";
+import type { HoldStatus } from "@/lib/availability/types";
 
 export type HoldOccupancyRow = {
   id?: string;
@@ -219,8 +220,25 @@ export function holdConflictsWithBookedEvent(
 }
 
 /**
+ * A hold still protects availability only while it is active and unexpired.
+ * status='active' with expires_at in the past does not protect.
+ * Null expires_at does not expire.
+ */
+export function holdProtectsAvailability(
+  hold: { status: HoldStatus; expiresAt?: string | null },
+  nowMs: number = Date.now(),
+): boolean {
+  if (hold.status !== "active") return false;
+  if (!hold.expiresAt) return true;
+  const expiresMs = Date.parse(hold.expiresAt);
+  if (Number.isNaN(expiresMs)) return true;
+  return expiresMs > nowMs;
+}
+
+/**
  * Active holds on the candidate date, minus the hold being edited.
  * Create passes no excludeHoldId. Same-lead siblings stay in the set.
+ * Callers must pass only protecting holds (holdProtectsAvailability).
  */
 export function otherActiveHoldsForPlacement<T extends { id?: string; holdDate: string }>(
   holds: readonly T[],

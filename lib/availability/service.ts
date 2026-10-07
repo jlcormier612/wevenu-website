@@ -156,6 +156,7 @@ async function assertHoldPlacement(
   opts?: { excludeHoldId?: string },
 ): Promise<AvailabilityActionResult> {
   const {
+    holdProtectsAvailability,
     holdSpaceIds,
     holdsConflictWithEachOther,
     otherActiveHoldsForPlacement,
@@ -181,7 +182,8 @@ async function assertHoldPlacement(
   const effectiveMax = effectiveMaxSimultaneousEvents(rules);
 
   const activeOnDate = otherActiveHoldsForPlacement(
-    await repo.getHolds(supabase, venueId, { activeOnly: true }),
+    (await repo.getHolds(supabase, venueId, { activeOnly: true }))
+      .filter((hold) => holdProtectsAvailability(hold)),
     input.holdDate,
     opts?.excludeHoldId,
   );
@@ -233,13 +235,29 @@ async function assertHoldPlacement(
   return { ok: true };
 }
 
+async function holdInputWithVenueExpiration<T extends { expiresAt?: string | null }>(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  input: T,
+): Promise<T> {
+  if (input.expiresAt === undefined) return input;
+  const { holdExpirationInstant } = await import("@/lib/availability/hold-expiration");
+  const { getVenueTimezone } = await import("@/lib/venue/timezone");
+  const timezone = await getVenueTimezone(supabase, venueId);
+  return {
+    ...input,
+    expiresAt: holdExpirationInstant(input.expiresAt, timezone) ?? "",
+  };
+}
+
 export async function createHold(input: DateHoldInput): Promise<CreateHoldResult> {
   if (!input.holdDate) return { ok: false, message: "Hold date is required." };
   if (!input.title.trim()) return { ok: false, message: "Title is required." };
   const result = await withVenue(async (supabase, venueId) => {
-    const asserted = await assertHoldPlacement(supabase, venueId, input);
+    const resolved = await holdInputWithVenueExpiration(supabase, venueId, input);
+    const asserted = await assertHoldPlacement(supabase, venueId, resolved);
     if (!asserted.ok) return asserted as CreateHoldResult;
-    const holdId = await repo.insertHold(supabase, venueId, input);
+    const holdId = await repo.insertHold(supabase, venueId, resolved);
     return { ok: true, holdId } as CreateHoldResult;
   });
   return result as CreateHoldResult;
@@ -253,15 +271,17 @@ export async function updateHold(holdId: string, input: DateHoldUpdateInput): Pr
   const result = await withVenue(async (supabase, venueId) => {
     const existing = await repo.getHold(supabase, venueId, holdId);
     if (!existing) return { ok: false, message: "Hold not found." } as AvailabilityActionResult;
-    if (existing.status !== "active") {
+    const { holdProtectsAvailability } = await import("@/lib/availability/hold-occupancy");
+    if (existing.status !== "active" || !holdProtectsAvailability(existing)) {
       return { ok: false, message: "Only an active hold can be edited." } as AvailabilityActionResult;
     }
     if ((existing.leadId || "") !== (input.leadId || "")) {
       return { ok: false, message: "That hold does not belong to this lead." } as AvailabilityActionResult;
     }
-    const asserted = await assertHoldPlacement(supabase, venueId, input, { excludeHoldId: holdId });
+    const resolved = await holdInputWithVenueExpiration(supabase, venueId, input);
+    const asserted = await assertHoldPlacement(supabase, venueId, resolved, { excludeHoldId: holdId });
     if (!asserted.ok) return asserted;
-    await repo.updateHold(supabase, venueId, holdId, input);
+    await repo.updateHold(supabase, venueId, holdId, resolved);
     return { ok: true } as AvailabilityActionResult;
   });
   return result as AvailabilityActionResult;
@@ -270,14 +290,6 @@ export async function updateHold(holdId: string, input: DateHoldUpdateInput): Pr
 export async function releaseHold(holdId: string): Promise<AvailabilityActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateHoldStatus(supabase, venueId, holdId, "released");
-    return { ok: true } as AvailabilityActionResult;
-  });
-  return result as AvailabilityActionResult;
-}
-
-export async function convertHold(holdId: string): Promise<AvailabilityActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateHoldStatus(supabase, venueId, holdId, "converted");
     return { ok: true } as AvailabilityActionResult;
   });
   return result as AvailabilityActionResult;

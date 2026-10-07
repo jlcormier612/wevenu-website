@@ -239,7 +239,7 @@ describe("K — edit placement engine", () => {
   });
 
   it("K16. create without excludeHoldId keeps create behavior", () => {
-    assert.match(SERVICE, /const asserted = await assertHoldPlacement\(supabase, venueId, input\);/);
+    assert.match(SERVICE, /const asserted = await assertHoldPlacement\(supabase, venueId, resolved\);/);
     const createFn = SERVICE.slice(
       SERVICE.indexOf("export async function createHold"),
       SERVICE.indexOf("export async function updateHold"),
@@ -256,7 +256,7 @@ describe("K — edit placement engine", () => {
     assert.match(SERVICE, /holdsConflictWithEachOther/);
     assert.match(
       SERVICE,
-      /assertHoldPlacement\(supabase, venueId, input, \{ excludeHoldId: holdId \}\)/,
+      /assertHoldPlacement\(supabase, venueId, resolved, \{ excludeHoldId: holdId \}\)/,
     );
     assert.match(OCCUPANCY, /export function otherActiveHoldsForPlacement/);
     const excludeHelper = OCCUPANCY.slice(
@@ -307,7 +307,7 @@ describe("P — persistence / identity", () => {
     assert.match(REPO, /updateHoldStatus[\s\S]*\.update\(\{ status \}\)[\s\S]*\.eq\("id", holdId\)/);
     const releaseFn = SERVICE.slice(
       SERVICE.indexOf("export async function releaseHold"),
-      SERVICE.indexOf("export async function convertHold"),
+      SERVICE.indexOf("export async function deleteHold_"),
     );
     assert.match(releaseFn, /updateHoldStatus/);
     assert.doesNotMatch(releaseFn, /repo\.updateHold\(/);
@@ -437,7 +437,7 @@ describe("C — calendar / live readers", () => {
     assert.match(CALENDAR, /id: `hold-\$\{h\.id\}`/);
     assert.doesNotMatch(SERVICE, /insertHold[\s\S]{0,80}updateHold/);
     const updateFn = SERVICE.slice(SERVICE.indexOf("export async function updateHold"));
-    assert.match(updateFn, /repo\.updateHold\(supabase, venueId, holdId, input\)/);
+    assert.match(updateFn, /repo\.updateHold\(supabase, venueId, holdId, resolved\)/);
     assert.doesNotMatch(updateFn.slice(0, 1200), /insertHold/);
     assert.doesNotMatch(updateFn.slice(0, 1200), /deleteHold/);
   });

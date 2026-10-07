@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 
 import {
   checkAvailability,
-  convertHold,
   createBlock,
   createHold,
   createSpace,
@@ -90,12 +89,6 @@ export async function updateHoldAction(holdId: string, input: DateHoldUpdateInpu
 export async function releaseHoldAction(holdId: string): Promise<AvailabilityActionResult> {
   const result = await releaseHold(holdId);
   if (result.ok) { revalidatePath("/calendar"); revalidatePath("/leads", "layout"); }
-  return result;
-}
-
-export async function convertHoldAction(holdId: string): Promise<AvailabilityActionResult> {
-  const result = await convertHold(holdId);
-  if (result.ok) revalidatePath("/leads", "layout");
   return result;
 }
 

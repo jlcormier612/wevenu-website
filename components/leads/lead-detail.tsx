@@ -886,6 +886,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                   initialHolds={holds}
                   spaces={spaces}
                   spacePreferences={spacePreferences}
+                  venueTimezone={venueTimezone}
                 />
               </CardContent>
             </Card>

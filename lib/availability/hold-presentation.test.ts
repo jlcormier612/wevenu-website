@@ -64,7 +64,7 @@ describe("Date Hold active-state presentation", () => {
         holdDate: "2027-02-14",
         status: "active",
         spaceName: "Covered Bridge",
-        expiresAt: "2026-09-30T23:59:59Z",
+        expiresAt: "2099-12-31T23:59:59Z",
       }),
     ];
     assert.equal(isActiveHold(holds[0]), true);
@@ -133,10 +133,15 @@ describe("Date Hold active-state presentation", () => {
     assert.doesNotMatch(section, /\$\{start\}–\$\{end\}/);
   });
 
-  it("G. calendar/availability still keys off active status (unchanged contract)", () => {
-    // Presentation helpers do not redefine calendar SoT — status === active.
+  it("G. unexpired active holds stay Held; elapsed or closed statuses do not", () => {
     assert.equal(isActiveHold({ status: "active" }), true);
+    assert.equal(isActiveHold({ status: "active", expiresAt: "2099-12-31T23:59:59Z" }), true);
+    assert.equal(isActiveHold({ status: "active", expiresAt: "2020-01-01T00:00:00Z" }), false);
     assert.equal(isActiveHold({ status: "released" }), false);
     assert.equal(isActiveHold({ status: "expired" }), false);
+    assert.equal(
+      historicalHoldLabel(hold({ id: "e1", holdDate: "2027-02-14", status: "active", expiresAt: "2020-01-01T00:00:00Z" })),
+      "Feb 14, 2027 — Expired",
+    );
   });
 });

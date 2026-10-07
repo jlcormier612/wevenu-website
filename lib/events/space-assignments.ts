@@ -4,8 +4,8 @@
  * events.space_id to the primary assignment for availability/legacy.
  */
 
-import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
+import { occupancyFailureFromUnknown } from "@/lib/availability/event-occupancy";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   normalizeAssignmentInputs,
@@ -92,36 +92,25 @@ export async function replaceEventSpaceAssignments(
   const primarySpaceId = primarySpaceIdFromAssignments(normalized, {
     weddingFamily: resolveExperienceProfile(event.event_type).isWeddingSpecific,
   });
-  const admin = createAdminClient();
 
+  // One transaction: replace the assignment set, then re-run booked occupancy
+  // even when the primary space_id does not change.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: delErr } = await (admin.from("event_space_assignments") as any)
-    .delete()
-    .eq("venue_id", venue.id)
-    .eq("event_id", eventId);
-  if (delErr) return { ok: false, message: delErr.message };
-
-  if (normalized.length > 0) {
-    const rows = normalized.map((a, i) => ({
-      venue_id: venue.id,
-      event_id: eventId,
-      use_key: a.useKey,
-      use_label: a.useLabel,
-      space_id: a.spaceId,
-      sort_order: i,
-    }));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insErr } = await (admin.from("event_space_assignments") as any).insert(rows);
-    if (insErr) return { ok: false, message: insErr.message };
+  const { error } = await (supabase as any).rpc("replace_event_space_assignments", {
+    p_venue_id: venue.id,
+    p_event_id: eventId,
+    p_primary_space_id: primarySpaceId,
+    p_assignments: normalized.map((a, i) => ({
+      useKey: a.useKey,
+      useLabel: a.useLabel,
+      spaceId: a.spaceId,
+      sortOrder: i,
+    })),
+  });
+  if (error) {
+    const fail = occupancyFailureFromUnknown(error);
+    return { ok: false, message: fail?.message ?? error.message };
   }
-
-  // Keep legacy single FK aligned for availability / overview chip.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: updErr } = await (admin.from("events") as any)
-    .update({ space_id: primarySpaceId })
-    .eq("id", eventId)
-    .eq("venue_id", venue.id);
-  if (updErr) return { ok: false, message: updErr.message };
 
   return { ok: true };
 }

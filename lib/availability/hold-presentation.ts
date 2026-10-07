@@ -1,16 +1,16 @@
 /**
  * Date Hold presentation helpers.
  *
- * Authoritative active state for lead Overview is date_holds.status === "active".
- * Calendar/availability may additionally require unexpired expires_at; that does
- * not change how Overview labels an active row.
+ * A hold is Held only while status is active and expires_at has not passed.
+ * Elapsed rows present as Expired even if a lazy status write has not landed yet.
  */
 import { formatDate } from "@/lib/availability/constants";
+import { holdProtectsAvailability } from "@/lib/availability/hold-occupancy";
 import { formatTime } from "@/lib/events/constants";
 import type { DateHold, HoldStatus } from "@/lib/availability/types";
 
-export function isActiveHold(hold: { status: HoldStatus }): boolean {
-  return hold.status === "active";
+export function isActiveHold(hold: { status: HoldStatus; expiresAt?: string | null }): boolean {
+  return holdProtectsAvailability(hold);
 }
 
 export function activeHolds(holds: readonly DateHold[]): DateHold[] {
@@ -51,12 +51,13 @@ export function holdWindowLabel(hold: Pick<DateHold, "startTime" | "endTime">): 
   return `${start}–${end}`;
 }
 
-export function historicalHoldLabel(hold: Pick<DateHold, "holdDate" | "status">): string {
+export function historicalHoldLabel(hold: Pick<DateHold, "holdDate" | "status" | "expiresAt">): string {
+  const elapsedActive = hold.status === "active" && !holdProtectsAvailability(hold);
   const status =
-    hold.status === "released"
-      ? "Released"
-      : hold.status === "expired"
-        ? "Expired"
+    elapsedActive || hold.status === "expired"
+      ? "Expired"
+      : hold.status === "released"
+        ? "Released"
         : hold.status === "converted"
           ? "Converted"
           : hold.status;
