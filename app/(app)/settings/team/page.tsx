@@ -10,6 +10,7 @@ import { DataExportSection } from "@/components/settings/data-export-section";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { TeamRoster } from "@/components/settings/team-roster";
 import { VenueRepresentationSection } from "@/components/settings/venue-representation-section";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import {
   Card,
   CardContent,
@@ -47,7 +48,7 @@ export default async function TeamDataSettingsPage() {
 
       <VenueRepresentationSection
         initialEmail={venue.email ?? ""}
-        initialPhone={venue.phone ?? ""}
+        initialPhone={normalizeVenuePhoneInput(venue.phone ?? "")}
       />
 
       <Card>

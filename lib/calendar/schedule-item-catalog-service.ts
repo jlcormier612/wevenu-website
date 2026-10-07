@@ -3,7 +3,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { isSupabaseConfigured } from "@/lib/env";
+import { mergeAppointmentBlocksPatch } from "@/lib/calendar/appointment-blocks-invariant";
 import {
   APPOINTMENT_CATALOG_MAX_ACTIVE_CUSTOMS,
   customKindToGroupKey,
@@ -15,6 +15,7 @@ import {
   type CustomScheduleItemKind,
   type VenueScheduleItemType,
 } from "@/lib/calendar/schedule-item-catalog";
+import { isSupabaseConfigured } from "@/lib/env";
 import {
   archiveCustomScheduleItemTypeRow,
   insertCustomScheduleItemTypeRow,
@@ -147,11 +148,21 @@ export async function updateBuiltinScheduleItemTypeSettings(input: {
     return { ok: true };
   }
 
+  const catalog = await loadVenueCatalogRows(venue.id);
+  const current = catalog.find(
+    (r) => r.source === "builtin" && r.builtinKey === guarded.key,
+  );
+  if (!current) return { ok: false, message: "Schedule appointment type not found for this venue." };
+  const next = mergeAppointmentBlocksPatch(
+    { enabled: current.enabled, blocksAvailability: current.blocksAvailability },
+    { enabled: input.enabled, blocksAvailability: input.blocksAvailability },
+  );
+
   const supabase = await createClient();
   try {
     await updateBuiltinScheduleItemTypeRow(supabase, venue.id, guarded.key, {
-      enabled: input.enabled,
-      blocksAvailability: input.blocksAvailability,
+      enabled: next.enabled,
+      blocksAvailability: next.blocksAvailability,
     });
   } catch (err) {
     return { ok: false, message: mapCatalogWriteError(err) };
@@ -204,13 +215,20 @@ export async function createCustomScheduleItemType(input: {
 
   const groupKey = customKindToGroupKey(input.kind);
   const customKey = uniqueCustomKey(generateCustomKey(named.label), catalog);
+  const created = mergeAppointmentBlocksPatch(
+    { enabled: true, blocksAvailability: true },
+    {
+      enabled: input.enabled !== false,
+      blocksAvailability: input.blocksAvailability !== false,
+    },
+  );
   const supabase = await createClient();
   try {
     const row = await insertCustomScheduleItemTypeRow(supabase, venue.id, {
       customKey,
       label: named.label,
-      enabled: input.enabled !== false,
-      blocksAvailability: input.blocksAvailability !== false,
+      enabled: created.enabled,
+      blocksAvailability: created.blocksAvailability,
       groupKey,
       sortOrder: nextCustomSortOrder(catalog, groupKey),
     });
@@ -261,12 +279,16 @@ export async function updateCustomScheduleItemType(input: {
     return { ok: true };
   }
 
+  const next = mergeAppointmentBlocksPatch(
+    { enabled: existing.enabled, blocksAvailability: existing.blocksAvailability },
+    { enabled: input.enabled, blocksAvailability: input.blocksAvailability },
+  );
   const supabase = await createClient();
   try {
     await updateCustomScheduleItemTypeRow(supabase, venue.id, existing.id, {
       label: input.label !== undefined ? label : undefined,
-      enabled: input.enabled,
-      blocksAvailability: input.blocksAvailability,
+      enabled: next.enabled,
+      blocksAvailability: next.blocksAvailability,
     });
   } catch (err) {
     return { ok: false, message: mapCatalogWriteError(err) };

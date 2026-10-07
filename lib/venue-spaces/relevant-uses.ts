@@ -18,10 +18,26 @@ export const WEDDING_OCCASION_USE_KEYS = [
   "rehearsal_dinner",
 ] as const;
 
+/**
+ * Wedding Space Preferences — event components at the venue, not event types.
+ * Conference/meeting/dining stay available for corporate and other non-wedding flows.
+ */
+export const WEDDING_SPACE_COMPONENT_KEYS = [
+  "ceremony",
+  "reception",
+  "cocktail_hour",
+  "getting_ready",
+  "rehearsal_dinner",
+] as const;
+
 export type WeddingOccasionUseKey = (typeof WEDDING_OCCASION_USE_KEYS)[number];
 
 export function isWeddingOccasionUseKey(useKey: string): boolean {
   return (WEDDING_OCCASION_USE_KEYS as readonly string[]).includes(useKey);
+}
+
+export function isWeddingSpaceComponentKey(useKey: string): boolean {
+  return (WEDDING_SPACE_COMPONENT_KEYS as readonly string[]).includes(useKey);
 }
 
 export function relevantUsesForExperience(
@@ -29,7 +45,9 @@ export function relevantUsesForExperience(
   profile: Pick<ExperienceProfileDefinition, "isWeddingSpecific">,
 ): Array<{ key: string; label: string }> {
   const configured = configuredUsesFromSpaces(spaces);
-  if (profile.isWeddingSpecific) return configured;
+  if (profile.isWeddingSpecific) {
+    return configured.filter((use) => isWeddingSpaceComponentKey(use.key));
+  }
   return configured.filter((use) => !isWeddingOccasionUseKey(use.key));
 }
 

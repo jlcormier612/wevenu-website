@@ -7,6 +7,8 @@
  * email is a constrained medium.
  */
 
+import { formatPhoneDisplay } from "@/lib/sms/phone";
+
 export type EmailVenueBrand = {
   name: string;
   logoUrl?: string | null;
@@ -29,7 +31,10 @@ export function emailBrandFromVenue(venue: {
   email?: string | null;
   phone?: string | null;
 } | null | undefined): EmailVenueBrand {
-  const contact = [venue?.email, venue?.phone].filter(Boolean).join(" · ");
+  const phoneDisplay = venue?.phone?.trim()
+    ? formatPhoneDisplay(venue.phone)
+    : null;
+  const contact = [venue?.email, phoneDisplay].filter(Boolean).join(" · ");
   return {
     name: venue?.name ?? "Your venue",
     logoUrl: venue?.logoUrl ?? venue?.logo_url ?? null,

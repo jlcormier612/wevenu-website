@@ -69,12 +69,12 @@ describe("custom type enabled + blocksAvailability controls", () => {
     assert.match(sectionSrc, /aria-label="Enabled"/);
     assert.match(sectionSrc, /aria-label=\{BLOCKS_EVENT_BOOKINGS_LABEL\}/);
     assert.match(sectionSrc, /enabled: newEnabled/);
-    assert.match(sectionSrc, /blocksAvailability: newReserves/);
+    assert.match(sectionSrc, /blocksAvailability: newEnabled \? newReserves : false/);
   });
 
-  it("service/repo/actions persist enabled independently of blocksAvailability", () => {
-    assert.match(serviceSrc, /enabled: input\.enabled/);
-    assert.match(serviceSrc, /blocksAvailability: input\.blocksAvailability/);
+  it("service/repo/actions persist enabled and blocksAvailability with disabled⇒blocks-off invariant", () => {
+    assert.match(serviceSrc, /mergeAppointmentBlocksPatch/);
+    assert.match(serviceSrc, /blocksAvailability: next\.blocksAvailability/);
     assert.match(repoSrc, /if \(patch\.enabled !== undefined\) update\.enabled = patch\.enabled/);
     assert.match(repoSrc, /if \(patch\.blocksAvailability !== undefined\) update\.blocks_availability/);
     assert.match(actionsSrc, /enabled\?: boolean/);

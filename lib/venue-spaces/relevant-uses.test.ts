@@ -41,12 +41,42 @@ describe("relevantUsesForExperience", () => {
     assert.match(src, /Ceremony and reception are venue capabilities/);
   });
 
-  it("keeps all configured uses for wedding family, ceremony/reception first", () => {
+  it("keeps wedding component uses only, ceremony/reception first", () => {
     const uses = relevantUsesForExperience(fancyMix, EXPERIENCE_PROFILES.wedding);
     assert.deepEqual(
       uses.map((u) => u.key),
       ["ceremony", "reception", "cocktail_hour", "rehearsal_dinner"],
     );
+  });
+
+  it("excludes Conference from Wedding space preferences even when the venue offers it", () => {
+    const spaces = [
+      space({
+        id: "hall",
+        permittedUses: [
+          "ceremony",
+          "reception",
+          "cocktail_hour",
+          "getting_ready",
+          "rehearsal_dinner",
+          "conference",
+          "meeting",
+        ],
+      }),
+    ];
+    const wedding = relevantUsesForEventType(spaces, "wedding").map((u) => u.key);
+    assert.deepEqual(wedding, [
+      "ceremony",
+      "reception",
+      "cocktail_hour",
+      "getting_ready",
+      "rehearsal_dinner",
+    ]);
+    assert.ok(!wedding.includes("conference"));
+    assert.ok(!wedding.includes("meeting"));
+    const corporate = relevantUsesForEventType(spaces, "corporate").map((u) => u.key);
+    assert.ok(corporate.includes("conference"));
+    assert.ok(corporate.includes("meeting"));
   });
 
   it("keeps ceremony and reception for non-wedding when the venue offers them", () => {

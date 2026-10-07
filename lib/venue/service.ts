@@ -9,6 +9,7 @@
 import { cache } from "react";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import * as repository from "@/lib/venue/repository";
 import type {
   Venue,
@@ -308,7 +309,7 @@ export async function getVenueSettings(): Promise<{
     name: venue.name,
     businessName: venue.businessName ?? "",
     email: venue.email ?? "",
-    phone: venue.phone ?? "",
+    phone: venue.phone ? normalizeVenuePhoneInput(venue.phone) : "",
     website: venue.website ?? "",
     addressLine1: venue.addressLine1 ?? "",
     addressLine2: venue.addressLine2 ?? "",
@@ -348,7 +349,7 @@ export async function saveVenueInfoSection(
       name: input.name.trim(),
       business_name: input.businessName.trim() || null,
       email: input.email.trim() || null,
-      phone: input.phone.trim() || null,
+      phone: normalizeVenuePhoneInput(input.phone) || null,
       website: normalizeUrl(input.website) || null,
       address_line1: input.addressLine1.trim() || null,
       address_line2: input.addressLine2.trim() || null,
@@ -503,7 +504,7 @@ export async function saveVenueContactRepresentation(input: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const email = input.email.trim().toLowerCase();
-  const phone = input.phone.trim();
+  const phone = normalizeVenuePhoneInput(input.phone);
   if (email && !isValidEmail(email)) {
     return { ok: false, error: "Enter a valid venue contact email, or leave it blank." };
   }

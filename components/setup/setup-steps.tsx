@@ -26,6 +26,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import {
   CURRENCIES,
   DAYS_OF_WEEK,
@@ -175,6 +176,7 @@ function TextField({
   label,
   value,
   onChange,
+  onBlur,
   error,
   hint,
   type = "text",
@@ -188,6 +190,7 @@ function TextField({
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   error?: string;
   hint?: string;
   type?: string;
@@ -215,6 +218,7 @@ function TextField({
         inputMode={inputMode}
         aria-invalid={error ? true : undefined}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
       />
     </Field>
   );
@@ -399,6 +403,10 @@ export function VenueInfoStep({ input, errors, set }: StepProps) {
           type="tel"
           value={input.phone}
           onChange={(v) => set("phone", v)}
+          onBlur={() => {
+            const next = normalizeVenuePhoneInput(input.phone);
+            if (next !== input.phone) set("phone", next);
+          }}
           placeholder="(555) 123-4567"
           autoComplete="tel"
         />

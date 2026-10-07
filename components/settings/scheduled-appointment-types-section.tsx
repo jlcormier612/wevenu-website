@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { mergeAppointmentBlocksPatch } from "@/lib/calendar/appointment-blocks-invariant";
 import {
   APPOINTMENT_CATALOG_MAX_ACTIVE_CUSTOMS,
   CUSTOM_SCHEDULE_ITEM_KIND_OPTIONS,
@@ -32,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const BLOCKS_EVENT_BOOKINGS_LABEL = "Blocks event bookings";
+const BLOCKS_DISABLED_HINT = "Unavailable while this appointment is off";
 
 type BuiltinRow = {
   id: string;
@@ -161,25 +163,35 @@ export function ScheduledAppointmentTypesSection({
     const current = builtins.get(builtinKey);
     if (!current || current.enabled === enabled) return;
     const rollback = { ...current };
+    // Turning off clears blocks. Re-enabling defaults blocks OFF (never auto-ON).
+    const next = mergeAppointmentBlocksPatch(
+      { enabled: current.enabled, blocksAvailability: current.blocksAvailability },
+      { enabled, blocksAvailability: false },
+    );
     setBuiltins((prev) => {
-      const next = new Map(prev);
-      next.set(builtinKey, { ...current, enabled });
-      return next;
+      const map = new Map(prev);
+      map.set(builtinKey, { ...current, ...next });
+      return map;
     });
-    void persistBuiltin(builtinKey, { enabled }, rollback);
+    void persistBuiltin(builtinKey, next, rollback);
   }
 
   function onBuiltinReserves(builtinKey: AppointmentCatalogBuiltinKey, blocksAvailability: boolean) {
     if (!canEdit || builtinKey === "blocked_time") return;
     const current = builtins.get(builtinKey);
-    if (!current || current.blocksAvailability === blocksAvailability) return;
+    if (!current || !current.enabled) return;
+    if (current.blocksAvailability === blocksAvailability) return;
     const rollback = { ...current };
+    const next = mergeAppointmentBlocksPatch(
+      { enabled: current.enabled, blocksAvailability: current.blocksAvailability },
+      { blocksAvailability },
+    );
     setBuiltins((prev) => {
-      const next = new Map(prev);
-      next.set(builtinKey, { ...current, blocksAvailability });
-      return next;
+      const map = new Map(prev);
+      map.set(builtinKey, { ...current, ...next });
+      return map;
     });
-    void persistBuiltin(builtinKey, { blocksAvailability }, rollback);
+    void persistBuiltin(builtinKey, next, rollback);
   }
 
   async function onCreateCustom() {
@@ -190,7 +202,7 @@ export function ScheduledAppointmentTypesSection({
         label: newLabel,
         kind: newKind,
         enabled: newEnabled,
-        blocksAvailability: newReserves,
+        blocksAvailability: newEnabled ? newReserves : false,
       });
       if (!result.ok) {
         toast.error(result.message);
@@ -214,12 +226,17 @@ export function ScheduledAppointmentTypesSection({
     if (!canEdit || row.archivedAt) return;
     if (row.enabled === enabled) return;
     const rollback = customs;
+    // Turning off clears blocks. Re-enabling defaults blocks OFF (never auto-ON).
+    const next = mergeAppointmentBlocksPatch(
+      { enabled: row.enabled, blocksAvailability: row.blocksAvailability },
+      { enabled, blocksAvailability: false },
+    );
     setCustoms((prev) =>
-      prev.map((c) => (c.id === row.id ? { ...c, enabled } : c)),
+      prev.map((c) => (c.id === row.id ? { ...c, ...next } : c)),
     );
     setSavingKey(row.id);
     try {
-      const result = await updateCustomScheduleItemTypeAction({ id: row.id, enabled });
+      const result = await updateCustomScheduleItemTypeAction({ id: row.id, ...next });
       if (!result.ok) {
         setCustoms(rollback);
         toast.error(result.message);
@@ -233,15 +250,19 @@ export function ScheduledAppointmentTypesSection({
   }
 
   async function onCustomReserves(row: CustomRow, blocksAvailability: boolean) {
-    if (!canEdit || row.archivedAt) return;
+    if (!canEdit || row.archivedAt || !row.enabled) return;
     if (row.blocksAvailability === blocksAvailability) return;
     const rollback = customs;
+    const next = mergeAppointmentBlocksPatch(
+      { enabled: row.enabled, blocksAvailability: row.blocksAvailability },
+      { blocksAvailability },
+    );
     setCustoms((prev) =>
-      prev.map((c) => (c.id === row.id ? { ...c, blocksAvailability } : c)),
+      prev.map((c) => (c.id === row.id ? { ...c, ...next } : c)),
     );
     setSavingKey(row.id);
     try {
-      const result = await updateCustomScheduleItemTypeAction({ id: row.id, blocksAvailability });
+      const result = await updateCustomScheduleItemTypeAction({ id: row.id, ...next });
       if (!result.ok) {
         setCustoms(rollback);
         toast.error(result.message);
@@ -380,12 +401,18 @@ export function ScheduledAppointmentTypesSection({
                     <label className="flex items-center justify-between gap-3 sm:justify-end">
                       <span className="text-xs text-muted-foreground max-w-[14rem] text-right leading-snug">
                         {BLOCKS_EVENT_BOOKINGS_LABEL}
+                        {!row.enabled && !locked ? (
+                          <span className="mt-0.5 block text-[10px] font-normal opacity-80">
+                            {BLOCKS_DISABLED_HINT}
+                          </span>
+                        ) : null}
                       </span>
                       <Switch
-                        checked={row.blocksAvailability}
-                        disabled={!canEdit || locked || busy}
+                        checked={row.enabled ? row.blocksAvailability : false}
+                        disabled={!canEdit || locked || busy || !row.enabled}
                         onCheckedChange={(v) => onBuiltinReserves(key, v)}
                         aria-label={`${row.label} ${BLOCKS_EVENT_BOOKINGS_LABEL}`}
+                        data-testid={`blocks-event-bookings-${key}`}
                       />
                     </label>
                   </div>
@@ -479,12 +506,18 @@ export function ScheduledAppointmentTypesSection({
                     <label className="flex items-center justify-between gap-3 sm:justify-end">
                       <span className="text-xs text-muted-foreground max-w-[14rem] text-right leading-snug">
                         {BLOCKS_EVENT_BOOKINGS_LABEL}
+                        {!row.enabled ? (
+                          <span className="mt-0.5 block text-[10px] font-normal opacity-80">
+                            {BLOCKS_DISABLED_HINT}
+                          </span>
+                        ) : null}
                       </span>
                       <Switch
-                        checked={row.blocksAvailability}
-                        disabled={!canEdit || busy}
+                        checked={row.enabled ? row.blocksAvailability : false}
+                        disabled={!canEdit || busy || !row.enabled}
                         onCheckedChange={(v) => void onCustomReserves(row, v)}
                         aria-label={`${row.label} ${BLOCKS_EVENT_BOOKINGS_LABEL}`}
+                        data-testid={`blocks-event-bookings-custom-${row.id}`}
                       />
                     </label>
                   </div>
@@ -555,15 +588,25 @@ export function ScheduledAppointmentTypesSection({
                 <Switch
                   checked={newEnabled}
                   disabled={savingKey === "create"}
-                  onCheckedChange={setNewEnabled}
+                  onCheckedChange={(v) => {
+                    setNewEnabled(v);
+                    if (!v) setNewReserves(false);
+                  }}
                   aria-label="Enabled"
                 />
               </label>
               <label className="flex items-center justify-between gap-3">
-                <span className="text-xs text-muted-foreground">{BLOCKS_EVENT_BOOKINGS_LABEL}</span>
+                <span className="text-xs text-muted-foreground">
+                  {BLOCKS_EVENT_BOOKINGS_LABEL}
+                  {!newEnabled ? (
+                    <span className="mt-0.5 block text-[10px] font-normal opacity-80">
+                      {BLOCKS_DISABLED_HINT}
+                    </span>
+                  ) : null}
+                </span>
                 <Switch
-                  checked={newReserves}
-                  disabled={savingKey === "create"}
+                  checked={newEnabled ? newReserves : false}
+                  disabled={savingKey === "create" || !newEnabled}
                   onCheckedChange={setNewReserves}
                   aria-label={BLOCKS_EVENT_BOOKINGS_LABEL}
                 />

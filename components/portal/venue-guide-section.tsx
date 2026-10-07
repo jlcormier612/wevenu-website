@@ -4,6 +4,7 @@ import * as React from "react";
 import { Search, Globe, Phone, Mail, ChevronDown, ChevronUp, ExternalLink, Users } from "lucide-react";
 import type { PortalContext, PortalSection, PortalVenueTeamMember, PortalVenueSpace } from "@/lib/portal/types";
 import { shouldOfferPreferredVendorsNavigation } from "@/lib/portal/preferred-vendors-surfaces";
+import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -136,11 +137,11 @@ function ContactCard({ contact }: { contact: ContactEntry }) {
       </div>
       <div className="flex flex-wrap gap-3">
         {contact.phone && (
-          <a href={`tel:${contact.phone}`}
+          <a href={`tel:${toE164(contact.phone) ?? contact.phone}`}
             className="flex items-center gap-1.5 text-xs hover:underline"
             style={{ color: SAGE }}>
             <Phone className="h-3 w-3" />
-            {contact.phone}
+            {formatPhoneDisplay(contact.phone)}
           </a>
         )}
         {contact.email && (

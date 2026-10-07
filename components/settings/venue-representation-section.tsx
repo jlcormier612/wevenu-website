@@ -11,6 +11,7 @@ import { saveVenueRepresentationAction } from "@/app/(app)/settings/team/actions
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import {
   Card,
   CardContent,
@@ -27,7 +28,7 @@ export function VenueRepresentationSection({
   initialPhone: string;
 }) {
   const [email, setEmail] = React.useState(initialEmail);
-  const [phone, setPhone] = React.useState(initialPhone);
+  const [phone, setPhone] = React.useState(() => normalizeVenuePhoneInput(initialPhone));
   const [open, setOpen] = React.useState(Boolean(initialEmail || initialPhone));
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -38,7 +39,9 @@ export function VenueRepresentationSection({
     setBusy(true);
     setMessage(null);
     setError(null);
-    const result = await saveVenueRepresentationAction({ email, phone });
+    const normalizedPhone = normalizeVenuePhoneInput(phone);
+    setPhone(normalizedPhone);
+    const result = await saveVenueRepresentationAction({ email, phone: normalizedPhone });
     setBusy(false);
     if (!result.ok) {
       setError(result.error || "Could not save.");
@@ -96,6 +99,7 @@ export function VenueRepresentationSection({
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                onBlur={() => setPhone(normalizeVenuePhoneInput(phone))}
                 placeholder="(555) 123-4567"
                 autoComplete="off"
               />

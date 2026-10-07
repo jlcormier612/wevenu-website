@@ -40,4 +40,17 @@ describe("email brand signature", () => {
     // SMS identity is platform from-number — signature is email-only.
     assert.ok(!("smsLogo" in brand));
   });
+
+  it("formats venue phone in the customer-facing signature contact line", () => {
+    const brand = emailBrandFromVenue({
+      name: "Jen's Fancy Venue",
+      email: "hello@fancy.test",
+      phone: "9788703988",
+    });
+    assert.equal(brand.replyContact, "hello@fancy.test · (978) 870-3988");
+    const html = renderBrandedEmailHtml(brand, "<p>Body</p>");
+    assert.match(html, /\(978\) 870-3988/);
+    assert.doesNotMatch(html, />9788703988</);
+  });
 });
+
