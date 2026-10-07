@@ -25,6 +25,7 @@ export const VENUE_TYPES: Option[] = [
   { value: "inn_bnb", label: "Inn / B&B" },
   { value: "estate", label: "Estate" },
   { value: "camp_retreat", label: "Camp / Retreat" },
+  { value: "lodge", label: "Lodge" },
   { value: "other", label: "Other" },
 ];
 
