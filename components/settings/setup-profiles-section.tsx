@@ -232,11 +232,6 @@ export function SetupProfilesSection({
             />
           </div>
 
-          <div className="rounded-lg border border-border px-3 py-3">
-            <p className="text-sm font-medium text-heading">Client portal</p>
-            <p className="mt-1 text-sm text-muted-foreground">Always included. Planning experiences for this event type run in the client workspace. The portal cannot be skipped.</p>
-          </div>
-
           <fieldset className="space-y-3">
             <legend className="text-sm font-medium text-heading">Capabilities</legend>
             <p className="text-xs text-muted-foreground">Included means this is part of the normal workflow. Defaults are starting intent, not completed work.</p>
@@ -367,82 +362,57 @@ function CapabilityDefaults({
     );
   }
   if (step === "timeline") {
-    const extra = refs.timelineTemplateIds ?? [];
     return (
-      <div className="space-y-3">
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium text-heading">Default timeline</span>
-          <select
-            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-            value={refs.timelineTemplateId ?? ""}
-            onChange={(event) => patchRefs({ timelineTemplateId: event.target.value || null })}
-          >
-            <option value="">None</option>
-            {timelines.map((option) => (
-              <option key={option.id} value={option.id}>{option.name}</option>
-            ))}
-          </select>
-          <span className="block text-xs text-muted-foreground">Applied once when a new event has no timeline yet. Additional templates below are not merged automatically.</span>
-        </label>
-        <fieldset className="space-y-1">
-          <legend className="text-sm font-medium text-heading">Additional available timelines</legend>
-          {timelines.filter((option) => option.id !== refs.timelineTemplateId).map((option) => (
-            <label key={option.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={extra.includes(option.id)}
-                onChange={() => patchRefs({ timelineTemplateIds: toggleId(extra, option.id) })}
-              />
-              {option.name}
-            </label>
+      <label className="block space-y-1 text-sm">
+        <span className="font-medium text-heading">Default timeline</span>
+        <select
+          className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+          value={refs.timelineTemplateId ?? ""}
+          onChange={(event) =>
+            patchRefs({
+              timelineTemplateId: event.target.value || null,
+              // Library is the availability source — stop maintaining a second list.
+              timelineTemplateIds: [],
+            })
+          }
+          data-testid="setup-profile-default-timeline"
+        >
+          <option value="">None</option>
+          {timelines.map((option) => (
+            <option key={option.id} value={option.id}>{option.name}</option>
           ))}
-        </fieldset>
-      </div>
+        </select>
+        <span className="block text-xs text-muted-foreground">
+          Applied once when a new event has no timeline yet. Every active timeline template in your library is available here.
+        </span>
+      </label>
     );
   }
   if (step === "floor_plans") {
-    const selected = refs.floorPlanTemplateIds ?? [];
     return (
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-heading">Starting floor-plan options</p>
-        <p className="text-xs text-muted-foreground">These are default/available options. Booking does not create the event floor plan or offers.</p>
-        {floorPlans.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No floor-plan templates in the library yet.</p>
-        ) : floorPlans.map((option) => (
-          <label key={option.id} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={selected.includes(option.id)}
-              onChange={() => {
-                const next = toggleId(selected, option.id);
-                patchRefs({
-                  floorPlanTemplateIds: next,
-                  defaultFloorPlanTemplateId:
-                    refs.defaultFloorPlanTemplateId && next.includes(refs.defaultFloorPlanTemplateId)
-                      ? refs.defaultFloorPlanTemplateId
-                      : null,
-                });
-              }}
-            />
-            {option.name}
-          </label>
-        ))}
-        {selected.length > 0 ? (
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-heading">Preferred starting plan</span>
-            <select
-              className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-              value={refs.defaultFloorPlanTemplateId ?? ""}
-              onChange={(event) => patchRefs({ defaultFloorPlanTemplateId: event.target.value || null })}
-            >
-              <option value="">None</option>
-              {floorPlans.filter((option) => selected.includes(option.id)).map((option) => (
-                <option key={option.id} value={option.id}>{option.name}</option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-      </div>
+      <label className="block space-y-1 text-sm">
+        <span className="font-medium text-heading">Starting floor plan</span>
+        <select
+          className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+          value={refs.defaultFloorPlanTemplateId ?? ""}
+          onChange={(event) =>
+            patchRefs({
+              defaultFloorPlanTemplateId: event.target.value || null,
+              // Library is the availability source — stop maintaining a second list.
+              floorPlanTemplateIds: [],
+            })
+          }
+          data-testid="setup-profile-default-floor-plan"
+        >
+          <option value="">None</option>
+          {floorPlans.map((option) => (
+            <option key={option.id} value={option.id}>{option.name}</option>
+          ))}
+        </select>
+        <span className="block text-xs text-muted-foreground">
+          Default starting floor plan for this profile. Booking does not create the event floor plan. Every active floor-plan template in your library is available here.
+        </span>
+      </label>
     );
   }
   if (step === "vendors") {

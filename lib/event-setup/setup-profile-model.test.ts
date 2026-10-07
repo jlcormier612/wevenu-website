@@ -87,11 +87,11 @@ describe("Portal is foundational", () => {
     assert.match(panel, /Always included/);
     assert.doesNotMatch(panel, /decide\(step, "skipped"\).*portal|Skip Portal/);
     const section = read("components/settings/setup-profiles-section.tsx");
-    assert.match(section, /Always included/);
-    assert.match(section, /cannot be skipped/);
+    // Setup Profile no longer surfaces a portal configuration warning card.
+    assert.doesNotMatch(section, /cannot be skipped/);
+    assert.doesNotMatch(section, /Client portal/);
     assert.ok(!STEPS.includes("portal"));
     assert.equal(setupStepPresentation("set_up"), "included");
-    assert.match(section, /Client portal/);
     assert.doesNotMatch(section, /setDecision\("portal"/);
   });
 });
@@ -106,12 +106,16 @@ describe("accepted event-type filtering", () => {
 });
 
 describe("selected defaults visible and editable on the profile", () => {
-  it("nests defaults under Included, not as detached selectors", () => {
+  it("nests one-default dropdowns under Included — no second availability list", () => {
     const section = read("components/settings/setup-profiles-section.tsx");
     assert.match(section, /Default planning checklist/);
     assert.match(section, /Default timeline/);
-    assert.match(section, /Additional available timelines/);
-    assert.match(section, /Starting floor-plan options/);
+    assert.match(section, /setup-profile-default-timeline/);
+    assert.match(section, /Starting floor plan/);
+    assert.match(section, /setup-profile-default-floor-plan/);
+    assert.doesNotMatch(section, /Additional available timelines/);
+    assert.doesNotMatch(section, /Starting floor-plan options/);
+    assert.doesNotMatch(section, /Preferred starting plan/);
     assert.match(section, /Required vendors/);
     assert.match(section, /Working \/ recommended vendor list/);
     assert.match(section, /Default questionnaires/);
@@ -119,6 +123,24 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(section, /Starting event-order package/);
     assert.match(section, /CapabilityDefaults/);
     assert.doesNotMatch(section, /sm:grid-cols-2[\s\S]*Planning checklist[\s\S]*Timeline template/);
+  });
+
+  it("Setup Profile options come from the active template library", () => {
+    const page = read("app/(app)/settings/leads/setup-profiles/page.tsx");
+    assert.match(page, /getTimelineTemplates/);
+    assert.match(page, /getFloorPlanTemplates/);
+    assert.match(page, /!template\.isArchived/);
+    assert.match(page, /timelines=\{timelines\.filter/);
+    assert.match(page, /floorPlans=\{floorPlans\.filter/);
+  });
+
+  it("preferred floor-plan default no longer requires a checkbox list membership", () => {
+    const refs = parseTemplateRefs({
+      defaultFloorPlanTemplateId: "fp-alone",
+      floorPlanTemplateIds: [],
+    });
+    assert.equal(refs.defaultFloorPlanTemplateId, "fp-alone");
+    assert.deepEqual(refs.floorPlanTemplateIds, []);
   });
 });
 

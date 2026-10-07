@@ -7,10 +7,19 @@
 
 export type SetupTemplateRefs = {
   planningPlaybookTemplateId?: string | null;
+  /** Setup Profile default timeline — applied once at book when Timeline is included. */
   timelineTemplateId?: string | null;
-  /** Additional timeline templates. Never auto-merged onto the event. */
+  /**
+   * Legacy: additional timeline template ids. No longer edited in Setup Profile.
+   * Still parsed for old snapshots; never auto-merged onto the event.
+   */
   timelineTemplateIds?: string[];
+  /**
+   * Legacy: multi-select floor-plan option ids. No longer edited in Setup Profile.
+   * Still parsed for old snapshots; booking does not create floor plans from these.
+   */
   floorPlanTemplateIds?: string[];
+  /** Setup Profile preferred/default starting floor-plan template. */
   defaultFloorPlanTemplateId?: string | null;
   questionnaireTemplateIds?: string[];
   inventoryTemplateId?: string | null;
@@ -49,10 +58,8 @@ export function parseTemplateRefs(raw: unknown): SetupTemplateRefs {
     timelineTemplateId,
     timelineTemplateIds: asIdList(row.timelineTemplateIds).filter((id) => id !== timelineTemplateId),
     floorPlanTemplateIds,
-    defaultFloorPlanTemplateId:
-      defaultFloorPlanTemplateId && floorPlanTemplateIds.includes(defaultFloorPlanTemplateId)
-        ? defaultFloorPlanTemplateId
-        : null,
+    // Preferred starting plan is independent of the legacy multi-select list.
+    defaultFloorPlanTemplateId,
     questionnaireTemplateIds: asIdList(row.questionnaireTemplateIds),
     inventoryTemplateId: asId(row.inventoryTemplateId),
     eventOrderTemplateId: asId(row.eventOrderTemplateId),
