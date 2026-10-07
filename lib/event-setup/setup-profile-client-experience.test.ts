@@ -32,6 +32,23 @@ describe("Planning uses active Client Planning library templates", () => {
     assert.match(section, /Starting client planning checklist/);
     assert.match(section, /Client Planning templates/);
   });
+
+  it("sanitizes stale refs that are not in the client library option list", () => {
+    assert.match(section, /sanitizeRefsAgainstLibrary/);
+    assert.match(section, /playbookIds\.has\(planningId\)/);
+  });
+
+  it("inherit applies only active kind=client playbooks", () => {
+    assert.match(inherit, /template\.kind === "client"/);
+    assert.match(inherit, /getTemplate\(playbookId\)/);
+  });
+
+  it("save drops a planning ref that is not an active client playbook", () => {
+    const profiles = readFileSync(resolve("lib/event-setup/profiles.ts"), "utf8");
+    assert.match(profiles, /playbook\.kind !== "client"/);
+    assert.match(profiles, /playbook\.is_archived/);
+    assert.match(profiles, /planningPlaybookTemplateId = null/);
+  });
 });
 
 describe("Timeline remains one starting default", () => {

@@ -109,11 +109,25 @@ export async function saveVenueSetupProfile(
   const decisions = parseSetupDecisions(input.decisions);
   delete decisions.portal;
 
+  const templateRefs = serializeTemplateRefs(input.templateRefs);
+  const planningId = templateRefs.planningPlaybookTemplateId ?? null;
+  if (planningId) {
+    const { data: playbook } = await supabase
+      .from("playbook_templates")
+      .select("id, kind, is_archived")
+      .eq("id", planningId)
+      .eq("venue_id", gate.venueId)
+      .maybeSingle<{ id: string; kind: string; is_archived: boolean }>();
+    if (!playbook || playbook.kind !== "client" || playbook.is_archived) {
+      templateRefs.planningPlaybookTemplateId = null;
+    }
+  }
+
   const payload = {
     venue_id: gate.venueId,
     name,
     decisions,
-    template_refs: serializeTemplateRefs(input.templateRefs),
+    template_refs: templateRefs,
     updated_at: new Date().toISOString(),
   };
 

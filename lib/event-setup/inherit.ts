@@ -109,8 +109,17 @@ async function applyInheritedTemplates(
     : null;
   if (playbookId && eventDate) {
     try {
-      const { applyPlaybookToEvent } = await import("@/lib/playbooks/service");
-      await applyPlaybookToEvent(eventId, playbookId, eventDate);
+      const { getTemplate, applyPlaybookToEvent } = await import("@/lib/playbooks/service");
+      // Client experience starter must be kind=client. Ignore stale venue-kind refs.
+      const template = await getTemplate(playbookId);
+      if (template && template.kind === "client" && !template.isArchived) {
+        await applyPlaybookToEvent(eventId, playbookId, eventDate);
+      } else {
+        console.error(
+          "Setup profile playbook apply skipped: planningPlaybookTemplateId is not an active client playbook.",
+          playbookId,
+        );
+      }
     } catch (err) {
       console.error("Setup profile playbook apply failed:", err);
     }

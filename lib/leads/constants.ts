@@ -149,11 +149,33 @@ export function formatDate(iso: string | null | undefined): string {
 
 export function formatCurrency(amount: number | null | undefined): string {
   if (amount == null) return "";
+  const hasCents = Math.round(Math.abs(amount) * 100) % 100 !== 0;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(amount);
+}
+
+/** Parse a typed money string into a storage-friendly numeric string (no $ / commas). */
+export function parseMoneyInput(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const cleaned = trimmed.replace(/[$,\s]/g, "");
+  if (!cleaned || cleaned === "." || cleaned === "-" || cleaned === "-.") return "";
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return trimmed.replace(/[$,\s]/g, "");
+  return String(n);
+}
+
+/** Format a typed money field for display after blur; empty stays empty (not $0). */
+export function formatMoneyInputDisplay(raw: string): string {
+  const parsed = parseMoneyInput(raw);
+  if (!parsed) return "";
+  const n = Number(parsed);
+  if (!Number.isFinite(n)) return raw;
+  return formatCurrency(n);
 }
 
 /** Relative timestamp ("just now", "2 hours ago", "Jun 26") for activity feeds. */

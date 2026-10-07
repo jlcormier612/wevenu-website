@@ -22,7 +22,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
-import { LEAD_SOURCES, eventTypeLabel, formatDate } from "@/lib/leads/constants";
+import {
+  LEAD_SOURCES,
+  eventTypeLabel,
+  formatCurrency,
+  formatDate,
+  formatMoneyInputDisplay,
+  parseMoneyInput,
+} from "@/lib/leads/constants";
 import type { Lead, LeadErrors, LeadInput, LeadWithDetails } from "@/lib/leads/types";
 import {
   inquiryMessageDisplayHint,
@@ -62,7 +69,7 @@ function leadToInput(lead: Lead): LeadInput {
     eventDate: lead.eventDate ?? "",
     endDate: lead.endDate ?? "",
     guestCount: lead.guestCount != null ? String(lead.guestCount) : "",
-    estimatedBudget: lead.estimatedBudget != null ? String(lead.estimatedBudget) : "",
+    estimatedBudget: lead.estimatedBudget != null ? formatCurrency(lead.estimatedBudget) : "",
     source: lead.source ?? "",
     inquiryMessage: lead.inquiryMessage ?? "",
     inquiryDate: lead.inquiryDate,
@@ -199,7 +206,15 @@ export function LeadEditForm({
             </Field>
           )}
           <Field label="Estimated budget (USD)" htmlFor="eb" error={errors.estimatedBudget}>
-            <Input id="eb" value={input.estimatedBudget} onChange={(e) => set("estimatedBudget", e.target.value)} placeholder="10,000" />
+            <Input
+              id="eb"
+              value={input.estimatedBudget}
+              onChange={(e) => set("estimatedBudget", e.target.value)}
+              onBlur={() => set("estimatedBudget", formatMoneyInputDisplay(input.estimatedBudget))}
+              onFocus={() => set("estimatedBudget", parseMoneyInput(input.estimatedBudget))}
+              placeholder="$20,000"
+              inputMode="decimal"
+            />
           </Field>
         </div>
       </div>

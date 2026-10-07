@@ -59,7 +59,55 @@ function toggleId(list: string[] | undefined, id: string): string[] {
 
 function nameFor(id: string | null | undefined, options: NamedOption[], empty: string): string {
   if (!id) return empty;
-  return options.find((option) => option.id === id)?.name ?? id;
+  return options.find((option) => option.id === id)?.name ?? empty;
+}
+
+/** Drop refs that are not in the current library option lists (e.g. venue-kind playbook after Client-only filter). */
+function sanitizeRefsAgainstLibrary(
+  refs: SetupTemplateRefs,
+  library: {
+    playbooks: NamedOption[];
+    timelines: NamedOption[];
+    floorPlans: NamedOption[];
+    questionnaires: NamedOption[];
+    vendors: NamedOption[];
+    inventoryTemplates: NamedOption[];
+    eventOrderTemplates: NamedOption[];
+  },
+): SetupTemplateRefs {
+  const playbookIds = new Set(library.playbooks.map((o) => o.id));
+  const timelineIds = new Set(library.timelines.map((o) => o.id));
+  const floorIds = new Set(library.floorPlans.map((o) => o.id));
+  const questionnaireIds = new Set(library.questionnaires.map((o) => o.id));
+  const vendorIds = new Set(library.vendors.map((o) => o.id));
+  const inventoryIds = new Set(library.inventoryTemplates.map((o) => o.id));
+  const eventOrderIds = new Set(library.eventOrderTemplates.map((o) => o.id));
+  const planningId = refs.planningPlaybookTemplateId ?? null;
+  const timelineId = refs.timelineTemplateId ?? null;
+  const preferredFloor = refs.defaultFloorPlanTemplateId ?? null;
+  const floorPlanTemplateIds = (refs.floorPlanTemplateIds ?? []).filter((id) => floorIds.has(id));
+  return {
+    ...refs,
+    planningPlaybookTemplateId: planningId && playbookIds.has(planningId) ? planningId : null,
+    timelineTemplateId: timelineId && timelineIds.has(timelineId) ? timelineId : null,
+    timelineTemplateIds: (refs.timelineTemplateIds ?? []).filter((id) => timelineIds.has(id)),
+    floorPlanTemplateIds,
+    defaultFloorPlanTemplateId:
+      preferredFloor && floorIds.has(preferredFloor) ? preferredFloor : null,
+    questionnaireTemplateIds: (refs.questionnaireTemplateIds ?? []).filter((id) =>
+      questionnaireIds.has(id),
+    ),
+    inventoryTemplateId:
+      refs.inventoryTemplateId && inventoryIds.has(refs.inventoryTemplateId)
+        ? refs.inventoryTemplateId
+        : null,
+    eventOrderTemplateId:
+      refs.eventOrderTemplateId && eventOrderIds.has(refs.eventOrderTemplateId)
+        ? refs.eventOrderTemplateId
+        : null,
+    requiredVendorIds: (refs.requiredVendorIds ?? []).filter((id) => vendorIds.has(id)),
+    recommendedVendorIds: (refs.recommendedVendorIds ?? []).filter((id) => vendorIds.has(id)),
+  };
 }
 
 function profileSummary(
@@ -125,7 +173,15 @@ export function SetupProfilesSection({
       id: profile.id,
       name: profile.name,
       decisions: { ...profile.decisions },
-      refs: serializeTemplateRefs(profile.templateRefs),
+      refs: sanitizeRefsAgainstLibrary(serializeTemplateRefs(profile.templateRefs), {
+        playbooks,
+        timelines,
+        floorPlans,
+        questionnaires,
+        vendors,
+        inventoryTemplates,
+        eventOrderTemplates,
+      }),
       eventTypes: mine
         .map((row) => row.eventType)
         .filter((type): type is string => typeof type === "string" && acceptedKeys.has(type)),
@@ -155,11 +211,20 @@ export function SetupProfilesSection({
   function save() {
     if (!draft) return;
     startTransition(async () => {
+      const safeRefs = sanitizeRefsAgainstLibrary(serializeTemplateRefs(draft.refs), {
+        playbooks,
+        timelines,
+        floorPlans,
+        questionnaires,
+        vendors,
+        inventoryTemplates,
+        eventOrderTemplates,
+      });
       const result = await saveSetupProfileAction({
         id: draft.id,
         name: draft.name,
         decisions: draft.decisions,
-        templateRefs: serializeTemplateRefs(draft.refs),
+        templateRefs: safeRefs,
         eventTypes: draft.eventTypes,
         venueDefault: draft.venueDefault,
       });

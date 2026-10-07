@@ -27,6 +27,8 @@ import type { ConflictItem } from "@/lib/availability/types";
 import {
   LEAD_SOURCES,
   createInitialLeadInput,
+  formatMoneyInputDisplay,
+  parseMoneyInput,
 } from "@/lib/leads/constants";
 import type { DuplicateCandidate } from "@/lib/leads/duplicate-detection";
 import type { LeadErrors, LeadInput } from "@/lib/leads/types";
@@ -38,18 +40,22 @@ import {
 
 function TextField({
   id, label, value, onChange, error, hint, type = "text",
-  placeholder, required, autoComplete, inputMode,
+  placeholder, required, autoComplete, inputMode, onBlur, onFocus,
 }: {
   id: string; label: string; value: string; onChange: (v: string) => void;
   error?: string; hint?: string; type?: string; placeholder?: string;
   required?: boolean; autoComplete?: string; inputMode?: React.ComponentProps<typeof Input>["inputMode"];
+  onBlur?: () => void;
+  onFocus?: () => void;
 }) {
   return (
     <Field label={label} htmlFor={id} required={required} error={error} hint={hint}>
       <Input id={id} type={type} value={value} placeholder={placeholder}
         autoComplete={autoComplete} inputMode={inputMode}
         aria-invalid={error ? true : undefined}
-        onChange={(e) => onChange(e.target.value)} />
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        onFocus={onFocus} />
     </Field>
   );
 }
@@ -272,7 +278,9 @@ export function NewInquiryForm({
             onChange={(v) => set("guestCount", v)} placeholder="150" />
           <TextField id="estimatedBudget" label="Estimated budget (USD)" value={input.estimatedBudget}
             onChange={(v) => set("estimatedBudget", v)} error={errors.estimatedBudget}
-            placeholder="10,000" inputMode="numeric" />
+            placeholder="$20,000" inputMode="decimal"
+            onBlur={() => set("estimatedBudget", formatMoneyInputDisplay(input.estimatedBudget))}
+            onFocus={() => set("estimatedBudget", parseMoneyInput(input.estimatedBudget))} />
         </div>
       </div>
 

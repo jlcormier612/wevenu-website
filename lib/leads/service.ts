@@ -29,7 +29,15 @@ import {
   validateStatus,
   validateTaskInput,
 } from "@/lib/leads/validation";
+import { parseMoneyInput } from "@/lib/leads/constants";
 import { getCurrentVenue } from "@/lib/venue/service";
+
+function estimatedBudgetFromInput(raw: string | null | undefined): number | null {
+  const parsed = parseMoneyInput(raw ?? "");
+  if (!parsed) return null;
+  const n = Number(parsed);
+  return Number.isFinite(n) ? n : null;
+}
 import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
 import {
   triggerSequencesForRelationship,
@@ -105,7 +113,7 @@ export function leadInputToRawIntake(input: LeadInput): RawIntakeInput {
     eventDate: input.eventDate,
     endDate: input.endDate,
     guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
-    estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
+    estimatedBudget: estimatedBudgetFromInput(input.estimatedBudget),
     inquiryMessage: input.inquiryMessage,
     inquiryDate: input.inquiryDate,
   };
@@ -218,7 +226,7 @@ async function createLeadCore(
       eventDate: input.eventDate,
       endDate: input.endDate,
       guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
-      estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
+      estimatedBudget: estimatedBudgetFromInput(input.estimatedBudget),
       inquiryMessage: input.inquiryMessage,
       inquiryDate: input.inquiryDate,
       sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
