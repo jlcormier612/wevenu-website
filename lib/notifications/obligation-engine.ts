@@ -12,6 +12,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { sendEmail } from "@/lib/email/send";
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
@@ -383,10 +384,20 @@ export async function processVenueNotificationEmails(): Promise<ProcessResult> {
       }
 
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      const linkLine = row.link ? `\n\n${baseUrl}${row.link}` : "";
-      const text = `${row.body ?? ""}${linkLine}`;
+      const email = buildVenueNotificationEmail({
+        title: row.title,
+        body: row.body,
+        link: row.link,
+        appOrigin: baseUrl,
+      });
+      const text = email.text;
 
-      const sendResult = await sendEmail({ to: venue.email, subject: row.title, text });
+      const sendResult = await sendEmail({
+        to: venue.email,
+        subject: email.subject,
+        text,
+        html: email.html,
+      });
       if (!sendResult.ok) throw new Error(sendResult.message);
 
       await supabase.from("notification_log").insert({

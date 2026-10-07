@@ -166,9 +166,10 @@ export async function getMergeContextForRelationship(
   };
   const displayName = (p: PersonRow) => `${p.first_name} ${p.last_name}`.trim();
 
+  // Do not invent a coordinator from the venue name. Starter sign-offs
+  // already print {{venue_name}} on the next line.
   const coordinatorName = (opts?.coordinatorName?.trim()
     || ownerCoordinator
-    || venue?.name
     || "");
 
   const tourDatetime = await resolveTourDatetimeForRelationship(

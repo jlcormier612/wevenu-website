@@ -82,20 +82,20 @@ describe("tour / starter email merge regression (Betty Rubble)", () => {
     assert.equal(venueHits.length, 1, "venue name must appear exactly once in signature block body");
   });
 
-  it("broken multi-owner fallback must not be encoded as the happy path", () => {
-    // Document the regression: venue name as coordinator duplicates the venue line.
-    const broken = mergeContent(
+  it("a coordinator that is only the venue name does not repeat the venue", () => {
+    const body = mergeContent(
       warmlyTemplate,
       buildMergeData({
-        venueName: "Jen's Fancy Venue",
-        clientName: "Betty Rubble",
-        clientFirstName: "Betty",
-        clientLastName: "Rubble",
-        coordinatorName: "Jen's Fancy Venue",
+        venueName: "Lulu Lodge",
+        clientName: "Nicole Bethune",
+        clientFirstName: "Nicole",
+        clientLastName: "Bethune",
+        coordinatorName: "Lulu Lodge",
         eventDate: null,
       }),
     );
-    assert.match(broken, /Warmly,\nJen's Fancy Venue\nJen's Fancy Venue/);
+    assert.match(body, /Warmly,\n\nLulu Lodge$/);
+    assert.equal((body.match(/Lulu Lodge/g) ?? []).length, 1);
   });
 
   it("merge context owner lookup no longer uses bare maybeSingle on is_owner", () => {
