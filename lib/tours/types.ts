@@ -66,12 +66,15 @@ export type TourAvailabilityException = {
   startDate: string; // "YYYY-MM-DD"
   endDate: string;
   label: string | null;
+  /** none = one-time; annual = same month/day span every year (rule-based). */
+  recurrenceRule: "none" | "annual";
 };
 
 export type TourAvailabilityExceptionInput = {
   startDate: string;
   endDate: string;
   label?: string;
+  recurrenceRule?: "none" | "annual";
 };
 
 export type TourOutcome = "interested" | "considering" | "not_a_fit" | "booked" | "unknown";

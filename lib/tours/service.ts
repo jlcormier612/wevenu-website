@@ -724,8 +724,13 @@ export async function addTourAvailabilityException(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false };
   const supabase = await createClient();
+  const recurrenceRule = input.recurrenceRule === "annual" ? "annual" : "none";
   const { data, error } = await supabase.from("tour_availability_exceptions").insert({
-    venue_id: venue.id, start_date: input.startDate, end_date: input.endDate, label: input.label?.trim() || null,
+    venue_id: venue.id,
+    start_date: input.startDate,
+    end_date: input.endDate,
+    label: input.label?.trim() || null,
+    recurrence_rule: recurrenceRule,
   }).select("id").single<{ id: string }>();
   if (error || !data?.id) return { ok: false };
   return { ok: true, id: data.id };
