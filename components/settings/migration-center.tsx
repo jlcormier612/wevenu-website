@@ -868,7 +868,7 @@ export function MigrationCenter({
           ) : null}
 
           <div className="rounded-lg border border-dashed border-border p-4 space-y-2">
-            <p className="text-xs font-medium text-heading">CSV file</p>
+            <p className="text-xs font-medium text-heading">CSV files</p>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -893,8 +893,18 @@ export function MigrationCenter({
               </p>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
+              Upload a CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
               We&apos;ll keep a copy of this file with your import history. This never connects to or logs into another platform on your behalf.
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Have an Excel spreadsheet or another supported file?{" "}
+              <Link
+                href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
+                className="font-medium text-heading underline underline-offset-2"
+              >
+                Use Import Wizard
+              </Link>
+              {" "}for Excel (.xlsx/.xls), Word (.docx), or PDF.
             </p>
           </div>
 
