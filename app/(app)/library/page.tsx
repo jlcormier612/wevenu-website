@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { getTemplates as getContractTemplates } from "@/lib/contracts/service";
 import { getTemplates as getMessageTemplates } from "@/lib/message-templates/service";
+import { countActivePlanningLibraryTemplates } from "@/lib/playbooks/library-count";
 import { getTemplatesForLibrary as getPlaybookTemplates } from "@/lib/playbooks/service";
 import { getTemplatesForLibrary as getTimelineTemplates } from "@/lib/timeline-templates/service";
 import { getTemplatesForLibrary as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
@@ -108,7 +109,7 @@ export default async function LibraryPage() {
   ]);
   const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
   const brochures = brochuresAll.filter((b) => !b.isArchived);
-  const playbookTemplates = playbookTemplatesAll.filter((t) => !t.isArchived);
+  const playbookTemplatesCount = countActivePlanningLibraryTemplates(playbookTemplatesAll);
   const timelineTemplates = timelineTemplatesAll.filter((t) => !t.isArchived);
   const floorPlanTemplates = floorPlanTemplatesAll.filter((t) => !t.isArchived);
   const inventoryItems = inventoryItemsAll.filter((i) => !i.isArchived);
@@ -127,7 +128,7 @@ export default async function LibraryPage() {
         guidance="Templates are reusable starting points. Create one here, then use it when setting up an event. Applying always creates that event’s own editable copy."
       >
         <ToolboxCard kind="template" title="Contract Templates" description="Reusable agreements with fill-in details. Use creates a draft contract — send and sign later." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
-        <ToolboxCard kind="template" title="Planning Templates" description="Client Planning and Venue Planning checklists you refine once, then apply per booking." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
+        <ToolboxCard kind="template" title="Planning Templates" description="Client Planning and Venue Planning checklists you refine once, then apply per booking." href="/library/playbooks" count={playbookTemplatesCount} icon={BookOpen} />
         <ToolboxCard kind="template" title="Timeline Templates" description="Reusable day-of schedules. Use adds entries to an event timeline." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
         <ToolboxCard kind="template" title="Floor Plan Templates" description="Reusable room layouts. Use creates an event floor plan." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
         <ToolboxCard kind="template" title="Event Order Templates" description="Commercial build sheets — fixed offerings and selectable groups. Use applies on the venue side; Send lets the client choose." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />

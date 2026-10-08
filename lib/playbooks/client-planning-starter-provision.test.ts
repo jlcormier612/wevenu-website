@@ -70,18 +70,15 @@ describe("workspace seed includes Client Planning", () => {
     const starters = read("lib/provisioning/starters.ts");
     assert.match(starters, /key: "playbooks"/);
     assert.match(starters, /seedPlaybookStarters/);
-    assert.doesNotMatch(starters, /seedPlaybookStarters[\s\S]*PB-VENUE-01/);
   });
 
-  it("provision creates PB-CLIENT-01 client wedding starter only", () => {
+  it("provision creates PB-CLIENT-01 client wedding starter", () => {
     const src = read("lib/playbooks/provision.ts");
     assert.match(src, /"client"/);
     assert.match(src, /"wedding"/);
     assert.match(src, /STANDARD_CLIENT_PLANNING_MILESTONES/);
     assert.match(src, /STANDARD_CLIENT_PLANNING_TASKS/);
     assert.match(src, /CLIENT_PLANNING_STARTER_KEY/);
-    assert.doesNotMatch(src, /STANDARD_VENUE_WORKFLOW/);
-    assert.doesNotMatch(src, /PB-VENUE-01/);
     assert.doesNotMatch(src, /event_tasks/);
     assert.doesNotMatch(src, /event_vendor/);
     assert.doesNotMatch(src, /ready_to_invite_couples/);
@@ -102,7 +99,7 @@ describe("Setup Profile still uses active client library rows", () => {
 });
 
 describe("starter example card hides once the real row exists", () => {
-  it("PB-CLIENT-01 hides the Client starter card; Venue card is independent", () => {
+  it("PB-CLIENT-01 hides the Client starter card; Venue card stays until PB-VENUE-01", () => {
     const { showClient, showVenue } = visiblePlanningStarterKinds([
       { sourceMasterKey: CLIENT_PLANNING_STARTER_KEY },
     ]);
@@ -119,7 +116,6 @@ describe("SQL backfill matches the Client Planning constants", () => {
     assert.match(sql, /kind = 'client'/);
     assert.match(sql, /is_archived = false/);
     assert.match(sql, /Standard Wedding — Client Planning/);
-    assert.doesNotMatch(sql, /PB-VENUE-01/);
     assert.doesNotMatch(sql, /insert into public\.event_tasks/i);
     assert.doesNotMatch(sql, /update public\.event_tasks/i);
     assert.doesNotMatch(sql, /venue_vendor_relationships/);
