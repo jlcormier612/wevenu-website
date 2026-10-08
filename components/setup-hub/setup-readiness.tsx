@@ -39,7 +39,7 @@ export function SetupReadiness({
     startTransition(async () => {
       const result = await setReadyToInviteCouplesAction(ready);
       if (result.ok) {
-        toast.success(ready ? "Wonderful — you're ready to invite couples!" : "No problem — take the time you need.");
+        toast.success(ready ? "Wonderful — you're ready to start working with couples!" : "No problem — take the time you need.");
       } else {
         toast.error("Something went wrong saving that. Please try again.");
       }
@@ -57,7 +57,7 @@ export function SetupReadiness({
       </CardHeader>
       <CardContent className="space-y-5">
         <p className="text-sm text-muted-foreground">
-          A quick look at everything above, all in one place — so you know exactly where you are before deciding you&apos;re ready to invite couples in.
+          A quick look at everything above, all in one place — so you know exactly where you are before deciding you&apos;re ready to start working with couples.
         </p>
 
         {done.length > 0 && (
@@ -103,8 +103,8 @@ export function SetupReadiness({
           {readyToInviteCouples ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-primary/20 bg-primary/5 p-3.5">
               <p className="text-sm text-foreground">
-                You told us you&apos;re ready to invite couples in
-                {readyToInviteCouplesAt ? ` on ${new Date(readyToInviteCouplesAt).toLocaleDateString()}` : ""}.
+                You&apos;ve decided you&apos;re ready. We&apos;ll stop showing setup guidance, but you can continue configuring your venue anytime.
+                {readyToInviteCouplesAt ? ` Declared on ${new Date(readyToInviteCouplesAt).toLocaleDateString()}.` : ""}
               </p>
               <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => toggle(false)}>
                 We need a bit more time
@@ -115,8 +115,11 @@ export function SetupReadiness({
               <p className="text-sm text-muted-foreground">
                 You don&apos;t need everything above finished to say yes — this is your call, whenever it feels right.
               </p>
+              <p className="text-sm text-muted-foreground">
+                You&apos;ve decided you&apos;re ready. We&apos;ll stop showing setup guidance, but you can continue configuring your venue anytime.
+              </p>
               <Button type="button" disabled={pending} onClick={() => toggle(true)}>
-                We&apos;re ready to invite couples
+                We&apos;re ready to start working with couples
               </Button>
             </div>
           )}
