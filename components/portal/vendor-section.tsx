@@ -225,6 +225,13 @@ function PickButton({
   const isPicked = !!rec.pickedAt;
   const isSubmitted = !!rec.selectedAt;
 
+  if (rec.isRequired) {
+    return (
+      <p className="text-[11px] font-medium text-foreground leading-snug max-w-[9rem] text-right">
+        Required for your event
+      </p>
+    );
+  }
   if (isAssigned && !isPicked && !isSubmitted) {
     return (
       <p className="text-[11px] text-muted-foreground leading-snug max-w-[9rem] text-right">
@@ -952,18 +959,27 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
   }
 
   // Unified pending across both tabs (directory drafts may not appear on Recommended yet).
+  // Required vendors are not optional picks — exclude from pending submit count.
   const pendingVendorIds = new Set<string>();
   for (const r of recommendations) {
+    if (r.isRequired) continue;
     if (!!r.pickedAt !== !!r.selectedAt) pendingVendorIds.add(r.vendorId);
   }
   for (const v of directory) {
+    if (v.isRequired) continue;
     if (!!v.pickedAt !== !!v.selectedAt) pendingVendorIds.add(v.vendorId);
   }
   const pendingCount = pendingVendorIds.size;
 
-  const teamVendors = directory.filter((v) => v.isAssigned || v.selectedAt);
+  const requiredFromDir = directory.filter((v) => v.isRequired);
+  const requiredFromRecs = recommendations.filter((r) => r.isRequired);
+  const requiredList: CardVendor[] = requiredFromDir.length > 0
+    ? requiredFromDir.map((v) => ({ ...v, note: null }))
+    : requiredFromRecs;
+
+  const teamVendors = directory.filter((v) => !v.isRequired && (v.isAssigned || v.selectedAt));
   // Prefer assignment list; fall back to selected from recommendations when directory empty.
-  const teamFromRecs = recommendations.filter((r) => r.isAssigned || r.selectedAt);
+  const teamFromRecs = recommendations.filter((r) => !r.isRequired && (r.isAssigned || r.selectedAt));
   const teamList = teamVendors.length > 0 ? teamVendors : teamFromRecs;
 
   function groupByCategory<T extends { category: string | null }>(items: T[]) {
@@ -1005,7 +1021,7 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
     const toggleKey = viewing.source === "recommended" && viewing.recommendationId
       ? viewing.recommendationId
       : `dir:${viewing.vendorId}`;
-    const canPick = canToggleVendorPick(eventDate);
+    const canPick = canToggleVendorPick(eventDate) && !viewingRec.isRequired;
     return (
       <VendorDetail
         rec={viewingRec}
@@ -1058,6 +1074,42 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           </p>
         )}
       </div>
+
+      {requiredList.length > 0 && (
+        <div
+          className="rounded-2xl border border-foreground/15 bg-muted/40 p-4 space-y-3"
+          data-testid="portal-required-vendors"
+        >
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+              Required for Your Event
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Your venue requires these vendors for this event. They are already part of your vendor team.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {requiredList.map((v) => (
+              <VendorListRow
+                key={v.vendorId}
+                rec={v}
+                onView={() => {
+                  const inDir = directory.some((d) => d.vendorId === v.vendorId);
+                  if (inDir) openVendor({ vendorId: v.vendorId, source: "directory" });
+                  else {
+                    const r = recommendations.find((x) => x.vendorId === v.vendorId);
+                    openVendor({
+                      vendorId: v.vendorId,
+                      source: "recommended",
+                      recommendationId: r?.id,
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {teamList.length > 0 && (
         <div className="rounded-2xl border border-[color-mix(in_srgb,var(--venue-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_6%,transparent)] p-4 space-y-2">
@@ -1132,7 +1184,7 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
               )}
             </div>
           ) : (
-            groupByCategory(recommendations).map(([category, recs]) => (
+            groupByCategory(recommendations.filter((r) => !r.isRequired)).map(([category, recs]) => (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
@@ -1176,7 +1228,7 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         ) : (
           <div className="space-y-5">
             {submitBar}
-            {groupByCategory(directory).map(([category, vendors]) => (
+            {groupByCategory(directory.filter((v) => !v.isRequired)).map(([category, vendors]) => (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}

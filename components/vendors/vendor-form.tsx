@@ -166,7 +166,7 @@ export function VendorFormFields({
           <div className="space-y-0.5">
             <Label htmlFor="vreq" className="text-sm font-medium">Required</Label>
             <p className="text-xs text-muted-foreground">
-              Couples must use this specific vendor for your process.
+              Couples must use this specific vendor. When an event is booked, they are assigned automatically and shown as required in the client portal.
             </p>
           </div>
           <Switch

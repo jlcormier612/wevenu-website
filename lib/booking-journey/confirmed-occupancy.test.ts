@@ -119,4 +119,16 @@ describe("confirmed booking occupancy", () => {
     }
     assert.match(stamp, /return null/);
   });
+
+  it("does not source required vendors from Setup Profile requiredVendorIds", () => {
+    const requiredSql = read(
+      "supabase/migrations/20261413500000_book_relationship_assign_required_vendors.sql",
+    );
+    const start = requiredSql.indexOf("create or replace function public.book_relationship");
+    const requiredFn = requiredSql.slice(start, requiredSql.indexOf("$$;", start));
+    assert.match(requiredFn, /is_required = true/);
+    assert.match(requiredFn, /venue_vendor_relationships/);
+    assert.doesNotMatch(requiredFn, /template_refs/);
+    assert.doesNotMatch(requiredFn, /from public\.venue_setup_profiles/);
+  });
 });

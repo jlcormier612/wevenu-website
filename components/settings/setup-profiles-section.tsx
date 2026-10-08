@@ -532,43 +532,32 @@ function CapabilityDefaults({
     );
   }
   if (step === "vendors") {
-    const required = refs.requiredVendorIds ?? [];
     const recommended = refs.recommendedVendorIds ?? [];
     return (
       <div className="space-y-3" data-testid="setup-profile-vendors">
-        <fieldset className="space-y-1">
-          <legend className="text-sm font-medium text-heading">Vendors your team expects to book</legend>
-          <p className="text-xs text-muted-foreground">
-            Library vendors your team typically needs for this event type. These are for your team&apos;s workflow —
-            they are not assigned to the event automatically and are not shown to the client as recommendations.
-          </p>
-          {vendors.length === 0 ? <p className="text-sm text-muted-foreground">No vendors in the library yet.</p> : vendors.map((option) => (
-            <label key={option.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={required.includes(option.id)}
-                onChange={() => patchRefs({ requiredVendorIds: toggleId(required, option.id) })}
-              />
-              {option.name}
-            </label>
-          ))}
-        </fieldset>
         <fieldset className="space-y-1">
           <legend className="text-sm font-medium text-heading">Recommended vendors for the client</legend>
           <p className="text-xs text-muted-foreground">
             Vendors from your library to recommend to the client. When the event is booked, these appear as recommendations the client can review.
             Your team can add or remove recommendations on the event later.
           </p>
-          {vendors.map((option) => (
-            <label key={option.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={recommended.includes(option.id)}
-                onChange={() => patchRefs({ recommendedVendorIds: toggleId(recommended, option.id) })}
-              />
-              {option.name}
-            </label>
-          ))}
+          <p className="text-xs text-muted-foreground">
+            Required vendors are managed in your Vendor Network and are automatically applied to events when they&apos;re booked.
+          </p>
+          {vendors.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No vendors in the library yet.</p>
+          ) : (
+            vendors.map((option) => (
+              <label key={option.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={recommended.includes(option.id)}
+                  onChange={() => patchRefs({ recommendedVendorIds: toggleId(recommended, option.id) })}
+                />
+                {option.name}
+              </label>
+            ))
+          )}
         </fieldset>
       </div>
     );

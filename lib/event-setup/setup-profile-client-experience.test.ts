@@ -92,12 +92,13 @@ describe("Questionnaires are multi-select drafts, not auto-sent", () => {
   });
 });
 
-describe("Vendors: required = team expectation; recommended = client-facing", () => {
+describe("Vendors: recommended = client-facing; required from Vendor Network", () => {
   it("keeps multi-select and seeds only recommended vendors at inherit", () => {
     assert.match(section, /setup-profile-vendors/);
-    assert.match(section, /Vendors your team expects to book/);
+    assert.doesNotMatch(section, /Vendors your team expects to book/);
     assert.match(section, /Recommended vendors for the client/);
-    assert.match(section, /not assigned to the event automatically/);
+    assert.match(section, /Required vendors are managed in your Vendor Network/);
+    assert.match(section, /appear as recommendations the client can review/);
     assert.match(inherit, /applyInheritedVendorRecommendations/);
     assert.match(inherit, /recommendedVendorIds/);
     assert.match(inherit, /addRecommendation/);

@@ -234,6 +234,16 @@ export function EventVendorsSection({
                       {a.vendorName}
                     </Link>
                     <VendorCategoryBadge category={a.vendorCategory} />
+                    {availableVendors.find((v) => v.id === a.vendorId)?.isRequired && (
+                      <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background">
+                        Required
+                      </span>
+                    )}
+                    {availableVendors.find((v) => v.id === a.vendorId)?.isInHouse && (
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        In-house
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     {a.arrivalTime && (

@@ -114,7 +114,9 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(section, /Preferred starting plan/);
     assert.match(section, /setup-profile-default-floor-plan/);
     assert.doesNotMatch(section, /Additional available timelines/);
-    assert.match(section, /Vendors your team expects to book/);
+    assert.doesNotMatch(section, /Vendors your team expects to book/);
+    assert.match(section, /Recommended vendors for the client/);
+    assert.match(section, /Required vendors are managed in your Vendor Network/);
     assert.match(section, /Recommended vendors for the client/);
     assert.match(section, /Questionnaires to prepare for the client/);
     assert.match(section, /Starting inventory offering/);
