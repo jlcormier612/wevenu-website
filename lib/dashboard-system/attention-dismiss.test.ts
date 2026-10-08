@@ -169,9 +169,25 @@ describe("Dashboard Focus dismissal architecture (source)", () => {
   it("wires Focus Dismiss as a secondary action, not Complete", () => {
     assert.match(page, /FocusAttentionRow/);
     assert.match(page, /filterDismissedFocusItems/);
-    assert.match(row, /Dismiss/);
+    assert.match(row, /aria-label="Dismiss"/);
+    assert.match(row, /title="Dismiss"/);
+    assert.match(row, /data-testid="todays-focus-dismiss"/);
+    assert.match(row, /from "lucide-react"/);
+    assert.match(row, /<X /);
+    // Visible label text must not say Dismiss — icon + accessible name only.
+    assert.doesNotMatch(row, />\s*Dismiss\s*</);
+    assert.doesNotMatch(row, /Hiding…/);
     assert.doesNotMatch(row, /Complete/);
     assert.doesNotMatch(row, /toast\.success/);
+  });
+
+  it("matches Dashboard Luv card × dismiss visual language", () => {
+    const luv = readFileSync(resolve("components/dashboard/luv-dashboard-entry.tsx"), "utf8");
+    assert.match(luv, /<X className="h-3\.5 w-3\.5"/);
+    assert.match(row, /<X className="h-3\.5 w-3\.5"/);
+    assert.match(luv, /rounded-md p-1 text-muted-foreground transition-opacity hover:opacity-70/);
+    assert.match(row, /rounded-md p-1 text-muted-foreground transition-opacity hover:opacity-70/);
+    assert.match(row, /dismissDashboardAttentionAction/);
   });
 
   it("keeps automatic resolution: classifiers still read authoritative feeds", () => {

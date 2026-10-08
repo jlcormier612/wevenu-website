@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { X } from "lucide-react";
 
 import { dismissDashboardAttentionAction } from "@/app/(app)/dashboard/actions";
 import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
@@ -36,7 +37,7 @@ export function FocusAttentionRow({ item }: { item: ClassifiedItem }): ReactNode
   }
 
   return (
-    <div className="flex items-start gap-2 py-3 -mx-2 px-2 rounded-lg hover:bg-muted/40 transition-colors">
+    <div className="relative flex items-start gap-2 py-3 -mx-2 px-2 pr-9 rounded-lg hover:bg-muted/40 transition-colors">
       <Link
         href={item.href}
         data-testid="todays-focus-item-link"
@@ -57,9 +58,12 @@ export function FocusAttentionRow({ item }: { item: ClassifiedItem }): ReactNode
           type="button"
           onClick={dismiss}
           disabled={pending}
-          className="shrink-0 pt-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+          aria-label="Dismiss"
+          title="Dismiss"
+          data-testid="todays-focus-dismiss"
+          className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground transition-opacity hover:opacity-70 disabled:opacity-50"
         >
-          {pending ? "Hiding…" : "Dismiss"}
+          <X className="h-3.5 w-3.5" aria-hidden />
         </button>
       ) : null}
     </div>
