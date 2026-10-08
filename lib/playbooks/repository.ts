@@ -100,7 +100,7 @@ export async function getTemplatesWithStats(client: DbClient, venueId: string): 
   }));
 }
 
-export async function insertTemplate(client: DbClient, venueId: string, name: string, kind: PlaybookTemplate["kind"], eventType: string | null, description: string | null, opts?: { sourceMasterKey?: string | null }): Promise<string> {
+export async function insertTemplate(client: DbClient, venueId: string, name: string, kind: PlaybookTemplate["kind"], eventType: string | null, description: string | null, opts?: { sourceMasterKey?: string | null; isDefault?: boolean }): Promise<string> {
   const { data, error } = await client.from("playbook_templates").insert({
     venue_id: venueId,
     name: name.trim(),
@@ -108,6 +108,7 @@ export async function insertTemplate(client: DbClient, venueId: string, name: st
     event_type: eventType || null,
     description: description?.trim() || null,
     source_master_key: opts?.sourceMasterKey ?? null,
+    is_default: opts?.isDefault === true,
   }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;

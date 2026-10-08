@@ -16,6 +16,7 @@ describe("provisioning starters module", () => {
       "message_templates",
       "automations",
       "contracts",
+      "playbooks",
       "questionnaires",
       "packages",
       "brochures",

@@ -52,6 +52,13 @@ const STEPS: SeedStep[] = [
     },
   },
   {
+    key: "playbooks",
+    run: async (venueId) => {
+      const { seedPlaybookStarters } = await import("@/lib/playbooks/provision");
+      await seedPlaybookStarters(venueId);
+    },
+  },
+  {
     key: "questionnaires",
     run: async (venueId) => {
       const { seedQuestionnaireFamily } = await import("@/lib/questionnaire-family/provision");
