@@ -20,6 +20,11 @@ export interface StaffMember {
   capabilityOverrides: CapabilityOverrides;
   ownerInvitePending: boolean;
   inviteToken: string | null;
+  /**
+   * User id of the venue actor who created this row via Team/Owners.
+   * Null for purchase/onboarding side-effect rows (purchaser, activate-path owner).
+   */
+  invitedByUserId: string | null;
   invitedAt: string | null;
   acceptedAt: string | null;
   lastActiveAt: string | null;

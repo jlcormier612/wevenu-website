@@ -39,9 +39,14 @@ export default async function SetupHubPage() {
     getIntakeForVenue(venue.id),
   ]);
 
-  const activeTeamCount = teamMembers.filter((m) => !m.isOwner && m.isActive && m.acceptedAt).length;
-  const hasActiveOwner = teamMembers.some((m) => m.isOwner && m.isActive);
-  const hasImportedData = importBatches.some((b) => !b.rolledBackAt && b.importedCount > 0);
+  // Team Setup Hub completion: only deliberate Team/Owners actions (invited_by set).
+  // Purchase/onboarding purchaser + activate-path owner rows leave invited_by null.
+  const deliberateTeamActionCount = teamMembers.filter(
+    (m) => m.isActive && Boolean(m.invitedByUserId),
+  ).length;
+  const hasMigrationImport = importBatches.some(
+    (b) => !b.rolledBackAt && b.importedCount > 0 && Boolean(b.migrationSessionId),
+  );
   // Raw files tagged setup_import that haven't been turned into a real Contract /
   // Message Template / Playbook yet — see the client-experience stage nudge.
   const uploadedMaterialsCount = venueDocuments.filter((d) => d.tags.includes("setup_import")).length;
@@ -79,11 +84,10 @@ export default async function SetupHubPage() {
         spacesCount={spaces.length}
         hasCapacityRules={capacityRules != null}
         tourSchedulingEnabled={tourSettings?.tourSchedulingEnabled ?? false}
-        hasImportedData={hasImportedData}
+        hasMigrationImport={hasMigrationImport}
         readyCounts={readyCounts}
         uploadedMaterialsCount={uploadedMaterialsCount}
-        activeTeamCount={activeTeamCount}
-        hasActiveOwner={hasActiveOwner}
+        deliberateTeamActionCount={deliberateTeamActionCount}
         stripeConnected={venue.stripeOnboardingStatus === "connected"}
         quickbooksConnected={quickbooksConnection?.status === "connected"}
         setupConcierge={setupConcierge}

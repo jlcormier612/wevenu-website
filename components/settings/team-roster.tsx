@@ -164,6 +164,7 @@ export function TeamRoster({
             capabilityOverrides: overrides,
             ownerInvitePending: false,
             inviteToken: null,
+            invitedByUserId: "local",
             invitedAt: new Date().toISOString(),
             acceptedAt: null,
             lastActiveAt: null,

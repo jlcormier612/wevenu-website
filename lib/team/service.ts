@@ -91,6 +91,7 @@ function rowToStaffMember(row: Record<string, unknown>): StaffMember {
     capabilityOverrides: parseOverrides(row.capability_overrides),
     ownerInvitePending: Boolean(row.owner_invite_pending),
     inviteToken: row.invite_token as string | null,
+    invitedByUserId: (row.invited_by as string | null) ?? null,
     invitedAt: row.invited_at as string | null,
     acceptedAt: row.accepted_at as string | null,
     lastActiveAt: (row.last_active_at ?? null) as string | null,
@@ -99,7 +100,7 @@ function rowToStaffMember(row: Record<string, unknown>): StaffMember {
 }
 
 const STAFF_SELECT =
-  "id, venue_id, user_id, role, full_name, email, title, is_owner, is_active, access_title, title_basis, capability_overrides, owner_invite_pending, invite_token, invited_at, accepted_at, last_active_at, created_at";
+  "id, venue_id, user_id, role, full_name, email, title, is_owner, is_active, access_title, title_basis, capability_overrides, owner_invite_pending, invite_token, invited_by, invited_at, accepted_at, last_active_at, created_at";
 
 export async function getCurrentStaffMember(venueId: string): Promise<StaffMember | null> {
   if (!isSupabaseConfigured) return null;

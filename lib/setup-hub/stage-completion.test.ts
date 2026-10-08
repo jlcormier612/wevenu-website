@@ -74,25 +74,103 @@ describe("Your Venue completion", () => {
   });
 });
 
-describe("Your People completion", () => {
-  it("is complete for a venue operating solo with an active owner", () => {
+describe("Your People completion — explicit Team decision only", () => {
+  it("purchaser/admin alone does not complete Your People", () => {
     assert.equal(
-      isYourPeopleComplete({ additionalTeamCount: 0, hasActiveOwner: true, soloConfirmed: false }),
+      isYourPeopleComplete({ deliberateTeamActionCount: 0, soloConfirmed: false }),
+      false,
+    );
+  });
+
+  it("onboarding owner invitation alone does not complete Your People", () => {
+    // Activate-path owners leave invited_by null → deliberateTeamActionCount stays 0.
+    assert.equal(
+      isYourPeopleComplete({ deliberateTeamActionCount: 0, soloConfirmed: false }),
+      false,
+    );
+    const page = readFileSync(resolve("app/(app)/setup-hub/page.tsx"), "utf8");
+    assert.match(page, /invitedByUserId/);
+    assert.match(page, /deliberateTeamActionCount/);
+    assert.doesNotMatch(page, /hasActiveOwner/);
+  });
+
+  it("deliberate Team invite/action completes without requiring acceptance", () => {
+    assert.equal(
+      isYourPeopleComplete({ deliberateTeamActionCount: 1, soloConfirmed: false }),
       true,
     );
   });
 
-  it("stays complete when an additional teammate is added", () => {
-    const solo = isYourPeopleComplete({ additionalTeamCount: 0, hasActiveOwner: true, soloConfirmed: false });
-    const withTeam = isYourPeopleComplete({ additionalTeamCount: 1, hasActiveOwner: true, soloConfirmed: false });
-    assert.equal(solo, true);
-    assert.equal(withTeam, true);
+  it("solo confirmation completes and is the only non-invite path", () => {
+    assert.equal(
+      isYourPeopleComplete({ deliberateTeamActionCount: 0, soloConfirmed: true }),
+      true,
+    );
   });
 
-  it("does not require visiting Team", () => {
+  it("solo option is reachable when Team is unresolved", () => {
+    const overview = readFileSync(resolve("components/setup-hub/setup-hub-overview.tsx"), "utf8");
+    assert.match(overview, /!yourTeamDone/);
+    assert.match(overview, /It's just me for now/);
+    assert.match(overview, /setYourTeamSoloAction/);
+    assert.doesNotMatch(overview, /hasActiveOwner/);
+    assert.doesNotMatch(overview, /additionalTeamCount/);
+  });
+
+  it("does not require visiting Dashboard or Team page for the checkmark", () => {
     const overview = readFileSync(resolve("components/setup-hub/setup-hub-overview.tsx"), "utf8");
     assert.match(overview, /isYourPeopleComplete/);
-    assert.doesNotMatch(overview, /teamVisited|openedTeam|yourTeamVisited/);
+    assert.doesNotMatch(overview, /teamVisited|openedTeam|yourTeamVisited|dashboard/);
+  });
+
+  it("uses invited_by provenance from Team service mapping", () => {
+    const service = readFileSync(resolve("lib/team/service.ts"), "utf8");
+    assert.match(service, /invitedByUserId/);
+    assert.match(service, /invited_by/);
+    const types = readFileSync(resolve("lib/team/types.ts"), "utf8");
+    assert.match(types, /invitedByUserId/);
+  });
+});
+
+describe("Bring Your Business completion — explicit path or Migration Center", () => {
+  it("explicit individual completes", () => {
+    assert.equal(
+      isBringYourBusinessComplete({ hasMigrationImport: false, path: "individual" }),
+      true,
+    );
+  });
+
+  it("explicit skipped completes", () => {
+    assert.equal(
+      isBringYourBusinessComplete({ hasMigrationImport: false, path: "skipped" }),
+      true,
+    );
+  });
+
+  it("Migration Center import completes", () => {
+    assert.equal(
+      isBringYourBusinessComplete({ hasMigrationImport: true, path: null }),
+      true,
+    );
+  });
+
+  it("unrelated spreadsheet/HQ import does not complete without a path", () => {
+    assert.equal(
+      isBringYourBusinessComplete({ hasMigrationImport: false, path: null }),
+      false,
+    );
+    const page = readFileSync(resolve("app/(app)/setup-hub/page.tsx"), "utf8");
+    assert.match(page, /migrationSessionId/);
+    assert.match(page, /hasMigrationImport/);
+    const batches = readFileSync(resolve("lib/import/batches.ts"), "utf8");
+    assert.match(batches, /migrationSessionId/);
+    assert.match(batches, /migration_session_id/);
+  });
+
+  it("does not use bare hasImportedData for completion", () => {
+    const overview = readFileSync(resolve("components/setup-hub/setup-hub-overview.tsx"), "utf8");
+    assert.match(overview, /isBringYourBusinessComplete\(\{\s*hasMigrationImport/);
+    assert.doesNotMatch(overview, /isBringYourBusinessComplete\(\{\s*hasImportedData/);
   });
 });
 
@@ -126,7 +204,7 @@ describe("other category completion", () => {
       isClientExperienceComplete({ authoredTemplateCount: 0, reviewedAt: null }),
       false,
     );
-    assert.equal(isBringYourBusinessComplete({ hasImportedData: false, path: null }), false);
+    assert.equal(isBringYourBusinessComplete({ hasMigrationImport: false, path: null }), false);
     assert.equal(isFinancialsComplete({ stripeConnected: false, reviewedAt: null }), false);
     assert.equal(isLeadCaptureComplete(null, []), false);
   });
@@ -162,5 +240,34 @@ describe("operational access is unchanged by category completion", () => {
     assert.doesNotMatch(layout, /isYourVenueComplete|stage-completion/);
     assert.doesNotMatch(dashboard, /isYourVenueComplete|stage-completion/);
     assert.doesNotMatch(layout, /isVenueReadyToInviteCouples/);
+  });
+});
+
+describe("regression — Concierge / readiness / Vendor / Planning untouched", () => {
+  it("Setup Concierge still stops when readyToInviteCouples is true", () => {
+    const select = readFileSync(resolve("lib/setup-concierge/select.ts"), "utf8");
+    assert.match(select, /if \(snapshot\.readyToInviteCouples\) return null/);
+  });
+
+  it("Dashboard remains free of Setup Concierge", () => {
+    const dashboard = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
+    assert.doesNotMatch(dashboard, /SetupConciergeCard|loadSetupConciergeEntry|Next in setup/);
+  });
+
+  it("Setup Hub readiness copy and write path remain", () => {
+    const readiness = readFileSync(resolve("components/setup-hub/setup-readiness.tsx"), "utf8");
+    assert.match(
+      readiness,
+      /You&apos;ve decided you&apos;re ready\. We&apos;ll stop showing setup guidance/,
+    );
+    assert.match(readiness, /We&apos;re ready to start working with couples/);
+    assert.match(readiness, /We need a bit more time/);
+  });
+
+  it("does not alter Vendor required booking or Planning provision", () => {
+    const completion = readFileSync(resolve("lib/setup-hub/stage-completion.ts"), "utf8");
+    assert.doesNotMatch(completion, /is_required|is_in_house|book_relationship|PB-CLIENT-01|seedPlaybookStarters/);
+    const overview = readFileSync(resolve("components/setup-hub/setup-hub-overview.tsx"), "utf8");
+    assert.doesNotMatch(overview, /requiredVendorIds|is_required/);
   });
 });

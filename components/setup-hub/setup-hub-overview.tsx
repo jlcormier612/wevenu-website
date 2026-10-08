@@ -56,11 +56,10 @@ export function SetupHubOverview({
   spacesCount,
   hasCapacityRules,
   tourSchedulingEnabled,
-  hasImportedData,
+  hasMigrationImport,
   readyCounts,
   uploadedMaterialsCount,
-  activeTeamCount,
-  hasActiveOwner,
+  deliberateTeamActionCount,
   stripeConnected,
   quickbooksConnected,
   setupConcierge,
@@ -76,12 +75,13 @@ export function SetupHubOverview({
   spacesCount: number;
   hasCapacityRules: boolean;
   tourSchedulingEnabled: boolean;
-  hasImportedData: boolean;
+  /** Migration Center import with durable rows — not spreadsheet/HQ ad-hoc batches. */
+  hasMigrationImport: boolean;
   readyCounts: SetupReadyCounts;
   /** Raw files brought over during setup (contracts/wording/checklists uploaded as-is), not yet turned into a Contract/Message Template/Playbook — the "you brought this over, now what?" nudge on Client Experience. */
   uploadedMaterialsCount: number;
-  activeTeamCount: number;
-  hasActiveOwner: boolean;
+  /** Active venue_staff rows created via Team/Owners (invited_by set). */
+  deliberateTeamActionCount: number;
   stripeConnected: boolean;
   quickbooksConnected: boolean;
   setupConcierge?: SetupConciergeEntry | null;
@@ -93,7 +93,10 @@ export function SetupHubOverview({
   const yourVenueDone = isYourVenueComplete(yourVenueFacts);
   const calendarDone = isCalendarAvailabilityComplete({ spaceOperatingMode, spacesCount });
   const bybPath = hubState?.bringYourBusinessPath ?? null;
-  const bringYourBusinessDone = isBringYourBusinessComplete({ hasImportedData, path: bybPath });
+  const bringYourBusinessDone = isBringYourBusinessComplete({
+    hasMigrationImport,
+    path: bybPath,
+  });
   const calendarReadyHint = evaluateCutoverPrerequisites({
     spacesCount,
     hasCapacityRules,
@@ -113,8 +116,7 @@ export function SetupHubOverview({
   });
   const yourTeamSolo = !!hubState?.yourTeamSoloConfirmedAt;
   const yourTeamDone = isYourPeopleComplete({
-    additionalTeamCount: activeTeamCount,
-    hasActiveOwner,
+    deliberateTeamActionCount,
     soloConfirmed: yourTeamSolo,
   });
   const financialsDone = isFinancialsComplete({
@@ -149,18 +151,18 @@ export function SetupHubOverview({
       key: "bring-your-business",
       title: "Bring Your Business",
       status: bringYourBusinessDone ? "complete" : "not_started",
-      detail: hasImportedData
-        ? "Your existing data has been brought in."
+      detail: hasMigrationImport
+        ? "Your existing data has been brought in through Migration Center."
         : bybPath === "individual"
           ? "You're adding things yourself — that's the plan."
           : bybPath === "skipped"
             ? "Starting fresh for now — that's the plan."
-            : "Nothing brought in yet.",
+            : "Nothing decided yet — import, add things yourself, or skip for now.",
       required: STAGE_COPY["bring-your-business"].required,
       customActions: (
         <BringYourBusinessChoices
           done={bringYourBusinessDone}
-          hasImportedData={hasImportedData}
+          hasImportedData={hasMigrationImport}
           path={bybPath}
           calendarReadyHint={calendarReadyHint}
           intakeBringBusinessChoice={intakeBringBusinessChoice}
@@ -219,11 +221,11 @@ export function SetupHubOverview({
       href: STAGE_COPY["your-team"].destinationHref,
       hrefLabel: STAGE_COPY["your-team"].destinationLabel,
       status: yourTeamDone ? "complete" : null,
-      detail: activeTeamCount > 0
-        ? `${activeTeamCount} team member${activeTeamCount === 1 ? "" : "s"} with you here.`
-        : hasActiveOwner || yourTeamSolo
+      detail: deliberateTeamActionCount > 0
+        ? "You've invited or recorded the people who need their own access."
+        : yourTeamSolo
           ? "Running things solo for now — that's the plan."
-          : "Just you here so far. Solo is fine whenever you're ready to say so.",
+          : "Decide whether anyone else needs access — or say you're running solo.",
       required: STAGE_COPY["your-team"].required,
       action: !yourTeamDone ? (
         <StageAcknowledgeButton action={setYourTeamSoloAction} label="It's just me for now" />

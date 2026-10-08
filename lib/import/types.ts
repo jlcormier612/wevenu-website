@@ -94,6 +94,8 @@ export type ImportBatch = {
   sourceLabel: string | null;
   importedByType: "venue" | "hq_staff";
   importedBy: string | null;
+  /** Set when the batch was produced by Migration Center; null for spreadsheet/HQ ad-hoc runs. */
+  migrationSessionId: string | null;
   rowCount: number;
   importedCount: number;
   skippedCount: number;

@@ -46,11 +46,15 @@ export function isCalendarAvailabilityComplete(input: {
   return true;
 }
 
+/**
+ * Explicit BYB path, or a Migration Center import (migration_session_id set).
+ * Spreadsheet/HQ/other imports alone do not complete the Setup Hub decision.
+ */
 export function isBringYourBusinessComplete(input: {
-  hasImportedData: boolean;
+  hasMigrationImport: boolean;
   path: SetupHubState["bringYourBusinessPath"];
 }): boolean {
-  return input.hasImportedData || input.path === "individual" || input.path === "skipped";
+  return input.hasMigrationImport || input.path === "individual" || input.path === "skipped";
 }
 
 export function isYourOfferingsComplete(input: {
@@ -85,13 +89,17 @@ export function isLeadCaptureComplete(
   });
 }
 
-/** Solo owner is enough. Extra teammates stay complete. Visit is irrelevant. */
+/**
+ * Team setup is complete only after an explicit venue decision:
+ * - deliberate Team/Owners action (venue_staff.invited_by set — not purchase/onboarding side effects), or
+ * - solo confirmation (your_team_solo_confirmed_at).
+ * Purchaser/admin existence and onboarding owner invites (invited_by null) never complete this card.
+ */
 export function isYourPeopleComplete(input: {
-  additionalTeamCount: number;
-  hasActiveOwner: boolean;
+  deliberateTeamActionCount: number;
   soloConfirmed: boolean;
 }): boolean {
-  return input.additionalTeamCount > 0 || input.hasActiveOwner || input.soloConfirmed;
+  return input.deliberateTeamActionCount > 0 || input.soloConfirmed;
 }
 
 export function isFinancialsComplete(input: {

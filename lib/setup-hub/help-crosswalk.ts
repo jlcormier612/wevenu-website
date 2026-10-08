@@ -83,7 +83,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     helpTitle: null,
     required: true,
     canBeNotApplicable: false,
-    completionSignal: "imported (import_batches) | individual (path) | skipped (path). Unaddressed until one is chosen.",
+    completionSignal: "Migration Center import (import_batches.migration_session_id) | individual (path) | skipped (path). Spreadsheet/HQ imports alone do not complete.",
   },
   {
     stage: "your-offerings",
@@ -128,7 +128,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     helpTitle: null,
     required: false,
     canBeNotApplicable: true, // solo venue
-    completionSignal: "Active owner (solo) OR additional accepted teammate OR solo confirmation. Optional. Visit is irrelevant.",
+    completionSignal: "Deliberate Team/Owners action (venue_staff.invited_by set) OR solo confirmation. Purchaser/onboarding owner rows do not count. Optional.",
   },
   {
     stage: "financials",

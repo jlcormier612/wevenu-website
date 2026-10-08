@@ -33,6 +33,7 @@ function mapBatch(r: Record<string, unknown>): ImportBatch {
     sourceLabel: (r.source_label ?? null) as string | null,
     importedByType: r.imported_by_type as ImportBatch["importedByType"],
     importedBy: (r.imported_by ?? null) as string | null,
+    migrationSessionId: (r.migration_session_id as string | null) ?? null,
     rowCount: r.row_count as number,
     importedCount: r.imported_count as number,
     skippedCount: r.skipped_count as number,
