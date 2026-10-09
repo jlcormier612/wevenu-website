@@ -58,8 +58,12 @@ describe("every entity push reads QuickBooks before it writes", () => {
   const cases: Array<{ file: string; qboType: string; matchOn: RegExp }> = [
     { file: "lib/quickbooks/sync/customer.ts", qboType: "Customer", matchOn: /DisplayName = '/ },
     { file: "lib/quickbooks/sync/invoice.ts", qboType: "Invoice", matchOn: /DocNumber = '/ },
-    { file: "lib/quickbooks/sync/payment.ts", qboType: "Payment", matchOn: /PrivateNote = '/ },
-    { file: "lib/quickbooks/sync/refund.ts", qboType: "RefundReceipt", matchOn: /PrivateNote = '/ },
+    // Payment.PrivateNote and RefundReceipt.PrivateNote are not queryable
+    // (Intuit ValidationFault 4001). Recovery uses the verified-queryable
+    // PaymentRefNum / DocNumber fields instead — see
+    // lib/quickbooks/payment-refund-idempotency.test.ts.
+    { file: "lib/quickbooks/sync/payment.ts", qboType: "Payment", matchOn: /PaymentRefNum = '/ },
+    { file: "lib/quickbooks/sync/refund.ts", qboType: "RefundReceipt", matchOn: /DocNumber = '/ },
   ];
 
   for (const { file, qboType, matchOn } of cases) {

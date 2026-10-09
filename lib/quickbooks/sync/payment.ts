@@ -2,24 +2,24 @@
  * Payment sync — push a Hello to Cheers payment (a paid payment_line_items row) to
  * QuickBooks as a Payment applied against its already-synced Invoice.
  *
- * Idempotent against QuickBooks itself: QBO's Payment entity has no clean
- * unique free-text field the way Invoice has DocNumber, so our own row ID
- * is embedded in PrivateNote ("htc:payment_line_item:<uuid>") and a
- * query-before-create checks for an existing Payment with that PrivateNote
- * before ever POSTing a new one. Legacy PrivateNote prefixes are still
- * recognized so re-sync does not duplicate. This is the least-clean idempotency
- * mechanism of the four entity types and needs real sandbox verification
- * the moment credentials exist — if QBO's query API doesn't reliably
- * filter on PrivateNote in practice, the queue's own payload_hash dedup is
- * the fallback guard against a duplicate on a lost-response retry.
+ * Idempotency, in order:
+ *   1. Prefer the stored quickbooks_payment_id — no Intuit call.
+ *   2. Query by Payment.PaymentRefNum using a short deterministic token
+ *      (lib/quickbooks/sync/correlation-token.ts). PrivateNote is not
+ *      queryable on Payment (ValidationFault 4001), so it cannot be the
+ *      lookup key; it is still written on create for human readability.
+ *   3. Create with that PaymentRefNum so a later recovery query can adopt
+ *      rather than duplicate.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { quickBooksFetch } from "@/lib/quickbooks/client";
+import { paymentCorrelationToken } from "@/lib/quickbooks/sync/correlation-token";
 import type { QuickBooksSyncResult } from "@/lib/quickbooks/sync/types";
 
 type PaymentLineItemRow = {
   schedule_id: string;
   paid_amount: number | null;
+  quickbooks_payment_id: string | null;
 };
 
 function escapeQboString(value: string): string {
@@ -30,10 +30,17 @@ export async function syncPayment(venueId: string, entityId: string): Promise<Qu
   const admin = createAdminClient();
 
   const { data: item } = await admin.from("payment_line_items")
-    .select("schedule_id, paid_amount")
+    .select("schedule_id, paid_amount, quickbooks_payment_id")
     .eq("id", entityId).eq("venue_id", venueId).maybeSingle();
   if (!item) return { ok: false, error: "Payment not found.", retryable: false };
   const itemRow = item as PaymentLineItemRow;
+
+  // Cheapest and most reliable guard: the processor already persisted this
+  // on a prior success. Returning it here means a re-enqueue never reaches
+  // Intuit again once the app knows the remote id.
+  if (itemRow.quickbooks_payment_id) {
+    return { ok: true, quickbooksId: itemRow.quickbooks_payment_id };
+  }
 
   if (!itemRow.paid_amount || itemRow.paid_amount <= 0) {
     return { ok: false, error: "Payment has no paid amount to sync.", retryable: false };
@@ -60,17 +67,19 @@ export async function syncPayment(venueId: string, entityId: string): Promise<Qu
   const customerId = (client as { quickbooks_customer_id: string | null } | null)?.quickbooks_customer_id;
   if (!customerId) return { ok: false, error: "Customer not yet synced.", retryable: true };
 
+  const correlationToken = paymentCorrelationToken(entityId);
   const privateNote = `htc:payment_line_item:${entityId}`;
-  const legacyNote = `wevenu:payment_line_item:${entityId}`;
-  for (const note of [privateNote, legacyNote]) {
-    const query = `select * from Payment where PrivateNote = '${escapeQboString(note)}'`;
-    const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
-    if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
 
-    const queryData = await queryResult.response.json() as { QueryResponse?: { Payment?: { Id: string }[] } };
-    const existingId = queryData.QueryResponse?.Payment?.[0]?.Id;
-    if (existingId) return { ok: true, quickbooksId: existingId };
-  }
+  // Lost-response recovery: adopt an existing Payment that carries our token
+  // rather than POSTing a second one. PaymentRefNum is the verified-queryable
+  // field; PrivateNote is not.
+  const query = `select * from Payment where PaymentRefNum = '${escapeQboString(correlationToken)}'`;
+  const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
+  if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
+
+  const queryData = await queryResult.response.json() as { QueryResponse?: { Payment?: { Id: string }[] } };
+  const existingId = queryData.QueryResponse?.Payment?.[0]?.Id;
+  if (existingId) return { ok: true, quickbooksId: existingId };
 
   const createResult = await quickBooksFetch(venueId, "/payment", {
     method: "POST",
@@ -78,6 +87,7 @@ export async function syncPayment(venueId: string, entityId: string): Promise<Qu
     body: JSON.stringify({
       CustomerRef: { value: customerId },
       TotalAmt: itemRow.paid_amount,
+      PaymentRefNum: correlationToken,
       PrivateNote: privateNote,
       Line: [{
         Amount: itemRow.paid_amount,
