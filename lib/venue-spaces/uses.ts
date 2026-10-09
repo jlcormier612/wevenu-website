@@ -29,12 +29,17 @@ export function customUseKeyFromLabel(raw: string): string {
 }
 
 export function labelForUseKey(useKey: string, useLabel?: string | null): string {
+  const key = useKey.trim();
   const trimmed = useLabel?.trim();
-  if (trimmed) return trimmed;
-  const suggested = SUGGESTED_SPACE_USES.find((u) => u.key === useKey);
+  // A stored label that is only the internal key is not a customer-facing name.
+  const labelIsKey = !trimmed
+    || trimmed === key
+    || trimmed.replace(/\s+/g, "_").toLowerCase() === key.toLowerCase();
+  if (trimmed && !labelIsKey) return trimmed;
+  const suggested = SUGGESTED_SPACE_USES.find((u) => u.key === key);
   if (suggested) return suggested.label;
-  if (useKey === "event_space") return "Event space";
-  return useKey.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  if (key === "event_space") return "Event space";
+  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**

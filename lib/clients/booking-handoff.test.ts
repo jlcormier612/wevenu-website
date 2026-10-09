@@ -127,6 +127,28 @@ describe("buildBookingHandoff", () => {
   });
 });
 
+describe("booked-event summary after the booking transition", () => {
+  it("renders a compact left-aligned hierarchy and human space labels", () => {
+    const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
+    const start = detail.indexOf("function EventHeroCard");
+    const end = detail.indexOf("// ---- Coming Soon", start);
+    const hero = detail.slice(start, end);
+    assert.match(hero, /text-left/);
+    assert.match(hero, /text-2xl/);
+    assert.doesNotMatch(hero, /text-5xl/);
+    assert.doesNotMatch(hero, /text-center/);
+    assert.match(hero, /EventStatusBadge/);
+    assert.match(hero, /<dt[^>]*>Time<\/dt>/);
+    assert.match(hero, /<dt[^>]*>Guests<\/dt>/);
+    assert.match(hero, /<dt[^>]*>Spaces<\/dt>/);
+    assert.match(hero, /sm:grid-cols-2/);
+    assert.match(hero, /weekday: "long"/);
+    const uses = readFileSync(resolve("lib/venue-spaces/uses.ts"), "utf8");
+    assert.match(uses, /A stored label that is only the internal key is not a customer-facing name/);
+    assert.doesNotMatch(hero, /cocktail_hour|getting_ready/);
+  });
+});
+
 describe("booked page — conversion and copy seams", () => {
   it("does not call a booked Event a Draft Event, Tentative Event, or pre-booking Event", () => {
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
@@ -152,6 +174,12 @@ describe("booked page — conversion and copy seams", () => {
     assert.match(celebration, /eventTypeLabel/);
     assert.match(celebration, /handoff\.prepareHeading/);
     assert.match(celebration, /handoff\.primaryLabel/);
+    assert.doesNotMatch(celebration, /href=\{`\/events\/\$\{eventId\}`\}/);
+    assert.match(page, /primaryLabel = "Open Event"/);
+    assert.match(page, /primaryHref = `\/clients\/\$\{client\.id\}`/);
+    assert.doesNotMatch(celebration, /Open booking/i);
+    assert.doesNotMatch(celebration, /View Client/);
+    assert.doesNotMatch(celebration, /Continue to booking/);
     assert.match(page, /buildBookingHandoff/);
     assert.match(page, /getClientInvitation/);
     assert.match(page, /buildCommunicationsReview/);

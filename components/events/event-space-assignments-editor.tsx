@@ -21,6 +21,7 @@ import {
   spacesEligibleForUse,
   type EventSpaceAssignmentInput,
 } from "@/lib/venue-spaces/assignments";
+import { labelForUseKey } from "@/lib/venue-spaces/uses";
 
 const NONE = "__none__";
 
@@ -122,7 +123,7 @@ export function EventSpaceAssignmentsDisplay({
   return (
     <span className="text-muted-foreground whitespace-pre-line">
       {assignments
-        .map((a) => `${a.useLabel || a.useKey}: ${a.spaceName ?? "—"}`)
+        .map((a) => `${labelForUseKey(a.useKey, a.useLabel)}: ${a.spaceName ?? "—"}`)
         .join("\n")}
     </span>
   );

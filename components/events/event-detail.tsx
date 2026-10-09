@@ -6,11 +6,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Clock,
   FileDown,
   Pencil,
   Printer,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -161,56 +159,47 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
   const days = daysUntil(event.eventDate);
   const urgent = days >= 0 && days <= 14;
 
+  const timeLabel = event.startTime
+    ? `${event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}${multiDay ? "Overall " : ""}${formatTime(event.startTime)}${event.endTime ? ` – ${formatTime(event.endTime)}` : ""}${event.teardownTime ? ` · Teardown ${formatTime(event.teardownTime)}` : ""}`
+    : "All day";
+
   return (
     <Card className="border-primary/20 bg-primary/5">
-      <CardContent className="py-8 text-center space-y-3">
-        <p className="font-heading text-5xl font-medium tracking-tight text-heading">
-          {formatEventDateRange(event.eventDate, event.eventEndDate)}
-        </p>
-        <p className="text-muted-foreground">
-          {multiDay ? `${dayName} – ${endDayName}` : dayName}
-          {countdown ? (
-            <span className={urgent ? " · font-semibold text-destructive" : " · text-muted-foreground"}>
-              {" "}· {countdown}
-            </span>
-          ) : null}
-        </p>
-        {/* Day-of schedule row (multi-day: overall booking window, not daily hours) */}
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 text-sm text-muted-foreground">
-          {event.startTime && (
-            <span
-              className="flex items-center gap-1"
-              title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}
-            >
-              <Clock className="h-3.5 w-3.5" />
-              {event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}
-              {multiDay ? "Overall " : ""}
-              {formatTime(event.startTime)}
-              {event.endTime ? ` → ${formatTime(event.endTime)}` : ""}
-            </span>
-          )}
-          {spaceLine ? (
-            <>
-              {(event.startTime || event.guestCount != null) && <span className="text-border">·</span>}
-              <span className="whitespace-pre-line">{spaceLine}</span>
-            </>
-          ) : null}
-          {event.guestCount != null && (
-            <>
-              {(event.startTime || spaceLine) && <span className="text-border">·</span>}
-              <span className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" />
-                {event.guestCount.toLocaleString()} guests
-              </span>
-            </>
-          )}
-          {event.teardownTime && (
-            <>
-              <span className="text-border">·</span>
-              <span>Teardown {formatTime(event.teardownTime)}</span>
-            </>
-          )}
+      <CardContent className="py-4 text-left">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-0.5">
+            <p className="font-heading text-2xl font-medium tracking-tight text-heading">
+              {formatEventDateRange(event.eventDate, event.eventEndDate)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {multiDay ? `${dayName} – ${endDayName}` : dayName}
+              {countdown ? (
+                <span className={urgent ? " font-semibold text-destructive" : ""}>
+                  {" "}· {countdown}
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
         </div>
+        <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-muted-foreground">Time</dt>
+            <dd className="text-foreground" title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}>
+              {timeLabel}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Guests</dt>
+            <dd className="text-foreground">
+              {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-xs text-muted-foreground">Spaces</dt>
+            <dd className="whitespace-pre-line text-foreground">{spaceLine ?? "No space assigned"}</dd>
+          </div>
+        </dl>
       </CardContent>
     </Card>
   );

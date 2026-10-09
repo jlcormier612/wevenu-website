@@ -132,7 +132,7 @@ export default async function BookedPage({ params, searchParams }: Props) {
   handoff.prepareHeading = "What to do next";
   handoff.tagline =
     "Planning continues with tasks, the timeline, vendors, messages, payments, and contracts. Booked does not mean planning is released.";
-  handoff.primaryLabel = "Continue to booking";
+  handoff.primaryLabel = "Open Event";
   handoff.primaryHref = `/clients/${client.id}`;
 
   return (

@@ -128,7 +128,7 @@ function PrepareChecklist({ handoff }: { handoff: BookingHandoffModel }) {
 export function BookingCelebration({
   celebrate = false,
   client,
-  eventId,
+  eventId: _eventId,
   eventDate: _eventDate,
   eventType: _eventType,
   templates: _templates,
@@ -219,18 +219,6 @@ export function BookingCelebration({
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Button render={<Link href={handoff.primaryHref} />}>
             {handoff.primaryLabel}
-          </Button>
-          {eventId && (
-            <Button variant="outline" render={<Link href={`/events/${eventId}`} />}>
-              Open Event
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            render={<Link href={`/clients/${client.id}`} />}
-            className="text-muted-foreground"
-          >
-            View Client
           </Button>
           <Button
             variant="ghost"

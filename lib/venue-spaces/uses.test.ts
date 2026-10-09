@@ -74,9 +74,22 @@ describe("venue-configured space uses", () => {
     assert.equal(shouldShowCalendarSpaceFilter("multi", 2), true);
   });
 
+  it("does not show a stored snake_case key as the label", () => {
+    assert.equal(labelForUseKey("cocktail_hour", "cocktail_hour"), "Cocktail Hour");
+    assert.equal(labelForUseKey("getting_ready", "getting_ready"), "Getting Ready");
+    assert.equal(
+      formatEventSpaceAssignmentsDisplay([
+        { useKey: "cocktail_hour", useLabel: "cocktail_hour", spaceName: "Patio" },
+        { useKey: "getting_ready", useLabel: "getting_ready", spaceName: "Suite" },
+      ]),
+      "Cocktail Hour: Patio\nGetting Ready: Suite",
+    );
+  });
+
   it("labels custom use keys without wedding assumptions", () => {
     assert.equal(labelForUseKey("meeting"), "Meeting");
     assert.equal(labelForUseKey("custom_loft", "Loft Lounge"), "Loft Lounge");
+    assert.equal(labelForUseKey("cocktail_hour", "Cocktail Hour"), "Cocktail Hour");
     assert.equal(customUseKeyFromLabel("Loft Lounge"), "loft_lounge");
   });
 
