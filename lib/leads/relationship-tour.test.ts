@@ -100,6 +100,47 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
     );
   });
 
+  it("early occurrence uses explicit actual fields without changing the scheduled date fields", () => {
+    const decision = resolveLeadTourWrite({
+      tourDate: "2026-10-11",
+      tourTime: "14:00",
+      tourActualDate: "2026-10-09",
+      tourActualTime: "14:00",
+      tourCompleted: true,
+      tourNotes: "Arrived early",
+      existing: {
+        id: "appt-oct11",
+        status: "scheduled",
+        scheduledAt: "2026-10-11T18:00:00.000Z",
+        origin: "scheduled",
+      },
+    });
+    assert.deepEqual(decision, {
+      action: "complete_scheduled",
+      appointmentId: "appt-oct11",
+      actualDate: "2026-10-09",
+      actualTime: "14:00",
+      notes: "Arrived early",
+    });
+  });
+
+  it("late occurrence and later completion-recording still use actual fields", () => {
+    const decision = resolveLeadTourWrite({
+      tourDate: "2026-10-11",
+      tourTime: "14:00",
+      tourActualDate: "2026-10-13",
+      tourActualTime: "10:00",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: occupying,
+    });
+    assert.equal(decision.action, "complete_scheduled");
+    if (decision.action === "complete_scheduled") {
+      assert.equal(decision.actualDate, "2026-10-13");
+      assert.equal(decision.actualTime, "10:00");
+    }
+  });
+
   it("completed with no occupying tour is a walk-in (new row)", () => {
     assert.deepEqual(
       resolveLeadTourWrite({
@@ -209,7 +250,7 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
     assert.match(focus, /gte\("scheduled_at", tourWindowStart\)/);
   });
 
-  it("updateTourStatus writes completion-state only — never scheduled_at or actual_occurred_at", () => {
+  it("updateTourStatus never rewrites scheduled_at; actual_occurred_at only from explicit options", () => {
     const updateFn = calendar.slice(
       calendar.indexOf("export async function updateTourStatus"),
       calendar.indexOf("export async function requestTourConfirmation"),
@@ -220,14 +261,30 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
     );
     assert.match(patchBlock, /status === "completed"/);
     assert.match(patchBlock, /patch\.completed_at/);
-    assert.doesNotMatch(patchBlock, /scheduled_at:/);
-    assert.doesNotMatch(patchBlock, /actual_occurred_at/);
+    assert.doesNotMatch(patchBlock, /scheduled_at\s*=/);
+    assert.doesNotMatch(patchBlock, /new Date\(\)\.toISOString\(\).*actual/);
+    assert.match(patchBlock, /actualDate && actualTime/);
+    assert.match(patchBlock, /patch\.actual_occurred_at/);
+    assert.match(patchBlock, /never invent from now\(\)/);
   });
 
-  it("Relationship UI requires time when a Tour date is set, and still allows clearing", () => {
+  it("Relationship UI distinguishes scheduled vs actual and requires actual time when completing", () => {
     assert.match(card, /tourDateOnly/);
+    assert.match(card, /tourFormBlocked/);
+    assert.match(card, /Actually occurred/);
+    assert.match(card, /Scheduled/);
+    assert.match(card, /Marked completed/);
     assert.match(card, /A tour time is required to schedule a venue tour/);
-    assert.match(card, /disabled=\{pending \|\| tourDateOnly\}/);
+    assert.match(card, /disabled=\{pending \|\| tourFormBlocked\}/);
     assert.doesNotMatch(card, /futureScheduleHardBlock/);
+  });
+
+  it("Tours list uses tourDisplayClockIso and complete dialog asks for actual occurrence", () => {
+    const list = readFileSync(resolve("components/tours/tour-list.tsx"), "utf8");
+    assert.match(list, /tourDisplayClockIso/);
+    assert.doesNotMatch(list, /scheduledAt \?\? appt\.actualOccurredAt/);
+    assert.match(list, /Actually occurred/);
+    assert.match(list, /Marked completed/);
+    assert.match(list, /actualDate/);
   });
 });

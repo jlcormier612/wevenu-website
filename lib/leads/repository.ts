@@ -39,15 +39,31 @@ export type LeadTourInfo = {
   tourTime: string | null;
   tourCompleted: boolean;
   tourNotes: string | null;
+  tourScheduledDate: string | null;
+  tourScheduledTime: string | null;
+  tourActualDate: string | null;
+  tourActualTime: string | null;
+  tourCompletedAt: string | null;
 };
 
-export const EMPTY_TOUR: LeadTourInfo = { tourDate: null, tourTime: null, tourCompleted: false, tourNotes: null };
+export const EMPTY_TOUR: LeadTourInfo = {
+  tourDate: null,
+  tourTime: null,
+  tourCompleted: false,
+  tourNotes: null,
+  tourScheduledDate: null,
+  tourScheduledTime: null,
+  tourActualDate: null,
+  tourActualTime: null,
+  tourCompletedAt: null,
+};
 
 type TourAppointmentRow = {
   id?: string;
   lead_id?: string | null;
   scheduled_at: string | null;
   actual_occurred_at?: string | null;
+  completed_at?: string | null;
   origin?: string | null;
   status: string;
   notes: string | null;
@@ -55,24 +71,23 @@ type TourAppointmentRow = {
 
 function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined, timezone: string | null): LeadTourInfo {
   if (!row) return EMPTY_TOUR;
+  const scheduledParts = row.scheduled_at ? utcToVenueLocalParts(row.scheduled_at, timezone) : null;
+  const actualParts = row.actual_occurred_at ? utcToVenueLocalParts(row.actual_occurred_at, timezone) : null;
   const clockIso =
     row.origin === "walk_in" || !row.scheduled_at || (row.status === "completed" && row.actual_occurred_at)
       ? row.actual_occurred_at
       : row.scheduled_at;
-  if (!clockIso) {
-    return {
-      tourDate: null,
-      tourTime: null,
-      tourCompleted: row.status === "completed",
-      tourNotes: row.notes,
-    };
-  }
-  const { date, time } = utcToVenueLocalParts(clockIso, timezone);
+  const displayParts = clockIso ? utcToVenueLocalParts(clockIso, timezone) : null;
   return {
-    tourDate: date,
-    tourTime: time,
+    tourDate: displayParts?.date ?? null,
+    tourTime: displayParts?.time ?? null,
     tourCompleted: row.status === "completed",
     tourNotes: row.notes,
+    tourScheduledDate: scheduledParts?.date ?? null,
+    tourScheduledTime: scheduledParts?.time ?? null,
+    tourActualDate: actualParts?.date ?? null,
+    tourActualTime: actualParts?.time ?? null,
+    tourCompletedAt: row.completed_at ?? null,
   };
 }
 
@@ -91,7 +106,7 @@ function pickCurrentTourRow(rows: LeadTourRow[]): LeadTourRow | null {
 export async function getCurrentTourForLead(client: DbClient, venueId: string, leadId: string): Promise<LeadTourInfo> {
   const [{ data }, timezone] = await Promise.all([
     client.from("tour_appointments")
-      .select("id, scheduled_at, actual_occurred_at, origin, status, notes")
+      .select("id, scheduled_at, actual_occurred_at, completed_at, origin, status, notes")
       .eq("venue_id", venueId).eq("lead_id", leadId)
       .neq("status", "cancelled"),
     getVenueTimezone(client, venueId),
@@ -106,7 +121,7 @@ export async function getCurrentToursForLeads(client: DbClient, venueId: string,
   if (leadIds.length === 0) return map;
   const [{ data }, timezone] = await Promise.all([
     client.from("tour_appointments")
-      .select("id, lead_id, scheduled_at, actual_occurred_at, origin, status, notes")
+      .select("id, lead_id, scheduled_at, actual_occurred_at, completed_at, origin, status, notes")
       .eq("venue_id", venueId).in("lead_id", leadIds)
       .neq("status", "cancelled"),
     getVenueTimezone(client, venueId),
@@ -130,7 +145,7 @@ async function loadExistingLeadTour(
   leadId: string,
 ): Promise<ExistingLeadTour | null> {
   const { data } = await client.from("tour_appointments")
-    .select("id, scheduled_at, actual_occurred_at, origin, status")
+    .select("id, scheduled_at, actual_occurred_at, completed_at, origin, status")
     .eq("venue_id", venueId).eq("lead_id", leadId)
     .neq("status", "cancelled");
   const row = pickCurrentTourRow((data ?? []) as LeadTourRow[]);
@@ -168,7 +183,14 @@ export async function applyLeadTourWrite(
   client: DbClient,
   venueId: string,
   leadId: string,
-  input: { tourDate: string; tourTime: string; tourCompleted: boolean; tourNotes: string },
+  input: {
+    tourDate: string;
+    tourTime: string;
+    tourCompleted: boolean;
+    tourNotes: string;
+    tourActualDate?: string;
+    tourActualTime?: string;
+  },
 ): Promise<LeadTourApplyResult> {
   const existing = await loadExistingLeadTour(client, venueId, leadId);
   const decision = resolveLeadTourWrite({ ...input, existing });
@@ -279,7 +301,14 @@ export async function upsertLeadTour(
   client: DbClient,
   venueId: string,
   leadId: string,
-  input: { tourDate: string; tourTime: string; tourCompleted: boolean; tourNotes: string },
+  input: {
+    tourDate: string;
+    tourTime: string;
+    tourCompleted: boolean;
+    tourNotes: string;
+    tourActualDate?: string;
+    tourActualTime?: string;
+  },
 ): Promise<void> {
   const result = await applyLeadTourWrite(client, venueId, leadId, input);
   if (!result.ok) {
@@ -387,6 +416,9 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     followUpDate: r.follow_up_date, lastContactedAt: r.last_contacted_at,
     tourDate: tour.tourDate, tourTime: tour.tourTime,
     tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
+    tourScheduledDate: tour.tourScheduledDate, tourScheduledTime: tour.tourScheduledTime,
+    tourActualDate: tour.tourActualDate, tourActualTime: tour.tourActualTime,
+    tourCompletedAt: tour.tourCompletedAt,
     commitmentScore: r.commitment_score ?? 0,
     responsivenessScore: r.responsiveness_score ?? 0,
     interestScore: r.interest_score ?? 0,
@@ -898,6 +930,8 @@ export async function updateRelationshipFields(
     tourTime: input.tourTime,
     tourCompleted: input.tourCompleted,
     tourNotes: input.tourNotes,
+    tourActualDate: input.tourActualDate,
+    tourActualTime: input.tourActualTime,
     existing: previewExisting,
   });
   if (preview.action === "reject") {
@@ -921,6 +955,8 @@ export async function updateRelationshipFields(
     tourTime: input.tourTime,
     tourCompleted: input.tourCompleted,
     tourNotes: input.tourNotes,
+    tourActualDate: input.tourActualDate,
+    tourActualTime: input.tourActualTime,
   });
   if (!tourResult.ok) {
     if (tourResult.kind === "reject") {

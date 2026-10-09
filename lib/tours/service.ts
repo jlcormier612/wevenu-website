@@ -1236,10 +1236,20 @@ const POST_TOUR_STATUSES = new Set(["completed", "no_show", "cancelled"]);
  * pending reminders) that already existed and must not be dropped or
  * duplicated by a naive rewrite.
  */
+export type UpdateTourStatusOptions = {
+  /**
+   * Venue-local actual occurrence (YYYY-MM-DD + HH:MM). Optional.
+   * Never inferred from click time. When omitted, actual_occurred_at is left unchanged.
+   */
+  actualDate?: string;
+  actualTime?: string;
+};
+
 export async function updateTourStatus(
   appointmentId: string,
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show",
   reason?: string,
+  options?: UpdateTourStatusOptions,
 ): Promise<SimpleTourResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const venue = await getCurrentVenue();
@@ -1247,14 +1257,30 @@ export async function updateTourStatus(
   const supabase = await createClient();
 
   const { data: appt } = await supabase.from("tour_appointments")
-    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes")
+    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes, actual_occurred_at")
     .eq("id", appointmentId).eq("venue_id", venue.id)
-    .maybeSingle<{ status: string; lead_id: string | null; contact_name: string | null; contact_email: string | null; scheduled_at: string; duration_minutes: number }>();
+    .maybeSingle<{
+      status: string;
+      lead_id: string | null;
+      contact_name: string | null;
+      contact_email: string | null;
+      scheduled_at: string | null;
+      duration_minutes: number;
+      actual_occurred_at: string | null;
+    }>();
   if (!appt) return { ok: false, error: "This tour could not be found." };
 
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "cancelled") patch.cancellation_reason = reason?.trim() || null;
-  if (status === "completed") patch.completed_at = new Date().toISOString();
+  if (status === "completed") {
+    patch.completed_at = new Date().toISOString();
+    // Explicit actual only — never invent from now(), never rewrite scheduled_at.
+    const actualDate = options?.actualDate?.trim();
+    const actualTime = options?.actualTime?.trim().slice(0, 5);
+    if (actualDate && actualTime) {
+      patch.actual_occurred_at = venueLocalToUtcIso(actualDate, actualTime, venue.timezone);
+    }
+  }
   // Manual confirm is the only place confirmation_source becomes 'manual'.
   // The other path, 'prospect_link', is set only by confirm_tour_by_token().
   // When the tour newly becomes confirmed, send the confirmed-language

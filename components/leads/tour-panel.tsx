@@ -23,9 +23,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
 import { tourDisplayClockIso } from "@/lib/tours/list-order";
-import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
+import { tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
+import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -248,21 +251,58 @@ function CancelDialog({ open, onOpenChange, onConfirm }: { open: boolean; onOpen
 
 function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChanged }: { appt: TourAppointment; leadId: string; now: string; venueTimezone: string | null; onReschedule: (id: string) => void; onChanged: () => void }) {
   const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [completeOpen, setCompleteOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [requestPreview, setRequestPreview] = React.useState<TourCustomerSendPreview | null>(null);
+  const scheduledParts = appt.scheduledAt
+    ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
+    : { date: "", time: "" };
+  const [actualDate, setActualDate] = React.useState(scheduledParts.date);
+  const [actualTime, setActualTime] = React.useState(scheduledParts.time);
   const meta = STATUS_META[appt.status];
   const clockIso = tourDisplayClockIso(appt);
   const d = clockIso ? new Date(clockIso) : new Date(0);
   const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(clockIso ?? new Date(0).toISOString(), venueTimezone);
+  const scheduledDisplay = appt.scheduledAt
+    ? formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone)
+    : null;
   const isActive = appt.status === "scheduled" || appt.status === "confirmed";
   const isPast = d.getTime() < new Date(now).getTime();
+  const showScheduledAside =
+    appt.status === "completed" && tourActualDiffersFromScheduled(appt) && Boolean(appt.scheduledAt);
 
-  async function setStatus(status: "confirmed" | "completed" | "no_show" | "cancelled", reason?: string) {
+  async function setStatus(
+    status: "confirmed" | "completed" | "no_show" | "cancelled",
+    reason?: string,
+    options?: { actualDate?: string; actualTime?: string },
+  ) {
     setPending(true);
-    const result = await updateTourStatusAction(appt.id, leadId, status, reason);
+    const result = await updateTourStatusAction(appt.id, leadId, status, reason, options);
     setPending(false);
-    if (result.ok) { toast.success(status === "confirmed" ? "Tour marked confirmed." : "Tour updated."); onChanged(); }
-    else toast.error(result.error);
+    if (result.ok) {
+      toast.success(status === "confirmed" ? "Tour marked confirmed." : "Tour updated.");
+      setCompleteOpen(false);
+      onChanged();
+    } else toast.error(result.error);
+  }
+
+  function openComplete() {
+    const parts = appt.scheduledAt
+      ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
+      : appt.actualOccurredAt
+        ? utcToVenueLocalParts(appt.actualOccurredAt, venueTimezone)
+        : { date: "", time: "" };
+    setActualDate(parts.date);
+    setActualTime(parts.time);
+    setCompleteOpen(true);
+  }
+
+  async function confirmComplete() {
+    if (!actualDate.trim() || !actualTime.trim()) {
+      toast.error("Enter when the tour actually occurred.");
+      return;
+    }
+    await setStatus("completed", undefined, { actualDate, actualTime });
   }
 
   async function reviewConfirmationRequest() {
@@ -288,11 +328,28 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
     <div className="py-3 flex items-center justify-between gap-3 flex-wrap">
       <div>
         <p className="text-sm font-medium text-heading">
-          {dateLabel}
+          {appt.status === "completed" && appt.actualOccurredAt ? "Actually occurred" : "Scheduled"} · {dateLabel}
         </p>
         <p className="text-xs text-muted-foreground">
           {timeLabel} · {appt.durationMinutes} min
         </p>
+        {showScheduledAside && scheduledDisplay ? (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}
+          </p>
+        ) : null}
+        {appt.status === "completed" && appt.completedAt ? (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Marked completed{" "}
+            {new Date(appt.completedAt).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </p>
+        ) : null}
         {appt.status === "cancelled" && appt.cancellationReason && (
           <p className="text-xs text-muted-foreground mt-0.5">Reason: {appt.cancellationReason}</p>
         )}
@@ -313,10 +370,12 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
                 <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("confirmed")}>Mark as Confirmed</Button>
               </>
             )}
-            {isPast && (
+            {(isPast || Boolean(appt.scheduledAt)) && (
               <>
-                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("completed")}>Completed</Button>
-                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("no_show")}>No-show</Button>
+                <Button variant="ghost" size="sm" disabled={pending} onClick={openComplete}>Completed</Button>
+                {isPast ? (
+                  <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("no_show")}>No-show</Button>
+                ) : null}
               </>
             )}
             <Button variant="ghost" size="sm" disabled={pending} className="text-destructive" onClick={() => setCancelOpen(true)}>Cancel</Button>
@@ -324,6 +383,32 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
         )}
       </div>
       <CancelDialog open={cancelOpen} onOpenChange={setCancelOpen} onConfirm={(reason) => void setStatus("cancelled", reason)} />
+      {completeOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCompleteOpen(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-heading">Mark tour completed</p>
+            {scheduledDisplay ? (
+              <p className="text-xs text-muted-foreground">
+                Scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}. Recording completion does not change that appointment.
+              </p>
+            ) : null}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Actually occurred (date)</Label>
+              <Input type="date" value={actualDate} onChange={(e) => setActualDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Actually occurred (time)</Label>
+              <Input type="time" value={actualTime} onChange={(e) => setActualTime(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" disabled={pending} onClick={() => setCompleteOpen(false)}>Cancel</Button>
+              <Button size="sm" disabled={pending} onClick={() => void confirmComplete()}>
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark completed"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {requestPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setRequestPreview(null)}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>

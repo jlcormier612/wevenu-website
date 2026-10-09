@@ -2,6 +2,9 @@
  * Two-clock occurrence: scheduled_at is the booked slot; actual_occurred_at
  * is when the tour happened. Completed recency and display must never use a
  * future scheduled_at (the Oct 4 / -69h defect).
+ *
+ * completed_at is a third fact: when staff marked the record completed.
+ * It must never silently become the actual occurrence.
  */
 
 export function tourOccurrenceIso(tour: {
@@ -9,6 +12,19 @@ export function tourOccurrenceIso(tour: {
   completed_at?: string | null;
 }): string | null {
   return tour.actual_occurred_at ?? tour.completed_at ?? null;
+}
+
+/** True when actual and scheduled wall times differ (or only one is set). */
+export function tourActualDiffersFromScheduled(tour: {
+  scheduledAt?: string | null;
+  scheduled_at?: string | null;
+  actualOccurredAt?: string | null;
+  actual_occurred_at?: string | null;
+}): boolean {
+  const scheduled = tour.scheduledAt ?? tour.scheduled_at ?? null;
+  const actual = tour.actualOccurredAt ?? tour.actual_occurred_at ?? null;
+  if (!scheduled || !actual) return Boolean(actual && !scheduled);
+  return scheduled !== actual;
 }
 
 /** Hours since occurrence, never negative. */

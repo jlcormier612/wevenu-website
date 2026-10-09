@@ -21,12 +21,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { canHardDeleteTourAppointment } from "@/lib/tours/delete-guard";
+import { tourDisplayClockIso } from "@/lib/tours/list-order";
+import { tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
 import type { TourAppointment, TourOutcome } from "@/lib/tours/types";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 import {
   INTERNAL_NOTES_PRIVACY_HINT,
   internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const OUTCOME_LABELS: Record<TourOutcome, string> = {
   interested: "💚 Interested",
@@ -72,7 +76,13 @@ function TourRow({
   const [outcome, setOutcome] = React.useState<string>(appt.outcome ?? "");
   const [notes, setNotes] = React.useState(appt.notes ?? "");
   const [savingOutcome, setSavingOutcome] = React.useState(false);
-  const clockIso = appt.scheduledAt ?? appt.actualOccurredAt;
+  const [completeOpen, setCompleteOpen] = React.useState(false);
+  const scheduledParts = appt.scheduledAt
+    ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
+    : { date: "", time: "" };
+  const [actualDate, setActualDate] = React.useState(scheduledParts.date);
+  const [actualTime, setActualTime] = React.useState(scheduledParts.time);
+  const clockIso = tourDisplayClockIso(appt);
   const { timeLabel } = formatVenueLocalTourDisplay(clockIso ?? "", venueTimezone);
   const venueParts = clockIso
     ? utcToVenueLocalParts(clockIso, venueTimezone)
@@ -83,6 +93,11 @@ function TourRow({
     : "";
   const deleteGuard = canHardDeleteTourAppointment(appt);
   const displayName = appt.contactName ?? "Unknown";
+  const showScheduledAside =
+    appt.status === "completed" && tourActualDiffersFromScheduled(appt) && appt.scheduledAt;
+  const scheduledAside = appt.scheduledAt
+    ? formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone)
+    : null;
 
   async function handleSaveOutcome() {
     setSavingOutcome(true);
@@ -108,21 +123,54 @@ function TourRow({
     toast.success("Marked follow-up sent.");
   }
 
-  async function handleStatus(newStatus: string) {
+  async function patchStatus(
+    newStatus: string,
+    extras?: { actualDate?: string; actualTime?: string; reason?: string },
+  ) {
     setUpdating(true);
     try {
       const res = await fetch(`/api/tours/status`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ appointmentId: appt.id, status: newStatus }),
+        body: JSON.stringify({
+          appointmentId: appt.id,
+          status: newStatus,
+          reason: extras?.reason,
+          actualDate: extras?.actualDate,
+          actualTime: extras?.actualTime,
+        }),
       });
       const data = await res.json() as { ok: boolean; error?: string };
       if (data.ok) {
         onStatusChange(appt.id, newStatus as TourAppointment["status"]);
         toast.success(newStatus === "confirmed" ? "Tour marked confirmed." : "Status updated.");
+        setCompleteOpen(false);
       } else toast.error(data.error ?? "Could not update status.");
     } catch { toast.error("Could not update status."); }
     finally { setUpdating(false); }
+  }
+
+  async function handleStatus(newStatus: string) {
+    if (newStatus === "completed" && appt.status !== "completed") {
+      const parts = appt.scheduledAt
+        ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
+        : appt.actualOccurredAt
+          ? utcToVenueLocalParts(appt.actualOccurredAt, venueTimezone)
+          : { date: "", time: "" };
+      setActualDate(parts.date);
+      setActualTime(parts.time);
+      setCompleteOpen(true);
+      return;
+    }
+    await patchStatus(newStatus);
+  }
+
+  async function confirmComplete() {
+    if (!actualDate.trim() || !actualTime.trim()) {
+      toast.error("Enter when the tour actually occurred.");
+      return;
+    }
+    await patchStatus("completed", { actualDate, actualTime });
   }
 
   // Confirmed is reached only through an explicit action (Send Confirmation
@@ -222,6 +270,23 @@ function TourRow({
             {timeLabel} · {appt.durationMinutes} min
             {appt.eventType && ` · ${appt.eventType}`}
           </p>
+          {showScheduledAside && scheduledAside ? (
+            <p className="text-[11px] text-muted-foreground">
+              Scheduled {scheduledAside.dateLabel} · {scheduledAside.timeLabel}
+            </p>
+          ) : null}
+          {appt.status === "completed" && appt.completedAt ? (
+            <p className="text-[11px] text-muted-foreground">
+              Marked completed{" "}
+              {new Date(appt.completedAt).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </p>
+          ) : null}
           {appt.contactEmail && <p className="text-xs text-muted-foreground">{appt.contactEmail}</p>}
         </div>
 
@@ -311,6 +376,32 @@ function TourRow({
         </div>
       )}
     </div>
+    {completeOpen ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCompleteOpen(false)}>
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+          <p className="text-sm font-semibold text-heading">Mark tour completed</p>
+          {appt.scheduledAt && scheduledAside ? (
+            <p className="text-xs text-muted-foreground">
+              Scheduled {scheduledAside.dateLabel} · {scheduledAside.timeLabel}. Recording completion does not change that appointment.
+            </p>
+          ) : null}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Actually occurred (date)</Label>
+            <Input type="date" value={actualDate} onChange={(e) => setActualDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Actually occurred (time)</Label>
+            <Input type="time" value={actualTime} onChange={(e) => setActualTime(e.target.value)} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={updating} onClick={() => setCompleteOpen(false)}>Cancel</Button>
+            <Button type="button" size="sm" disabled={updating} onClick={() => void confirmComplete()}>
+              {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark completed"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    ) : null}
     <LibraryDeleteConfirmDialog
       open={deleting}
       itemName={displayName}

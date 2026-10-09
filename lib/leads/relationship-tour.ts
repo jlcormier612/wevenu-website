@@ -48,6 +48,18 @@ export type LeadTourWriteDecision =
       notes: string;
     };
 
+/** Prefer explicit actual fields; fall back to the schedule fields for walk-ins / legacy forms. */
+export function resolveActualOccurrenceClock(input: {
+  tourDate: string;
+  tourTime: string;
+  tourActualDate?: string;
+  tourActualTime?: string;
+}): { actualDate: string; actualTime: string } {
+  const actualDate = (input.tourActualDate ?? "").trim() || input.tourDate.trim();
+  const actualTime = ((input.tourActualTime ?? "").trim() || input.tourTime.trim()).slice(0, 5);
+  return { actualDate, actualTime };
+}
+
 function isOccupyingStatus(status: string): boolean {
   return status === "scheduled" || status === "confirmed";
 }
@@ -61,12 +73,56 @@ export function resolveLeadTourWrite(input: {
   tourTime: string;
   tourCompleted: boolean;
   tourNotes: string;
+  tourActualDate?: string;
+  tourActualTime?: string;
   existing: ExistingLeadTour | null;
 }): LeadTourWriteDecision {
   const tourDate = input.tourDate.trim();
   const tourTime = input.tourTime.trim().slice(0, 5);
   const notes = input.tourNotes.trim();
   const existing = input.existing;
+  const { actualDate, actualTime } = resolveActualOccurrenceClock(input);
+
+  if (input.tourCompleted) {
+    // Completing / editing actual uses the actual clock. An empty schedule
+    // field is allowed when an occupying row already carries scheduled_at.
+    if (!actualDate) {
+      if (existing && isOccupyingStatus(existing.status)) return { action: "clear" };
+      return { action: "noop" };
+    }
+    if (!actualTime) {
+      return { action: "reject", message: TOUR_TIME_REQUIRED };
+    }
+    if (existing && isOccupyingStatus(existing.status)) {
+      return {
+        action: "complete_scheduled",
+        appointmentId: existing.id,
+        actualDate,
+        actualTime,
+        notes,
+      };
+    }
+    if (existing && existing.status === "completed" && existing.origin === "scheduled") {
+      return {
+        action: "actual_only",
+        appointmentId: existing.id,
+        actualDate,
+        actualTime,
+        notes,
+      };
+    }
+    if (existing && existing.origin === "walk_in" && existing.status === "completed") {
+      return {
+        action: "actual_only",
+        appointmentId: existing.id,
+        actualDate,
+        actualTime,
+        notes,
+      };
+    }
+    // No occupying appointment — genuine walk-in creates a NEW row.
+    return { action: "walk_in", actualDate, actualTime, notes };
+  }
 
   if (!tourDate) {
     if (existing && isOccupyingStatus(existing.status)) return { action: "clear" };
@@ -75,38 +131,6 @@ export function resolveLeadTourWrite(input: {
 
   if (!tourTime) {
     return { action: "reject", message: TOUR_TIME_REQUIRED };
-  }
-
-  if (input.tourCompleted) {
-    if (existing && isOccupyingStatus(existing.status)) {
-      return {
-        action: "complete_scheduled",
-        appointmentId: existing.id,
-        actualDate: tourDate,
-        actualTime: tourTime,
-        notes,
-      };
-    }
-    if (existing && existing.status === "completed" && existing.origin === "scheduled") {
-      return {
-        action: "actual_only",
-        appointmentId: existing.id,
-        actualDate: tourDate,
-        actualTime: tourTime,
-        notes,
-      };
-    }
-    if (existing && existing.origin === "walk_in" && existing.status === "completed") {
-      return {
-        action: "actual_only",
-        appointmentId: existing.id,
-        actualDate: tourDate,
-        actualTime: tourTime,
-        notes,
-      };
-    }
-    // No occupying appointment — genuine walk-in creates a NEW row.
-    return { action: "walk_in", actualDate: tourDate, actualTime: tourTime, notes };
   }
 
   return { action: "future_schedule", tourDate, tourTime, notes };

@@ -339,8 +339,9 @@ export async function updateTourStatusAction(
   leadId: string,
   status: "confirmed" | "completed" | "cancelled" | "no_show",
   reason?: string,
+  options?: { actualDate?: string; actualTime?: string },
 ): Promise<SimpleTourResult> {
-  const result = await updateTourStatus(appointmentId, status, reason);
+  const result = await updateTourStatus(appointmentId, status, reason, options);
   if (result.ok) revalidateLead(leadId);
   return result;
 }

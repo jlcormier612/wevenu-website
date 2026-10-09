@@ -75,6 +75,14 @@ export type Lead = {
   tourTime: string | null;
   tourCompleted: boolean;
   tourNotes: string | null;
+  /** Booked appointment wall date (venue-local), when a scheduled row exists. */
+  tourScheduledDate?: string | null;
+  tourScheduledTime?: string | null;
+  /** Physical occurrence wall date (venue-local), when known. */
+  tourActualDate?: string | null;
+  tourActualTime?: string | null;
+  /** When staff marked the tour completed (ISO timestamptz). */
+  tourCompletedAt?: string | null;
   commitmentScore: number;      // 0–100, computed from milestone data
   responsivenessScore: number;  // 0–100, computed from message reply patterns
   interestScore: number;        // 0–100, computed from time-decayed signal events
@@ -183,8 +191,12 @@ export type RelationshipInput = {
   nextActionDue: string;
   followUpDate: string;
   lastContactedAt: string;
+  /** Scheduled appointment date (venue-local). Not rewritten on complete. */
   tourDate: string;
   tourTime: string;
+  /** Actual occurrence — used when completing or editing a completed tour. */
+  tourActualDate: string;
+  tourActualTime: string;
   tourCompleted: boolean;
   tourNotes: string;
 };

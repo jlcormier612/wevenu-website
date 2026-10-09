@@ -207,13 +207,27 @@ export function isDueToday(iso: string | null | undefined): boolean {
 
 /** Build the initial RelationshipInput from an existing lead (or blank). */
 export function createInitialRelationshipInput(lead?: Lead | null): RelationshipInput {
+  const scheduledDate = lead?.tourScheduledDate ?? (!lead?.tourCompleted ? lead?.tourDate : null) ?? "";
+  const scheduledTime = lead?.tourScheduledTime ?? (!lead?.tourCompleted ? lead?.tourTime : null) ?? "";
+  const actualDate =
+    lead?.tourActualDate
+    ?? (lead?.tourCompleted ? lead?.tourDate : null)
+    ?? scheduledDate
+    ?? "";
+  const actualTime =
+    lead?.tourActualTime
+    ?? (lead?.tourCompleted ? lead?.tourTime : null)
+    ?? scheduledTime
+    ?? "";
   return {
     nextActionText: lead?.nextActionText ?? "",
     nextActionDue: lead?.nextActionDue ?? "",
     followUpDate: lead?.followUpDate ?? "",
     lastContactedAt: lead?.lastContactedAt ?? "",
-    tourDate: lead?.tourDate ?? "",
-    tourTime: lead?.tourTime ?? "",
+    tourDate: scheduledDate || lead?.tourDate || "",
+    tourTime: scheduledTime || lead?.tourTime || "",
+    tourActualDate: actualDate || "",
+    tourActualTime: actualTime || "",
     tourCompleted: lead?.tourCompleted ?? false,
     tourNotes: lead?.tourNotes ?? "",
   };
