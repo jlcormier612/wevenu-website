@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { Link, Loader2, Mail, Pencil, Phone, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 import {
   createContactAction, createContactPortalAction,
   deleteContactAction, updateContactAction,
@@ -142,7 +143,7 @@ function ContactCard({
         </div>
         <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
           {contact.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{contact.email}</span>}
-          {contact.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{contact.phone}</span>}
+          {contact.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{formatPhoneDisplay(contact.phone)}</span>}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {contact.isPayer && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Payer</span>}
@@ -354,7 +355,7 @@ export function ClientContactsTab({
                 <p className="text-xs text-muted-foreground">{person.role}</p>
                 <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                   {person.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{person.email}</span>}
-                  {person.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{person.phone}</span>}
+                  {person.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{formatPhoneDisplay(person.phone)}</span>}
                 </div>
               </div>
               <PortalRoleBadge role="full_access" />

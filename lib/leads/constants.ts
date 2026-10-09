@@ -8,6 +8,7 @@ import {
   EVENT_TYPES as CANONICAL_EVENT_TYPES,
   eventTypeLabel as labelFromCanonical,
 } from "@/lib/event-types/canonical";
+import { formatMoneyDisplay } from "@/lib/money/format";
 import { venueToday } from "@/lib/venue/timezone";
 
 export type StatusMeta = {
@@ -148,14 +149,7 @@ export function formatDate(iso: string | null | undefined): string {
 }
 
 export function formatCurrency(amount: number | null | undefined): string {
-  if (amount == null) return "";
-  const hasCents = Math.round(Math.abs(amount) * 100) % 100 !== 0;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: hasCents ? 2 : 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  return formatMoneyDisplay(amount, "USD");
 }
 
 /** Parse a typed money string into a storage-friendly numeric string (no $ / commas). */

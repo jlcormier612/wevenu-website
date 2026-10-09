@@ -29,6 +29,27 @@ export function isProposalOfferUrl(href: string): boolean {
   }
 }
 
+export const QUESTIONNAIRE_CTA_LABEL = "Complete Your Questionnaire";
+
+/** Public questionnaire form URLs — same access key, CTA label instead of the raw token. */
+export function isQuestionnaireFormUrl(href: string): boolean {
+  try {
+    const path = new URL(href).pathname;
+    return /^\/questionnaire\/[A-Za-z0-9_-]+\/?$/.test(path);
+  } catch {
+    return false;
+  }
+}
+
+function emailCtaHtml(safeHref: string, label: string, btnColor: string): string {
+  return (
+    `<a href="${safeHref}" style="background:${btnColor};color:#fff;padding:12px 20px;border-radius:8px;` +
+    `text-decoration:none;display:inline-block;font-weight:600;font-size:16px;line-height:1.25;margin:4px 0;">` +
+    `${escapeHtml(label)}</a>` +
+    `<br><span style="font-size:12px;color:#6b7280;word-break:break-all">${safeHref}</span>`
+  );
+}
+
 /**
  * Escape plain text and wrap http(s) URLs in safe <a href> anchors.
  * Proposal offer URLs use a "View your proposal" CTA; the exact URL stays
@@ -54,11 +75,9 @@ export function linkifyPlainTextForEmailHtml(
       const safeHref = escapeHtml(href);
       const btnColor = escapeHtml(primaryColor);
       if (isProposalOfferUrl(href)) {
-        out +=
-          `<a href="${safeHref}" style="background:${btnColor};color:#fff;padding:10px 20px;border-radius:8px;` +
-          `text-decoration:none;display:inline-block;font-weight:600;margin:4px 0;">` +
-          `${escapeHtml("View your proposal")}</a>` +
-          `<br><span style="font-size:12px;color:#6b7280;word-break:break-all">${safeHref}</span>`;
+        out += emailCtaHtml(safeHref, "View your proposal", btnColor);
+      } else if (isQuestionnaireFormUrl(href)) {
+        out += emailCtaHtml(safeHref, QUESTIONNAIRE_CTA_LABEL, btnColor);
       } else {
         out +=
           `<a href="${safeHref}" style="color:${btnColor};text-decoration:underline;word-break:break-all">` +

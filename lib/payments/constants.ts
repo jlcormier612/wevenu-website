@@ -1,6 +1,7 @@
 /**
  * Payments reference data and display helpers (Sprint 16).
  */
+import { formatMoneyDisplay } from "@/lib/money/format";
 import type { PaymentItemStatus, PaymentObligationKind, PaymentPlanReviewStatus, PaymentSchedule, PaymentLineItem } from "@/lib/payments/types";
 
 export type Option = { value: string; label: string };
@@ -54,13 +55,7 @@ export function formatMoney(
   amount: number | null | undefined,
   currency = "USD",
 ): string {
-  if (amount == null) return "";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  return formatMoneyDisplay(amount, currency);
 }
 
 export function formatDate(iso: string | null | undefined): string {

@@ -5,6 +5,7 @@
  */
 
 import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel, taxableAmountBeforeTax } from "@/lib/invoices/constants";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import {
   customerFacingPaymentInstructions,
@@ -85,7 +86,8 @@ export function InvoicePrintDocument({
   const logoUrl = snap?.logoUrl ?? venue.logoUrl;
   const displayName = snap?.name ?? venue.name;
   const email = snap?.email ?? venue.email;
-  const phone = snap?.phone ?? venue.phone;
+  const phoneRaw = snap?.phone ?? venue.phone;
+  const phone = phoneRaw ? formatPhoneDisplay(phoneRaw) : phoneRaw;
   const website = snap?.website ?? venue.website;
 
   const addressParts = snap

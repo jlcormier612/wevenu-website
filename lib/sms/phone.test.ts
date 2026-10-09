@@ -54,5 +54,17 @@ describe("venue phone normalization and customer-facing display", () => {
     assert.equal(formatPhoneDisplay(stored), "(978) 870-3988");
     assert.equal(toE164(stored), "+19788703988");
   });
+
+  it("leaves short strings and non-US values unforced", () => {
+    assert.equal(formatPhoneDisplay("555-12"), "555-12");
+    assert.equal(normalizeVenuePhoneInput("555-12"), "555-12");
+    assert.equal(toE164("555-12"), null);
+    assert.equal(formatPhoneDisplay("+442071234567"), "+442071234567");
+  });
+
+  it("does not invent formatting for non-phone digit strings that fail E.164", () => {
+    assert.equal(formatPhoneDisplay("12345"), "12345");
+    assert.equal(toE164("12345"), null);
+  });
 });
 

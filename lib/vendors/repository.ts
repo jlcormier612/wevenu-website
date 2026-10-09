@@ -5,6 +5,7 @@
  * relationship to return the flat Vendor shape the UI expects.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import type {
   EventVendorAssignment,
   Vendor,
@@ -222,7 +223,7 @@ function toVendorProfileRow(input: VendorInput): Record<string, unknown> {
     category:       input.category || null,
     contact_name:   input.contactName.trim() || null,
     email:          input.email.trim() || null,
-    phone:          input.phone.trim() || null,
+    phone:          normalizeVenuePhoneInput(input.phone) || null,
     website_url:    input.websiteUrl.trim() || null,
     instagram_url:  input.instagramUrl.trim() || null,
     facebook_url:   input.facebookUrl.trim() || null,
@@ -404,7 +405,7 @@ export async function insertVendor(client: DbClient, venueId: string, input: Ven
       category: input.category,
       contactName: input.contactName.trim(),
       email: input.email.trim(),
-      phone: input.phone.trim(),
+      phone: normalizeVenuePhoneInput(input.phone),
       websiteUrl: input.websiteUrl.trim(),
       instagramUrl: input.instagramUrl.trim(),
       facebookUrl: input.facebookUrl.trim(),

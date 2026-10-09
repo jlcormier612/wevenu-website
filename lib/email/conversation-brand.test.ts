@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  QUESTIONNAIRE_CTA_LABEL,
   isProposalOfferUrl,
+  isQuestionnaireFormUrl,
   plainTextToEmailHtml,
   wrapConversationMessageHtml,
 } from "@/lib/email/conversation-brand";
@@ -60,5 +62,45 @@ describe("conversation email HTML linkifies proposal URLs", () => {
     const html = plainTextToEmailHtml("Docs: https://example.com/guide");
     assert.match(html, /<a href="https:\/\/example\.com\/guide"/);
     assert.doesNotMatch(html, /View your proposal/);
+    assert.doesNotMatch(html, new RegExp(QUESTIONNAIRE_CTA_LABEL));
+  });
+});
+
+const QUESTIONNAIRE_URL =
+  "https://app.sandbox.hellotocheers.com/questionnaire/592b46e0af7a3dadf21c98643c3f012ba3bee6fd";
+
+describe("questionnaire email CTA", () => {
+  it("detects /questionnaire/{accessKey} and leaves other paths as plain links", () => {
+    assert.equal(isQuestionnaireFormUrl(QUESTIONNAIRE_URL), true);
+    assert.equal(isQuestionnaireFormUrl("https://example.com/leads/abc"), false);
+    assert.equal(isQuestionnaireFormUrl(PROPOSAL_URL), false);
+  });
+
+  it("renders Complete Your Questionnaire with the access URL and a plain-link fallback", () => {
+    const text = [
+      "Hi Avery,",
+      "",
+      "Your Client Planning Questionnaire for Avery & Jordan is ready.",
+      "",
+      QUESTIONNAIRE_URL,
+      "",
+      "Everything goes directly to Jen's Fancy Venue — no PDFs, no attachments.",
+      "",
+      "Jen's Fancy Venue",
+    ].join("\n");
+    const html = wrapConversationMessageHtml(
+      emailBrandFromVenue({ name: "Jen's Fancy Venue", primaryColor: "#5D6F5D" }),
+      text,
+    );
+    const button = html.match(
+      new RegExp(`<a href="([^"]+)"[^>]*>${QUESTIONNAIRE_CTA_LABEL}</a>`),
+    );
+    assert.ok(button);
+    assert.equal(button![1], QUESTIONNAIRE_URL);
+    assert.match(html, new RegExp(QUESTIONNAIRE_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(html, /Jen&#39;s Fancy Venue|Jen's Fancy Venue/);
+    assert.match(html, /Avery/);
+    assert.doesNotMatch(html, /href="javascript:/i);
+    assert.equal(QUESTIONNAIRE_CTA_LABEL, "Complete Your Questionnaire");
   });
 });

@@ -48,6 +48,7 @@ import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-b
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import { prefillBookingConfirmation } from "@/lib/booking-journey/confirmation-draft";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
 import type { StageChangeMessagePlan } from "@/lib/message-sequences/confirm-preview";
 import type { LostReasonValue } from "@/lib/leads/lost-reasons";
@@ -723,7 +724,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </CardHeader>
         <CardContent className="space-y-3 pt-0">
           <InfoRow icon={Mail} label="Email" value={lead.email} />
-          <InfoRow icon={Phone} label="Phone" value={lead.phone} />
+          <InfoRow icon={Phone} label="Phone" value={lead.phone ? formatPhoneDisplay(lead.phone) : lead.phone} />
           <RelationshipCommunicationSummary
             preferredChannels={lead.preferredCommunicationChannels ?? []}
             sms={smsPermission}

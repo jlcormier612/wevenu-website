@@ -408,12 +408,7 @@ export function EventDetail({
       const hash = window.location.hash.replace("#", "");
       const tabParam = new URLSearchParams(window.location.search).get("tab");
       const tab = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
-      if (tab === "questionnaires") {
-        setActiveTab("playbook");
-        requestAnimationFrame(() => {
-          document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      } else if (tab) setActiveTab(tab);
+      if (tab) setActiveTab(tab);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
       // Open Vendors when a thread id is present and no Conversation/hash was supplied.
       else if (new URLSearchParams(window.location.search).get("conversation")) {
@@ -595,11 +590,15 @@ export function EventDetail({
           2026-07-10 — rather than just landing on the event and leaving the
           coordinator to find the right tab themselves. */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as string); window.location.hash = v as string; }}>
-        {/* Top nav is relationship/ops chrome only. Planning / Timeline /
-            Floor Plans / Vendors / Event Order / Inventory stay addressable
-            via Setup cards + #hash deep links — TabsContent below is unchanged. */}
+        {/* Event preparation stays on this page. Event Order and Inventory
+            remain Setup-card and #hash deep links. */}
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="playbook">Planning</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="floorplan">Floor Plans</TabsTrigger>
+          <TabsTrigger value="vendors">Vendors</TabsTrigger>
+          <TabsTrigger value="questionnaires">Questionnaires</TabsTrigger>
           <TabsTrigger value="documents">
             Documents
             {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
@@ -649,14 +648,6 @@ export function EventDetail({
             readinessByKind={readinessByKind}
             timelineTemplates={timelineTemplates}
             onNavigateTab={(tab) => {
-              if (tab === "questionnaires") {
-                setActiveTab("playbook");
-                window.location.hash = "questionnaires";
-                requestAnimationFrame(() => {
-                  document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                });
-                return;
-              }
               setActiveTab(tab);
               window.location.hash = tab;
             }}
@@ -666,14 +657,6 @@ export function EventDetail({
             onOpen={(item) => {
               const { nav } = item;
               if (nav.kind === "tab") {
-                if (nav.tab === "questionnaires") {
-                  setActiveTab("playbook");
-                  window.location.hash = "questionnaires";
-                  requestAnimationFrame(() => {
-                    document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  });
-                  return;
-                }
                 setActiveTab(nav.tab);
                 window.location.hash = nav.tab;
               } else if (nav.kind === "link") {
@@ -724,9 +707,10 @@ export function EventDetail({
               />
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Questionnaire Family — Client Planning, Final Details, Post-Event Feedback */}
-          <Card className="mt-4" id="questionnaires">
+        <TabsContent value="questionnaires">
+          <Card id="questionnaires">
             <CardHeader>
               <CardTitle className="text-base">Questionnaires</CardTitle>
               <CardDescription>

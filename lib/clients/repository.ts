@@ -3,6 +3,7 @@
  */
 import { occupancyFailureFromUnknown, OccupancyWriteError, calendarBlockFailureFromUnknown, CalendarBlockWriteError } from "@/lib/availability/event-occupancy";
 import { createClient } from "@/integrations/supabase/server";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import type {
   Client,
   ClientActivity,
@@ -259,7 +260,7 @@ function toClientRow(venueId: string, input: ClientInput, leadId?: string | null
     first_name: input.firstName.trim(),
     last_name: input.lastName.trim(),
     email: input.email.trim() || null,
-    phone: input.phone.trim() || null,
+    phone: normalizeVenuePhoneInput(input.phone) || null,
     partner_first_name: input.partnerFirstName.trim() || null,
     partner_last_name: input.partnerLastName.trim() || null,
     partner_email: input.partnerEmail.trim() || null,
@@ -302,7 +303,7 @@ function clientAtomicPayload(input: ClientInput, leadId?: string | null, histori
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     email: input.email.trim(),
-    phone: input.phone.trim(),
+    phone: normalizeVenuePhoneInput(input.phone),
     partnerFirstName: input.partnerFirstName.trim(),
     partnerLastName: input.partnerLastName.trim(),
     partnerEmail: input.partnerEmail.trim(),

@@ -1,3 +1,4 @@
+import { formatMoneyDisplay } from "@/lib/money/format";
 import type { PackageInput } from "@/lib/packages/types";
 
 export const PACKAGE_CATEGORIES = [
@@ -13,7 +14,7 @@ export const EMPTY_PACKAGE_INPUT: PackageInput = {
 /** Display catalog price. Null/empty must never render as $0.00. */
 export function formatPrice(amount: number | null | undefined, currency = "USD"): string {
   if (amount == null || Number.isNaN(amount)) return "Set your price";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+  return formatMoneyDisplay(amount, currency);
 }
 
 /** Parse UI price input. Empty → null (unpriced). Invalid → NaN for caller validation. */

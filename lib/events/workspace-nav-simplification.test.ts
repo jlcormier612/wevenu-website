@@ -1,5 +1,7 @@
 /**
- * Client/event workspace top nav: keep ops tabs; setup modules enter via Setup cards.
+ * Client/event workspace top nav: ops tabs plus the event-preparation modules
+ * staff move between without returning to Overview. Event Order and Inventory
+ * still enter through Setup cards.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -19,14 +21,15 @@ const RETAINED_TRIGGERS = [
   'value="team"',
 ] as const;
 
-const REMOVED_TRIGGER_VALUES = [
-  "playbook",
-  "timeline",
-  "floorplan",
-  "vendors",
-  "event-order",
-  "inventory",
+const PREPARATION_TRIGGERS = [
+  ['value="playbook"', "Planning"],
+  ['value="timeline"', "Timeline"],
+  ['value="floorplan"', "Floor Plans"],
+  ['value="vendors"', "Vendors"],
+  ['value="questionnaires"', "Questionnaires"],
 ] as const;
+
+const SETUP_ONLY_TRIGGER_VALUES = ["event-order", "inventory"] as const;
 
 function tabsListBlock(source: string): string {
   const start = source.indexOf("<TabsList");
@@ -45,15 +48,17 @@ describe("workspace top nav simplification", () => {
     assert.match(list, /INTERNAL_NOTES_LABEL/);
   });
 
-  it("removes the six setup-module TabsTriggers from top navigation only", () => {
+  it("keeps Planning, Timeline, Floor Plans, Vendors, and Questionnaires in the top nav", () => {
     const list = tabsListBlock(detail);
-    for (const value of REMOVED_TRIGGER_VALUES) {
-      assert.doesNotMatch(list, new RegExp(`TabsTrigger value="${value}"`));
+    for (const [value, label] of PREPARATION_TRIGGERS) {
+      assert.match(list, new RegExp(`TabsTrigger ${value.replace(/"/g, '\\"')}[\\s\\S]*${label}`));
     }
   });
 
-  it("keeps TabsContent for every removed module so deep links still work", () => {
-    for (const value of REMOVED_TRIGGER_VALUES) {
+  it("leaves Event Order and Inventory on Setup cards and hash deep links", () => {
+    const list = tabsListBlock(detail);
+    for (const value of SETUP_ONLY_TRIGGER_VALUES) {
+      assert.doesNotMatch(list, new RegExp(`TabsTrigger value="${value}"`));
       assert.match(detail, new RegExp(`TabsContent value="${value}"`));
     }
   });
@@ -67,9 +72,9 @@ describe("workspace top nav simplification", () => {
     assert.match(setup, /Open Inventory[\s\S]*tab="inventory"/);
   });
 
-  it("hash / tab sync still activates module panels without top triggers", () => {
+  it("hash / tab sync still activates the selected module on this event", () => {
     assert.match(detail, /setActiveTab\(tab\)/);
     assert.match(detail, /hashchange/);
-    assert.match(detail, /window\.location\.hash = tab/);
+    assert.match(detail, /window\.location\.hash = v as string/);
   });
 });

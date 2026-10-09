@@ -1,5 +1,6 @@
 import { roundMoney } from "@/lib/commercial-selections/constants";
 import type { InvoiceLineItemType, InvoiceStatus } from "@/lib/invoices/types";
+import { formatMoneyDisplay } from "@/lib/money/format";
 
 export const INVOICE_STATUSES: { value: InvoiceStatus; label: string; description: string }[] = [
   { value: "draft", label: "Draft",  description: "Not yet sent to client" },
@@ -70,7 +71,7 @@ export function lineItemTypeLabel(type: InvoiceLineItemType): string {
 }
 
 export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+  return formatMoneyDisplay(amount, currency);
 }
 
 export function generateInvoiceNumber(invoiceId: string): string {

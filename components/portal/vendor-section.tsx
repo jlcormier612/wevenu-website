@@ -23,6 +23,8 @@ import * as React from "react";
 import { ArrowLeft, Check, ExternalLink, Mail, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
 
+import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
+
 import { Button } from "@/components/ui/button";
 import { PortalCoupleVendorThread } from "@/components/portal/couple-vendor-thread";
 import { celebrateLuv } from "@/lib/luv/celebrate";
@@ -578,10 +580,10 @@ function VendorDetail({
                 )}
                 {rec.phone && (
                   <p className="text-xs">
-                    <a href={`tel:${rec.phone}`}
+                    <a href={`tel:${toE164(rec.phone) ?? rec.phone}`}
                       className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
                       <Phone className="h-3.5 w-3.5 shrink-0" />
-                      {rec.phone}
+                      {formatPhoneDisplay(rec.phone)}
                     </a>
                   </p>
                 )}

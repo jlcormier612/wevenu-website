@@ -5,6 +5,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { normalizeEventType } from "@/lib/event-types/canonical";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import { identityRpcFields } from "@/lib/identity/decision";
 import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
 import type { ExistingLeadTour } from "@/lib/leads/relationship-tour";
@@ -606,7 +607,7 @@ export async function insertLead(
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
       email: input.email.trim(),
-      phone: input.phone.trim(),
+      phone: normalizeVenuePhoneInput(input.phone),
       partnerFirstName: input.partnerFirstName.trim(),
       partnerLastName: input.partnerLastName.trim(),
       partnerEmail: input.partnerEmail.trim(),
@@ -812,7 +813,7 @@ export async function updateLeadInfo(
     first_name: input.firstName.trim(),
     last_name: input.lastName.trim(),
     email: input.email.trim() || null,
-    phone: input.phone.trim() || null,
+    phone: normalizeVenuePhoneInput(input.phone) || null,
     partner_first_name: input.partnerFirstName.trim() || null,
     partner_last_name: input.partnerLastName.trim() || null,
     partner_email: input.partnerEmail.trim() || null,

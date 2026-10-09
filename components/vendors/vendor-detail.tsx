@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorReview, VendorWithEvents } from "@/lib/vendors/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
@@ -152,7 +153,7 @@ export function VendorDetail({
             )}
             {[
               { icon: Mail, label: "Email", value: vendor.email, href: vendor.email ? `mailto:${vendor.email}` : null },
-              { icon: Phone, label: "Phone", value: vendor.phone, href: vendor.phone ? `tel:${vendor.phone}` : null },
+              { icon: Phone, label: "Phone", value: vendor.phone ? formatPhoneDisplay(vendor.phone) : vendor.phone, href: vendor.phone ? `tel:${toE164(vendor.phone) ?? vendor.phone}` : null },
             ].map(({ icon: Icon, label, value, href }) =>
               value ? (
                 <div key={label} className="flex items-start gap-3">
