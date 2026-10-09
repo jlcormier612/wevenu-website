@@ -25,7 +25,8 @@ import {
   INTERNAL_NOTES_PRIVACY_HINT,
   internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
-import { formatVenueLocalClock, formatVenueLocalShortDate } from "@/lib/venue/timezone";
+import { prefillActualFromScheduled } from "@/lib/tours/occurrence-clock";
+import { formatVenueLocalClock, formatVenueLocalShortDate, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 
 // Common next steps, covering the inquiry -> tour -> booked lifecycle. Not
 // exhaustive on purpose — "Custom…" always drops back to free text, since
@@ -84,8 +85,10 @@ type CompletionKind = "another_follow_up" | "other_next_action" | "no_further_fo
 
 export function RelationshipCard({
   lead,
+  venueTimezone = null,
 }: {
   lead: Lead;
+  venueTimezone?: string | null;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [completing, setCompleting] = React.useState(false);
@@ -105,6 +108,15 @@ export function RelationshipCard({
   const tourDateOnly = Boolean(input.tourDate.trim() && !input.tourTime.trim());
   const tourActualDateOnly = Boolean(input.tourActualDate.trim() && !input.tourActualTime.trim());
   const tourFormBlocked = input.tourCompleted ? tourActualDateOnly : tourDateOnly;
+  const scheduledStillAhead = React.useMemo(() => {
+    if (!input.tourDate || !input.tourTime) return false;
+    const iso = venueLocalToUtcIso(input.tourDate, input.tourTime, venueTimezone);
+    return prefillActualFromScheduled({
+      scheduledAt: iso,
+      timezone: venueTimezone,
+      utcToParts: utcToVenueLocalParts,
+    }).scheduledStillAhead;
+  }, [input.tourDate, input.tourTime, venueTimezone]);
   const [nextActionMode, setNextActionMode] = React.useState<"preset" | "custom">(() =>
     (NEXT_ACTION_PRESETS as readonly string[]).includes(lead.nextActionText ?? "") || !lead.nextActionText
       ? "preset"
@@ -117,11 +129,21 @@ export function RelationshipCard({
   function set<K extends keyof RelationshipInput>(key: K, value: RelationshipInput[K]) {
     setInput((p) => {
       const next = { ...p, [key]: value };
-      // Prepopulate actual from the scheduled appointment when completing —
-      // distinguishable fields; staff can change actual without touching schedule.
-      if (key === "tourCompleted" && value === true) {
-        if (!next.tourActualDate.trim()) next.tourActualDate = next.tourDate;
-        if (!next.tourActualTime.trim()) next.tourActualTime = next.tourTime;
+      // Prefill actual from the booked slot only when that slot is not still
+      // ahead. A future appointment is not proof the tour already happened.
+      if (key === "tourCompleted" && value === true && !next.tourActualDate.trim()) {
+        const scheduledIso = next.tourDate && next.tourTime
+          ? venueLocalToUtcIso(next.tourDate, next.tourTime, venueTimezone)
+          : null;
+        const prefill = prefillActualFromScheduled({
+          scheduledAt: scheduledIso,
+          timezone: venueTimezone,
+          utcToParts: utcToVenueLocalParts,
+        });
+        if (prefill.fromScheduled) {
+          next.tourActualDate = prefill.date;
+          next.tourActualTime = prefill.time;
+        }
       }
       return next;
     });
@@ -229,14 +251,21 @@ export function RelationshipCard({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Follow-up</CardTitle>
           {!editing && !completing ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditing(true)}
-            >
-              {isEmpty ? "+ Add details" : "Edit"}
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {lead.followUpDate ? (
+                <Button type="button" size="sm" onClick={startCompletion}>
+                  Complete follow-up
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(true)}
+              >
+                {isEmpty ? "+ Add details" : "Edit"}
+              </Button>
+            </div>
           ) : completing ? (
             <Button type="button" variant="ghost" size="sm" onClick={resetCompletion} disabled={pending}>
               Cancel
@@ -253,7 +282,7 @@ export function RelationshipCard({
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {completing ? (
           <div className="space-y-4">
             <div className="space-y-1">
@@ -376,22 +405,27 @@ export function RelationshipCard({
                   icon={Calendar}
                   label="Actually occurred"
                   value={
-                    (lead.tourActualDate || lead.tourDate)
-                      ? `${formatVenueLocalShortDate(lead.tourActualDate || lead.tourDate!)}${(lead.tourActualTime || lead.tourTime) ? ` at ${formatVenueLocalClock(lead.tourActualTime || lead.tourTime!)}` : ""}`
-                      : null
+                    lead.tourActualDate
+                      ? `${formatVenueLocalShortDate(lead.tourActualDate)}${lead.tourActualTime ? ` at ${formatVenueLocalClock(lead.tourActualTime)}` : ""}`
+                      : "Not recorded"
                   }
                 />
                 {lead.tourCompletedAt ? (
                   <DisplayRow
                     icon={Clock}
                     label="Marked completed"
-                    value={new Date(lead.tourCompletedAt).toLocaleString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
+                    value={(() => {
+                      const when = new Date(lead.tourCompletedAt);
+                      const zone = venueTimezone || undefined;
+                      return when.toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        timeZone: zone,
+                      });
+                    })()}
                   />
                 ) : null}
               </>
@@ -406,13 +440,6 @@ export function RelationshipCard({
                 }
               />
             )}
-            {lead.followUpDate ? (
-              <div className="pt-3">
-                <Button type="button" size="sm" onClick={startCompletion}>
-                  Complete follow-up
-                </Button>
-              </div>
-            ) : null}
             {isEmpty && (
               <p className="py-1 text-sm text-muted-foreground">
                 No follow-up details yet. Click &ldquo;Add details&rdquo; to record next steps,
@@ -515,6 +542,11 @@ export function RelationshipCard({
               </div>
               {input.tourCompleted ? (
                 <div className="grid gap-3 sm:grid-cols-2">
+                  {scheduledStillAhead && !input.tourActualDate.trim() ? (
+                    <p className="sm:col-span-2 text-xs text-muted-foreground">
+                      This tour is still scheduled in the future. Enter when it actually occurred, or leave both fields empty if you don't know yet. The scheduled time stays as booked.
+                    </p>
+                  ) : null}
                   <EditRow label="Actually occurred (date)">
                     <Input
                       type="date"

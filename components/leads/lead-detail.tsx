@@ -703,8 +703,41 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       )}
       </div>
 
-      {/* Relationship card */}
-      <RelationshipCard lead={lead} />
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <RelationshipCard lead={lead} venueTimezone={venueTimezone} />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Contact information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-0">
+          <InfoRow icon={Mail} label="Email" value={lead.email} />
+          <InfoRow icon={Phone} label="Phone" value={lead.phone} />
+          <RelationshipCommunicationSummary
+            preferredChannels={lead.preferredCommunicationChannels ?? []}
+            sms={smsPermission}
+            leadId={lead.id}
+            hasPhone={Boolean(lead.phone?.trim())}
+            hasEmail={Boolean(lead.email?.trim())}
+            textingConfigured={textingConfigured}
+          />
+          {(lead.partnerFirstName || lead.partnerLastName) && (
+            <>
+              <Separator />
+              <p className="text-xs font-medium text-muted-foreground">Partner</p>
+              <p className="text-sm font-medium text-foreground">
+                {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ")}
+              </p>
+              {lead.partnerEmail && (
+                <InfoRow icon={Mail} label="Partner email" value={lead.partnerEmail} />
+              )}
+            </>
+          )}
+          {!lead.email && !lead.phone && !lead.partnerFirstName && (
+            <p className="text-sm text-muted-foreground">No contact details recorded.</p>
+          )}
+        </CardContent>
+      </Card>
+      </div>
 
       {/* Tabs */}
       {duplicateReview ? (
@@ -780,39 +813,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Contact information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow icon={Mail} label="Email" value={lead.email} />
-                <InfoRow icon={Phone} label="Phone" value={lead.phone} />
-                <RelationshipCommunicationSummary
-                  preferredChannels={lead.preferredCommunicationChannels ?? []}
-                  sms={smsPermission}
-                  leadId={lead.id}
-                  hasPhone={Boolean(lead.phone?.trim())}
-                  hasEmail={Boolean(lead.email?.trim())}
-                  textingConfigured={textingConfigured}
-                />
-                {(lead.partnerFirstName || lead.partnerLastName) && (
-                  <>
-                    <Separator />
-                    <p className="text-xs font-medium text-muted-foreground">Partner</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ")}
-                    </p>
-                    {lead.partnerEmail && (
-                      <InfoRow icon={Mail} label="Partner email" value={lead.partnerEmail} />
-                    )}
-                  </>
-                )}
-                {!lead.email && !lead.phone && !lead.partnerFirstName && (
-                  <p className="text-sm text-muted-foreground">No contact details recorded.</p>
-                )}
-              </CardContent>
-            </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Inquiry details</CardTitle>

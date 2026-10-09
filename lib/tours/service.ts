@@ -6,6 +6,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import { parseCoordinatorTourAvailability, type TourAvailabilityLoad } from "@/lib/tours/availability-read";
 import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
+import { actualOccurrenceIsFuture, FUTURE_ACTUAL_OCCURRENCE_MESSAGE } from "@/lib/tours/occurrence-clock";
 import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourCustomerSendPreview, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel } from "@/lib/leads/constants";
@@ -1278,7 +1279,11 @@ export async function updateTourStatus(
     const actualDate = options?.actualDate?.trim();
     const actualTime = options?.actualTime?.trim().slice(0, 5);
     if (actualDate && actualTime) {
-      patch.actual_occurred_at = venueLocalToUtcIso(actualDate, actualTime, venue.timezone);
+      const actualOccurredAt = venueLocalToUtcIso(actualDate, actualTime, venue.timezone);
+      if (actualOccurrenceIsFuture(actualOccurredAt)) {
+        return { ok: false, error: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+      }
+      patch.actual_occurred_at = actualOccurredAt;
     }
   }
   // Manual confirm is the only place confirmation_source becomes 'manual'.

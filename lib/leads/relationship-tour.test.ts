@@ -71,7 +71,7 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
     );
   });
 
-  it("completing an occupying tour is complete_scheduled (preserves schedule)", () => {
+  it("completing an occupying tour without an explicit actual does not copy the booked slot", () => {
     assert.deepEqual(
       resolveLeadTourWrite({
         tourDate: "2099-06-15",
@@ -81,14 +81,12 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
         existing: occupying,
       }),
       {
-        action: "complete_scheduled",
+        action: "complete_without_actual",
         appointmentId: "appt-1",
-        actualDate: "2099-06-15",
-        actualTime: "11:30",
         notes: "Early",
       },
     );
-    assert.deepEqual(
+    assert.equal(
       resolveLeadTourWrite({
         tourDate: "2099-06-16",
         tourTime: "09:00",
@@ -96,7 +94,7 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
         tourNotes: "",
         existing: confirmed,
       }).action,
-      "complete_scheduled",
+      "complete_without_actual",
     );
   });
 
@@ -155,6 +153,26 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
   });
 
   it("editing actual on an already-completed row is actual_only", () => {
+    assert.equal(
+      resolveLeadTourWrite({
+        tourDate: "2099-06-15",
+        tourTime: "15:00",
+        tourActualDate: "2099-06-15",
+        tourActualTime: "16:00",
+        tourCompleted: true,
+        tourNotes: "Corrected",
+        existing: {
+          id: "appt-2",
+          status: "completed",
+          scheduledAt: "2099-06-15T14:00:00.000Z",
+          origin: "scheduled",
+        },
+      }).action,
+      "actual_only",
+    );
+  });
+
+  it("editing a completed tour without an explicit actual does not rewrite the occurrence", () => {
     assert.deepEqual(
       resolveLeadTourWrite({
         tourDate: "2099-06-15",
@@ -168,7 +186,7 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
           origin: "scheduled",
         },
       }).action,
-      "actual_only",
+      "notes_only",
     );
   });
 });
@@ -221,6 +239,7 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
 
   it("completion and walk-in paths never write scheduled_at on complete", () => {
     const applyFn = repo.slice(repo.indexOf("export async function applyLeadTourWrite"));
+    assert.match(applyFn, /action === "complete_without_actual"/);
     assert.match(applyFn, /action === "complete_scheduled"/);
     assert.match(applyFn, /origin: "walk_in"/);
     assert.match(applyFn, /scheduled_at: null/);
@@ -274,6 +293,9 @@ describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
     assert.match(card, /Actually occurred/);
     assert.match(card, /Scheduled/);
     assert.match(card, /Marked completed/);
+    assert.match(card, /Not recorded/);
+    assert.doesNotMatch(card, /formatVenueLocalShortDate\(lead\.tourActualDate \|\| lead\.tourDate/);
+    assert.match(card, /prefillActualFromScheduled/);
     assert.match(card, /A tour time is required to schedule a venue tour/);
     assert.match(card, /disabled=\{pending \|\| tourFormBlocked\}/);
     assert.doesNotMatch(card, /futureScheduleHardBlock/);

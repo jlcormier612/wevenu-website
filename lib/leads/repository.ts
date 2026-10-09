@@ -9,6 +9,7 @@ import { identityRpcFields } from "@/lib/identity/decision";
 import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
 import type { ExistingLeadTour } from "@/lib/leads/relationship-tour";
 import { TourCapacityWriteError, tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
+import { actualOccurrenceIsFuture, FUTURE_ACTUAL_OCCURRENCE_MESSAGE } from "@/lib/tours/occurrence-clock";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import type {
   Lead,
@@ -246,11 +247,35 @@ export async function applyLeadTourWrite(
     return { ok: true };
   }
 
+  if (decision.action === "complete_without_actual") {
+    // Administrative completion. Do not copy scheduled_at into actual_occurred_at.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  if (decision.action === "notes_only") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
   if (decision.action === "complete_scheduled") {
     // Completion-state + actual clock. Never rewrite scheduled_at.
     // No capacity check. Writes actual_occurred_at so recency cannot
     // fall back to a future booked slot (Oct 4 / -69h).
     const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    if (actualOccurrenceIsFuture(actualOccurredAt)) {
+      return { ok: false, kind: "reject", message: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client.from("tour_appointments") as any).update({
       status: "completed",
@@ -264,6 +289,9 @@ export async function applyLeadTourWrite(
 
   if (decision.action === "actual_only") {
     const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    if (actualOccurrenceIsFuture(actualOccurredAt)) {
+      return { ok: false, kind: "reject", message: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client.from("tour_appointments") as any).update({
       actual_occurred_at: actualOccurredAt,
@@ -275,6 +303,9 @@ export async function applyLeadTourWrite(
 
   if (decision.action === "walk_in") {
     const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    if (actualOccurrenceIsFuture(actualOccurredAt)) {
+      return { ok: false, kind: "reject", message: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+    }
     // Walk-in MUST create a NEW row and never update an existing scheduled/confirmed appointment.
     const { error } = await client.from("tour_appointments").insert({
       venue_id: venueId,

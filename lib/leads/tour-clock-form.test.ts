@@ -88,7 +88,23 @@ describe("createInitialRelationshipInput — three clocks", () => {
     }));
     assert.equal(input.tourDate, "2026-10-11");
     assert.equal(input.tourCompleted, false);
-    // Actual prepopulates from scheduled for the form default only when completed later.
-    assert.equal(input.tourActualDate, "2026-10-11");
+    assert.equal(input.tourActualDate, "");
+    assert.equal(input.tourActualTime, "");
+  });
+
+  it("does not copy a future scheduled slot into actual when the tour is already marked complete without an occurrence", () => {
+    const input = createInitialRelationshipInput(lead({
+      tourDate: "2026-10-11",
+      tourTime: "14:00",
+      tourScheduledDate: "2026-10-11",
+      tourScheduledTime: "14:00",
+      tourActualDate: null,
+      tourActualTime: null,
+      tourCompleted: true,
+      tourCompletedAt: "2026-10-09T16:00:00.000Z",
+    }));
+    assert.equal(input.tourDate, "2026-10-11");
+    assert.equal(input.tourActualDate, "");
+    assert.equal(input.tourActualTime, "");
   });
 });

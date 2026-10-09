@@ -209,16 +209,10 @@ export function isDueToday(iso: string | null | undefined): boolean {
 export function createInitialRelationshipInput(lead?: Lead | null): RelationshipInput {
   const scheduledDate = lead?.tourScheduledDate ?? (!lead?.tourCompleted ? lead?.tourDate : null) ?? "";
   const scheduledTime = lead?.tourScheduledTime ?? (!lead?.tourCompleted ? lead?.tourTime : null) ?? "";
-  const actualDate =
-    lead?.tourActualDate
-    ?? (lead?.tourCompleted ? lead?.tourDate : null)
-    ?? scheduledDate
-    ?? "";
-  const actualTime =
-    lead?.tourActualTime
-    ?? (lead?.tourCompleted ? lead?.tourTime : null)
-    ?? scheduledTime
-    ?? "";
+  // Actual is a separate clock. Never copy the booked slot into it here —
+  // a future appointment must not look like it already occurred.
+  const actualDate = lead?.tourActualDate ?? "";
+  const actualTime = lead?.tourActualTime ?? "";
   return {
     nextActionText: lead?.nextActionText ?? "",
     nextActionDue: lead?.nextActionDue ?? "",

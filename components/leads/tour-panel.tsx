@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
 import { tourDisplayClockIso } from "@/lib/tours/list-order";
-import { tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
+import { prefillActualFromScheduled, tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -287,22 +287,37 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
   }
 
   function openComplete() {
-    const parts = appt.scheduledAt
-      ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
-      : appt.actualOccurredAt
-        ? utcToVenueLocalParts(appt.actualOccurredAt, venueTimezone)
-        : { date: "", time: "" };
-    setActualDate(parts.date);
-    setActualTime(parts.time);
+    const prefill = prefillActualFromScheduled({
+      scheduledAt: appt.scheduledAt,
+      timezone: venueTimezone,
+      utcToParts: utcToVenueLocalParts,
+    });
+    if (prefill.fromScheduled) {
+      setActualDate(prefill.date);
+      setActualTime(prefill.time);
+    } else if (appt.actualOccurredAt && !prefill.scheduledStillAhead) {
+      const parts = utcToVenueLocalParts(appt.actualOccurredAt, venueTimezone);
+      setActualDate(parts.date);
+      setActualTime(parts.time);
+    } else {
+      setActualDate("");
+      setActualTime("");
+    }
     setCompleteOpen(true);
   }
 
   async function confirmComplete() {
-    if (!actualDate.trim() || !actualTime.trim()) {
+    const hasDate = Boolean(actualDate.trim());
+    const hasTime = Boolean(actualTime.trim());
+    if (hasDate !== hasTime) {
       toast.error("Enter when the tour actually occurred.");
       return;
     }
-    await setStatus("completed", undefined, { actualDate, actualTime });
+    await setStatus(
+      "completed",
+      undefined,
+      hasDate ? { actualDate, actualTime } : undefined,
+    );
   }
 
   async function reviewConfirmationRequest() {
@@ -390,6 +405,9 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
             {scheduledDisplay ? (
               <p className="text-xs text-muted-foreground">
                 Scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}. Recording completion does not change that appointment.
+                {appt.scheduledAt && Date.parse(appt.scheduledAt) > Date.now()
+                  ? " That time is still ahead. Enter when it happened, or leave both fields empty if you don't know yet."
+                  : " The fields start from the scheduled time. Change them if it happened at a different time."}
               </p>
             ) : null}
             <div className="space-y-1">

@@ -39,6 +39,8 @@ export type LeadTourWriteDecision =
       actualTime: string;
       notes: string;
     }
+  | { action: "complete_without_actual"; appointmentId: string; notes: string }
+  | { action: "notes_only"; appointmentId: string; notes: string }
   | { action: "walk_in"; actualDate: string; actualTime: string; notes: string }
   | {
       action: "actual_only";
@@ -81,9 +83,19 @@ export function resolveLeadTourWrite(input: {
   const tourTime = input.tourTime.trim().slice(0, 5);
   const notes = input.tourNotes.trim();
   const existing = input.existing;
+  const explicitDate = (input.tourActualDate ?? "").trim();
+  const explicitTime = (input.tourActualTime ?? "").trim().slice(0, 5);
   const { actualDate, actualTime } = resolveActualOccurrenceClock(input);
 
   if (input.tourCompleted) {
+    // An occupying appointment's booked slot is not an occurrence. Completing
+    // it without an explicit actual time records completion only.
+    if (existing && isOccupyingStatus(existing.status) && !explicitDate && !explicitTime) {
+      return { action: "complete_without_actual", appointmentId: existing.id, notes };
+    }
+    if (existing && existing.status === "completed" && !explicitDate && !explicitTime) {
+      return { action: "notes_only", appointmentId: existing.id, notes };
+    }
     // Completing / editing actual uses the actual clock. An empty schedule
     // field is allowed when an occupying row already carries scheduled_at.
     if (!actualDate) {

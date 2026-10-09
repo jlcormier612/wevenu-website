@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  actualOccurrenceIsFuture,
   completedTourDisplayClockIso,
   completedTourHoursAgo,
+  prefillActualFromScheduled,
   tourActualDiffersFromScheduled,
   tourOccurrenceIso,
 } from "@/lib/tours/occurrence-clock";
@@ -170,5 +172,29 @@ describe("occurrence clock — Oct 11 scheduled / Oct 9 actual acceptance", () =
     assert.equal(row.completedAt, completedLater);
     assert.notEqual(row.scheduledAt, row.actualOccurredAt);
     assert.notEqual(row.actualOccurredAt, row.completedAt);
+  });
+
+  it("does not prefill a future scheduled slot as the actual occurrence", () => {
+    const now = Date.parse("2026-10-09T16:00:00.000Z");
+    const future = prefillActualFromScheduled({
+      scheduledAt: "2026-10-11T18:00:00.000Z",
+      timezone: "America/New_York",
+      nowMs: now,
+      utcToParts: () => ({ date: "2026-10-11", time: "14:00" }),
+    });
+    assert.equal(future.scheduledStillAhead, true);
+    assert.equal(future.fromScheduled, false);
+    assert.equal(future.date, "");
+    assert.equal(actualOccurrenceIsFuture("2026-10-11T18:00:00.000Z", now), true);
+
+    const past = prefillActualFromScheduled({
+      scheduledAt: "2026-10-08T18:00:00.000Z",
+      timezone: "America/New_York",
+      nowMs: now,
+      utcToParts: () => ({ date: "2026-10-08", time: "14:00" }),
+    });
+    assert.equal(past.fromScheduled, true);
+    assert.equal(past.date, "2026-10-08");
+    assert.equal(past.time, "14:00");
   });
 });

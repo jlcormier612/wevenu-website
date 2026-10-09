@@ -22,7 +22,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { canHardDeleteTourAppointment } from "@/lib/tours/delete-guard";
 import { tourDisplayClockIso } from "@/lib/tours/list-order";
-import { tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
+import { prefillActualFromScheduled, tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
 import type { TourAppointment, TourOutcome } from "@/lib/tours/types";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 import {
@@ -152,13 +152,18 @@ function TourRow({
 
   async function handleStatus(newStatus: string) {
     if (newStatus === "completed" && appt.status !== "completed") {
-      const parts = appt.scheduledAt
-        ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
-        : appt.actualOccurredAt
-          ? utcToVenueLocalParts(appt.actualOccurredAt, venueTimezone)
-          : { date: "", time: "" };
-      setActualDate(parts.date);
-      setActualTime(parts.time);
+      const prefill = prefillActualFromScheduled({
+        scheduledAt: appt.scheduledAt,
+        timezone: venueTimezone,
+        utcToParts: utcToVenueLocalParts,
+      });
+      if (prefill.fromScheduled) {
+        setActualDate(prefill.date);
+        setActualTime(prefill.time);
+      } else {
+        setActualDate("");
+        setActualTime("");
+      }
       setCompleteOpen(true);
       return;
     }
@@ -166,11 +171,13 @@ function TourRow({
   }
 
   async function confirmComplete() {
-    if (!actualDate.trim() || !actualTime.trim()) {
+    const hasDate = Boolean(actualDate.trim());
+    const hasTime = Boolean(actualTime.trim());
+    if (hasDate !== hasTime) {
       toast.error("Enter when the tour actually occurred.");
       return;
     }
-    await patchStatus("completed", { actualDate, actualTime });
+    await patchStatus("completed", hasDate ? { actualDate, actualTime } : undefined);
   }
 
   // Confirmed is reached only through an explicit action (Send Confirmation
@@ -383,6 +390,9 @@ function TourRow({
           {appt.scheduledAt && scheduledAside ? (
             <p className="text-xs text-muted-foreground">
               Scheduled {scheduledAside.dateLabel} · {scheduledAside.timeLabel}. Recording completion does not change that appointment.
+              {appt.scheduledAt && Date.parse(appt.scheduledAt) > Date.now()
+                ? " That time is still ahead. Enter when it happened, or leave both fields empty if you don't know yet."
+                : " The fields start from the scheduled time. Change them if it happened at a different time."}
             </p>
           ) : null}
           <div className="space-y-1">

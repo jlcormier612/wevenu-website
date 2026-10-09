@@ -34,6 +34,39 @@ export function completedTourHoursAgo(occurrenceIso: string, nowMs = Date.now())
   return Math.max(0, Math.round((nowMs - ms) / 3_600_000));
 }
 
+/** Two minutes of clock skew before an occurrence is treated as still in the future. */
+const FUTURE_SKEW_MS = 120_000;
+
+export const FUTURE_ACTUAL_OCCURRENCE_MESSAGE =
+  "The actual occurrence time can’t be in the future. Enter when it happened.";
+
+export function actualOccurrenceIsFuture(iso: string, nowMs = Date.now()): boolean {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return false;
+  return ms > nowMs + FUTURE_SKEW_MS;
+}
+
+/**
+ * Prefill actual date/time from the booked slot only when that slot is not
+ * still ahead. A future scheduled time is not evidence the tour occurred.
+ */
+export function prefillActualFromScheduled(args: {
+  scheduledAt: string | null;
+  timezone: string | null;
+  nowMs?: number;
+  utcToParts: (iso: string, timezone: string | null) => { date: string; time: string };
+}): { date: string; time: string; fromScheduled: boolean; scheduledStillAhead: boolean } {
+  const nowMs = args.nowMs ?? Date.now();
+  if (!args.scheduledAt) {
+    return { date: "", time: "", fromScheduled: false, scheduledStillAhead: false };
+  }
+  if (actualOccurrenceIsFuture(args.scheduledAt, nowMs)) {
+    return { date: "", time: "", fromScheduled: false, scheduledStillAhead: true };
+  }
+  const parts = args.utcToParts(args.scheduledAt, args.timezone);
+  return { date: parts.date, time: parts.time, fromScheduled: true, scheduledStillAhead: false };
+}
+
 export function completedTourDisplayClockIso(tour: {
   status: string;
   origin?: string | null;
