@@ -43,7 +43,7 @@ function contract(overrides: Partial<Contract> = {}): Contract {
 }
 
 describe("contract list filters — venue action required", () => {
-  it("All is first; Action Required is second; default selection stays Action Required", () => {
+  it("All is first; Action Required is second; a fresh load selects All", () => {
     assert.deepEqual(
       CONTRACT_LIST_FILTERS.map((f) => f.value),
       [
@@ -59,14 +59,42 @@ describe("contract list filters — venue action required", () => {
     );
     assert.equal(CONTRACT_LIST_FILTERS[0]?.label, "All");
     assert.equal(CONTRACT_LIST_FILTERS[1]?.label, "Action Required");
-    assert.equal(DEFAULT_CONTRACT_LIST_FILTER, "action_required");
-    assert.equal(parseContractListFilter(undefined), "action_required");
+    assert.equal(DEFAULT_CONTRACT_LIST_FILTER, "all");
+    assert.equal(parseContractListFilter(undefined), "all");
+    assert.equal(parseContractListFilter(""), "all");
   });
 
-  it("defaults to Action Required", () => {
-    assert.equal(parseContractListFilter(undefined), "action_required");
-    assert.equal(parseContractListFilter("nope"), "action_required");
+  it("preserves an explicit URL filter and falls back to All", () => {
+    assert.equal(parseContractListFilter("action_required"), "action_required");
+    assert.equal(parseContractListFilter("draft"), "draft");
+    assert.equal(parseContractListFilter("fully_signed"), "fully_signed");
+    assert.equal(parseContractListFilter("nope"), "all");
     assert.equal(parseContractListFilter("sent_to_client"), "sent_to_client");
+  });
+
+  it("All includes every status, and search still narrows that set", () => {
+    const rows = [
+      contract({ id: "d", status: "draft", title: "Draft Rental", clientName: "Ada" }),
+      contract({
+        id: "stc",
+        status: "sent",
+        title: "Sent Rental",
+        clientName: "Bea",
+        requiredClientSigned: 0,
+      }),
+      contract({ id: "fe", status: "signed", title: "Signed Rental", clientName: "Ada", venueSigned: true, requiredClientSigned: 1 }),
+      contract({ id: "x", status: "cancelled", title: "Cancelled Rental", clientName: "Cy" }),
+      contract({ id: "e", status: "expired", title: "Expired Rental", clientName: "Ada" }),
+    ];
+    assert.equal(rows.filter((row) => contractMatchesListFilter(row, "all")).length, rows.length);
+    const searched = rows.filter(
+      (row) => contractMatchesListFilter(row, "all") && contractMatchesWorkflowSearch(row, "Ada"),
+    );
+    assert.deepEqual(searched.map((row) => row.id), ["d", "fe", "e"]);
+    assert.equal(
+      rows.filter((row) => contractMatchesListFilter(row, "cancelled") && contractMatchesWorkflowSearch(row, "Ada")).length,
+      0,
+    );
   });
 
   it("counts only Draft and Awaiting Venue Signature", () => {

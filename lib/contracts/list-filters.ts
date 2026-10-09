@@ -51,7 +51,7 @@ export type ContractListFilterKey =
 
 /**
  * Order is product-locked to match Payments: All first, then Action Required,
- * then lifecycle statuses. Default selection remains Action Required.
+ * then lifecycle statuses.
  */
 export const CONTRACT_LIST_FILTERS: { value: ContractListFilterKey; label: string }[] = [
   { value: "all", label: "All" },
@@ -64,7 +64,8 @@ export const CONTRACT_LIST_FILTERS: { value: ContractListFilterKey; label: strin
   { value: "expired", label: "Expired" },
 ];
 
-export const DEFAULT_CONTRACT_LIST_FILTER: ContractListFilterKey = "action_required";
+/** Default: All — every status stays visible until a filter is chosen. */
+export const DEFAULT_CONTRACT_LIST_FILTER: ContractListFilterKey = "all";
 
 export function contractSigningFilterKey(c: Contract): Exclude<ContractListFilterKey, "action_required" | "all"> {
   if (c.status === "cancelled") return "cancelled";
