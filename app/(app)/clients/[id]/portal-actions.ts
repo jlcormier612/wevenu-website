@@ -18,6 +18,7 @@ export async function inviteClientAction(
   const result = await inviteClient(clientId, email, coupleName);
   if (result.ok) {
     revalidatePath(`/clients/${clientId}`);
+    revalidatePath(`/clients/${clientId}/booked`);
     revalidatePath("/clients");
   }
   return result;

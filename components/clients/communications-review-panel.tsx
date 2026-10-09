@@ -1,5 +1,12 @@
-import Link from "next/link";
+"use client";
 
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+import { inviteClientAction } from "@/app/(app)/clients/[id]/portal-actions";
+import { Button } from "@/components/ui/button";
 import { isBookingWorkspaceHref } from "@/lib/clients/booking-handoff";
 import type { CommunicationsReviewModel } from "@/lib/clients/communications-review";
 
@@ -8,6 +15,23 @@ export function CommunicationsReviewPanel({
 }: {
   communications: CommunicationsReviewModel;
 }) {
+  const router = useRouter();
+  const [invitePending, startInvite] = React.useTransition();
+  const invite = communications.invite;
+
+  function onInviteClient() {
+    if (!invite.canInvite || !invite.email || invitePending) return;
+    startInvite(async () => {
+      const result = await inviteClientAction(invite.clientId, invite.email!, invite.coupleName);
+      if (!result.ok) {
+        toast.error(result.error ?? "Could not send the invitation.");
+        return;
+      }
+      toast.success("Invitation sent.");
+      router.refresh();
+    });
+  }
+
   return (
     <div
       id="communications"
@@ -39,8 +63,24 @@ export function CommunicationsReviewPanel({
                 {row.label}
               </p>
               <p className="text-xs text-muted-foreground">{row.detail}</p>
+              {row.key === "invitation" && invite.disabledReason && !invite.canInvite && !row.onFile ? (
+                <p className="mt-1 text-xs" style={{ color: "#5A3235" }}>
+                  {invite.disabledReason}
+                </p>
+              ) : null}
             </div>
-            {isBookingWorkspaceHref(row.href) ? null : (
+            {row.key === "invitation" && invite.canInvite ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={invitePending}
+                onClick={onInviteClient}
+                className="shrink-0"
+              >
+                {invitePending ? "Sending…" : "Invite client"}
+              </Button>
+            ) : isBookingWorkspaceHref(row.href) ? null : (
               <Link
                 href={row.href}
                 className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"

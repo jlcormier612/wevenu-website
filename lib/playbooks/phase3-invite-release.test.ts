@@ -88,15 +88,18 @@ describe("Phase 3 invite-at-release seams", () => {
     assert.match(sheet, /applyPlaybookAction/);
   });
 
-  it("Prepare Their Event invitation copy uses the live record and invite-at-release timing", () => {
+  it("Prepare Their Event invitation copy uses the live record and Invite client eligibility", () => {
     const withEmail = buildCommunicationsReview({
       clientId: "c1",
       invitation: null,
       clientHasEmail: true,
+      email: "c1@example.test",
+      coupleName: "C1",
       automations: [],
-    }).rows.find((i) => i.key === "invitation");
-    assert.equal(withEmail?.detail, "Not sent — the client will be invited when you release their planning.");
-    assert.equal(withEmail?.onFile, false);
+    });
+    assert.match(withEmail.rows.find((i) => i.key === "invitation")?.detail ?? "", /invite them when you're ready/i);
+    assert.equal(withEmail.rows.find((i) => i.key === "invitation")?.onFile, false);
+    assert.equal(withEmail.invite.canInvite, true);
 
     const noEmail = buildCommunicationsReview({
       clientId: "c1",
@@ -110,9 +113,11 @@ describe("Phase 3 invite-at-release seams", () => {
       clientId: "c1",
       invitation: { status: "pending" },
       clientHasEmail: true,
+      email: "c1@example.test",
       automations: [],
-    }).rows.find((i) => i.key === "invitation");
-    assert.equal(sent?.detail, "Invitation sent");
+    });
+    assert.equal(sent.rows.find((i) => i.key === "invitation")?.detail, "Invitation sent");
+    assert.equal(sent.invite.canInvite, false);
 
     const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
     assert.match(page, /getClientInvitation/);

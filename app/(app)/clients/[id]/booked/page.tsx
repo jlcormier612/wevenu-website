@@ -93,6 +93,13 @@ export default async function BookedPage({ params, searchParams }: Props) {
     clientId: client.id,
     invitation: invitation ? { status: invitation.status } : null,
     clientHasEmail: Boolean(client.email?.trim()),
+    email: client.email,
+    coupleName: clientDisplayName(
+      client.firstName,
+      client.lastName,
+      client.partnerFirstName,
+      client.partnerLastName,
+    ),
     automations: automations.map((a) => ({
       id: a.id,
       name: a.name,

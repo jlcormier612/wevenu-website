@@ -15,7 +15,7 @@ function baseInput(overrides: Partial<Parameters<typeof buildBookingHandoff>[0]>
     playbookApplications: [],
     financialSummary: "Nothing on file yet. Contract and payment plan are optional.",
     communicationsSummary:
-      "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically when Booked.",
+      "Not sent — invite them when you're ready, or they'll be invited when you release Client Planning. Nothing is scheduled to send automatically when Booked.",
     experienceSummary: "Your client's experience is set up for a wedding.",
     ...overrides,
   };
@@ -32,7 +32,7 @@ describe("buildBookingHandoff", () => {
     assert.equal(model.prepareHeading, "Prepare Their Event");
     const communications = model.items.find((i) => i.key === "communications");
     assert.equal(communications?.complete, false);
-    assert.match(communications?.detail ?? "", /will be invited when you release their planning/);
+    assert.match(communications?.detail ?? "", /invite them when you're ready|release Client Planning/i);
     const clientPlanning = model.items.find((i) => i.key === "client_planning");
     assert.equal(clientPlanning?.complete, false);
     assert.equal(clientPlanning?.detail, "Not configured");
@@ -50,9 +50,9 @@ describe("buildBookingHandoff", () => {
 
   it("represents invitation state truthfully on the Communications row", () => {
     const pending = buildBookingHandoff(baseInput({
-      communicationsSummary: "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically when Booked.",
+      communicationsSummary: "Not sent — invite them when you're ready, or they'll be invited when you release Client Planning. Nothing is scheduled to send automatically when Booked.",
     }));
-    assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /will be invited when you release their planning/);
+    assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /invite them when you're ready/i);
     assert.equal(pending.items.find((i) => i.key === "communications")?.complete, false);
 
     const noEmail = buildBookingHandoff(baseInput({
@@ -145,7 +145,7 @@ describe("post-booking workspace links", () => {
 });
 
 describe("booked-event summary after the booking transition", () => {
-  it("renders a compact left-aligned hierarchy and human space labels", () => {
+  it("renders a balanced fact grid with human space labels", () => {
     const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
     const start = detail.indexOf("function EventHeroCard");
     const end = detail.indexOf("// ---- Coming Soon", start);
@@ -159,6 +159,8 @@ describe("booked-event summary after the booking transition", () => {
     assert.match(hero, /<dt[^>]*>Guests<\/dt>/);
     assert.match(hero, /<dt[^>]*>Spaces<\/dt>/);
     assert.match(hero, /sm:grid-cols-2/);
+    assert.match(hero, /lg:grid-cols-3/);
+    assert.match(hero, /parseSpaceLines/);
     assert.match(hero, /weekday: "long"/);
     const uses = readFileSync(resolve("lib/venue-spaces/uses.ts"), "utf8");
     assert.match(uses, /A stored label that is only the internal key is not a customer-facing name/);
