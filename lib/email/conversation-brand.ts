@@ -41,11 +41,19 @@ export function isQuestionnaireFormUrl(href: string): boolean {
   }
 }
 
-function emailCtaHtml(safeHref: string, label: string, btnColor: string): string {
-  return (
+function emailCtaHtml(
+  safeHref: string,
+  label: string,
+  btnColor: string,
+  options?: { showRawUrl?: boolean },
+): string {
+  const button =
     `<a href="${safeHref}" style="background:${btnColor};color:#fff;padding:12px 20px;border-radius:8px;` +
     `text-decoration:none;display:inline-block;font-weight:600;font-size:16px;line-height:1.25;margin:4px 0;">` +
-    `${escapeHtml(label)}</a>` +
+    `${escapeHtml(label)}</a>`;
+  if (options?.showRawUrl === false) return button;
+  return (
+    `${button}` +
     `<br><span style="font-size:12px;color:#6b7280;word-break:break-all">${safeHref}</span>`
   );
 }
@@ -77,7 +85,11 @@ export function linkifyPlainTextForEmailHtml(
       if (isProposalOfferUrl(href)) {
         out += emailCtaHtml(safeHref, "View your proposal", btnColor);
       } else if (isQuestionnaireFormUrl(href)) {
-        out += emailCtaHtml(safeHref, QUESTIONNAIRE_CTA_LABEL, btnColor);
+        // Button is the only visible questionnaire CTA in HTML; plain-text
+        // email bodies still carry the raw URL for clients without HTML.
+        out += emailCtaHtml(safeHref, QUESTIONNAIRE_CTA_LABEL, btnColor, {
+          showRawUrl: false,
+        });
       } else {
         out +=
           `<a href="${safeHref}" style="color:${btnColor};text-decoration:underline;word-break:break-all">` +

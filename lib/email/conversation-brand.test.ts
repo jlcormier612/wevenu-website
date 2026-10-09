@@ -76,7 +76,7 @@ describe("questionnaire email CTA", () => {
     assert.equal(isQuestionnaireFormUrl(PROPOSAL_URL), false);
   });
 
-  it("renders Complete Your Questionnaire with the access URL and a plain-link fallback", () => {
+  it("renders exactly one Complete Your Questionnaire button with no separate visible raw URL", () => {
     const text = [
       "Hi Avery,",
       "",
@@ -92,15 +92,27 @@ describe("questionnaire email CTA", () => {
       emailBrandFromVenue({ name: "Jen's Fancy Venue", primaryColor: "#5D6F5D" }),
       text,
     );
-    const button = html.match(
-      new RegExp(`<a href="([^"]+)"[^>]*>${QUESTIONNAIRE_CTA_LABEL}</a>`),
+    const buttons = [
+      ...html.matchAll(
+        new RegExp(`<a href="([^"]+)"[^>]*>${QUESTIONNAIRE_CTA_LABEL}</a>`, "g"),
+      ),
+    ];
+    assert.equal(buttons.length, 1);
+    assert.equal(buttons[0]![1], QUESTIONNAIRE_URL);
+    // href attribute only — no separate visible raw-URL span/text under the button
+    assert.doesNotMatch(
+      html,
+      /Complete Your Questionnaire<\/a>\s*<br><span[^>]*>https?:\/\//i,
     );
-    assert.ok(button);
-    assert.equal(button![1], QUESTIONNAIRE_URL);
-    assert.match(html, new RegExp(QUESTIONNAIRE_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    const visibleBody = html
+      .replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, "")
+      .replace(/<[^>]+>/g, " ");
+    assert.doesNotMatch(visibleBody, /\/questionnaire\/[A-Za-z0-9_-]+/);
     assert.match(html, /Jen&#39;s Fancy Venue|Jen's Fancy Venue/);
     assert.match(html, /Avery/);
     assert.doesNotMatch(html, /href="javascript:/i);
     assert.equal(QUESTIONNAIRE_CTA_LABEL, "Complete Your Questionnaire");
+    // Plain-text body (caller keeps text field) still carries the destination URL.
+    assert.match(text, new RegExp(QUESTIONNAIRE_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   });
 });
