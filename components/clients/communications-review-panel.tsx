@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { inviteClientAction } from "@/app/(app)/clients/[id]/portal-actions";
@@ -15,20 +14,20 @@ export function CommunicationsReviewPanel({
 }: {
   communications: CommunicationsReviewModel;
 }) {
-  const router = useRouter();
   const [invitePending, startInvite] = React.useTransition();
+  const [sentNow, setSentNow] = React.useState(false);
   const invite = communications.invite;
 
   function onInviteClient() {
-    if (!invite.canInvite || !invite.email || invitePending) return;
+    if (!invite.canInvite || !invite.email || invitePending || sentNow) return;
     startInvite(async () => {
       const result = await inviteClientAction(invite.clientId, invite.email!, invite.coupleName);
       if (!result.ok) {
         toast.error(result.error ?? "Could not send the invitation.");
         return;
       }
+      setSentNow(true);
       toast.success("Invitation sent.");
-      router.refresh();
     });
   }
 
@@ -51,25 +50,27 @@ export function CommunicationsReviewPanel({
             <span
               className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
               style={
-                row.onFile
+                row.onFile || (row.key === "invitation" && sentNow)
                   ? { background: "#D8A7AA20", color: "#5A3235" }
                   : { background: "transparent", color: "#9ca3af" }
               }
             >
-              {row.onFile ? "✓" : "○"}
+              {row.onFile || (row.key === "invitation" && sentNow) ? "✓" : "○"}
             </span>
             <div className="min-w-0 flex-1">
-              <p style={{ color: row.onFile || row.needsAttention ? "#3D2F30" : "#9ca3af" }}>
+              <p style={{ color: row.onFile || row.needsAttention || (row.key === "invitation" && sentNow) ? "#3D2F30" : "#9ca3af" }}>
                 {row.label}
               </p>
-              <p className="text-xs text-muted-foreground">{row.detail}</p>
+              <p className="text-xs text-muted-foreground">
+                {row.key === "invitation" && sentNow ? "Invitation sent" : row.detail}
+              </p>
               {row.key === "invitation" && invite.disabledReason && !invite.canInvite && !row.onFile ? (
                 <p className="mt-1 text-xs" style={{ color: "#5A3235" }}>
                   {invite.disabledReason}
                 </p>
               ) : null}
             </div>
-            {row.key === "invitation" && invite.canInvite ? (
+            {row.key === "invitation" && invite.canInvite && !sentNow ? (
               <Button
                 type="button"
                 size="sm"

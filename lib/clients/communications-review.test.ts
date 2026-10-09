@@ -179,6 +179,8 @@ describe("buildCommunicationsReview", () => {
     assert.match(panel, /Invite client/);
     assert.match(panel, /inviteClientAction/);
     assert.match(panel, /invitePending/);
+    assert.match(panel, /setSentNow\(true\)/);
+    assert.doesNotMatch(panel, /router\.refresh\(\)/);
     assert.doesNotMatch(panel, /useEffect\([\s\S]*inviteClientAction/);
   });
 });
