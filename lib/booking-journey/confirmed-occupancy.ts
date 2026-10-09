@@ -13,6 +13,8 @@ export type ConfirmedBookingOccupancy = {
   endTime: string | null;
   spaceId: string | null;
   assignments: EventSpaceAssignmentInput[];
+  /** This lead's active hold dates when confirmation opened. Not another lead's holds. */
+  sourceHoldDates?: string[];
 };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

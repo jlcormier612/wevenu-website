@@ -83,6 +83,8 @@ describe("confirmed booking occupancy", () => {
     assert.match(dialog, /data-testid="booking-confirm-start"/);
     assert.match(dialog, /data-testid="booking-confirm-end"/);
     assert.match(dialog, /missingRequiredSpace/);
+    assert.match(dialog, /excludeLeadId=\{draft\.leadId/);
+    assert.match(dialog, /sourceHoldDates/);
   });
 
   it("passes the submitted occupancy into the one booking transaction", () => {

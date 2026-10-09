@@ -138,6 +138,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         currentStaffId: currentStaff?.id ?? null,
         venueTimezone: venue?.timezone ?? null,
         spaceOperatingMode: venue?.spaceOperatingMode ?? "single",
+        holdBlocksAvailability: venue?.holdBlocksAvailability !== false,
         spacePreferences,
         spaceAssignments,
       };
@@ -196,6 +197,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       contextualObservations={page.contextualObservations}
       followUpDraftEligible={page.followUpDraftEligible}
       spaceOperatingMode={page.spaceOperatingMode}
+      holdBlocksAvailability={page.holdBlocksAvailability}
       spacePreferences={page.spacePreferences}
       spaceAssignments={page.spaceAssignments}
       openSetupPayments={setupPayments === "1"}

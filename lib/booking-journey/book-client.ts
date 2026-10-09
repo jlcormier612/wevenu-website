@@ -118,6 +118,7 @@ export async function bookClient(
             useLabel: row.useLabel,
             spaceId: row.spaceId,
           })),
+          sourceHoldDates: (confirmed.sourceHoldDates ?? []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)),
         }
       : null,
   });

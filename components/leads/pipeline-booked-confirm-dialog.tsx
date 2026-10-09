@@ -44,6 +44,7 @@ export function PipelineBookedConfirmDialog({
   const [spaceId, setSpaceId] = React.useState("");
   const [assignments, setAssignments] = React.useState<EventSpaceAssignmentInput[]>([]);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [availabilityBlocked, setAvailabilityBlocked] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -63,6 +64,7 @@ export function PipelineBookedConfirmDialog({
     setSpaceId(draft.spaceId);
     setAssignments(draft.assignments);
     setFormError(null);
+    setAvailabilityBlocked(false);
   }, [open, draft]);
 
   if (!open) return null;
@@ -92,7 +94,8 @@ export function PipelineBookedConfirmDialog({
       return;
     }
     setFormError(null);
-    onConfirm(occupancy);
+    if (availabilityBlocked) return;
+    onConfirm({ ...occupancy, sourceHoldDates: draft.sourceHoldDates });
   }
 
   const chosenSpace = showAssignments
@@ -123,8 +126,23 @@ export function PipelineBookedConfirmDialog({
         </h2>
         <div id="pipeline-booked-desc" className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground">
           <p>
-            Confirm the final date, space, and times. These become the booked event. A hold does not book the date by itself.
+            Confirm the final event dates, spaces, and times. These will become the booked event and determine availability according to your venue&apos;s booking rules.
           </p>
+          {draft?.hasOwnActiveHold ? (
+            <p>
+              This lead already has a hold. Confirming establishes the booking from the dates, spaces, and times shown here. That hold is not a conflict with someone else.
+            </p>
+          ) : null}
+          {draft && !draft.holdBlocksAvailability ? (
+            <p>
+              Holds do not reserve availability under your current settings. A confirmed booking will affect availability according to your booking rules.
+            </p>
+          ) : null}
+          {draft?.holdBlocksAvailability && draft.hasOwnActiveHold ? (
+            <p>
+              Holds can make availability unavailable to other bookings. This lead&apos;s own hold is handled as part of converting them to a booking.
+            </p>
+          ) : null}
         </div>
 
         {loadError && <p className="mt-3 text-sm text-destructive">{loadError}</p>}
@@ -203,6 +221,9 @@ export function PipelineBookedConfirmDialog({
                 endTime={endTime || undefined}
                 spaceId={(showAssignments ? occupancySpace(assignments, experience.isWeddingSpecific) : spaceId) || undefined}
                 type="event"
+                purpose="booking"
+                excludeLeadId={draft.leadId ?? undefined}
+                onStatusChange={setAvailabilityBlocked}
               />
             )}
             {formError && <p className="text-sm text-destructive">{formError}</p>}
@@ -217,7 +238,7 @@ export function PipelineBookedConfirmDialog({
             type="button"
             variant="default"
             data-testid="booking-confirm-submit"
-            disabled={confirming || blocked || !eventDate.trim() || missingRequiredSpace}
+            disabled={confirming || blocked || availabilityBlocked || !eventDate.trim() || missingRequiredSpace}
             onClick={submit}
           >
             {confirming ? "Booking…" : "Mark as Booked"}

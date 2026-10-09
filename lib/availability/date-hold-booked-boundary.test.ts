@@ -76,6 +76,15 @@ describe("date hold lifecycle — Booked consumes own hold", () => {
     assert.match(enforce, /hold_blocks/);
   });
 
+  it("confirmation also converts this lead's source hold dates without touching another lead", () => {
+    const latest = read("supabase/migrations/20261414100000_book_relationship_source_hold_dates.sql");
+    const fn = latest.slice(latest.indexOf("create or replace function public.book_relationship"));
+    assert.match(fn, /sourceHoldDates/);
+    assert.match(fn, /lead_id = v_lead_id/);
+    assert.match(fn, /hold_date >= v_event_date/);
+    assert.doesNotMatch(fn, /set status = 'converted'[\s\S]{0,120}lead_id is null/);
+  });
+
   it("does not bulk-restore historical converted holds", () => {
     assert.doesNotMatch(
       bookSql,

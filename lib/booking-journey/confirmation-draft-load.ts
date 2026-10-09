@@ -22,6 +22,7 @@ async function venueContext(): Promise<
       spaces: BookingConfirmationDraft["spaces"];
       maxSimultaneousEvents: number;
       spaceOperatingMode: "single" | "multi";
+      holdBlocksAvailability: boolean;
     }
 > {
   const venue = await getCurrentVenue();
@@ -35,9 +36,9 @@ async function venueContext(): Promise<
     .maybeSingle<{ max_simultaneous_events: number | null }>();
   const { data: modeRow } = await supabase
     .from("venues")
-    .select("space_operating_mode")
+    .select("space_operating_mode, hold_blocks_availability")
     .eq("id", venue.id)
-    .maybeSingle<{ space_operating_mode: string | null }>();
+    .maybeSingle<{ space_operating_mode: string | null; hold_blocks_availability: boolean | null }>();
   return {
     ok: true,
     supabase,
@@ -47,6 +48,7 @@ async function venueContext(): Promise<
       maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1,
     }),
     spaceOperatingMode: modeRow?.space_operating_mode === "multi" ? "multi" : "single",
+    holdBlocksAvailability: modeRow?.hold_blocks_availability !== false,
   };
 }
 
@@ -258,6 +260,10 @@ async function finishDraft(
       spaces: ctx.spaces,
       maxSimultaneousEvents: ctx.maxSimultaneousEvents,
       spaceOperatingMode: ctx.spaceOperatingMode,
+      leadId: row.leadId,
+      holdBlocksAvailability: ctx.holdBlocksAvailability,
+      hasOwnActiveHold: holds.length > 0,
+      sourceHoldDates: [...new Set(holds.map((hold) => hold.hold_date).filter(Boolean))],
     },
   };
 }

@@ -20,6 +20,14 @@ export type BookingConfirmationDraft = {
   spaces: VenueSpace[];
   maxSimultaneousEvents: number;
   spaceOperatingMode: "single" | "multi";
+  /** Lead being booked. Own holds are excluded from the conflict check by this id. */
+  leadId: string | null;
+  /** venues.hold_blocks_availability. Default true matches the column default. */
+  holdBlocksAvailability: boolean;
+  /** This lead has at least one active hold. Used for confirmation copy, not as a conflict. */
+  hasOwnActiveHold: boolean;
+  /** Active hold dates for this lead at the moment the draft was built. */
+  sourceHoldDates: string[];
 };
 
 function hhmm(value: string | null | undefined): string {
@@ -35,7 +43,7 @@ export function prefillBookingConfirmation(input: {
   holds?: Array<Pick<DateHold, "status" | "holdDate" | "startTime" | "endTime" | "spaceId" | "spaceIds">>;
   preferences?: LeadEventSpacePreference[];
   assignments?: EventSpaceAssignmentInput[];
-}): Omit<BookingConfirmationDraft, "spaces" | "maxSimultaneousEvents" | "spaceOperatingMode"> {
+}): Omit<BookingConfirmationDraft, "spaces" | "maxSimultaneousEvents" | "spaceOperatingMode" | "leadId" | "holdBlocksAvailability" | "hasOwnActiveHold" | "sourceHoldDates"> {
   const activeHolds = (input.holds ?? []).filter((hold) => hold.status === "active");
   const eventDate = input.eventDate?.trim()
     || activeHolds.find((hold) => hold.holdDate)?.holdDate

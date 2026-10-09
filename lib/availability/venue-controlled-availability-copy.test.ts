@@ -48,8 +48,10 @@ describe("Venue-controlled availability education copy", () => {
     assert.match(bookedDialog, /You&apos;re booking this date\./);
     assert.match(
       bookedDialog,
-      /Moving this relationship to Booked will protect the event date from conflicting bookings\./,
+      /Confirm the final event dates, spaces, and times\. These will become the booked event and determine availability according to your venue&apos;s booking rules\./,
     );
+    assert.match(bookedDialog, /excludeLeadId=\{draft\.leadId/);
+    assert.match(bookedDialog, /availabilityBlocked/);
     assert.doesNotMatch(bookedDialog, /Mark this client as booked/);
     assert.doesNotMatch(bookedDialog, /advisory lock|booked_at|database transaction/i);
   });
