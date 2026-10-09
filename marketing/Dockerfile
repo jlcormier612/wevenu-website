@@ -12,12 +12,13 @@
 # NEXT_PUBLIC_* values are baked into the client bundle at BUILD time - pass
 # real values via --build-arg in the deploy pipeline's image build step.
 
-FROM node:22-alpine AS deps
+# Official Node via AWS Public ECR (same library tag as Docker Hub).
+FROM public.ecr.aws/docker/library/node:22-alpine AS deps
 WORKDIR /repo/marketing
 COPY marketing/package.json marketing/package-lock.json ./
 RUN npm ci
 
-FROM node:22-alpine AS builder
+FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 WORKDIR /repo
 COPY --from=deps /repo/marketing/node_modules ./marketing/node_modules
 COPY shared ./shared
@@ -45,7 +46,7 @@ RUN npm run build
 # server.js + its own node_modules) - confirmed by inspecting the actual
 # build output, not assumed from Next.js docs alone. Copying the whole
 # standalone dir preserves that structure correctly.
-FROM node:22-alpine AS runner
+FROM public.ecr.aws/docker/library/node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001

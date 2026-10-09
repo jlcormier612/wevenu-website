@@ -15,12 +15,13 @@
 # (shared/relationships), not Postgres - run this service at desired
 # count = 1 in ECS, not autoscaled, per the approved deployment plan.
 
-FROM node:22-alpine AS deps
+# Official Node via AWS Public ECR (same library tag as Docker Hub).
+FROM public.ecr.aws/docker/library/node:22-alpine AS deps
 WORKDIR /repo/workspace
 COPY workspace/package.json workspace/package-lock.json ./
 RUN npm ci
 
-FROM node:22-alpine AS builder
+FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 WORKDIR /repo
 COPY --from=deps /repo/workspace/node_modules ./workspace/node_modules
 COPY shared ./shared
@@ -42,7 +43,7 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM public.ecr.aws/docker/library/node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001

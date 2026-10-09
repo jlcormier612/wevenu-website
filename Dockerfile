@@ -9,7 +9,9 @@
 # build step of the deploy pipeline. All other (server-only) env vars are
 # supplied at ECS task runtime via Secrets Manager/Parameter Store, not here.
 
-FROM node:22-alpine AS deps
+# Official Node image via AWS Public ECR (same library tag as Docker Hub).
+# Avoids anonymous Docker Hub 429s on CI runners; Node 22 Alpine unchanged.
+FROM public.ecr.aws/docker/library/node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY patches ./patches
@@ -17,7 +19,7 @@ COPY patches ./patches
 COPY scripts/copy-pdf-worker.mjs ./scripts/copy-pdf-worker.mjs
 RUN npm ci
 
-FROM node:22-alpine AS builder
+FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -61,7 +63,7 @@ RUN test -n "$NEXT_PUBLIC_SUPABASE_URL" \
       > .env.production
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM public.ecr.aws/docker/library/node:22-alpine AS runner
 WORKDIR /app
 ARG NEXT_DEPLOYMENT_ID
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NEXT_DEPLOYMENT_ID=$NEXT_DEPLOYMENT_ID
