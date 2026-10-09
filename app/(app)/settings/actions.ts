@@ -78,7 +78,9 @@ import type { StripePaymentMethodType } from "@/lib/venue/types";
 import {
   connectQuickBooksAccount,
   disconnectQuickBooksAccount,
+  listQuickBooksIncomeAccounts,
   retryQuickBooksSync,
+  selectQuickBooksIncomeAccount,
 } from "@/lib/quickbooks/service";
 import type { QuickBooksActionResult, QuickBooksEntityType } from "@/lib/quickbooks/types";
 
@@ -142,6 +144,17 @@ export async function disconnectQuickBooksAction(): Promise<QuickBooksActionResu
 
 export async function retryQuickBooksSyncAction(entityType: QuickBooksEntityType, entityId: string): Promise<QuickBooksActionResult> {
   const result = await retryQuickBooksSync(entityType, entityId);
+  revalidatePath("/settings/integrations");
+  return result;
+}
+
+/** Read-only — populates the income-account picker. Persists nothing. */
+export async function listQuickBooksIncomeAccountsAction() {
+  return listQuickBooksIncomeAccounts();
+}
+
+export async function selectQuickBooksIncomeAccountAction(accountId: string): Promise<QuickBooksActionResult> {
+  const result = await selectQuickBooksIncomeAccount(accountId);
   revalidatePath("/settings/integrations");
   return result;
 }

@@ -26,7 +26,7 @@ Supersedes `docs/quickbooks-integration-assessment.md`'s "large post-launch init
 | Token refresh | `lib/quickbooks/client.ts` | Proactive (2-min buffer) + lazy-on-401, no separate polling job |
 | Retry queue + processor | `lib/quickbooks/queue.ts`, `lib/quickbooks/processor.ts`, `lib/quickbooks/backoff.ts`, `app/api/quickbooks/sync/process/route.ts`, cron every 5 min | Atomic claim, connection circuit breaker, dependency ordering (Invoice waits on Customer; Payment/Refund wait on Invoice), exponential backoff to dead-letter (~1 day, 8 attempts) |
 | Customer sync | `lib/quickbooks/sync/customer.ts` | Idempotent on `DisplayName` query-before-create |
-| Invoice sync | `lib/quickbooks/sync/invoice.ts`, `lib/quickbooks/items.ts` | Idempotent on `DocNumber` = Wevenu's `invoice_number`; placeholder Item auto-created and cached per venue |
+| Invoice sync | `lib/quickbooks/sync/invoice.ts`, `lib/quickbooks/items.ts` | Idempotent on `DocNumber` = Wevenu's `invoice_number`; placeholder Item created and cached per venue — **requires the venue to pick an income account first** (corrected 2026-10-08, see `docs/quickbooks-online-architecture.md` §2; the Item create had never succeeded without one) |
 | Payment sync | `lib/quickbooks/sync/payment.ts` | Idempotent on a Wevenu ID embedded in QBO's `PrivateNote` field |
 | Refund sync | `lib/quickbooks/sync/refund.ts` | Pushed as a QBO RefundReceipt; same `PrivateNote` idempotency mechanism |
 | Sync status UI | `components/quickbooks/sync-status-badge.tsx`, wired into invoice detail and payment-line-item rows | Never shown for venues with no QuickBooks connection |

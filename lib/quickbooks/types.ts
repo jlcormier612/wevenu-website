@@ -11,6 +11,9 @@ export type QuickBooksConnection = {
   lastError: string | null;
   lastErrorAt: string | null;
   companyName: string | null;
+  /** The income account the venue chose for the default Service Item. Never auto-set. */
+  defaultIncomeAccountQuickBooksId: string | null;
+  defaultIncomeAccountName: string | null;
   connectedAt: string;
   disconnectedAt: string | null;
 };

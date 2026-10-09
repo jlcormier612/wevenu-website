@@ -22,6 +22,8 @@ type ConnectionRow = {
   last_health_check_at: string | null; last_health_check_ok: boolean | null;
   last_error: string | null; last_error_at: string | null;
   default_item_quickbooks_id: string | null;
+  default_income_account_quickbooks_id: string | null;
+  default_income_account_name: string | null;
   company_name: string | null;
   connected_at: string; disconnected_at: string | null;
 };
@@ -35,6 +37,7 @@ export type ConnectionWithTokens = {
   refreshTokenExpiresAt: string;
   status: QuickBooksConnectionStatus;
   defaultItemQuickBooksId: string | null;
+  defaultIncomeAccountQuickBooksId: string | null;
 };
 
 function mapConnection(r: ConnectionRow): QuickBooksConnection {
@@ -44,6 +47,8 @@ function mapConnection(r: ConnectionRow): QuickBooksConnection {
     lastHealthCheckAt: r.last_health_check_at, lastHealthCheckOk: r.last_health_check_ok,
     lastError: r.last_error, lastErrorAt: r.last_error_at,
     companyName: r.company_name,
+    defaultIncomeAccountQuickBooksId: r.default_income_account_quickbooks_id,
+    defaultIncomeAccountName: r.default_income_account_name,
     connectedAt: r.connected_at, disconnectedAt: r.disconnected_at,
   };
 }
@@ -54,6 +59,7 @@ function mapConnectionWithTokens(r: ConnectionRow): ConnectionWithTokens {
     accessToken: r.access_token, accessTokenExpiresAt: r.access_token_expires_at,
     refreshToken: r.refresh_token, refreshTokenExpiresAt: r.refresh_token_expires_at,
     status: r.status, defaultItemQuickBooksId: r.default_item_quickbooks_id,
+    defaultIncomeAccountQuickBooksId: r.default_income_account_quickbooks_id,
   };
 }
 
@@ -144,6 +150,25 @@ export async function recordHealthCheck(client: any, venueId: string, ok: boolea
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function setDefaultItemId(client: any, venueId: string, itemId: string): Promise<void> {
   const { error } = await client.from("quickbooks_connections").update({ default_item_quickbooks_id: itemId }).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Records the venue's explicit income-account choice. Scoped to the one
+ * connection row for this venue — a venue can never write another venue's
+ * selection. Writes only the two account columns, so an in-flight sync's
+ * token or item state is never disturbed by a settings change.
+ */
+export async function setDefaultIncomeAccount(
+  client: DbClient, venueId: string, account: { id: string; name: string },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("quickbooks_connections") as any)
+    .update({
+      default_income_account_quickbooks_id: account.id,
+      default_income_account_name: account.name,
+    })
+    .eq("venue_id", venueId);
   if (error) throw error;
 }
 

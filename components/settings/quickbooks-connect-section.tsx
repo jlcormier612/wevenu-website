@@ -6,7 +6,12 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-import { disconnectQuickBooksAction, retryQuickBooksSyncAction } from "@/app/(app)/settings/actions";
+import {
+  disconnectQuickBooksAction,
+  listQuickBooksIncomeAccountsAction,
+  retryQuickBooksSyncAction,
+  selectQuickBooksIncomeAccountAction,
+} from "@/app/(app)/settings/actions";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +22,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { SelectableIncomeAccount } from "@/lib/quickbooks/income-accounts";
 import type { QuickBooksConnection, QuickBooksEntityType } from "@/lib/quickbooks/types";
 import type { QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
 import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
@@ -32,6 +45,117 @@ const OUTCOME_BADGE: Record<QuickBooksSyncLogEntry["outcome"], { variant: "succe
   failed: { variant: "warning", label: "Retrying" },
   dead_lettered: { variant: "destructive", label: "Failed" },
 };
+
+/**
+ * QuickBooks refuses to create the default Service Item without an income
+ * account and offers no default of its own, so this choice is required
+ * before invoices or refunds can sync. Nothing is preselected — a wrong
+ * guess here would post a venue's event revenue to the wrong P&L line.
+ */
+function IncomeAccountPicker({ connection }: { connection: QuickBooksConnection }) {
+  const [accounts, setAccounts] = React.useState<SelectableIncomeAccount[] | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [choice, setChoice] = React.useState<string>("");
+  const [loading, setLoading] = React.useState(false);
+  const [saving, startSave] = React.useTransition();
+
+  const selectedId = connection.defaultIncomeAccountQuickBooksId;
+  const selectedName = connection.defaultIncomeAccountName;
+
+  function loadAccounts() {
+    setLoading(true);
+    setLoadError(null);
+    listQuickBooksIncomeAccountsAction().then((result) => {
+      setLoading(false);
+      if (!result.ok) {
+        setLoadError(result.message);
+        return;
+      }
+      setAccounts(result.accounts);
+      if (result.accounts.length === 0) {
+        setLoadError("QuickBooks returned no income accounts we can use. Add one in QuickBooks, then refresh this list.");
+      }
+    }).catch(() => {
+      // Without this the button spins forever on a dropped request and the
+      // venue is left with no way to retry and nothing explaining why.
+      setLoading(false);
+      setLoadError("We couldn't reach QuickBooks just now. Try again in a moment.");
+    });
+  }
+
+  function handleSave() {
+    if (!choice) return;
+    startSave(async () => {
+      try {
+        const result = await selectQuickBooksIncomeAccountAction(choice);
+        if (result.ok) toast.success("Income account saved.");
+        else toast.error(result.message ?? "Could not save that account.");
+      } catch {
+        toast.error("We couldn't save that account. Try again in a moment.");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border p-4">
+      <div className="space-y-0.5">
+        <p className="text-sm font-medium text-foreground">Income account</p>
+        <p className="text-xs text-muted-foreground">
+          Event revenue from Hello to Cheers invoices posts to this QuickBooks account.
+          We create one “Hello to Cheers Services” service item under it — QuickBooks
+          requires an account, and only you can say which one is right for your books.
+        </p>
+      </div>
+
+      {selectedId ? (
+        <div className="flex items-start gap-2 rounded-lg border border-success/25 bg-success/5 px-3 py-2">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+          <p className="text-xs text-foreground">
+            Using <span className="font-medium">{selectedName ?? `account ${selectedId}`}</span>.
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-start gap-2 rounded-lg border border-warning/25 bg-warning/5 px-3 py-2">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <p className="text-xs text-foreground">
+            No account chosen yet. Invoices and refunds will wait to sync until you pick one.
+          </p>
+        </div>
+      )}
+
+      {accounts === null ? (
+        <Button type="button" variant="outline" size="sm" onClick={loadAccounts} disabled={loading}>
+          {loading ? (
+            <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Loading accounts…</>
+          ) : (
+            selectedId ? "Change account" : "Choose an account"
+          )}
+        </Button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={choice} onValueChange={setChoice}>
+            <SelectTrigger className="w-full max-w-sm">
+              <SelectValue placeholder="Select an income account…" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="button" size="sm" onClick={handleSave} disabled={!choice || saving}>
+            {saving ? (<><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</>) : "Save"}
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={loadAccounts} disabled={loading}>
+            Refresh list
+          </Button>
+        </div>
+      )}
+
+      {loadError && <p className="text-xs text-destructive">{loadError}</p>}
+    </div>
+  );
+}
 
 function RecentSyncActivity({ entries }: { entries: QuickBooksSyncLogEntry[] }) {
   const [retryingId, setRetryingId] = React.useState<string | null>(null);
@@ -180,6 +304,7 @@ export function QuickBooksConnectSection({
                 "Disconnect QuickBooks"
               )}
             </Button>
+            <IncomeAccountPicker connection={connection} />
             <RecentSyncActivity entries={syncLog} />
           </div>
         ) : isError ? (

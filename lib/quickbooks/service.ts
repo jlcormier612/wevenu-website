@@ -13,6 +13,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import * as repo from "@/lib/quickbooks/repository";
 import { quickBooksApiBaseUrl, quickBooksEnvironment, QUICKBOOKS_REVOKE_URL } from "@/lib/quickbooks/config";
 import { processQuickBooksSyncQueue } from "@/lib/quickbooks/processor";
+import { listIncomeAccounts, type SelectableIncomeAccount } from "@/lib/quickbooks/income-accounts";
 import type { QuickBooksActionResult, QuickBooksConnection, QuickBooksEntityType } from "@/lib/quickbooks/types";
 
 function basicAuthHeader(): string {
@@ -26,6 +27,59 @@ export async function getQuickBooksConnection(): Promise<QuickBooksConnection | 
   const venue = await getCurrentVenue();
   if (!venue) return null;
   return repo.getConnection(await createClient(), venue.id);
+}
+
+/**
+ * Read-only list for the Settings picker. Returns every eligible account so
+ * the venue chooses; deliberately never returns a recommendation.
+ */
+export async function listQuickBooksIncomeAccounts(): Promise<
+  | { ok: true; accounts: SelectableIncomeAccount[]; selectedId: string | null }
+  | { ok: false; message: string }
+> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Session expired." };
+
+  const connection = await repo.getConnection(await createClient(), venue.id);
+  if (!connection || connection.status !== "connected") {
+    return { ok: false, message: "Connect QuickBooks before choosing an income account." };
+  }
+
+  const result = await listIncomeAccounts(venue.id);
+  if (!result.ok) return { ok: false, message: result.error };
+  return {
+    ok: true,
+    accounts: result.accounts,
+    selectedId: connection.defaultIncomeAccountQuickBooksId,
+  };
+}
+
+/**
+ * Persists the venue's choice, and only after they made one. The account id
+ * is re-validated against QuickBooks' own current list rather than trusted
+ * from the form, so a stale or deactivated account can't be saved and a
+ * crafted id can't point at something that isn't an eligible income account.
+ */
+export async function selectQuickBooksIncomeAccount(accountId: string): Promise<QuickBooksActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Session expired." };
+  if (!accountId.trim()) return { ok: false, message: "Choose an income account first." };
+
+  const available = await listIncomeAccounts(venue.id);
+  if (!available.ok) return { ok: false, message: available.error };
+
+  const chosen = available.accounts.find((a) => a.id === accountId.trim());
+  if (!chosen) {
+    return {
+      ok: false,
+      message: "That account is no longer available in QuickBooks. Refresh the list and choose again.",
+    };
+  }
+
+  await repo.setDefaultIncomeAccount(await createClient(), venue.id, { id: chosen.id, name: chosen.name });
+  return { ok: true };
 }
 
 export type QuickBooksSyncLogEntry = {
