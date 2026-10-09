@@ -8,7 +8,7 @@ import { CommunicationsReviewPanel } from "@/components/clients/communications-r
 import { EventExperienceReviewPanel } from "@/components/clients/event-experience-review-panel";
 import { FinancialReadinessPanel } from "@/components/clients/financial-readiness-panel";
 import { Button } from "@/components/ui/button";
-import type { BookingHandoffModel } from "@/lib/clients/booking-handoff";
+import { isBookingWorkspaceHref, type BookingHandoffModel } from "@/lib/clients/booking-handoff";
 import type { CommunicationsReviewModel } from "@/lib/clients/communications-review";
 import type { EventExperienceReviewModel } from "@/lib/clients/event-experience-review";
 import type { FinancialReadinessModel } from "@/lib/clients/financial-readiness";
@@ -111,13 +111,15 @@ function PrepareChecklist({ handoff }: { handoff: BookingHandoffModel }) {
               </p>
               <p className="text-xs text-muted-foreground">{item.detail}</p>
             </div>
-            <Link
-              href={item.href}
-              className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
-              style={{ color: "#5A3235" }}
-            >
-              {item.actionLabel}
-            </Link>
+            {isBookingWorkspaceHref(item.href) ? null : (
+              <Link
+                href={item.href}
+                className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
+                style={{ color: "#5A3235" }}
+              >
+                {item.actionLabel}
+              </Link>
+            )}
           </li>
         ))}
       </ul>

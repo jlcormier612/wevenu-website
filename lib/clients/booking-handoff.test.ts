@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { buildBookingHandoff } from "@/lib/clients/booking-handoff";
+import { buildBookingHandoff, isBookingWorkspaceHref } from "@/lib/clients/booking-handoff";
 
 const CLIENT_ID = "client-1";
 const EVENT_ID = "event-1";
@@ -124,6 +124,23 @@ describe("buildBookingHandoff", () => {
     assert.doesNotMatch(blob, /required/i);
     assert.doesNotMatch(blob, /not ready/i);
     assert.equal(model.items.find((i) => i.key === "financial")?.complete, false);
+  });
+});
+
+describe("post-booking workspace links", () => {
+  it("treats the client workspace and the event redirect as the same destination", () => {
+    assert.equal(isBookingWorkspaceHref("/clients/client-1"), true);
+    assert.equal(isBookingWorkspaceHref("/events/event-1"), true);
+    assert.equal(isBookingWorkspaceHref("/events/event-1#playbook"), true);
+    assert.equal(isBookingWorkspaceHref("#financial-readiness"), false);
+    assert.equal(isBookingWorkspaceHref("/contracts/new"), false);
+    assert.equal(isBookingWorkspaceHref("/communication/series"), false);
+    const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+    const experience = readFileSync(resolve("components/clients/event-experience-review-panel.tsx"), "utf8");
+    const communications = readFileSync(resolve("components/clients/communications-review-panel.tsx"), "utf8");
+    for (const src of [celebration, experience, communications]) {
+      assert.match(src, /isBookingWorkspaceHref/);
+    }
   });
 });
 

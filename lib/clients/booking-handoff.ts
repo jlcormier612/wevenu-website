@@ -141,6 +141,12 @@ function venuePlanningItem(
   };
 }
 
+/** True when a link opens the same booking workspace as the primary Open Event action. */
+export function isBookingWorkspaceHref(href: string): boolean {
+  const path = href.split(/[?#]/)[0] ?? "";
+  return /^\/clients\/[^/]+$/.test(path) || /^\/events\/[^/]+$/.test(path);
+}
+
 export function buildBookingHandoff(input: BookingHandoffInput): BookingHandoffModel {
   const { clientId, eventId, playbookApplications, financialSummary, communicationsSummary, experienceSummary } = input;
   const clientPlanning = clientPlanningItem(clientId, eventId, playbookApplications);
