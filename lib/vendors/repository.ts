@@ -265,9 +265,37 @@ export async function findActiveDuplicateVendor(
  * can reactivate a paused relationship instead of minting a second global
  * vendor identity.
  */
+export type VendorIdentityMatch =
+  | { kind: "unique"; vendorId: string; status?: string; isClaimed?: boolean }
+  | { kind: "ambiguous" }
+  | { kind: "none" };
+
+/** Exactly one row can be reused. Zero creates. Two or more must not be merged. */
+export function classifyIdentityCount(count: number): "unique" | "ambiguous" | "none" {
+  if (count === 1) return "unique";
+  if (count > 1) return "ambiguous";
+  return "none";
+}
+
+async function matchRows<T extends { vendor_id?: string; id?: string; status?: string; is_claimed?: boolean }>(
+  rows: T[] | null,
+  idOf: (row: T) => string,
+): Promise<VendorIdentityMatch> {
+  const list = rows ?? [];
+  const kind = classifyIdentityCount(list.length);
+  if (kind !== "unique") return { kind };
+  const row = list[0]!;
+  return {
+    kind: "unique",
+    vendorId: idOf(row),
+    status: row.status,
+    isClaimed: row.is_claimed,
+  };
+}
+
 export async function findVenueVendorRelationshipMatch(
   client: DbClient, venueId: string, businessName: string, email: string,
-): Promise<{ vendorId: string; status: string } | null> {
+): Promise<VendorIdentityMatch> {
   const trimmedEmail = email.trim();
   const trimmedName = businessName.trim();
   if (trimmedEmail) {
@@ -275,43 +303,45 @@ export async function findVenueVendorRelationshipMatch(
       .select("vendor_id, status, vendors!inner(email)")
       .eq("venue_id", venueId)
       .ilike("vendors.email", trimmedEmail)
-      .limit(1)
-      .maybeSingle<{ vendor_id: string; status: string }>();
-    if (data) return { vendorId: data.vendor_id, status: data.status };
+      .limit(2);
+    const match = await matchRows(data as Array<{ vendor_id: string; status: string }> | null, (row) => row.vendor_id);
+    if (match.kind !== "none") return match;
   }
   if (trimmedName) {
     const { data } = await client.from("venue_vendor_relationships")
       .select("vendor_id, status, vendors!inner(business_name)")
       .eq("venue_id", venueId)
       .ilike("vendors.business_name", trimmedName)
-      .limit(1)
-      .maybeSingle<{ vendor_id: string; status: string }>();
-    if (data) return { vendorId: data.vendor_id, status: data.status };
+      .limit(2);
+    return matchRows(data as Array<{ vendor_id: string; status: string }> | null, (row) => row.vendor_id);
   }
-  return null;
+  return { kind: "none" };
 }
 
-/** Global vendor identity match (email preferred, then exact business name). */
+/**
+ * Global vendor identity. Email is checked first. A match is reusable only
+ * when it is the single row for that email. Multiple email or name matches
+ * are ambiguous and must not be attached.
+ */
 export async function findGlobalVendorIdentity(
   client: DbClient, businessName: string, email: string,
-): Promise<{ id: string; isClaimed: boolean } | null> {
+): Promise<VendorIdentityMatch> {
   const trimmedEmail = email.trim();
   if (trimmedEmail) {
     const { data } = await client.from("vendors")
       .select("id, is_claimed")
       .ilike("email", trimmedEmail)
-      .limit(1)
-      .maybeSingle<{ id: string; is_claimed: boolean }>();
-    if (data) return { id: data.id, isClaimed: data.is_claimed };
+      .limit(2);
+    const match = await matchRows(data as Array<{ id: string; is_claimed: boolean }> | null, (row) => row.id);
+    if (match.kind !== "none") return match;
   }
   const trimmedName = businessName.trim();
-  if (!trimmedName) return null;
+  if (!trimmedName) return { kind: "none" };
   const { data } = await client.from("vendors")
     .select("id, is_claimed")
     .ilike("business_name", trimmedName)
-    .limit(1)
-    .maybeSingle<{ id: string; is_claimed: boolean }>();
-  return data ? { id: data.id, isClaimed: data.is_claimed } : null;
+    .limit(2);
+  return matchRows(data as Array<{ id: string; is_claimed: boolean }> | null, (row) => row.id);
 }
 
 async function upsertVenueRelationship(
@@ -344,18 +374,21 @@ export type ResolveVendorDecision =
 
 /** Pure decision tree for resolveOrCreateVendor — unit-tested without DB. */
 export function decideVendorResolve(
-  venueMatch: { vendorId: string; status: string } | null,
-  global: { id: string } | null,
+  venueMatch: VendorIdentityMatch,
+  global: VendorIdentityMatch,
 ): ResolveVendorDecision {
-  if (venueMatch) {
+  if (venueMatch.kind === "unique") {
     return {
       action: "reuse_venue",
       vendorId: venueMatch.vendorId,
       reactivate: venueMatch.status === "inactive",
     };
   }
-  if (global) {
-    return { action: "attach_global", vendorId: global.id };
+  if (venueMatch.kind === "ambiguous" || global.kind === "ambiguous") {
+    return { action: "create_new" };
+  }
+  if (global.kind === "unique") {
+    return { action: "attach_global", vendorId: global.vendorId };
   }
   return { action: "create_new" };
 }
@@ -366,9 +399,9 @@ export async function resolveOrCreateVendor(
   const venueMatch = await findVenueVendorRelationshipMatch(
     client, venueId, input.businessName, input.email,
   );
-  const global = venueMatch
-    ? null
-    : await findGlobalVendorIdentity(client, input.businessName, input.email);
+  const global = venueMatch.kind === "none"
+    ? await findGlobalVendorIdentity(client, input.businessName, input.email)
+    : { kind: "none" as const };
   const decision = decideVendorResolve(venueMatch, global);
 
   if (decision.action === "reuse_venue") {
