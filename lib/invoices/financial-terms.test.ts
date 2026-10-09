@@ -90,16 +90,55 @@ describe("computeInvoiceTotals — deposits are not discounts", () => {
 });
 
 describe("venue defaultTaxPercent", () => {
-  it("defaults null and validates 0–100", () => {
+  it("defaults null and validates 0–100 with up to two decimal places", () => {
     assert.equal(normalizeCommercialBookingPrefs({}).defaultTaxPercent, null);
     assert.equal(
       normalizeCommercialBookingPrefs({ useTaxes: true, defaultTaxPercent: 7 }).defaultTaxPercent,
       7,
     );
     assert.equal(
+      normalizeCommercialBookingPrefs({ defaultTaxPercent: 6.25 }).defaultTaxPercent,
+      6.25,
+    );
+    assert.equal(
+      normalizeCommercialBookingPrefs({ defaultTaxPercent: "7.50" }).defaultTaxPercent,
+      7.5,
+    );
+    assert.equal(
+      normalizeCommercialBookingPrefs({ defaultTaxPercent: 0 }).defaultTaxPercent,
+      0,
+    );
+    assert.equal(
+      normalizeCommercialBookingPrefs({ defaultTaxPercent: 100 }).defaultTaxPercent,
+      100,
+    );
+    assert.equal(
+      normalizeCommercialBookingPrefs({ defaultTaxPercent: -1 }).defaultTaxPercent,
+      null,
+    );
+    assert.equal(
       normalizeCommercialBookingPrefs({ defaultTaxPercent: 100.0001 }).defaultTaxPercent,
       null,
     );
+    assert.equal(
+      normalizeCommercialBookingPrefs({ defaultTaxPercent: 101 }).defaultTaxPercent,
+      null,
+    );
+    assert.equal(
+      normalizeCommercialBookingPrefs({ defaultTaxPercent: "6.255" }).defaultTaxPercent,
+      null,
+    );
+  });
+
+  it("applies a 6.25% exclusive rate on the discounted package amount", () => {
+    const t = computeAgreedFinancialTerms({
+      packagePrice: 1000,
+      applyTax: true,
+      taxRatePercent: 6.25,
+    });
+    assert.equal(t.taxRatePercent, 6.25);
+    assert.equal(t.taxAmount, 62.5);
+    assert.equal(t.finalTotal, 1062.5);
   });
 });
 

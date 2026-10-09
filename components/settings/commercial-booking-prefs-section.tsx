@@ -19,6 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { VenueCommercialBookingPrefs } from "@/lib/booking-journey/venue-prefs";
+import {
+  formatDefaultTaxPercentInput,
+  isDefaultTaxPercentDraft,
+  normalizeDefaultTaxPercent,
+} from "@/lib/booking-journey/venue-prefs";
 import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
 import {
   defaultCustomScheduleTemplate,
@@ -62,6 +67,9 @@ export function CommercialBookingPrefsSection({
 }) {
   const router = useRouter();
   const [prefs, setPrefs] = React.useState(initial);
+  const [taxPercentText, setTaxPercentText] = React.useState(
+    formatDefaultTaxPercentInput(initial.defaultTaxPercent),
+  );
   const [pending, startTransition] = React.useTransition();
 
   function save() {
@@ -72,9 +80,17 @@ export function CommercialBookingPrefsSection({
         return;
       }
     }
+    const taxPercent = prefs.useTaxes
+      ? normalizeDefaultTaxPercent(taxPercentText.trim() ? taxPercentText : null)
+      : null;
+    if (prefs.useTaxes && taxPercentText.trim() && taxPercent == null) {
+      toast.error("Enter a tax rate between 0 and 100 with up to two decimal places.");
+      return;
+    }
     startTransition(async () => {
       const result = await saveCommercialBookingPrefsAction({
         ...prefs,
+        defaultTaxPercent: taxPercent,
         // Always persist inert processOrder; never deposit_first.
         processOrder: "agreement_first",
         initialPaymentRequired: prefs.collectInitialPayment,
@@ -84,6 +100,7 @@ export function CommercialBookingPrefsSection({
         return;
       }
       setPrefs(result.prefs);
+      setTaxPercentText(formatDefaultTaxPercentInput(result.prefs.defaultTaxPercent));
       toast.success("Booking preferences saved.");
       router.refresh();
     });
@@ -294,11 +311,15 @@ export function CommercialBookingPrefsSection({
             type="checkbox"
             className="mt-1"
             checked={prefs.useTaxes}
-            onChange={(e) => setPrefs((p) => ({
-              ...p,
-              useTaxes: e.target.checked,
-              defaultTaxPercent: e.target.checked ? p.defaultTaxPercent : null,
-            }))}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setPrefs((p) => ({
+                ...p,
+                useTaxes: checked,
+                defaultTaxPercent: checked ? p.defaultTaxPercent : null,
+              }));
+              if (!checked) setTaxPercentText("");
+            }}
           />
           <span>
             <span className="font-medium text-heading">Use taxes</span>
@@ -316,21 +337,27 @@ export function CommercialBookingPrefsSection({
               id="default-tax-percent"
               inputMode="decimal"
               className="max-w-[8rem]"
-              value={prefs.defaultTaxPercent ?? ""}
+              value={taxPercentText}
               onChange={(e) => {
-                const raw = e.target.value.trim();
-                if (!raw) {
+                const raw = e.target.value;
+                if (!isDefaultTaxPercentDraft(raw)) return;
+                setTaxPercentText(raw);
+                if (!raw.trim()) {
                   setPrefs((p) => ({ ...p, defaultTaxPercent: null }));
                   return;
                 }
-                const n = parseFloat(raw);
-                if (!Number.isFinite(n)) return;
-                setPrefs((p) => ({
-                  ...p,
-                  defaultTaxPercent: Math.min(100, Math.max(0, Math.round(n * 10000) / 10000)),
-                }));
+                if (raw.endsWith(".")) {
+                  const partial = normalizeDefaultTaxPercent(raw.slice(0, -1));
+                  if (partial != null) {
+                    setPrefs((p) => ({ ...p, defaultTaxPercent: partial }));
+                  }
+                  return;
+                }
+                const parsed = normalizeDefaultTaxPercent(raw);
+                if (parsed == null) return;
+                setPrefs((p) => ({ ...p, defaultTaxPercent: parsed }));
               }}
-              placeholder="7"
+              placeholder="6.25"
             />
             <p className="text-xs text-muted-foreground">
               Suggested when you apply tax. Already-applied rates on a Selected Package or invoice stay as saved.

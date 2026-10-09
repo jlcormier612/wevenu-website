@@ -90,7 +90,7 @@ export type VenueCommercialBookingPrefs = {
    */
   useTaxes: boolean;
   /**
-   * Default exclusive tax percent (0–100, 4 dp) suggested when applying tax.
+   * Default exclusive tax percent (0–100, up to 2 decimal places) suggested when applying tax.
    * Null when unset. Persisted applied rates on selections/invoices are authoritative.
    */
   defaultTaxPercent: number | null;
@@ -232,12 +232,52 @@ export function normalizeCommercialBookingPrefs(
   };
 }
 
-/** null / invalid → null; clamp to 0–100 with 4 decimal places. */
-function normalizeDefaultTaxPercent(raw: unknown): number | null {
+/** Draft text allowed while typing a default tax percent (may end with "."). */
+const DEFAULT_TAX_PERCENT_DRAFT_RE = /^\d{0,3}(?:\.\d{0,2})?$/;
+
+/**
+ * Whether `raw` is an in-progress or complete default tax percent field value.
+ * Allows intermediate forms like "6." so the decimal point is not stripped while typing.
+ */
+export function isDefaultTaxPercentDraft(raw: string): boolean {
+  if (raw === "") return true;
+  if (!DEFAULT_TAX_PERCENT_DRAFT_RE.test(raw)) return false;
+  if (raw === ".") return false;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return false;
+  return n >= 0 && n <= 100;
+}
+
+/**
+ * Format a stored default tax percent for the settings input.
+ * Preserves two-decimal display for values like 7.5 → "7.5" (not forced trailing zero).
+ */
+export function formatDefaultTaxPercentInput(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "";
+  return String(value);
+}
+
+/**
+ * null / invalid → null; 0–100 inclusive with at most two decimal places.
+ * Rejects negatives, values above 100, and more than two decimal places (no silent rounding).
+ */
+export function normalizeDefaultTaxPercent(raw: unknown): number | null {
   if (raw == null || raw === "") return null;
-  const n = typeof raw === "number" ? raw : parseFloat(String(raw));
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.endsWith(".")) return null;
+    if (!/^\d+(?:\.\d{1,2})?$/.test(trimmed)) return null;
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+    return Math.round(n * 100) / 100;
+  }
+
+  const n = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(n) || n < 0 || n > 100) return null;
-  return Math.round(n * 10000) / 10000;
+  const hundredths = Math.round(n * 100);
+  if (Math.abs(n * 100 - hundredths) > 1e-6) return null;
+  return hundredths / 100;
 }
 
 /** Absolute deposit dollars from venue percent + package total. */

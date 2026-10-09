@@ -9,7 +9,10 @@ import {
 import {
   DEFAULT_COMMERCIAL_BOOKING_PREFS,
   depositFromVenuePercent,
+  formatDefaultTaxPercentInput,
+  isDefaultTaxPercentDraft,
   normalizeCommercialBookingPrefs,
+  normalizeDefaultTaxPercent,
 } from "@/lib/booking-journey/venue-prefs";
 import { buildGuidedScheduleLines } from "@/lib/booking-journey/setup-payments";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
@@ -126,6 +129,43 @@ describe("Venue commercial booking prefs", () => {
 
   it("suggests $800 deposit from 25% of $3200", () => {
     assert.equal(depositFromVenuePercent(3200, DEFAULT_COMMERCIAL_BOOKING_PREFS), 800);
+  });
+
+  it("default tax percent accepts two-decimal rates and rejects invalid input", () => {
+    assert.equal(normalizeDefaultTaxPercent(6.25), 6.25);
+    assert.equal(normalizeDefaultTaxPercent("7.50"), 7.5);
+    assert.equal(normalizeDefaultTaxPercent(0), 0);
+    assert.equal(normalizeDefaultTaxPercent(100), 100);
+    assert.equal(normalizeDefaultTaxPercent(-0.01), null);
+    assert.equal(normalizeDefaultTaxPercent(100.01), null);
+    assert.equal(normalizeDefaultTaxPercent("6.255"), null);
+    assert.equal(normalizeDefaultTaxPercent("6."), null);
+
+    assert.equal(isDefaultTaxPercentDraft(""), true);
+    assert.equal(isDefaultTaxPercentDraft("6"), true);
+    assert.equal(isDefaultTaxPercentDraft("6."), true);
+    assert.equal(isDefaultTaxPercentDraft("6.2"), true);
+    assert.equal(isDefaultTaxPercentDraft("6.25"), true);
+    assert.equal(isDefaultTaxPercentDraft("7.50"), true);
+    assert.equal(isDefaultTaxPercentDraft("6.255"), false);
+    assert.equal(isDefaultTaxPercentDraft("-1"), false);
+    assert.equal(isDefaultTaxPercentDraft("101"), false);
+
+    assert.equal(formatDefaultTaxPercentInput(6.25), "6.25");
+    assert.equal(formatDefaultTaxPercentInput(7.5), "7.5");
+
+    // Save → reload path: normalized prefs round-trip without losing decimals.
+    const saved = normalizeCommercialBookingPrefs({
+      useTaxes: true,
+      defaultTaxPercent: 6.25,
+    });
+    assert.equal(saved.defaultTaxPercent, 6.25);
+    const reloaded = normalizeCommercialBookingPrefs(saved);
+    assert.equal(reloaded.defaultTaxPercent, 6.25);
+    assert.equal(
+      normalizeCommercialBookingPrefs({ useTaxes: true, defaultTaxPercent: "7.50" }).defaultTaxPercent,
+      7.5,
+    );
   });
 });
 
