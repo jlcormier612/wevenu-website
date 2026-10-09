@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { updateEventStatusAction, returnClientToBookedAction } from "@/app/(app)/events/[id]/actions";
+import { setEventAssignedStaffAction, updateEventStatusAction, returnClientToBookedAction } from "@/app/(app)/events/[id]/actions";
+import { StaffAssignmentField } from "@/components/team/staff-assignment-field";
 import { getBookingConfirmationDraftForClientAction } from "@/app/(app)/leads/[id]/actions";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import type { BookingConfirmationDraft } from "@/lib/booking-journey/confirmation-draft";
@@ -138,6 +139,18 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
 
 // ---- Event Date Hero (client-side for live countdown) ----------------------
 
+function parseSpaceLines(spaceLine: string | null): Array<{ use: string; space: string } | string> {
+  if (!spaceLine?.trim()) return [];
+  return spaceLine.split("\n").map((line) => {
+    const trimmed = line.trim();
+    const sep = trimmed.indexOf(": ");
+    if (sep > 0) {
+      return { use: trimmed.slice(0, sep), space: trimmed.slice(sep + 2) };
+    }
+    return trimmed;
+  }).filter((row) => (typeof row === "string" ? row.length > 0 : true));
+}
+
 function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLine: string | null }) {
   const [countdown, setCountdown] = React.useState<string>("");
   React.useEffect(() => {
@@ -163,11 +176,13 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
     ? `${event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}${multiDay ? "Overall " : ""}${formatTime(event.startTime)}${event.endTime ? ` – ${formatTime(event.endTime)}` : ""}${event.teardownTime ? ` · Teardown ${formatTime(event.teardownTime)}` : ""}`
     : "All day";
 
+  const spaceRows = parseSpaceLines(spaceLine);
+
   return (
     <Card className="border-primary/20 bg-primary/5">
       <CardContent className="py-4 text-left">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 space-y-0.5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-0.5">
             <p className="font-heading text-2xl font-medium tracking-tight text-heading">
               {formatEventDateRange(event.eventDate, event.eventEndDate)}
             </p>
@@ -180,24 +195,45 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
               ) : null}
             </p>
           </div>
-          <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
+          <div className="shrink-0 pt-1">
+            <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
+          </div>
         </div>
-        <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-          <div>
+        <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <div className="min-w-0">
             <dt className="text-xs text-muted-foreground">Time</dt>
-            <dd className="text-foreground" title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}>
+            <dd className="mt-0.5 text-foreground" title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}>
               {timeLabel}
             </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-xs text-muted-foreground">Guests</dt>
-            <dd className="text-foreground">
+            <dd className="mt-0.5 text-foreground">
               {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
             </dd>
           </div>
-          <div className="sm:col-span-2">
+          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
             <dt className="text-xs text-muted-foreground">Spaces</dt>
-            <dd className="whitespace-pre-line text-foreground">{spaceLine ?? "No space assigned"}</dd>
+            <dd className="mt-0.5 text-foreground">
+              {spaceRows.length === 0 ? (
+                "No space assigned"
+              ) : (
+                <ul className="space-y-1">
+                  {spaceRows.map((row, i) => (
+                    <li key={i} className="leading-snug">
+                      {typeof row === "string" ? (
+                        row
+                      ) : (
+                        <>
+                          <span className="font-medium text-heading">{row.use}</span>
+                          <span className="text-muted-foreground"> · {row.space}</span>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </dd>
           </div>
         </dl>
       </CardContent>
@@ -407,7 +443,8 @@ export function EventDetail({
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
       const tabParam = new URLSearchParams(window.location.search).get("tab");
-      const tab = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
+      const raw = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
+      const tab = raw === "team" ? "overview" : raw;
       if (tab) setActiveTab(tab);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
       // Open Vendors when a thread id is present and no Conversation/hash was supplied.
@@ -615,12 +652,6 @@ export function EventDetail({
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{internalNoteItems.length}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="team">
-            Team
-            {event.team.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.team.length}</span>
-            )}
-          </TabsTrigger>
           {daysUntil(event.eventDate) < 0 && (
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
           )}
@@ -652,6 +683,33 @@ export function EventDetail({
               window.location.hash = tab;
             }}
           />
+          <Card data-testid="event-staff-assignment">
+            <CardHeader>
+              <CardTitle className="text-base">Team assignment</CardTitle>
+              <CardDescription>
+                The person responsible for this booked event. This can differ from who handled the lead.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StaffAssignmentField
+                label="Event owner"
+                hint="Reassign when the operational owner changes. This does not restore a Team planning tab."
+                staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
+                value={event.assignedStaffId ?? null}
+                testId="event-owner-assignment"
+                onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
+              />
+            </CardContent>
+          </Card>
+          <Card id="event-team-roster">
+            <CardHeader>
+              <CardTitle className="text-base">Additional event staff</CardTitle>
+              <CardDescription>Names working this event who are not the assigned owner.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventTeamSection eventId={event.id} initialTeam={event.team} />
+            </CardContent>
+          </Card>
           <NeedsAttentionList
             items={selectOverviewExceptions(readinessSummary.sections, questionnaires)}
             onOpen={(item) => {
@@ -1035,19 +1093,6 @@ export function EventDetail({
             </CardHeader>
             <CardContent>
               <EventNotesSection eventId={event.id} items={internalNoteItems} venueTimezone={venueTimezone} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Team ───────────────────────────────────────────────────── */}
-        <TabsContent value="team">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Event Team</CardTitle>
-              <CardDescription>Internal staff assigned to work this event.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventTeamSection eventId={event.id} initialTeam={event.team} />
             </CardContent>
           </Card>
         </TabsContent>

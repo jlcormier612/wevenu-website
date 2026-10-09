@@ -700,6 +700,35 @@ export async function confirmPipelineBookedMove(
       return { ok: false as const, message: booked.message };
     }
 
+    if (booked.eventId && occupancy.assignedStaffId !== undefined) {
+      const { persistEventStaffAssignment } = await import("@/lib/team/staff-assignment");
+      const { decideEventAssignment } = await import("@/lib/team/booking-assignment");
+      const { data: staffRows } = await supabase
+        .from("venue_staff")
+        .select("id")
+        .eq("venue_id", venueId)
+        .eq("is_active", true);
+      const decision = decideEventAssignment({
+        bookingSucceeded: true,
+        cancelled: false,
+        selectedStaffId: occupancy.assignedStaffId,
+        eligibleStaffIds: (staffRows ?? []).map((row) => row.id as string),
+      });
+      if (decision.apply) {
+        const assigned = await persistEventStaffAssignment(
+          supabase,
+          venueId,
+          booked.eventId,
+          decision.staffId,
+        );
+        if (!assigned.ok) {
+          warning = warning
+            ? `${warning} Team assignment was not saved: ${assigned.message}`
+            : `Booked, but the team assignment was not saved: ${assigned.message}`;
+        }
+      }
+    }
+
     return {
       ok: true as const,
       clientId: converted.clientId,
@@ -1241,6 +1270,17 @@ export async function completeFollowUp(
       );
     }
     return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+export async function setLeadAssignedStaff(
+  leadId: string,
+  staffId: string | null,
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { persistLeadStaffAssignment } = await import("@/lib/team/staff-assignment");
+    return persistLeadStaffAssignment(supabase, venueId, leadId, staffId);
   });
   return result as LeadActionResult;
 }

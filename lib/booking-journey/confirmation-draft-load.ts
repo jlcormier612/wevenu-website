@@ -264,6 +264,23 @@ async function finishDraft(
     prefill.endTime = (eventEndTime ?? row.receptionTime ?? "").slice(0, 5);
   }
 
+  let leadAssignedStaffId: string | null = null;
+  if (row.leadId) {
+    const { data: leadStaff } = await supabase
+      .from("leads")
+      .select("assigned_staff_id")
+      .eq("id", row.leadId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ assigned_staff_id: string | null }>();
+    leadAssignedStaffId = leadStaff?.assigned_staff_id ?? null;
+  }
+  const { data: staffRows } = await supabase
+    .from("venue_staff")
+    .select("id, full_name")
+    .eq("venue_id", venueId)
+    .eq("is_active", true)
+    .order("full_name");
+
   return {
     ok: true,
     draft: {
@@ -288,6 +305,11 @@ async function finishDraft(
         }),
         ctx.spaces.map((space) => ({ spaceId: space.id, spaceName: space.name })),
       ),
+      staffOptions: (staffRows ?? []).map((member) => ({
+        id: member.id as string,
+        name: (member.full_name as string) || "Team member",
+      })),
+      leadAssignedStaffId,
     },
   };
 }

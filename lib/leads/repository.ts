@@ -393,6 +393,7 @@ type LeadRow = {
   lost_at?: string | null;
   first_booked_at?: string | null;
   venue_seen_at?: string | null;
+  assigned_staff_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -464,6 +465,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     lostAt: r.lost_at ?? null,
     firstBookedAt: r.first_booked_at ?? null,
     venueSeenAt: r.venue_seen_at ?? null,
+    assignedStaffId: r.assigned_staff_id ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }

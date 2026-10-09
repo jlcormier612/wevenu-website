@@ -56,7 +56,7 @@ type EventRow = {
   event_date: string; event_end_date: string | null;
   start_time: string | null; end_time: string | null;
   setup_time: string | null; teardown_time: string | null;
-  guest_count: number | null; created_at: string; updated_at: string;
+  guest_count: number | null; assigned_staff_id?: string | null; created_at: string; updated_at: string;
   booked_at: string | null;
   operational_floor_plan_id: string | null;
   couple_selected_floor_plan_id: string | null;
@@ -78,6 +78,7 @@ function mapEvent(r: EventRow): VenueEvent {
     startTime: r.start_time, endTime: r.end_time,
     setupTime: r.setup_time, teardownTime: r.teardown_time,
     guestCount: r.guest_count,
+    assignedStaffId: r.assigned_staff_id ?? null,
     bookedAt: r.booked_at ?? null,
     operationalFloorPlanId: r.operational_floor_plan_id ?? null,
     coupleSelectedFloorPlanId: r.couple_selected_floor_plan_id ?? null,

@@ -34,6 +34,8 @@ export type VenueEvent = {
   setupTime: string | null;
   teardownTime: string | null;
   guestCount: number | null;
+  /** Operational owner. Null or omitted until the venue assigns someone. */
+  assignedStaffId?: string | null;
   /**
    * Calendar date the booking commitment was made (payment timing "At booking").
    * Distinct from eventDate (celebration day) and createdAt (row insert).

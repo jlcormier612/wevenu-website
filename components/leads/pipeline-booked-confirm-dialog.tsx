@@ -8,6 +8,7 @@ import { EventSpaceAssignmentsEditor } from "@/components/events/event-space-ass
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   bookingConfirmationError,
   toConfirmedBookingOccupancy,
@@ -45,6 +46,7 @@ export function PipelineBookedConfirmDialog({
   const [assignments, setAssignments] = React.useState<EventSpaceAssignmentInput[]>([]);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [availabilityBlocked, setAvailabilityBlocked] = React.useState(false);
+  const [assignedStaffId, setAssignedStaffId] = React.useState("");
 
   React.useEffect(() => {
     if (!open) return;
@@ -63,6 +65,7 @@ export function PipelineBookedConfirmDialog({
     setEndTime(draft.endTime);
     setSpaceId(draft.spaceId);
     setAssignments(draft.assignments);
+    setAssignedStaffId(draft.leadAssignedStaffId ?? "");
     setFormError(null);
     setAvailabilityBlocked(false);
   }, [open, draft]);
@@ -95,7 +98,11 @@ export function PipelineBookedConfirmDialog({
     }
     setFormError(null);
     if (availabilityBlocked) return;
-    onConfirm({ ...occupancy, sourceHoldDates: draft.sourceHoldDates });
+    onConfirm({
+      ...occupancy,
+      sourceHoldDates: draft.sourceHoldDates,
+      assignedStaffId: assignedStaffId.trim() || null,
+    });
   }
 
   const chosenSpace = showAssignments
@@ -242,6 +249,35 @@ export function PipelineBookedConfirmDialog({
                 />
               )}
               {formError && <p className="text-sm text-destructive">{formError}</p>}
+
+              <section className="rounded-lg border border-border bg-muted/40 px-3 py-2.5" data-testid="booking-team-assignment">
+                <h3 className="text-sm font-semibold text-heading">Team assignment</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The person who handled sales can stay responsible, or you can choose someone else for the booked event. This does not change who is assigned on the lead.
+                </p>
+                <div className="mt-3">
+                  <Field label="Event team member" htmlFor="booking-assigned-staff">
+                    <Select
+                      value={assignedStaffId || "__unassigned__"}
+                      onValueChange={(value) => setAssignedStaffId(value === "__unassigned__" ? "" : value)}
+                      items={[
+                        { value: "__unassigned__", label: "Unassigned" },
+                        ...(draft?.staffOptions ?? []).map((member) => ({ value: member.id, label: member.name })),
+                      ]}
+                    >
+                      <SelectTrigger id="booking-assigned-staff" data-testid="booking-assigned-staff">
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                        {(draft?.staffOptions ?? []).map((member) => (
+                          <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              </section>
 
               <section className="rounded-lg border border-border bg-muted/40 px-3 py-2.5">
                 <h3 className="text-sm font-semibold text-heading">When you confirm</h3>

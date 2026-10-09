@@ -47,6 +47,8 @@ import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-banner";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
+import { StaffAssignmentField } from "@/components/team/staff-assignment-field";
+import { setLeadAssignedStaffAction } from "@/app/(app)/leads/[id]/actions";
 import { prefillBookingConfirmation, summarizeOwnHolds } from "@/lib/booking-journey/confirmation-draft";
 import { formatPhoneDisplay } from "@/lib/sms/phone";
 import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
@@ -430,6 +432,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       holds.filter((hold) => hold.status === "active"),
       spaces.map((space) => ({ spaceId: space.id, spaceName: space.name })),
     ),
+    staffOptions,
+    leadAssignedStaffId: lead.assignedStaffId ?? null,
   };
 
   return (
@@ -828,6 +832,24 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               openSetupPayments={openSetupPayments}
               workspaceReturnTo={`/leads/${lead.id}#booking-journey-payments`}
             />
+          </div>
+          <div className="mb-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Team assignment</CardTitle>
+                <CardDescription>Optional. A lead can move forward without an assignee.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StaffAssignmentField
+                  label="Sales owner"
+                  hint="This person is responsible while the record is a lead. You can confirm or change them when the lead is booked."
+                  staff={staffOptions}
+                  value={lead.assignedStaffId ?? null}
+                  testId="lead-staff-assignment"
+                  onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
+                />
+              </CardContent>
+            </Card>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>

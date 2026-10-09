@@ -30,6 +30,10 @@ export type BookingConfirmationDraft = {
   sourceHoldDates: string[];
   /** This lead's active holds, for the confirmation context. Not a conflict. */
   ownHolds?: OwnHoldSummary[];
+  /** Active venue staff the venue may assign. */
+  staffOptions?: Array<{ id: string; name: string }>;
+  /** Current lead sales assignee. Shown for confirmation; not copied unless selected. */
+  leadAssignedStaffId?: string | null;
 };
 
 export type OwnHoldSummary = {

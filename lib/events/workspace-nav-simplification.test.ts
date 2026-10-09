@@ -18,7 +18,6 @@ const RETAINED_TRIGGERS = [
   'value="messages"',
   'value="activity"',
   'value="notes"',
-  'value="team"',
 ] as const;
 
 const PREPARATION_TRIGGERS = [
@@ -39,13 +38,14 @@ function tabsListBlock(source: string): string {
 }
 
 describe("workspace top nav simplification", () => {
-  it("keeps the seven retained top-level TabsTriggers", () => {
+  it("keeps the retained top-level TabsTriggers and does not offer Team", () => {
     const list = tabsListBlock(detail);
     for (const value of RETAINED_TRIGGERS) {
       assert.match(list, new RegExp(`TabsTrigger ${value}`));
     }
     assert.match(list, />Conversation</);
     assert.match(list, /INTERNAL_NOTES_LABEL/);
+    assert.doesNotMatch(list, /TabsTrigger value="team"/);
   });
 
   it("keeps Planning, Timeline, Floor Plans, Vendors, and Questionnaires in the top nav", () => {

@@ -329,3 +329,16 @@ export async function removeTeamMember(memberId: string, memberName: string, eve
   });
   return result as EventActionResult;
 }
+
+export async function setEventAssignedStaff(
+  eventId: string,
+  staffId: string | null,
+): Promise<EventActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { persistEventStaffAssignment } = await import("@/lib/team/staff-assignment");
+    const saved = await persistEventStaffAssignment(supabase, venueId, eventId, staffId);
+    if (!saved.ok) return { ok: false, message: saved.message } as EventActionResult;
+    return { ok: true } as EventActionResult;
+  });
+  return result as EventActionResult;
+}

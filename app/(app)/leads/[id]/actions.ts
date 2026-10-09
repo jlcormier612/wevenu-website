@@ -16,6 +16,7 @@ import {
   returnLeadToBooked,
   setTaskCompleted,
   setLeadPlannedEventSpace,
+  setLeadAssignedStaff,
   updateLeadInfo,
   updateLeadPipelineStage,
   updateLeadStatus,
@@ -110,6 +111,15 @@ export async function setLeadPlannedEventSpaceAction(
   spaceId: string | null,
 ): Promise<LeadActionResult> {
   const result = await setLeadPlannedEventSpace(leadId, spaceId);
+  if (result.ok) revalidateLead(leadId);
+  return result;
+}
+
+export async function setLeadAssignedStaffAction(
+  leadId: string,
+  staffId: string | null,
+): Promise<LeadActionResult> {
+  const result = await setLeadAssignedStaff(leadId, staffId);
   if (result.ok) revalidateLead(leadId);
   return result;
 }

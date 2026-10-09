@@ -109,6 +109,8 @@ export type Lead = {
    * Null = unseen open-lead attention candidate.
    */
   venueSeenAt: string | null;
+  /** Optional sales owner. Independent of the booked event assignee. */
+  assignedStaffId?: string | null;
   createdAt: string;
   updatedAt: string;
 };

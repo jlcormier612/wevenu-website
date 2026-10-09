@@ -10,6 +10,7 @@ import {
   updateEvent_,
   updateEventBookedAt_,
   updateEventNote_,
+  setEventAssignedStaff,
   updateEventStatus_,
 } from "@/lib/events/service";
 import { returnClientToBooked } from "@/lib/leads/service";
@@ -20,6 +21,18 @@ function revalidateEvent(eventId: string) {
   revalidatePath("/events");
   revalidatePath("/payments");
   revalidatePath("/payments/new");
+}
+
+export async function setEventAssignedStaffAction(
+  eventId: string,
+  staffId: string | null,
+): Promise<EventActionResult> {
+  const result = await setEventAssignedStaff(eventId, staffId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidatePath("/clients");
+  }
+  return result;
 }
 
 export async function updateEventStatusAction(eventId: string, status: string): Promise<EventActionResult> {

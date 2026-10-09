@@ -15,6 +15,8 @@ export type ConfirmedBookingOccupancy = {
   assignments: EventSpaceAssignmentInput[];
   /** This lead's active hold dates when confirmation opened. Not another lead's holds. */
   sourceHoldDates?: string[];
+  /** Event assignee chosen at confirmation. Null leaves the event unassigned. */
+  assignedStaffId?: string | null;
 };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
