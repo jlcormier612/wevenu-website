@@ -464,6 +464,7 @@ export async function checkAvailability(opts: {
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
+  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }>;
   type: "event" | "tour";
   excludeId?: string;
   excludeLeadId?: string;

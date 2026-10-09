@@ -47,7 +47,7 @@ import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-banner";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
-import { prefillBookingConfirmation } from "@/lib/booking-journey/confirmation-draft";
+import { prefillBookingConfirmation, summarizeOwnHolds } from "@/lib/booking-journey/confirmation-draft";
 import { formatPhoneDisplay } from "@/lib/sms/phone";
 import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
 import type { StageChangeMessagePlan } from "@/lib/message-sequences/confirm-preview";
@@ -426,6 +426,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     holdBlocksAvailability,
     hasOwnActiveHold: holds.some((hold) => hold.status === "active"),
     sourceHoldDates: [...new Set(holds.filter((hold) => hold.status === "active").map((hold) => hold.holdDate))],
+    ownHolds: summarizeOwnHolds(
+      holds.filter((hold) => hold.status === "active"),
+      spaces.map((space) => ({ spaceId: space.id, spaceName: space.name })),
+    ),
   };
 
   return (

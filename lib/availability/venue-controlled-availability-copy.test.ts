@@ -13,6 +13,7 @@ const settings = readFileSync(resolve("app/(app)/settings/availability/page.tsx"
 const calendar = readFileSync(resolve("app/(app)/calendar/page.tsx"), "utf8");
 const calendarView = readFileSync(resolve("components/calendar/calendar-view.tsx"), "utf8");
 const bookedDialog = readFileSync(resolve("components/leads/pipeline-booked-confirm-dialog.tsx"), "utf8");
+const conflictWarning = readFileSync(resolve("components/availability/conflict-warning.tsx"), "utf8");
 const holdSection = readFileSync(resolve("components/availability/date-holds-section.tsx"), "utf8");
 
 describe("Venue-controlled availability education copy", () => {
@@ -45,14 +46,32 @@ describe("Venue-controlled availability education copy", () => {
   });
 
   it("Booked confirmation uses the locked heading and date-protection copy", () => {
-    assert.match(bookedDialog, /You&apos;re booking this date\./);
+    assert.match(bookedDialog, /Confirm this booking/);
+    assert.match(bookedDialog, /Review the dates, spaces, and times for this event\./);
+    assert.match(bookedDialog, /Current hold/);
     assert.match(
       bookedDialog,
-      /Confirm the final event dates, spaces, and times\. These will become the booked event and determine availability according to your venue&apos;s booking rules\./,
+      /This lead already has a hold on the calendar\. Update the details below to reflect the final booking\./,
+    );
+    assert.match(
+      bookedDialog,
+      /Choose the space and the times it will be used for each part of the event\./,
+    );
+    assert.match(bookedDialog, /When you confirm/);
+    assert.match(
+      bookedDialog,
+      /The booking will reserve the selected spaces and times on the calendar\. Any unused part of this lead&apos;s hold will be released\./,
+    );
+    assert.match(bookedDialog, /Confirm booking/);
+    assert.match(conflictWarning, /This time is unavailable/);
+    assert.match(
+      conflictWarning,
+      /Another booking or hold already reserves one or more of the selected spaces during this time\. Change the dates, spaces, or times to continue\./,
     );
     assert.match(bookedDialog, /excludeLeadId=\{draft\.leadId/);
     assert.match(bookedDialog, /availabilityBlocked/);
     assert.doesNotMatch(bookedDialog, /Mark this client as booked/);
+    assert.doesNotMatch(bookedDialog, /according to your venue/);
     assert.doesNotMatch(bookedDialog, /advisory lock|booked_at|database transaction/i);
   });
 

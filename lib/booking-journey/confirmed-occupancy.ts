@@ -58,6 +58,16 @@ export function bookingConfirmationError(
       return "Enter a valid start and end time.";
     }
   }
+  for (const row of value.assignments) {
+    const start = cleanTime(row.startTime);
+    const endTime = cleanTime(row.endTime);
+    if (!start || !endTime) {
+      return "Enter a start and an end time for each assigned space.";
+    }
+    if (endTime <= start) {
+      return "The end time must be after the start time.";
+    }
+  }
   if (maxSimultaneousEvents >= 2 && selectedSpaceIds(value).length === 0) {
     return "Assign an Event Space before booking. This venue can host more than one event at the same time.";
   }
@@ -73,15 +83,23 @@ export function toConfirmedBookingOccupancy(input: {
   assignments: EventSpaceAssignmentInput[];
   weddingFamily: boolean;
 }): ConfirmedBookingOccupancy {
-  const assignments = input.assignments.filter((row) => row.useKey.trim() && row.spaceId.trim());
+  const assignments = input.assignments
+    .filter((row) => row.useKey.trim() && row.spaceId.trim())
+    .map((row) => ({
+      ...row,
+      startTime: cleanTime(row.startTime),
+      endTime: cleanTime(row.endTime),
+    }));
   const primary = assignments.length > 0
     ? primarySpaceIdFromAssignments(assignments, { weddingFamily: input.weddingFamily })
     : (input.spaceId.trim() || null);
+  const timedStarts = assignments.map((row) => row.startTime).filter((time): time is string => !!time);
+  const timedEnds = assignments.map((row) => row.endTime).filter((time): time is string => !!time);
   return {
     eventDate: input.eventDate.trim(),
     eventEndDate: input.eventEndDate.trim() || null,
-    startTime: cleanTime(input.startTime),
-    endTime: cleanTime(input.endTime),
+    startTime: timedStarts.length > 0 ? [...timedStarts].sort()[0]! : cleanTime(input.startTime),
+    endTime: timedEnds.length > 0 ? [...timedEnds].sort().at(-1)! : cleanTime(input.endTime),
     spaceId: primary,
     assignments,
   };

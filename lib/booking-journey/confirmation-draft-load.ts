@@ -3,6 +3,7 @@ import { getSpaces } from "@/lib/availability/repository";
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
 import {
   prefillBookingConfirmation,
+  summarizeOwnHolds,
   type BookingConfirmationDraft,
 } from "@/lib/booking-journey/confirmation-draft";
 import type { LeadSpacePreferenceKind } from "@/lib/leads/space-preferences";
@@ -210,10 +211,17 @@ async function finishDraft(
   const holds = row.leadId
     ? (await supabase
       .from("date_holds")
-      .select("status, hold_date, start_time, end_time, space_id")
+      .select("id, status, hold_date, start_time, end_time, space_id")
       .eq("lead_id", row.leadId)
       .eq("venue_id", venueId)
       .eq("status", "active")).data ?? []
+    : [];
+  const holdIds = holds.map((hold) => hold.id).filter(Boolean);
+  const holdSpaceRows = holdIds.length
+    ? (await supabase
+      .from("date_hold_spaces")
+      .select("hold_id, space_id")
+      .in("hold_id", holdIds)).data ?? []
     : [];
 
   const preferences = row.leadId
@@ -229,14 +237,17 @@ async function finishDraft(
     eventDate,
     endDate,
     plannedSpaceId: eventSpace ?? row.plannedSpaceId,
-    holds: holds.map((hold) => ({
-      status: "active" as const,
-      holdDate: hold.hold_date,
-      startTime: hold.start_time,
-      endTime: hold.end_time,
-      spaceId: hold.space_id,
-      spaceIds: hold.space_id ? [hold.space_id] : [],
-    })),
+    holds: holds.map((hold) => {
+      const linked = holdSpaceRows.filter((row) => row.hold_id === hold.id).map((row) => row.space_id).filter(Boolean);
+      return {
+        status: "active" as const,
+        holdDate: hold.hold_date,
+        startTime: hold.start_time,
+        endTime: hold.end_time,
+        spaceId: hold.space_id,
+        spaceIds: linked.length > 0 ? linked : (hold.space_id ? [hold.space_id] : []),
+      };
+    }),
     preferences: preferences.map((pref) => ({
       useKey: pref.use_key,
       preferenceKind: pref.preference_kind as LeadSpacePreferenceKind,
@@ -264,6 +275,19 @@ async function finishDraft(
       holdBlocksAvailability: ctx.holdBlocksAvailability,
       hasOwnActiveHold: holds.length > 0,
       sourceHoldDates: [...new Set(holds.map((hold) => hold.hold_date).filter(Boolean))],
+      ownHolds: summarizeOwnHolds(
+        holds.map((hold) => {
+          const linked = holdSpaceRows.filter((row) => row.hold_id === hold.id).map((row) => row.space_id).filter(Boolean);
+          return {
+            holdDate: hold.hold_date,
+            startTime: hold.start_time,
+            endTime: hold.end_time,
+            spaceId: hold.space_id,
+            spaceIds: linked.length > 0 ? linked : (hold.space_id ? [hold.space_id] : []),
+          };
+        }),
+        ctx.spaces.map((space) => ({ spaceId: space.id, spaceName: space.name })),
+      ),
     },
   };
 }

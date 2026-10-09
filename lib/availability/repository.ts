@@ -452,6 +452,7 @@ export type CheckAvailabilityOpts = {
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
+  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }>;
   type: "event" | "tour";
   excludeId?: string; // Event id when type=event; lead id when type=tour
   /**
@@ -581,17 +582,25 @@ export async function checkAvailability(
     setup_time: string | null; start_time: string | null; end_time: string | null; teardown_time: string | null;
   }[];
   const eventSpaceMap = new Map<string, string[]>();
+  const eventWindowMap = new Map<string, Array<{ spaceId: string; startTime: string | null; endTime: string | null }>>();
   if (eventRows.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: assignRows } = await (client.from("event_space_assignments") as any)
-      .select("event_id, space_id")
+      .select("event_id, space_id, start_time, end_time")
       .eq("venue_id", venueId)
       .in("event_id", eventRows.map((e) => e.id));
-    for (const row of (assignRows ?? []) as { event_id: string; space_id: string }[]) {
+    for (const row of (assignRows ?? []) as { event_id: string; space_id: string; start_time?: string | null; end_time?: string | null }[]) {
       if (!row.event_id || !row.space_id) continue;
       const list = eventSpaceMap.get(row.event_id) ?? [];
       if (!list.includes(row.space_id)) list.push(row.space_id);
       eventSpaceMap.set(row.event_id, list);
+      const timed = eventWindowMap.get(row.event_id) ?? [];
+      timed.push({
+        spaceId: row.space_id,
+        startTime: row.start_time?.slice(0, 5) ?? null,
+        endTime: row.end_time?.slice(0, 5) ?? null,
+      });
+      eventWindowMap.set(row.event_id, timed);
     }
   }
   const events = eventRows.map((e) => ({
@@ -602,6 +611,9 @@ export async function checkAvailability(
     eventEndDate: e.event_end_date,
     spaceId: e.space_id,
     spaceIds: eventSpaceMap.get(e.id) ?? (e.space_id ? [e.space_id] : []),
+    windows: (eventWindowMap.get(e.id) ?? []).some((row) => row.startTime && row.endTime)
+      ? eventWindowMap.get(e.id)
+      : undefined,
     setupTime: e.setup_time,
     startTime: e.start_time,
     endTime: e.end_time,
@@ -659,6 +671,7 @@ export async function checkAvailability(
       setupTime: opts.setupTime,
       teardownTime: opts.teardownTime,
       spaceId: opts.spaceId,
+      windows: opts.windows,
       type: opts.type,
       excludeId: opts.excludeId,
       purpose: opts.purpose,

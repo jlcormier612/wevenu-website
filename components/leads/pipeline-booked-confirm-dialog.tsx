@@ -13,7 +13,7 @@ import {
   toConfirmedBookingOccupancy,
   type ConfirmedBookingOccupancy,
 } from "@/lib/booking-journey/confirmed-occupancy";
-import type { BookingConfirmationDraft } from "@/lib/booking-journey/confirmation-draft";
+import type { BookingConfirmationDraft, OwnHoldSummary } from "@/lib/booking-journey/confirmation-draft";
 import { resolveExperienceProfile } from "@/lib/event-experience";
 import { primarySpaceIdFromAssignments, type EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
 import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
@@ -119,118 +119,141 @@ export function PipelineBookedConfirmDialog({
         aria-labelledby="pipeline-booked-title"
         aria-describedby="pipeline-booked-desc"
         data-testid="booking-confirmation"
-        className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-lg"
+        className="relative z-10 flex max-h-[min(90vh,42rem)] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg"
       >
-        <h2 id="pipeline-booked-title" className="text-base font-semibold text-heading">
-          You&apos;re booking this date.
-        </h2>
-        <div id="pipeline-booked-desc" className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground">
-          <p>
-            Confirm the final event dates, spaces, and times. These will become the booked event and determine availability according to your venue&apos;s booking rules.
-          </p>
-          {draft?.hasOwnActiveHold ? (
-            <p>
-              This lead already has a hold. Confirming establishes the booking from the dates, spaces, and times shown here. That hold is not a conflict with someone else.
+        <div className="space-y-4 overflow-y-auto p-5">
+          <div>
+            <h2 id="pipeline-booked-title" className="text-base font-semibold text-heading">
+              Confirm this booking
+            </h2>
+            <p id="pipeline-booked-desc" className="mt-1 text-sm text-muted-foreground">
+              Review the dates, spaces, and times for this event.
             </p>
+          </div>
+
+          {draft && (draft.ownHolds?.length ?? 0) > 0 ? (
+            <section className="rounded-lg border border-border bg-muted/40 px-3 py-2.5" data-testid="booking-current-hold">
+              <h3 className="text-sm font-semibold text-heading">Current hold</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This lead already has a hold on the calendar. Update the details below to reflect the final booking.
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-foreground">
+                {(draft.ownHolds ?? []).map((hold, index) => (
+                  <li key={`${hold.holdDate}-${index}`}>
+                    {formatHoldDetail(hold)}
+                  </li>
+                ))}
+              </ul>
+            </section>
           ) : null}
-          {draft && !draft.holdBlocksAvailability ? (
-            <p>
-              Holds do not reserve availability under your current settings. A confirmed booking will affect availability according to your booking rules.
-            </p>
-          ) : null}
-          {draft?.holdBlocksAvailability && draft.hasOwnActiveHold ? (
-            <p>
-              Holds can make availability unavailable to other bookings. This lead&apos;s own hold is handled as part of converting them to a booking.
-            </p>
-          ) : null}
+
+          {loadError && <p className="text-sm text-destructive">{loadError}</p>}
+
+          {draft && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Event date" htmlFor="booking-confirm-date" required>
+                  <Input
+                    id="booking-confirm-date"
+                    data-testid="booking-confirm-date"
+                    type="date"
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="End date"
+                  htmlFor="booking-confirm-end-date"
+                  hint="Leave blank for a single-day event."
+                >
+                  <Input
+                    id="booking-confirm-end-date"
+                    data-testid="booking-confirm-end-date"
+                    type="date"
+                    value={eventEndDate}
+                    min={eventDate || undefined}
+                    onChange={(e) => setEventEndDate(e.target.value)}
+                  />
+                </Field>
+              </div>
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-heading">Spaces and times</h3>
+                  {showAssignments ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Choose the space and the times it will be used for each part of the event.
+                    </p>
+                  ) : null}
+                </div>
+                {showAssignments ? (
+                  <EventSpaceAssignmentsEditor
+                    spaces={spaces}
+                    value={assignments}
+                    onChange={setAssignments}
+                    uses={relevantUses}
+                    withTimes
+                  />
+                ) : (
+                  <div className="space-y-3" data-testid="booking-confirm-space">
+                    <EventSpaceField
+                      value={spaceId}
+                      onChange={setSpaceId}
+                      spaces={spaces}
+                      spacesRequired={spacesRequired}
+                      error={spacesRequired && !spaceId ? formError ?? undefined : undefined}
+                    />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Event-wide start time" htmlFor="booking-confirm-start">
+                        <Input
+                          id="booking-confirm-start"
+                          data-testid="booking-confirm-start"
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Event-wide end time" htmlFor="booking-confirm-end">
+                        <Input
+                          id="booking-confirm-end"
+                          data-testid="booking-confirm-end"
+                          type="time"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {eventDate && (
+                <ConflictWarning
+                  date={eventDate}
+                  endDate={eventEndDate || undefined}
+                  startTime={showAssignments ? undefined : (startTime || undefined)}
+                  endTime={showAssignments ? undefined : (endTime || undefined)}
+                  spaceId={(showAssignments ? occupancySpace(assignments, experience.isWeddingSpecific) : spaceId) || undefined}
+                  windows={showAssignments ? assignmentWindows(assignments) : undefined}
+                  type="event"
+                  purpose="booking"
+                  excludeLeadId={draft.leadId ?? undefined}
+                  onStatusChange={setAvailabilityBlocked}
+                />
+              )}
+              {formError && <p className="text-sm text-destructive">{formError}</p>}
+
+              <section className="rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+                <h3 className="text-sm font-semibold text-heading">When you confirm</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The booking will reserve the selected spaces and times on the calendar. Any unused part of this lead&apos;s hold will be released.
+                </p>
+              </section>
+            </>
+          )}
         </div>
 
-        {loadError && <p className="mt-3 text-sm text-destructive">{loadError}</p>}
-
-        {draft && (
-          <div className="mt-4 space-y-4">
-            <Field label="Event date" htmlFor="booking-confirm-date" required>
-              <Input
-                id="booking-confirm-date"
-                data-testid="booking-confirm-date"
-                type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-              />
-            </Field>
-            <Field
-              label="End date"
-              htmlFor="booking-confirm-end-date"
-              hint="Leave blank for a single-day event."
-            >
-              <Input
-                id="booking-confirm-end-date"
-                data-testid="booking-confirm-end-date"
-                type="date"
-                value={eventEndDate}
-                min={eventDate || undefined}
-                onChange={(e) => setEventEndDate(e.target.value)}
-              />
-            </Field>
-            {showAssignments ? (
-              <EventSpaceAssignmentsEditor
-                spaces={spaces}
-                value={assignments}
-                onChange={setAssignments}
-                uses={relevantUses}
-              />
-            ) : (
-              <div data-testid="booking-confirm-space">
-                <EventSpaceField
-                  value={spaceId}
-                  onChange={setSpaceId}
-                  spaces={spaces}
-                  spacesRequired={spacesRequired}
-                  error={spacesRequired && !spaceId ? formError ?? undefined : undefined}
-                />
-              </div>
-            )}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Start time" htmlFor="booking-confirm-start">
-                <Input
-                  id="booking-confirm-start"
-                  data-testid="booking-confirm-start"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </Field>
-              <Field label="End time" htmlFor="booking-confirm-end">
-                <Input
-                  id="booking-confirm-end"
-                  data-testid="booking-confirm-end"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </Field>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Leave the times blank for an all-day booking.
-            </p>
-            {eventDate && (
-              <ConflictWarning
-                date={eventDate}
-                endDate={eventEndDate || undefined}
-                startTime={startTime || undefined}
-                endTime={endTime || undefined}
-                spaceId={(showAssignments ? occupancySpace(assignments, experience.isWeddingSpecific) : spaceId) || undefined}
-                type="event"
-                purpose="booking"
-                excludeLeadId={draft.leadId ?? undefined}
-                onStatusChange={setAvailabilityBlocked}
-              />
-            )}
-            {formError && <p className="text-sm text-destructive">{formError}</p>}
-          </div>
-        )}
-
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-3">
           <Button type="button" variant="outline" autoFocus disabled={confirming} onClick={onCancel}>
             Cancel
           </Button>
@@ -241,7 +264,7 @@ export function PipelineBookedConfirmDialog({
             disabled={confirming || blocked || availabilityBlocked || !eventDate.trim() || missingRequiredSpace}
             onClick={submit}
           >
-            {confirming ? "Booking…" : "Mark as Booked"}
+            {confirming ? "Booking…" : "Confirm booking"}
           </Button>
         </div>
       </div>
@@ -251,4 +274,43 @@ export function PipelineBookedConfirmDialog({
 
 function occupancySpace(assignments: EventSpaceAssignmentInput[], weddingFamily: boolean): string {
   return primarySpaceIdFromAssignments(assignments, { weddingFamily }) ?? "";
+}
+
+function assignmentWindows(assignments: EventSpaceAssignmentInput[]) {
+  return assignments
+    .filter((row) => row.spaceId.trim())
+    .map((row) => ({
+      spaceId: row.spaceId,
+      startTime: row.startTime ?? null,
+      endTime: row.endTime ?? null,
+    }));
+}
+
+function formatHoldDetail(hold: OwnHoldSummary): string {
+  const date = formatHoldDate(hold.holdDate);
+  const start = formatClock(hold.startTime);
+  const end = formatClock(hold.endTime);
+  const time = start && end ? `${start}–${end}` : "All day";
+  const scope = hold.wholeVenue ? "Whole venue" : (hold.spaceLabel ?? "Selected spaces");
+  return `${date} · ${time} · ${scope}`;
+}
+
+function formatHoldDate(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  if (!year || !month || !day) return iso;
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatClock(value: string | null): string | null {
+  if (!value) return null;
+  const [hourText, minute] = value.slice(0, 5).split(":");
+  const hour = Number(hourText);
+  if (!minute || Number.isNaN(hour)) return null;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minute} ${suffix}`;
 }

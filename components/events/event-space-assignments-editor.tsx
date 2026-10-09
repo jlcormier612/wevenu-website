@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Field } from "@/components/setup/field";
+import { Input } from "@/components/ui/input";
 import type { VenueSpace } from "@/lib/availability/types";
 import {
   configuredUsesFromSpaces,
@@ -30,12 +31,15 @@ export function EventSpaceAssignmentsEditor({
   value,
   onChange,
   uses: usesProp,
+  withTimes = false,
 }: {
   spaces: VenueSpace[];
   value: EventSpaceAssignmentInput[];
   onChange: (next: EventSpaceAssignmentInput[]) => void;
   /** Relevant uses for this event. Defaults to all configured venue uses. */
   uses?: Array<{ key: string; label: string }>;
+  /** Start and end belong to this use's space, not one event-wide window. */
+  withTimes?: boolean;
 }) {
   const uses = usesProp ?? configuredUsesFromSpaces(spaces);
 
@@ -48,26 +52,35 @@ export function EventSpaceAssignmentsEditor({
     );
   }
 
-  function setUseSpace(useKey: string, useLabel: string, spaceId: string) {
-    const without = value.filter((a) => a.useKey !== useKey);
-    if (!spaceId) {
+  function rowFor(useKey: string): EventSpaceAssignmentInput | undefined {
+    return value.find((row) => row.useKey === useKey);
+  }
+
+  function writeRow(useKey: string, useLabel: string, patch: Partial<EventSpaceAssignmentInput>) {
+    const current = rowFor(useKey);
+    const next = { useKey, useLabel, spaceId: current?.spaceId ?? "", startTime: current?.startTime ?? null, endTime: current?.endTime ?? null, ...patch };
+    const without = value.filter((row) => row.useKey !== useKey);
+    if (!next.spaceId) {
       onChange(without);
       return;
     }
-    onChange([...without, { useKey, useLabel, spaceId }]);
+    onChange([...without, next]);
   }
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-sm font-medium text-heading">Event spaces</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Assign a physical space for each use. The same space may serve more than one use.
-        </p>
-      </div>
+      {withTimes ? null : (
+        <div>
+          <p className="text-sm font-medium text-heading">Event spaces</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Assign a physical space for each use. The same space may serve more than one use.
+          </p>
+        </div>
+      )}
       <div className="space-y-3">
         {uses.map((u) => {
-          const current = value.find((a) => a.useKey === u.key)?.spaceId ?? "";
+          const current = rowFor(u.key);
+          const currentSpace = current?.spaceId ?? "";
           const eligible = spacesEligibleForUse(spaces, u.key);
           const items = [
             { value: NONE, label: "Not assigned" },
@@ -77,26 +90,50 @@ export function EventSpaceAssignmentsEditor({
             })),
           ];
           return (
-            <Field key={u.key} label={u.label} htmlFor={`esa-${u.key}`}>
-              <Select
-                value={current || NONE}
-                onValueChange={(v) => setUseSpace(u.key, u.label, v === NONE ? "" : v)}
-                items={items}
-              >
-                <SelectTrigger id={`esa-${u.key}`}>
-                  <SelectValue placeholder="Not assigned" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Not assigned</SelectItem>
-                  {eligible.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                      {s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <div key={u.key} className={withTimes ? "grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_7.5rem_7.5rem] sm:items-end" : ""}>
+              <Field label={u.label} htmlFor={`esa-${u.key}`}>
+                <Select
+                  value={currentSpace || NONE}
+                  onValueChange={(v) => writeRow(u.key, u.label, { spaceId: v === NONE ? "" : v })}
+                  items={items}
+                >
+                  <SelectTrigger id={`esa-${u.key}`}>
+                    <SelectValue placeholder="Not assigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Not assigned</SelectItem>
+                    {eligible.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                        {s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              {withTimes ? (
+                <>
+                  <Field label="Start time" htmlFor={`esa-${u.key}-start`}>
+                    <Input
+                      id={`esa-${u.key}-start`}
+                      type="time"
+                      value={(current?.startTime ?? "").slice(0, 5)}
+                      disabled={!currentSpace}
+                      onChange={(e) => writeRow(u.key, u.label, { spaceId: currentSpace, startTime: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="End time" htmlFor={`esa-${u.key}-end`}>
+                    <Input
+                      id={`esa-${u.key}-end`}
+                      type="time"
+                      value={(current?.endTime ?? "").slice(0, 5)}
+                      disabled={!currentSpace}
+                      onChange={(e) => writeRow(u.key, u.label, { spaceId: currentSpace, endTime: e.target.value })}
+                    />
+                  </Field>
+                </>
+              ) : null}
+            </div>
           );
         })}
       </div>

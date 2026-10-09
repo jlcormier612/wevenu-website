@@ -103,6 +103,11 @@ export type OccupancyEvent = {
   spaceId: string | null;
   /** Canonical spaces from event_space_assignments (+ spaceId). */
   spaceIds?: string[];
+  /**
+   * Per-use windows. When any row has its own times, occupancy uses those
+   * windows instead of one event-wide envelope.
+   */
+  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }> | null;
   setupTime: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -115,6 +120,8 @@ export type OccupancyInput = {
   spaceId?: string | null;
   /** Additional spaces for the candidate (assignments). */
   spaceIds?: string[] | null;
+  /** Per-space windows. When set, each space occupies only its own times. */
+  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }> | null;
   setupTime?: string | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -352,12 +359,64 @@ function occupyingEvents(existing: OccupancyEvent[], excludeEventId?: string | n
   });
 }
 
-function eventOverlapsCandidate(event: OccupancyEvent, input: OccupancyInput, candidateWindow: { start: string; end: string }): boolean {
+type ScheduleWindow = { spaceId: string | null; start: string; end: string };
+
+function scheduleWindowsForInput(input: OccupancyInput): ScheduleWindow[] {
+  const precise = (input.windows ?? []).filter((row) => row.spaceId?.trim());
+  if (precise.length > 0) {
+    return precise.map((row) => ({
+      spaceId: row.spaceId.trim(),
+      ...operationalWindow({
+        setupTime: row.startTime ? null : input.setupTime,
+        startTime: row.startTime ?? input.startTime,
+        endTime: row.endTime ?? input.endTime,
+        teardownTime: row.endTime ? null : input.teardownTime,
+      }),
+    }));
+  }
+  const spaces = occupiedSpaceIds({ spaceId: input.spaceId, spaceIds: input.spaceIds });
+  const window = operationalWindow(input);
+  if (spaces.length === 0) return [{ spaceId: null, ...window }];
+  return spaces.map((spaceId) => ({ spaceId, ...window }));
+}
+
+function scheduleWindowsForEvent(event: OccupancyEvent): ScheduleWindow[] {
+  const precise = (event.windows ?? []).filter((row) => row.spaceId?.trim());
+  if (precise.length > 0) {
+    return precise.map((row) => ({
+      spaceId: row.spaceId.trim(),
+      ...operationalWindow({
+        setupTime: row.startTime ? null : event.setupTime,
+        startTime: row.startTime ?? event.startTime,
+        endTime: row.endTime ?? event.endTime,
+        teardownTime: row.endTime ? null : event.teardownTime,
+      }),
+    }));
+  }
+  const spaces = occupiedSpaceIds(event);
+  const window = operationalWindow(event);
+  if (spaces.length === 0) return [{ spaceId: null, ...window }];
+  return spaces.map((spaceId) => ({ spaceId, ...window }));
+}
+
+function eventOverlapsCandidate(event: OccupancyEvent, input: OccupancyInput, _candidateWindow: { start: string; end: string }): boolean {
   if (!dateRangesOverlap(event.eventDate, event.eventEndDate, input.eventDate, input.eventEndDate)) {
     return false;
   }
-  const other = operationalWindow(event);
-  return windowsOverlap(candidateWindow, other);
+  const left = scheduleWindowsForInput(input);
+  const right = scheduleWindowsForEvent(event);
+  return left.some((a) => right.some((b) => windowsOverlap(a, b)));
+}
+
+function sameSpaceWindowOverlap(event: OccupancyEvent, input: OccupancyInput): boolean {
+  if (!dateRangesOverlap(event.eventDate, event.eventEndDate, input.eventDate, input.eventEndDate)) {
+    return false;
+  }
+  const left = scheduleWindowsForInput(input);
+  const right = scheduleWindowsForEvent(event);
+  return left.some((a) => right.some((b) =>
+    !!a.spaceId && !!b.spaceId && a.spaceId === b.spaceId && windowsOverlap(a, b),
+  ));
 }
 
 function occupiedSpaceIds(event: {
@@ -379,6 +438,52 @@ function spaceSetsIntersect(a: readonly string[], b: readonly string[]): boolean
   return a.some((id) => b.includes(id));
 }
 
+function intervalsForWindow(
+  eventDate: string,
+  eventEndDate: string | null | undefined,
+  window: { start: string; end: string },
+): OperationalInterval[] {
+  return datesInProtectedRange(eventDate, eventEndDate).map((date) => ({
+    date,
+    start: operationalInstantMinutes(date, window.start),
+    end: operationalInstantMinutes(date, window.end),
+  }));
+}
+
+function turnaroundForSharedWindows(
+  input: OccupancyInput,
+  event: OccupancyEvent,
+  hours: number,
+  simultaneous: boolean,
+): { earliestStart: number; otherIsBefore: boolean } | null {
+  const left = scheduleWindowsForInput(input);
+  const right = scheduleWindowsForEvent(event);
+  const spaces = new Set<string>();
+  if (!simultaneous) {
+    for (const row of left) if (row.spaceId) spaces.add(row.spaceId);
+    if (spaces.size === 0) spaces.add("");
+  } else {
+    for (const row of left) {
+      if (row.spaceId && right.some((other) => other.spaceId === row.spaceId)) spaces.add(row.spaceId);
+    }
+  }
+  let found: { earliestStart: number; otherIsBefore: boolean } | null = null;
+  for (const spaceId of spaces) {
+    const cand = left.filter((row) => !simultaneous || row.spaceId === spaceId || spaceId === "");
+    const other = right.filter((row) => !simultaneous || row.spaceId === spaceId || spaceId === "");
+    const violation = turnaroundViolation(
+      cand.flatMap((row) => intervalsForWindow(input.eventDate, input.eventEndDate, row)),
+      other.flatMap((row) => intervalsForWindow(event.eventDate, event.eventEndDate, row)),
+      hours,
+    );
+    if (!violation) continue;
+    if (!found || (violation.otherIsBefore && violation.earliestStart > found.earliestStart)) {
+      found = violation;
+    }
+  }
+  return found;
+}
+
 export function evaluateEventOccupancy(
   input: OccupancyInput,
   venue: OccupancyVenue,
@@ -386,7 +491,11 @@ export function evaluateEventOccupancy(
 ): OccupancyResult {
   const effectiveMax = venue.effectiveMax < 1 ? 1 : Math.trunc(venue.effectiveMax);
   const spaceId = blankToNull(input.spaceId);
-  const candidateSpaces = occupiedSpaceIds({ spaceId, spaceIds: input.spaceIds });
+  const windowSpaces = (input.windows ?? []).map((row) => row.spaceId?.trim()).filter((id): id is string => !!id);
+  const candidateSpaces = occupiedSpaceIds({
+    spaceId,
+    spaceIds: [...(input.spaceIds ?? []), ...windowSpaces],
+  });
   const simultaneous = effectiveMax >= 2;
 
   if (simultaneous) {
@@ -423,9 +532,7 @@ export function evaluateEventOccupancy(
   }
 
   if (simultaneous && candidateSpaces.length > 0) {
-    const sameSpace = overlapping.find((e) =>
-      spaceSetsIntersect(candidateSpaces, occupiedSpaceIds(e)),
-    );
+    const sameSpace = occupying.find((e) => sameSpaceWindowOverlap(e, input));
     if (sameSpace) {
       const label = sameSpace.name?.trim() || "another event";
       return {
@@ -451,6 +558,8 @@ export function evaluateEventOccupancy(
   });
   if (turnaroundHours > 0) {
     const candidateIntervals = eventOperationalIntervals(input);
+    const precise = (input.windows ?? []).some((row) => row.startTime && row.endTime)
+      || occupying.some((event) => (event.windows ?? []).some((row) => row.startTime && row.endTime));
     for (const event of occupying) {
       if (
         simultaneous
@@ -459,11 +568,13 @@ export function evaluateEventOccupancy(
       ) {
         continue;
       }
-      const violation = turnaroundViolation(
-        candidateIntervals,
-        eventOperationalIntervals(event),
-        turnaroundHours,
-      );
+      const violation = precise
+        ? turnaroundForSharedWindows(input, event, turnaroundHours, simultaneous)
+        : turnaroundViolation(
+          candidateIntervals,
+          eventOperationalIntervals(event),
+          turnaroundHours,
+        );
       if (violation) {
         const label = event.name?.trim() || "another event";
         const hoursLabel = formatTurnaroundHours(turnaroundHours);

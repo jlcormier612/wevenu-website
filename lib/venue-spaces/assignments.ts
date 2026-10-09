@@ -10,6 +10,9 @@ export type EventSpaceAssignmentInput = {
   useKey: string;
   useLabel: string;
   spaceId: string;
+  /** When set, this use occupies only this window. Blank uses the event window. */
+  startTime?: string | null;
+  endTime?: string | null;
 };
 
 export type EventSpaceAssignment = EventSpaceAssignmentInput & {
@@ -91,6 +94,8 @@ export function normalizeAssignmentInputs(
       useKey,
       useLabel: (raw.useLabel.trim() || labelForUseKey(useKey)),
       spaceId,
+      startTime: raw.startTime ?? null,
+      endTime: raw.endTime ?? null,
     });
   }
   return [...byKey.values()];

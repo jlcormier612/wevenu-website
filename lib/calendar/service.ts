@@ -173,17 +173,26 @@ export async function getCalendarData(
   const eventRows = (eventsRes.data ?? []) as any[];
   const eventIds = eventRows.map((e) => e.id as string).filter(Boolean);
   const assignmentSpaceIds = new Map<string, string[]>();
+  const assignmentWindows = new Map<string, Array<{ spaceId: string; useLabel: string | null; startTime: string | null; endTime: string | null }>>();
   if (eventIds.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: assignRows } = await (supabase.from("event_space_assignments") as any)
-      .select("event_id, space_id")
+      .select("event_id, space_id, use_label, start_time, end_time")
       .eq("venue_id", venue.id)
       .in("event_id", eventIds);
-    for (const row of (assignRows ?? []) as { event_id: string; space_id: string }[]) {
+    for (const row of (assignRows ?? []) as { event_id: string; space_id: string; use_label?: string | null; start_time?: string | null; end_time?: string | null }[]) {
       if (!row.event_id || !row.space_id) continue;
       const list = assignmentSpaceIds.get(row.event_id) ?? [];
       if (!list.includes(row.space_id)) list.push(row.space_id);
       assignmentSpaceIds.set(row.event_id, list);
+      const windows = assignmentWindows.get(row.event_id) ?? [];
+      windows.push({
+        spaceId: row.space_id,
+        useLabel: row.use_label ?? null,
+        startTime: row.start_time?.slice(0, 5) ?? null,
+        endTime: row.end_time?.slice(0, 5) ?? null,
+      });
+      assignmentWindows.set(row.event_id, windows);
     }
   }
 
@@ -194,16 +203,40 @@ export async function getCalendarData(
     const dates = calendarDatesForProtectedEvent(e.event_date, e.event_end_date ?? null, start, end);
     const assigned = assignmentSpaceIds.get(e.id) ?? [];
     const spaceIds = [...new Set([e.space_id, ...assigned].filter(Boolean))] as string[];
+    const windows = assignmentWindows.get(e.id) ?? [];
+    const timed = windows.filter((row) => row.startTime && row.endTime);
+    const baseSubtitle = [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
+      .filter(Boolean)
+      .join(" · ") || null;
     for (const date of dates) {
+      if (timed.length > 0) {
+        timed.forEach((row, index) => {
+          items.push({
+            id: `event-${e.id}-${date}-${row.spaceId}-${index}`,
+            type: "event",
+            date,
+            title: cn ?? e.name,
+            subtitle: [baseSubtitle, row.useLabel].filter(Boolean).join(" · ") || null,
+            time: row.startTime,
+            endTime: row.endTime,
+            link: `/events/${e.id}`,
+            eventId: e.id,
+            clientId: e.client_id ?? null,
+            spaceId: row.spaceId,
+            spaceName: null,
+            spaceIds: [row.spaceId],
+          });
+        });
+        continue;
+      }
       items.push({
         id: `event-${e.id}-${date}`,
         type: "event",
         date,
         title: cn ?? e.name,
-        subtitle: [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
-          .filter(Boolean)
-          .join(" · ") || null,
+        subtitle: baseSubtitle,
         time: e.start_time?.slice(0, 5) ?? null,
+        endTime: e.end_time?.slice(0, 5) ?? null,
         link: `/events/${e.id}`,
         eventId: e.id,
         clientId: e.client_id ?? null,

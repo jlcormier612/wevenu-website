@@ -28,7 +28,39 @@ export type BookingConfirmationDraft = {
   hasOwnActiveHold: boolean;
   /** Active hold dates for this lead at the moment the draft was built. */
   sourceHoldDates: string[];
+  /** This lead's active holds, for the confirmation context. Not a conflict. */
+  ownHolds?: OwnHoldSummary[];
 };
+
+export type OwnHoldSummary = {
+  holdDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  /** No space on the hold means it covers the whole venue. */
+  wholeVenue: boolean;
+  spaceLabel: string | null;
+};
+
+export function summarizeOwnHolds(
+  holds: Array<{ holdDate: string; startTime?: string | null; endTime?: string | null; spaceId?: string | null; spaceIds?: string[] | null }>,
+  namedSpaces: Array<{ spaceId: string; spaceName: string | null }>,
+): OwnHoldSummary[] {
+  return holds.map((hold) => {
+    const ids = (hold.spaceIds ?? []).filter(Boolean);
+    const legacy = hold.spaceId?.trim() || "";
+    const spaceIds = ids.length > 0 ? ids : (legacy ? [legacy] : []);
+    const names = spaceIds
+      .map((id) => namedSpaces.find((space) => space.spaceId === id)?.spaceName?.trim() || null)
+      .filter((name): name is string => !!name);
+    return {
+      holdDate: hold.holdDate,
+      startTime: hhmm(hold.startTime) || null,
+      endTime: hhmm(hold.endTime) || null,
+      wholeVenue: spaceIds.length === 0,
+      spaceLabel: spaceIds.length === 0 ? null : (names.length > 0 ? names.join(", ") : null),
+    };
+  });
+}
 
 function hhmm(value: string | null | undefined): string {
   const trimmed = value?.trim() ?? "";
@@ -43,7 +75,7 @@ export function prefillBookingConfirmation(input: {
   holds?: Array<Pick<DateHold, "status" | "holdDate" | "startTime" | "endTime" | "spaceId" | "spaceIds">>;
   preferences?: LeadEventSpacePreference[];
   assignments?: EventSpaceAssignmentInput[];
-}): Omit<BookingConfirmationDraft, "spaces" | "maxSimultaneousEvents" | "spaceOperatingMode" | "leadId" | "holdBlocksAvailability" | "hasOwnActiveHold" | "sourceHoldDates"> {
+}): Omit<BookingConfirmationDraft, "spaces" | "maxSimultaneousEvents" | "spaceOperatingMode" | "leadId" | "holdBlocksAvailability" | "hasOwnActiveHold" | "sourceHoldDates" | "ownHolds"> {
   const activeHolds = (input.holds ?? []).filter((hold) => hold.status === "active");
   const eventDate = input.eventDate?.trim()
     || activeHolds.find((hold) => hold.holdDate)?.holdDate

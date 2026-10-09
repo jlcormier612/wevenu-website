@@ -54,6 +54,8 @@ export type AvailabilityCheckInput = {
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
+  /** Per-space windows for a booking confirmation. Each space is checked on its own times. */
+  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }>;
   type: "event" | "tour";
   excludeId?: string;
   /**
@@ -120,7 +122,8 @@ export function buildAvailabilityConflicts(
       ? utcToVenueLocalParts(new Date(input.tourScheduledAtMs).toISOString(), input.timezone)
       : utcClockFromMs(input.tourScheduledAtMs))
     : null;
-  const blockInterval = input.type === "event"
+  const blockWindows = (input.windows ?? []).filter((row) => row.spaceId?.trim());
+  const blockInterval = input.type === "event" && blockWindows.length === 0
     ? eventCoverageInterval({
       eventDate: input.date,
       eventEndDate: input.endDate,
@@ -139,7 +142,23 @@ export function buildAvailabilityConflicts(
     blockInterval,
     input.type === "tour" ? { types: TOUR_CLOSING_CALENDAR_BLOCK_TYPES } : undefined,
   );
-  if (coveringTitle) pushBlock(conflicts, coveringTitle);
+  if (input.type === "event" && blockWindows.length > 0) {
+    for (const row of blockWindows) {
+      const title = coveringCalendarBlockTitle(
+        snapshot.calendarBlocks,
+        eventCoverageInterval({
+          eventDate: input.date,
+          eventEndDate: input.endDate,
+          startTime: row.startTime,
+          endTime: row.endTime,
+        }),
+      );
+      if (title) {
+        pushBlock(conflicts, title);
+        break;
+      }
+    }
+  } else if (coveringTitle) pushBlock(conflicts, coveringTitle);
 
   const effectiveMax = effectiveMaxSimultaneousEvents(snapshot.rules);
   const holdRows = snapshot.holds ?? [];
@@ -156,19 +175,28 @@ export function buildAvailabilityConflicts(
           snapshot.excludeLeadId,
         ) ? 1 : 0;
       }
-      return conflictingForeignHolds(
-        holdRows,
-        {
+      const slices = blockWindows.length > 0
+        ? blockWindows.map((row) => ({
+          date: input.date,
+          spaceIds: [row.spaceId.trim()],
+          startTime: row.startTime,
+          endTime: row.endTime,
+        }))
+        : [{
           date: input.date,
           spaceIds: input.spaceId?.trim() ? [input.spaceId.trim()] : [],
           setupTime: input.setupTime,
           startTime: input.startTime,
           endTime: input.endTime,
           teardownTime: input.teardownTime,
-        },
-        effectiveMax,
-        snapshot.excludeLeadId,
-      ).length;
+        }];
+      const hits = new Set<string>();
+      for (const slice of slices) {
+        for (const hold of conflictingForeignHolds(holdRows, slice, effectiveMax, snapshot.excludeLeadId)) {
+          hits.add(hold.id ?? `${hold.holdDate}:${hold.spaceIds.join(",")}`);
+        }
+      }
+      return hits.size;
     })()
     : snapshot.holdCount;
 
@@ -220,6 +248,7 @@ export function buildAvailabilityConflicts(
           eventDate: input.date,
           eventEndDate: input.endDate,
           spaceId: input.spaceId,
+          windows: blockWindows,
           setupTime: input.setupTime,
           startTime: input.startTime,
           endTime: input.endTime,
