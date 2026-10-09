@@ -11,6 +11,12 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { QUICKBOOKS_TOKEN_URL, quickBooksApiBaseUrl } from "@/lib/quickbooks/config";
+import {
+  classifyTransportFailure,
+  isMutatingRequest,
+  isTimeoutError,
+  QUICKBOOKS_REQUEST_TIMEOUT_MS,
+} from "@/lib/quickbooks/request-timeout";
 import * as repo from "@/lib/quickbooks/repository";
 
 const REFRESH_BUFFER_MS = 2 * 60 * 1000; // refresh if within 2 minutes of expiry
@@ -50,15 +56,26 @@ export async function getValidAccessToken(venueId: string): Promise<TokenResult>
     return { ok: false, error: "QuickBooks connection expired — please reconnect.", refreshTokenDead: true };
   }
 
-  const response = await fetch(QUICKBOOKS_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-      Authorization: basicAuthHeader(),
-    },
-    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: connection.refreshToken }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(QUICKBOOKS_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+        Authorization: basicAuthHeader(),
+      },
+      body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: connection.refreshToken }),
+      signal: AbortSignal.timeout(QUICKBOOKS_REQUEST_TIMEOUT_MS),
+    });
+  } catch (err) {
+    // Intuit rotates the refresh token on use, so a timeout here may have
+    // consumed ours. Left retryable rather than dead: if it was rotated the
+    // next attempt gets a 400 and is correctly classified as needing a
+    // reconnect, and no financial record is at stake either way.
+    const detail = isTimeoutError(err) ? `timed out after ${QUICKBOOKS_REQUEST_TIMEOUT_MS}ms` : "connection failed";
+    return { ok: false, error: `Could not refresh QuickBooks connection — ${detail}.`, refreshTokenDead: false };
+  }
   const data = await response.json().catch(() => null) as {
     access_token?: string; refresh_token?: string; expires_in?: number; x_refresh_token_expires_in?: number;
     error?: string; error_description?: string;
@@ -87,7 +104,7 @@ export async function getValidAccessToken(venueId: string): Promise<TokenResult>
 
 export type QuickBooksFetchResult =
   | { ok: true; response: Response }
-  | { ok: false; error: string; retryable: boolean };
+  | { ok: false; error: string; retryable: boolean; uncertain?: boolean };
 
 /**
  * Thin wrapper: resolves a valid token, calls the QBO REST API, and does
@@ -101,18 +118,30 @@ export async function quickBooksFetch(venueId: string, path: string, init?: Requ
   if (!token.ok) return { ok: false, error: token.error, retryable: !token.refreshTokenDead };
 
   const url = `${quickBooksApiBaseUrl()}/v3/company/${token.realmId}${path}`;
+  const mutating = isMutatingRequest(init);
   const doFetch = (accessToken: string) => fetch(url, {
     ...init,
     headers: { ...init?.headers, Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+    signal: AbortSignal.timeout(QUICKBOOKS_REQUEST_TIMEOUT_MS),
   });
 
-  let response = await doFetch(token.accessToken);
+  let response: Response;
+  try {
+    response = await doFetch(token.accessToken);
+  } catch (err) {
+    return { ok: false, ...classifyTransportFailure({ mutating, err }) };
+  }
+
   if (response.status === 401) {
     const admin = createAdminClient();
     await admin.from("quickbooks_connections").update({ access_token_expires_at: new Date(0).toISOString() }).eq("venue_id", venueId);
     const retried = await getValidAccessToken(venueId);
     if (!retried.ok) return { ok: false, error: retried.error, retryable: !retried.refreshTokenDead };
-    response = await doFetch(retried.accessToken);
+    try {
+      response = await doFetch(retried.accessToken);
+    } catch (err) {
+      return { ok: false, ...classifyTransportFailure({ mutating, err }) };
+    }
   }
 
   if (!response.ok) {

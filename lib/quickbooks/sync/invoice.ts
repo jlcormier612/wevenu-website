@@ -64,7 +64,7 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
   }
 
   const itemResult = await ensureDefaultItem(venueId);
-  if (!itemResult.ok) return { ok: false, error: itemResult.error, retryable: itemResult.retryable };
+  if (!itemResult.ok) return { ok: false, error: itemResult.error, retryable: itemResult.retryable, uncertain: itemResult.uncertain };
 
   // Idempotency: does an Invoice with this exact DocNumber already exist?
   const query = `select * from Invoice where DocNumber = '${escapeQboString(invoiceRow.invoice_number)}'`;
@@ -96,7 +96,7 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
       })),
     }),
   });
-  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable };
+  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
 
   const createData = await createResult.response.json() as { Invoice?: { Id: string } };
   const newId = createData.Invoice?.Id;

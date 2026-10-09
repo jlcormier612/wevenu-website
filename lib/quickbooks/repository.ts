@@ -9,6 +9,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import type { QuickBooksConnection, QuickBooksConnectionStatus } from "@/lib/quickbooks/types";
+import { classifyClaim } from "@/lib/quickbooks/queue-recovery";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -223,12 +224,23 @@ export async function resetQueueItemForRetry(client: any, entityType: string, en
   return !error;
 }
 
+/**
+ * Due work, restricted to venues that can actually sync. Filtering here rather
+ * than after the claim is what stops a disconnected venue's backlog being
+ * claimed and released on every tick — the churn that stranded rows in
+ * 'processing' when a sweep died between the two writes.
+ *
+ * venueIds is required so the caller cannot accidentally fall back to an
+ * unfiltered sweep; an empty list legitimately means "nothing can sync".
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getDueBatch(client: any, limit = 50): Promise<SyncQueueRow[]> {
+export async function getDueBatch(client: any, limit = 50, venueIds: string[]): Promise<SyncQueueRow[]> {
+  if (venueIds.length === 0) return [];
   const { data, error } = await client
     .from("quickbooks_sync_queue")
     .select("*")
     .in("status", ["pending", "failed_retrying"])
+    .in("venue_id", venueIds)
     .lte("next_attempt_at", new Date().toISOString())
     .order("next_attempt_at", { ascending: true })
     .limit(limit);
@@ -236,12 +248,129 @@ export async function getDueBatch(client: any, limit = 50): Promise<SyncQueueRow
   return (data ?? []) as SyncQueueRow[];
 }
 
+/** Venues whose queue is eligible this tick. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getConnectedVenueIds(client: any): Promise<string[]> {
+  const { data, error } = await client
+    .from("quickbooks_connections")
+    .select("venue_id")
+    .eq("status", "connected");
+  if (error) throw error;
+  return ((data ?? []) as { venue_id: string }[]).map((r) => r.venue_id);
+}
+
+/**
+ * Marks the point past which an Intuit call may have happened. Set in its own
+ * write immediately before dispatch so that, within one claim, a null
+ * last_attempted_at proves no external call was made.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function markDispatchStarted(client: any, id: string): Promise<void> {
+  const { error } = await client
+    .from("quickbooks_sync_queue")
+    .update({ last_attempted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export type ClaimRecoveryResult = { reclaimed: number; needsReview: number };
+
+type ProcessingClaimRow = { id: string; updated_at: string | null; last_attempted_at: string | null };
+
+/**
+ * Returns abandoned pre-dispatch claims to the queue and counts the stale
+ * claims that are not safe to replay automatically.
+ *
+ * Only rows with no dispatch marker are touched, so this cannot cause a second
+ * Intuit write. attempt_count is deliberately left alone: nothing was
+ * attempted, so nothing should count toward the dead-letter ceiling.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function reclaimAbandonedClaims(client: any, leaseMs: number): Promise<ClaimRecoveryResult> {
+  const { data, error } = await client
+    .from("quickbooks_sync_queue")
+    .select("id, updated_at, last_attempted_at")
+    .eq("status", "processing");
+  if (error) throw error;
+
+  // classifyClaim is the single definition of what counts as abandoned, so the
+  // tested rule and the executed rule cannot drift apart.
+  const nowMs = Date.now();
+  const reclaimable: string[] = [];
+  let needsReview = 0;
+  for (const row of (data ?? []) as ProcessingClaimRow[]) {
+    const verdict = classifyClaim({
+      updatedAt: row.updated_at,
+      lastAttemptedAt: row.last_attempted_at,
+      nowMs,
+      leaseMs,
+    });
+    if (verdict === "reclaimable") reclaimable.push(row.id);
+    else if (verdict === "needs_review") needsReview++;
+  }
+
+  if (reclaimable.length === 0) return { reclaimed: 0, needsReview };
+
+  const { data: reclaimedRows, error: updateError } = await client
+    .from("quickbooks_sync_queue")
+    .update({ status: "pending", next_attempt_at: new Date().toISOString() })
+    .in("id", reclaimable)
+    // Re-asserted at write time: a row that was dispatched or resolved between
+    // the read above and this update must not be reclaimed.
+    .eq("status", "processing")
+    .is("last_attempted_at", null)
+    .select("id");
+  if (updateError) throw updateError;
+
+  return { reclaimed: (reclaimedRows ?? []).length, needsReview };
+}
+
+export type QueueSnapshot = {
+  /** Due work for venues that cannot sync yet. Retained, never discarded. */
+  deferredNoConnection: number;
+  /** Age of the oldest item that is due and whose venue can sync, in ms. */
+  oldestEligiblePendingAgeMs: number | null;
+};
+
+/** Counts and ages only — no venue, entity or customer data. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getQueueSnapshot(client: any, connectedVenueIds: string[]): Promise<QueueSnapshot> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await client
+    .from("quickbooks_sync_queue")
+    .select("venue_id, created_at")
+    .in("status", ["pending", "failed_retrying"])
+    .lte("next_attempt_at", nowIso);
+  if (error) throw error;
+
+  const connected = new Set(connectedVenueIds);
+  let deferredNoConnection = 0;
+  let oldestEligible: number | null = null;
+
+  for (const row of (data ?? []) as { venue_id: string; created_at: string }[]) {
+    if (!connected.has(row.venue_id)) {
+      deferredNoConnection++;
+      continue;
+    }
+    const createdMs = Date.parse(row.created_at);
+    if (Number.isNaN(createdMs)) continue;
+    if (oldestEligible === null || createdMs < oldestEligible) oldestEligible = createdMs;
+  }
+
+  return {
+    deferredNoConnection,
+    oldestEligiblePendingAgeMs: oldestEligible === null ? null : Date.now() - oldestEligible,
+  };
+}
+
 /** Atomically claims one row — returns true iff this call actually won the claim (guards against a second, overlapping processor invocation). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function claimQueueItem(client: any, id: string): Promise<boolean> {
   const { data, error } = await client
     .from("quickbooks_sync_queue")
-    .update({ status: "processing" })
+    // Cleared so the dispatch marker describes this claim, not a prior attempt.
+    // last_error_at still carries when the previous attempt failed.
+    .update({ status: "processing", last_attempted_at: null })
     .in("status", ["pending", "failed_retrying"])
     .eq("id", id)
     .select("id");
@@ -269,6 +398,20 @@ export async function markQueueDeadLetter(client: any, id: string, attemptCount:
   const { error: dbError } = await client.from("quickbooks_sync_queue").update({
     status: "dead_letter", attempt_count: attemptCount,
     last_error: error, last_error_at: new Date().toISOString(), last_attempted_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (dbError) throw dbError;
+}
+
+/**
+ * Records a write whose outcome Intuit never confirmed. Status deliberately
+ * stays 'processing' and attempt_count is untouched: the dispatch marker is
+ * already set, so the existing lease logic surfaces this as needs_review
+ * rather than ever replaying it automatically.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function markQueueUncertain(client: any, id: string, error: string): Promise<void> {
+  const { error: dbError } = await client.from("quickbooks_sync_queue").update({
+    last_error: error, last_error_at: new Date().toISOString(),
   }).eq("id", id);
   if (dbError) throw dbError;
 }

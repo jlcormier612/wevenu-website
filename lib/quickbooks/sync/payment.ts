@@ -85,7 +85,7 @@ export async function syncPayment(venueId: string, entityId: string): Promise<Qu
       }],
     }),
   });
-  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable };
+  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
 
   const createData = await createResult.response.json() as { Payment?: { Id: string } };
   const newId = createData.Payment?.Id;

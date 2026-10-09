@@ -14,6 +14,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import * as repo from "@/lib/quickbooks/repository";
 import { computeNextAttemptAt, MAX_ATTEMPTS } from "@/lib/quickbooks/backoff";
+import { QUEUE_LEASE_MS } from "@/lib/quickbooks/queue-recovery";
 import { recordHealthCheck } from "@/lib/quickbooks/health";
 import { syncCustomer } from "@/lib/quickbooks/sync/customer";
 import { syncInvoice } from "@/lib/quickbooks/sync/invoice";
@@ -79,13 +80,40 @@ async function checkDependency(admin: any, entityType: QuickBooksEntityType, ent
 
 export type ProcessResult = {
   processed: number; succeeded: number; failedRetrying: number; deadLettered: number; skipped: number;
+  /** Abandoned pre-dispatch claims returned to the queue this tick. */
+  reclaimed: number;
+  /** Stale claims that may have reached Intuit — held, not replayed. */
+  needsReview: number;
+  /** Writes that timed out this tick with an unconfirmed outcome. */
+  uncertainWrites: number;
+  /** Due work retained for venues that have not connected QuickBooks yet. */
+  deferredNoConnection: number;
+  /** Age of the oldest due item that could actually sync. Null when none. */
+  oldestEligiblePendingAgeMs: number | null;
 };
 
 export async function processQuickBooksSyncQueue(): Promise<ProcessResult> {
   const admin = createAdminClient();
-  const result: ProcessResult = { processed: 0, succeeded: 0, failedRetrying: 0, deadLettered: 0, skipped: 0 };
+  const result: ProcessResult = {
+    processed: 0, succeeded: 0, failedRetrying: 0, deadLettered: 0, skipped: 0,
+    reclaimed: 0, needsReview: 0, uncertainWrites: 0,
+    deferredNoConnection: 0, oldestEligiblePendingAgeMs: null,
+  };
 
-  const batch = await repo.getDueBatch(admin, BATCH_SIZE);
+  // Recover first so anything freed is eligible within this same tick.
+  const recovery = await repo.reclaimAbandonedClaims(admin, QUEUE_LEASE_MS);
+  result.reclaimed = recovery.reclaimed;
+  result.needsReview = recovery.needsReview;
+
+  const connectedVenueIds = await repo.getConnectedVenueIds(admin);
+
+  // Reported every tick, including when nothing can run, so a queue holding
+  // work is never mistaken for an empty one.
+  const snapshot = await repo.getQueueSnapshot(admin, connectedVenueIds);
+  result.deferredNoConnection = snapshot.deferredNoConnection;
+  result.oldestEligiblePendingAgeMs = snapshot.oldestEligiblePendingAgeMs;
+
+  const batch = await repo.getDueBatch(admin, BATCH_SIZE, connectedVenueIds);
 
   for (const item of batch) {
     const claimed = await repo.claimQueueItem(admin, item.id);
@@ -93,6 +121,8 @@ export async function processQuickBooksSyncQueue(): Promise<ProcessResult> {
 
     result.processed++;
 
+    // Defence in depth: getDueBatch already excludes unconnected venues, so
+    // this only fires if a venue disconnects between selection and claim.
     const connection = await repo.getConnection(admin, item.venue_id);
     if (!connection || connection.status !== "connected") {
       // Not the sync's fault — release without burning an attempt.
@@ -108,11 +138,40 @@ export async function processQuickBooksSyncQueue(): Promise<ProcessResult> {
       continue;
     }
 
-    const syncResult = await dispatch(item.venue_id, item.entity_type, item.entity_id);
+    // Past this line an Intuit call may have happened, so the row stops being
+    // eligible for automatic recovery.
+    await repo.markDispatchStarted(admin, item.id);
+
+    let syncResult: QuickBooksSyncResult;
+    try {
+      syncResult = await dispatch(item.venue_id, item.entity_type, item.entity_id);
+    } catch (err) {
+      // The dispatch marker is already set, so anything thrown past this point
+      // — most plausibly an aborted response body on a create that QuickBooks
+      // did apply — leaves the outcome unknown. Treat it as uncertain rather
+      // than letting it fail the item or abort the rest of the sweep.
+      const detail = err instanceof Error ? err.message : "sync threw";
+      syncResult = {
+        ok: false,
+        retryable: false,
+        uncertain: true,
+        error: `QuickBooks write outcome unknown — ${detail}. Held for review to avoid a duplicate record.`,
+      };
+    }
 
     if (syncResult.ok) {
       await handleSuccess(admin, item, syncResult.quickbooksId);
       result.succeeded++;
+    } else if (syncResult.uncertain) {
+      // Intuit may have applied this write. Leave the claim in place so the
+      // lease reports it as needs_review; never retry it automatically.
+      await repo.markQueueUncertain(admin, item.id, syncResult.error);
+      await repo.insertSyncLog(admin, {
+        venueId: item.venue_id, queueId: item.id, entityType: item.entity_type, entityId: item.entity_id,
+        outcome: "failed", attemptNumber: item.attempt_count + 1, message: syncResult.error,
+      });
+      await recordHealthCheck(item.venue_id, false, syncResult.error);
+      result.uncertainWrites++;
     } else {
       await handleFailure(admin, item, syncResult.error, syncResult.retryable);
       if (!syncResult.retryable || item.attempt_count + 1 >= (item.max_attempts ?? MAX_ATTEMPTS)) result.deadLettered++;

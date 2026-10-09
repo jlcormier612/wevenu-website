@@ -59,7 +59,7 @@ export async function syncRefund(venueId: string, entityId: string): Promise<Qui
   if (!customerId) return { ok: false, error: "Customer not yet synced.", retryable: true };
 
   const itemResult = await ensureDefaultItem(venueId);
-  if (!itemResult.ok) return { ok: false, error: itemResult.error, retryable: itemResult.retryable };
+  if (!itemResult.ok) return { ok: false, error: itemResult.error, retryable: itemResult.retryable, uncertain: itemResult.uncertain };
 
   const privateNote = `htc:payment_refund:${entityId}`;
   const legacyNote = `wevenu:payment_refund:${entityId}`;
@@ -87,7 +87,7 @@ export async function syncRefund(venueId: string, entityId: string): Promise<Qui
       }],
     }),
   });
-  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable };
+  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
 
   const createData = await createResult.response.json() as { RefundReceipt?: { Id: string } };
   const newId = createData.RefundReceipt?.Id;

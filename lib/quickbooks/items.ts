@@ -12,7 +12,9 @@ import { quickBooksFetch } from "@/lib/quickbooks/client";
 import { QUICKBOOKS_DEFAULT_ITEM_NAME } from "@/lib/quickbooks/config";
 import * as repo from "@/lib/quickbooks/repository";
 
-export type EnsureItemResult = { ok: true; itemId: string } | { ok: false; error: string; retryable: boolean };
+export type EnsureItemResult =
+  | { ok: true; itemId: string }
+  | { ok: false; error: string; retryable: boolean; uncertain?: boolean };
 
 export async function ensureDefaultItem(venueId: string): Promise<EnsureItemResult> {
   const admin = createAdminClient();
@@ -38,7 +40,7 @@ export async function ensureDefaultItem(venueId: string): Promise<EnsureItemResu
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ Name: QUICKBOOKS_DEFAULT_ITEM_NAME, Type: "Service" }),
   });
-  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable };
+  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
 
   const createData = await createResult.response.json() as { Item?: { Id: string } };
   const newId = createData.Item?.Id;

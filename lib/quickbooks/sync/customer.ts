@@ -62,7 +62,7 @@ export async function syncCustomer(venueId: string, entityId: string): Promise<Q
       PrimaryPhone: row.phone ? { FreeFormNumber: row.phone } : undefined,
     }),
   });
-  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable };
+  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
 
   const createData = await createResult.response.json() as { Customer?: { Id: string } };
   const newId = createData.Customer?.Id;
