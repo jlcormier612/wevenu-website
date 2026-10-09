@@ -4,6 +4,7 @@
  */
 import { SEQUENCE_TRIGGER_TYPES } from "@/lib/message-sequences/constants";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
+import { audienceForTrigger } from "@/lib/message-sequences/platform-triggers";
 import type { MessageSequenceInput, SequenceStepInput } from "@/lib/message-sequences/types";
 
 export type AutomationBehaviorSummary = {
@@ -69,9 +70,29 @@ function stepsNarrative(steps: SequenceStepInput[]): string {
   return `we'll ${parts.join(", ")}`;
 }
 
-/** Shared stop copy — matches engine exits (booked / lost / reply / manual stop / finished). */
+/**
+ * Sales / Lead stop copy — booking and Lost are lead-lifecycle exits.
+ * Also used for manual automations (no Client category).
+ */
 export const AUTOMATION_STOPS_SUMMARY =
   "It stops for someone when they book, are marked Lost, reply to a message, finish every step, or you stop them.";
+
+/**
+ * Client-category stop copy — omits booking / Lost, which are lead-lifecycle
+ * concepts and confuse people in post-booking Client automations. Reply,
+ * finished steps, and manual stop remain the venue-facing stops; engine
+ * relationship-wide booking/Lost exits are unchanged.
+ */
+export const CLIENT_AUTOMATION_STOPS_SUMMARY =
+  "It stops for someone when they reply to a message, finish every step, or you stop them.";
+
+export function automationStopsSummaryForTrigger(
+  triggerType: MessageSequenceInput["triggerType"],
+): string {
+  return audienceForTrigger(triggerType) === "client"
+    ? CLIENT_AUTOMATION_STOPS_SUMMARY
+    : AUTOMATION_STOPS_SUMMARY;
+}
 
 /**
  * Build a preview that reflects the actual configured automation.
@@ -79,7 +100,7 @@ export const AUTOMATION_STOPS_SUMMARY =
 export function buildAutomationBehaviorSummary(input: MessageSequenceInput): AutomationBehaviorSummary {
   const starts = startsWhen(input);
   const stepLines = input.steps.map((s, i) => stepLine(s, i));
-  const stops = AUTOMATION_STOPS_SUMMARY;
+  const stops = automationStopsSummaryForTrigger(input.triggerType);
 
   let paragraph: string;
   if (input.steps.length === 0) {
