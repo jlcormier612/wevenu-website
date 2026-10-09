@@ -115,4 +115,12 @@ describe("assignment persistence is a single column write after booking succeeds
     assert.match(team, /assigned_staff_id/);
     assert.doesNotMatch(team, /event_team/);
   });
+
+  it("rejects cross-venue staff in the database, not only in the picker", () => {
+    const sql = readFileSync("supabase/migrations/20261414400000_staff_assignment_same_venue.sql", "utf8");
+    assert.match(sql, /assigned staff must be an active member of this venue/);
+    assert.match(sql, /leads_assigned_staff_venue_guard/);
+    assert.match(sql, /events_assigned_staff_venue_guard/);
+    assert.match(sql, /staff_venue is distinct from NEW\.venue_id/);
+  });
 });
