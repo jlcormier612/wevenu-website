@@ -1151,7 +1151,7 @@ export async function updateLeadInfo(
   const errors = validateLeadInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    const [{ data: existing }, { data: venueRow }] = await Promise.all([
+    const [{ data: existing, error: existingError }, { data: venueRow }] = await Promise.all([
       supabase
         .from("leads")
         .select("event_type, inquiry_message, inquiry_message_origin")
@@ -1168,6 +1168,9 @@ export async function updateLeadInfo(
         .eq("id", venueId)
         .maybeSingle<{ accepted_inquiry_event_types: unknown }>(),
     ]);
+    if (existingError) throw existingError;
+    if (!existing) return { ok: false, message: "Lead not found." } as LeadActionResult;
+
     const { assertEventTypeChangeAllowed } = await import(
       "@/lib/event-types/assert-accepted"
     );

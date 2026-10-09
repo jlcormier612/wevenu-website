@@ -849,6 +849,14 @@ export async function updateLeadInfo(
     }
   }
 
+  const { data: beforeLead } = await client
+    .from("leads")
+    .select("email")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ email: string | null }>();
+  const previousEmail = beforeLead?.email?.trim() || null;
+
   const { error } = await client
     .from("leads")
     .update(row)
@@ -877,11 +885,11 @@ export async function updateLeadInfo(
     if (clientError) throw clientError;
   }
 
-  // Keep the enduring relationship contact in sync. Conversation email
-  // resolves from venue_customer_relationships; leaving it stale after a
-  // Lead edit makes a saved address look "invalid" on send. After a quiet
-  // commercial ensure the relationship may live on the client while the
-  // lead.relationship_id is still null — use either, and heal the lead link.
+  // Keep the enduring relationship contact in sync. Scheduled sends read
+  // venue_customer_relationships.email at delivery. A new conversation
+  // message uses the newest client, lead, or relationship email. After a
+  // quiet commercial ensure the relationship may live on the client while
+  // the lead.relationship_id is still null — use either, and heal the lead link.
   const { data: leadRel } = await client
     .from("leads")
     .select("relationship_id")
@@ -909,11 +917,50 @@ export async function updateLeadInfo(
         .eq("venue_id", venueId);
       if (healError) throw healError;
     }
+
+    // Other client rows on this relationship can still hold the address
+    // that was just replaced. Update those copies only. A different primary
+    // email, including a partner stored separately, stays put.
+    const nextEmail = input.email.trim();
+    if (
+      previousEmail
+      && nextEmail
+      && previousEmail.toLowerCase() !== nextEmail.toLowerCase()
+    ) {
+      const { data: siblings } = await client
+        .from("clients")
+        .select("id, email")
+        .eq("relationship_id", relationshipId)
+        .eq("venue_id", venueId);
+      const staleIds = (siblings ?? [])
+        .filter((row) => {
+          const email = (row as { email: string | null }).email?.trim().toLowerCase();
+          return email === previousEmail.toLowerCase() && (row as { id: string }).id !== convertedClient?.id;
+        })
+        .map((row) => (row as { id: string }).id);
+      if (staleIds.length > 0) {
+        const { linkedClientIdentityPatch: siblingPatch } = await import("@/lib/clients/contact-edit");
+        const { error: siblingError } = await client
+          .from("clients")
+          .update(siblingPatch({
+            firstName: input.firstName,
+            lastName: input.lastName,
+            email: input.email,
+            phone: input.phone,
+            partnerFirstName: input.partnerFirstName,
+            partnerLastName: input.partnerLastName,
+            partnerEmail: input.partnerEmail,
+          }))
+          .in("id", staleIds)
+          .eq("venue_id", venueId);
+        if (siblingError) throw siblingError;
+      }
+    }
   }
 
-  // Keep attached tour snapshots on the same identity as the Lead. Reminders,
-  // confirmation copy, and Luv read tour_appointments.contact_name; Tours UI
-  // also prefers live Lead identity, but the column must not stay stale.
+  // Keep attached tour snapshots on the same identity as the Lead. Reminders
+  // read tour_appointments.contact_email at send time; the column must follow
+  // the saved lead email. Already-sent messages are not rewritten.
   const { tourContactNameFromLeadIdentity } = await import("@/lib/tours/contact-display");
   const tourContactName = tourContactNameFromLeadIdentity({
     firstName: input.firstName,
@@ -923,7 +970,10 @@ export async function updateLeadInfo(
   });
   const { error: tourNameError } = await client
     .from("tour_appointments")
-    .update({ contact_name: tourContactName })
+    .update({
+      contact_name: tourContactName,
+      contact_email: input.email.trim() || null,
+    })
     .eq("lead_id", leadId)
     .eq("venue_id", venueId);
   if (tourNameError) throw tourNameError;

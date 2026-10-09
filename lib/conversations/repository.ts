@@ -950,11 +950,11 @@ export async function getConversationRecipientPhone(
 }
 
 /**
- * Resolves the email address to send to for a conversation's counterparty
- * (fixing the immediate "Email" channel, 2026-07-14 — it looked like it
- * worked but only ever wrote to the database). Unlike phone, the
- * relationship itself already carries email directly — no lead/client join
- * needed.
+ * Resolves the email address to send to for a conversation's counterparty.
+ * Vendor conversations use the vendor email. Relationship conversations use
+ * the current primary identity: the client, lead, or relationship row whose
+ * email was written most recently. A stale client created earlier must not
+ * override a lead email that was saved later.
  */
 export async function getConversationRecipientEmail(
   client: DbClient,
@@ -977,30 +977,31 @@ export async function getConversationRecipientEmail(
 
   if (!convo?.relationship_id) return null;
 
-  // Prefer the live Client, then the live Lead, then the relationship row.
-  // Display name already prefers client/lead; recipient email must match so a
-  // contact edit on the Lead Workspace is what Conversation actually sends to.
+  const { chooseCurrentRecipientEmail } = await import("@/lib/conversations/recipient-email");
   const { data: booked } = await client.from("clients")
-    .select("email")
+    .select("email, updated_at")
     .eq("relationship_id", convo.relationship_id)
-    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(1)
-    .maybeSingle<{ email: string | null }>();
-  const bookedEmail = booked?.email?.trim() || null;
-  if (bookedEmail) return bookedEmail;
+    .maybeSingle<{ email: string | null; updated_at: string | null }>();
 
   const { data: lead } = await client.from("leads")
-    .select("email")
+    .select("email, updated_at")
     .eq("relationship_id", convo.relationship_id)
-    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(1)
-    .maybeSingle<{ email: string | null }>();
-  const leadEmail = lead?.email?.trim() || null;
-  if (leadEmail) return leadEmail;
+    .maybeSingle<{ email: string | null; updated_at: string | null }>();
 
   const { data: relationship } = await client.from("venue_customer_relationships")
-    .select("email").eq("id", convo.relationship_id).maybeSingle<{ email: string | null }>();
-  return relationship?.email?.trim() || null;
+    .select("email, updated_at")
+    .eq("id", convo.relationship_id)
+    .maybeSingle<{ email: string | null; updated_at: string | null }>();
+
+  return chooseCurrentRecipientEmail({
+    client: booked ? { email: booked.email, updatedAt: booked.updated_at } : null,
+    lead: lead ? { email: lead.email, updatedAt: lead.updated_at } : null,
+    relationship: relationship ? { email: relationship.email, updatedAt: relationship.updated_at } : null,
+  });
 }
 
 function coupleDisplayName(row: {
