@@ -128,11 +128,44 @@ jobs:
             exit 1
           fi
 
+      # Docker Hub anonymous pulls/metadata frequently 429 on GitHub-hosted
+      # runners. Prefetch the same official library tags from AWS Public ECR
+      # (public.ecr.aws/docker/library/* — no extra secrets) and retag locally
+      # so Dockerfile FROM lines resolve from the local cache instead of
+      # registry-1.docker.io. Bounded exponential backoff covers residual
+      # transient failures without inventing mirrors or Hub credentials.
+      - name: Prefetch base images (Public ECR mirror)
+        run: |
+          set -euo pipefail
+          retry_pull() {
+            local image="$1"
+            local local_tag="$2"
+            local attempt=1
+            local delay=5
+            while [ "$attempt" -le 5 ]; do
+              echo "Pull attempt $attempt/5: $image"
+              if docker pull "$image"; then
+                docker tag "$image" "$local_tag"
+                echo "Tagged $image -> $local_tag"
+                return 0
+              fi
+              echo "Pull failed for $image; sleeping ${delay}s before retry"
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+            echo "::error::Failed to pull $image after 5 attempts"
+            return 1
+          }
+          retry_pull public.ecr.aws/docker/library/node:22-alpine node:22-alpine
+          retry_pull public.ecr.aws/docker/library/alpine:3.20 alpine:3.20
+
       - name: Build
         env:
           BUILD_ARGS: ${{ matrix.build_args }}
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ matrix.repo_var }}:${{ github.sha }}
         run: |
+          set -euo pipefail
           ARGS=()
           while IFS= read -r line || [ -n "$line" ]; do
             if [ -z "$line" ]; then
@@ -150,7 +183,22 @@ jobs:
               --build-arg "NEXT_DEPLOYMENT_ID=${{ github.sha }}"
             )
           fi
-          docker build -f "${{ matrix.dockerfile }}" -t "$IMAGE_URI" "${ARGS[@]}" .
+          # Prefer local base images from the prefetch step; still retry the
+          # build itself for non-Hub transient builder failures.
+          attempt=1
+          delay=10
+          while [ "$attempt" -le 3 ]; do
+            echo "Build attempt $attempt/3 for ${{ matrix.name }}"
+            if docker build --pull=false -f "${{ matrix.dockerfile }}" -t "$IMAGE_URI" "${ARGS[@]}" .; then
+              exit 0
+            fi
+            echo "Build failed; sleeping ${delay}s before retry"
+            sleep "$delay"
+            attempt=$((attempt + 1))
+            delay=$((delay * 2))
+          done
+          echo "::error::docker build failed for ${{ matrix.name }} after 3 attempts"
+          exit 1
 
       - name: Push
         env:
