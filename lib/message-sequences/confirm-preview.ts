@@ -8,6 +8,21 @@ import { resolveForCustomerSend, type MergeContext } from "@/lib/message-templat
 import { getSequenceWithSteps } from "@/lib/message-sequences/repository";
 import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
 
+export type StageChangeMessageStep = {
+  sequenceId: string;
+  sequenceName: string;
+  updatePipelineOnEnroll: boolean;
+  stepId: string;
+  channel: "email" | "sms";
+  offsetDays: number;
+  preview: AutomationMessagePreview;
+};
+
+export type StageChangeMessagePlan = {
+  steps: StageChangeMessageStep[];
+  advancesPipeline: boolean;
+};
+
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 export type AutomationMessagePreview =
@@ -84,4 +99,39 @@ export async function previewFirstStepForSequence(
     smsBody: template?.sms_body ?? null,
     mergeContext,
   });
+}
+
+/** Every message step the stage change would schedule, in send order. */
+export async function previewStepsForSequence(
+  client: DbClient,
+  venueId: string,
+  sequenceId: string,
+  relationshipId: string,
+): Promise<StageChangeMessageStep[]> {
+  const sequence = await getSequenceWithSteps(client, venueId, sequenceId);
+  if (!sequence) return [];
+  const mergeContext = await getMergeContextForRelationship(client, venueId, relationshipId);
+  const steps: StageChangeMessageStep[] = [];
+  for (const step of sequence.steps) {
+    const { data: template } = await client.from("message_templates")
+      .select("email_subject, email_body, sms_body")
+      .eq("id", step.templateId)
+      .maybeSingle<{ email_subject: string | null; email_body: string | null; sms_body: string | null }>();
+    steps.push({
+      sequenceId: sequence.id,
+      sequenceName: sequence.name,
+      updatePipelineOnEnroll: sequence.updatePipelineOnEnroll,
+      stepId: step.id,
+      channel: step.channel,
+      offsetDays: step.offsetDays,
+      preview: resolveFirstStepPreview({
+        channel: step.channel,
+        emailSubject: template?.email_subject ?? null,
+        emailBody: template?.email_body ?? null,
+        smsBody: template?.sms_body ?? null,
+        mergeContext,
+      }),
+    });
+  }
+  return steps;
 }

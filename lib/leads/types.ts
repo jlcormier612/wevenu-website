@@ -211,7 +211,7 @@ export type TaskInput = {
 };
 
 export type LeadActionResult =
-  | { ok: true; tourConflict?: { message: string } }
+  | { ok: true; tourConflict?: { message: string }; automationWarning?: string }
   | { ok: false; errors?: LeadErrors; message?: string };
 
 export type CreateLeadResult =

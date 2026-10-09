@@ -60,8 +60,9 @@ function revalidateLead(leadId: string) {
 export async function updateLeadStatusAction(
   leadId: string,
   status: string,
+  customerMessages?: "send" | "skip",
 ): Promise<LeadActionResult> {
-  const result = await updateLeadStatus(leadId, status);
+  const result = await updateLeadStatus(leadId, status, customerMessages ? { customerMessages } : undefined);
   if (result.ok) {
     revalidateLead(leadId);
     void refreshLeadScore(leadId).catch(() => {}); // immediate score refresh on status change
@@ -72,8 +73,9 @@ export async function updateLeadStatusAction(
 export async function updateLeadPipelineStageAction(
   leadId: string,
   stageId: string,
+  customerMessages?: "send" | "skip",
 ): Promise<LeadActionResult> {
-  const result = await updateLeadPipelineStage(leadId, stageId);
+  const result = await updateLeadPipelineStage(leadId, stageId, customerMessages ? { customerMessages } : undefined);
   if (result.ok) {
     revalidateLead(leadId);
     void refreshLeadScore(leadId).catch(() => {}); // same as status changes — the underlying status did change
@@ -188,6 +190,7 @@ export async function wouldEnrollOnPipelineStageMoveAction(
       ok: true;
       wouldEnroll: boolean;
       preview: import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null;
+      plan: import("@/lib/message-sequences/confirm-preview").StageChangeMessagePlan | null;
     }
   | { ok: false; message: string }
 > {

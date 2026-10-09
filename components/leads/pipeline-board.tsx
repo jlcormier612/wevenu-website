@@ -22,7 +22,7 @@ import type { LostReasonValue } from "@/lib/leads/lost-reasons";
 import { resolveTransitionKind } from "@/lib/leads/pipeline-stage-transition";
 import { SALES_STAGE_META, type SalesStage } from "@/lib/leads/sales-stages";
 import type { Lead } from "@/lib/leads/types";
-import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import type { StageChangeMessagePlan } from "@/lib/message-sequences/confirm-preview";
 type BoardColumn = {
   key: string;
   label: string;
@@ -57,7 +57,7 @@ export function PipelineBoard({
   const [confirmMove, setConfirmMove] = React.useState<{
     leadId: string;
     targetKey: string;
-    preview: AutomationMessagePreview | null;
+    plan: StageChangeMessagePlan | null;
   } | null>(null);
   const [lostMove, setLostMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
   const [bookedMove, setBookedMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
@@ -79,11 +79,11 @@ export function PipelineBoard({
     return { columns: cols, currentKeyByLead: currentByLead };
   }, [leads, overrides]);
 
-  function commitMove(leadId: string, targetKey: string) {
+  function commitMove(leadId: string, targetKey: string, customerMessages?: "send" | "skip") {
     setOverrides((p) => ({ ...p, [leadId]: targetKey }));
     setPendingLeadIds((p) => new Set(p).add(leadId));
 
-    updateLeadPipelineStageAction(leadId, targetKey).then((result) => {
+    updateLeadPipelineStageAction(leadId, targetKey, customerMessages).then((result) => {
       setPendingLeadIds((p) => {
         const n = new Set(p);
         n.delete(leadId);
@@ -97,6 +97,7 @@ export function PipelineBoard({
           return n;
         });
       } else {
+        if (result.automationWarning) toast.warning(result.automationWarning);
         router.refresh();
       }
     });
@@ -150,7 +151,7 @@ export function PipelineBoard({
         return;
       }
       if (check.wouldEnroll) {
-        setConfirmMove({ leadId, targetKey, preview: check.preview });
+        setConfirmMove({ leadId, targetKey, plan: check.plan });
         return;
       }
       commitMove(leadId, targetKey);
@@ -276,13 +277,19 @@ export function PipelineBoard({
 
       <PipelineAutomationConfirmDialog
         open={confirmMove != null}
-        preview={confirmMove?.preview ?? null}
+        plan={confirmMove?.plan ?? null}
         onCancel={() => setConfirmMove(null)}
-        onContinue={() => {
+        onSend={() => {
           if (!confirmMove) return;
           const { leadId, targetKey } = confirmMove;
           setConfirmMove(null);
-          commitMove(leadId, targetKey);
+          commitMove(leadId, targetKey, "send");
+        }}
+        onSkip={() => {
+          if (!confirmMove) return;
+          const { leadId, targetKey } = confirmMove;
+          setConfirmMove(null);
+          commitMove(leadId, targetKey, "skip");
         }}
       />
 

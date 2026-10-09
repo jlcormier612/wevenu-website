@@ -7,10 +7,16 @@ import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/message-sequences/repository";
 import { validateSequenceInput } from "@/lib/message-sequences/validation";
 import type {
-  CreateSequenceResult, EnrollResult, MessageSequenceInput, MessageSequenceListItem,
+  CreateSequenceResult, EnrollResult, MessageSequence, MessageSequenceInput, MessageSequenceListItem,
   MessageSequenceWithSteps, SequenceActionResult, SequenceEnrollment, SequenceTriggerType,
 } from "@/lib/message-sequences/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+import {
+  isUniqueViolation,
+  shouldRecordAnotherSkip,
+  STAGE_CHANGE_SKIP_WINDOW_MS,
+  type StageChangeMessageChoice,
+} from "@/lib/message-sequences/stage-change-message-choice";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 type AnyDbClient = DbClient | ReturnType<typeof createAdminClient>;
@@ -167,21 +173,56 @@ export async function resumeEnrollment_(enrollmentId: string): Promise<SequenceA
 export async function triggerSequencesForRelationship(
   supabase: AnyDbClient, venueId: string, relationshipId: string,
   triggerType: SequenceTriggerType, triggerStage?: string,
+  opts?: { customerMessages?: Extract<StageChangeMessageChoice, "send" | "skip"> },
 ): Promise<string[]> {
+  const skipMessages = opts?.customerMessages === "skip";
   const sequences = await repo.getActiveSequencesForTrigger(supabase, venueId, triggerType, triggerStage);
   const enrollmentIds: string[] = [];
   for (const seq of sequences) {
     if (await repo.hasActiveEnrollment(supabase, seq.id, relationshipId)) continue;
-    const enrollmentId = await repo.insertEnrollment(supabase, venueId, seq.id, relationshipId);
-    await repo.materializeEnrollmentSteps(supabase, venueId, enrollmentId, seq.id, relationshipId);
+    if (skipMessages) {
+      const recent = await repo.findRecentCancelledEnrollment(
+        supabase,
+        seq.id,
+        relationshipId,
+        new Date(Date.now() - STAGE_CHANGE_SKIP_WINDOW_MS).toISOString(),
+      );
+      if (recent && !shouldRecordAnotherSkip(
+        { status: recent.status, enrolledAtMs: new Date(recent.enrolledAt).getTime() },
+        Date.now(),
+      )) {
+        continue;
+      }
+    }
+    let enrollmentId: string;
+    try {
+      enrollmentId = await repo.insertEnrollment(supabase, venueId, seq.id, relationshipId);
+    } catch (error) {
+      if (isUniqueViolation(error)) continue;
+      throw error;
+    }
+    try {
+      await repo.materializeEnrollmentSteps(
+        supabase,
+        venueId,
+        enrollmentId,
+        seq.id,
+        relationshipId,
+        skipMessages ? "cancelled" : "scheduled",
+      );
+      await maybeAdvanceLeadOnSequenceEnroll(
+        supabase,
+        venueId,
+        relationshipId,
+        seq.updatePipelineOnEnroll === true,
+        triggerType,
+      );
+    } finally {
+      if (skipMessages) {
+        await repo.cancelEnrollmentImmediately(supabase, venueId, enrollmentId);
+      }
+    }
     enrollmentIds.push(enrollmentId);
-    await maybeAdvanceLeadOnSequenceEnroll(
-      supabase,
-      venueId,
-      relationshipId,
-      seq.updatePipelineOnEnroll === true,
-      triggerType,
-    );
   }
   return enrollmentIds;
 }
@@ -240,21 +281,21 @@ async function maybeAdvanceLeadOnSequenceEnroll(
 
 /**
  * Preview of triggerSequencesForRelationship for lead_stage_changed — same
- * matching + already-enrolled skip, without inserting. Used to disclose
- * before a Pipeline stage move commits. Also returns the first matching
- * sequence id (for first-step message preview) when enrollment would occur.
+ * matching + already-enrolled skip, without inserting. Returns every
+ * sequence that would enroll so the confirmation can list every message.
  */
 export async function wouldEnrollOnStageChange(
   supabase: AnyDbClient, venueId: string, relationshipId: string, triggerStage: string,
-): Promise<{ wouldEnroll: boolean; sequenceId: string | null }> {
+): Promise<{ wouldEnroll: boolean; sequenceId: string | null; sequences: MessageSequence[] }> {
   const sequences = await repo.getActiveSequencesForTrigger(
     supabase, venueId, "lead_stage_changed", triggerStage,
   );
+  const fresh: MessageSequence[] = [];
   for (const seq of sequences) {
     if (await repo.hasActiveEnrollment(supabase, seq.id, relationshipId)) continue;
-    return { wouldEnroll: true, sequenceId: seq.id };
+    fresh.push(seq);
   }
-  return { wouldEnroll: false, sequenceId: null };
+  return { wouldEnroll: fresh.length > 0, sequenceId: fresh[0]?.id ?? null, sequences: fresh };
 }
 
 /** Stop on booking (§3.3) — called once a lead becomes a client. */

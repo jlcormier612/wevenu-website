@@ -49,7 +49,7 @@ import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-aut
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import { prefillBookingConfirmation } from "@/lib/booking-journey/confirmation-draft";
 import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
-import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import type { StageChangeMessagePlan } from "@/lib/message-sequences/confirm-preview";
 import type { LostReasonValue } from "@/lib/leads/lost-reasons";
 import { lostReasonLabel } from "@/lib/leads/lost-reasons";
 import { resolveTransitionKind } from "@/lib/leads/pipeline-stage-transition";
@@ -179,7 +179,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [convertPending, startConvert] = React.useTransition();
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [confirmStageId, setConfirmStageId] = React.useState<string | null>(null);
-  const [confirmPreview, setConfirmPreview] = React.useState<AutomationMessagePreview | null>(null);
+  const [confirmPlan, setConfirmPlan] = React.useState<StageChangeMessagePlan | null>(null);
   const [bookingSpaceId, setBookingSpaceId] = React.useState(lead.plannedEventSpaceId ?? "");
   const [confirmBookOpen, setConfirmBookOpen] = React.useState(false);
   const [confirmMoveBackOpen, setConfirmMoveBackOpen] = React.useState(false);
@@ -304,7 +304,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       }
       if (check.wouldEnroll) {
         setConfirmStageId(status);
-        setConfirmPreview(check.preview);
+        setConfirmPlan(check.plan);
         return;
       }
       const result = await updateLeadStatusAction(lead.id, status);
@@ -317,11 +317,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
-  function commitStageChange(stageKey: string) {
+  function commitStageChange(stageKey: string, customerMessages: "send" | "skip") {
     startStatus(async () => {
-      const result = await updateLeadStatusAction(lead.id, stageKey);
+      const result = await updateLeadStatusAction(lead.id, stageKey, customerMessages);
       if (result.ok) {
         toast.success("Stage updated.");
+        if (result.automationWarning) toast.warning(result.automationWarning);
         router.refresh();
       } else {
         toast.error(result.message ?? "Could not update stage.");
@@ -430,17 +431,24 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     <div className="space-y-5">
       <PipelineAutomationConfirmDialog
         open={confirmStageId != null}
-        preview={confirmPreview}
+        plan={confirmPlan}
         onCancel={() => {
           setConfirmStageId(null);
-          setConfirmPreview(null);
+          setConfirmPlan(null);
         }}
-        onContinue={() => {
+        onSend={() => {
           if (!confirmStageId) return;
           const stageId = confirmStageId;
           setConfirmStageId(null);
-          setConfirmPreview(null);
-          commitStageChange(stageId);
+          setConfirmPlan(null);
+          commitStageChange(stageId, "send");
+        }}
+        onSkip={() => {
+          if (!confirmStageId) return;
+          const stageId = confirmStageId;
+          setConfirmStageId(null);
+          setConfirmPlan(null);
+          commitStageChange(stageId, "skip");
         }}
       />
       <LeadLifecycleConfirmDialog

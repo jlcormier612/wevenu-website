@@ -19,15 +19,18 @@ export function wouldCreateEnrollmentForSequences(
 /**
  * Pre-commit gate for Pipeline stage moves.
  * - No enrollment would occur → commit immediately (no friction).
- * - Enrollment would occur and user has not answered → show confirmation.
- * - Continue → commit; Cancel → abort (lead stays put).
+ * - Enrollment would occur and the user has not answered → show confirmation.
+ * - Send (and the previous Continue choice) → commit and schedule messages.
+ * - Don't send → commit the stage and suppress this attempt's messages.
+ * - Cancel → abort (lead stays put, nothing is queued).
  */
 export function resolveStageMoveConfirmGate(
   wouldEnroll: boolean,
-  userChoice: "continue" | "cancel" | null,
-): "commit" | "show_confirm" | "abort" {
+  userChoice: "send" | "skip" | "continue" | "cancel" | null,
+): "commit" | "commit_skip" | "show_confirm" | "abort" {
   if (!wouldEnroll) return "commit";
   if (userChoice === null) return "show_confirm";
-  if (userChoice === "continue") return "commit";
-  return "abort";
+  if (userChoice === "cancel") return "abort";
+  if (userChoice === "skip") return "commit_skip";
+  return "commit";
 }

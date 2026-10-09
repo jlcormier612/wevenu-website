@@ -54,8 +54,11 @@ import {
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import type { RawIntakeInput, TrustTier } from "@/lib/lead-intake/types";
 import { originAfterStaffEdit, originForWritePath } from "@/lib/leads/inquiry-message-origin";
-import { previewFirstStepForSequence } from "@/lib/message-sequences/confirm-preview";
-import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import {
+  previewStepsForSequence,
+  type AutomationMessagePreview,
+  type StageChangeMessagePlan,
+} from "@/lib/message-sequences/confirm-preview";
 import { requireIdentityDecision } from "@/lib/identity/decision";
 
 /** Shared auth + venue guard. Returns a typed error if anything is missing. */
@@ -306,6 +309,12 @@ export async function updateLeadSalesStage(
     pipelineStageId?: string | null;
     /** Required when stage is lost — structured reason + optional detail. */
     lost?: { reason: string; detail: string | null } | null;
+    /**
+     * Set only by the stage-change confirmation.
+     * send schedules matching messages; skip records them cancelled for this attempt.
+     * Omitted callers keep the existing fire-and-forget enrollment.
+     */
+    customerMessages?: "send" | "skip";
   },
 ): Promise<LeadActionResult> {
   if (!validateStatus(stage) || !isSalesStage(stage))
@@ -372,8 +381,34 @@ export async function updateLeadSalesStage(
           console.error("Series exit (exited_lost) failed:", e);
         }
       }
-      void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", stage)
-        .catch((e) => console.error("Series enrollment (lead_stage_changed) failed:", e));
+      const customerMessages = opts?.customerMessages;
+      if (customerMessages === "send" || customerMessages === "skip") {
+        try {
+          const enrollmentIds = await triggerSequencesForRelationship(
+            supabase, venueId, lead.relationship_id, "lead_stage_changed", stage,
+            { customerMessages },
+          );
+          if (customerMessages === "skip" && enrollmentIds.length > 0) {
+            await repo.insertActivity(
+              supabase,
+              venueId,
+              leadId,
+              "automation_skipped",
+              "Automation messages not sent",
+              "This stage change continued without sending the matching automation messages. The saved automation was not changed.",
+            );
+          }
+        } catch (e) {
+          console.error("Series enrollment (lead_stage_changed) failed:", e);
+          return {
+            ok: true,
+            automationWarning: "The stage was updated, but the automation did not finish. Check scheduled messages before assuming one will send.",
+          } as LeadActionResult;
+        }
+      } else {
+        void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", stage)
+          .catch((e) => console.error("Series enrollment (lead_stage_changed) failed:", e));
+      }
     }
 
     return { ok: true } as LeadActionResult;
@@ -385,8 +420,9 @@ export async function updateLeadSalesStage(
 export async function updateLeadStatus(
   leadId: string,
   status: string,
+  opts?: { customerMessages?: "send" | "skip" },
 ): Promise<LeadActionResult> {
-  return updateLeadSalesStage(leadId, status);
+  return updateLeadSalesStage(leadId, status, opts);
 }
 
 /**
@@ -418,7 +454,11 @@ export async function advanceLeadSalesStageIfForward(
 }
 
 /** Board / detail: move to a venue pipeline stage id, or a sales_stage key when no custom template is active. */
-export async function updateLeadPipelineStage(leadId: string, stageKeyOrId: string): Promise<LeadActionResult> {
+export async function updateLeadPipelineStage(
+  leadId: string,
+  stageKeyOrId: string,
+  opts?: { customerMessages?: "send" | "skip" },
+): Promise<LeadActionResult> {
   const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
 
   if (looksLikeUuid) {
@@ -473,6 +513,7 @@ export async function updateLeadPipelineStage(leadId: string, stageKeyOrId: stri
       const salesStage = salesStageForCanonical(stage.canonical_stage, fallback);
       return updateLeadSalesStage(leadId, salesStage, {
         pipelineStageId: stage.id,
+        customerMessages: opts?.customerMessages,
       });
     });
     return result as LeadActionResult;
@@ -486,7 +527,7 @@ export async function updateLeadPipelineStage(leadId: string, stageKeyOrId: stri
   if (kind === "lost") {
     return { ok: false, message: "Marking a lead Lost requires a lost reason." };
   }
-  return updateLeadSalesStage(leadId, stageKeyOrId);
+  return updateLeadSalesStage(leadId, stageKeyOrId, opts);
 }
 
 /**
@@ -885,7 +926,7 @@ export async function wouldEnrollOnPipelineStageMove(
   leadId: string,
   stageKeyOrId: string,
 ): Promise<
-  | { ok: true; wouldEnroll: boolean; preview: AutomationMessagePreview | null }
+  | { ok: true; wouldEnroll: boolean; preview: AutomationMessagePreview | null; plan: StageChangeMessagePlan | null }
   | { ok: false; message: string }
 > {
   let salesStageKey = stageKeyOrId;
@@ -919,13 +960,17 @@ export async function wouldEnrollOnPipelineStageMove(
   const { data: lead } = await supabase.from("leads").select("relationship_id")
     .eq("id", leadId).eq("venue_id", venue.id)
     .maybeSingle<{ relationship_id: string | null }>();
-  if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null };
+  if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null, plan: null };
   const check = await wouldEnrollOnStageChange(supabase, venue.id, lead.relationship_id, salesStageKey);
-  let preview: AutomationMessagePreview | null = null;
-  if (check.wouldEnroll && check.sequenceId) {
-    preview = await previewFirstStepForSequence(supabase, venue.id, check.sequenceId, lead.relationship_id);
+  const steps = [];
+  for (const sequence of check.sequences) {
+    steps.push(...await previewStepsForSequence(supabase, venue.id, sequence.id, lead.relationship_id));
   }
-  return { ok: true, wouldEnroll: check.wouldEnroll, preview };
+  const plan: StageChangeMessagePlan | null = check.wouldEnroll
+    ? { steps, advancesPipeline: check.sequences.some((sequence) => sequence.updatePipelineOnEnroll) }
+    : null;
+  const firstPreview = steps.find((step) => step.preview.ok)?.preview ?? steps[0]?.preview ?? null;
+  return { ok: true, wouldEnroll: check.wouldEnroll, preview: firstPreview, plan };
 }
 
 /**
