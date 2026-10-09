@@ -866,7 +866,13 @@ export async function refundLineItem_(
       outcome.newStatus === "refunded" ? "refunded" : "partially_refunded",
       `Refund issued: $${refundAmount.toLocaleString()}`,
       reason?.trim() || undefined);
-    void enqueueQuickBooksSync(venueId, "refund", itemId, { refundAmount, reason });
+    // Payload uses cumulative refunded total so successive partials enqueue
+    // distinct work; syncRefund still reads the latest ledger at dispatch.
+    void enqueueQuickBooksSync(venueId, "refund", itemId, {
+      refundedAmount: outcome.newRefundedTotal,
+      paidAmount: outcome.paidAmount,
+      reason: reason?.trim() || null,
+    });
 
     const { data: sch } = await supabase.from("payment_schedules")
       .select("invoice_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null }>();

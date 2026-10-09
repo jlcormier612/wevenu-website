@@ -571,7 +571,10 @@ export async function refundLineItem(
   itemId: string,
   refundAmount: number,
   reason?: string,
-): Promise<{ ok: true; newStatus: PaymentLineItem["status"] } | { ok: false; message: string }> {
+): Promise<
+  | { ok: true; newStatus: PaymentLineItem["status"]; newRefundedTotal: number; paidAmount: number }
+  | { ok: false; message: string }
+> {
   const { data: item } = await client.from("payment_line_items")
     .select("status, paid_amount, amount, refunded_amount")
     .eq("id", itemId).eq("venue_id", venueId)
@@ -588,17 +591,32 @@ export async function refundLineItem(
   }
   const newRefundedTotal = alreadyRefunded + refundAmount;
   const newStatus: PaymentLineItem["status"] = newRefundedTotal >= collected - 0.001 ? "refunded" : "partially_refunded";
+  // Conditional update: refuse if another refund landed between read and write
+  // so two concurrent refunds cannot silently overwrite each other's total.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("payment_line_items") as any)
+  let update = (client.from("payment_line_items") as any)
     .update({
       status: newStatus,
       refunded_amount: newRefundedTotal,
       refunded_at: new Date().toISOString(),
       refund_reason: reason?.trim() || null,
     })
-    .eq("id", itemId).eq("venue_id", venueId);
+    .eq("id", itemId).eq("venue_id", venueId)
+    .in("status", ["paid", "partially_refunded"]);
+  if (alreadyRefunded === 0) {
+    update = update.or("refunded_amount.is.null,refunded_amount.eq.0");
+  } else {
+    update = update.eq("refunded_amount", alreadyRefunded);
+  }
+  const { data: updated, error } = await update.select("id");
   if (error) throw error;
-  return { ok: true, newStatus };
+  if (!updated || updated.length === 0) {
+    return {
+      ok: false,
+      message: "This payment was updated by someone else. Refresh and try again.",
+    };
+  }
+  return { ok: true, newStatus, newRefundedTotal, paidAmount: collected };
 }
 
 export async function cancelLineItem(client: DbClient, venueId: string, itemId: string): Promise<void> {

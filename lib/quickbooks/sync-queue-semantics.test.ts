@@ -55,18 +55,15 @@ describe("QuickBooks backoff and dead-letter ceiling", () => {
 describe("every entity push reads QuickBooks before it writes", () => {
   // This is what makes replaying an uncertain claim safe: a push that already
   // created its QBO object adopts that object's id instead of creating a second.
-  const cases: Array<{ file: string; qboType: string; matchOn: RegExp }> = [
+  const createCases: Array<{ file: string; qboType: string; matchOn: RegExp }> = [
     { file: "lib/quickbooks/sync/customer.ts", qboType: "Customer", matchOn: /DisplayName = '/ },
     { file: "lib/quickbooks/sync/invoice.ts", qboType: "Invoice", matchOn: /DocNumber = '/ },
-    // Payment.PrivateNote and RefundReceipt.PrivateNote are not queryable
-    // (Intuit ValidationFault 4001). Recovery uses the verified-queryable
-    // PaymentRefNum / DocNumber fields instead — see
-    // lib/quickbooks/payment-refund-idempotency.test.ts.
+    // Payment.PrivateNote is not queryable (Intuit ValidationFault 4001).
+    // Recovery uses PaymentRefNum — see payment-refund-idempotency.test.ts.
     { file: "lib/quickbooks/sync/payment.ts", qboType: "Payment", matchOn: /PaymentRefNum = '/ },
-    { file: "lib/quickbooks/sync/refund.ts", qboType: "RefundReceipt", matchOn: /DocNumber = '/ },
   ];
 
-  for (const { file, qboType, matchOn } of cases) {
+  for (const { file, qboType, matchOn } of createCases) {
     it(`${qboType} is looked up by a deterministic key before create`, () => {
       const src = readFileSync(resolve(file), "utf8");
       assert.match(src, new RegExp(`select \\* from ${qboType} where`), file);
@@ -80,8 +77,19 @@ describe("every entity push reads QuickBooks before it writes", () => {
     });
   }
 
+  it("refund reconciles an existing Payment (GET before update/void), never creates RefundReceipt", () => {
+    const src = readFileSync(resolve("lib/quickbooks/sync/refund.ts"), "utf8");
+    assert.doesNotMatch(src, /\/refundreceipt/i);
+    assert.doesNotMatch(src, /select \* from RefundReceipt/);
+    assert.match(src, /\/payment\/\$\{encodeURIComponent\(paymentId\)\}/);
+    assert.match(src, /paymentMatchesTarget/);
+    const getAt = src.indexOf("/payment/${encodeURIComponent(paymentId)}");
+    const postAt = src.search(/method: "POST"/);
+    assert.ok(getAt >= 0 && postAt > getAt);
+  });
+
   it("quotes are escaped so a name cannot break out of the QBO query", () => {
-    for (const { file } of cases) {
+    for (const { file } of createCases) {
       assert.match(readFileSync(resolve(file), "utf8"), /escapeQboString/, file);
     }
   });

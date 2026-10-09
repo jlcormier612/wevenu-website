@@ -31,7 +31,11 @@ const SYNC_STATUS_TABLE: Record<QuickBooksEntityType, string> = {
 
 const SYNC_ID_COLUMN: Record<QuickBooksEntityType, string> = {
   customer: "quickbooks_customer_id", invoice: "quickbooks_invoice_id",
-  payment: "quickbooks_payment_id", refund: "quickbooks_refund_id",
+  payment: "quickbooks_payment_id",
+  // Refund reconcile updates the existing Payment; remote id stays on
+  // quickbooks_payment_id. Success persists quickbooks_refund_net_synced
+  // (see handleSuccess) rather than a separate RefundReceipt id.
+  refund: "quickbooks_payment_id",
 };
 
 async function dispatch(venueId: string, entityType: QuickBooksEntityType, entityId: string): Promise<QuickBooksSyncResult> {
@@ -160,7 +164,7 @@ export async function processQuickBooksSyncQueue(): Promise<ProcessResult> {
     }
 
     if (syncResult.ok) {
-      await handleSuccess(admin, item, syncResult.quickbooksId);
+      await handleSuccess(admin, item, syncResult);
       result.succeeded++;
     } else if (syncResult.uncertain) {
       // Intuit may have applied this write. Leave the claim in place so the
@@ -182,8 +186,9 @@ export async function processQuickBooksSyncQueue(): Promise<ProcessResult> {
   return result;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleSuccess(admin: any, item: repo.SyncQueueRow, quickbooksId: string): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- admin client
+async function handleSuccess(admin: any, item: repo.SyncQueueRow, syncResult: Extract<QuickBooksSyncResult, { ok: true }>): Promise<void> {
+  const quickbooksId = syncResult.quickbooksId;
   await repo.markQueueSucceeded(admin, item.id);
   await repo.insertSyncLog(admin, {
     venueId: item.venue_id, queueId: item.id, entityType: item.entity_type, entityId: item.entity_id,
@@ -191,12 +196,21 @@ async function handleSuccess(admin: any, item: repo.SyncQueueRow, quickbooksId: 
   });
 
   const table = SYNC_STATUS_TABLE[item.entity_type];
-  const idColumn = SYNC_ID_COLUMN[item.entity_type];
-  await admin.from(table).update({
-    [idColumn]: quickbooksId,
+  const patch: Record<string, unknown> = {
     quickbooks_sync_status: "synced",
     quickbooks_synced_at: new Date().toISOString(),
-  }).eq("id", item.entity_id);
+  };
+  if (item.entity_type === "refund" && syncResult.refundNetSynced != null) {
+    // Cache of confirmed remote net retained — source of truth remains the
+    // ledger + GET Payment on the next reconcile.
+    patch.quickbooks_refund_net_synced = syncResult.refundNetSynced;
+    // Keep payment id authoritative; do not invent a RefundReceipt id.
+    if (quickbooksId) patch.quickbooks_payment_id = quickbooksId;
+  } else {
+    const idColumn = SYNC_ID_COLUMN[item.entity_type];
+    patch[idColumn] = quickbooksId;
+  }
+  await admin.from(table).update(patch).eq("id", item.entity_id);
 
   await recordHealthCheck(item.venue_id, true);
 }

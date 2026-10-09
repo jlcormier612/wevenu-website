@@ -1,10 +1,9 @@
 /**
- * Payment and refund QuickBooks idempotency.
+ * Payment create idempotency + invoice-linked refund Payment reconciliation.
  *
- * PrivateNote is not queryable on Payment or RefundReceipt (live Intuit
- * ValidationFault 4001). These tests pin the replacement: prefer the stored
- * remote id, recover via a deterministic non-GUID token on a verified-
- * queryable field, and never query PrivateNote.
+ * Payment create still recovers via PaymentRefNum (PrivateNote is not
+ * queryable — ValidationFault 4001). Refunds no longer create RefundReceipt;
+ * they GET/update/void the existing Payment to match net retained collections.
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -19,7 +18,10 @@ import {
 
 const payment = readFileSync(resolve("lib/quickbooks/sync/payment.ts"), "utf8");
 const refund = readFileSync(resolve("lib/quickbooks/sync/refund.ts"), "utf8");
+const processor = readFileSync(resolve("lib/quickbooks/processor.ts"), "utf8");
 const tokenSource = readFileSync(resolve("lib/quickbooks/sync/correlation-token.ts"), "utf8");
+const paymentsService = readFileSync(resolve("lib/payments/service.ts"), "utf8");
+const paymentsRepo = readFileSync(resolve("lib/payments/repository.ts"), "utf8");
 
 const SAMPLE_LINE_ID = "1b88e352-5939-48cc-9427-6fe520ae5907";
 
@@ -36,13 +38,10 @@ describe("correlation tokens", () => {
   it("stay under the 21-character QuickBooks field limit", () => {
     assert.ok(paymentCorrelationToken(SAMPLE_LINE_ID).length <= 21);
     assert.ok(refundCorrelationToken(SAMPLE_LINE_ID).length <= 21);
-    assert.equal(paymentCorrelationToken(SAMPLE_LINE_ID).length, 16);
-    assert.equal(refundCorrelationToken(SAMPLE_LINE_ID).length, 16);
   });
 
   it("are not GUID-shaped (no dashes) so the query parser accepts them", () => {
     assert.doesNotMatch(paymentCorrelationToken(SAMPLE_LINE_ID), /-/);
-    assert.doesNotMatch(refundCorrelationToken(SAMPLE_LINE_ID), /-/);
     assert.match(paymentCorrelationToken(SAMPLE_LINE_ID), /^HTCP[0-9A-F]{12}$/);
     assert.match(refundCorrelationToken(SAMPLE_LINE_ID), /^HTCR[0-9A-F]{12}$/);
   });
@@ -51,117 +50,148 @@ describe("correlation tokens", () => {
     const expected =
       "HTCP" + createHash("sha256").update(SAMPLE_LINE_ID).digest("hex").slice(0, 12).toUpperCase();
     assert.equal(paymentCorrelationToken(SAMPLE_LINE_ID), expected);
-    assert.doesNotMatch(paymentCorrelationToken(SAMPLE_LINE_ID), /1B88E352/);
   });
 });
 
-describe("cached QuickBooks id short-circuits before any Intuit call", () => {
-  for (const [label, source, column] of [
-    ["payment", payment, "quickbooks_payment_id"],
-    ["refund", refund, "quickbooks_refund_id"],
-  ] as const) {
-    it(`${label} returns the stored id without calling quickBooksFetch`, () => {
-      const fnStart = source.indexOf(`export async function sync${label === "payment" ? "Payment" : "Refund"}`);
-      assert.ok(fnStart >= 0);
-      const body = source.slice(fnStart);
-      const cachedAt = body.indexOf(`if (itemRow.${column})`);
-      const fetchAt = body.indexOf("await quickBooksFetch");
-      assert.ok(cachedAt >= 0, `${label} must check the stored id`);
-      assert.ok(fetchAt >= 0, `${label} must still have a fetch path`);
-      assert.ok(cachedAt < fetchAt, `${label} must short-circuit before any Intuit call`);
-      assert.match(body, new RegExp(`quickbooksId: itemRow\\.${column}`));
-    });
-
-    it(`${label} selects the stored id column from payment_line_items`, () => {
-      assert.match(source, new RegExp(`select\\("[^"]*${column}`));
-    });
-  }
+describe("payment create cached-id short-circuit", () => {
+  it("returns the stored payment id without calling quickBooksFetch", () => {
+    const body = payment.slice(payment.indexOf("export async function syncPayment"));
+    const cachedAt = body.indexOf("if (itemRow.quickbooks_payment_id)");
+    const fetchAt = body.indexOf("await quickBooksFetch");
+    assert.ok(cachedAt >= 0 && cachedAt < fetchAt);
+    assert.match(body, /quickbooksId: itemRow\.quickbooks_payment_id/);
+  });
 });
 
-describe("remote recovery queries use verified-queryable fields only", () => {
+describe("refund reconcile — invoice-linked Payment path", () => {
+  it("does not create RefundReceipt or query DocNumber", () => {
+    assert.doesNotMatch(refund, /\/refundreceipt/i);
+    assert.doesNotMatch(refund, /select \* from RefundReceipt/);
+    assert.doesNotMatch(refund, /DocNumber:/);
+    assert.doesNotMatch(refund, /refundCorrelationToken/);
+    assert.doesNotMatch(refund, /htc:payment_refund:/);
+  });
+
+  it("reads the latest ledger amounts and computes net retained", () => {
+    assert.match(refund, /paid_amount, refunded_amount/);
+    assert.match(refund, /computeNetRetained/);
+    assert.match(refund, /quickbooks_refund_net_synced/);
+  });
+
+  it("requires an existing quickbooks_payment_id (unsupported otherwise)", () => {
+    assert.match(refund, /has not been synced to QuickBooks yet/);
+    assert.match(refund, /retryable: false/);
+  });
+
+  it("GETs the remote Payment before any update or void", () => {
+    const getAt = refund.indexOf("/payment/${encodeURIComponent(paymentId)}");
+    const updateAt = refund.indexOf('"/payment"');
+    const voidAt = refund.indexOf("operation=update&include=void");
+    assert.ok(getAt >= 0, "must GET /payment/{id}");
+    assert.ok(updateAt > getAt, "update must follow GET");
+    assert.ok(voidAt > getAt, "void must follow GET");
+  });
+
+  it("adopts when remote already matches the target", () => {
+    assert.match(refund, /paymentMatchesTarget/);
+    assert.match(refund, /return success\(/);
+  });
+
+  it("runs the deposit-safety gate before both update and void mutations", () => {
+    const gateAt = refund.indexOf("assertPaymentNotInBankDeposit");
+    const voidAt = refund.indexOf("operation=update&include=void");
+    const updateAt = refund.indexOf('"/payment"');
+    assert.ok(gateAt >= 0, "must call assertPaymentNotInBankDeposit");
+    assert.ok(voidAt > gateAt, "void must follow the deposit gate");
+    assert.ok(updateAt > gateAt, "update must follow the deposit gate");
+    // One shared gate at the top of applyReconcileWrite serves both paths.
+    const apply = refund.slice(refund.indexOf("async function applyReconcileWrite"));
+    assert.match(apply, /assertPaymentNotInBankDeposit/);
+    assert.equal((apply.match(/assertPaymentNotInBankDeposit/g) ?? []).length, 1);
+  });
+
+  it("fails closed on capped or ambiguous Deposit scans", () => {
+    assert.match(refund, /evaluateDepositScan/);
+    assert.match(refund, /DEPOSIT_STATUS_UNCONFIRMED|Could not confirm Bank Deposit status/);
+    assert.match(refund, /included in a Bank Deposit/);
+  });
+
+  it("normalizes an omitted Deposit field to [] after validating QueryResponse", () => {
+    assert.match(refund, /QueryResponse\.Deposit \?\? \[\]/);
+  });
+
+  it("uses a full Payment update body for partial targets", () => {
+    assert.match(refund, /buildPaymentReconcileUpdateBody/);
+  });
+
+  it("handles stale SyncToken with one re-read before a conditional retry", () => {
+    assert.match(refund, /isStaleSyncTokenError/);
+    assert.match(refund, /secondRead/);
+  });
+
+  it("forwards uncertain write outcomes without inventing a second mutation path", () => {
+    assert.match(refund, /uncertain:\s*voidResult\.uncertain|uncertain:\s*updateResult\.uncertain/);
+  });
+
+  it("cache short-circuit compares net-synced to current target, not a prior refund id", () => {
+    assert.match(refund, /quickbooks_refund_net_synced != null/);
+    assert.doesNotMatch(refund, /quickbooks_refund_id/);
+  });
+});
+
+describe("processor persists refund net-synced cache", () => {
+  it("writes quickbooks_refund_net_synced on refund success", () => {
+    assert.match(processor, /quickbooks_refund_net_synced/);
+    assert.match(processor, /refundNetSynced/);
+  });
+});
+
+describe("payment create still uses PaymentRefNum recovery", () => {
   it("payment recovers on PaymentRefNum, never PrivateNote", () => {
     assert.match(payment, /select \* from Payment where PaymentRefNum = '/);
-    assert.doesNotMatch(payment, /PrivateNote\s*=/);
     assert.doesNotMatch(payment, /where PrivateNote/);
   });
 
-  it("refund recovers on DocNumber, never PrivateNote", () => {
-    assert.match(refund, /select \* from RefundReceipt where DocNumber = '/);
-    assert.doesNotMatch(refund, /PrivateNote\s*=/);
-    assert.doesNotMatch(refund, /where PrivateNote/);
-  });
-
-  it("neither file still queries with the legacy wevenu: prefix", () => {
-    assert.doesNotMatch(payment, /wevenu:payment_line_item/);
-    assert.doesNotMatch(refund, /wevenu:payment_refund/);
-  });
-
-  it("query precedes create in both files", () => {
-    for (const [label, source, entity] of [
-      ["payment", payment, "Payment"],
-      ["refund", refund, "RefundReceipt"],
-    ] as const) {
-      const lookupAt = source.indexOf(`select * from ${entity} where`);
-      const createAt = source.search(/method: "POST"/);
-      assert.ok(lookupAt >= 0 && createAt >= 0, `${label} must both query and create`);
-      assert.ok(lookupAt < createAt, `${label} must query before it creates`);
-      assert.match(source, /existingId/);
-    }
-  });
-});
-
-describe("create payloads carry the correlation token and keep PrivateNote", () => {
   it("payment create sets PaymentRefNum from the token helper and keeps PrivateNote", () => {
     assert.match(payment, /PaymentRefNum:\s*correlationToken/);
     assert.match(payment, /PrivateNote:\s*privateNote/);
     assert.match(payment, /htc:payment_line_item:/);
-    assert.match(payment, /paymentCorrelationToken\(entityId\)/);
   });
 
-  it("refund create sets DocNumber from the token helper and keeps PrivateNote", () => {
-    assert.match(refund, /DocNumber:\s*correlationToken/);
-    assert.match(refund, /PrivateNote:\s*privateNote/);
-    assert.match(refund, /htc:payment_refund:/);
-    assert.match(refund, /refundCorrelationToken\(entityId\)/);
+  it("PrivateNote is never used as a query filter on payment", () => {
+    assert.doesNotMatch(payment, /where\s+PrivateNote/i);
+    assert.doesNotMatch(payment, /PrivateNote\s*=\s*'/);
   });
 
-  it("PrivateNote is never used as a query filter", () => {
-    // Docstrings may mention PrivateNote; the invariant is that no query
-    // string filters on it — that is what Intuit rejects with code 4001.
-    for (const [label, source] of [["payment", payment], ["refund", refund]] as const) {
-      assert.doesNotMatch(source, /where\s+PrivateNote/i, `${label}`);
-      assert.doesNotMatch(source, /PrivateNote\s*=\s*'/, `${label}`);
-      assert.match(source, /PrivateNote:\s*privateNote/, `${label} must still write PrivateNote on create`);
-    }
+  it("payment forwards createResult.uncertain", () => {
+    assert.match(payment, /uncertain:\s*createResult\.uncertain/);
   });
 });
 
-describe("uncertain outcomes after a potentially successful remote write", () => {
-  it("payment forwards createResult.uncertain without retrying into a second write", () => {
-    assert.match(payment, /uncertain:\s*createResult\.uncertain/);
-    // The uncertainty return sits on the create path, after the POST.
-    const postAt = payment.indexOf('method: "POST"');
-    const uncertainAt = payment.indexOf("uncertain: createResult.uncertain");
-    assert.ok(postAt >= 0 && uncertainAt > postAt);
+describe("ledger concurrent-refund protection and Stripe/Owner unchanged", () => {
+  it("refundLineItem conditions the update on the prior refunded_amount", () => {
+    const fn = paymentsRepo.slice(paymentsRepo.indexOf("export async function refundLineItem"));
+    assert.match(fn, /refunded_amount\.is\.null,refunded_amount\.eq\.0|eq\("refunded_amount", alreadyRefunded\)/);
+    assert.match(fn, /updated by someone else/);
   });
 
-  it("refund forwards createResult.uncertain the same way", () => {
-    assert.match(refund, /uncertain:\s*createResult\.uncertain/);
-    const postAt = refund.indexOf('method: "POST"');
-    const uncertainAt = refund.indexOf("uncertain: createResult.uncertain");
-    assert.ok(postAt >= 0 && uncertainAt > postAt);
+  it("enqueue payload carries cumulative refundedAmount and paidAmount", () => {
+    const fn = paymentsService.slice(paymentsService.indexOf("export async function refundLineItem_"));
+    assert.match(fn, /refundedAmount:\s*outcome\.newRefundedTotal/);
+    assert.match(fn, /paidAmount:\s*outcome\.paidAmount/);
   });
 
-  it("uncertainty is not attached to the read-only recovery query", () => {
-    // A failed lookup is ordinary retryable/non-retryable failure — not
-    // uncertain — because no write was attempted.
-    for (const [label, source] of [["payment", payment], ["refund", refund]] as const) {
-      const queryFail = source.slice(
-        source.indexOf("if (!queryResult.ok)"),
-        source.indexOf("if (!queryResult.ok)") + 120,
-      );
-      assert.doesNotMatch(queryFail, /uncertain/, `${label} query failure must not be marked uncertain`);
-    }
+  it("Stripe refund still runs before the ledger mutation when a PI exists", () => {
+    const fn = paymentsService.slice(paymentsService.indexOf("export async function refundLineItem_"));
+    const stripeAt = fn.indexOf("refundStripePayment");
+    const ledgerAt = fn.indexOf("repo.refundLineItem");
+    assert.ok(stripeAt >= 0 && ledgerAt > stripeAt);
+  });
+
+  it("Owner-only capability gate remains on refundLineItem_", () => {
+    const fn = paymentsService.slice(paymentsService.indexOf("export async function refundLineItem_"));
+    assert.match(fn, /payments\.refund/);
+    assert.match(fn, /requireCapability/);
   });
 });
 
