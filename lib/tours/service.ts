@@ -1305,27 +1305,32 @@ export async function updateTourStatus(
         description: `Tour for ${appt.contact_name ?? "the prospect"} marked confirmed manually.`,
       }).then(null, () => {});
     }
-    void (async () => {
-      let relationshipId: string | null = null;
-      if (appt.lead_id) {
-        const { data: lead } = await supabase.from("leads").select("relationship_id")
-          .eq("id", appt.lead_id).maybeSingle<{ relationship_id: string | null }>();
-        relationshipId = lead?.relationship_id ?? null;
-      }
-      await sendTourConfirmation({
-        venueId: venue.id,
-        leadId: appt.lead_id ?? "",
-        relationshipId,
-        contactEmail: appt.contact_email,
-        contactName: appt.contact_name,
-        venueName: venue.name,
-        primaryColor: venue.primaryColor,
-        brand: emailBrandFromVenue(venue),
-        scheduledAt: appt.scheduled_at,
-        durationMinutes: appt.duration_minutes,
-        timezone: venue.timezone,
-      });
-    })().catch((err) => console.error("sendTourConfirmation failed:", err));
+    // Confirmation email needs a booked slot. Walk-ins have null scheduled_at
+    // and are recorded completed, not confirmed — so this path is scheduled-only.
+    const scheduledAt = appt.scheduled_at;
+    if (scheduledAt) {
+      void (async () => {
+        let relationshipId: string | null = null;
+        if (appt.lead_id) {
+          const { data: lead } = await supabase.from("leads").select("relationship_id")
+            .eq("id", appt.lead_id).maybeSingle<{ relationship_id: string | null }>();
+          relationshipId = lead?.relationship_id ?? null;
+        }
+        await sendTourConfirmation({
+          venueId: venue.id,
+          leadId: appt.lead_id ?? "",
+          relationshipId,
+          contactEmail: appt.contact_email,
+          contactName: appt.contact_name,
+          venueName: venue.name,
+          primaryColor: venue.primaryColor,
+          brand: emailBrandFromVenue(venue),
+          scheduledAt,
+          durationMinutes: appt.duration_minutes,
+          timezone: venue.timezone,
+        });
+      })().catch((err) => console.error("sendTourConfirmation failed:", err));
+    }
   }
 
   if (status === "cancelled" || status === "no_show") {

@@ -115,6 +115,14 @@ describe("tour send previews use the real email builders", () => {
 
     const updateFn = service.slice(service.indexOf("export async function updateTourStatus"));
     assert.match(updateFn, /becameConfirmed[\s\S]*sendTourConfirmation/);
+    // Confirmation email requires a booked slot — do not pass nullable scheduled_at.
+    const confirmEmailBlock = updateFn.slice(
+      updateFn.indexOf("// Confirmation email needs a booked slot"),
+      updateFn.indexOf("if (status === \"cancelled\" || status === \"no_show\")"),
+    );
+    assert.match(confirmEmailBlock, /const scheduledAt = appt\.scheduled_at/);
+    assert.match(confirmEmailBlock, /if \(scheduledAt\)[\s\S]*sendTourConfirmation/);
+    assert.doesNotMatch(confirmEmailBlock, /scheduledAt:\s*appt\.scheduled_at/);
 
     const confirmFn = service.slice(service.indexOf("export async function confirmTourByToken"));
     assert.match(confirmFn, /alreadyConfirmed[\s\S]*sendTourConfirmation|!alreadyConfirmed[\s\S]*sendTourConfirmation/);
