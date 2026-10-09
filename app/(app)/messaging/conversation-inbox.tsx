@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Filter, Paperclip, Search, X } from "lucide-react";
 
 import {
@@ -39,6 +39,10 @@ import {
   type InboxSort,
 } from "@/lib/conversations/inbox-filters";
 import { formatInboxListEventCue } from "@/lib/conversations/inbox-header";
+import {
+  selectionAfterInboxCategoryChange,
+  selectionAfterInboxListReplace,
+} from "@/lib/conversations/inbox-selection";
 import type { ConversationMessagePreview, ConversationSummary } from "@/lib/conversations/types";
 import {
   INBOX_CATEGORY_OPTIONS,
@@ -193,6 +197,8 @@ export function ConversationInbox({
     [acceptedInquiryEventTypes],
   );
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [items, setItems] = React.useState<ConversationSummary[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
@@ -224,6 +230,7 @@ export function ConversationInbox({
   const [eventSearchPending, setEventSearchPending] = React.useState(false);
   const [selectedEventLabel, setSelectedEventLabel] = React.useState<string | null>(null);
   const deepLinkResolved = React.useRef<string | null>(null);
+  const listLoadGeneration = React.useRef(0);
 
   // Deep link: select the matching category for ?conversation=
   React.useEffect(() => {
@@ -236,9 +243,21 @@ export function ConversationInbox({
     });
   }, [searchParams]);
 
+  function clearConversationDeepLink() {
+    if (!searchParams.get("conversation")) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("conversation");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
   function selectCategory(next: InboxCategory) {
+    setActiveId((current) => selectionAfterInboxCategoryChange(category, next, current));
     setCategory(next);
     setFilters((f) => ({ ...f, relationship: inboxRelationshipParam(next) }));
+    // Drop ?conversation= so a prior deep link cannot restore the old thread
+    // or bounce the category back via resolveInboxCategoryAction.
+    clearConversationDeepLink();
   }
 
   React.useEffect(() => {
@@ -329,6 +348,7 @@ export function ConversationInbox({
   }, [searchDebounced, queryFields, nextCursor]);
 
   React.useEffect(() => {
+    const generation = ++listLoadGeneration.current;
     setNextCursor(null);
     void (async () => {
       setLoading(true);
@@ -339,19 +359,30 @@ export function ConversationInbox({
           search: searchDebounced || null,
           ...queryFields,
         });
+        if (generation !== listLoadGeneration.current) return;
         setItems(page.conversations);
         setHasMore(page.hasMore);
         setNextCursor(page.nextCursor);
         setTotalUnread(page.totalUnread);
         setTotalNeedsResponse(page.totalNeedsResponse ?? 0);
         setNeedsResponseOverrides({});
+        // Drop a thread that is not in this bucket after the list replaces.
+        // While loading we keep activeId so deep links are not cleared early.
+        setActiveId((current) => selectionAfterInboxListReplace({
+          loading: false,
+          conversationIds: page.conversations.map((c) => c.id),
+          activeConversationId: current,
+          deepLinkConversationId: searchParams.get("conversation"),
+        }));
       } catch {
+        if (generation !== listLoadGeneration.current) return;
         setLoadError("Couldn’t load conversations. Try again.");
         setItems([]);
         setHasMore(false);
         setNextCursor(null);
+        setActiveId(null);
       } finally {
-        setLoading(false);
+        if (generation === listLoadGeneration.current) setLoading(false);
       }
     })();
   }, [queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -408,6 +439,7 @@ export function ConversationInbox({
   }
 
   function clearAllFilters() {
+    setActiveId((current) => selectionAfterInboxCategoryChange(category, "leads", current));
     setCategory("leads");
     setFilters(defaultInboxFilters());
     setSearch("");
@@ -415,6 +447,7 @@ export function ConversationInbox({
     setEventSearch("");
     setEventSearchResults([]);
     setSelectedEventLabel(null);
+    clearConversationDeepLink();
   }
 
   return (
