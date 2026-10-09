@@ -13,6 +13,26 @@
 
 export const TOUR_TIME_REQUIRED = "A tour time is required to schedule a venue tour.";
 
+export const TOUR_ACTUAL_REQUIRED_MESSAGE =
+  "Enter the date and time the tour actually occurred. This tour has no scheduled date and time to use.";
+
+/** True when a completed tour's saved occurrence is not the scheduled slot. */
+export function occurrenceEnteredSeparately(input: {
+  completed: boolean;
+  scheduledDate: string;
+  scheduledTime: string;
+  actualDate: string;
+  actualTime: string;
+}): boolean {
+  if (!input.completed) return false;
+  const actualDate = input.actualDate.trim();
+  const actualTime = input.actualTime.trim().slice(0, 5);
+  if (!actualDate && !actualTime) return false;
+  const scheduledDate = input.scheduledDate.trim();
+  const scheduledTime = input.scheduledTime.trim().slice(0, 5);
+  return actualDate !== scheduledDate || actualTime !== scheduledTime;
+}
+
 export class LeadTourWriteError extends Error {
   constructor(message: string) {
     super(message);
@@ -87,15 +107,41 @@ export function resolveLeadTourWrite(input: {
   const explicitTime = (input.tourActualTime ?? "").trim().slice(0, 5);
   const { actualDate, actualTime } = resolveActualOccurrenceClock(input);
 
+  if (input.tourCompleted && (explicitDate || explicitTime) && (!explicitDate || !explicitTime)) {
+    return {
+      action: "reject",
+      message: "Enter the date and time the tour actually occurred.",
+    };
+  }
+
+  if (input.tourCompleted && !explicitDate && !explicitTime) {
+    // Happened as scheduled. The booked slot becomes the occurrence.
+    // Do not invent a clock from the click, and do not rewrite scheduled_at.
+    if (!tourDate || !tourTime) {
+      return { action: "reject", message: TOUR_ACTUAL_REQUIRED_MESSAGE };
+    }
+    if (existing && isOccupyingStatus(existing.status)) {
+      return {
+        action: "complete_scheduled",
+        appointmentId: existing.id,
+        actualDate: tourDate,
+        actualTime: tourTime,
+        notes,
+      };
+    }
+    if (existing && existing.status === "completed") {
+      return {
+        action: "actual_only",
+        appointmentId: existing.id,
+        actualDate: tourDate,
+        actualTime: tourTime,
+        notes,
+      };
+    }
+    return { action: "walk_in", actualDate: tourDate, actualTime: tourTime, notes };
+  }
+
   if (input.tourCompleted) {
-    // An occupying appointment's booked slot is not an occurrence. Completing
-    // it without an explicit actual time records completion only.
-    if (existing && isOccupyingStatus(existing.status) && !explicitDate && !explicitTime) {
-      return { action: "complete_without_actual", appointmentId: existing.id, notes };
-    }
-    if (existing && existing.status === "completed" && !explicitDate && !explicitTime) {
-      return { action: "notes_only", appointmentId: existing.id, notes };
-    }
     // Completing / editing actual uses the actual clock. An empty schedule
     // field is allowed when an occupying row already carries scheduled_at.
     if (!actualDate) {

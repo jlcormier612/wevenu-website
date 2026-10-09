@@ -71,31 +71,57 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
     );
   });
 
-  it("completing an occupying tour without an explicit actual does not copy the booked slot", () => {
+  it("completing an occupying tour without an exception uses the scheduled date and time", () => {
     assert.deepEqual(
       resolveLeadTourWrite({
-        tourDate: "2099-06-15",
+        tourDate: "2026-06-15",
         tourTime: "11:30",
         tourCompleted: true,
-        tourNotes: "Early",
+        tourNotes: "On time",
         existing: occupying,
       }),
       {
-        action: "complete_without_actual",
+        action: "complete_scheduled",
         appointmentId: "appt-1",
-        notes: "Early",
+        actualDate: "2026-06-15",
+        actualTime: "11:30",
+        notes: "On time",
       },
     );
-    assert.equal(
-      resolveLeadTourWrite({
-        tourDate: "2099-06-16",
-        tourTime: "09:00",
-        tourCompleted: true,
-        tourNotes: "",
-        existing: confirmed,
-      }).action,
-      "complete_without_actual",
-    );
+    const confirmedDecision = resolveLeadTourWrite({
+      tourDate: "2026-06-16",
+      tourTime: "09:00",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: confirmed,
+    });
+    assert.equal(confirmedDecision.action, "complete_scheduled");
+    if (confirmedDecision.action === "complete_scheduled") {
+      assert.equal(confirmedDecision.actualDate, "2026-06-16");
+      assert.equal(confirmedDecision.actualTime, "09:00");
+    }
+  });
+
+  it("does not invent an occurrence when the scheduled date or time is missing", () => {
+    const missing = resolveLeadTourWrite({
+      tourDate: "",
+      tourTime: "",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: occupying,
+    });
+    assert.equal(missing.action, "reject");
+    if (missing.action === "reject") {
+      assert.match(missing.message, /no scheduled date and time/);
+    }
+    const dateOnly = resolveLeadTourWrite({
+      tourDate: "2026-06-15",
+      tourTime: "",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: occupying,
+    });
+    assert.equal(dateOnly.action, "reject");
   });
 
   it("early occurrence uses explicit actual fields without changing the scheduled date fields", () => {
@@ -172,21 +198,27 @@ describe("resolveLeadTourWrite — Phase 2 intents", () => {
     );
   });
 
-  it("editing a completed tour without an explicit actual does not rewrite the occurrence", () => {
+  it("turning the exception off writes the scheduled date and time as the occurrence", () => {
     assert.deepEqual(
       resolveLeadTourWrite({
-        tourDate: "2099-06-15",
+        tourDate: "2026-06-15",
         tourTime: "15:00",
         tourCompleted: true,
         tourNotes: "",
         existing: {
           id: "appt-2",
           status: "completed",
-          scheduledAt: "2099-06-15T14:00:00.000Z",
+          scheduledAt: "2026-06-15T19:00:00.000Z",
           origin: "scheduled",
         },
-      }).action,
-      "notes_only",
+      }),
+      {
+        action: "actual_only",
+        appointmentId: "appt-2",
+        actualDate: "2026-06-15",
+        actualTime: "15:00",
+        notes: "",
+      },
     );
   });
 });

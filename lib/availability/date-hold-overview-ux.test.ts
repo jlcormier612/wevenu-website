@@ -29,20 +29,23 @@ const createHoldRepo = readFileSync(
 );
 
 describe("Date Hold overview UX placement", () => {
-  it("DateHoldsSection is on Overview with desiredEventDate from lead.eventDate", () => {
+  it("DateHoldsSection is in the lead header quick row, not on Tasks", () => {
     assert.match(leadDetail, /desiredEventDate=\{lead\.eventDate\}/);
-    assert.match(leadDetail, /Date hold/);
-    // Primary create surface is Overview TabsContent, not Tasks TabsContent
-    const overviewContent = leadDetail.indexOf('<TabsContent value="overview">');
+    assert.match(holdSection, /Date hold/);
+    assert.match(leadDetail, /data-testid="lead-quick-actions"/);
+    const row = leadDetail.slice(
+      leadDetail.indexOf('data-testid="lead-quick-actions"'),
+      leadDetail.indexOf("<RelationshipCard"),
+    );
+    assert.match(row, /<DateHoldsSection/);
     const tasksContent = leadDetail.indexOf('<TabsContent value="tasks">');
-    const holdsOnOverview = leadDetail.indexOf("<DateHoldsSection", overviewContent);
-    assert.ok(overviewContent >= 0 && tasksContent > overviewContent);
-    assert.ok(holdsOnOverview > overviewContent && holdsOnOverview < tasksContent);
+    const holds = leadDetail.indexOf("<DateHoldsSection");
+    assert.ok(tasksContent > 0 && holds >= 0 && holds < tasksContent);
     assert.equal(leadDetail.indexOf("<DateHoldsSection", tasksContent), -1);
   });
 
-  it("Tasks tab points venues to Overview for date holds", () => {
-    assert.match(leadDetail, /To reserve a date, use Date hold on Overview/);
+  it("Tasks tab points venues to the header Place hold control", () => {
+    assert.match(leadDetail, /To reserve a date, use Place hold beside the pipeline stage/);
   });
 
   it("Hold form wires desiredEventDate into defaultHoldDateFromDesiredEventDate", () => {

@@ -445,18 +445,62 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
   );
 }
 
-export function TourPanel({ leadId, tourAppointments, now, venueTimezone = null }: { leadId: string; tourAppointments: TourAppointment[]; now: string; venueTimezone?: string | null }) {
+type TourScheduleContextValue = {
+  leadId: string;
+  now: string;
+  venueTimezone: string | null;
+  sorted: TourAppointment[];
+  copyingLink: boolean;
+  openSchedule: () => void;
+  openReschedule: (id: string) => void;
+  copyLink: () => Promise<void>;
+};
+
+const TourScheduleContext = React.createContext<TourScheduleContextValue | null>(null);
+
+function useTourSchedule() {
+  const value = React.useContext(TourScheduleContext);
+  if (!value) throw new Error("Tour scheduling controls must sit inside TourScheduleRoot.");
+  return value;
+}
+
+export function TourScheduleRoot({
+  leadId,
+  tourAppointments,
+  now,
+  venueTimezone = null,
+  children,
+}: {
+  leadId: string;
+  tourAppointments: TourAppointment[];
+  now: string;
+  venueTimezone?: string | null;
+  children: React.ReactNode;
+}) {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [rescheduleId, setRescheduleId] = React.useState<string | null>(null);
   const [instanceKey, setInstanceKey] = React.useState(0);
   const [copyingLink, setCopyingLink] = React.useState(false);
   const router = useRouter();
 
-  // A fresh instanceKey each open remounts SlotPickerBody with clean state
-  // — see the comment above it — rather than an effect resetting state
-  // whenever `open` flips true.
   function openSchedule() { setRescheduleId(null); setInstanceKey((k) => k + 1); setSheetOpen(true); }
   function openReschedule(id: string) { setRescheduleId(id); setInstanceKey((k) => k + 1); setSheetOpen(true); }
+
+  async function copyLink() {
+    setCopyingLink(true);
+    try {
+      const path = await getLeadPublicTourSchedulingUrlAction(leadId);
+      if (!path) {
+        toast.error("Tour scheduling link is not available for this lead.");
+        return;
+      }
+      const url = `${window.location.origin}${path}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Tour scheduling link copied.");
+    } finally {
+      setCopyingLink(false);
+    }
+  }
 
   const sorted = [...tourAppointments].sort((a, b) => {
     const ac = tourDisplayClockIso(a) ?? "";
@@ -465,50 +509,61 @@ export function TourPanel({ leadId, tourAppointments, now, venueTimezone = null 
   });
 
   return (
-    <div className="mt-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Tours</CardTitle>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={copyingLink}
-              onClick={async () => {
-                setCopyingLink(true);
-                try {
-                  const path = await getLeadPublicTourSchedulingUrlAction(leadId);
-                  if (!path) {
-                    toast.error("Tour scheduling link is not available for this lead.");
-                    return;
-                  }
-                  const url = `${window.location.origin}${path}`;
-                  await navigator.clipboard.writeText(url);
-                  toast.success("Tour scheduling link copied.");
-                } finally {
-                  setCopyingLink(false);
-                }
-              }}
-            >
-              <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy scheduling link
-            </Button>
-            <Button size="sm" onClick={openSchedule}>
-              <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
-            </Button>
-          </div>
-        </CardHeader>
-        {sorted.length > 0 && (
-          <CardContent className="divide-y divide-border/50 pt-0">
-            {sorted.map((appt) => (
-              <AppointmentRow key={appt.id} appt={appt} leadId={leadId} now={now} venueTimezone={venueTimezone} onReschedule={openReschedule} onChanged={router.refresh} />
-            ))}
-          </CardContent>
-        )}
-      </Card>
+    <TourScheduleContext.Provider value={{
+      leadId, now, venueTimezone: venueTimezone ?? null, sorted, copyingLink, openSchedule, openReschedule, copyLink,
+    }}>
+      {children}
       <SlotPickerSheet
         open={sheetOpen} onOpenChange={setSheetOpen} leadId={leadId} now={now} instanceKey={instanceKey}
         rescheduleAppointmentId={rescheduleId} onDone={router.refresh}
       />
+    </TourScheduleContext.Provider>
+  );
+}
+
+export function TourScheduleActions({ includeCopyLink = true }: { includeCopyLink?: boolean }) {
+  const { copyingLink, copyLink, openSchedule } = useTourSchedule();
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {includeCopyLink ? (
+        <Button size="sm" variant="outline" className="h-8" disabled={copyingLink} onClick={() => void copyLink()}>
+          <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy scheduling link
+        </Button>
+      ) : null}
+      <Button size="sm" className="h-8" onClick={openSchedule}>
+        <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
+      </Button>
     </div>
+  );
+}
+
+export function TourAppointmentList() {
+  const { sorted, leadId, now, venueTimezone, openReschedule } = useTourSchedule();
+  const router = useRouter();
+  if (sorted.length === 0) return null;
+  return (
+    <div className="divide-y divide-border/50">
+      {sorted.map((appt) => (
+        <AppointmentRow key={appt.id} appt={appt} leadId={leadId} now={now} venueTimezone={venueTimezone} onReschedule={openReschedule} onChanged={router.refresh} />
+      ))}
+    </div>
+  );
+}
+
+export function TourPanel({ leadId, tourAppointments, now, venueTimezone = null }: { leadId: string; tourAppointments: TourAppointment[]; now: string; venueTimezone?: string | null }) {
+  return (
+    <TourScheduleRoot leadId={leadId} tourAppointments={tourAppointments} now={now} venueTimezone={venueTimezone}>
+      <div className="mt-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Tours</CardTitle>
+            <TourScheduleActions />
+          </CardHeader>
+          <CardContent className="pt-0">
+            <TourAppointmentList />
+          </CardContent>
+        </Card>
+      </div>
+    </TourScheduleRoot>
   );
 }

@@ -49,6 +49,7 @@ export function DateHoldsSection({
   spaces,
   spacePreferences = [],
   venueTimezone = null,
+  density = "regular",
 }: {
   leadId: string;
   leadName: string;
@@ -60,6 +61,8 @@ export function DateHoldsSection({
   spacePreferences?: HoldSpacePreferenceSeed[];
   /** Venue IANA zone. Expiration dates are that zone's end of day, not the browser's. */
   venueTimezone?: string | null;
+  /** Compact row for the lead header. The place/edit form is unchanged. */
+  density?: "regular" | "compact";
 }) {
   const router = useRouter();
   // See lib/hooks/use-synced-state.ts — TasksSection may refresh siblings
@@ -235,21 +238,44 @@ export function DateHoldsSection({
     return "Whole venue";
   }
 
+  const compact = density === "compact";
+
   return (
-    <div className="space-y-3">
+    <div className={compact ? "flex min-w-0 max-w-full flex-wrap items-center gap-2" : "space-y-3"} data-testid={compact ? "date-hold-compact" : undefined}>
+      {compact ? <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span> : null}
       {/* Active holds — authoritative date_holds.status === "active". Multiple per lead/date are valid. */}
       {activeHolds.length > 0 && (
-        <div className="space-y-2" data-testid="date-hold-active-list">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Active holds
-          </p>
+        <div className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "space-y-2"} data-testid="date-hold-active-list">
+          {compact ? null : (
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Active holds
+            </p>
+          )}
           {activeHolds.map((hold) => (
             <div
               key={hold.id}
-              className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"
+              className={compact
+                ? "flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-2 py-1"
+                : "flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"}
               data-testid="date-hold-active"
             >
-              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+              <Calendar className={compact ? "h-3.5 w-3.5 shrink-0 text-warning-foreground" : "mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"} />
+              {compact ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
+                    Held
+                  </p>
+                  <p className="text-sm font-medium text-foreground">{formatDate(hold.holdDate)}</p>
+                  <span className="text-xs text-muted-foreground">
+                    {holdResourcesLabel(hold)}
+                    {" · "}
+                    {holdWindowLabel(hold) ?? "All day"}
+                    {hold.expiresAt
+                      ? ` · Expires ${new Date(hold.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                      : ""}
+                  </span>
+                </div>
+              ) : (
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
                   Held
@@ -269,6 +295,7 @@ export function DateHoldsSection({
                   ) : null}
                 </div>
               </div>
+              )}
               <div className="flex shrink-0 items-center gap-2">
                 <Button
                   type="button"
@@ -305,7 +332,7 @@ export function DateHoldsSection({
 
       {/* Historical holds — released / expired / converted; not active */}
       {pastHolds.length > 0 && (
-        <div className="space-y-1" data-testid="date-hold-history">
+        <div className={compact ? "basis-full space-y-1" : "space-y-1"} data-testid="date-hold-history">
           {pastHolds.map((hold) => (
             <div
               key={hold.id}
@@ -319,7 +346,7 @@ export function DateHoldsSection({
 
       {/* Place hold / Place another hold — never gated by an existing active hold. */}
       {showForm ? (
-        <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+        <div className={compact ? "basis-full w-full space-y-3 rounded-lg border border-border bg-muted/30 p-4" : "space-y-3 rounded-lg border border-border bg-muted/30 p-4"}>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Hold title</Label>
@@ -469,6 +496,7 @@ export function DateHoldsSection({
           type="button"
           variant="outline"
           size="sm"
+          className={compact ? "h-8" : undefined}
           onClick={openForm}
           data-testid="date-hold-place"
         >

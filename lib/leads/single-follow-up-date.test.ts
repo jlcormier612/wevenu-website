@@ -21,7 +21,8 @@ describe("single customer-facing follow-up date", () => {
   });
 
   it("still keeps nextActionDue in the save payload so existing values are not wiped", () => {
-    assert.match(card, /updateRelationshipAction\(lead\.id, input/);
+    assert.match(card, /const saved: RelationshipInput = \{\s*\.\.\.input/);
+    assert.match(card, /updateRelationshipAction\(lead\.id, saved/);
     const constants = readFileSync(resolve("lib/leads/constants.ts"), "utf8");
     assert.match(constants, /nextActionDue: lead\?\.nextActionDue/);
     const repo = readFileSync(resolve("lib/leads/repository.ts"), "utf8");

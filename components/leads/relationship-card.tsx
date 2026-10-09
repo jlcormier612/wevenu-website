@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { completeFollowUpAction, updateRelationshipAction } from "@/app/(app)/leads/[id]/actions";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,12 +21,13 @@ import {
   createInitialRelationshipInput,
   formatDate,
 } from "@/lib/leads/constants";
+import { occurrenceEnteredSeparately, TOUR_ACTUAL_REQUIRED_MESSAGE } from "@/lib/leads/relationship-tour";
 import type { Lead, RelationshipInput } from "@/lib/leads/types";
 import {
   INTERNAL_NOTES_PRIVACY_HINT,
   internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
-import { prefillActualFromScheduled } from "@/lib/tours/occurrence-clock";
+import { FUTURE_ACTUAL_OCCURRENCE_MESSAGE, prefillActualFromScheduled } from "@/lib/tours/occurrence-clock";
 import { formatVenueLocalClock, formatVenueLocalShortDate, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 
 // Common next steps, covering the inquiry -> tour -> booked lifecycle. Not
@@ -41,6 +43,19 @@ const NEXT_ACTION_PRESETS = [
   "Confirm event details",
 ] as const;
 const CUSTOM_ACTION = "__custom__";
+
+const TOUR_AS_SCHEDULED_HELP =
+  "If the tour happened as scheduled, just mark it complete. Only enter an actual date or time if it was different.";
+
+function differentTimeInitial(lead: Lead): boolean {
+  return occurrenceEnteredSeparately({
+    completed: Boolean(lead.tourCompleted),
+    scheduledDate: lead.tourScheduledDate || lead.tourDate || "",
+    scheduledTime: lead.tourScheduledTime || lead.tourTime || "",
+    actualDate: lead.tourActualDate || "",
+    actualTime: lead.tourActualTime || "",
+  });
+}
 
 function DisplayRow({
   icon: Icon,
@@ -86,9 +101,17 @@ type CompletionKind = "another_follow_up" | "other_next_action" | "no_further_fo
 export function RelationshipCard({
   lead,
   venueTimezone = null,
+  tourActions = null,
+  tourAppointments = null,
+  hideManualTourSummary = false,
 }: {
   lead: Lead;
   venueTimezone?: string | null;
+  /** Schedule Tour and Copy scheduling link, beside the follow-up action. */
+  tourActions?: React.ReactNode;
+  /** Scheduled tours for this lead. Shown once, in this section. */
+  tourAppointments?: React.ReactNode;
+  hideManualTourSummary?: boolean;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [completing, setCompleting] = React.useState(false);
@@ -99,6 +122,7 @@ export function RelationshipCard({
   const [input, setInput] = React.useState<RelationshipInput>(() =>
     createInitialRelationshipInput(lead),
   );
+  const [differentTime, setDifferentTime] = React.useState(() => differentTimeInitial(lead));
   const [pending, startTransition] = React.useTransition();
   // Capacity and calendar blocks stay visible, but they must not disable Save.
   // Follow-up fields share this button with the tour. The server writes the
@@ -106,7 +130,10 @@ export function RelationshipCard({
   const [, setTourDateBlocked] = React.useState(false);
   const [tourConflictMessage, setTourConflictMessage] = React.useState<string | null>(null);
   const tourDateOnly = Boolean(input.tourDate.trim() && !input.tourTime.trim());
-  const tourActualDateOnly = Boolean(input.tourActualDate.trim() && !input.tourActualTime.trim());
+  const tourActualDateOnly = differentTime && Boolean(
+    (input.tourActualDate.trim() && !input.tourActualTime.trim())
+    || (!input.tourActualDate.trim() && input.tourActualTime.trim()),
+  );
   const tourFormBlocked = input.tourCompleted ? tourActualDateOnly : tourDateOnly;
   const scheduledStillAhead = React.useMemo(() => {
     if (!input.tourDate || !input.tourTime) return false;
@@ -129,21 +156,9 @@ export function RelationshipCard({
   function set<K extends keyof RelationshipInput>(key: K, value: RelationshipInput[K]) {
     setInput((p) => {
       const next = { ...p, [key]: value };
-      // Prefill actual from the booked slot only when that slot is not still
-      // ahead. A future appointment is not proof the tour already happened.
-      if (key === "tourCompleted" && value === true && !next.tourActualDate.trim()) {
-        const scheduledIso = next.tourDate && next.tourTime
-          ? venueLocalToUtcIso(next.tourDate, next.tourTime, venueTimezone)
-          : null;
-        const prefill = prefillActualFromScheduled({
-          scheduledAt: scheduledIso,
-          timezone: venueTimezone,
-          utcToParts: utcToVenueLocalParts,
-        });
-        if (prefill.fromScheduled) {
-          next.tourActualDate = prefill.date;
-          next.tourActualTime = prefill.time;
-        }
+      if (key === "tourCompleted" && value === false) {
+        next.tourActualDate = "";
+        next.tourActualTime = "";
       }
       return next;
     });
@@ -151,10 +166,21 @@ export function RelationshipCard({
       setTourDateBlocked(false);
       setTourConflictMessage(null);
     }
+    if (key === "tourCompleted" && value === false) {
+      setDifferentTime(false);
+    }
+  }
+
+  function setHappenedAtDifferentTime(on: boolean) {
+    setDifferentTime(on);
+    if (!on) {
+      setInput((p) => ({ ...p, tourActualDate: "", tourActualTime: "" }));
+    }
   }
 
   function handleCancel() {
     setInput(createInitialRelationshipInput(lead));
+    setDifferentTime(differentTimeInitial(lead));
     setEditing(false);
   }
 
@@ -205,24 +231,39 @@ export function RelationshipCard({
   }
 
   function handleSave() {
-    if (input.tourCompleted) {
-      if (input.tourActualDate.trim() && !input.tourActualTime.trim()) {
-        toast.error("A tour time is required to record when the tour actually occurred.");
+    if (input.tourCompleted && differentTime) {
+      if (!input.tourActualDate.trim() || !input.tourActualTime.trim()) {
+        toast.error("Enter the date and time the tour actually occurred.");
+        return;
+      }
+    } else if (input.tourCompleted) {
+      if (!input.tourDate.trim() || !input.tourTime.trim()) {
+        toast.error(TOUR_ACTUAL_REQUIRED_MESSAGE);
+        return;
+      }
+      if (scheduledStillAhead) {
+        toast.error(FUTURE_ACTUAL_OCCURRENCE_MESSAGE);
         return;
       }
     } else if (input.tourDate.trim() && !input.tourTime.trim()) {
       toast.error("A tour time is required to schedule a venue tour.");
       return;
     }
+    const saved: RelationshipInput = {
+      ...input,
+      tourActualDate: input.tourCompleted && differentTime ? input.tourActualDate : "",
+      tourActualTime: input.tourCompleted && differentTime ? input.tourActualTime : "",
+    };
     startTransition(async () => {
       const hints = {
-        tourScheduled: input.tourDate !== prev.current.tourDate && !!input.tourDate && !!input.tourTime.trim() && !input.tourCompleted,
-        followUpSet: input.followUpDate !== prev.current.followUpDate && !!input.followUpDate,
-        contactedSet: input.lastContactedAt !== prev.current.lastContactedAt && !!input.lastContactedAt,
+        tourScheduled: saved.tourDate !== prev.current.tourDate && !!saved.tourDate && !!saved.tourTime.trim() && !saved.tourCompleted,
+        followUpSet: saved.followUpDate !== prev.current.followUpDate && !!saved.followUpDate,
+        contactedSet: saved.lastContactedAt !== prev.current.lastContactedAt && !!saved.lastContactedAt,
       };
-      const result = await updateRelationshipAction(lead.id, input, hints);
+      const result = await updateRelationshipAction(lead.id, saved, hints);
       if (result.ok) {
-        prev.current = { ...input };
+        prev.current = { ...saved };
+        setInput(saved);
         if (result.tourConflict) {
           setTourConflictMessage(result.tourConflict.message);
           toast.success("Follow-up details saved.");
@@ -248,12 +289,12 @@ export function RelationshipCard({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-base">Follow-up</CardTitle>
           {!editing && !completing ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {lead.followUpDate ? (
-                <Button type="button" size="sm" onClick={startCompletion}>
+                <Button type="button" size="sm" className="h-8" onClick={startCompletion}>
                   Complete follow-up
                 </Button>
               ) : null}
@@ -261,10 +302,12 @@ export function RelationshipCard({
                 type="button"
                 variant="ghost"
                 size="sm"
+                className="h-8"
                 onClick={() => setEditing(true)}
               >
-                {isEmpty ? "+ Add details" : "Edit"}
+                {isEmpty ? "Add follow-up details" : "Edit"}
               </Button>
+              {tourActions}
             </div>
           ) : completing ? (
             <Button type="button" variant="ghost" size="sm" onClick={resetCompletion} disabled={pending}>
@@ -392,7 +435,7 @@ export function RelationshipCard({
             ) : null}
             <DisplayRow icon={Calendar} label="Follow-up" value={formatDate(lead.followUpDate)} />
             <DisplayRow icon={Phone} label="Last contacted" value={formatDate(lead.lastContactedAt)} />
-            {lead.tourCompleted && (lead.tourScheduledDate || lead.tourActualDate || lead.tourDate) ? (
+            {hideManualTourSummary ? null : lead.tourCompleted && (lead.tourScheduledDate || lead.tourActualDate || lead.tourDate) ? (
               <>
                 {lead.tourScheduledDate ? (
                   <DisplayRow
@@ -429,21 +472,17 @@ export function RelationshipCard({
                   />
                 ) : null}
               </>
-            ) : (
+            ) : lead.tourDate ? (
               <DisplayRow
                 icon={Calendar}
                 label="Tour"
-                value={
-                  lead.tourDate
-                    ? `${formatVenueLocalShortDate(lead.tourDate)}${lead.tourTime ? ` at ${formatVenueLocalClock(lead.tourTime)}` : ""}`
-                    : null
-                }
+                value={`${formatVenueLocalShortDate(lead.tourDate)}${lead.tourTime ? ` at ${formatVenueLocalClock(lead.tourTime)}` : ""}`}
               />
-            )}
-            {isEmpty && (
+            ) : null}
+            {tourAppointments}
+            {isEmpty && !tourAppointments && (
               <p className="py-1 text-sm text-muted-foreground">
-                No follow-up details yet. Click &ldquo;Add details&rdquo; to record next steps,
-                follow-up dates, and tour scheduling.
+                No follow-up details yet. Use Add follow-up details for next steps and dates, or Schedule Tour.
               </p>
             )}
           </div>
@@ -541,26 +580,34 @@ export function RelationshipCard({
                 <Label>Tour completed</Label>
               </div>
               {input.tourCompleted ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {scheduledStillAhead && !input.tourActualDate.trim() ? (
-                    <p className="sm:col-span-2 text-xs text-muted-foreground">
-                      This tour is still scheduled in the future. Enter when it actually occurred, or leave both fields empty if you don't know yet. The scheduled time stays as booked.
-                    </p>
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">{TOUR_AS_SCHEDULED_HELP}</p>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="tour-different-time"
+                      checked={differentTime}
+                      onCheckedChange={(v) => setHappenedAtDifferentTime(v === true)}
+                    />
+                    <Label htmlFor="tour-different-time">The tour happened at a different date or time</Label>
+                  </div>
+                  {differentTime ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <EditRow label="Actually occurred (date) *">
+                        <Input
+                          type="date"
+                          value={input.tourActualDate}
+                          onChange={(e) => set("tourActualDate", e.target.value)}
+                        />
+                      </EditRow>
+                      <EditRow label="Actually occurred (time) *">
+                        <Input
+                          type="time"
+                          value={input.tourActualTime}
+                          onChange={(e) => set("tourActualTime", e.target.value)}
+                        />
+                      </EditRow>
+                    </div>
                   ) : null}
-                  <EditRow label="Actually occurred (date)">
-                    <Input
-                      type="date"
-                      value={input.tourActualDate}
-                      onChange={(e) => set("tourActualDate", e.target.value)}
-                    />
-                  </EditRow>
-                  <EditRow label="Actually occurred (time) *">
-                    <Input
-                      type="time"
-                      value={input.tourActualTime}
-                      onChange={(e) => set("tourActualTime", e.target.value)}
-                    />
-                  </EditRow>
                 </div>
               ) : null}
               <EditRow label={internalNotesLabel("tour")}>

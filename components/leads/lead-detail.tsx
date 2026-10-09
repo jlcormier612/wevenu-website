@@ -85,7 +85,7 @@ import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-obse
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
-import { TourPanel } from "@/components/leads/tour-panel";
+import { TourAppointmentList, TourScheduleActions, TourScheduleRoot } from "@/components/leads/tour-panel";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
 import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
 import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
@@ -111,11 +111,58 @@ import {
 import {
   inquiryMessageDisplayHint,
   inquiryMessageDisplayLabel,
+  normalizeInquiryMessageOrigin,
 } from "@/lib/leads/inquiry-message-origin";
 import {
   buildInternalNotesRollup,
   type InternalNoteRollupItem,
 } from "@/lib/notes/internal-notes-rollup";
+
+type CustomAnswer = { questionText?: string; answer?: string | string[] };
+
+function LeadInquiryRecord({ lead }: { lead: LeadWithDetails }) {
+  const origin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
+  const message = lead.inquiryMessage?.trim() ?? "";
+  const showMessage = message.length > 0 && origin !== "venue";
+  const answers = Array.isArray(lead.sourceData?.custom_answers)
+    ? (lead.sourceData.custom_answers as CustomAnswer[])
+    : [];
+  const received = [
+    lead.inquiryDate ? `Received ${formatDate(lead.inquiryDate)}` : null,
+    lead.source ? `via ${sourceLabel(lead.source)}` : null,
+  ].filter(Boolean).join(" ");
+  if (!received && !showMessage && answers.length === 0) return null;
+  return (
+    <div className="space-y-3" data-testid="lead-inquiry-record">
+      {received ? <p className="text-xs text-muted-foreground">{received}</p> : null}
+      {showMessage ? (
+        <div>
+          <Label className="mb-1 text-xs text-muted-foreground">
+            {inquiryMessageDisplayLabel(lead.inquiryMessageOrigin)}
+          </Label>
+          {inquiryMessageDisplayHint(lead.inquiryMessageOrigin) ? (
+            <p className="mb-1 text-[11px] text-muted-foreground">
+              {inquiryMessageDisplayHint(lead.inquiryMessageOrigin)}
+            </p>
+          ) : null}
+          <p className="whitespace-pre-wrap text-sm text-foreground">{message}</p>
+        </div>
+      ) : null}
+      {answers.length > 0 ? (
+        <div className="space-y-3">
+          {answers.map((entry, idx) => (
+            <div key={idx}>
+              <Label className="mb-1 text-xs text-muted-foreground">{entry.questionText ?? "Custom question"}</Label>
+              <p className="whitespace-pre-wrap text-sm text-foreground">
+                {Array.isArray(entry.answer) ? entry.answer.join(", ") : entry.answer}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -499,6 +546,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         onCancel={() => setBookedMove(null)}
         onConfirm={confirmBookedFromStage}
       />
+      <TourScheduleRoot leadId={lead.id} tourAppointments={tourAppointments} now={now} venueTimezone={venueTimezone}>
       {/* Header */}
       <div className="space-y-3">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -563,7 +611,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:max-w-3xl sm:items-end">
           {showEventSpaceField && (
             <div className="w-full min-w-56">
               <EventSpaceField
@@ -708,6 +756,30 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </div>
         </div>
       </div>
+      <div
+        data-testid="lead-quick-actions"
+        className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
+      >
+        <StaffAssignmentField
+          compact
+          label="Sales owner"
+          staff={staffOptions}
+          value={lead.assignedStaffId ?? null}
+          testId="lead-staff-assignment"
+          onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
+        />
+        <DateHoldsSection
+          density="compact"
+          leadId={lead.id}
+          leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+          desiredEventDate={lead.eventDate}
+          initialHolds={holds}
+          spaces={spaces}
+          spacePreferences={spacePreferences}
+          venueTimezone={venueTimezone}
+        />
+        <TourScheduleActions includeCopyLink={false} />
+      </div>
       {showUsePreferences && (
         <LeadSpacePreferenceFields
           leadId={lead.id}
@@ -725,7 +797,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
-      <RelationshipCard lead={lead} venueTimezone={venueTimezone} />
+      <RelationshipCard
+        lead={lead}
+        venueTimezone={venueTimezone}
+        hideManualTourSummary={tourAppointments.length > 0}
+        tourActions={<TourScheduleActions />}
+        tourAppointments={tourAppointments.length > 0 ? <TourAppointmentList /> : null}
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Contact information</CardTitle>
@@ -759,6 +837,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </CardContent>
       </Card>
       </div>
+      </TourScheduleRoot>
 
       {/* Tabs */}
       {duplicateReview ? (
@@ -833,109 +912,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               workspaceReturnTo={`/leads/${lead.id}#booking-journey-payments`}
             />
           </div>
-          <div className="mb-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Team assignment</CardTitle>
-                <CardDescription>Optional. A lead can move forward without an assignee.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StaffAssignmentField
-                  label="Sales owner"
-                  hint="This person is responsible while the record is a lead. You can confirm or change them when the lead is booked."
-                  staff={staffOptions}
-                  value={lead.assignedStaffId ?? null}
-                  testId="lead-staff-assignment"
-                  onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
-                />
-              </CardContent>
-            </Card>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Inquiry details</CardTitle>
-                <CardDescription>
-                  Received {formatDate(lead.inquiryDate)}
-                  {lead.source && <> via {sourceLabel(lead.source)}</>}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow icon={Calendar} label="Event type" value={eventTypeLabel(lead.eventType)} />
-                <InfoRow icon={Calendar} label="Preferred event date" value={formatDate(lead.eventDate)} />
-                <InfoRow
-                  icon={Users}
-                  label="Guest count"
-                  value={lead.guestCount != null ? `${lead.guestCount.toLocaleString()} guests` : undefined}
-                />
-                <InfoRow
-                  icon={DollarSign}
-                  label="Estimated budget"
-                  value={formatCurrency(lead.estimatedBudget) || undefined}
-                />
-                {lead.inquiryMessage && (
-                  <>
-                    <Separator />
-                    <div>
-                      <Label className="mb-1 text-xs text-muted-foreground">
-                        {inquiryMessageDisplayLabel(lead.inquiryMessageOrigin)}
-                      </Label>
-                      {inquiryMessageDisplayHint(lead.inquiryMessageOrigin) && (
-                        <p className="mb-1 text-[11px] text-muted-foreground">
-                          {inquiryMessageDisplayHint(lead.inquiryMessageOrigin)}
-                        </p>
-                      )}
-                      <p className="whitespace-pre-wrap text-sm text-foreground">
-                        {lead.inquiryMessage}
-                      </p>
-                    </div>
-                  </>
-                )}
-                {Array.isArray(lead.sourceData?.custom_answers) && (lead.sourceData.custom_answers as Array<{ questionText?: string; answer?: string | string[] }>).length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3">
-                      {(lead.sourceData.custom_answers as Array<{ questionText?: string; answer?: string | string[] }>).map((entry, idx) => (
-                        <div key={idx}>
-                          <Label className="mb-1 text-xs text-muted-foreground">{entry.questionText ?? "Custom question"}</Label>
-                          <p className="whitespace-pre-wrap text-sm text-foreground">
-                            {Array.isArray(entry.answer) ? entry.answer.join(", ") : entry.answer}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Date Hold belongs with the preferred date — not under Tasks.
-                Hold date defaults from lead.eventDate (desired/preferred). */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Date hold</CardTitle>
-                <CardDescription>
-                  Temporarily reserve their preferred date (or another date you choose) without converting this lead to a booking. Holds appear on the calendar and follow your availability settings.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DateHoldsSection
-                  leadId={lead.id}
-                  leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-                  desiredEventDate={lead.eventDate}
-                  initialHolds={holds}
-                  spaces={spaces}
-                  spacePreferences={spacePreferences}
-                  venueTimezone={venueTimezone}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Coordinator Tour Scheduling — always visible, not just when a
-              tour already exists: this is the entry point, not a display-only
-              summary. */}
-          <TourPanel leadId={lead.id} tourAppointments={tourAppointments} now={now} venueTimezone={venueTimezone} />
         </TabsContent>
 
         {/* ── Conversation ─────────────────────────────────────────── */}
@@ -959,7 +935,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 {INTERNAL_NOTES_PRIVACY_HINT}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <LeadInquiryRecord lead={lead} />
               <NotesSection leadId={lead.id} items={internalNotes} venueTimezone={venueTimezone} />
             </CardContent>
           </Card>
@@ -971,7 +948,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <CardHeader>
               <CardTitle className="text-base">Venue tasks</CardTitle>
               <CardDescription>
-                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Date hold on Overview.
+                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Place hold beside the pipeline stage.
               </CardDescription>
             </CardHeader>
             <CardContent>
