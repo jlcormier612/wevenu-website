@@ -25,6 +25,7 @@ export function CommercialFacts({
   today,
   contractPending,
   onSelectPackage,
+  onEditFinancialTerms,
   onCreateProposal,
   onPreviewProposal,
   onCreateShareLink,
@@ -41,6 +42,7 @@ export function CommercialFacts({
   today?: string;
   contractPending?: boolean;
   onSelectPackage: () => void;
+  onEditFinancialTerms?: () => void;
   onCreateProposal?: () => void;
   onPreviewProposal: () => void;
   onCreateShareLink: () => void;
@@ -151,6 +153,12 @@ export function CommercialFacts({
               {row.key === "package" && selection ? (
                 <Button type="button" size="sm" variant="outline" onClick={onSelectPackage}>
                   View / Change package
+                </Button>
+              ) : null}
+              {row.key === "package" && selection && onEditFinancialTerms
+                && selection.status === "draft" && !selection.invoiceId && !selection.contractId ? (
+                <Button type="button" size="sm" variant="outline" onClick={onEditFinancialTerms}>
+                  Financial terms
                 </Button>
               ) : null}
               {row.key === "package" && selection && !proposal && allowOffer && selection.status !== "accepted" ? (

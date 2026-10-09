@@ -80,6 +80,7 @@ describe("events.booked_at — commercial Booked only", () => {
 
 describe("Commercial steps (not Booked)", () => {
   function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
+    const totalAmount = overrides.totalAmount ?? 10000;
     return {
       id: "s1",
       venueId: "v",
@@ -89,7 +90,14 @@ describe("Commercial steps (not Booked)", () => {
       proposalId: null,
       sourcePackageId: null,
       name: "Gold",
-      totalAmount: 10000,
+      packageAmount: totalAmount,
+      discountAmount: 0,
+      discountType: null,
+      discountValue: null,
+      taxApplied: false,
+      taxRatePercent: null,
+      taxAmount: 0,
+      totalAmount,
       depositAmount: 2000,
       includedItems: [],
       status: "accepted",

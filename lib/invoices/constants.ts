@@ -1,3 +1,4 @@
+import { roundMoney } from "@/lib/commercial-selections/constants";
 import type { InvoiceLineItemType, InvoiceStatus } from "@/lib/invoices/types";
 
 export const INVOICE_STATUSES: { value: InvoiceStatus; label: string; description: string }[] = [
@@ -43,10 +44,10 @@ export function deriveRevenueCategory(
   switch (type) {
     case "tax": return "Taxes";
     case "discount": return "Discounts";
-    // A 'deposit'-typed line reduces the invoice total the same way a
-    // discount does (see computeInvoiceTotals below) — mapped consistently
-    // with that existing behavior, not because a deposit is conceptually a discount.
-    case "deposit": return "Discounts";
+    // Legacy invoice line type "deposit" ("Deposit Received") is not a commercial
+    // discount — real deposits are payment allocations. Metrics map remains
+    // historical; totals no longer fold these lines into discountAmount.
+    case "deposit": return "Other";
     case "inventory": return "Inventory";
     case "fee": return "Service Charges";
     case "package": {
@@ -83,23 +84,38 @@ export function computeInvoiceTotals(lineItems: { type: InvoiceLineItemType; amo
 } {
   let subtotal = 0, discountAmount = 0, taxAmount = 0;
   for (const item of lineItems) {
-    if (item.type === "discount" || item.type === "deposit") discountAmount += Math.abs(item.amount);
+    // Deposits are payment allocations (payment_line_items), not invoice discounts.
+    // Legacy type "deposit" is ignored so it cannot reduce taxable base or total.
+    if (item.type === "deposit") continue;
+    if (item.type === "discount") discountAmount += Math.abs(item.amount);
     else if (item.type === "tax") taxAmount += item.amount;
     else subtotal += item.amount;
   }
-  return { subtotal, discountAmount, taxAmount, total: subtotal - discountAmount + taxAmount };
+  subtotal = roundMoney(subtotal);
+  discountAmount = roundMoney(discountAmount);
+  taxAmount = roundMoney(taxAmount);
+  return {
+    subtotal,
+    discountAmount,
+    taxAmount,
+    total: roundMoney(subtotal - discountAmount + taxAmount),
+  };
 }
 
-/** Amount remaining after discounts/deposits, before an explicit tax line. */
+/** Amount remaining after true discounts only, before an explicit tax line. */
 export function taxableAmountBeforeTax(subtotal: number, discountAmount: number): number {
   return Math.max(0, subtotal - discountAmount);
 }
 
-/** Hide tax/discount line types unless the venue turned them on. Existing lines still render. */
+/**
+ * Hide tax/discount unless enabled. Never offer "Deposit Received" — deposits
+ * are payment allocations, not invoice line types. Existing deposit lines still render.
+ */
 export function invoiceLineTypesForVenue(
   prefs: { useTaxes?: boolean; useDiscounts?: boolean },
 ): { value: InvoiceLineItemType; label: string }[] {
   return LINE_ITEM_TYPES.filter((t) => {
+    if (t.value === "deposit") return false;
     if (t.value === "tax" && !prefs.useTaxes) return false;
     if (t.value === "discount" && !prefs.useDiscounts) return false;
     return true;

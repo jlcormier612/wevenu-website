@@ -111,6 +111,11 @@ export default async function NewContractPage({ searchParams }: Props) {
               selection
                 ? {
                     name: selection.name,
+                    packageAmount: selection.packageAmount,
+                    discountAmount: selection.discountAmount,
+                    taxApplied: selection.taxApplied,
+                    taxRatePercent: selection.taxRatePercent,
+                    taxAmount: selection.taxAmount,
                     totalAmount: selection.totalAmount,
                     depositAmount: selection.depositAmount,
                   }

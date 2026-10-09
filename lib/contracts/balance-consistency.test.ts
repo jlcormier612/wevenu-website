@@ -31,11 +31,14 @@ describe("balance / package Remaining consistency", () => {
     assert.equal(remaining, 11250);
 
     const packageSection = formatPackageSection("Garden Package", total, [], {
+      packageAmount: total,
       depositAmount: deposit,
+      finalTotal: total,
     });
-    assert.match(packageSection, /Package total: \$15000\.00/);
-    assert.match(packageSection, /Deposit: \$3750\.00/);
-    assert.match(packageSection, /Remaining: \$11250\.00/);
+    assert.match(packageSection, /Package price: \$15000\.00/);
+    assert.match(packageSection, /Agreed total: \$15000\.00/);
+    assert.match(packageSection, /Deposit \(payment allocation\): \$3750\.00/);
+    assert.match(packageSection, /Remaining after deposit: \$11250\.00/);
 
     const balance = formatBalanceRemaining(remaining);
     assert.equal(balance, "$11,250.00");
@@ -62,7 +65,7 @@ describe("balance / package Remaining consistency", () => {
       "{{package_section}}\n\nBALANCE\n{{balance_remaining}}\n\n{{payment_schedule_summary}}",
       data,
     );
-    assert.match(body, /Remaining: \$11250\.00/);
+    assert.match(body, /Remaining after deposit: \$11250\.00/);
     assert.match(body, /\$11,250\.00/);
     assert.doesNotMatch(body, /Balance remaining is not listed yet/);
     assert.doesNotMatch(body, /\{\{/);

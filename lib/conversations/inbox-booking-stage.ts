@@ -28,6 +28,7 @@ type SelectionRow = {
 };
 
 function mapSelection(row: SelectionRow): CommercialSelection {
+  const totalAmount = Number(row.total_amount);
   return {
     id: row.id,
     venueId: row.venue_id,
@@ -37,7 +38,14 @@ function mapSelection(row: SelectionRow): CommercialSelection {
     proposalId: null,
     sourcePackageId: null,
     name: row.name,
-    totalAmount: Number(row.total_amount),
+    packageAmount: totalAmount,
+    discountAmount: 0,
+    discountType: null,
+    discountValue: null,
+    taxApplied: false,
+    taxRatePercent: null,
+    taxAmount: 0,
+    totalAmount,
     depositAmount: Number(row.deposit_amount),
     includedItems: [],
     status: row.status as CommercialSelection["status"],

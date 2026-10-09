@@ -28,7 +28,7 @@ function validateAmounts(
     return { depositAmount: "Enter a valid deposit amount." };
   }
   if (depositAmount > totalAmount) {
-    return { depositAmount: "Deposit cannot exceed the package total." };
+    return { depositAmount: "Deposit cannot exceed the agreed total." };
   }
   return null;
 }
@@ -143,7 +143,9 @@ export async function createSelectedPackageFromLibrary(input: {
   if (pkg.basePrice == null || !(pkg.basePrice > 0)) {
     return { ok: false, message: "Set a price on this package in the Library before selecting it." };
   }
-  const totalAmount = roundMoney(pkg.basePrice);
+  const packagePrice = roundMoney(pkg.basePrice);
+  // At select time, package = final unless the caller applies discount/tax via updateTerms.
+  const totalAmount = packagePrice;
   const depositAmount = roundMoney(
     input.depositAmount != null
       ? input.depositAmount
@@ -160,6 +162,18 @@ export async function createSelectedPackageFromLibrary(input: {
     unit: item.unit,
   }));
 
+  const financial = {
+    packageAmount: packagePrice,
+    discountAmount: 0,
+    discountType: null as "fixed" | "percent" | null,
+    discountValue: null as number | null,
+    taxApplied: false,
+    taxRatePercent: null as number | null,
+    taxAmount: 0,
+    totalAmount,
+    depositAmount,
+  };
+
   const result = await withVenue(async (supabase, venueId) => {
     let previous: CommercialSelection | null = null;
     if (input.clientId) {
@@ -175,8 +189,7 @@ export async function createSelectedPackageFromLibrary(input: {
           eventId: input.eventId ?? previous.eventId ?? undefined,
           sourcePackageId: pkg.id,
           name: pkg.name,
-          totalAmount,
-          depositAmount,
+          ...financial,
           includedItems,
           version: previous.version + 1,
         })
@@ -186,8 +199,7 @@ export async function createSelectedPackageFromLibrary(input: {
           eventId: input.eventId,
           sourcePackageId: pkg.id,
           name: pkg.name,
-          totalAmount,
-          depositAmount,
+          ...financial,
           includedItems,
         });
 
@@ -275,6 +287,76 @@ export async function markSelectionAccepted(
       // The selection is already accepted. A failed history row must not report that acceptance failed.
     }
     return { ok: true };
+  });
+  return result as CommercialSelectionActionResult;
+}
+
+/**
+ * Apply discount / exclusive tax on a draft Selected Package before contract or invoice.
+ * Persists frozen discount dollars and applied tax rate so later venue defaults cannot rewrite terms.
+ */
+export async function updateCommercialSelectionTerms(
+  selectionId: string,
+  input: {
+    packageAmount: number;
+    discountType?: "fixed" | "percent" | null;
+    discountValue?: number | null;
+    applyTax: boolean;
+    taxRatePercent?: number | null;
+    depositAmount: number;
+  },
+): Promise<CommercialSelectionActionResult> {
+  const { computeAgreedFinancialTerms } = await import("@/lib/invoices/financial-terms");
+  const terms = computeAgreedFinancialTerms({
+    packagePrice: input.packageAmount,
+    discountMode: input.discountType ?? null,
+    discountValue: input.discountValue ?? null,
+    applyTax: input.applyTax,
+    taxRatePercent: input.taxRatePercent ?? null,
+  });
+  let depositAmount = roundMoney(input.depositAmount);
+  if (depositAmount > terms.finalTotal) {
+    depositAmount = terms.finalTotal;
+  }
+  const amountErrors = validateAmounts(terms.finalTotal, depositAmount);
+  if (amountErrors) return { ok: false, errors: amountErrors };
+
+  const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getSelection(supabase, venueId, selectionId);
+    if (!existing) return { ok: false, message: "Selected package not found." } as CommercialSelectionActionResult;
+    if (existing.status !== "draft") {
+      return {
+        ok: false,
+        message: "Financial terms can only be edited on a draft Selected Package.",
+      } as CommercialSelectionActionResult;
+    }
+    if (existing.invoiceId) {
+      return {
+        ok: false,
+        message: "An invoice already exists for these terms. Amend through the invoice workflow.",
+      } as CommercialSelectionActionResult;
+    }
+    if (existing.contractId) {
+      return {
+        ok: false,
+        message: "A contract is already linked. Create an amendment or a new Selected Package version to change terms.",
+      } as CommercialSelectionActionResult;
+    }
+    const updated = await repo.updateSelectionFinancialTerms(supabase, venueId, selectionId, {
+      packageAmount: terms.packagePrice,
+      discountAmount: terms.discountAmount,
+      discountType: terms.discountMode,
+      discountValue: terms.discountValue,
+      taxApplied: terms.taxApplied,
+      taxRatePercent: terms.taxRatePercent,
+      taxAmount: terms.taxAmount,
+      totalAmount: terms.finalTotal,
+      depositAmount,
+    });
+    if (!updated) {
+      return { ok: false, message: "Could not update financial terms." } as CommercialSelectionActionResult;
+    }
+    return { ok: true } as CommercialSelectionActionResult;
   });
   return result as CommercialSelectionActionResult;
 }

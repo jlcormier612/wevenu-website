@@ -15,6 +15,13 @@ type Row = {
   proposal_id: string | null;
   source_package_id: string | null;
   name: string;
+  package_amount?: number | string | null;
+  discount_amount?: number | string | null;
+  discount_type?: "fixed" | "percent" | null;
+  discount_value?: number | string | null;
+  tax_applied?: boolean | null;
+  tax_rate_percent?: number | string | null;
+  tax_amount?: number | string | null;
   total_amount: number | string;
   deposit_amount: number | string;
   included_items: CommercialSelectionItem[] | null;
@@ -32,6 +39,11 @@ type Row = {
 };
 
 function mapRow(r: Row): CommercialSelection {
+  const totalAmount = Number(r.total_amount);
+  const packageAmount =
+    r.package_amount != null && r.package_amount !== ""
+      ? Number(r.package_amount)
+      : totalAmount;
   return {
     id: r.id,
     venueId: r.venue_id,
@@ -41,7 +53,14 @@ function mapRow(r: Row): CommercialSelection {
     proposalId: r.proposal_id ?? null,
     sourcePackageId: r.source_package_id,
     name: r.name,
-    totalAmount: Number(r.total_amount),
+    packageAmount,
+    discountAmount: Number(r.discount_amount ?? 0),
+    discountType: r.discount_type ?? null,
+    discountValue: r.discount_value != null ? Number(r.discount_value) : null,
+    taxApplied: Boolean(r.tax_applied),
+    taxRatePercent: r.tax_rate_percent != null ? Number(r.tax_rate_percent) : null,
+    taxAmount: Number(r.tax_amount ?? 0),
+    totalAmount,
     depositAmount: Number(r.deposit_amount),
     includedItems: Array.isArray(r.included_items) ? r.included_items : [],
     status: r.status,
@@ -74,6 +93,13 @@ export async function insertSelection(
       event_id: input.eventId ?? null,
       source_package_id: input.sourcePackageId || null,
       name: input.name.trim(),
+      package_amount: input.packageAmount ?? input.totalAmount,
+      discount_amount: input.discountAmount ?? 0,
+      discount_type: input.discountType ?? null,
+      discount_value: input.discountValue ?? null,
+      tax_applied: input.taxApplied ?? false,
+      tax_rate_percent: input.taxRatePercent ?? null,
+      tax_amount: input.taxAmount ?? 0,
       total_amount: input.totalAmount,
       deposit_amount: input.depositAmount,
       included_items: input.includedItems,
@@ -256,6 +282,13 @@ export async function bumpVersion(
       event_id: input.eventId ?? null,
       source_package_id: input.sourcePackageId || null,
       name: input.name.trim(),
+      package_amount: input.packageAmount ?? input.totalAmount,
+      discount_amount: input.discountAmount ?? 0,
+      discount_type: input.discountType ?? null,
+      discount_value: input.discountValue ?? null,
+      tax_applied: input.taxApplied ?? false,
+      tax_rate_percent: input.taxRatePercent ?? null,
+      tax_amount: input.taxAmount ?? 0,
       total_amount: input.totalAmount,
       deposit_amount: input.depositAmount,
       included_items: input.includedItems,
@@ -266,4 +299,44 @@ export async function bumpVersion(
     .single();
   if (error) throw error;
   return mapRow(data as Row);
+}
+
+/** Persist computed financial terms on a draft selection (pre-contract / pre-invoice). */
+export async function updateSelectionFinancialTerms(
+  client: SupabaseClient,
+  venueId: string,
+  id: string,
+  terms: {
+    packageAmount: number;
+    discountAmount: number;
+    discountType: "fixed" | "percent" | null;
+    discountValue: number | null;
+    taxApplied: boolean;
+    taxRatePercent: number | null;
+    taxAmount: number;
+    totalAmount: number;
+    depositAmount: number;
+  },
+): Promise<CommercialSelection | null> {
+  const { data, error } = await client
+    .from("commercial_selections")
+    .update({
+      package_amount: terms.packageAmount,
+      discount_amount: terms.discountAmount,
+      discount_type: terms.discountType,
+      discount_value: terms.discountValue,
+      tax_applied: terms.taxApplied,
+      tax_rate_percent: terms.taxRatePercent,
+      tax_amount: terms.taxAmount,
+      total_amount: terms.totalAmount,
+      deposit_amount: terms.depositAmount,
+    })
+    .eq("venue_id", venueId)
+    .eq("id", id)
+    .eq("status", "draft")
+    .is("invoice_id", null)
+    .select(SELECT)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapRow(data as Row) : null;
 }

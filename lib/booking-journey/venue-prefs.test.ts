@@ -15,6 +15,7 @@ import { buildGuidedScheduleLines } from "@/lib/booking-journey/setup-payments";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
 function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
+  const totalAmount = overrides.totalAmount ?? 3200;
   return {
     id: "sel-1",
     venueId: "v1",
@@ -24,7 +25,14 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
     proposalId: null,
     sourcePackageId: "pkg-1",
     name: "Garden Package",
-    totalAmount: 3200,
+    packageAmount: totalAmount,
+    discountAmount: 0,
+    discountType: null,
+    discountValue: null,
+    taxApplied: false,
+    taxRatePercent: null,
+    taxAmount: 0,
+    totalAmount,
     depositAmount: 800,
     includedItems: [{ description: "Lawn", quantity: 1, unit: null }],
     status: "draft",

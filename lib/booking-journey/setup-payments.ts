@@ -366,16 +366,59 @@ export async function runSetupPaymentsFromSelection(
     }
     invoiceId = invoiceResult.invoiceId;
 
+    // Inherit Selected Package financial terms — do not recompute from venue defaults.
+    const packageAmount = roundMoney(
+      selection.packageAmount > 0 ? selection.packageAmount : selection.totalAmount,
+    );
     const lineResult = await deps.addInvoiceLine(invoiceId, {
       type: "package",
       description: selection.name,
       quantity: "1",
-      unitPrice: String(total),
+      unitPrice: String(packageAmount),
       packageId: selection.sourcePackageId ?? "",
     });
     if (!lineResult.ok) {
       await deps.compensate(invoiceId, null);
       return { ok: false, message: lineResult.message ?? "Could not add the package line." };
+    }
+    if (selection.discountAmount > 0) {
+      const disc = await deps.addInvoiceLine(invoiceId, {
+        type: "discount",
+        description:
+          selection.discountType === "percent" && selection.discountValue != null
+            ? `Discount (${selection.discountValue}%)`
+            : "Discount",
+        quantity: "1",
+        unitPrice: String(selection.discountAmount),
+        packageId: "",
+        discountType: selection.discountType === "percent" ? "percent" : "fixed",
+        discountValue:
+          selection.discountType === "percent" && selection.discountValue != null
+            ? String(selection.discountValue)
+            : String(selection.discountAmount),
+      });
+      if (!disc.ok) {
+        await deps.compensate(invoiceId, null);
+        return { ok: false, message: disc.message ?? "Could not add the discount line." };
+      }
+    }
+    if (selection.taxApplied && selection.taxAmount > 0) {
+      const tax = await deps.addInvoiceLine(invoiceId, {
+        type: "tax",
+        description:
+          selection.taxRatePercent != null
+            ? `Tax (${selection.taxRatePercent}%)`
+            : "Tax",
+        quantity: "1",
+        unitPrice: String(selection.taxAmount),
+        packageId: "",
+        taxRatePercent:
+          selection.taxRatePercent != null ? String(selection.taxRatePercent) : undefined,
+      });
+      if (!tax.ok) {
+        await deps.compensate(invoiceId, null);
+        return { ok: false, message: tax.message ?? "Could not add the tax line." };
+      }
     }
 
     const scheduleResult = await deps.createPaymentSchedule(

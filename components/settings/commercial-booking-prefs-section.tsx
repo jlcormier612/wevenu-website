@@ -294,13 +294,49 @@ export function CommercialBookingPrefsSection({
             type="checkbox"
             className="mt-1"
             checked={prefs.useTaxes}
-            onChange={(e) => setPrefs((p) => ({ ...p, useTaxes: e.target.checked }))}
+            onChange={(e) => setPrefs((p) => ({
+              ...p,
+              useTaxes: e.target.checked,
+              defaultTaxPercent: e.target.checked ? p.defaultTaxPercent : null,
+            }))}
           />
           <span>
             <span className="font-medium text-heading">Use taxes</span>
-            <span className="block text-muted-foreground">Show a tax line on invoices. You enter the amount. Hello to Cheers does not calculate a tax rate.</span>
+            <span className="block text-muted-foreground">
+              Allow tax on Selected Package terms and invoices. Enabling this does not add tax automatically — you apply it when you choose. Tax is calculated as an exclusive percentage of the discounted package amount. You are responsible for choosing a rate that fits your situation; Hello to Cheers does not determine legal tax obligations.
+            </span>
           </span>
         </label>
+        {prefs.useTaxes && (
+          <div className="ml-6 space-y-1.5">
+            <Label htmlFor="default-tax-percent" className="text-sm font-medium text-heading">
+              Default tax rate (%)
+            </Label>
+            <Input
+              id="default-tax-percent"
+              inputMode="decimal"
+              className="max-w-[8rem]"
+              value={prefs.defaultTaxPercent ?? ""}
+              onChange={(e) => {
+                const raw = e.target.value.trim();
+                if (!raw) {
+                  setPrefs((p) => ({ ...p, defaultTaxPercent: null }));
+                  return;
+                }
+                const n = parseFloat(raw);
+                if (!Number.isFinite(n)) return;
+                setPrefs((p) => ({
+                  ...p,
+                  defaultTaxPercent: Math.min(100, Math.max(0, Math.round(n * 10000) / 10000)),
+                }));
+              }}
+              placeholder="7"
+            />
+            <p className="text-xs text-muted-foreground">
+              Suggested when you apply tax. Already-applied rates on a Selected Package or invoice stay as saved.
+            </p>
+          </div>
+        )}
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -310,7 +346,9 @@ export function CommercialBookingPrefsSection({
           />
           <span>
             <span className="font-medium text-heading">Use discounts</span>
-            <span className="block text-muted-foreground">Show a discount line on invoices.</span>
+            <span className="block text-muted-foreground">
+              Allow discounts on Selected Package terms and invoices. Percentage discounts freeze their dollar amount when applied.
+            </span>
           </span>
         </label>
       </section>

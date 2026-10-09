@@ -10,6 +10,7 @@ import {
   linkSelectionContract,
   markSelectionAccepted,
   sendOfferForSelection,
+  updateCommercialSelectionTerms,
 } from "@/lib/commercial-selections/service";
 import type {
   CommercialSelectionActionResult,
@@ -21,6 +22,34 @@ import type { Lead } from "@/lib/leads/types";
 import { publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
+
+export async function updateSelectionFinancialTermsAction(input: {
+  selectionId: string;
+  packageAmount: number;
+  discountType?: "fixed" | "percent" | null;
+  discountValue?: number | null;
+  applyTax: boolean;
+  taxRatePercent?: number | null;
+  depositAmount: number;
+  leadId?: string | null;
+  clientId?: string | null;
+  eventId?: string | null;
+}): Promise<CommercialSelectionActionResult> {
+  const result = await updateCommercialSelectionTerms(input.selectionId, {
+    packageAmount: input.packageAmount,
+    discountType: input.discountType,
+    discountValue: input.discountValue,
+    applyTax: input.applyTax,
+    taxRatePercent: input.taxRatePercent,
+    depositAmount: input.depositAmount,
+  });
+  if (result.ok) {
+    if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+    if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+    if (input.eventId) revalidatePath(`/events/${input.eventId}`);
+  }
+  return result;
+}
 
 export async function createSelectedPackageAction(input: {
   packageId: string;

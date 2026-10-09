@@ -25,7 +25,16 @@ export function NewContractForm({
   initialClientId?: string;
   initialEventId?: string;
   selectionId?: string;
-  selectionSummary?: { name: string; totalAmount: number; depositAmount: number } | null;
+  selectionSummary?: {
+    name: string;
+    totalAmount: number;
+    depositAmount: number;
+    packageAmount?: number;
+    discountAmount?: number;
+    taxAmount?: number;
+    taxRatePercent?: number | null;
+    taxApplied?: boolean;
+  } | null;
   venueBrand?: ContractBrandingSnapshot | null;
 }) {
   return (

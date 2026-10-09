@@ -79,7 +79,16 @@ export function ContractBuilder({
   initialClientId?: string;
   initialEventId?: string;
   selectionId?: string;
-  selectionSummary?: { name: string; totalAmount: number; depositAmount: number } | null;
+  selectionSummary?: {
+    name: string;
+    totalAmount: number;
+    depositAmount: number;
+    packageAmount?: number;
+    discountAmount?: number;
+    taxAmount?: number;
+    taxRatePercent?: number | null;
+    taxApplied?: boolean;
+  } | null;
   draft?: ContractBuilderDraft;
   signers?: ContractSigner[];
   venueBrand?: ContractBrandingSnapshot | null;
@@ -417,11 +426,25 @@ export function ContractBuilder({
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected Package</p>
           <p className="mt-1 font-medium text-heading">{selectionSummary.name}</p>
-          <p className="text-heading">${selectionSummary.totalAmount.toFixed(2)}</p>
+          <p className="text-muted-foreground">
+            Package ${(selectionSummary.packageAmount ?? selectionSummary.totalAmount).toFixed(2)}
+          </p>
+          {(selectionSummary.discountAmount ?? 0) > 0 && (
+            <p className="text-muted-foreground">
+              Discount −${selectionSummary.discountAmount!.toFixed(2)}
+            </p>
+          )}
+          {selectionSummary.taxApplied && (selectionSummary.taxAmount ?? 0) > 0 && (
+            <p className="text-muted-foreground">
+              Tax{selectionSummary.taxRatePercent != null ? ` (${selectionSummary.taxRatePercent}%)` : ""}{" "}
+              ${selectionSummary.taxAmount!.toFixed(2)}
+            </p>
+          )}
+          <p className="text-heading font-medium">Agreed total ${selectionSummary.totalAmount.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {selectionSummary.depositAmount > 0
-              ? `Deposit $${selectionSummary.depositAmount.toFixed(2)}. This package fills into Smart Fields on preview and send.`
-              : "This package fills into Smart Fields on preview and send."}
+              ? `Deposit allocation $${selectionSummary.depositAmount.toFixed(2)}. These terms fill Smart Fields on preview and send.`
+              : "These terms fill Smart Fields on preview and send."}
           </p>
         </div>
       )}

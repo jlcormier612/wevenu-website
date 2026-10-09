@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
+  const totalAmount = overrides.totalAmount ?? 15000;
   return {
     id: "sel-1",
     venueId: "v1",
@@ -18,7 +19,14 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
     proposalId: null,
     sourcePackageId: "pkg-1",
     name: "Essential Wedding",
-    totalAmount: 15000,
+    packageAmount: totalAmount,
+    discountAmount: 0,
+    discountType: null,
+    discountValue: null,
+    taxApplied: false,
+    taxRatePercent: null,
+    taxAmount: 0,
+    totalAmount,
     depositAmount: 3750,
     includedItems: [],
     status: "draft",
@@ -44,7 +52,7 @@ describe("commercial artifact states", () => {
       contract: null,
       paymentLines: [],
     }).find((row) => row.key === "package");
-    assert.equal(draft?.detail, "Selected internally · Not yet shared");
+    assert.match(draft?.detail ?? "", /Selected internally · Not yet shared/);
 
     const accepted = describeCommercialFacts({
       selection: selection({ status: "accepted", acceptedAt: "2026-10-01T18:00:00.000Z", acceptToken: "path-b-tok" }),
@@ -52,7 +60,7 @@ describe("commercial artifact states", () => {
       contract: null,
       paymentLines: [],
     }).find((row) => row.key === "package");
-    assert.equal(accepted?.detail, "Selected internally");
+    assert.match(accepted?.detail ?? "", /^Selected internally\n/);
     assert.doesNotMatch(accepted?.detail ?? "", /couple/i);
   });
 
@@ -76,7 +84,7 @@ describe("commercial artifact states", () => {
     });
     const pkg = facts.find((row) => row.key === "package");
     const proposal = facts.find((row) => row.key === "proposal");
-    assert.equal(pkg?.detail, "Selected by the couple");
+    assert.match(pkg?.detail ?? "", /Selected by the couple/);
     assert.doesNotMatch(pkg?.detail ?? "", /internally/i);
     assert.equal(proposal?.state, "Approved");
     assert.match(proposal?.detail ?? "", /from their choice/);
@@ -111,7 +119,7 @@ describe("commercial artifact states", () => {
       contract: null,
       paymentLines: [],
     });
-    assert.equal(priorVenue.find((row) => row.key === "package")?.detail, "Selected internally · Not yet shared");
+    assert.match(priorVenue.find((row) => row.key === "package")?.detail ?? "", /Selected internally · Not yet shared/);
     assert.doesNotMatch(priorVenue.find((row) => row.key === "package")?.detail ?? "", /couple/i);
     assert.equal(priorVenue.find((row) => row.key === "proposal")?.state, "Option chosen");
   });
@@ -126,7 +134,7 @@ describe("commercial artifact states", () => {
     const pkg = facts.find((row) => row.key === "package");
     const proposal = facts.find((row) => row.key === "proposal");
     assert.equal(pkg?.state, "Essential Wedding · $15,000.00");
-    assert.equal(pkg?.detail, "Selected internally · Not yet shared");
+    assert.match(pkg?.detail ?? "", /Selected internally · Not yet shared/);
     assert.equal(proposal, undefined);
     assert.equal(
       commercialStepsComplete({ selection: selection(), contract: null, paymentLines: [] }),
@@ -169,7 +177,7 @@ describe("commercial artifact states", () => {
     const proposal = facts.find((row) => row.key === "proposal");
     const contract = facts.find((row) => row.key === "contract");
     assert.equal(pkg?.state, "Essential Wedding · $15,000.00");
-    assert.equal(pkg?.detail, "Selected internally · Not yet shared");
+    assert.match(pkg?.detail ?? "", /Selected internally · Not yet shared/);
     assert.equal(proposal?.state, "Withdrawn");
     assert.doesNotMatch(proposal?.detail ?? "", /Waiting for the couple/);
     assert.equal(contract?.state, "Not created");

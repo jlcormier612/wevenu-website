@@ -52,6 +52,28 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
     };
   }
   const price = `${selection.name} · ${formatCurrency(selection.totalAmount)}`;
+  const financialBits: string[] = [
+    `Package ${formatCurrency(selection.packageAmount)}`,
+  ];
+  if (selection.discountAmount > 0) {
+    financialBits.push(
+      selection.discountType === "percent" && selection.discountValue != null
+        ? `Discount ${selection.discountValue}% (−${formatCurrency(selection.discountAmount)})`
+        : `Discount −${formatCurrency(selection.discountAmount)}`,
+    );
+  }
+  if (selection.taxApplied && selection.taxAmount > 0) {
+    financialBits.push(
+      selection.taxRatePercent != null
+        ? `Tax ${selection.taxRatePercent}% (${formatCurrency(selection.taxAmount)})`
+        : `Tax ${formatCurrency(selection.taxAmount)}`,
+    );
+  }
+  financialBits.push(`Agreed total ${formatCurrency(selection.totalAmount)}`);
+  if (selection.depositAmount > 0) {
+    financialBits.push(`Deposit allocation ${formatCurrency(selection.depositAmount)}`);
+  }
+  const financialDetail = financialBits.join(" · ");
   // Provenance is commercial_selections.proposal_id — stamped only by
   // approve_commercial_proposal. Venue create/bump never sets it.
   // Do not infer couple choice from acceptToken or offered/accepted status.
@@ -60,7 +82,7 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
       key: "package",
       title: "Selected Package",
       state: price,
-      detail: "Selected by the couple",
+      detail: `Selected by the couple\n${financialDetail}`,
     };
   }
   const shared = selection.status === "offered" || selection.status === "accepted" || Boolean(selection.acceptToken);
@@ -68,7 +90,7 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
     key: "package",
     title: "Selected Package",
     state: price,
-    detail: shared ? "Selected internally" : "Selected internally · Not yet shared",
+    detail: `${shared ? "Selected internally" : "Selected internally · Not yet shared"}\n${financialDetail}`,
   };
 }
 

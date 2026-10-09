@@ -83,6 +83,10 @@ function projectEventOrderLines(eventOrderLines: EventOrderLine[]): InvoiceLineI
       // (same D5B fix as the stored write paths, minus the extra fetch this
       // read-only preview doesn't warrant); refined at actual freeze time.
       revenueCategory: deriveRevenueCategory(type),
+      discountType: null,
+      discountValue: null,
+      taxRateMode: null,
+      taxRateValue: null,
     };
   });
 }
@@ -226,7 +230,7 @@ async function enqueueInvoiceSyncIfNotDraft(c: Awaited<ReturnType<typeof createC
  * so it was never going to hit this gap — but closing it here means no
  * *future* caller can either.
  */
-async function assertInvoiceEditable(c: Awaited<ReturnType<typeof createClient>>, venueId: string, invoiceId: string): Promise<InvoiceActionResult | null> {
+export async function assertInvoiceEditable(c: Awaited<ReturnType<typeof createClient>>, venueId: string, invoiceId: string): Promise<InvoiceActionResult | null> {
   const { data } = await c.from("invoices").select("status").eq("id", invoiceId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
   if (!data) return { ok: false, message: "Invoice not found." };
   if (data.status !== "draft") {

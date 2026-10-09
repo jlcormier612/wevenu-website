@@ -34,7 +34,16 @@ type InvoiceRow = {
   } | null;
   events?: { name: string; event_date: string; booked_at: string | null } | null;
 };
-type LineItemRow = { id: string; invoice_id: string; venue_id: string; package_id: string | null; type: InvoiceLineItem["type"]; description: string; quantity: number; unit_price: number; amount: number; sort_order: number; created_at: string; event_order_line_id: string | null; revenue_category: string | null; };
+type LineItemRow = {
+  id: string; invoice_id: string; venue_id: string; package_id: string | null;
+  type: InvoiceLineItem["type"]; description: string; quantity: number;
+  unit_price: number; amount: number; sort_order: number; created_at: string;
+  event_order_line_id: string | null; revenue_category: string | null;
+  discount_type?: "fixed" | "percent" | null;
+  discount_value?: number | string | null;
+  tax_rate_mode?: "percent" | "fixed" | null;
+  tax_rate_value?: number | string | null;
+};
 type ActivityRow = { id: string; venue_id: string; invoice_id: string; type: string; title: string; description: string | null; created_at: string; };
 
 function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: string } | null): Invoice {
@@ -55,7 +64,17 @@ function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: stri
     eventName: r.events?.name ?? null,
   };
 }
-const mapItem = (r: LineItemRow): InvoiceLineItem => ({ id: r.id, invoiceId: r.invoice_id, venueId: r.venue_id, packageId: r.package_id, type: r.type, description: r.description, quantity: Number(r.quantity), unitPrice: Number(r.unit_price), amount: Number(r.amount), sortOrder: r.sort_order, createdAt: r.created_at, eventOrderLineId: r.event_order_line_id, revenueCategory: r.revenue_category });
+const mapItem = (r: LineItemRow): InvoiceLineItem => ({
+  id: r.id, invoiceId: r.invoice_id, venueId: r.venue_id, packageId: r.package_id,
+  type: r.type, description: r.description, quantity: Number(r.quantity),
+  unitPrice: Number(r.unit_price), amount: Number(r.amount), sortOrder: r.sort_order,
+  createdAt: r.created_at, eventOrderLineId: r.event_order_line_id,
+  revenueCategory: r.revenue_category,
+  discountType: r.discount_type ?? null,
+  discountValue: r.discount_value != null ? Number(r.discount_value) : null,
+  taxRateMode: r.tax_rate_mode ?? null,
+  taxRateValue: r.tax_rate_value != null ? Number(r.tax_rate_value) : null,
+});
 const mapActivity = (r: ActivityRow): InvoiceActivity => ({ id: r.id, venueId: r.venue_id, invoiceId: r.invoice_id, type: r.type, title: r.title, description: r.description, createdAt: r.created_at });
 
 // ---- Invoices ---------------------------------------------------------------
@@ -274,15 +293,39 @@ export async function insertActivity(client: DbClient, venueId: string, invoiceI
 }
 
 export async function addLineItem(client: DbClient, venueId: string, invoiceId: string, input: InvoiceLineItemInput): Promise<InvoiceLineItem> {
-  const isDiscount = input.type === "discount" || input.type === "deposit";
+  const isDiscount = input.type === "discount";
   const qty = parseFloat(input.quantity) || 1;
   let price = parseFloat(input.unitPrice.replace(/[$,]/g, "")) || 0;
+  let taxRateMode: "percent" | "fixed" | null = null;
+  let taxRateValue: number | null = null;
 
-  // For percentage discounts: compute dollar amount from current invoice subtotal
+  // Percentage discounts: freeze dollar amount from current charge subtotal at add time.
   if (isDiscount && input.discountType === "percent" && input.discountValue) {
     const pct = parseFloat(input.discountValue) || 0;
-    const { data: inv } = await client.from("invoices").select("subtotal").eq("id", invoiceId).maybeSingle<{ subtotal: number }>();
-    price = parseFloat(((Number(inv?.subtotal ?? 0) * pct) / 100).toFixed(2));
+    const { data: lines } = await client.from("invoice_line_items")
+      .select("type, amount").eq("invoice_id", invoiceId);
+    const { subtotal } = computeInvoiceTotals(
+      (lines ?? []) as { type: InvoiceLineItem["type"]; amount: number }[],
+    );
+    price = parseFloat(((subtotal * pct) / 100).toFixed(2));
+  }
+
+  // Tax with percent: exclusive tax on (subtotal − discounts). Persist applied rate.
+  if (input.type === "tax" && input.taxRatePercent) {
+    const pct = parseFloat(input.taxRatePercent) || 0;
+    const { data: lines } = await client.from("invoice_line_items")
+      .select("type, amount").eq("invoice_id", invoiceId);
+    const { subtotal, discountAmount } = computeInvoiceTotals(
+      (lines ?? []) as { type: InvoiceLineItem["type"]; amount: number }[],
+    );
+    const { taxableBaseFromRollups } = await import("@/lib/invoices/financial-terms");
+    const base = taxableBaseFromRollups(subtotal, discountAmount);
+    price = parseFloat(((base * pct) / 100).toFixed(2));
+    taxRateMode = "percent";
+    taxRateValue = pct;
+  } else if (input.type === "tax" && price > 0) {
+    taxRateMode = "fixed";
+    taxRateValue = price;
   }
 
   const amount = parseFloat((qty * price).toFixed(2));
@@ -301,7 +344,22 @@ export async function addLineItem(client: DbClient, venueId: string, invoiceId: 
   const revenueCategory = deriveRevenueCategory(input.type, packageCategory);
 
   const { data, error } = await client.from("invoice_line_items")
-    .insert({ invoice_id: invoiceId, venue_id: venueId, package_id: input.packageId || null, type: input.type, description: input.description.trim(), quantity: qty, unit_price: price, amount, sort_order: sortOrder, discount_type: input.discountType ?? null, discount_value: input.discountValue ? parseFloat(input.discountValue) : null, revenue_category: revenueCategory })
+    .insert({
+      invoice_id: invoiceId,
+      venue_id: venueId,
+      package_id: input.packageId || null,
+      type: input.type,
+      description: input.description.trim(),
+      quantity: qty,
+      unit_price: price,
+      amount,
+      sort_order: sortOrder,
+      discount_type: input.discountType ?? null,
+      discount_value: input.discountValue ? parseFloat(input.discountValue) : null,
+      tax_rate_mode: taxRateMode,
+      tax_rate_value: taxRateValue,
+      revenue_category: revenueCategory,
+    })
     .select().single<LineItemRow>();
   if (error) throw error;
   await recomputeInvoiceTotals(client, venueId, invoiceId);

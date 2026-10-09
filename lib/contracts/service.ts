@@ -587,16 +587,21 @@ export async function buildContractMergeData(opts: {
     });
     if (selection) {
       packageFromSelection = true;
-      packageSection = formatPackageSection(selection.name, selection.totalAmount, selection.includedItems, {
-        depositAmount: selection.depositAmount,
-      });
+      const { packageSectionOptsFromSelection } = await import("@/lib/commercial-selections/constants");
+      packageSection = formatPackageSection(
+        selection.name,
+        selection.totalAmount,
+        selection.includedItems,
+        packageSectionOptsFromSelection(selection),
+      );
       if (selection.includedItems.length > 0) {
         includedItemsSummary = selection.includedItems
           .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}${l.unit ? ` ${l.unit}` : ""}`)
           .join("\n");
       }
+      // Final agreed total (package − discount + exclusive tax), not package alone.
       contractTotal = formatContractTotalAmount(selection.totalAmount);
-      // Same remaining as package_section Remaining line — one calculation path.
+      // Remaining after deposit allocation — deposit does not change the agreed total.
       balanceRemaining = formatBalanceRemaining(
         remainingAmount(selection.totalAmount, selection.depositAmount ?? 0),
       );

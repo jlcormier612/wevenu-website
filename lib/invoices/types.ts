@@ -30,6 +30,12 @@ export type InvoiceLineItem = {
   eventOrderLineId: string | null;
   /** D5B — the canonical Metric Registry's Revenue Category (see lib/invoices/constants.ts deriveRevenueCategory). Null on rows written before this was wired into the write path. */
   revenueCategory: string | null;
+  /** Discount metadata when type is discount (frozen percent/fixed). */
+  discountType: "fixed" | "percent" | null;
+  discountValue: number | null;
+  /** Tax rate metadata when type is tax (persisted applied rate). */
+  taxRateMode: "percent" | "fixed" | null;
+  taxRateValue: number | null;
 };
 
 export type InvoiceBrandingSnapshot = {
@@ -120,6 +126,8 @@ export type InvoiceLineItemInput = {
   packageId: string;
   discountType?: "fixed" | "percent";
   discountValue?: string;  // the raw % or fixed amount entered
+  /** When type=tax and percent: exclusive rate; server computes amount from taxable base. */
+  taxRatePercent?: string;
 };
 
 export type InvoiceInput = {

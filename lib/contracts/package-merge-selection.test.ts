@@ -69,8 +69,9 @@ describe("package merge field semantics (source contracts)", () => {
 
   it("formatPackageSection includes totals used by contract merge", () => {
     const src = readFileSync(join(root, "lib/commercial-selections/constants.ts"), "utf8");
-    assert.match(src, /Package total:/);
-    assert.match(src, /Deposit:/);
-    assert.match(src, /Remaining:/);
+    assert.match(src, /Package price:/);
+    assert.match(src, /Agreed total:/);
+    assert.match(src, /Deposit \(payment allocation\):/);
+    assert.match(src, /Remaining after deposit:/);
   });
 });

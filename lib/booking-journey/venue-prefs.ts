@@ -84,9 +84,17 @@ export type VenueCommercialBookingPrefs = {
    * Per-booking schedules remain editable — this is not an immutable rule.
    */
   defaultCustomSchedule: CustomScheduleTemplate | null;
-  /** Venue wants tax lines on invoices. Amounts are entered; no rate is assumed. */
+  /**
+   * Venue wants tax lines on invoices / Selected Package terms.
+   * Enabling this does not auto-apply tax — an authorized user must apply it.
+   */
   useTaxes: boolean;
-  /** Venue wants discount lines on invoices. */
+  /**
+   * Default exclusive tax percent (0–100, 4 dp) suggested when applying tax.
+   * Null when unset. Persisted applied rates on selections/invoices are authoritative.
+   */
+  defaultTaxPercent: number | null;
+  /** Venue wants discount lines on invoices / Selected Package terms. */
   useDiscounts: boolean;
 };
 
@@ -103,6 +111,7 @@ export const DEFAULT_COMMERCIAL_BOOKING_PREFS: VenueCommercialBookingPrefs = {
   defaultSchedulePresetId: null,
   defaultCustomSchedule: null,
   useTaxes: false,
+  defaultTaxPercent: null,
   useDiscounts: false,
 };
 
@@ -218,8 +227,17 @@ export function normalizeCommercialBookingPrefs(
     defaultSchedulePresetId,
     defaultCustomSchedule,
     useTaxes: asBool(src.useTaxes, DEFAULT_COMMERCIAL_BOOKING_PREFS.useTaxes),
+    defaultTaxPercent: normalizeDefaultTaxPercent(src.defaultTaxPercent),
     useDiscounts: asBool(src.useDiscounts, DEFAULT_COMMERCIAL_BOOKING_PREFS.useDiscounts),
   };
+}
+
+/** null / invalid → null; clamp to 0–100 with 4 decimal places. */
+function normalizeDefaultTaxPercent(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const n = typeof raw === "number" ? raw : parseFloat(String(raw));
+  if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+  return Math.round(n * 10000) / 10000;
 }
 
 /** Absolute deposit dollars from venue percent + package total. */

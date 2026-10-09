@@ -41,6 +41,15 @@ describe("venue tax and discount controls", () => {
     assert.equal(taxableAmountBeforeTax(totals.subtotal, totals.discountAmount), 900);
   });
 
+  it("does not treat deposit invoice lines as discounts", () => {
+    const totals = computeInvoiceTotals([
+      { type: "package", amount: 1000 },
+      { type: "deposit", amount: 200 },
+    ]);
+    assert.equal(totals.discountAmount, 0);
+    assert.equal(totals.total, 1000);
+  });
+
   it("leaves a no-adjustment invoice unchanged", () => {
     const totals = computeInvoiceTotals([{ type: "package", amount: 500 }]);
     assert.equal(totals.total, 500);

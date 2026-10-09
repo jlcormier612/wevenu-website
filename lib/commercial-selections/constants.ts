@@ -1,4 +1,4 @@
-import type { CommercialSelectionItem } from "@/lib/commercial-selections/types";
+import type { CommercialSelection, CommercialSelectionItem } from "@/lib/commercial-selections/types";
 
 /** Round money to cents (half-up). */
 export function roundMoney(amount: number): number {
@@ -31,12 +31,34 @@ export function remainingAmount(totalAmount: number, depositAmount: number): num
   return roundMoney(Math.max(0, totalAmount - depositAmount));
 }
 
+export type PackageSectionFinancialOpts = {
+  depositAmount?: number;
+  packageAmount?: number;
+  discountAmount?: number;
+  discountType?: "fixed" | "percent" | null;
+  discountValue?: number | null;
+  taxApplied?: boolean;
+  taxRatePercent?: number | null;
+  taxAmount?: number;
+  /** Final agreed total; defaults to totalAmount argument for backcompat. */
+  finalTotal?: number;
+};
+
+/**
+ * Contract merge package section — package price, optional discount/tax, final total,
+ * and deposit as a payment allocation (not a price reduction).
+ */
 export function formatPackageSection(
   name: string,
   totalAmount: number,
   items: CommercialSelectionItem[],
-  opts?: { depositAmount?: number },
+  opts?: PackageSectionFinancialOpts,
 ): string {
+  const packageAmount = roundMoney(opts?.packageAmount ?? totalAmount);
+  const discountAmount = roundMoney(opts?.discountAmount ?? 0);
+  const taxAmount = roundMoney(opts?.taxAmount ?? 0);
+  const taxApplied = Boolean(opts?.taxApplied && (opts.taxRatePercent != null || taxAmount > 0));
+  const finalTotal = roundMoney(opts?.finalTotal ?? totalAmount);
   const lines = [`Selected package / services:`, `• ${name}`];
   if (items.length > 0) {
     lines.push("");
@@ -54,13 +76,54 @@ export function formatPackageSection(
     }
   }
   lines.push("");
-  lines.push(`Package total: $${totalAmount.toFixed(2)}`);
+  lines.push(`Package price: $${packageAmount.toFixed(2)}`);
+  if (discountAmount > 0) {
+    const discLabel =
+      opts?.discountType === "percent" && opts.discountValue != null
+        ? `Discount (${opts.discountValue}%): −$${discountAmount.toFixed(2)}`
+        : `Discount: −$${discountAmount.toFixed(2)}`;
+    lines.push(discLabel);
+  }
+  if (taxApplied && opts?.taxRatePercent != null) {
+    lines.push(`Tax (${opts.taxRatePercent}%): $${taxAmount.toFixed(2)}`);
+  } else if (taxAmount > 0) {
+    lines.push(`Tax: $${taxAmount.toFixed(2)}`);
+  }
+  lines.push(`Agreed total: $${finalTotal.toFixed(2)}`);
   const deposit = opts?.depositAmount ?? 0;
   if (deposit > 0) {
-    lines.push(`Deposit: $${deposit.toFixed(2)}`);
-    lines.push(`Remaining: $${remainingAmount(totalAmount, deposit).toFixed(2)}`);
+    lines.push(`Deposit (payment allocation): $${deposit.toFixed(2)}`);
+    lines.push(`Remaining after deposit: $${remainingAmount(finalTotal, deposit).toFixed(2)}`);
   }
   return lines.join("\n");
+}
+
+/** Build formatPackageSection opts from a CommercialSelection. */
+export function packageSectionOptsFromSelection(
+  selection: Pick<
+    CommercialSelection,
+    | "packageAmount"
+    | "discountAmount"
+    | "discountType"
+    | "discountValue"
+    | "taxApplied"
+    | "taxRatePercent"
+    | "taxAmount"
+    | "totalAmount"
+    | "depositAmount"
+  >,
+): PackageSectionFinancialOpts {
+  return {
+    packageAmount: selection.packageAmount,
+    discountAmount: selection.discountAmount,
+    discountType: selection.discountType,
+    discountValue: selection.discountValue,
+    taxApplied: selection.taxApplied,
+    taxRatePercent: selection.taxRatePercent,
+    taxAmount: selection.taxAmount,
+    finalTotal: selection.totalAmount,
+    depositAmount: selection.depositAmount,
+  };
 }
 
 export const SELECTION_STATUS_LABEL: Record<string, string> = {

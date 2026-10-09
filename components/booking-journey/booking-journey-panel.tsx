@@ -18,6 +18,7 @@ import { CommercialFacts } from "@/components/booking-journey/commercial-facts";
 import { ProposalArtifact } from "@/components/booking-journey/proposal-artifact";
 import { CreateProposalSheet } from "@/components/booking-journey/create-proposal-sheet";
 import { SelectPackageSheet } from "@/components/booking-journey/select-package-sheet";
+import { SelectionFinancialTermsSheet } from "@/components/booking-journey/selection-financial-terms-sheet";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -70,6 +71,7 @@ export function BookingJourneyPanel({
 }) {
   const router = useRouter();
   const [selectOpen, setSelectOpen] = React.useState(false);
+  const [termsOpen, setTermsOpen] = React.useState(false);
   const [proposalOpen, setProposalOpen] = React.useState(false);
   const [offerOpen, setOfferOpen] = React.useState(false);
   const [offerReviewOpen, setOfferReviewOpen] = React.useState(false);
@@ -241,6 +243,7 @@ export function BookingJourneyPanel({
         today={businessToday}
         contractPending={pending}
         onSelectPackage={() => setSelectOpen(true)}
+        onEditFinancialTerms={() => setTermsOpen(true)}
         onCreateProposal={() => setProposalOpen(true)}
         onPreviewProposal={() => setOfferReviewOpen(true)}
         onCreateShareLink={() => setOfferOpen(true)}
@@ -275,6 +278,16 @@ export function BookingJourneyPanel({
         defaultDepositPercent={journey.prefs.defaultDepositPercent}
       />
 
+      {selection && (
+        <SelectionFinancialTermsSheet
+          open={termsOpen}
+          onOpenChange={setTermsOpen}
+          selection={selection}
+          useTaxes={journey.prefs.useTaxes}
+          useDiscounts={journey.prefs.useDiscounts}
+          defaultTaxPercent={journey.prefs.defaultTaxPercent}
+        />
+      )}
       <SelectPackageSheet
         open={selectOpen}
         onOpenChange={setSelectOpen}
@@ -326,10 +339,24 @@ export function BookingJourneyPanel({
           {selection && (
             <div className="mb-4 rounded-lg border border-border bg-muted/20 p-4 text-sm">
               <p className="font-medium text-heading">{selection.name}</p>
-              <p>{formatCurrency(selection.totalAmount)}</p>
+              <p>Package {formatCurrency(selection.packageAmount)}</p>
+              {selection.discountAmount > 0 && (
+                <p className="text-muted-foreground">
+                  Discount −{formatCurrency(selection.discountAmount)}
+                </p>
+              )}
+              {selection.taxApplied && selection.taxAmount > 0 && (
+                <p className="text-muted-foreground">
+                  Tax {selection.taxRatePercent != null ? `${selection.taxRatePercent}% ` : ""}
+                  {formatCurrency(selection.taxAmount)}
+                </p>
+              )}
+              <p className="font-medium text-heading">
+                Agreed total {formatCurrency(selection.totalAmount)}
+              </p>
               {journey.prefs.collectInitialPayment && (
               <p className="mt-1 text-muted-foreground">
-                Deposit {formatCurrency(selection.depositAmount)} · Remaining{" "}
+                Deposit allocation {formatCurrency(selection.depositAmount)} · Remaining{" "}
                 {formatCurrency(remainingAmount(selection.totalAmount, selection.depositAmount))}
               </p>
               )}
