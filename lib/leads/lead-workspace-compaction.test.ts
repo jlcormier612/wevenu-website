@@ -68,6 +68,8 @@ describe("lead workspace compaction", () => {
   it("compact assignment still saves and can stay unassigned", () => {
     assert.match(staff, /__unassigned__/);
     assert.match(staff, /selectedRef\.current = resolved/);
+    assert.match(staff, /dirtyRef\.current = true/);
+    assert.match(staff, /if \(dirtyRef\.current\) return/);
     assert.match(staff, /const next = selectedRef\.current/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(staff, /Save assignment/);

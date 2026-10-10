@@ -28,9 +28,13 @@ export function StaffAssignmentField({
   const router = useRouter();
   const [selected, setSelected] = React.useState(value ?? "");
   const selectedRef = React.useRef(value ?? "");
+  const dirtyRef = React.useRef(false);
   const [pending, start] = React.useTransition();
 
   React.useEffect(() => {
+    // A late router.refresh() must not overwrite a choice the user has
+    // already made and not yet saved.
+    if (dirtyRef.current) return;
     selectedRef.current = value ?? "";
     setSelected(value ?? "");
   }, [value]);
@@ -40,6 +44,9 @@ export function StaffAssignmentField({
     start(async () => {
       const result = await onSave(next.trim() || null);
       if (result.ok) {
+        dirtyRef.current = false;
+        selectedRef.current = next;
+        setSelected(next);
         toast.success("Assignment saved.");
         router.refresh();
       } else {
@@ -70,6 +77,7 @@ export function StaffAssignmentField({
           value={selected || "__unassigned__"}
           onValueChange={(next) => {
             const resolved = next === "__unassigned__" ? "" : next;
+            dirtyRef.current = true;
             selectedRef.current = resolved;
             setSelected(resolved);
           }}
