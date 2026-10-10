@@ -40,6 +40,7 @@ import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service"
 import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
 import { formatContractDate } from "@/lib/contracts/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 import { labelForUseKey } from "@/lib/venue-spaces/uses";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type {
@@ -799,15 +800,21 @@ export async function buildContractMergeData(opts: {
     });
   }
 
+  const venuePhoneRaw = venue?.phone?.trim() || "";
+  const clientPhoneRaw = client?.phone?.trim() || "";
   return buildMergeData({
     venueName: venue?.name ?? "",
     venueAddress: venueAddress ?? "Address on file with the venue",
-    venuePhone: venue?.phone?.trim() || "Phone on file with the venue",
+    venuePhone: venuePhoneRaw
+      ? formatPhoneDisplay(venuePhoneRaw)
+      : "Phone on file with the venue",
     venueEmail: venue?.email?.trim() || "Email on file with the venue",
     clientFirstName: client?.firstName ?? "",
     clientLastName: client?.lastName ?? "",
     clientEmail: client?.email?.trim() || "Email on the client record",
-    clientPhone: client?.phone?.trim() || "Phone on the client record",
+    clientPhone: clientPhoneRaw
+      ? formatPhoneDisplay(clientPhoneRaw)
+      : "Phone on the client record",
     requiredClientSignerNames: opts.requiredClientSignerNames ?? null,
     eventName: event?.name || "Your celebration",
     eventDate: event?.eventDate ?? client?.eventDate ?? null,

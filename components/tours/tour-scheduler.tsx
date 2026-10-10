@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import type { TourSlot, TourVenueInfo } from "@/lib/tours/types";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 
 // Venue Brand Experience Phase 1 — this is the public "front door" for
 // tours, so it's customer-facing (prospective couples, not staff). SAGE/
@@ -268,7 +269,7 @@ function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail
         <p className="text-sm text-muted-foreground">📅 {formatReadable(scheduledAt.slice(0, 10))}</p>
         <p className="text-sm text-muted-foreground">🕐 {formatTime(scheduledAt)} · {duration} minutes</p>
         {addressLine && <p className="text-sm text-muted-foreground">📍 {addressLine}</p>}
-        {venuePhone  && <p className="text-sm text-muted-foreground">📞 {venuePhone}</p>}
+        {venuePhone  && <p className="text-sm text-muted-foreground">📞 {formatPhoneDisplay(venuePhone)}</p>}
         {venueEmail  && <p className="text-sm text-muted-foreground">✉️ {venueEmail}</p>}
       </div>
 

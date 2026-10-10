@@ -5,6 +5,7 @@ import * as React from "react";
 import { HtcPlatformMark } from "@/components/brand/htc-platform-mark";
 import type { TourBookingConfirmation } from "@/lib/inquiry-form/types";
 import { publicFormSurfaceStyle, readableInk } from "@/lib/theme/public-form-surface";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 import { formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 
 type FormBrand = {
@@ -158,7 +159,7 @@ export function ScheduleTourConfirmation({
           {confirmation.venuePhone && (
             <div>
               <p className="text-xs font-medium text-muted-foreground">Questions?</p>
-              <p className="text-sm text-heading">{confirmation.venuePhone}</p>
+              <p className="text-sm text-heading">{formatPhoneDisplay(confirmation.venuePhone)}</p>
             </div>
           )}
         </div>

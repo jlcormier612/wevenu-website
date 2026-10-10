@@ -25,6 +25,7 @@ import { renderExecutedContractContent } from "@/lib/contracts/executed-content"
 import type { SignatureEvidence } from "@/lib/contracts/signature-blocks";
 import type { Contract } from "@/lib/contracts/types";
 import type { Venue } from "@/lib/venue/types";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 
 // A serif/sans pairing chosen for this document's own credibility — not
 // venue-customizable. BA1 confirmed no venue typography field exists
@@ -108,9 +109,11 @@ function ContractPdfDocument({
     brandFields?.addressLine1 ?? venue.addressLine1,
     brandFields?.addressLine2 ?? venue.addressLine2,
   ].filter(Boolean).join(", ");
+  const contactPhone = brandFields?.phone
+    ?? (venue.phone ? formatPhoneDisplay(venue.phone) : null);
   const contactLine = [
     brandFields?.email ?? venue.email,
-    brandFields?.phone ?? venue.phone,
+    contactPhone,
     brandFields?.website ?? venue.website,
   ].filter(Boolean).join("  ·  ");
   const logoUrl = brandFields?.logoUrl ?? venue.logoUrl;
