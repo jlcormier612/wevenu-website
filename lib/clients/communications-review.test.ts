@@ -181,7 +181,8 @@ describe("buildCommunicationsReview", () => {
     assert.match(panel, /invitePending/);
     assert.match(panel, /setSentNow\(true\)/);
     assert.doesNotMatch(panel, /router\.refresh\(\)/);
-    assert.doesNotMatch(panel, /useEffect\([\s\S]*inviteClientAction/);
+    const effect = panel.slice(panel.indexOf("React.useEffect"), panel.indexOf("function onInviteClient"));
+    assert.doesNotMatch(effect, /inviteClientAction/);
   });
 });
 
@@ -196,7 +197,8 @@ describe("Phase 5 communications review seams", () => {
     const panel = readFileSync(resolve("components/clients/communications-review-panel.tsx"), "utf8");
     assert.doesNotMatch(panel, /fetch\(/);
     assert.match(panel, /inviteClientAction/);
-    assert.doesNotMatch(panel, /useEffect\([\s\S]*inviteClientAction/);
+    const effect = panel.slice(panel.indexOf("React.useEffect"), panel.indexOf("function onInviteClient"));
+    assert.doesNotMatch(effect, /inviteClientAction/);
     const helper = readFileSync(resolve("lib/clients/communications-review.ts"), "utf8");
     assert.doesNotMatch(helper, /inviteClientAction\(/);
     assert.doesNotMatch(helper, /insertEnrollment/);

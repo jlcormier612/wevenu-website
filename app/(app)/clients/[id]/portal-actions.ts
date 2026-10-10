@@ -17,8 +17,10 @@ export async function inviteClientAction(
 ): Promise<ClientAuthResult> {
   const result = await inviteClient(clientId, email, coupleName);
   if (result.ok) {
+    // Do not revalidate /booked here — a soft refresh remounts the celebration
+    // panel and can wipe the in-place "Invitation sent" state before the new
+    // invitation row is visible. Client list/detail still refresh.
     revalidatePath(`/clients/${clientId}`);
-    revalidatePath(`/clients/${clientId}/booked`);
     revalidatePath("/clients");
   }
   return result;

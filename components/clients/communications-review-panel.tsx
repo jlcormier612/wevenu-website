@@ -15,8 +15,13 @@ export function CommunicationsReviewPanel({
   communications: CommunicationsReviewModel;
 }) {
   const [invitePending, startInvite] = React.useTransition();
-  const [sentNow, setSentNow] = React.useState(false);
+  const inviteOnFile = communications.rows.some((row) => row.key === "invitation" && row.onFile);
+  const [sentNow, setSentNow] = React.useState(inviteOnFile);
   const invite = communications.invite;
+
+  React.useEffect(() => {
+    if (inviteOnFile) setSentNow(true);
+  }, [inviteOnFile]);
 
   function onInviteClient() {
     if (!invite.canInvite || !invite.email || invitePending || sentNow) return;
