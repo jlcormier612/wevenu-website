@@ -320,25 +320,25 @@ export function LuvAskSection({
           ))}
           <div ref={bottomRef} />
         </div>
-      ) : (
-        <div className="space-y-3">
+      ) : suggested.length > 0 ? (
+        <div className="space-y-3" data-testid="luv-ask-suggestions">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Try asking:
           </p>
           <div className="flex flex-wrap gap-2">
-            {suggested.map((q) => (
+            {suggested.filter((q) => q.trim().length > 0).map((q) => (
               <button
                 key={q}
                 type="button"
                 onClick={() => ask(q)}
-                className="text-sm px-3 py-1.5 rounded-full border border-border bg-card hover:border-[#D8A7AA]/50 hover:bg-[#D8A7AA]/8 transition-colors"
+                className="text-sm px-3 py-1.5 rounded-full border border-border bg-card text-foreground hover:border-[#D8A7AA]/50 hover:bg-[#D8A7AA]/8 transition-colors"
               >
                 {q}
               </button>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       <div
         className="rounded-2xl border overflow-hidden focus-within:ring-2 focus-within:ring-ring"

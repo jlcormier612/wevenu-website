@@ -98,12 +98,21 @@ export async function getAccountStateAction(): Promise<AccountState> {
   if (!user) {
     return { loggedIn: false, sessions: [], grants: [], legalHistory: [] };
   }
-  const [sessions, grants, legalHistory] = await Promise.all([
-    getMyAuthSessions(),
-    getMySupportGrants(),
-    listLegalAcceptancesForCurrentUser("client"),
-  ]);
-  return { loggedIn: true, sessions, grants, legalHistory };
+  try {
+    const [sessions, grants, legalHistory] = await Promise.all([
+      getMyAuthSessions(),
+      getMySupportGrants(),
+      listLegalAcceptancesForCurrentUser("client"),
+    ]);
+    return { loggedIn: true, sessions, grants, legalHistory };
+  } catch {
+    // Surface a recoverable empty legal history rather than blank table rows.
+    const [sessions, grants] = await Promise.all([
+      getMyAuthSessions().catch(() => [] as AuthSessionInfo[]),
+      getMySupportGrants().catch(() => [] as SupportAccessGrant[]),
+    ]);
+    return { loggedIn: true, sessions, grants, legalHistory: [] };
+  }
 }
 
 export async function changePasswordAction(newPassword: string): Promise<ClientAuthResult> {

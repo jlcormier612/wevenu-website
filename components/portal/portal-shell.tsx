@@ -52,7 +52,9 @@ import {
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
 import { PortalLegalHistorySection } from "@/components/legal/legal-history-section";
+import { PasswordInput } from "@/components/ui/password-input";
 import { CouplePhotoHeroControl } from "@/components/portal/couple-photo-hero-control";
+
 import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
@@ -2894,35 +2896,100 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
       {/* Invite form / button */}
       {showInvite ? (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-          <p className="text-sm font-semibold text-heading">Invite someone to help plan</p>
-          <div className="grid grid-cols-2 gap-3">
-            <input value={inviteFirst} onChange={e => setInviteFirst(e.target.value)} placeholder="First name *" autoFocus
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-            <input value={inviteLast} onChange={e => setInviteLast(e.target.value)} placeholder="Last name"
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4" data-testid="portal-invite-form">
+          <div className="space-y-1.5">
+            <p className="text-sm font-semibold text-heading">Invite someone to help plan</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              We&apos;ll email them a private invitation to this event workspace. They create a Hello to Cheers
+              account (or sign in if they already have one) and only then receive the access level you choose below.
+              Knowing an email address alone does not grant access.
+            </p>
           </div>
-          <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Email address *"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Role</p>
-              <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="invite-first" className="text-xs font-medium text-heading">
+                First name <span className="text-destructive">*</span>
+              </label>
+              <input
+                id="invite-first"
+                value={inviteFirst}
+                onChange={e => setInviteFirst(e.target.value)}
+                autoFocus
+                required
+                autoComplete="given-name"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="invite-last" className="text-xs font-medium text-heading">Last name</label>
+              <input
+                id="invite-last"
+                value={inviteLast}
+                onChange={e => setInviteLast(e.target.value)}
+                autoComplete="family-name"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="invite-email" className="text-xs font-medium text-heading">
+              Email address <span className="text-destructive">*</span>
+            </label>
+            <input
+              id="invite-email"
+              type="email"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="invite-role" className="text-xs font-medium text-heading">
+                Their role
+              </label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                How they relate to your celebration (shown on your team list).
+              </p>
+              <select
+                id="invite-role"
+                value={inviteRole}
+                onChange={e => setInviteRole(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+              >
                 {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
               {inviteRole === "custom" && (
-                <input value={inviteCustomRole} onChange={e => setInviteCustomRole(e.target.value)} placeholder="e.g. Mother of the Bride"
-                  className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
+                <div className="space-y-1.5 pt-1">
+                  <label htmlFor="invite-custom-role" className="text-xs font-medium text-heading">Custom role label</label>
+                  <input
+                    id="invite-custom-role"
+                    value={inviteCustomRole}
+                    onChange={e => setInviteCustomRole(e.target.value)}
+                    placeholder="e.g. Mother of the Bride"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+                  />
+                </div>
               )}
             </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Access Level</p>
-              <select value={invitePermission} onChange={e => setInvitePermission(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none">
+            <div className="space-y-1.5">
+              <label htmlFor="invite-access" className="text-xs font-medium text-heading">
+                Access level
+              </label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                What they can see and do in this workspace after they accept.
+              </p>
+              <select
+                id="invite-access"
+                value={invitePermission}
+                onChange={e => setInvitePermission(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+              >
                 {Object.entries(PERMISSION_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
               </select>
-              <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{PERMISSION_META[invitePermission]?.desc}</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{PERMISSION_META[invitePermission]?.desc}</p>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
@@ -2931,11 +2998,12 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
             <button type="button" onClick={handleInvite} disabled={!inviteFirst.trim() || !inviteEmail.trim() || inviting}
               className="text-sm font-semibold px-5 py-2 rounded-xl text-white disabled:opacity-50 flex items-center gap-2"
               style={{ background: ROSE }}>
-              {inviting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</> : "Send Invitation 💗"}
+              {inviting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</> : "Send Invitation"}
             </button>
           </div>
         </div>
       ) : (
+
         <button type="button" onClick={() => setShowInvite(true)}
           className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed py-4 text-sm font-medium transition-colors hover:bg-muted/30"
           style={{ borderColor: `${ROSE}50`, color: ROSE_DEEP }}>
@@ -4258,14 +4326,26 @@ function AccountSettingsPanel({ token, venueName }: { token: string; venueName: 
         <p className="text-sm font-semibold text-heading">Password</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-heading">New password</p>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm" minLength={8} />
+            <label htmlFor="account-new-password" className="text-xs font-medium text-heading">New password</label>
+            <PasswordInput
+              id="account-new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="h-9"
+              minLength={8}
+              autoComplete="new-password"
+            />
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-medium text-heading">Confirm password</p>
-            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm" minLength={8} />
+            <label htmlFor="account-confirm-password" className="text-xs font-medium text-heading">Confirm password</label>
+            <PasswordInput
+              id="account-confirm-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="h-9"
+              minLength={8}
+              autoComplete="new-password"
+            />
           </div>
         </div>
         <button type="button" onClick={handleChangePassword} disabled={savingPassword}
@@ -4321,11 +4401,26 @@ function AccountSettingsPanel({ token, venueName }: { token: string; venueName: 
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            <select value={grantHours} onChange={(e) => setGrantHours(Number(e.target.value))}
-              className="h-9 rounded-lg border border-border bg-background px-2 text-xs">
-              {SUPPORT_ACCESS_DURATIONS.map((d) => <option key={d.hours} value={d.hours}>{d.label}</option>)}
-            </select>
+          <div className="space-y-2" data-testid="support-access-grant">
+            <div className="space-y-1">
+              <label htmlFor="support-access-duration" className="text-xs font-medium text-heading">
+                Access duration
+              </label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                How long {venueName} may view your workspace. Access expires automatically and every visit is logged.
+              </p>
+              <select
+                id="support-access-duration"
+                value={grantHours}
+                onChange={(e) => setGrantHours(Number(e.target.value))}
+                className="h-9 w-full max-w-[12rem] rounded-lg border border-border bg-background px-2 text-xs"
+                aria-label="Access duration"
+              >
+                {SUPPORT_ACCESS_DURATIONS.map((d) => (
+                  <option key={d.hours} value={d.hours}>{d.label}</option>
+                ))}
+              </select>
+            </div>
             <button type="button" onClick={handleGrantAccess} disabled={granting}
               className="text-xs font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-60" style={{ background: ROSE_DEEP }}>
               {granting ? "Granting…" : "Grant Temporary Access"}

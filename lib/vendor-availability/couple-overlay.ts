@@ -7,11 +7,12 @@ export async function overlayCoupleVendorAvailability<T extends { vendorId?: str
 ): Promise<{ eventDate: string | null; items: Array<T & { dateAvailability: CoupleFacingAvailability | null }> }> {
   const ctx = await resolvePortalContext(token);
   const eventDate = ctx?.event?.eventDate ?? null;
+  const eventId = ctx?.event?.id ?? null;
   if (!eventDate) {
     return { eventDate: null, items: items.map((item) => ({ ...item, dateAvailability: null })) };
   }
   const ids = items.map((item) => item.vendorId).filter((id): id is string => Boolean(id));
-  const map = await lookupVendorsForEventDate(ids, eventDate);
+  const map = await lookupVendorsForEventDate(ids, eventDate, eventId);
   return {
     eventDate,
     items: items.map((item) => {

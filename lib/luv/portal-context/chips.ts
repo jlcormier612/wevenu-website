@@ -28,5 +28,6 @@ export function resolveLuvAskSuggestedChips(
     chips.push(LUV_ASK_CHIP_NEXT_PAYMENT);
   }
   chips.push(...BASE_CHIPS);
-  return chips;
+  // Never render empty suggestion pills.
+  return chips.map((q) => q.trim()).filter((q) => q.length > 0);
 }

@@ -151,10 +151,22 @@ type CardVendor = {
 
 function EventDateAvailability({
   availability,
+  onThisEventTeam,
 }: {
   availability: DateAvailability | null | undefined;
+  /** Assigned / required for this couple's event — do not show as Unavailable. */
+  onThisEventTeam?: boolean;
 }) {
   if (!availability) return null;
+  if (onThisEventTeam) {
+    return (
+      <p className="mt-1 inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+        <span>{formatCivilDateLabel(availability.eventDate)}</span>
+        <span aria-hidden>·</span>
+        <span>On your event</span>
+      </p>
+    );
+  }
   const status = availability.status;
   const marker = status === "available" ? "Available" : status === "unavailable" ? "Unavailable" : "Availability not confirmed";
   const tone =
@@ -328,7 +340,10 @@ function VendorListRow({
         {rec.note && (
           <p className="text-[11px] text-primary mt-0.5 truncate">{rec.note}</p>
         )}
-        <EventDateAvailability availability={rec.dateAvailability} />
+        <EventDateAvailability
+          availability={rec.dateAvailability}
+          onThisEventTeam={!!rec.isAssigned || !!rec.isRequired}
+        />
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
           <button
             type="button"
@@ -340,7 +355,7 @@ function VendorListRow({
           >
             View profile
           </button>
-          {rec.dateAvailability?.status === "not_confirmed" ? (
+          {rec.dateAvailability?.status === "not_confirmed" && !rec.isAssigned && !rec.isRequired ? (
             <button
               type="button"
               onClick={(e) => {
@@ -426,7 +441,10 @@ function VendorDetail({
                 {pricing && <span className="ml-1.5 text-muted-foreground/70">{pricing}</span>}
               </p>
               <ProcessChips rec={rec} />
-              <EventDateAvailability availability={rec.dateAvailability} />
+              <EventDateAvailability
+                availability={rec.dateAvailability}
+                onThisEventTeam={!!rec.isAssigned || !!rec.isRequired}
+              />
             </div>
             <StatusChip rec={rec} />
           </div>
@@ -632,6 +650,10 @@ function VendorDetail({
             {isAssigned && !isPicked && !isSubmitted ? (
               <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
                 Assigned — ask your venue to change
+              </p>
+            ) : rec.isRequired && !isPicked && !isSubmitted ? (
+              <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
+                Required for your event — your venue includes this vendor
               </p>
             ) : rec.dateAvailability?.status === "unavailable" && !isPicked && !isSubmitted ? (
               <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">

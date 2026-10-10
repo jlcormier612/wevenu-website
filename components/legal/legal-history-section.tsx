@@ -35,14 +35,14 @@ export function LegalHistoryTable({
 }) {
   if (items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No legal acceptances yet.
+      <p className="text-sm text-muted-foreground" data-testid="legal-history-empty">
+        No legal documents accepted yet.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" data-testid="legal-history-table">
       <Table>
         <TableHeader>
           <TableRow>
@@ -55,12 +55,12 @@ export function LegalHistoryTable({
         <TableBody>
           {items.map((row) => (
             <TableRow key={row.id}>
-              <TableCell className="font-medium">{row.documentTitle}</TableCell>
-              <TableCell>{row.acceptedVersion}</TableCell>
+              <TableCell className="font-medium">{row.documentTitle || "Legal document"}</TableCell>
+              <TableCell>{row.acceptedVersion || "—"}</TableCell>
               <TableCell className="whitespace-nowrap text-muted-foreground">
                 {formatAcceptedOn(row.acceptedAt)}
               </TableCell>
-              <TableCell>{row.acceptanceMethod}</TableCell>
+              <TableCell>{row.acceptanceMethod || "—"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -68,6 +68,45 @@ export function LegalHistoryTable({
     </div>
   );
 }
+
+/** Stacked cards — readable on narrow portal screens (no empty header-only rows). */
+export function LegalHistoryCards({
+  items,
+}: {
+  items: LegalAcceptanceHistoryItem[];
+}) {
+  if (items.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="legal-history-empty">
+        No legal documents accepted yet.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-2" data-testid="legal-history-cards">
+      {items.map((row) => (
+        <li
+          key={row.id}
+          className="rounded-xl border border-border/60 px-3 py-2.5 space-y-0.5"
+        >
+          <p className="text-sm font-medium text-heading">
+            {row.documentTitle || "Legal document"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Version {row.acceptedVersion || "—"}
+            {" · "}
+            Accepted {formatAcceptedOn(row.acceptedAt)}
+          </p>
+          {row.acceptanceMethod ? (
+            <p className="text-[11px] text-muted-foreground">{row.acceptanceMethod}</p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 
 /**
  * Venue settings Card wrapper — matches other /settings sections.
@@ -120,18 +159,32 @@ export function VendorLegalHistorySection({
  */
 export function PortalLegalHistorySection({
   items,
+  loading = false,
+  error = null,
 }: {
   items: LegalAcceptanceHistoryItem[];
+  loading?: boolean;
+  error?: string | null;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3" data-testid="portal-legal-history">
       <div>
         <p className="text-sm font-semibold text-heading">Legal History</p>
         <p className="text-xs text-muted-foreground mt-0.5">
           Documents you have accepted, newest first.
         </p>
       </div>
-      <LegalHistoryTable items={items} />
+      {loading ? (
+        <p className="text-sm text-muted-foreground" data-testid="legal-history-loading">
+          Loading legal history…
+        </p>
+      ) : error ? (
+        <p className="text-sm text-destructive" role="alert" data-testid="legal-history-error">
+          {error}
+        </p>
+      ) : (
+        <LegalHistoryCards items={items} />
+      )}
     </div>
   );
 }
