@@ -31,11 +31,11 @@ describe("lead page layout refinement", () => {
     assert.match(facts, /setLeadAssignedStaffAction/);
     assert.match(facts, /data-testid="lead-owner-hold-row"/);
     assert.match(facts, /<DateHoldsSection/);
-    assert.match(staff, /assignmentActionLabel\(persistedId\)/);
-    assert.match(actionLabel, /Save assignment/);
-    assert.match(actionLabel, /Edit assignment/);
+    assert.match(staff, /assignmentActionLabel\(persistedId/);
+    assert.match(actionLabel, /Edit\/Save Assignment/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(staff, /dirtyRef\.current = true/);
+
 
 
   });

@@ -7,6 +7,9 @@
  */
 
 export const HTC_LOGO_PUBLIC_PATH = "/brand/hello-to-cheers-logo-primary-transparent.png";
+/** Light-ink platform mark for dark / deep-green surfaces. */
+export const HTC_LOGO_ON_DARK_PUBLIC_PATH =
+  "/brand/hello-to-cheers-logo-on-dark-transparent.png";
 export const HTC_LOGO_ALT = "Hello to Cheers";
 export const HTC_EMAIL_LOGO_WIDTH_PX = 200;
 

@@ -9,6 +9,8 @@ import { acceptParticipantInvitationAction, type ClientAuthFormState } from "@/a
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
+
 
 const INITIAL_STATE: ClientAuthFormState = {};
 
@@ -44,11 +46,11 @@ export function AcceptParticipantForm({ token, email }: { token: string; email: 
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} />
+        <PasswordInput id="password" name="password" autoComplete="new-password" required minLength={8} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm password</Label>
-        <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" required minLength={8} />
+        <PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" required minLength={8} />
       </div>
       {state.error ? (
         <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/15 px-3 py-2 text-sm text-foreground">

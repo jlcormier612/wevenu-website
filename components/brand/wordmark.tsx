@@ -1,8 +1,11 @@
 import { cn } from "@/lib/utils";
-import { HTC_LOGO_PUBLIC_PATH } from "@/shared/brand/logo";
+import {
+  HTC_LOGO_ON_DARK_PUBLIC_PATH,
+  HTC_LOGO_PUBLIC_PATH,
+} from "@/shared/brand/logo";
 
 const PLATFORM_LOGO_LIGHT = HTC_LOGO_PUBLIC_PATH;
-const PLATFORM_LOGO_DARK = HTC_LOGO_PUBLIC_PATH;
+const PLATFORM_LOGO_DARK = HTC_LOGO_ON_DARK_PUBLIC_PATH;
 
 /**
  * Renders the Hello to Cheers platform logo everywhere platform branding appears.
@@ -12,6 +15,7 @@ const PLATFORM_LOGO_DARK = HTC_LOGO_PUBLIC_PATH;
  * `dark:` variant follows the html-level theme class even when the page
  * around it isn't actually dark, and the dark-mode (light/white) logo
  * disappears against a light background.
+ * Pass forceDark on a fixed dark / deep-green surface (e.g. invitation chrome).
  */
 export function Wordmark({
   className,
@@ -19,6 +23,7 @@ export function Wordmark({
   logoUrl,
   venueName,
   forceLight = false,
+  forceDark = false,
   sizeClassName,
 }: {
   className?: string;
@@ -26,6 +31,7 @@ export function Wordmark({
   logoUrl?: string | null;
   venueName?: string;
   forceLight?: boolean;
+  forceDark?: boolean;
   /** Overrides the default height class — for callers that need a non-standard size (e.g. the main app header, sized 20% up from the default). */
   sizeClassName?: string;
 }) {
@@ -37,6 +43,15 @@ export function Wordmark({
       <span className={cn("inline-flex shrink-0 items-center", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logoUrl} alt={alt} className={`${sizeClass} max-w-[200px] rounded-md object-contain`} />
+      </span>
+    );
+  }
+
+  if (forceDark) {
+    return (
+      <span className={cn("inline-flex shrink-0 items-center", className)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={PLATFORM_LOGO_DARK} alt={alt} className={sizeClass} />
       </span>
     );
   }
@@ -55,7 +70,7 @@ export function Wordmark({
       {/* Light mode logo */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={PLATFORM_LOGO_LIGHT} alt={alt} className={`${sizeClass} block dark:hidden`} />
-      {/* Dark mode logo */}
+      {/* Dark mode logo — light ink for dark backgrounds */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={PLATFORM_LOGO_DARK} alt={alt} className={`${sizeClass} hidden dark:block`} />
     </span>

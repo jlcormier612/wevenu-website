@@ -6,7 +6,10 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { assignmentActionLabel } from "@/lib/team/assignment-action-label";
+import {
+  ASSIGNMENT_FULL_LABEL_MIN_WIDTH_PX,
+  assignmentActionLabel,
+} from "@/lib/team/assignment-action-label";
 
 export function StaffAssignmentField({
   label,
@@ -33,6 +36,8 @@ export function StaffAssignmentField({
   /** Last successfully persisted id (prop sync + successful save). */
   const [persistedId, setPersistedId] = React.useState(value ?? "");
   const [pending, start] = React.useTransition();
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = React.useState(compact);
 
   React.useEffect(() => {
     // A late router.refresh() must not overwrite a choice the user has
@@ -42,6 +47,22 @@ export function StaffAssignmentField({
     setSelected(value ?? "");
     setPersistedId(value ?? "");
   }, [value]);
+
+  React.useEffect(() => {
+    const el = rowRef.current;
+    if (!el || typeof ResizeObserver === "undefined") {
+      setNarrow(compact);
+      return;
+    }
+    const update = () => {
+      // Compact layouts and tight rows use the short label so it stays one line.
+      setNarrow(compact || el.clientWidth < ASSIGNMENT_FULL_LABEL_MIN_WIDTH_PX + 180);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [compact]);
 
   function save() {
     const next = selectedRef.current;
@@ -61,7 +82,9 @@ export function StaffAssignmentField({
   }
 
   const currentName = staff.find((member) => member.id === (value ?? ""))?.name ?? null;
-  const actionLabel = pending ? "Saving…" : assignmentActionLabel(persistedId);
+  const actionLabel = pending
+    ? "Saving…"
+    : assignmentActionLabel(persistedId, { compact: narrow });
 
   return (
     <div className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "space-y-2"} data-testid={testId}>
@@ -78,7 +101,10 @@ export function StaffAssignmentField({
           {currentName ? currentName : "Unassigned"}
         </p>
       )}
-      <div className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2"}>
+      <div
+        ref={rowRef}
+        className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2"}
+      >
         <Select
           value={selected || "__unassigned__"}
           onValueChange={(next) => {
@@ -105,11 +131,12 @@ export function StaffAssignmentField({
         <Button
           type="button"
           size="sm"
-          className={compact ? "h-8 shrink-0" : undefined}
+          className={compact ? "h-8 shrink-0 whitespace-nowrap" : "shrink-0 whitespace-nowrap"}
           disabled={pending}
           onClick={save}
           data-testid={`${testId}-save`}
           data-assignment-action={persistedId.trim() ? "edit" : "save"}
+          data-assignment-label={narrow ? "short" : "full"}
         >
           {actionLabel}
         </Button>

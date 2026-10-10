@@ -63,10 +63,11 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(detail, /setEventAssignedStaffAction\(event\.id, staffId\)/);
     assert.match(detail, /testId="event-owner-assignment"/);
     assert.match(eventActions, /export async function setEventAssignedStaffAction/);
-    assert.match(staffField, /assignmentActionLabel\(persistedId\)/);
-    assert.match(actionLabel, /Save assignment/);
-    assert.match(actionLabel, /Edit assignment/);
+    assert.match(staffField, /assignmentActionLabel\(persistedId/);
+    assert.match(actionLabel, /Edit\/Save Assignment/);
+    assert.match(actionLabel, /Edit\/Save/);
     assert.match(staffField, /__unassigned__/);
+
 
 
     assert.match(staffField, /onSave\(next\.trim\(\) \|\| null\)/);

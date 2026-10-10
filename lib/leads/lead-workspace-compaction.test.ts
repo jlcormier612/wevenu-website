@@ -88,8 +88,7 @@ describe("lead workspace compaction", () => {
     assert.match(staff, /const next = selectedRef\.current/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(staff, /assignmentActionLabel/);
-    assert.match(actionLabel, /Save assignment/);
-    assert.match(actionLabel, /Edit assignment/);
+    assert.match(actionLabel, /Edit\/Save Assignment/);
     assert.match(staff, /Assignment saved\./);
     assert.match(staff, /Could not save the assignment/);
   });
