@@ -20,6 +20,17 @@ Not missing calculation. **Discoverability**: apply lived behind a quiet **Finan
 - Locked-state hint points to prior Selected Package terms + draft invoice line items.
 - Draft invoice editor: explicit **Invoice adjustments** with Add discount / Add tax.
 
-## Runtime
+## Runtime — GREEN
 
-GREEN only after Sandbox browser proof on the deployed revision.
+Deployed: `28ea251ae828ccaa1a940e0503d47625aa5ab617`  
+Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/38017090393  
+Health ok · ECS `:647`
+
+Browser proof (`docs/qa/tax-discount-workflow/results.json`):
+
+- Lead Selected Package shows **Tax & discount** CTA
+- Sheet titled **Invoice adjustments**; save persists 10% discount + 6.25% tax → total $1,912.50
+- Draft invoice shows **Invoice adjustments** with Add discount / Add tax
+- Fixtures cleaned up
+
+Unresolved product decisions: none for this discoverability fix — financial rules reused from existing `computeAgreedFinancialTerms` / settings copy.
