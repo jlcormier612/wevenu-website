@@ -179,14 +179,18 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
   const spaceRows = parseSpaceLines(spaceLine);
 
   return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardContent className="py-4 text-left">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <p className="font-heading text-2xl font-medium tracking-tight text-heading">
+    <Card
+      size="sm"
+      className="border-primary/20 bg-primary/5 gap-3"
+      data-testid="event-booking-summary"
+    >
+      <CardContent className="text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-0">
+            <p className="font-heading text-2xl font-medium tracking-tight text-heading leading-tight">
               {formatEventDateRange(event.eventDate, event.eventEndDate)}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm leading-snug text-muted-foreground">
               {multiDay ? `${dayName} – ${endDayName}` : dayName}
               {countdown ? (
                 <span className={urgent ? " font-semibold text-destructive" : ""}>
@@ -195,20 +199,20 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
               ) : null}
             </p>
           </div>
-          <div className="shrink-0 pt-1">
+          <div className="shrink-0">
             <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
           </div>
         </div>
-        <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <div className="min-w-0">
             <dt className="text-xs text-muted-foreground">Time</dt>
-            <dd className="mt-0.5 text-foreground" title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}>
+            <dd className="mt-0.5 leading-snug text-foreground" title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}>
               {timeLabel}
             </dd>
           </div>
           <div className="min-w-0">
             <dt className="text-xs text-muted-foreground">Guests</dt>
-            <dd className="mt-0.5 text-foreground">
+            <dd className="mt-0.5 leading-snug text-foreground">
               {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
             </dd>
           </div>
@@ -218,7 +222,7 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
               {spaceRows.length === 0 ? (
                 "No space assigned"
               ) : (
-                <ul className="space-y-1">
+                <ul className="space-y-0.5">
                   {spaceRows.map((row, i) => (
                     <li key={i} className="leading-snug">
                       {typeof row === "string" ? (
@@ -614,11 +618,47 @@ export function EventDetail({
         ) : null;
       })()}
 
-      {/* ── Event Date Hero ────────────────────────────────────────────── */}
-      <EventHeroCard
-        event={event}
-        spaceLine={spaceAssignmentsDisplay ?? spaceName}
-      />
+      {/* ── Booking + staffing (compact upper region) ─────────────────── */}
+      <div
+        data-testid="client-booking-staff-region"
+        className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
+      >
+        <EventHeroCard
+          event={event}
+          spaceLine={spaceAssignmentsDisplay ?? spaceName}
+        />
+        <div className="flex min-w-0 flex-col gap-3">
+          <Card size="sm" className="gap-2" data-testid="event-staff-assignment">
+            <CardHeader className="gap-0.5">
+              <CardTitle className="text-base">Team assignment</CardTitle>
+              <CardDescription className="text-xs leading-snug">
+                The person responsible for this booked event. This can differ from who handled the lead.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StaffAssignmentField
+                compact
+                label="Event owner"
+                staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
+                value={event.assignedStaffId ?? null}
+                testId="event-owner-assignment"
+                onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
+              />
+            </CardContent>
+          </Card>
+          <Card size="sm" className="gap-2" id="event-team-roster" data-testid="event-team-roster">
+            <CardHeader className="gap-0.5">
+              <CardTitle className="text-base">Additional event staff</CardTitle>
+              <CardDescription className="text-xs leading-snug">
+                Names working this event who are not the assigned owner.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventTeamSection eventId={event.id} initialTeam={event.team} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* ── Tabs ──────────────────────────────────────────────────────── */}
       {/* URL-hash addressable so an Interactive Planning Task can navigate
@@ -683,33 +723,6 @@ export function EventDetail({
               window.location.hash = tab;
             }}
           />
-          <Card data-testid="event-staff-assignment">
-            <CardHeader>
-              <CardTitle className="text-base">Team assignment</CardTitle>
-              <CardDescription>
-                The person responsible for this booked event. This can differ from who handled the lead.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StaffAssignmentField
-                label="Event owner"
-                hint="Reassign when the operational owner changes. This does not restore a Team planning tab."
-                staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
-                value={event.assignedStaffId ?? null}
-                testId="event-owner-assignment"
-                onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
-              />
-            </CardContent>
-          </Card>
-          <Card id="event-team-roster">
-            <CardHeader>
-              <CardTitle className="text-base">Additional event staff</CardTitle>
-              <CardDescription>Names working this event who are not the assigned owner.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventTeamSection eventId={event.id} initialTeam={event.team} />
-            </CardContent>
-          </Card>
           <NeedsAttentionList
             items={selectOverviewExceptions(readinessSummary.sections, questionnaires)}
             onOpen={(item) => {
