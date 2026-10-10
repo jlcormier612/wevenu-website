@@ -1,0 +1,78 @@
+{
+  "ok": true,
+  "email": "scopeb-1791605745914@example.test",
+  "cuppity": [
+    {
+      "id": "4cdf71a5-abe4-43d1-a4f1-1795261db881",
+      "email": "jj@google.com",
+      "is_claimed": false
+    },
+    {
+      "id": "891899a8-8521-4be0-9dfa-3bcba3077c54",
+      "email": "jlcormier612@gmail.com",
+      "is_claimed": true
+    },
+    {
+      "id": "f05f23e7-b3cf-4195-92e4-7d9ffc883eca",
+      "email": "jj@google.com",
+      "is_claimed": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "other-venue-relationship",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "unambiguous-email-is-one-global-row",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "second-venue-reuses-global-identity",
+      "pass": true,
+      "detail": "insert=ok count=1"
+    },
+    {
+      "name": "relationships-are-independent",
+      "pass": true,
+      "detail": "[{\"venue_id\":\"ebfeb3e7-cb95-44a4-9cbd-e0b2f2ff3803\",\"status\":\"active\",\"notes\":\"Other venue private note\",\"preference_level\":\"standard\",\"is_required\":false},{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"status\":\"active\",\"notes\":\"Fancy private note\",\"preference_level\":\"preferred\",\"is_required\":true}]"
+    },
+    {
+      "name": "deactivate-one-venue-only",
+      "pass": true,
+      "detail": "[{\"venue_id\":\"ebfeb3e7-cb95-44a4-9cbd-e0b2f2ff3803\",\"status\":\"active\"},{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"status\":\"inactive\"}]"
+    },
+    {
+      "name": "reactivate-fancy-only",
+      "pass": true,
+      "detail": "{\"status\":\"active\"}"
+    },
+    {
+      "name": "event-assignment-scoped-to-fancy",
+      "pass": true,
+      "detail": "[{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"event_id\":\"980cfc0e-5737-4508-a1a5-c6776fcb2394\"}]"
+    },
+    {
+      "name": "rls-hides-other-venue-relationship",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "rls-shows-own-venue-relationship",
+      "pass": true,
+      "detail": "[{\"notes\":\"Fancy private note\"}]"
+    },
+    {
+      "name": "cuppity-rows-untouched",
+      "pass": true,
+      "detail": "before=3 after=3"
+    },
+    {
+      "name": "disposable-cleaned",
+      "pass": true,
+      "detail": "leftover=0"
+    }
+  ]
+}

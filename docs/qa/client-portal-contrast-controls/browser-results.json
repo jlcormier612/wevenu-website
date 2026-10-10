@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "expectSha": "f276f919",
+  "dpl": "f276f919886b6ebb744b769138deb7cf94669009",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  },
+  "checks": [
+    {
+      "name": "runtime-sha",
+      "pass": true,
+      "detail": "dpl=f276f919886b6ebb744b769138deb7cf94669009 expect=f276f919 health=true"
+    },
+    {
+      "name": "documents-labels",
+      "pass": true,
+      "detail": "count=2 gray=false color=rgb(0, 0, 0) text=Event insurance | Share with venue"
+    },
+    {
+      "name": "documents-upload",
+      "pass": true,
+      "detail": "text=+ Upload document color=rgb(0, 0, 0) border=rgb(222, 214, 202) :: PortalContrast\n\n·\n\nJen's Fancy Venue\n\nHome\nTasks\nMessages\nPayments\nMore\nDocuments\n\nContracts, invoices, receipts, and anything your venue or vendors share — all in one place.\n\nEvent insurance\nShare wi"
+    },
+    {
+      "name": "invite-role-chevron",
+      "pass": true,
+      "detail": "{\"className\":\"w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none htc-native-select\",\"bgImage\":\"url(\\\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 \",\"color\":\"rgb(0, 0, 0)\",\"appearance\":\"none\"}"
+    },
+    {
+      "name": "support-duration-visible",
+      "pass": true,
+      "detail": "Access duration select"
+    },
+    {
+      "name": "support-duration-chevron",
+      "pass": true,
+      "detail": "{\"className\":\"h-9 w-full max-w-[12rem] rounded-lg border border-border bg-background px-2 text-xs htc-native-select\",\"color\":\"rgb(0, 0, 0)\",\"bg\":\"rgb(255, 255, 255)\",\"bgImage\":\"url(\\\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none'\",\"appearance\":\"none\"}"
+    },
+    {
+      "name": "questionnaire-rendered",
+      "pass": true,
+      "detail": "samples=14 form=false body=rgb(79, 95, 79) :: PortalContrast\n\n·\n\nJen's Fancy Venue\n\nHome\nTasks\nMessages\nPayments\nMore\n\nNothing waiting yet\n\nWhen your venue sends a questionnaire, Final Details, or feedback request, it will appear here.\n\nJen's Fancy Venue\n💗"
+    },
+    {
+      "name": "questionnaire-no-tailwind-gray",
+      "pass": true,
+      "detail": "grayHard=0 first={\"text\":\"Jen's Fancy Venue\",\"color\":\"oklch(0.466934 0.0321873 145.003 / 0.7)\"}"
+    },
+    {
+      "name": "fixture-cleanup",
+      "pass": true,
+      "detail": "leftover=0"
+    }
+  ],
+  "productionUntouched": true,
+  "marketingUntouched": true
+}

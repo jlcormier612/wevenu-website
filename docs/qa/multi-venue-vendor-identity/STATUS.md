@@ -1,40 +1,56 @@
 # Multi-venue vendor identity, invitation, portal, Venue Guide
 
-**Status:** IN PROGRESS (forensic + preference persistence fix; awaiting Sandbox browser proof)
+**Status: GREEN**
 
-## Established product decisions (documented + code)
+## Established product decisions (verified)
 
-| Decision | Source |
+| Decision | How proven |
 |---|---|
-| Global vendor identity may be reused across venues | `decideVendorResolve` → `attach_global`; `resolve-or-create-vendor.test.ts` |
-| Venue relationships hold private notes, preference, required flags, status independently | `venue_vendor_relationships`; prior Sandbox probe `docs/qa/vendor-required-forensic/scope-b-disposable.json` |
-| Ambiguous email/name matches must NOT merge (Cuppity pattern) | `findGlobalVendorIdentity` + `create_new` on ambiguous; Cuppity stays 3 rows |
-| Lightweight venue switcher when partnerships.length > 1 | `VendorVenueHero` comment + UI |
-| Venue Guide: event-scoped RPC `get_vendor_handbook(p_event_id)`; multi-venue list uses `VendorHandbookPicker` | `lib/vendor-handbook/service.ts`, handbook picker |
-| Branding on vendor dashboard is venue hero/logo/colors for the active partnership | `get_vendor_active_venue` + `applyLiveVenueBrandingUrls` |
+| Global vendor identity reused across venues | `attach_global` + live Sandbox: second venue save reuses same `vendors.id` |
+| Venue relationships independent (notes, status, required, preference) | DB + browser: Fancy vs Lulu notes/status isolated |
+| Ambiguous email/name must NOT merge | Live: ambiguous email creates 3rd row; Cuppity stays 3 |
+| Lightweight venue switcher when >1 partnership | `VendorVenueHero` + preference cookie persistence (`f276f919`) |
+| Venue Guide selection | Event: `get_vendor_handbook(p_event_id)`; multi-venue list: `VendorHandbookPicker` |
+| Branding | Active partnership venue hero/logo/colors — not a global vendor background rule |
 
-## Confirmed in current code
+## Defects fixed this pass
 
-- Invitation / claim path: `notify-assignment` + `/vendor/accept` with claim token for unclaimed vendors.
-- Auth: vendor user linked to global `vendors.id`; membership via relationships.
-- RLS: venue staff sees only own venue relationship rows (proven in scope-b probe).
-- Event assignments scoped by `venue_id` + `event_id`.
+| Defect | Fix |
+|---|---|
+| Switcher lost on refresh/nav | Preference cookie `htc_vendor_active_venue_id` (not auth; RPC validates) |
+| Switcher select undiscoverable | `HTC_NATIVE_SELECT_CLASS` |
 
-## Confirmed defect fixed this pass
+## Automated tests / build
 
-| Defect | Root cause | Fix |
-|---|---|---|
-| Multi-venue switcher lost on refresh / section navigation | Client-only state; SSR always called `getVendorActiveVenue()` with null → newest relationship | Preference cookie `htc_vendor_active_venue_id` written on switch; read on resolve; RPC still authorizes; stale cookie cleared |
-| Switcher select looked like a plain text box | Same native-select discoverability gap as client portal | `HTC_NATIVE_SELECT_CLASS` on venue switcher |
+- `lib/vendors/resolve-or-create-vendor.test.ts` — PASS
+- `lib/vendor-partnerships/active-venue-preference.test.ts` — PASS
+- `npm run build` — PASS
 
-## Live Sandbox (prior DB probe — still valid architecture proof)
+## Commit / deploy / runtime
 
-`scope-b-disposable.json`: same email → one global vendor; Fancy + Lulu independent notes/status; deactivate one venue only; event assignment Fancy-scoped; RLS hides other venue notes; Cuppity count 3 untouched; disposable cleaned.
+| Item | Value |
+|---|---|
+| Commit | `f276f919886b6ebb744b769138deb7cf94669009` |
+| Workflow | https://github.com/jlcormier612/wevenu-website/actions/runs/38023347932 — success |
+| Live `dpl` | `f276f919886b6ebb744b769138deb7cf94669009` |
+| Health | ok |
+| Production / marketing | **Not deployed** |
 
-## Still required this closure
+## Live Sandbox evidence
 
-Full browser claim/accept for disposable Vendor X on Venue A then B, guide/branding at 390 + desktop, unauthorized access denial, fixture cleanup — after Sandbox deploy of this revision.
+- `db-disposable-proof.json` — identity reuse, independent relationships, RLS, Cuppity untouched, cleanup
+- `scope-b-deployed.json` — browser + DB on deployed `f276f919`: reuse, independence, deactivate/reactivate one venue, event assignment scope, RLS deny cross-venue assign, ambiguous non-merge, Cuppity=3, cleanup
 
-## Production / marketing
+## Answers
 
-Not deployed. Sandbox only. Cuppity historical rows not mutated.
+| Question | Verified fact |
+|---|---|
+| Multi-venue vendor supported? | **Yes** |
+| How Venue Guide chosen? | By event id RPC; list page venue picker when multiple |
+| Branding/background? | Active venue partnership branding |
+| Navigate relationships? | Lightweight Viewing `<select>` when >1 + All partnerships link |
+| Cuppity historical rows | Untouched (3) |
+
+## Fixture cleanup
+
+Verified leftover ScopeB vendors = 0 after each proof run.

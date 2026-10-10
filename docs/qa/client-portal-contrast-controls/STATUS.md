@@ -1,46 +1,59 @@
 # Client portal — global contrast and dropdown discoverability
 
-**Status:** IN PROGRESS (code + unit tests; awaiting Sandbox deploy + browser)
+**Status: GREEN**
 
-## Forensic inventory
+## Forensic root causes
 
-| Surface | Symptom | Root cause | Intended fix |
-|---|---|---|---|
-| Couple questionnaire | Labels/helpers illegible in dark theme | Hardcoded `text-gray-*`, `border-gray-*`, `bg-gray-*` ignore theme tokens | Semantic tokens (`text-foreground`, `text-muted-foreground`, `border-input`, `bg-background`, `bg-muted/40`) + `inkOn(primary)` on submit |
-| Support Access duration + other portal `<select>`s | Look like empty text boxes until focused | Native selects had no chevron / `appearance` reset | Shared `.htc-native-select` + `HTC_NATIVE_SELECT_CLASS` on all portal native selects |
-| Documents: Event insurance / Share with venue / Upload | Near-invisible labels; black checkbox squares | `text-gray-500` labels; unchecked checkbox styling without theme border/accent | `text-foreground` labels, bordered accent checkboxes, outline upload button with token ink |
+| Surface | Root cause |
+|---|---|
+| Questionnaire | Hardcoded `text-gray-*` / `border-gray-*` / `bg-gray-*` ignored theme tokens |
+| Portal native `<select>`s (Support Access duration, invite role/access, guests, seating, timeline, website) | No chevron / `appearance` reset — looked like empty text boxes |
+| Documents Event insurance / Share with venue / Upload | `text-gray-500` labels; unstyled checkboxes; outline button without token ink |
 
-## Shared components / paths changed
+## Shared components changed
 
-- `app/globals.css` — `.htc-native-select` chevron + disabled/focus
+- `app/globals.css` — `.htc-native-select`
 - `lib/ui/native-select.ts` — `HTC_NATIVE_SELECT_CLASS`
 - `components/form/couple-family-questionnaire-form.tsx`
 - `components/portal/couple-documents-section.tsx`
-- Portal native selects: `portal-shell`, `guest-section`, `seating-section`, `timeline-section`, `website-editor`
-- Vendor venue switcher also uses the same class (`vendor-venue-hero.tsx`) — shared discoverability, not a venue redesign
+- Portal selects: `portal-shell`, `guest-section`, `seating-section`, `timeline-section`, `website-editor`
+- Vendor switcher uses same class (discoverability only)
 
-## Select inventory (search-based)
+## Automated tests / build
 
-| Family | Files | Mechanism |
-|---|---|---|
-| Native `<select>` + `HTC_NATIVE_SELECT_CLASS` | portal-shell (todos, invite role/access, support duration), guest-section, seating-section, timeline day picker, website-editor | Shared CSS chevron |
-| Radix / shadcn `SelectTrigger` | Already has `ChevronDown` | Unchanged |
-| Vendor venue switcher | `vendor-venue-hero.tsx` | Same native class |
+- `lib/portal/client-portal-contrast.test.ts` — PASS
+- `lib/ui/native-select.test.ts` — PASS
+- `lib/theme/public-form-surface.test.ts` — PASS
+- `npm run build` — PASS
 
-## Automated tests
+## Commit / deploy / runtime
 
-- `lib/portal/client-portal-contrast.test.ts`
-- `lib/ui/native-select.test.ts`
-- Existing `lib/theme/public-form-surface.test.ts` (inkOn AA)
+| Item | Value |
+|---|---|
+| Commit | `f276f919886b6ebb744b769138deb7cf94669009` |
+| Workflow | https://github.com/jlcormier612/wevenu-website/actions/runs/38023347932 — success |
+| Live `dpl` | `f276f919886b6ebb744b769138deb7cf94669009` |
+| Health | `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}` |
+| Production / marketing | **Not deployed** |
+
+## Browser acceptance (Sandbox, dark colorScheme + `.dark` class)
+
+Evidence: `browser-results.json`, `documents-390-dark.png`, `documents-320-dark.png`, `documents-desktop-dark.png`, `support-access-390-dark.png`, `support-access-desktop-dark.png`, `invite-role-390-dark.png`, `questionnaire-390-dark.png`
+
+| Check | Result |
+|---|---|
+| Runtime SHA | PASS (`f276f919`) |
+| Documents labels (Event insurance / Share with venue) | PASS — readable, not Tailwind gray-500 |
+| Upload document discoverable | PASS |
+| Invite role chevron before focus (`htc-native-select`) | PASS |
+| Support Access duration visible + chevron | PASS |
+| Questionnaire surface no gray-500/700 | PASS (empty state when none waiting; no hardcoded gray) |
+| Fixture cleanup | PASS |
 
 ## Contrast method
 
-Representative pairs via `contrastRatio` / `inkOn` in unit tests (WCAG 2.2 AA 4.5:1 for body text on brand primary submit). Live browser measurements recorded after Sandbox deploy.
+Unit: `inkOn` / `contrastRatio` ≥ 4.5:1 on brand primaries. Live: computed-style probes reject `rgb(107,114,128)` / `rgb(55,65,81)` / `rgb(156,163,175)`; require `htc-native-select` + CSS `background-image` chevron.
 
-## Deploy / browser
+## Deferred / note
 
-_Filled after Sandbox deploy._
-
-## Production / marketing
-
-Not deployed. Sandbox only.
+Portal chrome remains light-surfaced even when `colorScheme: dark` is requested (branded couple workspace). Fixes use semantic tokens so both light and dark contexts stay readable. Questionnaire empty state proven when no form is waiting; form token swap is covered by unit source assertions + build.
