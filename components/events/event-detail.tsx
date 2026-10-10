@@ -181,10 +181,10 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
   return (
     <Card
       size="sm"
-      className="border-primary/20 bg-primary/5 gap-3"
+      className="h-full border-primary/20 bg-primary/5 gap-3 lg:h-full"
       data-testid="event-booking-summary"
     >
-      <CardContent className="text-left">
+      <CardContent className="flex h-full flex-col text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-0">
             <p className="font-heading text-2xl font-medium tracking-tight text-heading leading-tight">
@@ -203,7 +203,7 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
             <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
           </div>
         </div>
-        <dl className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-2.5 grid flex-1 grid-cols-1 content-start gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <div className="min-w-0">
             <dt className="text-xs text-muted-foreground">Time</dt>
             <dd className="mt-0.5 leading-snug text-foreground" title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}>
@@ -621,13 +621,16 @@ export function EventDetail({
       {/* ── Booking + staffing (compact upper region) ─────────────────── */}
       <div
         data-testid="client-booking-staff-region"
-        className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
+        className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
       >
         <EventHeroCard
           event={event}
           spaceLine={spaceAssignmentsDisplay ?? spaceName}
         />
-        <div className="flex min-w-0 flex-col gap-3">
+        <div
+          data-testid="client-staffing-column"
+          className="flex min-w-0 flex-col gap-3"
+        >
           <Card size="sm" className="gap-2" data-testid="event-staff-assignment">
             <CardHeader className="gap-0.5">
               <CardTitle className="text-base">Team assignment</CardTitle>
