@@ -367,6 +367,10 @@ describe("Create New Version service wiring", () => {
     assert.match(detail, /Version history/);
     assert.match(detail, /Created /);
     assert.match(detail, /v.signedAt/);
+    assert.match(detail, /isFullyExecutedSingleVersion/);
+    assert.match(detail, /showStandaloneVersionHistory/);
+    assert.match(detail, /data-testid="contract-version-compact"/);
+    assert.match(detail, /data-testid="contract-version-history-card"/);
   });
 
   it("actions expose createNewVersionFromContractAction", () => {

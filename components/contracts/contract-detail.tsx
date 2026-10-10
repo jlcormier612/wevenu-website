@@ -175,6 +175,14 @@ export function ContractDetail({
     ? versionFamily.find((v) => v.id === currentVersion.amendsContractId) ?? null
     : null;
   const versionNumber = currentVersion?.versionNumber ?? 1;
+  /** Multi-version lineage or an amend parent — keep the history card. */
+  const hasMeaningfulVersionHistory = versionFamily.length > 1 || Boolean(basedOn);
+  /** Fully executed V1 alone: fold "Version 1" into Signatures; drop the redundant card. */
+  const isFullyExecutedSingleVersion =
+    contract.status === "signed" && !hasMeaningfulVersionHistory;
+  const showStandaloneVersionHistory =
+    hasMeaningfulVersionHistory ||
+    ((versionFamily.length > 0 || Boolean(basedOn)) && !isFullyExecutedSingleVersion);
 
   function handleSaveEdit() {
     startSave(async () => {
@@ -506,10 +514,22 @@ export function ContractDetail({
 
       {/* Signers status */}
       {signers.length > 0 && (
-        <Card>
+        <Card data-testid="contract-signatures-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Signatures</CardTitle>
-            <CardDescription>{uiState.label}</CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-base">Signatures</CardTitle>
+                <CardDescription>{uiState.label}</CardDescription>
+              </div>
+              {isFullyExecutedSingleVersion ? (
+                <p
+                  className="shrink-0 text-xs font-medium text-muted-foreground"
+                  data-testid="contract-version-compact"
+                >
+                  {formatVersionLabel(versionNumber)}
+                </p>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {clientSigners.map((s) => (
@@ -540,9 +560,10 @@ export function ContractDetail({
         </Card>
       )}
 
-      {/* Version lineage — derived from amends_contract_id */}
-      {(versionFamily.length > 0 || basedOn) && (
-        <Card>
+      {/* Version lineage — derived from amends_contract_id.
+          Fully executed Version 1 alone is shown compactly on Signatures instead. */}
+      {showStandaloneVersionHistory && (
+        <Card data-testid="contract-version-history-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Version history</CardTitle>
             <CardDescription>
