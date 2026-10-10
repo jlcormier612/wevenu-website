@@ -27,15 +27,18 @@ export function StaffAssignmentField({
 }) {
   const router = useRouter();
   const [selected, setSelected] = React.useState(value ?? "");
+  const selectedRef = React.useRef(value ?? "");
   const [pending, start] = React.useTransition();
 
   React.useEffect(() => {
+    selectedRef.current = value ?? "";
     setSelected(value ?? "");
   }, [value]);
 
   function save() {
+    const next = selectedRef.current;
     start(async () => {
-      const result = await onSave(selected.trim() || null);
+      const result = await onSave(next.trim() || null);
       if (result.ok) {
         toast.success("Assignment saved.");
         router.refresh();
@@ -65,7 +68,11 @@ export function StaffAssignmentField({
       <div className={compact ? "flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none" : "flex flex-wrap items-center gap-2"}>
         <Select
           value={selected || "__unassigned__"}
-          onValueChange={(next) => setSelected(next === "__unassigned__" ? "" : next)}
+          onValueChange={(next) => {
+            const resolved = next === "__unassigned__" ? "" : next;
+            selectedRef.current = resolved;
+            setSelected(resolved);
+          }}
           items={[
             { value: "__unassigned__", label: "Unassigned" },
             ...staff.map((member) => ({ value: member.id, label: member.name })),

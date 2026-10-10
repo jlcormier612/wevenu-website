@@ -27,6 +27,8 @@ describe("tour completion defaults to the scheduled occurrence", () => {
 
   it("a failed save does not close the form as completed", () => {
     const save = card.slice(card.indexOf("function handleSave"), card.indexOf("const isEmpty"));
+    assert.match(save, /const input = inputRef\.current/);
+    assert.match(save, /const differentTime = differentTimeRef\.current/);
     const ok = save.slice(save.indexOf("if (result.ok)"), save.indexOf("} else {"));
     assert.match(ok, /setEditing\(false\)/);
     assert.doesNotMatch(save.slice(save.indexOf("} else {")), /setEditing\(false\)/);

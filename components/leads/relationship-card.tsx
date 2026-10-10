@@ -122,7 +122,9 @@ export function RelationshipCard({
   const [input, setInput] = React.useState<RelationshipInput>(() =>
     createInitialRelationshipInput(lead),
   );
+  const inputRef = React.useRef(input);
   const [differentTime, setDifferentTime] = React.useState(() => differentTimeInitial(lead));
+  const differentTimeRef = React.useRef(differentTime);
   const [pending, startTransition] = React.useTransition();
   // Capacity and calendar blocks stay visible, but they must not disable Save.
   // Follow-up fields share this button with the tour. The server writes the
@@ -160,6 +162,7 @@ export function RelationshipCard({
         next.tourActualDate = "";
         next.tourActualTime = "";
       }
+      inputRef.current = next;
       return next;
     });
     if (key === "tourCompleted" && value === true) {
@@ -167,20 +170,29 @@ export function RelationshipCard({
       setTourConflictMessage(null);
     }
     if (key === "tourCompleted" && value === false) {
+      differentTimeRef.current = false;
       setDifferentTime(false);
     }
   }
 
   function setHappenedAtDifferentTime(on: boolean) {
+    differentTimeRef.current = on;
     setDifferentTime(on);
     if (!on) {
-      setInput((p) => ({ ...p, tourActualDate: "", tourActualTime: "" }));
+      setInput((p) => {
+        const next = { ...p, tourActualDate: "", tourActualTime: "" };
+        inputRef.current = next;
+        return next;
+      });
     }
   }
 
   function handleCancel() {
-    setInput(createInitialRelationshipInput(lead));
-    setDifferentTime(differentTimeInitial(lead));
+    const reset = createInitialRelationshipInput(lead);
+    inputRef.current = reset;
+    differentTimeRef.current = differentTimeInitial(lead);
+    setInput(reset);
+    setDifferentTime(differentTimeRef.current);
     setEditing(false);
   }
 
@@ -231,6 +243,8 @@ export function RelationshipCard({
   }
 
   function handleSave() {
+    const input = inputRef.current;
+    const differentTime = differentTimeRef.current;
     if (input.tourCompleted && differentTime) {
       if (!input.tourActualDate.trim() || !input.tourActualTime.trim()) {
         toast.error("Enter the date and time the tour actually occurred.");
@@ -263,6 +277,7 @@ export function RelationshipCard({
       const result = await updateRelationshipAction(lead.id, saved, hints);
       if (result.ok) {
         prev.current = { ...saved };
+        inputRef.current = saved;
         setInput(saved);
         if (result.tourConflict) {
           setTourConflictMessage(result.tourConflict.message);

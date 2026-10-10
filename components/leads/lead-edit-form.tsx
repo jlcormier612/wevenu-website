@@ -85,12 +85,15 @@ export function LeadEditForm({
 }) {
   const router = useRouter();
   const [input, setInput] = React.useState<LeadInput>(() => leadToInput(lead));
+  const inputRef = React.useRef(input);
   const [errors, setErrors] = React.useState<LeadErrors>({});
   const [pending, startTransition] = React.useTransition();
 
   const set = <K extends keyof LeadInput>(key: K, value: LeadInput[K]) => {
-    setInput((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
+    const next = { ...inputRef.current, [key]: value };
+    inputRef.current = next;
+    setInput(next);
+    setErrors((prev) => { const nextErrors = { ...prev }; delete nextErrors[key]; return nextErrors; });
   };
 
   const selectedEventTypeOption = eventTypeOptions.find((o) => o.value === input.eventType);
@@ -99,9 +102,10 @@ export function LeadEditForm({
     : undefined;
 
   function handleSubmit() {
+    const current = inputRef.current;
     startTransition(async () => {
       try {
-        const result = await updateLeadInfoAction(lead.id, input);
+        const result = await updateLeadInfoAction(lead.id, current);
         if (result.ok) {
           toast.success("Lead updated.");
           // Soft replace only — hard reload is not required and can drop Lead

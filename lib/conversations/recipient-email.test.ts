@@ -184,5 +184,8 @@ describe("send boundary uses the canonical resolver", () => {
     const okBranch = submit.slice(submit.indexOf("if (result.ok)"), submit.indexOf("if (result.errors)"));
     assert.match(okBranch, /router\.replace/);
     assert.doesNotMatch(submit.slice(submit.indexOf("if (result.errors)")), /router\.replace/);
+    assert.match(submit, /const current = inputRef\.current/);
+    assert.match(submit, /updateLeadInfoAction\(lead\.id, current\)/);
+    assert.doesNotMatch(submit, /updateLeadInfoAction\(lead\.id, input\)/);
   });
 });
