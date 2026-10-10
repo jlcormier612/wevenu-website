@@ -20,6 +20,7 @@ import { RsvpPage } from "@/components/wedding-website/rsvp-page";
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
 import { ProgressRing } from "@/components/dashboard-system/progress";
 import { FinalizeGuestCountCard } from "@/components/portal/finalize-guest-count-card";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 
 // Hosted Experience Platform Phase 4 — "preview as this guest." Self-contained
 // so it doesn't need new props threaded through GuestRow's already-long list —
@@ -616,7 +617,7 @@ function GuestFieldsForm({ fields, setFields, households, mealOptions, autoFocus
 
       <div className="space-y-1.5">
         <select value={fields.householdChoice} onChange={e => set("householdChoice", e.target.value)}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+          className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${HTC_NATIVE_SELECT_CLASS}`}>
           <option value={NO_HOUSEHOLD}>No household</option>
           {households.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
           <option value={NEW_HOUSEHOLD}>+ New household…</option>
@@ -672,7 +673,7 @@ function GuestFieldsForm({ fields, setFields, households, mealOptions, autoFocus
       <DisclosureSection label="Meal & Dietary" summary={dietarySummary} defaultOpen={!!dietarySummary || !!fields.mealChoice}>
         {mealOptions.length > 0 && (
           <select value={fields.mealChoice} onChange={e => set("mealChoice", e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+            className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${HTC_NATIVE_SELECT_CLASS}`}>
             <option value="">Meal choice — not yet selected</option>
             {mealOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
           </select>
@@ -872,7 +873,7 @@ function GuestRow({ token, guest, linkedPlusOneName, primaryGuestName, onDelete,
         />
 
         <select value={guest.rsvpStatus} onChange={e => onStatusChange(guest.id, e.target.value)}
-          className="text-[10px] font-semibold rounded-full border px-1.5 py-0.5 focus:outline-none"
+          className={`text-[10px] font-semibold rounded-full border px-1.5 py-0.5 focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}
           style={{
             background: `${RSVP_COLORS[guest.rsvpStatus]}15`,
             color: RSVP_COLORS[guest.rsvpStatus],
@@ -1640,7 +1641,7 @@ export function GuestSection({ token }: { token: string }) {
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
           {mealOptions.length > 0 && (
             <select value={vendorMealChoice} onChange={e => setVendorMealChoice(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+              className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${HTC_NATIVE_SELECT_CLASS}`}>
               <option value="">Meal choice (optional)</option>
               {mealOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
             </select>

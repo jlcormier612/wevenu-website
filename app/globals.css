@@ -566,6 +566,39 @@ html:has(.htc-staff) [data-slot="table"] {
   background-color: transparent;
 }
 
+/*
+ * Native <select> discoverability (client portal + vendor switchers).
+ * Browser-default selects often look like empty text boxes until focused —
+ * especially in dark theme. Force a chevron + token ink/surface.
+ */
+.htc-native-select {
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--foreground);
+  background-color: var(--background);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+.dark .htc-native-select,
+[data-theme="dark"] .htc-native-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+.htc-native-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.htc-native-select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 /* ---- Confetti animation (booking celebration) ----------------------------- */
 @keyframes confetti-fall {
   0%   { opacity: 1;   transform: translateY(-12px) rotate(0deg); }

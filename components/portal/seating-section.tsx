@@ -26,6 +26,7 @@ import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { getSeatingObservation } from "@/lib/luv/portal-observations";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 import {
   ACCESSIBILITY_LABELS, DIETARY_EMOJI, MEAL_EMOJI,
   type SeatingData, type SeatingTable, type SeatingGuest, type SeatingSuggestionHousehold,
@@ -680,7 +681,7 @@ function SelectionBar({
       <span className="text-xs font-medium text-foreground">{`${count} guest${count === 1 ? "" : "s"} selected`}</span>
       <select
         value={selectedTableId ?? ""} onChange={(e) => onChangeTable(e.target.value)}
-        className="h-7 rounded-md border border-border bg-card px-2 text-xs"
+        className={`h-7 rounded-md border border-border bg-card px-2 text-xs ${HTC_NATIVE_SELECT_CLASS}`}
       >
         <option value="">Choose a table…</option>
         {tables.map((t) => <option key={t.id} value={t.id}>{t.label ?? "Table"}</option>)}
@@ -1237,7 +1238,7 @@ export default function SeatingSection({ token }: { token: string }) {
             On phones, choose a guest and a table — no drag required.
           </p>
           <select
-            className="w-full text-sm border border-border rounded-lg px-2 py-2 bg-background"
+            className={`w-full text-sm border border-border rounded-lg px-2 py-2 bg-background ${HTC_NATIVE_SELECT_CLASS}`}
             value={mobileAssignGuestId ?? ""}
             onChange={(e) => setMobileAssignGuestId(e.target.value || null)}
             aria-label="Guest to seat"
@@ -1250,7 +1251,7 @@ export default function SeatingSection({ token }: { token: string }) {
             ))}
           </select>
           <select
-            className="w-full text-sm border border-border rounded-lg px-2 py-2 bg-background"
+            className={`w-full text-sm border border-border rounded-lg px-2 py-2 bg-background ${HTC_NATIVE_SELECT_CLASS}`}
             value={selectedTableId ?? ""}
             onChange={(e) => setSelectedTableId(e.target.value || null)}
             aria-label="Table"

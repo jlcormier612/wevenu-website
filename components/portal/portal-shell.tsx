@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/sheet";
 import { sessionDeviceLabel } from "@/lib/client-auth/session-label";
 import { countUnreadVenueMessages } from "@/lib/portal/unread-messages";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
@@ -2513,7 +2514,7 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
               <div className="flex gap-2">
                 <select value={addCategory} onChange={e => setAddCategory(e.target.value)}
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                  className={`flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm ${HTC_NATIVE_SELECT_CLASS}`}>
                   <option value="">Category…</option>
                   {TODO_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
@@ -2842,7 +2843,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Role</p>
                           <select value={editRole} onChange={e => setEditRole(e.target.value)}
-                            className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none">
+                            className={`w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}>
                             {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                           </select>
                           {editRole === "custom" && (
@@ -2853,7 +2854,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Permissions</p>
                           <select value={editPermission} onChange={e => setEditPermission(e.target.value)}
-                            className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none">
+                            className={`w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}>
                             {Object.entries(PERMISSION_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                           </select>
                           <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{PERMISSION_META[editPermission]?.desc}</p>
@@ -2957,7 +2958,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
                 id="invite-role"
                 value={inviteRole}
                 onChange={e => setInviteRole(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+                className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}
               >
                 {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
@@ -2985,7 +2986,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
                 id="invite-access"
                 value={invitePermission}
                 onChange={e => setInvitePermission(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+                className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}
               >
                 {Object.entries(PERMISSION_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
               </select>
@@ -4413,8 +4414,9 @@ function AccountSettingsPanel({ token, venueName }: { token: string; venueName: 
                 id="support-access-duration"
                 value={grantHours}
                 onChange={(e) => setGrantHours(Number(e.target.value))}
-                className="h-9 w-full max-w-[12rem] rounded-lg border border-border bg-background px-2 text-xs"
+                className={`h-9 w-full max-w-[12rem] rounded-lg border border-border bg-background px-2 text-xs ${HTC_NATIVE_SELECT_CLASS}`}
                 aria-label="Access duration"
+                data-testid="support-access-duration"
               >
                 {SUPPORT_ACCESS_DURATIONS.map((d) => (
                   <option key={d.hours} value={d.hours}>{d.label}</option>

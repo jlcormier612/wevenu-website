@@ -382,22 +382,24 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
       id={portalFocusElementId("documents", "upload")}
       className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3"
     >
-      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+      <label className="flex min-h-9 items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
         <input
           type="checkbox"
           checked={isInsurance}
           onChange={(e) => handleInsuranceToggle(e.target.checked)}
-          className="rounded"
+          className="h-4 w-4 shrink-0 rounded border border-input bg-background text-primary accent-primary"
+          aria-label="Event insurance"
         />
         Event insurance
       </label>
-      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+      <label className={`flex min-h-9 items-center gap-2 text-xs font-medium cursor-pointer ${isInsurance ? "text-muted-foreground" : "text-foreground"}`}>
         <input
           type="checkbox"
           checked={shareWithVenue || isInsurance}
           onChange={(e) => handleShareToggle(e.target.checked)}
-          className="rounded"
+          className="h-4 w-4 shrink-0 rounded border border-input bg-background text-primary accent-primary disabled:opacity-60"
           disabled={isInsurance}
+          aria-label={isInsurance ? "Share with venue (required)" : "Share with venue"}
         />
         Share with venue{isInsurance ? " (required)" : ""}
       </label>
@@ -408,7 +410,14 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
         className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
       />
-      <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()} className="text-xs">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+        className="min-h-9 border-border bg-background text-foreground hover:bg-muted"
+        data-testid="portal-upload-document"
+      >
         {uploading ? "Uploading…" : isInsurance ? "+ Upload insurance" : "+ Upload document"}
       </Button>
     </div>

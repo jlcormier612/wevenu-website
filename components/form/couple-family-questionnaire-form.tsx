@@ -26,6 +26,7 @@ import {
   type MasterOverrides,
   type ResolvedQuestionnaireField,
 } from "@/lib/questionnaire-family/resolve";
+import { inkOn } from "@/lib/theme/public-form-surface";
 
 export type FamilyQuestionnaireData = {
   questionnaire_id: string;
@@ -72,10 +73,10 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 function FieldShell({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-gray-700">
-        {label}{required && <span className="text-red-500"> *</span>}
+      <label className="block text-sm font-medium text-foreground">
+        {label}{required && <span className="text-destructive"> *</span>}
       </label>
-      {hint && <p className="text-xs text-gray-500">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {children}
     </div>
   );
@@ -83,8 +84,8 @@ function FieldShell({ label, hint, required, children }: { label: string; hint?:
 
 function SectionHead({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-t border-gray-100 pt-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">{children}</p>
+    <div className="border-t border-border pt-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">{children}</p>
     </div>
   );
 }
@@ -308,7 +309,9 @@ export function CoupleFamilyQuestionnaireForm({
     } catch { setError("Network error. Please try again."); setState("idle"); }
   }
 
-  const inputCls = "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:border-transparent";
+  const inputCls =
+    "w-full rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent";
+  const submitInk = inkOn(primary);
   const sections = [...new Set(visibleFields().map((f) => f.section))];
 
   if (state === "stale") {
@@ -361,8 +364,8 @@ export function CoupleFamilyQuestionnaireForm({
       </header>
 
       {isChangesRequested && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left space-y-1">
-          <p className="text-sm font-medium text-heading">Your venue requested changes</p>
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-left space-y-1">
+          <p className="text-sm font-medium text-foreground">Your venue requested changes</p>
           {data.changes_requested_note ? (
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{data.changes_requested_note}</p>
           ) : (
@@ -378,7 +381,7 @@ export function CoupleFamilyQuestionnaireForm({
             if (f.type === "guest_count_confirm") {
               const known = data.event_guest_count;
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   {known != null ? (
                     <p className="text-sm text-heading">
                       We currently have <strong>{known}</strong> guests listed for your event. Is that still correct?
@@ -389,8 +392,14 @@ export function CoupleFamilyQuestionnaireForm({
                   {known != null && (
                     <div className="flex flex-col gap-2 sm:flex-row">
                       {(["yes", "no"] as const).map((v) => (
-                        <label key={v} className="flex items-center gap-2 text-sm">
-                          <input type="radio" name="guest_confirm" checked={guestConfirm === v} onChange={() => setGuestConfirm(v)} />
+                        <label key={v} className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="radio"
+                            name="guest_confirm"
+                            checked={guestConfirm === v}
+                            onChange={() => setGuestConfirm(v)}
+                            className="h-4 w-4 shrink-0 accent-primary"
+                          />
                           {v === "yes" ? "Yes, that's right" : "No, I'd like to update it"}
                         </label>
                       ))}
@@ -407,7 +416,7 @@ export function CoupleFamilyQuestionnaireForm({
 
             if (f.type === "known_timing_confirm") {
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   <p className="text-sm text-heading">{f.label}</p>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     {data.ceremony_start_time && <li>Ceremony: {data.ceremony_start_time}{data.ceremony_location ? ` · ${data.ceremony_location}` : ""}</li>}
@@ -416,8 +425,13 @@ export function CoupleFamilyQuestionnaireForm({
                       <li>Your coordinator will keep your Timeline and Event Order current as details firm up.</li>
                     )}
                   </ul>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={timingChanging} onChange={(e) => setTimingChanging(e.target.checked)} />
+                  <label className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={timingChanging}
+                      onChange={(e) => setTimingChanging(e.target.checked)}
+                      className="h-4 w-4 shrink-0 rounded border border-input accent-primary"
+                    />
                     Something is changing
                   </label>
                   {timingChanging && (
@@ -439,13 +453,18 @@ export function CoupleFamilyQuestionnaireForm({
 
             if (f.type === "known_ceremony_confirm") {
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   <p className="text-sm text-heading">{f.label}</p>
                   <p className="text-sm text-muted-foreground">
                     {[data.ceremony_location, data.ceremony_start_time].filter(Boolean).join(" · ") || "Ceremony details are on your Event Order / Timeline as your plans firm up."}
                   </p>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={ceremonyChanging} onChange={(e) => setCeremonyChanging(e.target.checked)} />
+                  <label className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={ceremonyChanging}
+                      onChange={(e) => setCeremonyChanging(e.target.checked)}
+                      className="h-4 w-4 shrink-0 rounded border border-input accent-primary"
+                    />
                     Something is changing
                   </label>
                   {ceremonyChanging && (
@@ -457,7 +476,7 @@ export function CoupleFamilyQuestionnaireForm({
 
             if (f.type === "vendor_review") {
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   <p className="text-sm text-heading">{f.label}</p>
                   {(data.known_vendors?.length ?? 0) > 0 ? (
                     <ul className="text-sm text-muted-foreground space-y-1">
@@ -488,7 +507,7 @@ export function CoupleFamilyQuestionnaireForm({
                 <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
                   <div className="space-y-2">
                     {(f.options ?? []).map((opt) => (
-                      <label key={opt.value} className="flex items-start gap-2 text-sm">
+                      <label key={opt.value} className="flex items-start gap-2 text-sm text-foreground">
                         <input
                           type="checkbox"
                           checked={selected.has(opt.value)}
@@ -498,6 +517,7 @@ export function CoupleFamilyQuestionnaireForm({
                             else next.add(opt.value);
                             setFamilyField(f.id, JSON.stringify([...next]));
                           }}
+                          className="mt-0.5 h-4 w-4 shrink-0 rounded border border-input accent-primary"
                         />
                         <span>{opt.label}</span>
                       </label>
@@ -525,7 +545,7 @@ export function CoupleFamilyQuestionnaireForm({
                 <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
                   <div className="space-y-2">
                     {(f.options ?? []).map((opt) => (
-                      <label key={opt.value} className="flex items-start gap-2 text-sm">
+                      <label key={opt.value} className="flex items-start gap-2 text-sm text-foreground">
                         <input
                           type="radio"
                           name={f.id}
@@ -534,6 +554,7 @@ export function CoupleFamilyQuestionnaireForm({
                             if (f.destination === "column" && f.column) setColumns((c) => ({ ...c, [f.column!]: opt.value }));
                             else setFamilyField(f.id, opt.value);
                           }}
+                          className="mt-0.5 h-4 w-4 shrink-0 border border-input accent-primary"
                         />
                         <span>{opt.label}</span>
                       </label>
@@ -586,13 +607,13 @@ export function CoupleFamilyQuestionnaireForm({
         </section>
       ))}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
 
       <button
         type="submit"
         disabled={state === "submitting"}
-        className="w-full rounded-lg px-4 py-3 text-sm font-medium text-white"
-        style={{ background: primary }}
+        className="w-full rounded-lg px-4 py-3 text-sm font-medium disabled:opacity-60"
+        style={{ background: primary, color: submitInk }}
       >
         {state === "submitting" ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : isChangesRequested ? "Resubmit" : "Submit"}
       </button>

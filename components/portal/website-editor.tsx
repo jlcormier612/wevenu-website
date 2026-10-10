@@ -28,6 +28,7 @@ import {
   colorStoryBundlePatch,
   resolveBundledColorStory,
 } from "@/lib/wedding-website/collection-color-bundle";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePreview } from "@/components/portal/collection-preview";
 
 // ── Theme Studio (2026-07-24) ─────────────────────────────────────────────────
@@ -845,7 +846,7 @@ function BridalPartyEditor({ content, onSave, onCancel, token }: { content: Webs
               </div>
               <div className="flex-1 space-y-2">
                 <input value={m.name} onChange={e => set(i, "name", e.target.value)} placeholder="Name *" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
-                <select value={m.role} onChange={e => set(i, "role", e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none text-muted-foreground">
+                <select value={m.role} onChange={e => set(i, "role", e.target.value)} className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none text-foreground ${HTC_NATIVE_SELECT_CLASS}`}>
                   <option value="">Role *</option>
                   {COMMON_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                   <option value="custom">Other…</option>
@@ -931,7 +932,7 @@ function ThingsToDoEditor({ content, onSave, onCancel }: { content: WebsiteConte
               <div className="flex-1 space-y-2">
                 <div className="flex gap-2">
                   <input value={item.name} onChange={e => set(i, "name", e.target.value)} placeholder="Name *" className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
-                  <select value={item.category} onChange={e => set(i, "category", e.target.value)} className="w-36 rounded-lg border border-border bg-background px-2 py-2 text-sm focus:outline-none">
+                  <select value={item.category} onChange={e => set(i, "category", e.target.value)} className={`w-36 rounded-lg border border-border bg-background px-2 py-2 text-sm focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}>
                     {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>

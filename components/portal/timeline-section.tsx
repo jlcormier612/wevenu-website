@@ -23,6 +23,7 @@ import { CLIENT_TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline
 import type { PortalTimeline, PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 import {
   SHARE_TIMELINE_ACTION_TYPE,
   shouldPresentShareTimelineCelebration,
@@ -50,7 +51,7 @@ function DaySelect({
     <select
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+      className={`h-8 rounded-md border border-input bg-background px-2 text-sm ${HTC_NATIVE_SELECT_CLASS}`}
       aria-label="Day"
     >
       {options.map((o) => (

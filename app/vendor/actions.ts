@@ -90,7 +90,12 @@ export async function claimVendorProfileAction(claimToken: string): Promise<
 // Venue-First Dashboard's lightweight switcher (2026-07-24) — only rendered
 // when a vendor has more than one active venue relationship. Re-resolves
 // the hero/contacts/partnership block client-side without a full page nav.
+// Persists preference via cookie so refresh / section nav keep the same venue.
 export async function getVendorActiveVenueAction(venueId: string): Promise<VendorActiveVenueContext> {
+  const { writeVendorActiveVenueCookie } = await import(
+    "@/lib/vendor-partnerships/active-venue-cookie"
+  );
+  await writeVendorActiveVenueCookie(venueId);
   return getVendorActiveVenue(venueId);
 }
 
