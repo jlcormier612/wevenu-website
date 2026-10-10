@@ -1,16 +1,9 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { ProposalBrand, ProposalView } from "@/lib/booking-journey/proposal-view";
 import { formatCurrency } from "@/lib/invoices/constants";
-
-const DEFAULT_BRAND: ProposalBrand = {
-  primaryColor: "#5D6F5D",
-  secondaryColor: "#4F5F4F",
-  accentColor: "#B8AEA1",
-  neutralColor: "#F7F5F1",
-  logoUrl: null,
-};
+import { DEFAULT_VENUE_BRAND, venueBrandSurfaceStyle } from "@/lib/theme/venue-brand-surface";
 
 /**
  * The couple-facing package / proposal body. Venue preview and /offer/{token} share
@@ -40,19 +33,14 @@ export function ProposalArtifact({
 }) {
   const showDeposit = proposal.depositAmount > 0;
   const accepted = proposal.status === "accepted";
-  const brand = proposal.brand ?? DEFAULT_BRAND;
-  const brandStyle = {
-    "--venue-primary": brand.primaryColor,
-    "--venue-secondary": brand.secondaryColor,
-    "--venue-accent": brand.accentColor,
-    "--venue-neutral": brand.neutralColor,
-    backgroundColor: "var(--venue-neutral)",
-  } as CSSProperties;
+  const brand: ProposalBrand = proposal.brand ?? { ...DEFAULT_VENUE_BRAND, logoUrl: null };
+  const brandStyle = venueBrandSurfaceStyle(brand);
 
   return (
     <div
-      className="mx-auto min-h-full max-w-lg px-4 py-12"
+      className="mx-auto min-h-full max-w-lg px-4 py-12 text-foreground"
       style={brandStyle}
+      data-theme-lock="light"
       data-venue-brand="proposal"
     >
       <p
@@ -99,7 +87,7 @@ export function ProposalArtifact({
           className="mt-6 whitespace-pre-wrap rounded-lg border px-4 py-3 text-sm text-foreground"
           style={{
             borderColor: "var(--venue-primary)",
-            backgroundColor: "color-mix(in srgb, var(--venue-neutral) 70%, white)",
+            backgroundColor: "var(--venue-card)",
           }}
         >
           {proposal.offerMessage}
@@ -123,7 +111,7 @@ export function ProposalArtifact({
       ) : null}
       <div className="mt-8">
         {accepted ? (
-          <p className="rounded-lg border border-border bg-white/80 px-4 py-3 text-sm text-foreground">
+          <p className="rounded-lg border border-border px-4 py-3 text-sm text-foreground" style={{ backgroundColor: "var(--venue-card)" }}>
             {showDeposit
               ? "You've accepted this package. Your venue will collect the deposit next. This acceptance is not itself a booking."
               : "You've accepted this package. Your venue will follow up on what comes next."}

@@ -1,6 +1,7 @@
 import { BrochurePhotoComposition } from "@/components/brochures/brochure-photo-composition";
 import { formatPrice } from "@/lib/packages/constants";
 import type { BrochureRenderData } from "@/lib/brochures/types";
+import { venueBrandSurfaceStyle } from "@/lib/theme/venue-brand-surface";
 import type { CSSProperties } from "react";
 
 /**
@@ -23,13 +24,12 @@ export function BrochurePreviewView({
   const welcomeText = brochure.welcomeText || venue.story || "";
   const contactLine = [venue.email, venue.phone, venue.website].filter(Boolean).join(" · ");
   const photoUrls = brochure.photoUrls;
-  const brandStyle = {
-    "--venue-primary": venue.primaryColor || "#5D6F5D",
-    "--venue-secondary": venue.secondaryColor || "#4F5F4F",
-    "--venue-accent": venue.accentColor || "#B8AEA1",
-    "--venue-neutral": venue.neutralColor || "#F7F5F1",
-    backgroundColor: "var(--venue-neutral)",
-  } as CSSProperties;
+  const brandStyle = venueBrandSurfaceStyle({
+    primaryColor: venue.primaryColor,
+    secondaryColor: venue.secondaryColor,
+    accentColor: venue.accentColor,
+    neutralColor: venue.neutralColor,
+  });
 
   const sectionHeadStyle = {
     color: "var(--venue-secondary)",
@@ -39,8 +39,9 @@ export function BrochurePreviewView({
 
   return (
     <article
-      className="space-y-8 overflow-x-hidden rounded-lg border border-border p-6 sm:p-10"
+      className="space-y-8 overflow-x-hidden rounded-lg border border-border p-6 sm:p-10 text-foreground"
       style={brandStyle}
+      data-theme-lock="light"
       data-venue-brand="brochure"
     >
       <header

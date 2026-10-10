@@ -9,15 +9,7 @@ import type { OfferOptionView, OfferView } from "@/lib/booking-journey/offer";
 import type { ProposalBrand } from "@/lib/booking-journey/proposal-view";
 import { calculateProposalTotal } from "@/lib/commercial-proposals/types";
 import { formatCurrency } from "@/lib/invoices/constants";
-import type { CSSProperties } from "react";
-
-const DEFAULT_BRAND: ProposalBrand = {
-  primaryColor: "#5D6F5D",
-  secondaryColor: "#4F5F4F",
-  accentColor: "#B8AEA1",
-  neutralColor: "#F7F5F1",
-  logoUrl: null,
-};
+import { DEFAULT_VENUE_BRAND, venueBrandSurfaceStyle } from "@/lib/theme/venue-brand-surface";
 
 /**
  * Customer-facing multi-option proposal body.
@@ -62,14 +54,8 @@ export function MultiOptionProposalView({
   }, [primaryId, addonIds]);
 
   const total = calculateProposalTotal(options, choices);
-  const brand = offer.brand ?? DEFAULT_BRAND;
-  const brandStyle = {
-    "--venue-primary": brand.primaryColor,
-    "--venue-secondary": brand.secondaryColor,
-    "--venue-accent": brand.accentColor,
-    "--venue-neutral": brand.neutralColor,
-    backgroundColor: "var(--venue-neutral)",
-  } as CSSProperties;
+  const brand: ProposalBrand = offer.brand ?? { ...DEFAULT_VENUE_BRAND, logoUrl: null };
+  const brandStyle = venueBrandSurfaceStyle(brand);
 
   function toggleAddon(id: string) {
     setAddonIds((prev) => {
@@ -85,8 +71,9 @@ export function MultiOptionProposalView({
 
   return (
     <div
-      className="mx-auto min-h-full max-w-lg px-4 py-12"
+      className="mx-auto min-h-full max-w-lg px-4 py-12 text-foreground"
       style={brandStyle}
+      data-theme-lock="light"
       data-venue-brand="proposal"
       data-proposal-mode={mode}
     >
@@ -123,7 +110,7 @@ export function MultiOptionProposalView({
       {offer.offerMessage ? (
         <p
           className="mt-6 whitespace-pre-wrap rounded-lg border px-4 py-3 text-sm text-foreground"
-          style={{ borderColor: "var(--venue-primary)", backgroundColor: "rgba(255,255,255,0.6)" }}
+          style={{ borderColor: "var(--venue-primary)", backgroundColor: "var(--venue-card)" }}
         >
           {offer.offerMessage}
         </p>
@@ -184,7 +171,7 @@ export function MultiOptionProposalView({
             </section>
           ) : null}
 
-          <section className="mt-8 rounded-lg border border-border bg-white/70 px-4 py-4">
+          <section className="mt-8 rounded-lg border border-border px-4 py-4" style={{ backgroundColor: "var(--venue-card)" }}>
             <h2 className="text-sm font-semibold text-heading">Your selection</h2>
             {!selectedPrimary ? (
               <p className="mt-2 text-sm text-muted-foreground">Select a package above.</p>
@@ -283,9 +270,10 @@ function OptionCard({
   if (kind === "addon") {
     return (
       <label
-        className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 ${
-          active ? "border-heading bg-white/80" : "border-border bg-white/40"
+        className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-foreground ${
+          active ? "border-heading" : "border-border"
         }`}
+        style={{ backgroundColor: "var(--venue-card)" }}
       >
         <input type="checkbox" className="mt-1" checked={active} onChange={onSelect} />
         {body}
@@ -297,9 +285,10 @@ function OptionCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
-        active ? "border-heading bg-white/80" : "border-border bg-white/40 hover:bg-white/60"
+      className={`w-full rounded-lg border px-4 py-3 text-left text-foreground transition-colors ${
+        active ? "border-heading ring-2 ring-[color-mix(in_srgb,var(--venue-primary)_35%,transparent)]" : "border-border"
       }`}
+      style={{ backgroundColor: "var(--venue-card)" }}
     >
       {body}
     </button>

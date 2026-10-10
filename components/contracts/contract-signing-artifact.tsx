@@ -1,7 +1,7 @@
-import type { CSSProperties } from "react";
 import type { ReactNode } from "react";
 
 import type { ContractBrandingSnapshot } from "@/lib/contracts/branding";
+import { venueBrandSurfaceStyle } from "@/lib/theme/venue-brand-surface";
 
 /**
  * Customer-facing contract/agreement presentation used by /sign/{token}
@@ -24,20 +24,19 @@ export function ContractSigningArtifact({
   brand: ContractBrandingSnapshot | null;
   signatureSlot?: ReactNode;
 }) {
-  const brandStyle = {
-    "--venue-primary": brand?.primaryColor ?? "#5D6F5D",
-    "--venue-secondary": brand?.secondaryColor ?? "#4F5F4F",
-    "--venue-accent": brand?.accentColor ?? "#B8AEA1",
-    "--venue-neutral": brand?.neutralColor ?? "#F7F5F1",
-    backgroundColor: "var(--venue-neutral)",
-  } as CSSProperties;
+  const brandStyle = venueBrandSurfaceStyle({
+    primaryColor: brand?.primaryColor,
+    secondaryColor: brand?.secondaryColor,
+    accentColor: brand?.accentColor,
+    neutralColor: brand?.neutralColor,
+  });
 
   return (
-    <div className="min-h-full py-10 px-4" style={brandStyle} data-venue-brand="contract">
+    <div className="min-h-full py-10 px-4 text-foreground" style={brandStyle} data-theme-lock="light" data-venue-brand="contract">
       <div className="mx-auto max-w-3xl space-y-8">
         <div
-          className="rounded-xl border border-gray-200 border-t-4 bg-white px-6 py-6 shadow-sm sm:px-8"
-          style={{ borderTopColor: "var(--venue-primary)" }}
+          className="rounded-xl border border-border border-t-4 px-6 py-6 shadow-sm sm:px-8"
+          style={{ borderTopColor: "var(--venue-primary)", backgroundColor: "var(--venue-card)" }}
         >
           <div className="mb-3 flex items-center gap-3">
             {brand?.logoUrl ? (
@@ -60,7 +59,7 @@ export function ContractSigningArtifact({
           >
             Agreement for Review &amp; Signature
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-gray-900">{title}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-foreground">{title}</h1>
           <div
             className="mt-3 h-0.5 w-12 rounded-full"
             style={{ backgroundColor: "var(--venue-accent)" }}
@@ -68,8 +67,8 @@ export function ContractSigningArtifact({
           />
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white px-6 py-8 shadow-sm sm:px-8">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-800">
+        <div className="rounded-xl border border-border px-6 py-8 shadow-sm sm:px-8" style={{ backgroundColor: "var(--venue-card)" }}>
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
             {content}
           </pre>
         </div>

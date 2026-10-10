@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { publicFormSurfaceStyle } from "@/lib/theme/public-form-surface";
+import { publicFormSurfaceStyle, readableInk } from "@/lib/theme/public-form-surface";
 import { emailBrandFromVenue, renderBrandedEmailHtml } from "@/lib/email/venue-brand";
 import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
 
@@ -24,11 +24,7 @@ describe("Brand Colors — brochure HTML consumes the venue palette", () => {
   const src = readFileSync(resolve(ROOT, "components/brochures/brochure-preview-view.tsx"), "utf8");
 
   it("sets and consumes Primary, Secondary, Accent, and Neutral", () => {
-    assert.match(src, /--venue-primary/);
-    assert.match(src, /--venue-secondary/);
-    assert.match(src, /--venue-accent/);
-    assert.match(src, /--venue-neutral/);
-    assert.match(src, /backgroundColor:\s*"var\(--venue-neutral\)"/);
+    assert.match(src, /venueBrandSurfaceStyle/);
     assert.match(src, /borderBottomColor:\s*"var\(--venue-primary\)"/);
     assert.match(src, /color:\s*"var\(--venue-secondary\)"/);
     assert.match(src, /color:\s*"var\(--venue-accent\)"/);
@@ -52,7 +48,7 @@ describe("Brand Colors — contract HTML consumes intended palette", () => {
   const src = readFileSync(resolve(ROOT, "components/contracts/contract-signing-artifact.tsx"), "utf8");
 
   it("consumes Primary, Secondary, Accent, and Neutral beyond unused CSS vars", () => {
-    assert.match(src, /backgroundColor:\s*"var\(--venue-neutral\)"/);
+    assert.match(src, /venueBrandSurfaceStyle/);
     assert.match(src, /borderTopColor:\s*"var\(--venue-primary\)"/);
     assert.match(src, /color:\s*"var\(--venue-secondary\)"/);
     assert.match(src, /backgroundColor:\s*"var\(--venue-accent\)"/);
@@ -65,13 +61,16 @@ describe("Brand Colors — contract HTML consumes intended palette", () => {
 
 describe("Brand Colors — proposal renderer consumes venue palette", () => {
   const src = readFileSync(resolve(ROOT, "components/booking-journey/proposal-artifact.tsx"), "utf8");
+  const multi = readFileSync(resolve(ROOT, "components/booking-journey/multi-option-proposal-view.tsx"), "utf8");
 
-  it("consumes Primary, Secondary, Accent, and Neutral", () => {
-    assert.match(src, /--venue-primary/);
-    assert.match(src, /backgroundColor:\s*"var\(--venue-neutral\)"/);
+  it("consumes Primary, Secondary, Accent, and Neutral through the shared contrast surface", () => {
+    assert.match(src, /venueBrandSurfaceStyle/);
+    assert.match(multi, /venueBrandSurfaceStyle/);
     assert.match(src, /borderBottom:.*var\(--venue-primary\)/);
     assert.match(src, /color:\s*"var\(--venue-secondary\)"/);
     assert.match(src, /color:\s*"var\(--venue-accent\)"/);
+    assert.match(multi, /color:\s*"var\(--venue-secondary\)"/);
+    assert.match(multi, /color:\s*"var\(--venue-accent\)"/);
   });
 
   it("loads brand from offer token path and journey preview", () => {
@@ -93,7 +92,10 @@ describe("Brand Colors — public /book uses configured Neutral (not HTC cream)"
     });
     assert.equal(style.backgroundColor, SAMPLE.neutral);
     assert.notEqual(style.backgroundColor, "#F7F5F1");
-    assert.equal((style as Record<string, string>)["--heading"], SAMPLE.secondary);
+    assert.equal(
+      (style as Record<string, string>)["--heading"],
+      readableInk(SAMPLE.secondary, SAMPLE.neutral),
+    );
     assert.equal((style as Record<string, string>)["--ring"], SAMPLE.accent);
   });
 

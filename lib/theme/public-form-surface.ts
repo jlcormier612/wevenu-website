@@ -83,6 +83,22 @@ export function readableInk(preferred: string, background: string): string {
   return inkOn(background);
 }
 
+/**
+ * Soften ink toward the surface while staying at or above 4.5:1.
+ * Deterministic candidate list — no random mixing.
+ */
+export function mutedInkOn(background: string): string {
+  const ink = inkOn(background);
+  const lightSurface = (relativeLuminance(background) ?? 1) >= 0.5;
+  const candidates = lightSurface
+    ? ["#4F5F4F", "#3D2F30", "#525252", "#1C1917", ink]
+    : ["#D6D3D1", "#E7E5E4", "#F5F5F4", "#FAFAF9", ink];
+  for (const candidate of candidates) {
+    if ((contrastRatio(candidate, background) ?? 0) >= 4.5) return candidate;
+  }
+  return ink;
+}
+
 export function publicFormSurfaceStyle(
   brand:
     | string
@@ -99,18 +115,34 @@ export function publicFormSurfaceStyle(
   const accent = typeof brand === "string" ? undefined : brand.accent;
   const neutral = typeof brand === "string" ? undefined : brand.neutral;
 
+  if (neutral) {
+    const heading = secondary ? readableInk(secondary, neutral) : undefined;
+    const muted = mutedInkOn(neutral);
+    return {
+      ...PUBLIC_FORM_LIGHT_VARS,
+      color: "var(--foreground)",
+      colorScheme: "light",
+      backgroundColor: neutral,
+      ...(heading ? ({ "--heading": heading, "--foreground": heading } as CSSProperties) : {}),
+      "--muted-foreground": muted,
+      ...(accent
+        ? ({ "--ring": accent, "--accent": accent } as CSSProperties)
+        : ({ "--ring": primary } as CSSProperties)),
+      "--primary": primary,
+      "--primary-foreground": inkOn(primary),
+    } as CSSProperties;
+  }
+
   return {
     ...PUBLIC_FORM_LIGHT_VARS,
     color: "var(--foreground)",
     colorScheme: "light",
-    // Prefer configured venue Neutral for the branded page surface.
-    backgroundColor: neutral
-      ? neutral
-      : `color-mix(in srgb, ${primary} 8%, var(--background))`,
-    ...(secondary ? ({ "--heading": secondary } as CSSProperties) : {}),
+    backgroundColor: `color-mix(in srgb, ${primary} 8%, var(--background))`,
+    ...(secondary ? ({ "--heading": readableInk(secondary, "#ffffff") } as CSSProperties) : {}),
     ...(accent
       ? ({ "--ring": accent, "--accent": accent } as CSSProperties)
       : ({ "--ring": primary } as CSSProperties)),
     "--primary": primary,
+    "--primary-foreground": inkOn(primary),
   } as CSSProperties;
 }

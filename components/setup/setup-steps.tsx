@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { inkOn, readableInk } from "@/lib/theme/public-form-surface";
 import { cn } from "@/lib/utils";
 import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import {
@@ -592,6 +593,49 @@ const COLOR_ROLES: {
   { key: "neutralColor",   label: "Neutral",    hint: "Soft background tone on client-facing materials" },
 ];
 
+const BRAND_READABILITY_NOTE =
+  "Your brand colors stay yours. On proposals and other client pages, Hello to Cheers automatically keeps text readable if a color would be hard to see.";
+
+function BrandPreviewChip({
+  primary,
+  secondary,
+  accent,
+  neutral,
+  name,
+}: {
+  primary: string;
+  secondary: string;
+  accent: string;
+  neutral: string;
+  name: string;
+}) {
+  const onPrimary = inkOn(primary);
+  const chipInk = readableInk(primary, neutral);
+  return (
+    <>
+      <span
+        className="ml-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm"
+        style={{ backgroundColor: primary, color: onPrimary }}
+      >
+        {name}
+      </span>
+      <span
+        className="rounded-md px-3 py-1.5 text-xs font-medium border"
+        style={{
+          backgroundColor: neutral,
+          borderColor: accent,
+          color: chipInk,
+        }}
+      >
+        Upcoming event
+      </span>
+      <span className="text-[10px] text-muted-foreground" style={{ color: readableInk(secondary, neutral) }}>
+        Sample heading
+      </span>
+    </>
+  );
+}
+
 export function BrandStep({ input, errors, set }: StepProps) {
   return (
     <div className="space-y-6">
@@ -606,6 +650,7 @@ export function BrandStep({ input, errors, set }: StepProps) {
           </Field>
         ))}
       </div>
+      <p className="text-sm text-muted-foreground">{BRAND_READABILITY_NOTE}</p>
 
       {/* Live preview strip */}
       <div className="rounded-lg border border-border p-4 space-y-3">
@@ -622,22 +667,13 @@ export function BrandStep({ input, errors, set }: StepProps) {
               <span className="text-[10px] text-muted-foreground">{label}</span>
             </div>
           ))}
-          <span
-            className="ml-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm"
-            style={{ backgroundColor: input.primaryColor }}
-          >
-            {input.name.trim() || "Your venue"}
-          </span>
-          <span
-            className="rounded-md px-3 py-1.5 text-xs font-medium border"
-            style={{
-              backgroundColor: input.neutralColor,
-              borderColor: input.accentColor,
-              color: input.primaryColor,
-            }}
-          >
-            Upcoming event
-          </span>
+          <BrandPreviewChip
+            primary={input.primaryColor}
+            secondary={input.secondaryColor}
+            accent={input.accentColor}
+            neutral={input.neutralColor}
+            name={input.name.trim() || "Your venue"}
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Your logo can be added anytime from Settings after setup.
