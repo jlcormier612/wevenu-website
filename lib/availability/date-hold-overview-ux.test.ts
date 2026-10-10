@@ -29,15 +29,16 @@ const createHoldRepo = readFileSync(
 );
 
 describe("Date Hold overview UX placement", () => {
-  it("DateHoldsSection is in the lead header quick row, not on Tasks", () => {
+  it("DateHoldsSection is beside Sales owner on the summary row, not on Tasks", () => {
     assert.match(leadDetail, /desiredEventDate=\{lead\.eventDate\}/);
     assert.match(holdSection, /Date hold/);
-    assert.match(leadDetail, /data-testid="lead-quick-actions"/);
+    assert.match(leadDetail, /data-testid="lead-owner-hold-row"/);
     const row = leadDetail.slice(
-      leadDetail.indexOf('data-testid="lead-quick-actions"'),
-      leadDetail.indexOf("<RelationshipCard"),
+      leadDetail.indexOf('data-testid="lead-owner-hold-row"'),
+      leadDetail.indexOf('data-testid="lead-followup-contact-row"'),
     );
     assert.match(row, /<DateHoldsSection/);
+    assert.match(row, /StaffAssignmentField/);
     const tasksContent = leadDetail.indexOf('<TabsContent value="tasks">');
     const holds = leadDetail.indexOf("<DateHoldsSection");
     assert.ok(tasksContent > 0 && holds >= 0 && holds < tasksContent);

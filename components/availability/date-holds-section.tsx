@@ -266,7 +266,7 @@ export function DateHoldsSection({
             <div
               key={hold.id}
               className={compact
-                ? "flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-2 py-1"
+                ? "flex min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1"
                 : "flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"}
               data-testid="date-hold-active"
             >

@@ -1,7 +1,8 @@
 /**
  * Lead page upper-layout refinement:
- * Sales owner on summary facts row; compact collapsed Date hold;
- * Communication Preferences disclosure (collapsed by default).
+ * Sales owner + Date hold row; compact collapsed Date hold;
+ * Communication Preferences disclosure; contact people columns;
+ * Schedule Tour beside Start booking; Follow-up/Contact stretch pair.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -20,24 +21,49 @@ describe("lead page layout refinement", () => {
   it("places Sales owner with summary facts and keeps explicit save", () => {
     const facts = detail.slice(
       detail.indexOf('data-testid="lead-summary-facts"'),
-      detail.indexOf('data-testid="lead-quick-actions"'),
+      detail.indexOf('data-testid="lead-followup-contact-row"'),
     );
     assert.match(facts, /StaffAssignmentField/);
     assert.match(facts, /label="Sales owner"/);
     assert.match(facts, /testId="lead-staff-assignment"/);
     assert.match(facts, /setLeadAssignedStaffAction/);
+    assert.match(facts, /data-testid="lead-owner-hold-row"/);
+    assert.match(facts, /<DateHoldsSection/);
     assert.match(staff, /Save assignment/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(staff, /dirtyRef\.current = true/);
-    const quick = detail.slice(
-      detail.indexOf('data-testid="lead-quick-actions"'),
-      detail.indexOf("<RelationshipCard"),
+  });
+
+  it("places Schedule Tour immediately before Start booking", () => {
+    const actions = detail.slice(
+      detail.indexOf('data-testid="lead-booking-tour-actions"'),
+      detail.indexOf('data-testid="start-booking-action"') + 80,
     );
-    assert.doesNotMatch(quick, /StaffAssignmentField/);
+    assert.match(actions, /TourScheduleActions includeCopyLink=\{false\}/);
+    assert.match(actions, /data-testid="start-booking-action"/);
+    assert.ok(detail.indexOf('data-testid="start-booking-action"') > 0);
+    assert.match(detail, /includeSchedule/);
+  });
+
+  it("aligns Follow-up and Contact as a stretch pair with people above Communication Preferences", () => {
+    assert.match(detail, /data-testid="lead-followup-contact-row"/);
+    assert.match(detail, /items-stretch/);
+    assert.match(detail, /data-testid="lead-contact-card"/);
+    assert.match(detail, /data-testid="lead-contact-people"/);
+    assert.match(detail, /data-testid="lead-primary-contact"/);
+    assert.match(detail, /data-testid="lead-partner-contact"/);
+    const contact = detail.slice(
+      detail.indexOf('data-testid="lead-contact-card"'),
+      detail.indexOf("</TourScheduleRoot>"),
+    );
+    const peopleIdx = contact.indexOf('data-testid="lead-contact-people"');
+    const prefsIdx = contact.indexOf("RelationshipCommunicationSummary");
+    assert.ok(peopleIdx >= 0 && prefsIdx > peopleIdx);
+    assert.match(contact, /lead\.partnerEmail/);
+    assert.doesNotMatch(contact, /Lydia Cormier|Ali Shazam/);
   });
 
   it("collapsed compact Date hold omits space names and expiration", () => {
-    // Compact summary markup lives between these markers (before the regular-density branch).
     const marker = 'data-testid="date-hold-summary-date"';
     const start = holds.indexOf(marker);
     const end = holds.indexOf(") : (", start);

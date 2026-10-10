@@ -521,18 +521,28 @@ export function TourScheduleRoot({
   );
 }
 
-export function TourScheduleActions({ includeCopyLink = true }: { includeCopyLink?: boolean }) {
+export function TourScheduleActions({
+  includeCopyLink = true,
+  includeSchedule = true,
+}: {
+  includeCopyLink?: boolean;
+  /** When false, only the copy-link control is shown (Schedule Tour lives elsewhere). */
+  includeSchedule?: boolean;
+}) {
   const { copyingLink, copyLink, openSchedule } = useTourSchedule();
+  if (!includeCopyLink && !includeSchedule) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2" data-testid="tour-schedule-actions">
       {includeCopyLink ? (
         <Button size="sm" variant="outline" className="h-8" disabled={copyingLink} onClick={() => void copyLink()}>
           <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy scheduling link
         </Button>
       ) : null}
-      <Button size="sm" className="h-8" onClick={openSchedule}>
-        <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
-      </Button>
+      {includeSchedule ? (
+        <Button size="sm" className="h-8" onClick={openSchedule} data-testid="schedule-tour-action">
+          <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
+        </Button>
+      ) : null}
     </div>
   );
 }

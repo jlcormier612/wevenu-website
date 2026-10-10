@@ -76,7 +76,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateHoldsSection } from "@/components/availability/date-holds-section";
 import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
@@ -599,14 +598,29 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 </>
               )}
             </div>
-            <StaffAssignmentField
-              compact
-              label="Sales owner"
-              staff={staffOptions}
-              value={lead.assignedStaffId ?? null}
-              testId="lead-staff-assignment"
-              onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
-            />
+            <div
+              data-testid="lead-owner-hold-row"
+              className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
+            >
+              <StaffAssignmentField
+                compact
+                label="Sales owner"
+                staff={staffOptions}
+                value={lead.assignedStaffId ?? null}
+                testId="lead-staff-assignment"
+                onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
+              />
+              <DateHoldsSection
+                density="compact"
+                leadId={lead.id}
+                leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+                desiredEventDate={lead.eventDate}
+                initialHolds={holds}
+                spaces={spaces}
+                spacePreferences={spacePreferences}
+                venueTimezone={venueTimezone}
+              />
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {lead.otherLeadsOnRelationship > 0 && (
@@ -749,41 +763,34 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             </Button>
           )}
           {!previouslyConverted && currentStage !== "lost" ? (
-            <Button
-              size="sm"
-              disabled={convertPending || convertBlocked || (!!lead.eventDate && eventDateBlocked)}
-              onClick={requestBookThisLead}
-              title={
-                convertBlocked
-                  ? "Add an Event Space in Availability settings before starting the booking file."
-                  : lead.eventDate && eventDateBlocked
-                    ? "That date is already protected. Resolve the conflict before starting the booking file."
-                    : undefined
-              }
+            <div
+              data-testid="lead-booking-tour-actions"
+              className="flex flex-wrap items-center justify-end gap-2"
             >
-              {convertPending
-                ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Starting…</>
-                : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Start booking file</>}
-            </Button>
-          ) : null}
+              <TourScheduleActions includeCopyLink={false} includeSchedule />
+              <Button
+                size="sm"
+                disabled={convertPending || convertBlocked || (!!lead.eventDate && eventDateBlocked)}
+                onClick={requestBookThisLead}
+                data-testid="start-booking-action"
+                title={
+                  convertBlocked
+                    ? "Add an Event Space in Availability settings before starting the booking file."
+                    : lead.eventDate && eventDateBlocked
+                      ? "That date is already protected. Resolve the conflict before starting the booking file."
+                      : undefined
+                }
+              >
+                {convertPending
+                  ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Starting…</>
+                  : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Start booking file</>}
+              </Button>
+            </div>
+          ) : (
+            <TourScheduleActions includeCopyLink={false} includeSchedule />
+          )}
         </div>
         </div>
-      </div>
-      <div
-        data-testid="lead-quick-actions"
-        className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
-      >
-        <DateHoldsSection
-          density="compact"
-          leadId={lead.id}
-          leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-          desiredEventDate={lead.eventDate}
-          initialHolds={holds}
-          spaces={spaces}
-          spacePreferences={spacePreferences}
-          venueTimezone={venueTimezone}
-        />
-        <TourScheduleActions includeCopyLink={false} />
       </div>
       {showUsePreferences && (
         <LeadSpacePreferenceFields
@@ -801,21 +808,54 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       )}
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div
+        data-testid="lead-followup-contact-row"
+        className="grid items-stretch gap-4 lg:grid-cols-2"
+      >
+      <div className="min-w-0 h-full [&>[data-slot=card]]:h-full">
       <RelationshipCard
         lead={lead}
         venueTimezone={venueTimezone}
         hideManualTourSummary={tourAppointments.length > 0}
-        tourActions={<TourScheduleActions />}
+        tourActions={<TourScheduleActions includeSchedule={false} />}
         tourAppointments={tourAppointments.length > 0 ? <TourAppointmentList /> : null}
       />
-      <Card>
+      </div>
+      <Card className="h-full" data-testid="lead-contact-card">
         <CardHeader>
           <CardTitle className="text-base">Contact information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 pt-0">
-          <InfoRow icon={Mail} label="Email" value={lead.email} />
-          <InfoRow icon={Phone} label="Phone" value={lead.phone ? formatPhoneDisplay(lead.phone) : lead.phone} />
+        <CardContent className="flex flex-1 flex-col space-y-3 pt-0">
+          {(lead.firstName || lead.lastName || lead.email || lead.phone || lead.partnerFirstName || lead.partnerLastName || lead.partnerEmail) ? (
+            <div
+              data-testid="lead-contact-people"
+              className="grid gap-4 sm:grid-cols-2"
+            >
+              <div className="min-w-0 space-y-2" data-testid="lead-primary-contact">
+                <p className="text-sm font-medium text-heading">
+                  {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || "Primary contact"}
+                </p>
+                <InfoRow icon={Mail} label="Email" value={lead.email} />
+                <InfoRow
+                  icon={Phone}
+                  label="Phone"
+                  value={lead.phone ? formatPhoneDisplay(lead.phone) : lead.phone}
+                />
+              </div>
+              {(lead.partnerFirstName || lead.partnerLastName || lead.partnerEmail) ? (
+                <div className="min-w-0 space-y-2" data-testid="lead-partner-contact">
+                  <p className="text-sm font-medium text-heading">
+                    {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ") || "Partner"}
+                  </p>
+                  {lead.partnerEmail ? (
+                    <InfoRow icon={Mail} label="Email" value={lead.partnerEmail} />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No contact details recorded.</p>
+          )}
           <RelationshipCommunicationSummary
             preferredChannels={lead.preferredCommunicationChannels ?? []}
             sms={smsPermission}
@@ -824,21 +864,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             hasEmail={Boolean(lead.email?.trim())}
             textingConfigured={textingConfigured}
           />
-          {(lead.partnerFirstName || lead.partnerLastName) && (
-            <>
-              <Separator />
-              <p className="text-xs font-medium text-muted-foreground">Partner</p>
-              <p className="text-sm font-medium text-foreground">
-                {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ")}
-              </p>
-              {lead.partnerEmail && (
-                <InfoRow icon={Mail} label="Partner email" value={lead.partnerEmail} />
-              )}
-            </>
-          )}
-          {!lead.email && !lead.phone && !lead.partnerFirstName && (
-            <p className="text-sm text-muted-foreground">No contact details recorded.</p>
-          )}
         </CardContent>
       </Card>
       </div>
