@@ -72,7 +72,7 @@ export function StaffAssignmentField({
           {currentName ? currentName : "Unassigned"}
         </p>
       )}
-      <div className={compact ? "flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none" : "flex flex-wrap items-center gap-2"}>
+      <div className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2"}>
         <Select
           value={selected || "__unassigned__"}
           onValueChange={(next) => {
@@ -86,7 +86,7 @@ export function StaffAssignmentField({
             ...staff.map((member) => ({ value: member.id, label: member.name })),
           ]}
         >
-          <SelectTrigger className={compact ? "h-8 w-full min-w-[9rem] max-w-full sm:w-44" : "h-9 w-56"} aria-label={label}>
+          <SelectTrigger className={compact ? "h-8 w-[9.5rem] max-w-full sm:w-40" : "h-9 w-56"} aria-label={label}>
             <SelectValue placeholder="Unassigned" />
           </SelectTrigger>
           <SelectContent>

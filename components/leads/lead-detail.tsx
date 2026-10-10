@@ -564,10 +564,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               {displayName}
             </h1>
           </div>
-          <div
-            data-testid="lead-summary-facts"
-            className="flex flex-wrap items-center gap-x-3 gap-y-2"
-          >
+          <div data-testid="lead-summary-facts" className="space-y-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
               {lead.eventDate && (
@@ -600,7 +597,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             </div>
             <div
               data-testid="lead-owner-hold-row"
-              className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
+              className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 md:flex-nowrap"
             >
               <StaffAssignmentField
                 compact
