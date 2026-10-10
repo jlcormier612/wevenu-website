@@ -157,9 +157,22 @@ export function CommercialFacts({
               ) : null}
               {row.key === "package" && selection && onEditFinancialTerms
                 && selection.status === "draft" && !selection.invoiceId && !selection.contractId ? (
-                <Button type="button" size="sm" variant="outline" onClick={onEditFinancialTerms}>
-                  Financial terms
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onEditFinancialTerms}
+                  data-testid="edit-invoice-adjustments"
+                >
+                  Tax &amp; discount
                 </Button>
+              ) : null}
+              {row.key === "package" && selection && onEditFinancialTerms
+                && (selection.invoiceId || selection.contractId || selection.status !== "draft") ? (
+                <p className="basis-full text-xs text-muted-foreground" data-testid="invoice-adjustments-locked-hint">
+                  Tax and discount for this Selected Package were set under Tax &amp; discount before the contract or invoice.
+                  On a draft invoice, add Tax or Discount line items when those options are enabled in Settings.
+                </p>
               ) : null}
               {row.key === "package" && selection && !proposal && allowOffer && selection.status !== "accepted" ? (
                 <Button type="button" size="sm" onClick={onCreateShareLink}>

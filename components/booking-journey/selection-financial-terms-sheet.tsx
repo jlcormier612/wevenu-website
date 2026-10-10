@@ -105,7 +105,7 @@ export function SelectionFinancialTermsSheet({
         toast.error(result.message ?? "Could not save terms.");
         return;
       }
-      toast.success("Financial terms saved for this Selected Package.");
+      toast.success("Invoice adjustments saved for this Selected Package.");
       onOpenChange(false);
       router.refresh();
     });
@@ -117,11 +117,11 @@ export function SelectionFinancialTermsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader className="mb-6">
-          <SheetTitle>Financial terms</SheetTitle>
+          <SheetTitle>Invoice adjustments</SheetTitle>
           <p className="text-sm text-muted-foreground">
-            Set package price, optional discount, and optional exclusive tax before the contract.
-            These terms carry into the contract, invoice, and payment plan. A configured rate is a
-            calculation input — not legal tax advice.
+            Apply package price, optional discount, and optional exclusive tax on this Selected Package
+            before the contract. Settings only enable these options — they do not apply tax or discount
+            until you set them here. Terms carry into the contract, invoice, and payment plan.
           </p>
         </SheetHeader>
 

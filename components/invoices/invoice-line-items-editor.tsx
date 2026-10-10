@@ -269,9 +269,53 @@ export function InvoiceLineItemsEditor({
       )}
 
       {isEditable && !showAdd && (
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowAdd(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Line Item
-        </Button>
+        <div className="space-y-2" data-testid="invoice-adjustments">
+          {(lineTypes.some((t) => t.value === "discount") || lineTypes.some((t) => t.value === "tax")) && (
+            <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Invoice adjustments
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Add a discount or exclusive tax line on this draft invoice. Rates and amounts are saved on the line so later Settings changes do not rewrite them.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {lineTypes.some((t) => t.value === "discount") ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    data-testid="invoice-add-discount"
+                    onClick={() => {
+                      setInput({ ...EMPTY_INPUT, type: "discount", description: "Discount", discountType: "fixed" });
+                      setShowAdd(true);
+                    }}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add discount
+                  </Button>
+                ) : null}
+                {lineTypes.some((t) => t.value === "tax") ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    data-testid="invoice-add-tax"
+                    onClick={() => {
+                      setInput({ ...EMPTY_INPUT, type: "tax", description: "Tax", taxRatePercent: "" });
+                      setShowAdd(true);
+                    }}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add tax
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowAdd(true)} data-testid="invoice-add-line-item">
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add Line Item
+          </Button>
+        </div>
       )}
 
       {/* Totals */}
