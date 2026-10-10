@@ -4479,16 +4479,23 @@ function PortalProductFeedbackCard({
 function AccountSection({ token, context, venueName }: { token: string; context: PortalContext; venueName: string }) {
   const [tab, setTab] = React.useState<"account" | "people">("account");
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 w-fit">
+    <div className="space-y-4" data-testid="portal-account-section">
+      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 w-fit" role="tablist" aria-label="Account areas">
         {(["account", "people"] as const).map((t) => (
-          <button key={t} type="button" onClick={() => setTab(t)}
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            data-testid={`portal-account-tab-${t}`}
+            onClick={() => setTab(t)}
             className="px-3 py-1.5 text-sm font-medium rounded-lg transition-all"
             style={{
               color: tab === t ? SAGE : "#6A6460",
               background: tab === t ? "var(--card)" : "transparent",
               fontWeight: tab === t ? 600 : 400,
-            }}>
+            }}
+          >
             {t === "account" ? "Account" : "People"}
           </button>
         ))}
