@@ -86,7 +86,7 @@ export function StaffAssignmentField({
             ...staff.map((member) => ({ value: member.id, label: member.name })),
           ]}
         >
-          <SelectTrigger className={compact ? "h-8 w-full min-w-[10.5rem] sm:w-52" : "h-9 w-56"} aria-label={label}>
+          <SelectTrigger className={compact ? "h-8 w-full min-w-[9rem] max-w-full sm:w-44" : "h-9 w-56"} aria-label={label}>
             <SelectValue placeholder="Unassigned" />
           </SelectTrigger>
           <SelectContent>
@@ -96,7 +96,7 @@ export function StaffAssignmentField({
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" size="sm" className={compact ? "h-8 shrink-0" : undefined} disabled={pending} onClick={save}>
+        <Button type="button" size="sm" className={compact ? "h-8 shrink-0" : undefined} disabled={pending} onClick={save} data-testid={`${testId}-save`}>
           {pending ? "Saving…" : "Save assignment"}
         </Button>
       </div>

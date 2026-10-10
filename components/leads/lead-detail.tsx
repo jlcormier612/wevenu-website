@@ -565,35 +565,48 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               {displayName}
             </h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
-            {lead.eventDate && (
-              <>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {formatDate(lead.eventDate)}
-                </span>
-              </>
-            )}
-            {lead.guestCount != null && (
-              <>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <Users className="h-3.5 w-3.5" />
-                  {lead.guestCount.toLocaleString()} guests
-                </span>
-              </>
-            )}
-            {lead.estimatedBudget != null && (
-              <>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  {formatCurrency(lead.estimatedBudget)}
-                </span>
-              </>
-            )}
+          <div
+            data-testid="lead-summary-facts"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2"
+          >
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
+              {lead.eventDate && (
+                <>
+                  <span className="text-border">·</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {formatDate(lead.eventDate)}
+                  </span>
+                </>
+              )}
+              {lead.guestCount != null && (
+                <>
+                  <span className="text-border">·</span>
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3.5 w-3.5" />
+                    {lead.guestCount.toLocaleString()} guests
+                  </span>
+                </>
+              )}
+              {lead.estimatedBudget != null && (
+                <>
+                  <span className="text-border">·</span>
+                  <span className="flex items-center gap-1">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    {formatCurrency(lead.estimatedBudget)}
+                  </span>
+                </>
+              )}
+            </div>
+            <StaffAssignmentField
+              compact
+              label="Sales owner"
+              staff={staffOptions}
+              value={lead.assignedStaffId ?? null}
+              testId="lead-staff-assignment"
+              onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {lead.otherLeadsOnRelationship > 0 && (
@@ -760,14 +773,6 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         data-testid="lead-quick-actions"
         className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
       >
-        <StaffAssignmentField
-          compact
-          label="Sales owner"
-          staff={staffOptions}
-          value={lead.assignedStaffId ?? null}
-          testId="lead-staff-assignment"
-          onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
-        />
         <DateHoldsSection
           density="compact"
           leadId={lead.id}

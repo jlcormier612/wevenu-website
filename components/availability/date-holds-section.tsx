@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Calendar, Loader2, Plus } from "lucide-react";
+import { Calendar, ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -79,7 +79,18 @@ export function DateHoldsSection({
   const [expiresAt, setExpiresAt] = React.useState("");
   const [addPending, startAdd] = React.useTransition();
   const [releasingId, setReleasingId] = React.useState<string | null>(null);
+  /** Compact density: space names / expiration stay behind this disclosure. */
+  const [expandedHoldIds, setExpandedHoldIds] = React.useState<Set<string>>(() => new Set());
   const showForm = formMode !== null;
+
+  function toggleHoldDetails(holdId: string) {
+    setExpandedHoldIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(holdId)) next.delete(holdId);
+      else next.add(holdId);
+      return next;
+    });
+  }
 
   const desiredDefault = defaultHoldDateFromDesiredEventDate(desiredEventDate);
   const activeHolds = selectActiveHolds(holds);
@@ -265,15 +276,24 @@ export function DateHoldsSection({
                   <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
                     Held
                   </p>
-                  <p className="text-sm font-medium text-foreground">{formatDate(hold.holdDate)}</p>
-                  <span className="text-xs text-muted-foreground">
-                    {holdResourcesLabel(hold)}
-                    {" · "}
-                    {holdWindowLabel(hold) ?? "All day"}
-                    {hold.expiresAt
-                      ? ` · Expires ${new Date(hold.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                      : ""}
-                  </span>
+                  <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
+                    {formatDate(hold.holdDate)}
+                  </p>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                    aria-expanded={expandedHoldIds.has(hold.id)}
+                    aria-controls={`date-hold-details-${hold.id}`}
+                    onClick={() => toggleHoldDetails(hold.id)}
+                    data-testid="date-hold-details-toggle"
+                  >
+                    {expandedHoldIds.has(hold.id) ? (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    )}
+                    Details
+                  </button>
                 </div>
               ) : (
               <div className="min-w-0 flex-1 space-y-0.5">
@@ -301,6 +321,7 @@ export function DateHoldsSection({
                   type="button"
                   variant="outline"
                   size="sm"
+                  className={compact ? "h-8" : undefined}
                   disabled={addPending || releasingId === hold.id}
                   onClick={() => openEdit(hold)}
                   data-testid="date-hold-edit"
@@ -311,6 +332,7 @@ export function DateHoldsSection({
                   type="button"
                   variant="outline"
                   size="sm"
+                  className={compact ? "h-8" : undefined}
                   disabled={releasingId === hold.id}
                   onClick={() => handleRelease(hold.id)}
                   data-testid="date-hold-release"
@@ -325,6 +347,25 @@ export function DateHoldsSection({
                   )}
                 </Button>
               </div>
+              {compact && expandedHoldIds.has(hold.id) ? (
+                <div
+                  id={`date-hold-details-${hold.id}`}
+                  className="basis-full flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground"
+                  data-testid="date-hold-details"
+                >
+                  <span data-testid="date-hold-details-spaces">{holdResourcesLabel(hold)}</span>
+                  {holdWindowLabel(hold) ? <span>{holdWindowLabel(hold)}</span> : <span>All day</span>}
+                  {hold.expiresAt ? (
+                    <span data-testid="date-hold-details-expires">
+                      Expires{" "}
+                      {new Date(hold.expiresAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

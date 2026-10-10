@@ -3,6 +3,11 @@
  * Lead/Client record. Does not allow overriding enforced opt-out.
  */
 
+"use client";
+
+import * as React from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+
 import type { CommunicationPermissionStatus } from "@/lib/communication/permissions";
 import {
   preferredChannelLabel,
@@ -50,6 +55,8 @@ export function RelationshipCommunicationSummary({
   hasEmail?: boolean;
   textingConfigured?: boolean;
 }) {
+  const [open, setOpen] = React.useState(false);
+
   const preferredLabel = preferredChannels.length
     ? preferredChannels.map(preferredChannelLabel).join(", ")
     : "Not specified";
@@ -67,71 +74,102 @@ export function RelationshipCommunicationSummary({
     (sms?.source === SMS_PERMISSION_SOURCE_CONSENT_REQUEST ||
       sms?.source === SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST);
 
+  const panelId = "communication-preferences-panel";
+
   return (
-    <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Communication preferences
-      </p>
-      <p className="text-sm text-foreground">
-        <span className="text-muted-foreground">Preferred: </span>
-        {preferredLabel}
-      </p>
+    <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+      <button
+        type="button"
+        className="flex w-full min-h-9 items-center justify-between gap-2 text-left"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((v) => !v)}
+        data-testid="communication-preferences-toggle"
+      >
+        <span className="flex min-w-0 items-center gap-1.5">
+          {open ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Communication Preferences
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <span className={smsDot} aria-hidden>
+            ●
+          </span>
+          <span data-testid="communication-preferences-status">
+            {smsPermissionDisplayLabel(smsStatus)}
+          </span>
+        </span>
+      </button>
 
-      <div className="space-y-1.5">
-        <p className="text-sm font-medium text-heading">Text messaging</p>
-        <p className="text-sm text-foreground">
-          <span className={smsDot}>●</span>{" "}
-          {smsPermissionDisplayLabel(smsStatus)}
-        </p>
-
-        {smsStatus === "opted_in" && (
-          <>
-            <p className="text-xs text-muted-foreground">
-              This person gave permission to receive text messages.
-            </p>
-            {sourceLine && (
-              <p className="text-xs text-muted-foreground">
-                {sourceLine}
-                {when ? ` · ${when}` : ""}
-              </p>
-            )}
-          </>
-        )}
-
-        {(smsStatus === "opted_out" || smsStatus === "provider_blocked") && sourceLine && (
-          <p className="text-xs text-muted-foreground">
-            {sourceLine}
-            {when ? ` · ${when}` : ""}
+      {open ? (
+        <div id={panelId} className="mt-2 space-y-2" data-testid="communication-preferences-content">
+          <p className="text-sm text-foreground">
+            <span className="text-muted-foreground">Preferred: </span>
+            {preferredLabel}
           </p>
-        )}
 
-        {smsStatus === "not_opted_in" && (
-          <>
-            <p className="text-xs text-muted-foreground">
-              This person hasn&apos;t opted in to receive text messages from your venue.
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium text-heading">Text messaging</p>
+            <p className="text-sm text-foreground">
+              <span className={smsDot}>●</span>{" "}
+              {smsPermissionDisplayLabel(smsStatus)}
             </p>
-            <p className="text-xs text-muted-foreground">
-              Hello to Cheers requires the person&apos;s permission before you can send them text
-              messages through Hello to Cheers.
-            </p>
-            {consentRequested && sourceLine && (
+
+            {smsStatus === "opted_in" && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  This person gave permission to receive text messages.
+                </p>
+                {sourceLine && (
+                  <p className="text-xs text-muted-foreground">
+                    {sourceLine}
+                    {when ? ` · ${when}` : ""}
+                  </p>
+                )}
+              </>
+            )}
+
+            {(smsStatus === "opted_out" || smsStatus === "provider_blocked") && sourceLine && (
               <p className="text-xs text-muted-foreground">
                 {sourceLine}
                 {when ? ` · ${when}` : ""}
               </p>
             )}
-            {leadId && (
-              <RequestSmsConsentButton
-                leadId={leadId}
-                alreadyRequested={consentRequested}
-                hasPhone={hasPhone}
-                hasEmail={hasEmail}
-                textingConfigured={textingConfigured}
-              />
+
+            {smsStatus === "not_opted_in" && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  This person hasn&apos;t opted in to receive text messages from your venue.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Hello to Cheers requires the person&apos;s permission before you can send them text
+                  messages through Hello to Cheers.
+                </p>
+                {consentRequested && sourceLine && (
+                  <p className="text-xs text-muted-foreground">
+                    {sourceLine}
+                    {when ? ` · ${when}` : ""}
+                  </p>
+                )}
+                {leadId && (
+                  <RequestSmsConsentButton
+                    leadId={leadId}
+                    alreadyRequested={consentRequested}
+                    hasPhone={hasPhone}
+                    hasEmail={hasEmail}
+                    textingConfigured={textingConfigured}
+                  />
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

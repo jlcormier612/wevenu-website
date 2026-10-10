@@ -26,17 +26,30 @@ describe("lead workspace compaction", () => {
     assert.match(detail, /DeleteRecordButton/);
   });
 
-  it("puts sales owner, date hold, and tour scheduling in one header row", () => {
+  it("puts sales owner on the summary facts row with event type, date, guests, and budget", () => {
+    const facts = detail.slice(
+      detail.indexOf('data-testid="lead-summary-facts"'),
+      detail.indexOf('data-testid="lead-quick-actions"'),
+    );
+    assert.match(facts, /eventTypeLabel\(lead\.eventType\)/);
+    assert.match(facts, /formatDate\(lead\.eventDate\)/);
+    assert.match(facts, /lead\.guestCount\.toLocaleString\(\)/);
+    assert.match(facts, /formatCurrency\(lead\.estimatedBudget\)/);
+    assert.match(facts, /StaffAssignmentField/);
+    assert.match(facts, /label="Sales owner"/);
+    assert.match(facts, /compact/);
+    assert.equal(detail.match(/<StaffAssignmentField/g)?.length, 1);
+  });
+
+  it("keeps date hold and tour scheduling in the compact quick-actions row", () => {
     const row = detail.slice(
       detail.indexOf('data-testid="lead-quick-actions"'),
       detail.indexOf("<RelationshipCard"),
     );
-    assert.match(row, /StaffAssignmentField/);
-    assert.match(row, /compact/);
+    assert.doesNotMatch(row, /StaffAssignmentField/);
     assert.match(row, /<DateHoldsSection/);
     assert.match(row, /density="compact"/);
     assert.match(row, /TourScheduleActions includeCopyLink=\{false\}/);
-    assert.equal(detail.match(/<StaffAssignmentField/g)?.length, 1);
     assert.doesNotMatch(detail, /CardTitle className="text-base">Team assignment/);
     assert.doesNotMatch(detail, /CardTitle className="text-base">Inquiry details/);
     assert.doesNotMatch(detail, /CardTitle className="text-base">Date hold/);
