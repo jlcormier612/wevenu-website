@@ -9,8 +9,10 @@ import { describe, it } from "node:test";
 const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
 const teamSection = readFileSync(resolve("components/events/event-team-section.tsx"), "utf8");
 const staffField = readFileSync(resolve("components/team/staff-assignment-field.tsx"), "utf8");
+const actionLabel = readFileSync(resolve("lib/team/assignment-action-label.ts"), "utf8");
 const eventActions = readFileSync(resolve("app/(app)/events/[id]/actions.ts"), "utf8");
 const leadDetail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
+
 
 describe("client page compact booking + staffing layout", () => {
   it("places booking, team assignment, and additional staff in one upper region", () => {
@@ -21,11 +23,14 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(region, /EventHeroCard/);
     assert.match(region, /data-testid="event-staff-assignment"/);
     assert.match(region, /data-testid="event-team-roster"/);
+    assert.match(region, /items-stretch/);
     assert.match(region, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(0,1fr\)\]/);
+    assert.match(region, /data-testid="client-staffing-column"/);
     assert.match(region, /StaffAssignmentField/);
     assert.match(region, /compact/);
     assert.match(region, /label="Event owner"/);
     assert.match(region, /EventTeamSection/);
+
     // Staffing cards no longer live as full-width Overview stack.
     const overview = detail.slice(
       detail.indexOf('<TabsContent value="overview"'),
@@ -58,8 +63,12 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(detail, /setEventAssignedStaffAction\(event\.id, staffId\)/);
     assert.match(detail, /testId="event-owner-assignment"/);
     assert.match(eventActions, /export async function setEventAssignedStaffAction/);
-    assert.match(staffField, /Save assignment/);
+    assert.match(staffField, /assignmentActionLabel\(persistedId\)/);
+    assert.match(actionLabel, /Save assignment/);
+    assert.match(actionLabel, /Edit assignment/);
     assert.match(staffField, /__unassigned__/);
+
+
     assert.match(staffField, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(leadDetail, /label="Sales owner"/);
     assert.match(leadDetail, /testId="lead-staff-assignment"/);

@@ -11,6 +11,8 @@ const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8")
 const followUp = readFileSync(resolve("components/leads/relationship-card.tsx"), "utf8");
 const tours = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
 const staff = readFileSync(resolve("components/team/staff-assignment-field.tsx"), "utf8");
+const actionLabel = readFileSync(resolve("lib/team/assignment-action-label.ts"), "utf8");
+
 
 describe("lead workspace compaction", () => {
   it("keeps header facts and primary actions", () => {
@@ -85,7 +87,9 @@ describe("lead workspace compaction", () => {
     assert.match(staff, /if \(dirtyRef\.current\) return/);
     assert.match(staff, /const next = selectedRef\.current/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
-    assert.match(staff, /Save assignment/);
+    assert.match(staff, /assignmentActionLabel/);
+    assert.match(actionLabel, /Save assignment/);
+    assert.match(actionLabel, /Edit assignment/);
     assert.match(staff, /Assignment saved\./);
     assert.match(staff, /Could not save the assignment/);
   });

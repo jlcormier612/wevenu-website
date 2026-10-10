@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { assignmentActionLabel } from "@/lib/team/assignment-action-label";
 
 export function StaffAssignmentField({
   label,
@@ -29,6 +30,8 @@ export function StaffAssignmentField({
   const [selected, setSelected] = React.useState(value ?? "");
   const selectedRef = React.useRef(value ?? "");
   const dirtyRef = React.useRef(false);
+  /** Last successfully persisted id (prop sync + successful save). */
+  const [persistedId, setPersistedId] = React.useState(value ?? "");
   const [pending, start] = React.useTransition();
 
   React.useEffect(() => {
@@ -37,6 +40,7 @@ export function StaffAssignmentField({
     if (dirtyRef.current) return;
     selectedRef.current = value ?? "";
     setSelected(value ?? "");
+    setPersistedId(value ?? "");
   }, [value]);
 
   function save() {
@@ -47,6 +51,7 @@ export function StaffAssignmentField({
         dirtyRef.current = false;
         selectedRef.current = next;
         setSelected(next);
+        setPersistedId(next);
         toast.success("Assignment saved.");
         router.refresh();
       } else {
@@ -56,6 +61,7 @@ export function StaffAssignmentField({
   }
 
   const currentName = staff.find((member) => member.id === (value ?? ""))?.name ?? null;
+  const actionLabel = pending ? "Saving…" : assignmentActionLabel(persistedId);
 
   return (
     <div className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "space-y-2"} data-testid={testId}>
@@ -96,8 +102,16 @@ export function StaffAssignmentField({
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" size="sm" className={compact ? "h-8 shrink-0" : undefined} disabled={pending} onClick={save} data-testid={`${testId}-save`}>
-          {pending ? "Saving…" : "Save assignment"}
+        <Button
+          type="button"
+          size="sm"
+          className={compact ? "h-8 shrink-0" : undefined}
+          disabled={pending}
+          onClick={save}
+          data-testid={`${testId}-save`}
+          data-assignment-action={persistedId.trim() ? "edit" : "save"}
+        >
+          {actionLabel}
         </Button>
       </div>
     </div>

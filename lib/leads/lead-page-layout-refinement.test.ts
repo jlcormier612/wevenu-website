@@ -16,6 +16,8 @@ const comms = readFileSync(
   "utf8",
 );
 const staff = readFileSync(resolve("components/team/staff-assignment-field.tsx"), "utf8");
+const actionLabel = readFileSync(resolve("lib/team/assignment-action-label.ts"), "utf8");
+
 
 describe("lead page layout refinement", () => {
   it("places Sales owner with summary facts and keeps explicit save", () => {
@@ -29,9 +31,13 @@ describe("lead page layout refinement", () => {
     assert.match(facts, /setLeadAssignedStaffAction/);
     assert.match(facts, /data-testid="lead-owner-hold-row"/);
     assert.match(facts, /<DateHoldsSection/);
-    assert.match(staff, /Save assignment/);
+    assert.match(staff, /assignmentActionLabel\(persistedId\)/);
+    assert.match(actionLabel, /Save assignment/);
+    assert.match(actionLabel, /Edit assignment/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(staff, /dirtyRef\.current = true/);
+
+
   });
 
   it("places Schedule Tour immediately before Start booking", () => {
