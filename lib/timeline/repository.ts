@@ -12,7 +12,9 @@ import {
   type TimelineTemplate,
 } from "@/lib/timeline/constants";
 import {
+  audiencesWithClientShare,
   sanitizeVenueOwnedAudiences,
+  venueItemVisibleToClient,
   VENUE_OWNED_DEFAULT_AUDIENCES,
 } from "@/lib/timeline/audience-ownership";
 import type {
@@ -243,6 +245,62 @@ export async function updateEntry(
     .update(patch)
     .eq("id", entryId).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+/**
+ * Persist Client audience on every venue-owned entry for this event that
+ * is not yet visible in the couple portal. Idempotent — already-shared
+ * rows and client-owned rows are left untouched. No email/SMS.
+ */
+export async function shareVenueTimelineWithCouple(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<{ sharedCount: number; alreadySharedCount: number; venueOwnedCount: number }> {
+  const entries = await getTimelineEntries(client, venueId, eventId);
+  const venueOwned = entries.filter((e) => e.owner === "venue");
+  let sharedCount = 0;
+  let alreadySharedCount = 0;
+  for (const entry of venueOwned) {
+    if (venueItemVisibleToClient(entry.audiences)) {
+      alreadySharedCount += 1;
+      continue;
+    }
+    const next = sanitizeVenueAudiences(audiencesWithClientShare(entry.audiences));
+    const { error } = await client.from("timeline_entries")
+      .update({ audiences: next })
+      .eq("id", entry.id)
+      .eq("venue_id", venueId)
+      .eq("owner", "venue");
+    if (error) throw error;
+    sharedCount += 1;
+  }
+  return { sharedCount, alreadySharedCount, venueOwnedCount: venueOwned.length };
+}
+
+/**
+ * Pre-booking client timeline — same Client-audience publish semantics.
+ */
+export async function shareClientVenueTimelineWithCouple(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<{ sharedCount: number; alreadySharedCount: number; venueOwnedCount: number }> {
+  const entries = await getClientTimelineEntries(client, venueId, clientId);
+  const venueOwned = entries.filter((e) => e.owner === "venue");
+  let sharedCount = 0;
+  let alreadySharedCount = 0;
+  for (const entry of venueOwned) {
+    if (venueItemVisibleToClient(entry.audiences)) {
+      alreadySharedCount += 1;
+      continue;
+    }
+    const next = sanitizeVenueAudiences(audiencesWithClientShare(entry.audiences));
+    const { error } = await client.from("timeline_entries")
+      .update({ audiences: next })
+      .eq("id", entry.id)
+      .eq("venue_id", venueId)
+      .eq("owner", "venue");
+    if (error) throw error;
+    sharedCount += 1;
+  }
+  return { sharedCount, alreadySharedCount, venueOwnedCount: venueOwned.length };
 }
 
 /**

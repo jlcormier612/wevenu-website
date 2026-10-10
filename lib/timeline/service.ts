@@ -149,6 +149,43 @@ export async function applyTemplate(
   return result as TimelineActionResult;
 }
 
+export type ShareTimelineWithCoupleResult = TimelineActionResult & {
+  sharedCount?: number;
+  alreadySharedCount?: number;
+  venueOwnedCount?: number;
+};
+
+/**
+ * Make venue-owned timeline items visible in the couple portal by ensuring
+ * each has the Client audience tag. Distinct from applying a template and
+ * from sending email/SMS.
+ */
+export async function shareTimelineWithCouple(
+  eventId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const counts = await repo.shareVenueTimelineWithCouple(supabase, venueId, eventId);
+    if (counts.venueOwnedCount === 0) {
+      return { ok: false, message: "Add timeline items before sharing with the couple." } as ShareTimelineWithCoupleResult;
+    }
+    return { ok: true, ...counts } as ShareTimelineWithCoupleResult;
+  });
+  return result as ShareTimelineWithCoupleResult;
+}
+
+export async function shareClientTimelineWithCouple(
+  clientId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const counts = await repo.shareClientVenueTimelineWithCouple(supabase, venueId, clientId);
+    if (counts.venueOwnedCount === 0) {
+      return { ok: false, message: "Add timeline items before sharing with the couple." } as ShareTimelineWithCoupleResult;
+    }
+    return { ok: true, ...counts } as ShareTimelineWithCoupleResult;
+  });
+  return result as ShareTimelineWithCoupleResult;
+}
+
 export async function applyClientStarterTemplate(
   clientId: string, templateId: string, eventStartTime: string | null,
 ): Promise<TimelineActionResult> {

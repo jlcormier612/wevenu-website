@@ -94,6 +94,40 @@ export function venueItemVisibleToClient(audiences: readonly string[]): boolean 
   return audiences.includes("client");
 }
 
+/**
+ * Couple-visibility status for the venue's working timeline.
+ * Derived from persisted `audiences` on venue-owned entries (live portal
+ * filter) — not a separate publish snapshot or notification send.
+ */
+export type VenueTimelineClientShareStatus =
+  | { kind: "empty" }
+  | { kind: "not_shared"; venueOwnedCount: number }
+  | { kind: "partial"; sharedCount: number; venueOwnedCount: number }
+  | { kind: "shared"; sharedCount: number; venueOwnedCount: number };
+
+export function computeVenueTimelineClientShareStatus(
+  entries: ReadonlyArray<{ owner: TimelineOwner; audiences: readonly string[] }>,
+): VenueTimelineClientShareStatus {
+  const venueOwned = entries.filter((e) => e.owner === "venue");
+  if (venueOwned.length === 0) return { kind: "empty" };
+  const sharedCount = venueOwned.filter((e) => venueItemVisibleToClient(e.audiences)).length;
+  if (sharedCount === 0) {
+    return { kind: "not_shared", venueOwnedCount: venueOwned.length };
+  }
+  if (sharedCount < venueOwned.length) {
+    return { kind: "partial", sharedCount, venueOwnedCount: venueOwned.length };
+  }
+  return { kind: "shared", sharedCount, venueOwnedCount: venueOwned.length };
+}
+
+/** Add Client audience to a venue-owned audience list without dropping Vendors. */
+export function audiencesWithClientShare(
+  audiences: readonly TimelineAudience[],
+): TimelineAudience[] {
+  if (audiences.includes("client")) return [...audiences];
+  return uniquePreserveOrder(["client", ...audiences]);
+}
+
 /** Projection helpers — receiving surfaces filter on these tags. */
 export function visibleToVendors(audiences: readonly string[]): boolean {
   return audiences.includes("vendors");

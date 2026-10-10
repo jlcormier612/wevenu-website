@@ -97,7 +97,7 @@ export function TemplatePicker({
         }
       >
         <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-        Use Template
+        Apply Template
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-6">

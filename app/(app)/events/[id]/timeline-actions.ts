@@ -22,6 +22,8 @@ import {
   reorderEntry,
   reorderSections,
   setSectionClientCanAdd,
+  shareClientTimelineWithCouple,
+  shareTimelineWithCouple,
   shiftEntriesAfter,
   updateEntry,
 } from "@/lib/timeline/service";
@@ -36,6 +38,7 @@ import type {
   TimelineEntryInput,
   TimelineRelatedSourceType,
 } from "@/lib/timeline/types";
+import type { ShareTimelineWithCoupleResult } from "@/lib/timeline/service";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
@@ -145,6 +148,25 @@ export async function applyTemplateAction(
 ): Promise<TimelineActionResult> {
   const result = await applyTemplate(eventId, templateId, eventStartTime);
   if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
+/** Persist Client audience on venue-owned items — portal visibility, no email. */
+export async function shareTimelineWithCoupleAction(
+  eventId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const result = await shareTimelineWithCouple(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
+export async function shareClientTimelineWithCoupleAction(
+  clientId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const result = await shareClientTimelineWithCouple(clientId);
+  if (result.ok) {
+    revalidatePath(`/clients/${clientId}`);
+  }
   return result;
 }
 

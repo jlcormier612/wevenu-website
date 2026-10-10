@@ -2,6 +2,7 @@
  * Contracts data access layer. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { resolveContractListEventDate } from "@/lib/contracts/list-event-date";
 import type {
   Contract,
   ContractActivity,
@@ -29,7 +30,12 @@ type ContractRow = {
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
   amends_contract_id: string | null;
   branding_snapshot: ContractBrandingSnapshot | null;
-  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null; email: string | null } | null;
+  clients?: {
+    first_name: string; last_name: string;
+    partner_first_name: string | null; partner_last_name: string | null;
+    email?: string | null;
+    event_date?: string | null;
+  } | null;
   events?: { event_date: string | null } | null;
   venue?: { name: string | null; primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; neutralColor: string | null; logoUrl: string | null } | null;
   signer?: {
@@ -44,7 +50,7 @@ type ContractRow = {
 
 /** List/readiness columns — intentionally omits `content` (large text blob). */
 const CONTRACT_WORKSPACE_LIST_SELECT =
-  "id, venue_id, client_id, event_id, template_id, title, status, execution_origin, sign_token, signer_name, signed_at, sent_at, expires_at, created_at, updated_at, amends_contract_id, branding_snapshot, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)";
+  "id, venue_id, client_id, event_id, template_id, title, status, execution_origin, sign_token, signer_name, signed_at, sent_at, expires_at, created_at, updated_at, amends_contract_id, branding_snapshot, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(event_date)";
 
 /** Template picker/metadata columns — intentionally omits `content`. */
 const TEMPLATE_METADATA_SELECT =
@@ -88,7 +94,8 @@ function mapContract(r: ContractRow): Contract {
     sentAt: r.sent_at, expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
     amendsContractId: r.amends_contract_id ?? null,
     brandingSnapshot: r.branding_snapshot ?? null,
-    clientName: cn, clientEmail: r.clients?.email ?? null, eventDate: r.events?.event_date ?? null,
+    clientName: cn, clientEmail: r.clients?.email ?? null,
+    eventDate: resolveContractListEventDate(r.events?.event_date, r.clients?.event_date),
     venue: r.venue,
   };
 }
@@ -280,7 +287,7 @@ async function attachSignerSummaries(
 
 export async function getContracts(client: DbClient, venueId: string): Promise<Contract[]> {
   const { data, error } = await client.from("contracts")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(event_date)")
     .eq("venue_id", venueId).order("created_at", { ascending: false });
   if (error) throw error;
   return attachSignerSummaries(client, venueId, (data as unknown as ContractRow[]).map(mapContract));
@@ -308,7 +315,7 @@ export async function getContractsForClientOrEvent(
 export async function getContract(client: DbClient, venueId: string, id: string): Promise<ContractWithDetails | null> {
   const [cRes, aRes, sRes] = await Promise.all([
     client.from("contracts")
-      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, email), events(event_date)")
+      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, email, event_date), events(event_date)")
       .eq("id", id).eq("venue_id", venueId).maybeSingle<ContractRow>(),
     client.from("contract_activities").select("*").eq("contract_id", id).order("created_at", { ascending: false }),
     client.from("contract_signers").select("*").eq("contract_id", id).eq("venue_id", venueId).order("sign_order").order("created_at"),

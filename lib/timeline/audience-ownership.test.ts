@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  audiencesWithClientShare,
   CLIENT_OWNED_ALLOWED_AUDIENCES,
   CLIENT_OWNED_DEFAULT_AUDIENCES,
+  computeVenueTimelineClientShareStatus,
   sanitizeAudiencesForOwner,
   sanitizeClientOwnedAudiences,
   sanitizeVenueOwnedAudiences,
@@ -155,5 +157,86 @@ describe("projection helpers", () => {
     assert.equal(visibleToVenueAudience(["venue"]), true);
     assert.equal(visibleToWeddingParty(["guests"]), false);
     assert.equal(visibleToGuests(["wedding_party"]), false);
+  });
+});
+
+describe("computeVenueTimelineClientShareStatus", () => {
+  it("empty when there are no venue-owned entries", () => {
+    assert.deepEqual(computeVenueTimelineClientShareStatus([]), { kind: "empty" });
+    assert.deepEqual(
+      computeVenueTimelineClientShareStatus([{ owner: "client", audiences: ["venue"] }]),
+      { kind: "empty" },
+    );
+  });
+
+  it("not_shared when no venue items include Client", () => {
+    assert.deepEqual(
+      computeVenueTimelineClientShareStatus([
+        { owner: "venue", audiences: [] },
+        { owner: "venue", audiences: ["vendors"] },
+      ]),
+      { kind: "not_shared", venueOwnedCount: 2 },
+    );
+  });
+
+  it("partial when some venue items are shared", () => {
+    assert.deepEqual(
+      computeVenueTimelineClientShareStatus([
+        { owner: "venue", audiences: ["client"] },
+        { owner: "venue", audiences: [] },
+        { owner: "client", audiences: [] },
+      ]),
+      { kind: "partial", sharedCount: 1, venueOwnedCount: 2 },
+    );
+  });
+
+  it("shared when every venue-owned item includes Client", () => {
+    assert.deepEqual(
+      computeVenueTimelineClientShareStatus([
+        { owner: "venue", audiences: ["client"] },
+        { owner: "venue", audiences: ["client", "vendors"] },
+      ]),
+      { kind: "shared", sharedCount: 2, venueOwnedCount: 2 },
+    );
+  });
+});
+
+describe("audiencesWithClientShare", () => {
+  it("adds Client without dropping Vendors", () => {
+    assert.deepEqual(audiencesWithClientShare(["vendors"]), ["client", "vendors"]);
+    assert.deepEqual(audiencesWithClientShare(["client", "vendors"]), ["client", "vendors"]);
+    assert.deepEqual(audiencesWithClientShare([]), ["client"]);
+  });
+});
+
+describe("timeline share vs apply template remain distinct", () => {
+  it("actions expose shareTimelineWithCoupleAction separately from applyTemplateAction", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const actions = fs.readFileSync(
+      path.join(process.cwd(), "app/(app)/events/[id]/timeline-actions.ts"),
+      "utf8",
+    );
+    assert.match(actions, /export async function applyTemplateAction/);
+    assert.match(actions, /export async function shareTimelineWithCoupleAction/);
+    assert.match(actions, /shareTimelineWithCouple\(/);
+  });
+
+  it("Timeline toolbar labels Apply Template and Share with Couple", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const picker = fs.readFileSync(
+      path.join(process.cwd(), "components/events/timeline/template-picker.tsx"),
+      "utf8",
+    );
+    const view = fs.readFileSync(
+      path.join(process.cwd(), "components/events/timeline/timeline-view.tsx"),
+      "utf8",
+    );
+    assert.match(picker, /Apply Template/);
+    assert.doesNotMatch(picker, />\s*Use Template\s*</);
+    assert.match(view, /Share with Couple/);
+    assert.match(view, /shareTimelineWithCoupleAction/);
+    assert.match(view, /computeVenueTimelineClientShareStatus/);
   });
 });

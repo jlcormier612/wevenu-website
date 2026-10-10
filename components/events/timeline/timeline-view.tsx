@@ -22,6 +22,7 @@ import {
   GripVertical,
   Pencil,
   Plus,
+  Share2,
   Trash2,
   X,
 } from "lucide-react";
@@ -37,6 +38,8 @@ import {
   reorderEntriesAction,
   reorderSectionsAction,
   setSectionClientCanAddAction,
+  shareClientTimelineWithCoupleAction,
+  shareTimelineWithCoupleAction,
   updateEntryAction,
 } from "@/app/(app)/events/[id]/timeline-actions";
 import {
@@ -50,6 +53,11 @@ import { TimelineSummaryBar } from "@/components/events/timeline/timeline-summar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
+import {
+  audiencesWithClientShare,
+  computeVenueTimelineClientShareStatus,
+  venueItemVisibleToClient,
+} from "@/lib/timeline/audience-ownership";
 import { formatTime, formatTimelineDayHeader, getDueStatus, isMultiDayEvent, maxDayOffset } from "@/lib/timeline/constants";
 import type { Document } from "@/lib/documents/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
@@ -570,6 +578,7 @@ export function TimelineView({
   const [addingSection, setAddingSection] = React.useState(false);
   const [newSectionName, setNewSectionName] = React.useState("");
   const [sectionPending, startSectionAdd] = React.useTransition();
+  const [sharePending, startShare] = React.useTransition();
   const [collapsedSectionIds, setCollapsedSectionIds] = React.useState<Set<string>>(new Set());
 
   const dragEntryId = React.useRef<string | null>(null);
@@ -849,21 +858,69 @@ export function TimelineView({
   const lastUpdatedIso = [...entries.map((e) => e.updatedAt), ...sections.map((s) => s.updatedAt)]
     .sort()
     .at(-1) ?? null;
+  const clientShareStatus = computeVenueTimelineClientShareStatus(entries);
+  const needsCoupleShare =
+    clientShareStatus.kind === "not_shared" || clientShareStatus.kind === "partial";
+
+  function handleShareWithCouple() {
+    if (totalCount === 0) {
+      toast.error("Add timeline items before sharing with the couple.");
+      return;
+    }
+    const privateCount = entries.filter(
+      (e) => e.owner === "venue" && !venueItemVisibleToClient(e.audiences),
+    ).length;
+    if (privateCount === 0) {
+      toast.message("Already shared with the couple.", {
+        description: "Venue timeline items tagged Client are live in their portal.",
+      });
+      return;
+    }
+    const ok = confirm(
+      privateCount === totalCount
+        ? "Share this timeline with the couple? Items tagged Client become visible in their portal right away. No email is sent."
+        : `Share ${privateCount} remaining venue-private item${privateCount === 1 ? "" : "s"} with the couple? Already-shared items stay as they are. No email is sent.`,
+    );
+    if (!ok) return;
+    startShare(async () => {
+      const result = planningClientId && !eventId
+        ? await shareClientTimelineWithCoupleAction(planningClientId)
+        : await shareTimelineWithCoupleAction(eventId);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not share the timeline.");
+        return;
+      }
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.owner === "venue" && !venueItemVisibleToClient(e.audiences)
+            ? { ...e, audiences: audiencesWithClientShare(e.audiences), updatedAt: new Date().toISOString() }
+            : e,
+        ),
+      );
+      const newly = result.sharedCount ?? 0;
+      toast.success(
+        newly > 0
+          ? `Shared ${newly} item${newly === 1 ? "" : "s"} with the couple.`
+          : "Timeline is shared with the couple.",
+      );
+      router.refresh();
+    });
+  }
 
   // Empty state — no entries and no sections yet.
-  // One Use Template only (in the empty card with Add First Entry). Do not
+  // One Apply Template only (in the empty card with Add First Entry). Do not
   // also mount a header TemplatePicker — that duplicated the same control.
   if (totalCount === 0 && sections.length === 0 && addFormOpenFor === null) {
     return (
       <div className="space-y-4">
-        <TimelineSummaryBar itemCount={0} lastUpdated={lastUpdatedIso} />
+        <TimelineSummaryBar itemCount={0} lastUpdated={lastUpdatedIso} clientShareStatus={clientShareStatus} />
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Clock className="h-5 w-5" />
           </span>
           <p className="font-heading text-base font-medium text-heading">No timeline yet</p>
           <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-            Build the Timeline entry by entry, or start from a template.
+            Build the Timeline entry by entry, or start from a template. Sharing with the couple comes after items exist.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <Button
@@ -887,7 +944,7 @@ export function TimelineView({
 
   return (
     <div className="space-y-4">
-      <TimelineSummaryBar itemCount={totalCount} lastUpdated={lastUpdatedIso} />
+      <TimelineSummaryBar itemCount={totalCount} lastUpdated={lastUpdatedIso} clientShareStatus={clientShareStatus} />
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -898,7 +955,18 @@ export function TimelineView({
           audience={filterAudience} onAudienceChange={setFilterAudience}
           status={filterStatus} onStatusChange={setFilterStatus}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={needsCoupleShare ? "default" : "outline"}
+            disabled={sharePending || totalCount === 0}
+            onClick={handleShareWithCouple}
+            aria-label={needsCoupleShare ? "Share timeline with couple" : "Timeline already shared with couple"}
+          >
+            <Share2 className="mr-1 h-3.5 w-3.5" />
+            {sharePending ? "Sharing…" : needsCoupleShare ? "Share with Couple" : "Shared with Couple"}
+          </Button>
           <TemplatePicker
             eventId={eventId}
             planningClientId={planningClientId}
