@@ -86,7 +86,7 @@ function isVersionConflict(error: { message?: string; code?: string } | null): b
   );
 }
 
-/** Lock wait / gateway timeouts are contention, not permanent failures. */
+/** Lock wait / gateway timeouts / store-busy are contention, not permanent failures. */
 function isRetryableStoreContention(error: {
   message?: string;
   code?: string;
@@ -94,7 +94,11 @@ function isRetryableStoreContention(error: {
   if (isVersionConflict(error)) return true;
   if (!error) return false;
   const msg = (error.message ?? "").toLowerCase();
+  const code = (error.code ?? "").toUpperCase();
   return (
+    msg.includes("htc_crm_store_busy") ||
+    code === "55P03" ||
+    msg.includes("55p03") ||
     msg.includes("upstream request timeout") ||
     msg.includes("statement timeout") ||
     msg.includes("canceling statement due to statement timeout") ||
