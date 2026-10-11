@@ -35,6 +35,31 @@ function record(name: string, pass: boolean, detail: string) {
   console.log(`${pass ? "PASS" : "FAIL"} ${name} — ${detail.slice(0, 400)}`);
 }
 
+function loadResendKeyFromAws(): string {
+  const { execFileSync } = require("node:child_process");
+  const raw = execFileSync(
+    "aws",
+    [
+      "secretsmanager",
+      "get-secret-value",
+      "--secret-id",
+      "htc/sandbox/resend-api-key",
+      "--query",
+      "SecretString",
+      "--output",
+      "text",
+    ],
+    { encoding: "utf8" },
+  ).trim();
+  try {
+    const j = JSON.parse(raw);
+    if (j && typeof j.value === "string") return j.value.trim();
+  } catch {
+    /* plain string secret */
+  }
+  return raw.trim();
+}
+
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -203,14 +228,15 @@ async function main() {
   );
 
   // Actual Resend delivery to internal inbox (not a customer). Retrieve HTML.
-  const resendKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <jennifer@hellotocheers.com>";
+  const resendKey = process.env.RESEND_API_KEY?.trim() || loadResendKeyFromAws();
+  const fromEmail = "Hello to Cheers <jennifer@hellotocheers.com>";
   const stamp = Date.now();
   const internalTo =
     process.env.COMMUNICATION_SANDBOX_EMAIL?.trim() ||
     `jennifer+emailfooter.${stamp}@hellotocheers.com`;
   if (!resendKey) {
-    record("delivered_email_matches_prefs", false, "RESEND_API_KEY missing");
+    record("resend_accepted", false, "Resend key unavailable");
+    record("delivered_email_matches_prefs", false, "Resend key unavailable");
   } else {
     const brand = emailBrandFromVenue({
       name: "Footer Prefs QA Venue",
