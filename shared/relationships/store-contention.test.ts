@@ -13,6 +13,8 @@ import type { LiveRelationshipStore } from "./types.ts";
 
 const REPLACE_LOCK_MIGRATION =
   "supabase/migrations/20261414500000_htc_crm_replace_store_bounded_lock.sql";
+const REPLACE_TIMEOUT_MIGRATION =
+  "supabase/migrations/20261414600000_htc_crm_replace_store_statement_timeout.sql";
 
 describe("fingerprintLiveStore", () => {
   it("is stable for identical store contents", () => {
@@ -42,6 +44,7 @@ describe("contention helpers (source contract)", () => {
     assert.match(src, /upstream request timeout/);
     assert.match(src, /htc_crm_store_busy/);
     assert.match(src, /55P03/);
+    assert.match(src, /lock_timeout/);
     assert.match(src, /backoffBeforeRetry/);
     assert.match(src, /CONFLICT_BACKOFF_BASE_MS/);
     assert.match(src, /MAX_OPTIMISTIC_RETRIES/);
@@ -72,5 +75,14 @@ describe("contention helpers (source contract)", () => {
     assert.match(body, /errcode = '40001'/);
     assert.match(body, /errcode = '55P03'/);
     assert.match(body, /for update/);
+  });
+
+  it("follow-up migration sets local lock/statement timeouts and exposes lock profile probe", () => {
+    const sql = readFileSync(join(process.cwd(), REPLACE_TIMEOUT_MIGRATION), "utf8");
+    assert.match(sql, /lock_timeout/);
+    assert.match(sql, /statement_timeout/);
+    assert.match(sql, /pg_try_advisory_xact_lock\(87201401\)/);
+    assert.match(sql, /htc_crm_replace_store_lock_profile/);
+    assert.match(sql, /has_try_lock/);
   });
 });

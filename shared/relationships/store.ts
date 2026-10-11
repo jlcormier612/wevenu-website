@@ -99,6 +99,8 @@ function isRetryableStoreContention(error: {
     msg.includes("htc_crm_store_busy") ||
     code === "55P03" ||
     msg.includes("55p03") ||
+    msg.includes("lock_timeout") ||
+    msg.includes("canceling statement due to lock timeout") ||
     msg.includes("upstream request timeout") ||
     msg.includes("statement timeout") ||
     msg.includes("canceling statement due to statement timeout") ||
