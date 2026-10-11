@@ -45,7 +45,7 @@ Team invite (separate supported path):
 
 | # | Scenario | Classification | Expected behavior | Coverage |
 |---|---|---|---|---|
-| A | New purchaser, signed out, activates | **Supported** | Login → auth → handoff consume → new venue | Unit wiring + activate URL helpers |
+| A | New purchaser, signed out, activates | **Supported** | Login → auth → handoff consume → new venue | **Sandbox browser GREEN** (disposable purchaser password + consume) + unit |
 | B | Purchaser signed in as **same** account, activates | **Supported** | Session cleared; re-auth with prefill; then handoff | Pure rule + wiring (explicit re-auth) |
 | C | Purchaser signed in as **different** account (Meadowbrook/Jennifer) | **Supported** | Session cleared; handoff copy; no Fancy bounce | **Sandbox browser GREEN** + unit |
 | D | Missing / malformed `email=` on activated login | **Supported** | Still clear session; no prefill; no auth-by-email | Unit |
@@ -80,13 +80,14 @@ Team invite (separate supported path):
 
 ---
 
-## Live tip re-verification (this pass)
+## Live tip re-verification
 
 | Item | Result |
 |---|---|
 | Live `dpl` | `459d63fc48ce6d11719d5bb809ca98ffa904b93e` (includes `4e3ea24a`) |
 | Wrong-account browser script | **GREEN** (`EXPECT_SHA=459d63fc`) |
-| Meadowbrook owner | Still purchaser `6721694e…` / `jlcormier612@gmail.com` |
+| Purchaser sign-in → handoff consume | **GREEN** — disposable fixture E2E (see `IDENTITY-HANDOFF-REGRESSION-AUDIT.md`) |
+| Meadowbrook owner | Still original purchaser `6721694e…` (untouched) |
 | Jennifer venues | Still 3; no Meadowbrook membership |
 | Expanded unit suite | `post-activation-login` scenario matrix + invite/handoff/helpers — **pass** |
 
@@ -94,8 +95,10 @@ Team invite (separate supported path):
 
 | Gap | Status |
 |---|---|
-| Live Sandbox purchaser password sign-in → Meadowbrook handoff consume | **Not re-proven** (no credential rotation; original handoff may expire unused) |
+| Original Meadowbrook purchaser password re-sign-in on the historical handoff | **Not re-run by design** — handoff may be expired/unused; closed via disposable equivalent without credential rotation |
 | Owner Usage / CRM work | Orthogonal; see egress/CRM docs |
+
+**Final path status:** **GREEN — END-TO-END HANDOFF VERIFIED** (disposable purchaser). Historical Meadowbrook-specific password re-proof remains intentionally skipped.
 
 ---
 
@@ -104,4 +107,5 @@ Team invite (separate supported path):
 ```bash
 npx tsx --test lib/auth/post-activation-login.test.ts lib/venue/onboarding-handoff.test.ts lib/team/invite-identity.test.ts lib/auth/login-email-prefill.test.ts shared/email/templates/helpers.test.ts
 EXPECT_SHA=<live-dpl-prefix> npx tsx scripts/qa/post-activation-handoff-browser.mts
+EXPECT_SHA=<live-dpl-prefix> npx tsx scripts/qa/post-activation-purchaser-signin-browser.mts
 ```
