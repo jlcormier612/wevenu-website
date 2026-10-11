@@ -160,12 +160,14 @@ export async function getCalendarData(
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
 
     // Tour/date exceptions stay in tour_availability_exceptions. This read
-    // only projects them onto the calendar. Inclusive overlap with the month.
+    // only projects them onto the calendar. One-time rows must overlap the
+    // month; annual rows are loaded whenever they can expand into the month.
     supabase.from("tour_availability_exceptions")
-      .select("id, start_date, end_date, label")
+      .select("id, start_date, end_date, label, recurrence_rule")
       .eq("venue_id", venue.id)
-      .lte("start_date", end)
-      .gte("end_date", start),
+      .or(
+        `and(recurrence_rule.eq.none,start_date.lte.${end},end_date.gte.${start}),recurrence_rule.eq.annual`,
+      ),
   ]);
 
   const items: CalendarItem[] = [];

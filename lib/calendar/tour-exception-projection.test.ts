@@ -69,6 +69,21 @@ describe("tour availability exception calendar projection", () => {
     assert.equal(items[0].id, "tour-exception-4c64cec4-7c9a-43d0-8d1f-7e85937939b4-2026-12-25");
   });
 
+  it("projects annual Christmas into December 2027 and 2030", () => {
+    const annual: TourAvailabilityExceptionRow = {
+      ...WILLOW_CHRISTMAS,
+      recurrence_rule: "annual",
+    };
+    assert.deepEqual(
+      project([annual], new Set(), "2027-12-01", "2027-12-31").map((i) => i.date),
+      ["2027-12-25"],
+    );
+    assert.deepEqual(
+      project([annual], new Set(), "2030-12-01", "2030-12-31").map((i) => i.date),
+      ["2030-12-25"],
+    );
+  });
+
   it("does not shift a date column through a local timezone", () => {
     const items = project([{
       id: "nye",
@@ -170,12 +185,12 @@ describe("calendar service wires the projection without changing tour writes", (
     "utf8",
   );
 
-  it("reads only the active venue's overlapping exceptions", () => {
+  it("reads only the active venue's overlapping and annual exceptions", () => {
     const query = service.slice(service.indexOf('from("tour_availability_exceptions")'));
-    assert.match(query, /\.select\("id, start_date, end_date, label"\)/);
+    assert.match(query, /\.select\("id, start_date, end_date, label, recurrence_rule"\)/);
     assert.match(query, /\.eq\("venue_id", venue\.id\)/);
-    assert.match(query, /\.lte\("start_date", end\)/);
-    assert.match(query, /\.gte\("end_date", start\)/);
+    assert.match(query, /recurrence_rule\.eq\.annual/);
+    assert.match(query, /recurrence_rule\.eq\.none/);
     assert.doesNotMatch(service, /from\("tour_availability_exceptions"\)[\s\S]{0,240}\.(insert|update|delete|upsert)\(/);
     assert.doesNotMatch(query, /owner_email|owner_user_id/);
     const blocksMapped = service.indexOf("rawId: b.id");
