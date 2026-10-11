@@ -37,6 +37,6 @@ Not a Migration Center content bug — shared workspace scrollport discoverabili
 | Item | Value |
 |------|-------|
 | Environment | Sandbox only |
-| Intended SHA | _(fill after commit)_ |
-| Run | _(fill after dispatch)_ |
+| Intended SHA | `5d25068516bfaa62d580824b0db71240252308ee` |
+| Run | pending dispatch after push |
 | Production / public marketing | Untouched |
