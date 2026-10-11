@@ -34,6 +34,8 @@ export const GAP_COPY: Record<string, GapCopy> = {
     timeEstimate: "2 min",
     ctaLabel: "Invite a couple",
   },
+  // Eligibility: only when invitation evidence exists (see applyFirstPortalOpenToChecklist).
+  // Without that gate this copy falsely claims an invite was sent.
   first_portal_open: {
     title: "Your first couple hasn't opened their portal yet",
     description: "You've sent the invite — once they open it, you'll know your couples are actually using their workspace, not just receiving an email.",

@@ -5,6 +5,11 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { applyFirstPortalInviteToChecklist } from "@/lib/activation/first-portal-invite";
 import { getVenueFirstPortalInviteMilestone } from "@/lib/activation/first-portal-invite-service";
+import {
+  applyFirstPortalOpenToChecklist,
+  applyThreeCouplesPortalPrerequisite,
+} from "@/lib/activation/first-portal-open";
+import { getVenueFirstPortalOpenMilestone } from "@/lib/activation/first-portal-open-service";
 import { applyPortalOpenMilestoneToChecklist } from "@/lib/activation/portal-open-milestone";
 import { getVenuePortalOpenMilestone } from "@/lib/activation/portal-open-milestone-service";
 import type {
@@ -44,17 +49,36 @@ export async function getActivationScore(venueId: string): Promise<ActivationSco
  * Overlay locked portal milestones onto checklist + gaps.
  * Invitation rows and portal sessions remain the sources of truth —
  * activation stamps are derived telemetry only.
+ *
+ * first_portal_open copy claims an invite was sent — it may only remain
+ * incomplete when invitation evidence exists. three_couples_active is a
+ * later-stage engagement gap and is suppressed until an invite exists.
  */
 async function enrichActivationScore(
   venueId: string,
   score: ActivationScore,
 ): Promise<ActivationScore> {
-  const [openMilestone, inviteMilestone] = await Promise.all([
+  const [threeCouplesMilestone, inviteMilestone, firstOpenMilestone] = await Promise.all([
     getVenuePortalOpenMilestone(venueId),
     getVenueFirstPortalInviteMilestone(venueId),
+    getVenueFirstPortalOpenMilestone(venueId),
   ]);
-  let checklist = applyPortalOpenMilestoneToChecklist(score.checklist, openMilestone.complete);
-  checklist = applyFirstPortalInviteToChecklist(checklist, inviteMilestone.complete);
+  let checklist = applyFirstPortalInviteToChecklist(
+    score.checklist,
+    inviteMilestone.complete,
+  );
+  checklist = applyFirstPortalOpenToChecklist(checklist, {
+    inviteSent: inviteMilestone.complete,
+    firstOpenComplete: firstOpenMilestone.complete,
+  });
+  checklist = applyPortalOpenMilestoneToChecklist(
+    checklist,
+    threeCouplesMilestone.complete,
+  );
+  checklist = applyThreeCouplesPortalPrerequisite(
+    checklist,
+    inviteMilestone.complete,
+  );
   const gaps = checklist
     .filter((item) => !item.completed)
     .sort((a, b) => b.points - a.points)
