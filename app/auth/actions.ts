@@ -197,8 +197,9 @@ export async function updatePasswordAfterRecovery(
 }
 
 /**
- * Signed-in venue staff: update password on the current session.
+ * Signed-in venue or vendor: update password on the current scoped session.
  * Keeps the session; does not require the current password.
+ * Client portal uses `changeMyPassword` / Account settings instead.
  */
 export async function changePasswordWhileSignedIn(
   _prevState: AuthFormState,
@@ -206,6 +207,8 @@ export async function changePasswordWhileSignedIn(
 ): Promise<AuthFormState> {
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
+  const audienceRaw = String(formData.get("audience") ?? "venue");
+  const scope = audienceRaw === "vendor" ? "vendor" : "venue";
   const validationError = validateNewPassword(password, confirm);
   if (validationError) return { error: validationError };
 
@@ -217,7 +220,7 @@ export async function changePasswordWhileSignedIn(
     };
   }
 
-  const supabase = await createClient("venue");
+  const supabase = await createClient(scope);
   const {
     data: { user },
   } = await supabase.auth.getUser();

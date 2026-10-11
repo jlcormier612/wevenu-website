@@ -28,11 +28,17 @@ function SubmitButton() {
   );
 }
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({
+  audience = "venue",
+}: {
+  /** Venue staff or vendor cookie jar — not client portal. */
+  audience?: "venue" | "vendor";
+}) {
   const [state, formAction] = React.useActionState(changePasswordWhileSignedIn, INITIAL_STATE);
 
   return (
     <form action={formAction} className="max-w-md space-y-4">
+      <input type="hidden" name="audience" value={audience} />
       <div className="space-y-2">
         <Label htmlFor="password">New password</Label>
         <PasswordInput

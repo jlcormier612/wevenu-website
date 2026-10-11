@@ -75,9 +75,16 @@ describe("password recovery helpers", () => {
     assert.match(confirmClient, /exchangeCodeForSession/);
     assert.match(confirmClient, /verifyOtp/);
     assert.match(actions, /sendBrandedPasswordRecoveryEmail/);
+    assert.match(actions, /changePasswordWhileSignedIn/);
     assert.match(sendPath, /generateLink/);
     assert.match(sendPath, /click_tracking:\s*false/);
     assert.match(sendPath, /PASSWORD_RECOVERY_EMAIL_SUBJECT/);
+    const vendorShell = readFileSync("components/vendor-app/vendor-app-shell.tsx", "utf8");
+    const userMenu = readFileSync("components/shell/user-menu.tsx", "utf8");
+    assert.match(vendorShell, /Change password/);
+    assert.match(vendorShell, /\/vendor\/account\/password/);
+    assert.match(userMenu, /Change password/);
+    assert.match(userMenu, /\/account\/password/);
     assert.equal(PASSWORD_RESET_PATH, "/reset-password");
   });
 });
