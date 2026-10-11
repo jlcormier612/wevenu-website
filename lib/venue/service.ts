@@ -540,6 +540,33 @@ export async function updateVenueEmailSignature(
   return { ok: true };
 }
 
+/** Save: customer-facing email footer contact display preferences (active venue). */
+export async function updateVenueEmailFooterContactPrefs(input: {
+  signature?: string | null;
+  showSignature: boolean;
+  showEmail: boolean;
+  showPhone: boolean;
+}): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Venue not found." };
+  const patch: Record<string, unknown> = {
+    email_footer_show_signature: Boolean(input.showSignature),
+    email_footer_show_email: Boolean(input.showEmail),
+    email_footer_show_phone: Boolean(input.showPhone),
+  };
+  if (input.signature !== undefined) {
+    const trimmed = (input.signature ?? "").trim();
+    if (trimmed.length > 2000) {
+      return { ok: false, message: "Signature is too long (max 2000 characters)." };
+    }
+    patch.email_signature = trimmed || null;
+  }
+  await repository.updateVenueFields(supabase, venue.id, patch);
+  return { ok: true };
+}
+
 /** Which optional planning surfaces this venue offers (Timeline, Floor Plan, etc.). */
 export async function updateVenuePlanningCapabilities(
   caps: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,

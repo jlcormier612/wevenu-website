@@ -372,13 +372,16 @@ export async function completeProtectedTourFromWebhook(opts: {
   }
   const result = data as Record<string, unknown>;
   const venue = await admin.from("venues")
-    .select("name, email, phone, address_line1, city, state_region, primary_color, timezone, logo_url, email_signature")
+    .select("name, email, phone, address_line1, city, state_region, primary_color, timezone, logo_url, email_signature, email_footer_show_signature, email_footer_show_email, email_footer_show_phone")
     .eq("id", request.venue_id)
     .maybeSingle<{
       name: string; email: string | null; phone: string | null;
       address_line1: string | null; city: string | null; state_region: string | null;
       primary_color: string | null; timezone: string | null;
       logo_url: string | null; email_signature: string | null;
+      email_footer_show_signature: boolean | null;
+      email_footer_show_email: boolean | null;
+      email_footer_show_phone: boolean | null;
     }>();
 
   if (result?.ok === true && result.appointmentId) {

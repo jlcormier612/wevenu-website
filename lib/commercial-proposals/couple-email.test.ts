@@ -45,7 +45,7 @@ describe("proposal couple email", () => {
 
   it("resolves venue identity from venues.name, not venues.business_name", () => {
     assert.match(coupleEmailSrc, /customerFacingVenueName/);
-    assert.match(coupleEmailSrc, /\.select\("name, logo_url, primary_color, email_signature, email, phone"\)/);
+    assert.match(coupleEmailSrc, /VENUE_EMAIL_BRAND_SELECT/);
     assert.doesNotMatch(coupleEmailSrc, /business_name/);
   });
 

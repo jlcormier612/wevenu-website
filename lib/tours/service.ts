@@ -352,7 +352,7 @@ async function bookPublicTourOntoExistingLead(opts: {
 
   const { data: apptRow } = await opts.admin
     .from("tour_appointments")
-    .select("contact_email, contact_name, contact_phone, confirm_token, venues(name, email, phone, primary_color, logo_url, email_signature)")
+    .select("contact_email, contact_name, contact_phone, confirm_token, venues(name, email, phone, primary_color, logo_url, email_signature, email_footer_show_signature, email_footer_show_email, email_footer_show_phone)")
     .eq("id", appointmentId)
     .maybeSingle<{
       contact_email: string | null;
@@ -548,7 +548,7 @@ export async function bookTour(
 
   const { data: apptRow } = await admin
     .from("tour_appointments")
-    .select("contact_email, contact_name, contact_phone, confirm_token, venues(name, email, phone, primary_color, logo_url, email_signature)")
+    .select("contact_email, contact_name, contact_phone, confirm_token, venues(name, email, phone, primary_color, logo_url, email_signature, email_footer_show_signature, email_footer_show_email, email_footer_show_phone)")
     .eq("id", appointmentId)
     .maybeSingle<{
       contact_email: string | null;
@@ -1471,7 +1471,7 @@ export async function confirmTourByToken(token: string): Promise<{ ok: boolean; 
     void (async () => {
       const admin = createAdminClient();
       const { data: appt } = await admin.from("tour_appointments")
-        .select("id, venue_id, lead_id, contact_email, contact_name, scheduled_at, duration_minutes, venues(name, primary_color, timezone, logo_url, email_signature, email, phone)")
+        .select("id, venue_id, lead_id, contact_email, contact_name, scheduled_at, duration_minutes, venues(name, primary_color, timezone, logo_url, email_signature, email, phone, email_footer_show_signature, email_footer_show_email, email_footer_show_phone)")
         .eq("confirm_token", token)
         .maybeSingle<{
           id: string; venue_id: string; lead_id: string | null;

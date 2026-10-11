@@ -129,8 +129,9 @@ export async function processReminders(): Promise<ProcessResult> {
           portalToken = session?.access_token;
         }
 
+        const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
         const { data: venueRow } = await supabase.from("venues")
-          .select("name, primary_color, logo_url, email_signature, email, phone")
+          .select(VENUE_EMAIL_BRAND_SELECT)
           .eq("id", reminder.venue_id)
           .maybeSingle();
         const brand = emailBrandFromVenue(venueRow);

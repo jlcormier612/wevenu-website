@@ -9,6 +9,10 @@
 
 import { formatPhoneDisplay } from "@/lib/sms/phone";
 
+/** Columns needed to build EmailVenueBrand from a venues row (or embed). */
+export const VENUE_EMAIL_BRAND_SELECT =
+  "name, logo_url, primary_color, email_signature, email, phone, email_footer_show_signature, email_footer_show_email, email_footer_show_phone";
+
 export type EmailVenueBrand = {
   name: string;
   logoUrl?: string | null;
@@ -19,8 +23,13 @@ export type EmailVenueBrand = {
   replyContact?: string | null;
 };
 
-/** Build brand from a venue row / domain object for outbound email. */
-export function emailBrandFromVenue(venue: {
+export type EmailFooterContactPrefs = {
+  showSignature: boolean;
+  showEmail: boolean;
+  showPhone: boolean;
+};
+
+type VenueBrandSource = {
   name?: string | null;
   logoUrl?: string | null;
   logo_url?: string | null;
@@ -30,17 +39,61 @@ export function emailBrandFromVenue(venue: {
   email_signature?: string | null;
   email?: string | null;
   phone?: string | null;
-} | null | undefined): EmailVenueBrand {
-  const phoneDisplay = venue?.phone?.trim()
-    ? formatPhoneDisplay(venue.phone)
-    : null;
-  const contact = [venue?.email, phoneDisplay].filter(Boolean).join(" · ");
+  emailFooterShowSignature?: boolean | null;
+  email_footer_show_signature?: boolean | null;
+  emailFooterShowEmail?: boolean | null;
+  email_footer_show_email?: boolean | null;
+  emailFooterShowPhone?: boolean | null;
+  email_footer_show_phone?: boolean | null;
+} | null | undefined;
+
+/**
+ * Resolve venue-level footer visibility.
+ * Defaults: signature on, email on, phone off (opt-in).
+ * Missing columns (partial selects) use the same defaults.
+ */
+export function resolveEmailFooterContactPrefs(
+  venue: VenueBrandSource,
+): EmailFooterContactPrefs {
+  return {
+    showSignature: venue?.emailFooterShowSignature ?? venue?.email_footer_show_signature ?? true,
+    showEmail: venue?.emailFooterShowEmail ?? venue?.email_footer_show_email ?? true,
+    showPhone: venue?.emailFooterShowPhone ?? venue?.email_footer_show_phone ?? false,
+  };
+}
+
+/** Build the contact line from venue fields + display prefs. Omits empty pieces. */
+export function buildEmailFooterReplyContact(
+  venue: VenueBrandSource,
+  prefs: EmailFooterContactPrefs = resolveEmailFooterContactPrefs(venue),
+): string | null {
+  const parts: string[] = [];
+  if (prefs.showEmail) {
+    const email = venue?.email?.trim();
+    if (email) parts.push(email);
+  }
+  if (prefs.showPhone) {
+    const raw = venue?.phone?.trim();
+    if (raw) {
+      const display = formatPhoneDisplay(raw);
+      if (display) parts.push(display);
+    }
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/** Build brand from a venue row / domain object for outbound email. */
+export function emailBrandFromVenue(venue: VenueBrandSource): EmailVenueBrand {
+  const prefs = resolveEmailFooterContactPrefs(venue);
+  const rawSignature = venue?.emailSignature ?? venue?.email_signature ?? null;
+  const emailSignature =
+    prefs.showSignature && rawSignature?.trim() ? rawSignature : null;
   return {
     name: venue?.name ?? "Your venue",
     logoUrl: venue?.logoUrl ?? venue?.logo_url ?? null,
     primaryColor: venue?.primaryColor ?? venue?.primary_color ?? "#5D6F5D",
-    emailSignature: venue?.emailSignature ?? venue?.email_signature ?? null,
-    replyContact: contact || null,
+    emailSignature,
+    replyContact: buildEmailFooterReplyContact(venue, prefs),
   };
 }
 
@@ -60,9 +113,9 @@ export function brandButtonHtml(brand: EmailVenueBrand, href: string, label: str
 function signatureBlockHtml(brand: EmailVenueBrand): string {
   const sig = brand.emailSignature?.trim();
   const contact = brand.replyContact?.trim();
-  if (!sig && !contact) {
-    return `<p style="font-size:12px;color:#9ca3af;margin:0">${escapeHtml(brand.name)}</p>`;
-  }
+  // When the venue hides signature and contact, leave a clean footer — do not
+  // invent a grey venue-name row (header already shows the venue).
+  if (!sig && !contact) return "";
   const parts: string[] = [];
   if (sig) {
     parts.push(
@@ -97,6 +150,14 @@ export function renderBrandedEmailHtml(brand: EmailVenueBrand, bodyHtml: string)
   const headerHtml = brand.logoUrl
     ? `<img src="${escapeHtml(brand.logoUrl)}" alt="${escapeHtml(brand.name)}" style="height:36px;width:36px;border-radius:999px;object-fit:cover;margin-bottom:10px;">`
     : "";
+  const footer = signatureBlockHtml(brand);
+  const footerRow = footer
+    ? `<tr>
+      <td style="padding-top:20px;text-align:center">
+        ${footer}
+      </td>
+    </tr>`
+    : "";
 
   return `<!DOCTYPE html>
 <html>
@@ -110,11 +171,7 @@ export function renderBrandedEmailHtml(brand: EmailVenueBrand, bodyHtml: string)
         ${bodyHtml}
       </td>
     </tr>
-    <tr>
-      <td style="padding-top:20px;text-align:center">
-        ${signatureBlockHtml(brand)}
-      </td>
-    </tr>
+    ${footerRow}
   </table>
 </body>
 </html>`;

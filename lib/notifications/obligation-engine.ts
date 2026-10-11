@@ -95,8 +95,9 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
         .select("first_name, partner_first_name, email").eq("id", schedule.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
 
+      const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
       const { data: venue } = await supabase.from("venues")
-        .select("name, logo_url, primary_color, email_signature, email, phone")
+        .select(VENUE_EMAIL_BRAND_SELECT)
         .eq("id", reminder.venue_id)
         .maybeSingle();
       const brand = emailBrandFromVenue(venue);
@@ -200,8 +201,9 @@ async function processContractReminders(supabase: any, now: string, result: Proc
       const { data: client } = await supabase.from("clients").select("email").eq("id", contract.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
 
+      const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
       const { data: venue } = await supabase.from("venues")
-        .select("name, logo_url, primary_color, email_signature, email, phone")
+        .select(VENUE_EMAIL_BRAND_SELECT)
         .eq("id", reminder.venue_id)
         .maybeSingle();
       const brand = emailBrandFromVenue(venue);

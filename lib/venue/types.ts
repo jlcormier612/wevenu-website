@@ -113,6 +113,12 @@ export type Venue = {
   neutralColor: string;
   /** Plain-text signature/footer on outbound client emails. */
   emailSignature: string | null;
+  /** Customer-facing email footer: show signature text. */
+  emailFooterShowSignature: boolean;
+  /** Customer-facing email footer: show venue email. */
+  emailFooterShowEmail: boolean;
+  /** Customer-facing email footer: show venue phone (opt-in). */
+  emailFooterShowPhone: boolean;
   /** Optional public review URL shown after Post-Event Feedback Yes. */
   publicReviewUrl: string | null;
   currency: string;

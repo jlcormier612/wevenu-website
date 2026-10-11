@@ -46,6 +46,9 @@ type VenueRow = {
   accent_color: string;
   neutral_color: string;
   email_signature: string | null;
+  email_footer_show_signature?: boolean | null;
+  email_footer_show_email?: boolean | null;
+  email_footer_show_phone?: boolean | null;
   public_review_url: string | null;
   currency: string;
   week_starts_on: number;
@@ -108,6 +111,9 @@ function mapVenue(r: VenueRow): Venue {
     accentColor: r.accent_color ?? "#B8AEA1",
     neutralColor: r.neutral_color ?? "#F7F5F1",
     emailSignature: r.email_signature ?? null,
+    emailFooterShowSignature: r.email_footer_show_signature !== false,
+    emailFooterShowEmail: r.email_footer_show_email !== false,
+    emailFooterShowPhone: r.email_footer_show_phone === true,
     publicReviewUrl: r.public_review_url ?? null,
     currency: r.currency,
     weekStartsOn: r.week_starts_on,

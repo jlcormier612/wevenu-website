@@ -55,8 +55,9 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
     }
 
     const { assertChannelAllowed } = await import("@/lib/communication/permissions");
+    const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
     const { data: venue } = await supabase.from("venues")
-      .select("name, logo_url, primary_color, email_signature, email, phone")
+      .select(VENUE_EMAIL_BRAND_SELECT)
       .eq("id", msg.venueId)
       .maybeSingle<{
         name: string | null;
@@ -65,6 +66,9 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
         email_signature: string | null;
         email: string | null;
         phone: string | null;
+        email_footer_show_signature: boolean | null;
+        email_footer_show_email: boolean | null;
+        email_footer_show_phone: boolean | null;
       }>();
     const brand = emailBrandFromVenue(venue);
     const conversationId = await findOrCreateConversation(supabase, msg.venueId, msg.relationshipId);

@@ -16,18 +16,28 @@ describe("email branding/signature path audit", () => {
     },
     {
       file: "lib/scheduled-messages/processor.ts",
-      mustInclude: [/emailBrandFromVenue/, /wrapConversationMessageHtml/, /appendEmailSignatureText/, /email_signature/],
+      mustInclude: [
+        /emailBrandFromVenue/,
+        /wrapConversationMessageHtml/,
+        /appendEmailSignatureText/,
+        /VENUE_EMAIL_BRAND_SELECT/,
+      ],
     },
     {
       file: "lib/notifications/obligation-engine.ts",
-      mustInclude: [/emailBrandFromVenue/, /wrapConversationMessageHtml/, /appendEmailSignatureText/, /email_signature/],
+      mustInclude: [
+        /emailBrandFromVenue/,
+        /wrapConversationMessageHtml/,
+        /appendEmailSignatureText/,
+        /VENUE_EMAIL_BRAND_SELECT/,
+      ],
     },
     {
       file: "lib/notifications/engine.ts",
       mustInclude: [
         /emailBrandFromVenue/,
         /appendEmailSignatureText/,
-        /email_signature/,
+        /VENUE_EMAIL_BRAND_SELECT/,
         /buildTourReminderCoupleEmail/,
         /coupleHtmlAlreadyBranded/,
       ],
@@ -86,9 +96,22 @@ describe("email branding/signature path audit", () => {
     },
     {
       file: "components/settings/communication-identity-section.tsx",
-      mustInclude: [/renderEmailBrandPreviewHtml/, /emailSignature/],
+      mustInclude: [
+        /renderEmailBrandPreviewHtml/,
+        /emailBrandFromVenue/,
+        /emailFooterShowPhone/,
+        /Show venue phone number/,
+      ],
     },
   ];
+
+  it("shared brand select includes footer contact preference columns", () => {
+    const brand = readFileSync(resolve("lib/email/venue-brand.ts"), "utf8");
+    assert.match(brand, /VENUE_EMAIL_BRAND_SELECT/);
+    assert.match(brand, /email_footer_show_signature/);
+    assert.match(brand, /email_footer_show_email/);
+    assert.match(brand, /email_footer_show_phone/);
+  });
 
   for (const row of paths) {
     it(`${row.file} uses the shared brand/signature source`, () => {

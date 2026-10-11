@@ -4,11 +4,16 @@ import * as React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { updateEmailSignatureAction } from "@/app/(app)/settings/communication-identity-actions";
+import { updateEmailFooterContactPrefsAction } from "@/app/(app)/settings/communication-identity-actions";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { renderEmailBrandPreviewHtml } from "@/lib/email/venue-brand";
+import {
+  emailBrandFromVenue,
+  renderEmailBrandPreviewHtml,
+} from "@/lib/email/venue-brand";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 
 /**
  * Answers: "What will my client actually see when HTC sends a message?"
@@ -21,6 +26,9 @@ export function CommunicationIdentitySection({
   venueEmail,
   venuePhone,
   emailSignature: initialSignature,
+  emailFooterShowSignature: initialShowSignature = true,
+  emailFooterShowEmail: initialShowEmail = true,
+  emailFooterShowPhone: initialShowPhone = false,
   emailConfigured,
   smsConfigured,
   textingNumberDisplay = null,
@@ -31,31 +39,57 @@ export function CommunicationIdentitySection({
   venueEmail: string | null;
   venuePhone: string | null;
   emailSignature: string | null;
+  emailFooterShowSignature?: boolean;
+  emailFooterShowEmail?: boolean;
+  emailFooterShowPhone?: boolean;
   emailConfigured: boolean;
   smsConfigured: boolean;
   /** Venue texting number when ready — never provider SIDs. */
   textingNumberDisplay?: string | null;
 }) {
   const [signature, setSignature] = useSyncedState(initialSignature ?? "");
+  const [showSignature, setShowSignature] = useSyncedState(initialShowSignature);
+  const [showEmail, setShowEmail] = useSyncedState(initialShowEmail);
+  const [showPhone, setShowPhone] = useSyncedState(initialShowPhone);
   const [saving, setSaving] = React.useState(false);
-  const dirty = signature !== (initialSignature ?? "");
 
-  const previewHtml = renderEmailBrandPreviewHtml({
-    name: venueName || "Your venue",
-    logoUrl,
-    primaryColor: primaryColor || "#5D6F5D",
-    emailSignature: signature,
-    replyContact: [venueEmail, venuePhone].filter(Boolean).join(" · ") || null,
-  });
+  const dirty =
+    signature !== (initialSignature ?? "") ||
+    showSignature !== initialShowSignature ||
+    showEmail !== initialShowEmail ||
+    showPhone !== initialShowPhone;
 
-  async function saveSignature() {
+  const previewHtml = renderEmailBrandPreviewHtml(
+    emailBrandFromVenue({
+      name: venueName || "Your venue",
+      logoUrl,
+      primaryColor: primaryColor || "#5D6F5D",
+      emailSignature: signature,
+      email: venueEmail,
+      phone: venuePhone,
+      emailFooterShowSignature: showSignature,
+      emailFooterShowEmail: showEmail,
+      emailFooterShowPhone: showPhone,
+    }),
+  );
+
+  const phoneLabel = venuePhone?.trim()
+    ? formatPhoneDisplay(venuePhone) || venuePhone
+    : "No phone on file";
+
+  async function saveFooter() {
     setSaving(true);
     try {
-      const result = await updateEmailSignatureAction(signature);
+      const result = await updateEmailFooterContactPrefsAction({
+        signature,
+        showSignature,
+        showEmail,
+        showPhone,
+      });
       if (!result.ok) throw new Error(result.message ?? "save failed");
-      toast.success("Email signature saved");
+      toast.success("Email footer settings saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save signature.");
+      toast.error(e instanceof Error ? e.message : "Could not save email footer settings.");
     } finally {
       setSaving(false);
     }
@@ -114,32 +148,86 @@ export function CommunicationIdentitySection({
               venueEmail ? (
                 <div className="space-y-1">
                   <p>Replies to your messages are routed to your Inbox automatically.</p>
-                  <p>Contact: {venueEmail}</p>
+                  <p>Stored contact: {venueEmail}</p>
                 </div>
               ) : (
                 "Set your venue contact email in Business & Brand"
               )
             }
+            hint="Footer visibility for this address is controlled below. Turning it off does not delete it."
           />
         </dl>
 
-        <div className="rounded-sm border border-border p-4 space-y-3 bg-card">
+        <div className="rounded-sm border border-border p-4 space-y-4 bg-card">
           <div>
             <p className="text-sm font-medium text-heading">Email signature / footer</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Applied automatically to outbound venue emails — staff do not paste this manually.
+              Choose which contact details customers see beneath your sign-off.
             </p>
           </div>
           <Textarea
             value={signature}
             onChange={(e) => setSignature(e.target.value)}
             rows={4}
-            placeholder={"Warmly,\nThe team at your venue\n(555) 555-0100"}
+            placeholder={"Warmly,\nThe team at your venue"}
             className="text-sm"
+            disabled={!showSignature}
           />
+
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium text-heading">What customers see in the footer</legend>
+            <label className="flex items-start gap-3 text-sm">
+              <Checkbox
+                checked={showSignature}
+                onCheckedChange={(v) => setShowSignature(Boolean(v))}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium text-heading">Show venue / team sign-off</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  The signature text above (for example “Warmly,” and your team name).
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 text-sm">
+              <Checkbox
+                checked={showEmail}
+                onCheckedChange={(v) => setShowEmail(Boolean(v))}
+                disabled={!venueEmail?.trim()}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium text-heading">Show venue email address</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  {venueEmail?.trim()
+                    ? `Customers see ${venueEmail.trim()} in the footer when this is on.`
+                    : "Add a venue email in Business & Brand before enabling this."}
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 text-sm">
+              <Checkbox
+                checked={showPhone}
+                onCheckedChange={(v) => setShowPhone(Boolean(v))}
+                disabled={!venuePhone?.trim()}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium text-heading">Show venue phone number</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  Off by default so customers are not invited to call unless you choose it.
+                  {venuePhone?.trim()
+                    ? ` Stored number: ${phoneLabel}.`
+                    : " Add a phone in Business & Brand before enabling this."}
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
           <div className="flex items-center gap-2">
-            <Button type="button" size="sm" disabled={!dirty || saving} onClick={() => void saveSignature()}>
-              {saving ? "Saving…" : "Save signature"}
+            <Button type="button" size="sm" disabled={!dirty || saving} onClick={() => void saveFooter()}>
+              {saving ? "Saving…" : "Save email footer"}
             </Button>
             {dirty && <span className="text-xs text-muted-foreground">Unsaved changes</span>}
           </div>

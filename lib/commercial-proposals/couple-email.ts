@@ -157,9 +157,10 @@ export async function submitProposalCoupleEmail(input: {
 }): Promise<ProposalEmailSubmitResult> {
   // Same branding fields as scheduled-messages / contract invite path
   // (emailBrandFromVenue). Customer-facing display name stays venues.name.
+  const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
   const { data: venue } = await input.supabase
     .from("venues")
-    .select("name, logo_url, primary_color, email_signature, email, phone")
+    .select(VENUE_EMAIL_BRAND_SELECT)
     .eq("id", input.venueId)
     .maybeSingle();
   const venueName = customerFacingVenueName({
@@ -172,6 +173,9 @@ export async function submitProposalCoupleEmail(input: {
     email_signature: (venue?.email_signature as string | null) ?? null,
     email: (venue?.email as string | null) ?? null,
     phone: (venue?.phone as string | null) ?? null,
+    email_footer_show_signature: (venue?.email_footer_show_signature as boolean | null) ?? null,
+    email_footer_show_email: (venue?.email_footer_show_email as boolean | null) ?? null,
+    email_footer_show_phone: (venue?.email_footer_show_phone as boolean | null) ?? null,
   });
 
   const recipient = await resolveRecipient(input.supabase, input.venueId, input.leadId, input.clientId);

@@ -78,6 +78,9 @@ export default async function CommunicationsAutomationSettingsPage() {
             venueEmail={venue?.email ?? null}
             venuePhone={venue?.phone ?? null}
             emailSignature={venue?.emailSignature ?? null}
+            emailFooterShowSignature={venue?.emailFooterShowSignature ?? true}
+            emailFooterShowEmail={venue?.emailFooterShowEmail ?? true}
+            emailFooterShowPhone={venue?.emailFooterShowPhone ?? false}
             emailConfigured={isEmailConfigured()}
             smsConfigured={smsConfigured}
             textingNumberDisplay={
