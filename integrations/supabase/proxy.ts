@@ -451,6 +451,21 @@ export async function updateSession(
 
   // Only redirect logged-in venue users away from /login.
   if (venueUser && pathname === "/login") {
+    // Post-purchase activation must never reuse an existing venue session.
+    // Otherwise a browser already signed in as Account A (e.g. Fancy) lands
+    // in Account A after activating a purchase for Account B, and B's
+    // onboarding handoff stays unconsumed.
+    if (request.nextUrl.searchParams.get("activated") === "1") {
+      await venueSupabase.auth.signOut();
+      // Drop any stale active-venue cookie from the prior account so a Fancy
+      // (or other) context cannot outlive the cleared session.
+      supabaseResponse.cookies.set("htc_active_venue_id", "", {
+        path: "/",
+        maxAge: 0,
+      });
+      return supabaseResponse;
+    }
+
     const { data: lockedVenue } = await venueSupabase
       .from("venues")
       .select("access_disabled, account_status")

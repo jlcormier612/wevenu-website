@@ -51,6 +51,18 @@ describe("productPostActivationLoginUrl — must land on product login then Setu
     assert.doesNotMatch(url, /workspace\.sandbox/);
     assert.doesNotMatch(url, /venueId=/);
   });
+
+  it("includes purchaser email as prefill only (never venueId / auth proof)", () => {
+    process.env.NEXT_PUBLIC_PRODUCT_APP_URL = "https://app.sandbox.hellotocheers.com";
+    const url = productPostActivationLoginUrl("jlcormier612@gmail.com");
+    assert.equal(
+      url,
+      "https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub&email=jlcormier612%40gmail.com",
+    );
+    assert.doesNotMatch(url, /venueId=/);
+    assert.equal(productPostActivationLoginUrl("not-an-email"), productPostActivationLoginUrl());
+    assert.equal(productPostActivationLoginUrl(null), productPostActivationLoginUrl());
+  });
 });
 
 describe("activationBaseUrl / activationUrlFromToken — must resolve to the workspace app", () => {

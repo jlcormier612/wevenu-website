@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
-import { activationUrlFromToken, whiteGloveIntakeUrlFromToken } from "@shared/email";
+import {
+  activationUrlFromToken,
+  productPostActivationLoginUrl,
+  whiteGloveIntakeUrlFromToken,
+} from "@shared/email";
 import { getEnrollmentBySession } from "@shared/product-account";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { TYPE_HERO_SHELL, TYPE_LABEL } from "@/lib/marketing/rhythm";
@@ -13,14 +17,6 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 type SuccessSearchParams = Promise<{ session_id?: string }>;
-
-function productAppLoginUrl(): string {
-  const base = (process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() || "http://localhost:3000").replace(
-    /\/$/,
-    "",
-  );
-  return `${base}/login`;
-}
 
 /**
  * Post-purchase welcome.
@@ -57,8 +53,12 @@ export default async function PricingSuccessPage({
   if (enrollment) {
     if (enrollment.status === "activated") {
       heading = "You're already set up";
-      body = "Your account is active. Sign in to pick up right where you left off.";
-      primaryCta = { href: productAppLoginUrl(), label: "Sign in" };
+      body =
+        "Your account is active. Sign in with the email from this purchase to open your venue — not a different account that may already be signed in on this device.";
+      primaryCta = {
+        href: productPostActivationLoginUrl(enrollment.ownerEmail),
+        label: "Sign in",
+      };
     } else if (enrollment.onboardingType === "white_glove") {
       heading = "Let's get your venue ready";
       body =

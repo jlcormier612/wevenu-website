@@ -79,11 +79,15 @@ export default async function LoginPage({ searchParams }: Props) {
               {justActivated ? "Welcome to Hello to Cheers" : "Welcome back"}
             </CardTitle>
             <CardDescription>
-              {nextPath?.startsWith("/vendor")
-                ? "Sign in to continue to your vendor invitation or portal."
-                : nextPath?.startsWith("/client") || nextPath?.startsWith("/p/")
-                  ? "Sign in to continue to your planning workspace."
-                  : "Sign in to your Hello to Cheers workspace to continue."}
+              {justActivated
+                ? defaultEmail
+                  ? `Sign in with ${defaultEmail} — the email used for this purchase — to open your new venue. If another account was signed in on this device, it has been signed out.`
+                  : "Sign in with the email used for this purchase to open your new venue. If another account was signed in on this device, it has been signed out."
+                : nextPath?.startsWith("/vendor")
+                  ? "Sign in to continue to your vendor invitation or portal."
+                  : nextPath?.startsWith("/client") || nextPath?.startsWith("/p/")
+                    ? "Sign in to continue to your planning workspace."
+                    : "Sign in to your Hello to Cheers workspace to continue."}
             </CardDescription>
           </CardHeader>
           <CardContent>

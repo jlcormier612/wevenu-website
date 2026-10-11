@@ -74,6 +74,8 @@ export async function activateAccountAction(
   }
 
   // Product activate already stored a server-trusted one-time handoff for
-  // bridged.venueId. Do not put a raw venue id on the login URL.
-  redirect(productPostActivationLoginUrl());
+  // bridged.venueId. Do not put a raw venue id on the login URL. Pass the
+  // purchaser email for login prefill only — proxy clears any prior venue
+  // session when activated=1 so a different browser account cannot win.
+  redirect(productPostActivationLoginUrl(email));
 }

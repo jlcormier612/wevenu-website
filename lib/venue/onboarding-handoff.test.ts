@@ -69,8 +69,9 @@ describe("one-time venue onboarding handoff", () => {
     assert.match(activate, /userId/);
     assert.match(activate, /enrollment\.owner_email/);
     assert.match(activate, /row\.venue_id/);
-    assert.match(activateAction, /productPostActivationLoginUrl\(\)/);
-    assert.match(helpers, /\/login\?activated=1&next=/);
+    assert.match(activateAction, /productPostActivationLoginUrl\(email\)/);
+    assert.match(helpers, /activated:\s*"1"/);
+    assert.match(helpers, /params\.set\("email"/);
     assert.doesNotMatch(helpers, /venueId=/);
     assert.doesNotMatch(activateAction, /venueId=/);
   });

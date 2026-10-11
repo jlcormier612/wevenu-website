@@ -76,6 +76,8 @@ export type EnrollmentLookupResult =
       ok: true;
       found: true;
       venueName: string;
+      /** Purchaser email for login prefill only — never authorization. */
+      ownerEmail: string | null;
       onboardingType: OnboardingType;
       status: "pending" | "provisioned" | "activated";
       /** Same value the welcome email links to; null for white_glove until handoff. */
