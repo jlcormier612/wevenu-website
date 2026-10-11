@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**IN PROGRESS** — eligibility fixed in code; unit tests GREEN; tip `7b23acbf` (+ follow-up team-login gate) awaiting Deploy Sandbox tip + disposable-venue browser verify.
+**IN PROGRESS** — eligibility fixed in code; unit tests GREEN; tip `a09b3b50` awaiting Deploy Sandbox + disposable-venue browser verify (`EXPECT_SHA=a09b3b50`).
 
 ## Reproduction (reported)
 
