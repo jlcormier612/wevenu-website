@@ -32,3 +32,7 @@ Live overlay (same principle as `applyPortalOpenMilestoneToChecklist`):
 - `applyFirstPortalInviteToChecklist` sets checklist completion
 - Write-once `first_portal_invite_sent_at` is derived telemetry only
 - `inviteClient` unchanged
+
+## Related (2026-10-11)
+
+`first_portal_open` falsely claimed invite-sent on empty venues — gated in `docs/qa/luv-false-portal-open/STATUS.md` (invite prerequisite + session open). Does not change this invite definition.

@@ -22,6 +22,8 @@ Milestone: **3 unique booked couples** have opened their planning portal at leas
 
 GREEN on Sandbox `f83ad5897dbde5ba7d3600dd2012db46866b2afb` (2026-10-09). The notes below that the browser proof was pending, and that `first_portal_invite_sent_at` was still null, are historical. Product-wide release is not declared from this result.
 
+Related: empty-venue false `first_portal_open` / premature `three_couples_active` eligibility — `docs/qa/luv-false-portal-open/STATUS.md` (does not change the 3-opens definition).
+
 ## Runtime proof (2026-10-09)
 
 Health `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`. Jen's Fancy Venue. Staff `jennifer@hellotocheers.com`.
