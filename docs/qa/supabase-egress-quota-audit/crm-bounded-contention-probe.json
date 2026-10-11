@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-11T20:42:46.992Z",
+  "at": "2026-10-11T23:16:33.649Z",
   "project": "wvpsldwwjqdannqasrdf",
   "lockProfile": {
     "proname": "htc_crm_replace_store",
@@ -12,18 +12,18 @@
   },
   "lockProfileError": null,
   "loadA": {
-    "ms": 164,
-    "version": 6786,
-    "storeBytes": 222578
+    "ms": 331,
+    "version": 6788,
+    "storeBytes": 223096
   },
   "loadB": {
-    "ms": 119,
-    "version": 6786
+    "ms": 116,
+    "version": 6788
   },
   "versionStable": true,
   "staleReplace": {
-    "ms": 67,
-    "error": "htc_crm_version_conflict (expected 6736, actual 6786)",
+    "ms": 80,
+    "error": "htc_crm_version_conflict (expected 6738, actual 6788)",
     "code": "P0001",
     "conflict": true,
     "busy": false,

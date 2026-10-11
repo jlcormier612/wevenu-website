@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-11T23:19:26.283602Z",
+  "snsTopic": "arn:aws:sns:us-east-1:405254329873:htc-sandbox-ops-alerts",
+  "sqsProofQueue": "https://sqs.us-east-1.amazonaws.com/405254329873/htc-sandbox-ops-alerts-proof",
+  "emailSubscription": "jennifer@hellotocheers.com \u2014 PendingConfirmation (owner must Confirm in email)",
+  "forcedAlarm": "htc-sandbox-auth-retryable-spike",
+  "observedSubjects": [
+    "ALARM: \"htc-sandbox-auth-retryable-spike\" in US East (N. Virginia)",
+    "OK: \"htc-sandbox-auth-retryable-spike\" in US East (N. Virginia)"
+  ],
+  "deliveryProven": true,
+  "channel": "CloudWatch Alarm \u2192 SNS \u2192 SQS (proof) + Email (pending confirm)"
+}

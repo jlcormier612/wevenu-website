@@ -6,6 +6,8 @@
 **Post-fix window measured:** ~2026-10-11T20:34Z (CRM fix deploy) → 21:12Z (~38 minutes of scheduled + QA traffic)  
 **No Production / public-marketing changes. No plan/Spend Cap/billing changes.**
 
+> **Closure continuation (2026-10-11T23:20Z):** tip `a09b3b50…`; Auth/CRM re-proven; counterfactual + forecast + early-warning delivery — see `PRODUCTION-READINESS-CLOSURE.md`, `FINDINGS-LEDGER.md`, `COUNTERFACTUAL-AND-FORECAST.md`, `EARLY-WARNING.md`.
+
 ---
 
 ## Direct answers (read first)
