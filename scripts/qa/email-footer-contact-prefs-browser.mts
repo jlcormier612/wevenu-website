@@ -168,10 +168,9 @@ async function main() {
     await browser.close();
   }
 
-  // Pure render proof (same module as production) — no customer send
-  const { emailBrandFromVenue, renderBrandedEmailHtml } = await import(
-    "@/lib/email/venue-brand"
-  );
+  // Pure render proof (same module as production)
+  const { emailBrandFromVenue, renderBrandedEmailHtml, appendEmailSignatureText } =
+    await import("@/lib/email/venue-brand");
   const hiddenPhone = renderBrandedEmailHtml(
     emailBrandFromVenue({
       name: "Proof Venue",
@@ -186,17 +185,15 @@ async function main() {
     /proof@example\.test/.test(hiddenPhone) && !/870-3988/.test(hiddenPhone),
     "default footer",
   );
-  const shownPhone = renderBrandedEmailHtml(
-    emailBrandFromVenue({
-      name: "Proof Venue",
-      email: "proof@example.test",
-      phone: "9788703988",
-      emailFooterShowPhone: true,
-      emailFooterShowEmail: false,
-      emailFooterShowSignature: false,
-    }),
-    "<p>Body</p>",
-  );
+  const shownPhoneBrand = emailBrandFromVenue({
+    name: "Proof Venue",
+    email: "proof@example.test",
+    phone: "9788703988",
+    emailFooterShowPhone: true,
+    emailFooterShowEmail: false,
+    emailFooterShowSignature: false,
+  });
+  const shownPhone = renderBrandedEmailHtml(shownPhoneBrand, "<p>Body</p>");
   record(
     "render_phone_only_no_separator_artifact",
     /\(978\) 870-3988/.test(shownPhone) &&
@@ -204,6 +201,104 @@ async function main() {
       !/ · /.test(shownPhone),
     "phone-only footer",
   );
+
+  // Actual Resend delivery to internal inbox (not a customer). Retrieve HTML.
+  const resendKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <jennifer@hellotocheers.com>";
+  const stamp = Date.now();
+  const internalTo =
+    process.env.COMMUNICATION_SANDBOX_EMAIL?.trim() ||
+    `jennifer+emailfooter.${stamp}@hellotocheers.com`;
+  if (!resendKey) {
+    record("delivered_email_matches_prefs", false, "RESEND_API_KEY missing");
+  } else {
+    const brand = emailBrandFromVenue({
+      name: "Footer Prefs QA Venue",
+      emailSignature: "Warmly,\nFooter Prefs QA Venue",
+      email: "footer-qa@example.test",
+      phone: "9788703988",
+      emailFooterShowSignature: true,
+      emailFooterShowEmail: true,
+      emailFooterShowPhone: false,
+    });
+    const html = renderBrandedEmailHtml(
+      brand,
+      "<p>QA footer contact prefs — phone must be absent.</p>",
+    );
+    const text = appendEmailSignatureText(
+      "QA footer contact prefs — phone must be absent.",
+      brand,
+    );
+    const sendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+        "User-Agent": "htc-email-footer-prefs-qa/1.0",
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [internalTo],
+        subject: `[QA] Email footer prefs ${stamp}`,
+        text,
+        html,
+        tags: [
+          { name: "category", value: "qa_email_footer_prefs" },
+          { name: "qa", value: "footer_contact_prefs" },
+        ],
+        open_tracking: false,
+        click_tracking: false,
+      }),
+    });
+    const sendBody = (await sendRes.json().catch(() => ({}))) as {
+      id?: string;
+      message?: string;
+    };
+    record(
+      "resend_accepted",
+      sendRes.ok && Boolean(sendBody.id),
+      `status=${sendRes.status}`,
+    );
+    let retrievedHtml = "";
+    if (sendBody.id) {
+      for (let i = 0; i < 8; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const getRes = await fetch(`https://api.resend.com/emails/${sendBody.id}`, {
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            "User-Agent": "htc-email-footer-prefs-qa/1.0",
+          },
+        });
+        if (getRes.ok) {
+          const retrieved = (await getRes.json()) as { html?: string };
+          retrievedHtml = String(retrieved.html || "");
+          if (retrievedHtml) break;
+        }
+      }
+    }
+    record(
+      "delivered_email_matches_prefs",
+      /footer-qa@example\.test/.test(retrievedHtml) &&
+        /Warmly/.test(retrievedHtml) &&
+        !/870-3988/.test(retrievedHtml) &&
+        !/9788703988/.test(retrievedHtml),
+      `html_len=${retrievedHtml.length}`,
+    );
+    writeFileSync(
+      `${OUT}/delivered-sample.json`,
+      JSON.stringify(
+        {
+          to: internalTo.replace(/^(.).+(@.+)$/, "$1***$2"),
+          emailId: sendBody.id ?? null,
+          htmlLen: retrievedHtml.length,
+          hasEmail: /footer-qa@example\.test/.test(retrievedHtml),
+          hasPhone: /870-3988|9788703988/.test(retrievedHtml),
+        },
+        null,
+        2,
+      ),
+    );
+  }
 
   const required = [
     "schema_columns_present",
@@ -214,6 +309,8 @@ async function main() {
     "preview_iframe",
     "render_default_hides_phone",
     "render_phone_only_no_separator_artifact",
+    "resend_accepted",
+    "delivered_email_matches_prefs",
   ];
   const report = {
     observedAt: new Date().toISOString(),
