@@ -1,0 +1,28 @@
+{
+  "observedAt": "2026-10-11T20:51:05.376Z",
+  "metrics_attempt_0": {
+    "status": 401,
+    "preview": "{\"message\":\"No API key found in request\",\"hint\":\"No `apikey` request header or url param was found.\"}"
+  },
+  "metrics_attempt_1": {
+    "status": 401,
+    "preview": "{\"message\":\"No API key found in request\",\"hint\":\"No `apikey` request header or url param was found.\"}"
+  },
+  "metrics_attempt_2": {
+    "status": 401,
+    "preview": "{\"message\":\"No API key found in request\",\"hint\":\"No `apikey` request header or url param was found.\"}"
+  },
+  "crm": {
+    "version": 6786,
+    "loadError": null
+  },
+  "lockProfile": {
+    "proname": "htc_crm_replace_store",
+    "has_try_lock": true,
+    "prosrc_chars": 4881,
+    "has_store_busy": true,
+    "has_lock_timeout": true,
+    "has_blocking_lock": false,
+    "has_statement_timeout": true
+  }
+}

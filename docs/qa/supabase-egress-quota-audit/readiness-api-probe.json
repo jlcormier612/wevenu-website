@@ -1,0 +1,115 @@
+{
+  "observedAt": "2026-10-11T20:47:42.876Z",
+  "hasManagementToken": false,
+  "portals": [
+    {
+      "name": "venue_login",
+      "url": "https://app.sandbox.hellotocheers.com/login",
+      "status": 200,
+      "ms": 465,
+      "dpl": "459d63fc48ce6d11719d5bb809ca98ffa904b93e",
+      "restricted": false,
+      "bodyPreview": "<!DOCTYPE html><html data-dpl-id=\"459d63fc48ce6d11719d5bb809ca98ffa904b93e\" lang=\"en\" class=\"inter_786c1081-module__J60SBq__variable source_sans_3_cc41afc4-module__qGC-vG__variable"
+    },
+    {
+      "name": "vendor_login",
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login",
+      "status": 200,
+      "ms": 424,
+      "dpl": "459d63fc48ce6d11719d5bb809ca98ffa904b93e",
+      "restricted": false,
+      "bodyPreview": "<!DOCTYPE html><html data-dpl-id=\"459d63fc48ce6d11719d5bb809ca98ffa904b93e\" lang=\"en\" class=\"inter_786c1081-module__J60SBq__variable source_sans_3_cc41afc4-module__qGC-vG__variable"
+    },
+    {
+      "name": "client_login",
+      "url": "https://app.sandbox.hellotocheers.com/client/login",
+      "status": 200,
+      "ms": 426,
+      "dpl": "459d63fc48ce6d11719d5bb809ca98ffa904b93e",
+      "restricted": false,
+      "bodyPreview": "<!DOCTYPE html><html data-dpl-id=\"459d63fc48ce6d11719d5bb809ca98ffa904b93e\" lang=\"en\" class=\"inter_786c1081-module__J60SBq__variable source_sans_3_cc41afc4-module__qGC-vG__variable"
+    },
+    {
+      "name": "venue_health",
+      "url": "https://app.sandbox.hellotocheers.com/api/health",
+      "status": 200,
+      "ms": 606,
+      "dpl": null,
+      "restricted": false,
+      "bodyPreview": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}"
+    },
+    {
+      "name": "sandbox_marketing",
+      "url": "https://sandbox.hellotocheers.com/",
+      "status": 200,
+      "ms": 214,
+      "dpl": null,
+      "restricted": false,
+      "bodyPreview": "<!DOCTYPE html><html lang=\"en\" class=\"inter_786c1081-module__J60SBq__variable cormorant_garamond_1b431daf-module__4NWwgq__variable great_vibes_ae68d5ff-module__R5qkHa__variable h-f"
+    },
+    {
+      "name": "public_marketing",
+      "url": "https://hellotocheers.com/",
+      "status": 200,
+      "ms": 933,
+      "dpl": null,
+      "restricted": false,
+      "bodyPreview": "<!DOCTYPE html><html lang=\"en\" class=\"inter_786c1081-module__J60SBq__variable cormorant_garamond_1b431daf-module__4NWwgq__variable great_vibes_ae68d5ff-module__R5qkHa__variable h-f"
+    }
+  ],
+  "supabase": {
+    "projectHint": true,
+    "authHealth": {
+      "status": 200,
+      "ms": 177,
+      "body": "{\"version\":\"v2.197.0\",\"name\":\"GoTrue\",\"description\":\"GoTrue is a user registration and authentication API\"}"
+    },
+    "restLegalDocuments": {
+      "ms": 96,
+      "error": null,
+      "rowCount": 1,
+      "restricted": false
+    },
+    "storageBuckets": {
+      "status": 200,
+      "ms": 272,
+      "restricted": false
+    }
+  },
+  "crm": {
+    "loadMs": 225,
+    "loadError": null,
+    "version": 6786,
+    "versionAfter": 6786,
+    "lockProfile": {
+      "proname": "htc_crm_replace_store",
+      "has_try_lock": true,
+      "prosrc_chars": 4881,
+      "has_store_busy": true,
+      "has_lock_timeout": true,
+      "has_blocking_lock": false,
+      "has_statement_timeout": true
+    },
+    "lockProfileMs": 99,
+    "staleProbe": {
+      "ms": 92,
+      "errorMessage": "htc_crm_version_conflict (expected 6736, actual 6786)",
+      "errorCode": "P0001",
+      "data": null,
+      "looksLikeConflict": true,
+      "looksLike40001Hang": false
+    }
+  },
+  "migrations": {
+    "schemaMigrationsUnavailable": true,
+    "lockProfileFallback": {
+      "proname": "htc_crm_replace_store",
+      "has_try_lock": true,
+      "prosrc_chars": 4881,
+      "has_store_busy": true,
+      "has_lock_timeout": true,
+      "has_blocking_lock": false,
+      "has_statement_timeout": true
+    }
+  }
+}

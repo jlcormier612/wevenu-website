@@ -1,0 +1,55 @@
+{
+  "observedAt": "2026-10-11T20:50:40.640Z",
+  "expectSha": "459d63fc",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  },
+  "checks": [
+    {
+      "name": "app-health",
+      "pass": true,
+      "detail": "{\"http\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}"
+    },
+    {
+      "name": "venue-login-shell",
+      "pass": true,
+      "detail": "http=200 dpl=459d63fc48ce6d11719d5bb809ca98ffa904b93e restricted=false"
+    },
+    {
+      "name": "vendor-login-shell",
+      "pass": true,
+      "detail": "http=200 dpl=459d63fc48ce6d11719d5bb809ca98ffa904b93e restricted=false"
+    },
+    {
+      "name": "client-login-shell",
+      "pass": true,
+      "detail": "http=200 dpl=459d63fc48ce6d11719d5bb809ca98ffa904b93e restricted=false"
+    },
+    {
+      "name": "venue-auth-landing",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/dashboard snippet=OVERVIEW Dashboard YOUR RELATIONSHIPS Leads 2 Clients Vendors SCHEDULING Calendar Tours 2 COMMUNICATION Inbox 3 Automations LIBRARY Templates Documents FINANCIALS Contracts 2 Payments 5 TO DO’S Task Center Requests YOUR VENUE Setup Settings Guidance Venue Guide Reports Help & Feedback Sweet Daisy Barn & Farm Search ⌘K 59 J jennifer@hellotocheers.com Good afternoon, Jen. Sunday, October 11, 2026 · "
+    },
+    {
+      "name": "vendor-auth-landing",
+      "pass": true,
+      "detail": "email=jennifer@hellotocheers.com url=https://app.sandbox.hellotocheers.com/vendor/dashboard snippet=HELLO TO CHEERS CU Cuppity Cakes Cake Home Events Messages Documents Profile Switch workspace Give feedback Sign out Cuppity Cakes Good afternoon, Josey. Sunday, October 11 PARTNERING WITH Jen's Fancy Venue Cake & Desserts Partner Preferred Vendor Partner since August 2026 · 3 events together 👋 Venue Contact JF Jen Fancy Owner Email +3 more contacts 🎁 Current Promotion What couples see on your p"
+    },
+    {
+      "name": "client-auth-landing",
+      "pass": true,
+      "detail": "tokenPrefix=9daec30d… url=https://app.sandbox.hellotocheers.com/p/9daec30d0c11ce2ffb5ea7cc081a799f7b510caa5870689c6481e02e802dd1a4 snippet=Lydia & Ali · Lulu Lodge Jun 12, 2027 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors LULU LODGE Lydia & Ali 244 days until your celebration Saturday, June 12, 2027 Your venue team is here with you—finish what helps your day come together. Review what Lulu Lodge needs Message Lulu Lodge View Timeline Lulu Lodge is waiting on 11 thin"
+    },
+    {
+      "name": "network-no-402",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "hardFail": [],
+  "ok": true
+}

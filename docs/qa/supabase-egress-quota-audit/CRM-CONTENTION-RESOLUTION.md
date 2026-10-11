@@ -82,6 +82,10 @@ No CRM rows wiped (stale probes used empty payload **with stale expected version
 
 **Recommendation:** CRM 125s contention class is **resolved in Sandbox**. Do **not** declare org-wide customer-traffic GREEN until owner Usage/Spend Cap evidence is attached.
 
+### Revalidation (2026-10-11T20:47Z–20:51Z)
+
+Readiness pass confirmed deploy run [38172767788](https://github.com/jlcormier612/wevenu-website/actions/runs/38172767788) still tip; all four ECS images + portal `dpl` remain `459d63fc…`; lock profile unchanged; single disposable stale replace **92 ms** `P0001` / version **6786**. No material change to this report’s fix conclusions. Full gates: `STABILITY-READINESS.md`.
+
 ---
 
 ## Safety
