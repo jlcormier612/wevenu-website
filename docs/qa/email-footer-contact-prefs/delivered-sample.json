@@ -1,7 +1,28 @@
 {
-  "emailId": "01a12d2b-4261-715f-ab11-bbac89174e05",
-  "htmlLen": 998,
-  "hasEmail": true,
-  "hasPhone": false,
-  "ok": true
+  "to": "j***@hellotocheers.com",
+  "phone_hidden": {
+    "emailId": "01a12d3b-3ae1-79a2-b1bc-e2010a18c7c0",
+    "htmlLen": 984,
+    "pass": true
+  },
+  "phone_enabled": {
+    "emailId": "01a12d3b-4068-7282-a7e7-ed840e570310",
+    "htmlLen": 1002,
+    "pass": true
+  },
+  "email_hidden": {
+    "emailId": "01a12d3b-45d6-7a1e-8b32-5ef51efd3714",
+    "htmlLen": 976,
+    "pass": true
+  },
+  "signature_hidden": {
+    "emailId": "01a12d3b-4b52-77a4-a468-11bd6c2852e5",
+    "htmlLen": 866,
+    "pass": true
+  },
+  "all_hidden": {
+    "emailId": "01a12d3b-50cc-7a9c-8722-1198568bb79d",
+    "htmlLen": 692,
+    "pass": true
+  }
 }

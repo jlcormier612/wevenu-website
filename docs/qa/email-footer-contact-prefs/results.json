@@ -1,0 +1,119 @@
+{
+  "observedAt": "2026-10-11T23:10:26.634Z",
+  "expectSha": "a09b3b50",
+  "featureSha": "4aaa0692",
+  "checks": [
+    {
+      "name": "new_venue_defaults",
+      "pass": true,
+      "detail": "{\"phone\":false,\"email\":true,\"sig\":true}"
+    },
+    {
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=a09b3b50ca018ff12c80d9c1acf5591e93734f9a expect=a09b3b50"
+    },
+    {
+      "name": "settings_heading",
+      "pass": true,
+      "detail": "identity card"
+    },
+    {
+      "name": "phone_control_visible",
+      "pass": true,
+      "detail": "phone checkbox label"
+    },
+    {
+      "name": "email_control_visible",
+      "pass": true,
+      "detail": "email checkbox label"
+    },
+    {
+      "name": "signature_control_visible",
+      "pass": true,
+      "detail": "signature checkbox label"
+    },
+    {
+      "name": "preview_iframe",
+      "pass": true,
+      "detail": "preview present"
+    },
+    {
+      "name": "ui_defaults_match_product",
+      "pass": true,
+      "detail": "phone=false email=true sig=true"
+    },
+    {
+      "name": "save_phone_enabled",
+      "pass": true,
+      "detail": "phone_pref=true contact_intact=true"
+    },
+    {
+      "name": "reload_restores_phone_on",
+      "pass": true,
+      "detail": "phone=true"
+    },
+    {
+      "name": "independent_toggles_persist",
+      "pass": true,
+      "detail": "{\"phone\":true,\"email\":false,\"sig\":false}"
+    },
+    {
+      "name": "preview_reflects_phone",
+      "pass": true,
+      "detail": "len=943"
+    },
+    {
+      "name": "venue_switch_loads_own_prefs",
+      "pass": true,
+      "detail": "venueB phone checkbox=true"
+    },
+    {
+      "name": "render_default_hides_phone",
+      "pass": true,
+      "detail": "default footer"
+    },
+    {
+      "name": "render_phone_only_no_separator_artifact",
+      "pass": true,
+      "detail": "phone-only footer"
+    },
+    {
+      "name": "contact_data_intact",
+      "pass": true,
+      "detail": "email=true phone=true"
+    },
+    {
+      "name": "delivered_phone_hidden",
+      "pass": true,
+      "detail": "id=01a12d3b-3ae1-79a2-b1bc-e2010a18c7c0 email=true phone=false sig=true blank=false len=984"
+    },
+    {
+      "name": "delivered_phone_enabled",
+      "pass": true,
+      "detail": "id=01a12d3b-4068-7282-a7e7-ed840e570310 email=true phone=true sig=true blank=false len=1002"
+    },
+    {
+      "name": "delivered_email_hidden",
+      "pass": true,
+      "detail": "id=01a12d3b-45d6-7a1e-8b32-5ef51efd3714 email=false phone=true sig=true blank=false len=976"
+    },
+    {
+      "name": "delivered_signature_hidden",
+      "pass": true,
+      "detail": "id=01a12d3b-4b52-77a4-a468-11bd6c2852e5 email=true phone=false sig=false blank=false len=866"
+    },
+    {
+      "name": "delivered_all_hidden_clean",
+      "pass": true,
+      "detail": "id=01a12d3b-50cc-7a9c-8722-1198568bb79d email=false phone=false sig=false blank=false len=692"
+    },
+    {
+      "name": "resend_accepted",
+      "pass": true,
+      "detail": "cases=5"
+    }
+  ],
+  "hardFail": [],
+  "ok": true
+}
