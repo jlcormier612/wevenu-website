@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Building2, Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,7 +31,6 @@ export function VenueSwitcher({
   activeVenueId?: string;
   memberships: VenueMembershipSummary[];
 }) {
-  const router = useRouter();
   const [pendingId, setPendingId] = React.useState<string | null>(null);
   const canSwitch = offersPersistentVenueSwitch(memberships);
 
@@ -49,8 +47,11 @@ export function VenueSwitcher({
       );
       return;
     }
-    router.replace("/dashboard");
-    router.refresh();
+    // Full-document navigation (not App Router soft nav): workspace layout
+    // gates (ownership / intake / graduation / suspension) redirect again, and
+    // a client-side navigation into a route that redirects leaves a blank page
+    // until a hard reload. Same class as LoginForm.
+    window.location.assign("/dashboard");
   }
 
   const label = venueName?.trim() || "Venue";

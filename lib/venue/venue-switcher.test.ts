@@ -33,4 +33,24 @@ describe("persistent venue switch", () => {
     assert.doesNotMatch(src, /stripe/i);
     assert.doesNotMatch(src, /from\("venues"\)/);
   });
+
+  it("shell switcher uses full-document navigation after a successful select", () => {
+    const src = readFileSync(
+      join(process.cwd(), "components/shell/venue-switcher.tsx"),
+      "utf8",
+    );
+    assert.match(src, /window\.location\.assign\("\/dashboard"\)/);
+    assert.doesNotMatch(src, /useRouter/);
+    assert.doesNotMatch(src, /\brouter\.(replace|refresh)\b/);
+  });
+
+  it("select-venue form uses the same full-document navigation after select", () => {
+    const src = readFileSync(
+      join(process.cwd(), "components/venue/venue-select-form.tsx"),
+      "utf8",
+    );
+    assert.match(src, /selectActiveVenueAction/);
+    assert.match(src, /window\.location\.assign\("\/dashboard"\)/);
+    assert.doesNotMatch(src, /\brouter\.(replace|refresh)\b/);
+  });
 });

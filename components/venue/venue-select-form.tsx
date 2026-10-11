@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { selectActiveVenueAction } from "@/app/(app)/select-venue/actions";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import type { VenueMembershipSummary } from "@/lib/venue/active-context";
 
 export function VenueSelectForm({ memberships }: { memberships: VenueMembershipSummary[] }) {
-  const router = useRouter();
   const [pendingId, setPendingId] = React.useState<string | null>(null);
 
   async function onSelect(venueId: string) {
@@ -22,8 +20,8 @@ export function VenueSelectForm({ memberships }: { memberships: VenueMembershipS
         : "Could not switch venues.");
       return;
     }
-    router.replace("/dashboard");
-    router.refresh();
+    // Full-document navigation: soft nav into layout gate redirects blanks the page.
+    window.location.assign("/dashboard");
   }
 
   return (
