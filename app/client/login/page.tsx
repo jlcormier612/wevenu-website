@@ -23,7 +23,14 @@ export const dynamic = "force-dynamic";
  * Couple / client portal login. Uses the client auth cookie jar so a venue
  * session in the same browser stays intact.
  */
-export default async function ClientLoginPage() {
+type Props = {
+  searchParams: Promise<{ reset?: string }>;
+};
+
+export default async function ClientLoginPage({ searchParams }: Props) {
+  const { reset } = await searchParams;
+  const justReset = reset === "1";
+
   if (isSupabaseConfigured) {
     const portalUrl = await getMyPortalUrl();
     if (portalUrl) redirect(portalUrl);
@@ -43,6 +50,14 @@ export default async function ClientLoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {justReset ? (
+              <p
+                role="status"
+                className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground"
+              >
+                Your password was updated. Sign in with your new password.
+              </p>
+            ) : null}
             <ClientLoginForm />
             <p className="text-center text-xs text-muted-foreground">
               Venue staff?{" "}

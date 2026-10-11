@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Vendor sign in — Hello to Cheers" 
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ next?: string }> };
+type Props = { searchParams: Promise<{ next?: string; reset?: string }> };
 
 /** Always-light brand surface — same contract as venue login. */
 const LIGHT_THEME_VARS = {
@@ -50,7 +50,8 @@ const LIGHT_THEME_VARS = {
  * same browser stays signed in.
  */
 export default async function VendorLoginPage({ searchParams }: Props) {
-  const { next: nextRaw } = await searchParams;
+  const { next: nextRaw, reset } = await searchParams;
+  const justReset = reset === "1";
   const next = safeInternalNextPath(nextRaw) ?? "/vendor/dashboard";
 
   if (isSupabaseConfigured) {
@@ -95,6 +96,14 @@ export default async function VendorLoginPage({ searchParams }: Props) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {justReset ? (
+              <p
+                role="status"
+                className="rounded-md border border-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)] px-3 py-2 text-sm text-foreground"
+              >
+                Your password was updated. Sign in with your new password.
+              </p>
+            ) : null}
             <VendorLoginForm next={next} />
             <p className="text-center text-xs text-muted-foreground">
               Venue staff?{" "}

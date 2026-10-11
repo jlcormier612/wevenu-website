@@ -54,6 +54,8 @@ describe("password recovery helpers", () => {
 
   it("wires forgot-password link, confirm client callback, and public paths", () => {
     const loginForm = readFileSync("components/auth/login-form.tsx", "utf8");
+    const clientLogin = readFileSync("app/client/login/login-form.tsx", "utf8");
+    const vendorLogin = readFileSync("app/vendor/login/login-form.tsx", "utf8");
     const proxy = readFileSync("integrations/supabase/proxy.ts", "utf8");
     const confirmPage = readFileSync("app/auth/confirm/page.tsx", "utf8");
     const confirmClient = readFileSync("components/auth/auth-confirm-client.tsx", "utf8");
@@ -61,6 +63,10 @@ describe("password recovery helpers", () => {
     const sendPath = readFileSync("lib/auth/send-password-recovery-email.ts", "utf8");
     assert.match(loginForm, /Forgot password\?/);
     assert.match(loginForm, new RegExp(FORGOT_PASSWORD_PATH.replace("/", "\\/")));
+    assert.match(clientLogin, /Forgot password\?/);
+    assert.match(clientLogin, /audience=client/);
+    assert.match(vendorLogin, /Forgot password\?/);
+    assert.match(vendorLogin, /audience=vendor/);
     assert.match(proxy, /"\/forgot-password"/);
     assert.match(proxy, /"\/reset-password"/);
     assert.match(proxy, /"\/auth\/confirm"/);

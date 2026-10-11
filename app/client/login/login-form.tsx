@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
 import { signInClientAction, type ClientAuthFormState } from "@/app/client/actions";
@@ -35,6 +36,14 @@ export function ClientLoginForm() {
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <PasswordInput id="password" name="password" autoComplete="current-password" required />
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password?audience=client"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
       </div>
       {state.error ? (
         <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/15 px-3 py-2 text-sm text-foreground">
