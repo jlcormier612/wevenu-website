@@ -68,6 +68,7 @@ export const GAP_COPY: Record<string, GapCopy> = {
     timeEstimate: "2 min",
     ctaLabel: "Invite your team",
   },
+  // Eligibility: only when first_team_invite is complete (see applyFirstTeamLoginPrerequisite).
   first_team_login: {
     title: "Get your team logged in",
     description: "An invited team member who hasn't logged in yet can't actually help you with anything. A quick nudge closes the loop.",

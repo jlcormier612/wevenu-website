@@ -178,8 +178,12 @@ async function main() {
       const body = await page.locator("body").innerText();
       record(
         "no_false_portal_open_card",
-        !/hasn't opened their portal/i.test(body) && !/You've sent the invite/i.test(body),
-        body.includes("hasn't opened") ? "card present" : "absent",
+        !/hasn't opened their portal/i.test(body) &&
+          !/You've sent the invite/i.test(body) &&
+          !/An invited team member who hasn't logged in/i.test(body),
+        /hasn't opened|You've sent the invite|An invited team member/i.test(body)
+          ? "unsupported lifecycle card present"
+          : "absent",
       );
       await page.screenshot({ path: `${OUT}/dashboard.png`, fullPage: false });
 

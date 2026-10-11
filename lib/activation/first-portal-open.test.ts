@@ -152,6 +152,7 @@ describe("first_portal_open eligibility (invite prerequisite)", () => {
     assert.match(src, /applyFirstPortalOpenToChecklist/);
     assert.match(src, /getVenueFirstPortalOpenMilestone/);
     assert.match(src, /applyThreeCouplesPortalPrerequisite/);
+    assert.match(src, /applyFirstTeamLoginPrerequisite/);
     assert.match(src, /inviteSent:\s*inviteMilestone\.complete/);
   });
 
