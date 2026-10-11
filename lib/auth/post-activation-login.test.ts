@@ -143,3 +143,90 @@ describe("post-activation identity handoff — wiring invariants", () => {
     assert.match(handoffSql, /expires_at/);
   });
 });
+
+describe("identity-handoff scenario matrix — supported path contracts", () => {
+  it("same-account activation still clears session (explicit re-auth, not silent continue)", () => {
+    // Supported: purchaser already signed in as themselves. Product clears
+    // session on activated=1 so wrong-account and same-account share one path.
+    assert.equal(
+      mustClearVenueSessionForPostActivationLogin(
+        new URLSearchParams("activated=1&email=jlcormier612%40gmail.com"),
+        true,
+      ),
+      true,
+    );
+    assert.equal(
+      isWrongAccountForPostActivation({
+        sessionEmail: "jlcormier612@gmail.com",
+        intendedEmail: "jlcormier612@gmail.com",
+      }),
+      false,
+    );
+  });
+
+  it("activated=1 clears session even when email query is missing or unsafe", () => {
+    assert.equal(
+      mustClearVenueSessionForPostActivationLogin(new URLSearchParams("activated=1"), true),
+      true,
+    );
+    assert.equal(
+      postActivationLoginEmailPrefill(new URLSearchParams("activated=1")),
+      undefined,
+    );
+    assert.equal(
+      postActivationLoginEmailPrefill(
+        new URLSearchParams("activated=1&email=not-an-email"),
+      ),
+      undefined,
+    );
+  });
+
+  it("ordinary /login without activated=1 still uses authenticated home bounce", () => {
+    const proxy = read("integrations/supabase/proxy.ts");
+    const loginBlockStart = proxy.indexOf(
+      'Only redirect logged-in venue users away from /login',
+    );
+    const loginBlock = proxy.slice(loginBlockStart, loginBlockStart + 2200);
+    const activatedReturn = loginBlock.indexOf("return supabaseResponse");
+    const homeBounce = loginBlock.indexOf("resolveAuthenticatedHomePath");
+    assert.ok(homeBounce > activatedReturn, "non-activated login must still bounce home");
+  });
+
+  it("team invite wrong-account uses explicit Switch account (not activated=1)", () => {
+    const joinPage = read("app/join/page.tsx");
+    const joinActions = read("app/join/actions.ts");
+    assert.match(joinPage, /signOutToAcceptInviteAction/);
+    assert.match(joinPage, /email_mismatch/);
+    assert.doesNotMatch(joinPage, /activated=1/);
+    assert.match(joinActions, /auth\.signOut/);
+    assert.match(joinActions, /\/join\?token=/);
+  });
+
+  it("login URL never carries venueId; venue context comes from handoff consume after auth", () => {
+    const helpers = read("shared/email/templates/helpers.ts");
+    const activateAction = read("workspace/app/activate/actions.ts");
+    const bootstrap = read("lib/venue/active-context.ts");
+    assert.doesNotMatch(helpers, /venueId=/);
+    assert.doesNotMatch(activateAction, /venueId=/);
+    assert.match(bootstrap, /consumeOnboardingHandoff/);
+  });
+
+  it("pending white-glove success CTA uses intake, not activated login", () => {
+    const success = read("marketing/app/pricing/success/page.tsx");
+    assert.match(success, /whiteGloveIntakeUrlFromToken/);
+    assert.match(success, /activationUrlFromToken/);
+    // Pending white-glove branch (not already-activated) uses intake only.
+    const wgPending = success.slice(
+      success.indexOf('else if (enrollment.onboardingType === "white_glove")'),
+      success.indexOf("else if (enrollment.activationToken)"),
+    );
+    assert.match(wgPending, /whiteGloveIntakeUrlFromToken/);
+    assert.doesNotMatch(wgPending, /productPostActivationLoginUrl/);
+  });
+
+  it("multi-venue ordinary login keep (B_keep_valid) is unchanged by activation handoff", () => {
+    const handoffTest = read("lib/venue/onboarding-handoff.test.ts");
+    assert.match(handoffTest, /ordinary B_keep_valid is unchanged/);
+    assert.match(handoffTest, /ordinary login still keeps a valid prior venue/);
+  });
+});

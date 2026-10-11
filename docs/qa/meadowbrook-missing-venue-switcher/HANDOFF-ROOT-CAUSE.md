@@ -17,8 +17,9 @@
 | **ROOT CAUSE** | **PROVEN** |
 | **FIX** | **IMPLEMENTED** |
 | **SANDBOX DEPLOYMENT** | **VERIFIED** (`dpl` + ECS image `4e3ea24a…`, run [38170335676](https://github.com/jlcormier612/wevenu-website/actions/runs/38170335676)) |
-| **PURCHASER IDENTITY HANDOFF** | **GREEN** (live browser acceptance) |
+| **PURCHASER IDENTITY HANDOFF** | **GREEN** (live browser acceptance on fix deploy + re-verified on tip `459d63fc`) |
 | **OWNERSHIP AND MEMBERSHIP INTEGRITY** | **VERIFIED** (unchanged before/after acceptance) |
+| **REGRESSION COVERAGE MATRIX** | **DOCUMENTED** — see `HANDOFF-COVERAGE.md` |
 
 ---
 
