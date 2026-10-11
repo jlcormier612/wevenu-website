@@ -11,7 +11,7 @@
 | Question | Result |
 |---|---|
 | **ROOT CAUSE** | **PROVEN** |
-| **ACTIVE STORM STOPPED** | **UNVERIFIED** until post-deploy Logs Explorer / version-stability check (fix implemented; deploy required) |
+| **ACTIVE STORM STOPPED** | **YES for 125s timeout class** (2026-10-11T20:34Z+) — see `CRM-CONTENTION-RESOLUTION.md`. Stale replace returns **`htc_crm_version_conflict` in ~67–131 ms** after migrations through `202614148` (conflicts must not use SQLSTATE `40001`). App image `459d63fc`. |
 | **HISTORICAL LOG-INGESTION ATTRIBUTION (289.808 GB prior cycle)** | **UNVERIFIED** as sole cause — this storm class is a **HIGH-confidence material contributor** when active (see §4) |
 
 ---
@@ -115,9 +115,10 @@ npx tsx --test shared/relationships/store-contention.test.ts shared/relationship
 | Check | Result |
 |---|---|
 | Fix commit | `1f2992d48a415d41bee87f938b79f8e87145fdb9` |
-| Sandbox deploy | **Started** — [run 38170050874](https://github.com/jlcormier612/wevenu-website/actions/runs/38170050874) (queued 2026-10-11T19:55:32Z); **ACTIVE STORM STOPPED = UNVERIFIED** until this run finishes and Logs Explorer is rechecked |
+| Sandbox deploy | [run 38170050874](https://github.com/jlcormier612/wevenu-website/actions/runs/38170050874) — ECS images **`1f2992d4…`** on venue/marketing/workspace/scheduler by ~20:06Z; GHA job still `in_progress` at last check |
 | Pre-fix contention proof | Stale replace timed out ~125s with `upstream request timeout` at version 6784 |
-| Post-deploy checks needed | Image/tag `1f2992d4…` on marketing+workspace; version stable 2–3 min; stale replace returns fast `htc_crm_version_conflict`; conflict rate collapses in Logs Explorer |
+| Post-deploy probe (20:04:25Z) | Load OK (version **6786**, ~222 KB); stale replace **still** ~125s `upstream request timeout` — **ACTIVE STORM STOPPED = NOT PROVEN** |
+| Still needed | Owner Logs Explorer conflict rate; `pg_stat_activity` / lock holder identity; prove stale replace returns **fast** `htc_crm_version_conflict` |
 
 ---
 

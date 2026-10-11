@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-11T20:34:21.198Z",
+  "parallelStale": [
+    {
+      "ms": 215,
+      "error": "htc_crm_version_conflict (expected 6776, actual 6786)",
+      "code": "P0001",
+      "version": 6786
+    },
+    {
+      "ms": 326,
+      "error": "htc_crm_version_conflict (expected 6776, actual 6786)",
+      "code": "P0001",
+      "version": 6786
+    },
+    {
+      "ms": 359,
+      "error": "htc_crm_version_conflict (expected 6776, actual 6786)",
+      "code": "P0001",
+      "version": 6786
+    }
+  ],
+  "allFastConflict": true,
+  "versionUnchanged": true,
+  "afterVersion": 6786
+}
