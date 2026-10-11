@@ -44,20 +44,24 @@ describe("password recovery helpers", () => {
     }
   });
 
-  it("wires forgot-password link, confirm route, and public paths", () => {
+  it("wires forgot-password link, confirm client callback, and public paths", () => {
     const loginForm = readFileSync("components/auth/login-form.tsx", "utf8");
     const proxy = readFileSync("integrations/supabase/proxy.ts", "utf8");
-    const confirm = readFileSync("app/auth/confirm/route.ts", "utf8");
+    const confirmPage = readFileSync("app/auth/confirm/page.tsx", "utf8");
+    const confirmClient = readFileSync("components/auth/auth-confirm-client.tsx", "utf8");
     const actions = readFileSync("app/auth/actions.ts", "utf8");
     assert.match(loginForm, /Forgot password\?/);
     assert.match(loginForm, new RegExp(FORGOT_PASSWORD_PATH.replace("/", "\\/")));
     assert.match(proxy, /"\/forgot-password"/);
     assert.match(proxy, /"\/reset-password"/);
     assert.match(proxy, /"\/auth\/confirm"/);
-    assert.match(confirm, /exchangeCodeForSession|verifyOtp/);
-    assert.match(confirm, /publicAppOrigin/);
+    assert.match(confirmPage, /AuthConfirmClient/);
+    assert.match(confirmClient, /setSession/);
+    assert.match(confirmClient, /exchangeCodeForSession/);
+    assert.match(confirmClient, /verifyOtp/);
     assert.match(actions, /resetPasswordForEmail/);
     assert.match(actions, /passwordRecoveryRedirectTo/);
     assert.equal(PASSWORD_RESET_PATH, "/reset-password");
   });
 });
+
