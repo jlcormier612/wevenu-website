@@ -196,5 +196,7 @@ export async function updatePasswordAfterRecovery(
   }
 
   await supabase.auth.signOut();
-  return { redirectTo: "/login?reset=1" };
+  // Hard redirect — do not return redirectTo and re-render /reset-password
+  // after signOut (that RSC pass has no session and bounces to invalid_link).
+  redirect("/login?reset=1");
 }

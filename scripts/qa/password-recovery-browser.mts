@@ -133,10 +133,11 @@ async function main() {
   await page.screenshot({ path: `${OUT}/03-reset-password.png`, fullPage: false });
 
   if (page.url().includes("/reset-password")) {
+    await page.waitForSelector("#password", { timeout: 15000 });
     await page.fill("#password", newPassword);
     await page.fill("#confirm", newPassword);
     await page.click('button[type="submit"]');
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 40; i++) {
       if (page.url().includes("/login")) break;
       await page.waitForTimeout(500);
     }
@@ -149,32 +150,34 @@ async function main() {
     );
     await page.screenshot({ path: `${OUT}/04-login-after-reset.png`, fullPage: false });
 
-    // Old password must fail
-    await page.fill("#email", email);
-    await page.fill("#password", oldPassword);
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(2500);
-    record(
-      "old_password_rejected",
-      page.url().includes("/login"),
-      `url=${page.url()}`,
-    );
+    if (page.url().includes("/login")) {
+      // Old password must fail
+      await page.fill("#email", email);
+      await page.fill("#password", oldPassword);
+      await page.click('button[type="submit"]');
+      await page.waitForTimeout(2500);
+      record(
+        "old_password_rejected",
+        page.url().includes("/login"),
+        `url=${page.url()}`,
+      );
 
-    // New password signs in (may land welcome/setup — not dashboard)
-    await page.fill("#email", email);
-    await page.fill("#password", newPassword);
-    await page.click('button[type="submit"]');
-    for (let i = 0; i < 30; i++) {
-      if (!page.url().includes("/login")) break;
-      await page.waitForTimeout(500);
+      // New password signs in (may land welcome/setup — not dashboard)
+      await page.fill("#email", email);
+      await page.fill("#password", newPassword);
+      await page.click('button[type="submit"]');
+      for (let i = 0; i < 30; i++) {
+        if (!page.url().includes("/login")) break;
+        await page.waitForTimeout(500);
+      }
+      await page.waitForTimeout(2000);
+      record(
+        "new_password_signin",
+        !page.url().includes("/login"),
+        `url=${page.url()}`,
+      );
+      await page.screenshot({ path: `${OUT}/05-signed-in.png`, fullPage: false });
     }
-    await page.waitForTimeout(2000);
-    record(
-      "new_password_signin",
-      !page.url().includes("/login"),
-      `url=${page.url()}`,
-    );
-    await page.screenshot({ path: `${OUT}/05-signed-in.png`, fullPage: false });
   }
 
   // Replay original action link should not grant a fresh reset blindly
