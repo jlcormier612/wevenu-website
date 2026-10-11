@@ -1,0 +1,124 @@
+{
+  "at": "2026-10-11T20:15:44.926Z",
+  "expectSha": "4e3ea24a",
+  "green": true,
+  "checks": [
+    {
+      "name": "deployed_revision",
+      "pass": true,
+      "detail": "dpl=4e3ea24a60b3c19c1ed61e1f8768a33e88885b20 expect=4e3ea24a healthOk=true"
+    },
+    {
+      "name": "ownership_before",
+      "pass": true,
+      "detail": "{\"label\":\"before\",\"venue\":{\"id\":\"05f16a15…\",\"name\":\"Meadowbrook Valley Venue\",\"owner_user_id\":\"6721694e…\",\"account_status\":\"active\",\"owner_is_purchaser\":true},\"ownerStaff\":[{\"user_id\":\"6721694e…\",\"email\":\"jlcormier612@gmail.com\",\"role\":\"owner\",\"is_owner\":true,\"is_purchaser\":true,\"is_jennifer\":false}],\"jenniferVenueCount\":3,\"jenniferHasMeadowbrook\":false,\"handoffs\":[{\"id\":\"edd86dfa…\",\"user_id\":\"6721694e…\",\"intended_email\":\"jlcormier612@gmail.com\",\"consumed\":false,\"expires_at\":\"2026-10-12T19:22:39.179833+00:00\"}]}"
+    },
+    {
+      "name": "jennifer_session_minted",
+      "pass": true,
+      "detail": "userId=2fa73101…"
+    },
+    {
+      "name": "jennifer_session_active_before",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/dashboard snippet=OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPa"
+    },
+    {
+      "name": "stays_on_login_activated",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub&email=jlcormier612%40gmail.com"
+    },
+    {
+      "name": "handoff_copy",
+      "pass": true,
+      "detail": "Welcome to Hello to Cheers\nSign in with jlcormier612@gmail.com — the email used for this purchase — to open your new venue. If another account was signed in on this device, it has been signed out.\nEmail\nPassword\nSign in"
+    },
+    {
+      "name": "email_prefill",
+      "pass": true,
+      "detail": "emailValue=jlcormier612@gmail.com"
+    },
+    {
+      "name": "not_fancy_shell",
+      "pass": true,
+      "detail": "Welcome to Hello to Cheers\nSign in with jlcormier612@gmail.com — the email used for this purchase — to open your new venue. If another account was signed in on this device, it has been signed out.\nEma"
+    },
+    {
+      "name": "refresh_stays_login",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub&email=jlcormier612%40gmail.com"
+    },
+    {
+      "name": "cleared_session_no_bounce",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login text=Welcome back\nSign in to your Hello to Cheers workspace to continue.\nEmail\nPassword\nSign in"
+    },
+    {
+      "name": "ownership_unchanged",
+      "pass": true,
+      "detail": "{\"before\":{\"label\":\"before\",\"venue\":{\"id\":\"05f16a15…\",\"name\":\"Meadowbrook Valley Venue\",\"owner_user_id\":\"6721694e…\",\"account_status\":\"active\",\"owner_is_purchaser\":true},\"ownerStaff\":[{\"user_id\":\"6721694e…\",\"email\":\"jlcormier612@gmail.com\",\"role\":\"owner\",\"is_owner\":true,\"is_purchaser\":true,\"is_jennifer\":false}],\"jenniferVenueCount\":3,\"jenniferHasMeadowbrook\":false,\"handoffs\":[{\"id\":\"edd86dfa…\",\"user_id\":\"6721694e…\",\"intended_email\":\"jlcormier612@gmail.com\",\"consumed\":false,\"expires_at\":\"2026-10-12T19:22:39.179833+00:00\"}]},\"after\":{\"label\":\"after\",\"venue\":{\"id\":\"05f16a15…\",\"name\":\"Meadowbrook Valley Venue\",\"owner_user_id\":\"6721694e…\",\"account_status\":\"active\",\"owner_is_purchaser\":true},\"ownerStaff\":[{\"user_id\":\"6721694e…\",\"email\":\"jlcormier612@gmail.com\",\"role\":\"owner\",\"is_owner\":true,\"is_p"
+    }
+  ],
+  "before": {
+    "label": "before",
+    "venue": {
+      "id": "05f16a15…",
+      "name": "Meadowbrook Valley Venue",
+      "owner_user_id": "6721694e…",
+      "account_status": "active",
+      "owner_is_purchaser": true
+    },
+    "ownerStaff": [
+      {
+        "user_id": "6721694e…",
+        "email": "jlcormier612@gmail.com",
+        "role": "owner",
+        "is_owner": true,
+        "is_purchaser": true,
+        "is_jennifer": false
+      }
+    ],
+    "jenniferVenueCount": 3,
+    "jenniferHasMeadowbrook": false,
+    "handoffs": [
+      {
+        "id": "edd86dfa…",
+        "user_id": "6721694e…",
+        "intended_email": "jlcormier612@gmail.com",
+        "consumed": false,
+        "expires_at": "2026-10-12T19:22:39.179833+00:00"
+      }
+    ]
+  },
+  "after": {
+    "label": "after",
+    "venue": {
+      "id": "05f16a15…",
+      "name": "Meadowbrook Valley Venue",
+      "owner_user_id": "6721694e…",
+      "account_status": "active",
+      "owner_is_purchaser": true
+    },
+    "ownerStaff": [
+      {
+        "user_id": "6721694e…",
+        "email": "jlcormier612@gmail.com",
+        "role": "owner",
+        "is_owner": true,
+        "is_purchaser": true,
+        "is_jennifer": false
+      }
+    ],
+    "jenniferVenueCount": 3,
+    "jenniferHasMeadowbrook": false,
+    "handoffs": [
+      {
+        "id": "edd86dfa…",
+        "user_id": "6721694e…",
+        "intended_email": "jlcormier612@gmail.com",
+        "consumed": false,
+        "expires_at": "2026-10-12T19:22:39.179833+00:00"
+      }
+    ]
+  }
+}
