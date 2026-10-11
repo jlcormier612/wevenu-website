@@ -197,6 +197,37 @@ html:has(.htc-staff) body {
   overflow: hidden;
 }
 
+/*
+ * Module pages scroll inside `main` (WorkspaceShell). macOS overlay scrollbars
+ * left gutter=0, so tall routes (Migration Center) looked clipped with no
+ * apparent scroll control. Force a stable, always-painted scrollbar on the
+ * real scrollport without unlocking document scroll.
+ */
+html:has(.htc-staff) main[data-workspace-main] {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--forest-sage) 35%, transparent) transparent;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar {
+  width: 12px;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--forest-sage) 35%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--forest-sage) 55%, transparent);
+}
+
 .htc-staff,
 html:has(.htc-staff) {
   --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;

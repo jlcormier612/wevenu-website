@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
+import { WorkspaceMainScrollBridge } from "@/components/shell/workspace-main-scroll-bridge";
 import { WorkspaceShellHeader } from "@/components/shell/workspace-shell-header";
 import type { VenueMembershipSummary } from "@/lib/venue/active-context";
 import { cn } from "@/lib/utils";
@@ -22,10 +23,12 @@ import { cn } from "@/lib/utils";
  * band of document background below the app.
  *
  * `main` is the module scroll surface for every route: the sidebar and global
- * header stay put while page content scrolls inside it. Inbox only differs in
- * content width (`max-w-[90rem]`) plus `min-w-0` / `overflow-x-clip` so a
- * long thread can grow the document vertically without sliding the workspace
- * horizontally (`overflow-y-auto` would otherwise compute overflow-x to auto).
+ * header stay put while page content scrolls inside it. Document scroll stays
+ * locked (globals.css), so main always uses a dedicated vertical scrollport
+ * with a stable gutter (see globals.css) — overlay-only scrollbars made tall
+ * pages like Migration Center look cut off with no apparent way to continue.
+ * `overflow-x-clip` keeps a long line from opening a horizontal scrollport.
+ * Inbox only differs in content width (`max-w-[90rem]`).
  */
 export function WorkspaceShell({
   email,
@@ -50,15 +53,15 @@ export function WorkspaceShell({
 
   return (
     <div className="htc-staff fixed inset-0 flex min-h-0 w-full overflow-hidden bg-background font-sans text-foreground">
-      <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
-        <div className="flex h-20 items-center border-b border-sidebar-border px-5">
+      <aside className="hidden h-full min-h-0 w-[15.5rem] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
+        <div className="flex h-20 shrink-0 items-center border-b border-sidebar-border px-5">
           <Wordmark sizeClassName="h-[66.8px] w-auto" />
         </div>
         {/* Giving feedback lives in the nav with everything else, under Your
             Venue → Give feedback. A second trigger pinned down here opened the
             form directly and bypassed the four choices, so staff met two
             different feedback experiences depending on which one they found. */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <SidebarNav staffRole={staffRole} />
         </div>
       </aside>
@@ -74,10 +77,8 @@ export function WorkspaceShell({
         />
 
         <main
-          className={cn(
-            "min-h-0 min-w-0 flex-1 overflow-y-auto bg-background",
-            isInboxWorkspace && "overflow-x-clip",
-          )}
+          data-workspace-main=""
+          className="min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-scroll overscroll-y-contain bg-background"
         >
           <div
             className={cn(
@@ -90,6 +91,7 @@ export function WorkspaceShell({
             {children}
           </div>
         </main>
+        <WorkspaceMainScrollBridge />
       </div>
     </div>
   );

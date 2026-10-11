@@ -128,8 +128,12 @@ describe("Inbox Product two-column workspace", () => {
     const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
     assert.match(shell, /fixed inset-0 flex min-h-0 w-full overflow-hidden/);
     assert.match(shell, /flex min-h-0 min-w-0 flex-1 flex-col/);
-    assert.match(shell, /min-h-0 min-w-0 flex-1 overflow-y-auto bg-background/);
-    assert.match(shell, /isInboxWorkspace && "overflow-x-clip"/);
+    assert.match(
+      shell,
+      /min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-scroll overscroll-y-contain bg-background/,
+    );
+    assert.match(shell, /data-workspace-main/);
+    assert.match(shell, /WorkspaceMainScrollBridge/);
     assert.doesNotMatch(shell, /isInboxWorkspace \? "flex min-w-0 flex-col overflow-hidden"/);
     assert.match(shell, /pathname === "\/messaging"/);
     assert.match(shell, /max-w-\[90rem\] px-3 py-3/);
@@ -140,6 +144,8 @@ describe("Inbox Product two-column workspace", () => {
     const css = readFileSync(resolve("app/globals.css"), "utf8");
     assert.match(css, /html:has\(\.htc-staff\) body/);
     assert.match(css, /overflow:\s*hidden/);
+    assert.match(css, /main\[data-workspace-main\]/);
+    assert.match(css, /scrollbar-gutter:\s*stable/);
   });
 
   it("email preview is tall enough to read comfortably", () => {
