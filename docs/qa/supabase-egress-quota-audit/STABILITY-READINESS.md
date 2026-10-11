@@ -1,9 +1,9 @@
 # Sandbox stability & customer-traffic readiness — post-CRM-fix reconciliation
 
 **Audit type:** Investigation and verification only. No billing/plan/quota/Spend Cap changes. No Production or public-marketing deploys. No speculative CRM patches (verified fix preserved).  
-**Observation window (UTC):** 2026-10-11T20:47:42Z – 2026-10-11T20:51:05Z (this pass); CRM fix probes from `CRM-CONTENTION-RESOLUTION.md` at 20:22Z–20:43Z retained.  
+**Observation window (UTC):** 2026-10-11T20:47:42Z – 2026-10-11T20:51:05Z (prior readiness); **closure re-measure 21:11:59Z** — see `INCIDENT-CLOSURE.md`.  
 **Project:** Sandbox Supabase `wvpsldwwjqdannqasrdf`  
-**Reconciles:** `CRM-CONTENTION-RESOLUTION.md`, prior `STABILITY-READINESS.md` (pre-P0001), `CRM-VERSION-CONFLICT-STORM.md`, `POST-UPGRADE-STATUS.md`, `USAGE-FORENSICS.md`, `ROOT-CAUSE-VERDICT.md`  
+**Reconciles:** `INCIDENT-CLOSURE.md`, `CRM-CONTENTION-RESOLUTION.md`, prior `STABILITY-READINESS.md` (pre-P0001), `CRM-VERSION-CONFLICT-STORM.md`, `POST-UPGRADE-STATUS.md`, `USAGE-FORENSICS.md`, `ROOT-CAUSE-VERDICT.md`  
 **Working tree:** preserved (unrelated dirty/untracked work left untouched).
 
 ---
@@ -12,16 +12,16 @@
 
 | Question | Verdict | Confidence |
 |---|---|---|
-| Is the CRM 125s timeout fix still deployed and stable on the tested path? | **YES** — images + migrations + live stale conflict **~92 ms** `P0001` / `htc_crm_version_conflict`; version still **6786** | **HIGH** |
-| Is the conflict / gateway hang storm demonstrably stopped? | **YES for the proven 125s class** on disposable stale probes; **Postgres Logs Explorer rate still owner-gated** so natural-traffic conflict frequency is not fully counted | **HIGH** (timeout class); **MEDIUM** (ambient rate) |
-| Are all three Sandbox portals healthy beyond health checks? | **YES** — venue / vendor / client authenticated landings on `dpl=459d63fc…`, no 402 / no egress banner | **HIGH** |
+| Is the CRM 125s timeout fix still deployed and stable on the tested path? | **YES** — tip includes `459d63fc`; stale conflict **106 ms** `P0001` @ 21:11Z (was ~125s); version **6786** | **HIGH** |
+| Is the conflict / gateway hang storm demonstrably stopped? | **YES for the proven 125s class**; ambient Postgres conflict rate still owner-gated | **HIGH** (timeout class); **MEDIUM** (ambient rate) |
+| Are all three Sandbox portals healthy beyond health checks? | **YES** — login shells + health on tip `2af63b9c…` (contains CRM fix); prior authenticated matrix GREEN on `459d63fc` | **HIGH** |
 | What triggered the Oct 11 quota restriction? | Provider **`exceed_egress_quota`** — prior-cycle egress **~14.777 GB** vs Free **5 GB** (not log-ingest string) | **HIGH** (prior live 402 + owner meters) |
 | Current usage / Spend Cap verified? | **NO** — Dashboard sign-in wall; `SUPABASE_ACCESS_TOKEN` absent | **n/a** |
 | Historical ~290 GB log ingestion attributed by service? | **INCOMPLETE** — amplifiers proven (Auth 3× pre-`efd12db6`, ALB/QA volume, CRM full-statement ERROR class when storming); **byte split by service UNKNOWN** | Auth amp **HIGH**; CRM class **HIGH when storming**; full GB split **UNPROVEN** |
 | Was Pro upgrade justified? | **YES to restore service** under Free egress Fair Use lockout; **ongoing cost-effectiveness NOT assessable** without current-cycle meters + Spend Cap state | Restore **HIGH**; cost-effectiveness **OPEN** |
-| Ready for real customer traffic on this Sandbox stack? | **NOT GREEN (YELLOW for engineering QA)** — CRM timeout cleared + portals GREEN; Usage/Spend Cap / 290 GB attribution / longer post-fix observation still open | See gates |
+| Ready for real customer traffic on this Sandbox stack? | **NOT GREEN (YELLOW for engineering QA)** — CRM timeout cleared + portals available; Usage/Spend Cap / 290 GB attribution still open | See `INCIDENT-CLOSURE.md` |
 
-**One-sentence answer:** Sandbox remains **out of the egress Fair Use lockout**, the **Auth refresh storm remains quiet**, the **CRM 125s stale-replace timeout remains fixed and re-proven**, and **all three portals authenticate with live data** on `459d63fc`; **customer-traffic readiness stays NOT GREEN** until owner Usage/Spend Cap evidence and a longer post-fix observation window close the remaining gates.
+**One-sentence answer:** Software amplifiers are fixed and re-verified (Auth quiet; CRM hang **~106 ms**); Sandbox APIs/portals are up; **customer-traffic readiness stays NOT GREEN** until owner Usage/Spend Cap evidence closes cost/availability headroom.
 
 ---
 

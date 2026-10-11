@@ -86,6 +86,10 @@ No CRM rows wiped (stale probes used empty payload **with stale expected version
 
 Readiness pass confirmed deploy run [38172767788](https://github.com/jlcormier612/wevenu-website/actions/runs/38172767788) still tip; all four ECS images + portal `dpl` remain `459d63fc…`; lock profile unchanged; single disposable stale replace **92 ms** `P0001` / version **6786**. No material change to this report’s fix conclusions. Full gates: `STABILITY-READINESS.md`.
 
+### Revalidation (2026-10-11T21:11:59Z)
+
+Tip rolled to `2af63b9c…` (unrelated password-recovery deploy); **CRM fix `459d63fc` remains ancestor** with **no CRM store/migration commits after it**. Lock profile unchanged; stale replace **106 ms** `P0001`; version **6786**. Closure narrative: `INCIDENT-CLOSURE.md`.
+
 ---
 
 ## Safety

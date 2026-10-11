@@ -1,0 +1,72 @@
+{
+  "observedAt": "2026-10-11T21:11:59.087Z",
+  "project": "wvpsldwwjqdannqasrdf",
+  "portals": [
+    {
+      "name": "venue_login",
+      "status": 200,
+      "ms": 671,
+      "dpl": "2af63b9c6145257851f1d76ff4dd85e64b4670d4",
+      "restricted": false,
+      "preview": "<!DOCTYPE html><html data-dpl-id=\"2af63b9c6145257851f1d76ff4dd85e64b4670d4\" lang=\"en\" class=\"inter_786c1081-module__J60S"
+    },
+    {
+      "name": "vendor_login",
+      "status": 200,
+      "ms": 605,
+      "dpl": "2af63b9c6145257851f1d76ff4dd85e64b4670d4",
+      "restricted": false,
+      "preview": "<!DOCTYPE html><html data-dpl-id=\"2af63b9c6145257851f1d76ff4dd85e64b4670d4\" lang=\"en\" class=\"inter_786c1081-module__J60S"
+    },
+    {
+      "name": "client_login",
+      "status": 200,
+      "ms": 604,
+      "dpl": "2af63b9c6145257851f1d76ff4dd85e64b4670d4",
+      "restricted": false,
+      "preview": "<!DOCTYPE html><html data-dpl-id=\"2af63b9c6145257851f1d76ff4dd85e64b4670d4\" lang=\"en\" class=\"inter_786c1081-module__J60S"
+    },
+    {
+      "name": "health",
+      "status": 200,
+      "ms": 491,
+      "dpl": null,
+      "restricted": false,
+      "preview": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}"
+    }
+  ],
+  "supabaseAuthHealth": {
+    "status": 200,
+    "ms": 0,
+    "body": "{\"version\":\"v2.197.0\",\"name\":\"GoTrue\",\"description\":\"GoTrue is a user registration and authentication API\"}"
+  },
+  "supabaseRest": {
+    "ms": 90,
+    "error": null,
+    "restricted": false,
+    "rows": 1
+  },
+  "crmLoad": {
+    "ms": 171,
+    "version": 6786,
+    "error": null
+  },
+  "lockProfile": {
+    "proname": "htc_crm_replace_store",
+    "has_try_lock": true,
+    "prosrc_chars": 4881,
+    "has_store_busy": true,
+    "has_lock_timeout": true,
+    "has_blocking_lock": false,
+    "has_statement_timeout": true
+  },
+  "staleProbe": {
+    "ms": 106,
+    "errorMessage": "htc_crm_version_conflict (expected 6736, actual 6786)",
+    "errorCode": "P0001",
+    "conflict": true,
+    "hang125s": false
+  },
+  "versionAfter": 6786,
+  "hasManagementToken": false
+}
