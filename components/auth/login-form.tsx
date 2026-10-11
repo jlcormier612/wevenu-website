@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
 import { type AuthFormState, signIn } from "@/app/auth/actions";
@@ -90,6 +91,18 @@ export function LoginForm({ next, defaultEmail }: { next?: string; defaultEmail?
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
+        </div>
+        <div className="flex justify-end">
+          <Link
+            href={
+              defaultEmail
+                ? `/forgot-password?email=${encodeURIComponent(defaultEmail)}`
+                : "/forgot-password"
+            }
+            className="text-sm font-medium text-[var(--forest-sage)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--heritage-sage)]/40"
+          >
+            Forgot password?
+          </Link>
         </div>
       </div>
 

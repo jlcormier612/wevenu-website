@@ -27,6 +27,8 @@ const PUBLIC_LEGAL_PREFIXES = [
 const LEGAL_ENFORCEMENT_SKIP_PREFIXES = [
   WELCOME_PATH,
   "/login",
+  "/forgot-password",
+  "/reset-password",
   "/auth",
   "/api/legal",
   "/api/portal/legal",

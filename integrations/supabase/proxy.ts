@@ -24,6 +24,9 @@ import { isWelcomeAppPath } from "@/lib/legal/welcome-session-scope";
  */
 export const PUBLIC_PATHS = [
   "/login",
+  "/forgot-password", // venue password-reset request (pre-auth)
+  "/reset-password",  // venue password-reset completion (recovery session)
+  "/auth/confirm",    // Supabase Auth email/PKCE callback (recovery, etc.)
   "/client/login",   // couple/client portal login
   "/client/accept",  // primary couple invite accept (pre-auth)
   "/client/accept-participant", // delegate invite accept (pre-auth)

@@ -3,6 +3,11 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/integrations/supabase/server";
+import {
+  PASSWORD_RECOVERY_SUCCESS_COPY,
+  passwordRecoveryRedirectTo,
+  validateNewPassword,
+} from "@/lib/auth/password-recovery";
 import { safeInternalNextPath } from "@/lib/auth/portal-home";
 import { resolveAuthenticatedHomePath } from "@/lib/auth/resolve-home";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -24,6 +29,8 @@ export type AuthFormState = {
    * It also guarantees every layout sees the freshly written session cookie.
    */
   redirectTo?: string;
+  /** Generic password-reset request acknowledgement (never reveals account existence). */
+  success?: string;
 };
 
 /**
@@ -102,4 +109,92 @@ export async function signOut(): Promise<void> {
     await supabase.auth.signOut();
   }
   redirect("/login");
+}
+
+/**
+ * Request a venue password-reset email. Always returns the same success copy
+ * whether or not the address has an account (no enumeration).
+ */
+export async function requestPasswordReset(
+  _prevState: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    return { error: "Enter a valid email address." };
+  }
+
+  if (!isSupabaseConfigured) {
+    return {
+      error:
+        "Authentication is not configured in this environment. Supabase " +
+        "credentials are required to reset a password.",
+    };
+  }
+
+  const supabase = await createClient();
+  // Do not log redirect URLs that may later contain codes; only the fixed path is used.
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: passwordRecoveryRedirectTo(),
+  });
+
+  // Rate-limit / misconfiguration surfaces as a real error; unknown emails do not.
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("rate") || msg.includes("security purposes")) {
+      return {
+        error: "Please wait a moment before requesting another reset email.",
+      };
+    }
+    // Still return generic success for most provider failures that would
+    // otherwise leak whether the address is registered.
+    if (msg.includes("user not found") || msg.includes("unable to find")) {
+      return { success: PASSWORD_RECOVERY_SUCCESS_COPY };
+    }
+    return {
+      error: "We couldn’t start a password reset right now. Please try again shortly.",
+    };
+  }
+
+  return { success: PASSWORD_RECOVERY_SUCCESS_COPY };
+}
+
+/**
+ * Set a new password after the recovery link established a venue session.
+ * Signs out afterward so the user signs in with the new credentials.
+ */
+export async function updatePasswordAfterRecovery(
+  _prevState: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  const validationError = validateNewPassword(password, confirm);
+  if (validationError) return { error: validationError };
+
+  if (!isSupabaseConfigured) {
+    return {
+      error:
+        "Authentication is not configured in this environment. Supabase " +
+        "credentials are required to reset a password.",
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      error: "This reset link is invalid or has expired. Request a new one.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: error.message };
+  }
+
+  await supabase.auth.signOut();
+  return { redirectTo: "/login?reset=1" };
 }

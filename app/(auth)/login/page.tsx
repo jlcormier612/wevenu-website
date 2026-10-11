@@ -45,11 +45,14 @@ const LIGHT_THEME_VARS = {
   "--ring": "var(--heritage-sage)",
 } as CSSProperties;
 
-type Props = { searchParams: Promise<{ next?: string; activated?: string; email?: string }> };
+type Props = {
+  searchParams: Promise<{ next?: string; activated?: string; email?: string; reset?: string }>;
+};
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { next, activated, email } = await searchParams;
+  const { next, activated, email, reset } = await searchParams;
   const justActivated = activated === "1";
+  const justReset = reset === "1";
   const nextPath = next || (justActivated ? "/setup-hub" : undefined);
   const defaultEmail = safeLoginEmailPrefill(email);
 
@@ -91,6 +94,14 @@ export default async function LoginPage({ searchParams }: Props) {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {justReset ? (
+              <p
+                role="status"
+                className="mb-4 rounded-md border border-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)] px-3 py-2 text-sm text-foreground"
+              >
+                Your password was updated. Sign in with your new password.
+              </p>
+            ) : null}
             <LoginForm next={nextPath} defaultEmail={defaultEmail} />
           </CardContent>
         </Card>
