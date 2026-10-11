@@ -919,6 +919,10 @@ export async function markDunningReminderSent(
 /**
  * Tick all relationships with active dunning — advance day 0/3/7/14/21.
  * Call from cron / webhook / workspace smoke endpoint.
+ *
+ * One `withLiveStore` pass only. Does **not** re-invoke `recordPaymentFailed`
+ * per row (that always appended timeline events and N full-store replaces,
+ * which competed with other CRM writers and flooded Postgres conflict logs).
  */
 export async function tickPaymentDunning(now: Date = new Date()): Promise<
   Array<{
@@ -928,32 +932,71 @@ export async function tickPaymentDunning(now: Date = new Date()): Promise<
     shouldMarkAtRisk: boolean;
   }>
 > {
-  const store = await loadLiveStore();
-  const out: Array<{
-    relationshipId: string;
-    reminderDay: DunningDay | null;
-    shouldSuspend: boolean;
-    shouldMarkAtRisk: boolean;
-  }> = [];
+  const nowIso = now.toISOString();
+  const { result: swept } = await withLiveStore((store) => {
+    const out: Array<{
+      relationshipId: string;
+      reminderDay: DunningDay | null;
+      shouldSuspend: boolean;
+      shouldMarkAtRisk: boolean;
+    }> = [];
 
-  for (const relationship of store.relationships) {
-    if (!relationship.dunning || relationship.dunning.clearedAt) continue;
-    if (relationship.status === "former_customer") continue;
+    for (const relationship of store.relationships) {
+      if (!relationship.dunning || relationship.dunning.clearedAt) continue;
+      if (relationship.status === "former_customer") continue;
 
-    const result = await recordPaymentFailed({
-      relationshipId: relationship.id,
-      stripeCustomerId: relationship.stripeCustomerId,
-      stripeSubscriptionId: relationship.stripeSubscriptionId,
-      now,
-    });
-    out.push({
-      relationshipId: relationship.id,
-      reminderDay: result.reminderDay,
-      shouldSuspend: result.shouldSuspend,
-      shouldMarkAtRisk: result.shouldMarkAtRisk,
+      const elapsed = daysBetween(relationship.dunning.startedAt, now);
+      const dueDay =
+        [...DUNNING_DAYS].reverse().find((d) => elapsed >= d) ?? null;
+      const last = relationship.dunning.lastReminderDay;
+      const reminderDay =
+        dueDay != null && (last == null || dueDay > last) ? dueDay : null;
+
+      let shouldMarkAtRisk = false;
+      let shouldSuspend = false;
+      let mutated = false;
+
+      if (
+        (reminderDay === 14 || elapsed >= 14) &&
+        !relationship.dunning.atRiskAt
+      ) {
+        shouldMarkAtRisk = true;
+        relationship.status = "at_risk";
+        relationship.currentStageLabel = "At Risk";
+        relationship.health = "at_risk";
+        relationship.dunning.atRiskAt = nowIso;
+        relationship.updatedAt = nowIso;
+        mutated = true;
+      }
+      if (
+        (reminderDay === 21 || elapsed >= 21) &&
+        !relationship.dunning.suspendedAt
+      ) {
+        shouldSuspend = true;
+        mutated = true;
+      }
+
+      if (reminderDay != null || mutated) {
+        out.push({
+          relationshipId: relationship.id,
+          reminderDay,
+          shouldSuspend,
+          shouldMarkAtRisk,
+        });
+      }
+    }
+    return out;
+  });
+
+  const out = swept ?? [];
+  for (const row of out) {
+    if (!row.shouldSuspend) continue;
+    await suspendRelationshipAccount({
+      relationshipId: row.relationshipId,
+      fromDunning: true,
+      reason: "Day 21 dunning — payment still failed.",
     });
   }
-
   return out;
 }
 
@@ -965,6 +1008,12 @@ export async function refreshRelationshipHealth(
     const relationship = store.relationships.find((r) => r.id === relationshipId);
     if (!relationship) return null;
     const snapshot = computeRelationshipHealth(relationship, store);
+    if (
+      relationship.health === snapshot.band &&
+      relationship.healthScore === snapshot.score
+    ) {
+      return snapshot;
+    }
     applyHealthSnapshot(relationship, snapshot);
     relationship.updatedAt = new Date().toISOString();
     return snapshot;

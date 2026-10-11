@@ -29,6 +29,9 @@ const EMPTY_STORE: LiveRelationshipStore = {
 };
 
 const MAX_OPTIMISTIC_RETRIES = 8;
+/** Base delay for conflict/timeout backoff (ms). Caps below. */
+const CONFLICT_BACKOFF_BASE_MS = 40;
+const CONFLICT_BACKOFF_MAX_MS = 2_000;
 
 /** Process-local snapshot so sync callers see the latest durable load/save. */
 let memoryCache: LiveRelationshipStore | null = null;
@@ -41,6 +44,24 @@ function normalizeStore(raw: LiveRelationshipStore | null | undefined): LiveRela
   if (!store.tasks) store.tasks = [];
   if (!store.supportInboxItems) store.supportInboxItems = [];
   return store;
+}
+
+/** Stable fingerprint so no-op mutators skip the full-store replace RPC. */
+export function fingerprintLiveStore(store: LiveRelationshipStore): string {
+  return JSON.stringify(normalizeStore(store));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function backoffBeforeRetry(attempt: number): Promise<void> {
+  const exp = Math.min(
+    CONFLICT_BACKOFF_MAX_MS,
+    CONFLICT_BACKOFF_BASE_MS * 2 ** attempt,
+  );
+  const jitter = Math.floor(Math.random() * Math.min(50, exp));
+  await sleep(exp + jitter);
 }
 
 function setCache(store: LiveRelationshipStore, version?: number | null): LiveRelationshipStore {
@@ -62,6 +83,23 @@ function isVersionConflict(error: { message?: string; code?: string } | null): b
     error.code === "40001" ||
     msg.includes("htc_crm_version_conflict") ||
     msg.includes("40001")
+  );
+}
+
+/** Lock wait / gateway timeouts are contention, not permanent failures. */
+function isRetryableStoreContention(error: {
+  message?: string;
+  code?: string;
+} | null): boolean {
+  if (isVersionConflict(error)) return true;
+  if (!error) return false;
+  const msg = (error.message ?? "").toLowerCase();
+  return (
+    msg.includes("upstream request timeout") ||
+    msg.includes("statement timeout") ||
+    msg.includes("canceling statement due to statement timeout") ||
+    msg.includes("timed out") ||
+    msg.includes("57014")
   );
 }
 
@@ -172,7 +210,9 @@ export async function saveLiveStore(store: LiveRelationshipStore): Promise<void>
         await savePostgresStore(store, version);
         return;
       } catch (error) {
-        if (!isVersionConflict(error as { message?: string; code?: string })) throw error;
+        const err = error as { message?: string; code?: string };
+        if (!isRetryableStoreContention(err)) throw error;
+        if (attempt + 1 < MAX_OPTIMISTIC_RETRIES) await backoffBeforeRetry(attempt);
         const loaded = await loadPostgresStore();
         version = loaded.version;
       }
@@ -186,6 +226,10 @@ export async function saveLiveStore(store: LiveRelationshipStore): Promise<void>
 /**
  * Mutate the store under an exclusive lock.
  * Prefer this over load+save for concurrent marketing + workspace writes.
+ *
+ * No-op mutators (common for cron / page-load ticks) skip `htc_crm_replace_store`
+ * entirely so they cannot drive version-conflict log storms. Conflicts and
+ * gateway timeouts back off before reloading — never tight-loop the RPC.
  */
 export async function withLiveStore<T>(
   mutate: (store: LiveRelationshipStore) => T | Promise<T>,
@@ -208,13 +252,21 @@ export async function withLiveStore<T>(
     let lastError: unknown;
     for (let attempt = 0; attempt < MAX_OPTIMISTIC_RETRIES; attempt++) {
       const { store, version } = await loadPostgresStore();
+      const before = fingerprintLiveStore(store);
       const result = await mutate(store);
+      const after = fingerprintLiveStore(store);
+      if (before === after) {
+        setCache(store, version);
+        return { result, store: normalizeStore(store) };
+      }
       try {
         await savePostgresStore(store, version);
         return { result, store: normalizeStore(store) };
       } catch (error) {
         lastError = error;
-        if (!isVersionConflict(error as { message?: string; code?: string })) throw error;
+        const err = error as { message?: string; code?: string };
+        if (!isRetryableStoreContention(err)) throw error;
+        if (attempt + 1 < MAX_OPTIMISTIC_RETRIES) await backoffBeforeRetry(attempt);
       }
     }
     throw lastError instanceof Error
