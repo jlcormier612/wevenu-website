@@ -1,0 +1,69 @@
+{
+  "observedAt": "2026-10-11T21:44:06.081Z",
+  "expectSha": null,
+  "fromConfigured": "Hello to Cheers <jennifer@hellotocheers.com>",
+  "provider": "resend",
+  "resendEmailId": "01a12cec…",
+  "recipientAlias": "jennifer+…@hellotocheers.com",
+  "lastEvent": "delivered",
+  "checks": [
+    {
+      "name": "recovery_link_redirect",
+      "pass": true,
+      "detail": "redirect_to=http://app.sandbox.hellotocheers.com/auth/confirm?next=/reset-password"
+    },
+    {
+      "name": "resend_accepted",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "sender_htc",
+      "pass": true,
+      "detail": "from=Hello to Cheers <jennifer@hellotocheers.com>"
+    },
+    {
+      "name": "subject_branded",
+      "pass": true,
+      "detail": "subject=Reset your Hello to Cheers password"
+    },
+    {
+      "name": "body_branded",
+      "pass": true,
+      "detail": "html_len=3869"
+    },
+    {
+      "name": "delivery_event",
+      "pass": true,
+      "detail": "last_event=delivered"
+    },
+    {
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=456c958c6ae252dbc7d5b1c6389c1e6eb5307600"
+    },
+    {
+      "name": "landed_reset_password",
+      "pass": true,
+      "detail": "url=http://app.sandbox.hellotocheers.com/reset-password?keys="
+    },
+    {
+      "name": "password_updated_to_login",
+      "pass": true,
+      "detail": "url=http://app.sandbox.hellotocheers.com/login?reset=1"
+    },
+    {
+      "name": "old_password_rejected",
+      "pass": true,
+      "detail": "url=http://app.sandbox.hellotocheers.com/login?reset=1"
+    },
+    {
+      "name": "new_password_signin",
+      "pass": true,
+      "detail": "url=http://app.sandbox.hellotocheers.com/welcome?returnTo=%2Fsetup&context=venueSignup"
+    }
+  ],
+  "hardFail": [],
+  "ok": true,
+  "note": "SPF/DKIM/DMARC for hellotocheers.com were previously verified in Resend (docs/resend-production-setup-findings.md). Gmail header inspection still recommended by owner for the designated inbox."
+}

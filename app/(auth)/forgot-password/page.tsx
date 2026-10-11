@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AuthBrandShell } from "@/components/auth/auth-brand-shell";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { safeLoginEmailPrefill } from "@/lib/auth/login-email-prefill";
+import { safePasswordRecoveryAudience } from "@/lib/auth/password-recovery";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -10,11 +11,12 @@ export const metadata: Metadata = {
 };
 
 type Props = {
-  searchParams: Promise<{ email?: string; error?: string }>;
+  searchParams: Promise<{ email?: string; error?: string; audience?: string }>;
 };
 
 export default async function ForgotPasswordPage({ searchParams }: Props) {
-  const { email, error } = await searchParams;
+  const { email, error, audience: audienceRaw } = await searchParams;
+  const audience = safePasswordRecoveryAudience(audienceRaw);
   const defaultEmail = safeLoginEmailPrefill(email);
   const errorCopy =
     error === "invalid_link"
@@ -43,7 +45,7 @@ export default async function ForgotPasswordPage({ searchParams }: Props) {
           {errorCopy}
         </p>
       ) : null}
-      <ForgotPasswordForm defaultEmail={defaultEmail} />
+      <ForgotPasswordForm defaultEmail={defaultEmail} audience={audience} />
     </AuthBrandShell>
   );
 }

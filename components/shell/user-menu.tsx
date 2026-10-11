@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
+import Link from "next/link";
 
 import { signOut } from "@/app/auth/actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -55,6 +56,14 @@ export function UserMenu({ email }: { email: string }) {
           {email}
         </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          render={
+            <Link href="/account/password" />
+          }
+        >
+          <KeyRound className="mr-2 h-4 w-4" />
+          Change password
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => {
             void signOut();

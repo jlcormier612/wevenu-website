@@ -10,6 +10,10 @@ import { type AuthFormState, requestPasswordReset } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  loginPathForAudience,
+  type PasswordRecoveryAudience,
+} from "@/lib/auth/password-recovery";
 
 const INITIAL_STATE: AuthFormState = {};
 
@@ -31,12 +35,20 @@ function SubmitButton({ done }: { done: boolean }) {
   );
 }
 
-export function ForgotPasswordForm({ defaultEmail }: { defaultEmail?: string }) {
+export function ForgotPasswordForm({
+  defaultEmail,
+  audience = "venue",
+}: {
+  defaultEmail?: string;
+  audience?: PasswordRecoveryAudience;
+}) {
   const [state, formAction] = React.useActionState(requestPasswordReset, INITIAL_STATE);
   const done = Boolean(state.success);
+  const signInHref = loginPathForAudience(audience);
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="audience" value={audience} />
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -73,7 +85,7 @@ export function ForgotPasswordForm({ defaultEmail }: { defaultEmail?: string }) 
 
       <p className="text-center text-sm text-muted-foreground">
         <Link
-          href="/login"
+          href={signInHref}
           className="font-medium text-[var(--forest-sage)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--heritage-sage)]/40"
         >
           Back to sign in

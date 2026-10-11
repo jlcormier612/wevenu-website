@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/integrations/supabase/server";
 import {
   PASSWORD_RECOVERY_SUCCESS_COPY,
-  passwordRecoveryRedirectTo,
+  loginPathForAudience,
+  safePasswordRecoveryAudience,
   validateNewPassword,
 } from "@/lib/auth/password-recovery";
+import { sendBrandedPasswordRecoveryEmail } from "@/lib/auth/send-password-recovery-email";
 import { safeInternalNextPath } from "@/lib/auth/portal-home";
 import { resolveAuthenticatedHomePath } from "@/lib/auth/resolve-home";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -120,6 +122,7 @@ export async function requestPasswordReset(
   formData: FormData,
 ): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const audience = safePasswordRecoveryAudience(formData.get("audience"));
   if (!email || !email.includes("@")) {
     return { error: "Enter a valid email address." };
   }
@@ -132,31 +135,22 @@ export async function requestPasswordReset(
     };
   }
 
-  const supabase = await createClient();
-  // Do not log redirect URLs that may later contain codes; only the fixed path is used.
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: passwordRecoveryRedirectTo(),
-  });
-
-  // Rate-limit / misconfiguration surfaces as a real error; unknown emails do not.
-  if (error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes("rate") || msg.includes("security purposes")) {
-      return {
-        error: "Please wait a moment before requesting another reset email.",
-      };
-    }
-    // Still return generic success for most provider failures that would
-    // otherwise leak whether the address is registered.
-    if (msg.includes("user not found") || msg.includes("unable to find")) {
-      return { success: PASSWORD_RECOVERY_SUCCESS_COPY };
-    }
+  // Branded delivery: Supabase Admin generateLink (secure recovery URL) + Resend
+  // with HTC From/template. Avoids Supabase Auth's default mailer branding.
+  // Enumeration-safe: unknown emails still get the same success copy.
+  const result = await sendBrandedPasswordRecoveryEmail({ email, audience });
+  if (result.ok || result.reason === "no_user") {
+    return { success: PASSWORD_RECOVERY_SUCCESS_COPY };
+  }
+  if (result.reason === "not_configured") {
     return {
-      error: "We couldn’t start a password reset right now. Please try again shortly.",
+      error:
+        "Password reset email is not configured in this environment. Please try again later.",
     };
   }
-
-  return { success: PASSWORD_RECOVERY_SUCCESS_COPY };
+  return {
+    error: "We couldn’t start a password reset right now. Please try again shortly.",
+  };
 }
 
 /**
@@ -169,6 +163,7 @@ export async function updatePasswordAfterRecovery(
 ): Promise<AuthFormState> {
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
+  const audience = safePasswordRecoveryAudience(formData.get("audience"));
   const validationError = validateNewPassword(password, confirm);
   if (validationError) return { error: validationError };
 
@@ -180,7 +175,7 @@ export async function updatePasswordAfterRecovery(
     };
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient(audience);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -198,5 +193,46 @@ export async function updatePasswordAfterRecovery(
   await supabase.auth.signOut();
   // Hard redirect — do not return redirectTo and re-render /reset-password
   // after signOut (that RSC pass has no session and bounces to invalid_link).
-  redirect("/login?reset=1");
+  redirect(`${loginPathForAudience(audience)}?reset=1`);
+}
+
+/**
+ * Signed-in venue staff: update password on the current session.
+ * Keeps the session; does not require the current password.
+ */
+export async function changePasswordWhileSignedIn(
+  _prevState: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  const validationError = validateNewPassword(password, confirm);
+  if (validationError) return { error: validationError };
+
+  if (!isSupabaseConfigured) {
+    return {
+      error:
+        "Authentication is not configured in this environment. Supabase " +
+        "credentials are required to change a password.",
+    };
+  }
+
+  const supabase = await createClient("venue");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Your session expired. Sign in again, then try changing your password." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("session") || msg.includes("jwt") || msg.includes("auth")) {
+      return { error: "Your session expired. Sign in again, then try changing your password." };
+    }
+    return { error: error.message };
+  }
+
+  return { success: "Your password was updated." };
 }

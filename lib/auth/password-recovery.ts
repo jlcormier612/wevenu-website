@@ -1,7 +1,8 @@
 /**
- * Venue password recovery helpers.
+ * Password recovery helpers (venue / vendor / client cookie jars).
  * Redirect targets are fixed app paths — never taken from untrusted input.
  */
+import type { AuthSessionScope } from "@/lib/auth/session-scope";
 import { publicAppOrigin } from "@/lib/env";
 
 export const PASSWORD_RECOVERY_SUCCESS_COPY =
@@ -14,14 +15,31 @@ export const PASSWORD_RESET_PATH = "/reset-password";
 
 export const FORGOT_PASSWORD_PATH = "/forgot-password";
 
+export type PasswordRecoveryAudience = AuthSessionScope;
+
+/** Sanitize recovery audience — defaults to venue staff. */
+export function safePasswordRecoveryAudience(raw: unknown): PasswordRecoveryAudience {
+  if (raw === "client" || raw === "vendor" || raw === "venue") return raw;
+  return "venue";
+}
+
+export function loginPathForAudience(audience: PasswordRecoveryAudience): string {
+  if (audience === "client") return "/client/login";
+  if (audience === "vendor") return "/vendor/login";
+  return "/login";
+}
+
 /**
  * Absolute redirectTo for Supabase Auth recovery emails.
  *
  * Sandbox GoTrue currently allowlists `http://app.sandbox.hellotocheers.com/auth/confirm`
- * and rejects the https variant (falls back to Site URL). Use the allowlisted
- * http confirm URL on that host; elsewhere use the deployment https origin.
+ * and rejects the https variant (falls back to Site URL). Keep the confirm URL
+ * shape stable — put audience inside `next` (not as a sibling query), because
+ * extra Auth redirect_to query keys are rejected and fall back to Site URL.
  */
-export function passwordRecoveryRedirectTo(): string {
+export function passwordRecoveryRedirectTo(
+  audience: PasswordRecoveryAudience = "venue",
+): string {
   const origin = publicAppOrigin();
   let host = "";
   try {
@@ -29,7 +47,11 @@ export function passwordRecoveryRedirectTo(): string {
   } catch {
     host = "";
   }
-  const confirmPath = `/auth/confirm?next=${encodeURIComponent(PASSWORD_RESET_PATH)}`;
+  const next =
+    audience === "venue"
+      ? PASSWORD_RESET_PATH
+      : `${PASSWORD_RESET_PATH}?audience=${encodeURIComponent(audience)}`;
+  const confirmPath = `/auth/confirm?next=${encodeURIComponent(next)}`;
   if (host === "app.sandbox.hellotocheers.com") {
     return `http://app.sandbox.hellotocheers.com${confirmPath}`;
   }
@@ -40,8 +62,17 @@ export function passwordRecoveryRedirectTo(): string {
 export function safePasswordRecoveryNextPath(raw: unknown): string {
   if (typeof raw !== "string") return PASSWORD_RESET_PATH;
   const trimmed = raw.trim();
+  if (!trimmed.startsWith(PASSWORD_RESET_PATH)) return PASSWORD_RESET_PATH;
   if (trimmed === PASSWORD_RESET_PATH) return PASSWORD_RESET_PATH;
-  return PASSWORD_RESET_PATH;
+  try {
+    const u = new URL(trimmed, "http://local.invalid");
+    if (u.pathname !== PASSWORD_RESET_PATH) return PASSWORD_RESET_PATH;
+    const audience = safePasswordRecoveryAudience(u.searchParams.get("audience"));
+    if (audience === "venue") return PASSWORD_RESET_PATH;
+    return `${PASSWORD_RESET_PATH}?audience=${encodeURIComponent(audience)}`;
+  } catch {
+    return PASSWORD_RESET_PATH;
+  }
 }
 
 export function validateNewPassword(password: string, confirm: string): string | null {

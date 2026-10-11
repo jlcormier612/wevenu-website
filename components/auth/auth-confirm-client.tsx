@@ -6,7 +6,11 @@ import { Loader2 } from "lucide-react";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { createClient } from "@/integrations/supabase/client";
-import { PASSWORD_RESET_PATH } from "@/lib/auth/password-recovery";
+import {
+  PASSWORD_RESET_PATH,
+  safePasswordRecoveryAudience,
+  safePasswordRecoveryNextPath,
+} from "@/lib/auth/password-recovery";
 
 /**
  * Completes Supabase Auth email redirects for password recovery.
@@ -23,8 +27,26 @@ export function AuthConfirmClient() {
     let cancelled = false;
 
     async function complete() {
-      const supabase = createClient("venue");
       const url = new URL(window.location.href);
+      const resetPath = safePasswordRecoveryNextPath(url.searchParams.get("next"));
+      const nextAudience = (() => {
+        try {
+          return safePasswordRecoveryAudience(
+            new URL(resetPath, "http://local.invalid").searchParams.get("audience"),
+          );
+        } catch {
+          return "venue" as const;
+        }
+      })();
+      // Prefer audience embedded in next= (allowlisted redirect shape); fall back to ?audience=.
+      const audience = safePasswordRecoveryAudience(
+        url.searchParams.get("audience") || nextAudience,
+      );
+      const forgotPath =
+        audience === "venue"
+          ? "/forgot-password?error=invalid_link"
+          : `/forgot-password?error=invalid_link&audience=${encodeURIComponent(audience)}`;
+      const supabase = createClient(audience);
       const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
 
       const code = url.searchParams.get("code");
@@ -34,7 +56,7 @@ export function AuthConfirmClient() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!cancelled && !error) {
-          window.location.replace(PASSWORD_RESET_PATH);
+          window.location.replace(resetPath);
           return;
         }
       }
@@ -45,7 +67,7 @@ export function AuthConfirmClient() {
           token_hash: tokenHash,
         });
         if (!cancelled && !error) {
-          window.location.replace(PASSWORD_RESET_PATH);
+          window.location.replace(resetPath);
           return;
         }
       }
@@ -58,7 +80,7 @@ export function AuthConfirmClient() {
           refresh_token: refreshToken,
         });
         if (!cancelled && !error) {
-          window.location.replace(PASSWORD_RESET_PATH);
+          window.location.replace(resetPath);
           return;
         }
       }
@@ -68,13 +90,13 @@ export function AuthConfirmClient() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!cancelled && session) {
-        window.location.replace(PASSWORD_RESET_PATH);
+        window.location.replace(resetPath);
         return;
       }
 
       if (!cancelled) {
         setMessage("That reset link is invalid or has expired.");
-        window.location.replace("/forgot-password?error=invalid_link");
+        window.location.replace(forgotPath);
       }
     }
 

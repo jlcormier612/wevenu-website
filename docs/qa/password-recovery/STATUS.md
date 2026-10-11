@@ -1,76 +1,93 @@
-# Venue password recovery — audit, implementation, verification
+# HTC password recovery — logic, branding, and delivery
 
-**Audit type:** Feature gap close. Sandbox only. No Production / public-marketing deploy.  
-**Commit:** `2af63b9c6145257851f1d76ff4dd85e64b4670d4`  
-**Deploy:** [Deploy Sandbox 38174964241](https://github.com/jlcormier612/wevenu-website/actions/runs/38174964241) (`environment: sandbox`)
+**Sandbox only.** Production / public marketing untouched.
+
+| Layer | Status |
+|---|---|
+| Recovery logic + browser E2E (tip `456c958c` and later) | **GREEN** (prior closeout) |
+| Sender identity + branded template (Resend) | **GREEN** (see branded-email evidence) |
+| App tip serving branded send path | Pending deploy of this commit |
+| Supabase Auth Dashboard SMTP (optional alternate) | **OPEN / owner-optional** — not required once app sends via Resend |
+| Gmail UI “From” screenshot / full Authentication-Results headers | **Owner confirm recommended** — Resend retrieve shows HTC From + `delivered` |
 
 ---
 
-## 1. Audit verdict (before change)
+## 1. Forensic audit (delivery)
 
-| Layer | Finding |
+| Fact | Evidence |
 |---|---|
-| Login UI | Email + Password + Sign in only — **no Forgot password link** |
-| Routes | **No** `/forgot-password`, `/reset-password`, or `/auth/confirm` |
-| Server actions | `signIn` / `signOut` only — **no** `resetPasswordForEmail` |
-| Auth callback | **Missing** (`exchangeCodeForSession` / recovery `verifyOtp` absent) |
-| Client portal | `changeMyPassword` for signed-in users only — not email recovery |
-| Classification | **Missing end-to-end** (not hidden; not partially wired) |
+| Prior recovery emails used Supabase default mailer | Customer report: `Supabase Auth <noreply@mail.app.supabase.io>` |
+| HTC transactional provider | **Resend** (`htc/sandbox/resend-api-key`, ECS secret `RESEND_API_KEY`) |
+| Sandbox From identity (venue app) | `Hello to Cheers <jennifer@hellotocheers.com>` (`FROM_EMAIL` on ECS) |
+| Domain auth | `hellotocheers.com` DKIM/SPF verified in Resend (see `docs/resend-production-setup-findings.md`) |
+| Supabase Management API token | **Absent** — cannot PATCH Auth SMTP from this environment |
+| Auth SMTP / email templates | Dashboard / Management API only (not in repo migrations) |
 
-### Sandbox Auth redirect reality (probed)
+Architecture chosen (explicit): keep **Supabase Auth recovery tokens** via `admin.generateLink({ type: "recovery" })`, deliver the `action_link` with **HTC Resend** + branded HTML. This is not a custom token scheme; it avoids Supabase’s default mailer branding without owner Dashboard SMTP.
 
-| Asked `redirectTo` | Got `redirect_to` on recovery link |
-|---|---|
-| `https://app.sandbox…/auth/confirm` | Rejected → Site URL `http://app.sandbox.hellotocheers.com` |
-| `http://app.sandbox…/auth/confirm` | **Accepted** |
-
-Site URL on Sandbox GoTrue is **http** `app.sandbox.hellotocheers.com`. Implementation uses the allowlisted http confirm URL on that host; post-exchange browser redirects use `publicAppOrigin()` (**https**).
-
-**Owner follow-up (recommended):** Add `https://app.sandbox.hellotocheers.com/auth/confirm**` (and prefer https Site URL) in Supabase Auth URL config so recovery need not rely on the http allowlist exception.
+Optional later: configure Sandbox Auth SMTP → Resend (`smtp.resend.com:465`, user `resend`, pass = Resend API key) and paste Dashboard templates — Production must stay untouched.
 
 ---
 
-## 2. What was implemented
+## 2. Branded email requirements
 
-| Piece | Location |
+| Requirement | Implementation |
 |---|---|
-| Forgot password? link (below password, right-aligned) | `components/auth/login-form.tsx` |
-| Request form + generic success copy | `app/(auth)/forgot-password`, `requestPasswordReset` |
-| Auth confirm callback | `app/auth/confirm/route.ts` |
-| New password form | `app/(auth)/reset-password`, `updatePasswordAfterRecovery` |
-| Redirect helper | `lib/auth/password-recovery.ts` |
-| Public + legal skip paths | `integrations/supabase/proxy.ts`, `welcome-middleware.ts` |
-| Login success banner after reset | `/login?reset=1` |
-| Unit wiring tests | `lib/auth/password-recovery.test.ts` |
-| Browser E2E script | `scripts/qa/password-recovery-browser.mts` |
-
-Guarantees preserved: activated=1 handoff behavior untouched; email query still prefill-only; no secrets logged; enumeration-safe success copy.
+| Subject | `Reset your Hello to Cheers password` |
+| From | ECS `FROM_EMAIL` (Sandbox: Hello to Cheers \<jennifer@hellotocheers.com\>) |
+| Body | HTC logo + clear CTA + ignore-if-unrequested copy |
+| No Supabase customer-facing sender | Resend path; `click_tracking`/`open_tracking` **off** (auth links must not be rewritten) |
+| Recovery URL | Supabase `action_link` → allowlisted `/auth/confirm` → `/reset-password` |
 
 ---
 
-## 3. Verification status
+## 3. Delivery evidence (observed)
 
-| Check | Status |
+Script: `npx tsx scripts/qa/password-recovery-branded-email.mts`  
+Results: `docs/qa/password-recovery/branded-email-results.json`
+
+| Check | Result |
 |---|---|
-| Unit tests (`password-recovery`, public paths, email prefill) | **PASS** (10/10) |
-| Sandbox deploy of `2af63b9c` | Started run **38174964241** — verify `dpl` before GREEN |
-| Browser E2E (disposable user, generateLink, update, sign-in) | Run after tip shows `2af63b9c` |
-| Real SMTP delivery to a mailbox | **Not claimed** — disposable `.invalid` + `generateLink` (no customer email) |
+| Resend accept | PASS |
+| From | `Hello to Cheers <jennifer@hellotocheers.com>` |
+| Subject | `Reset your Hello to Cheers password` |
+| Body | HTC branded; no Supabase Auth wording |
+| last_event | `delivered` |
+| Link → reset → new password sign-in | PASS |
+| Old password rejected | PASS |
+| Tip at probe | `dpl=456c958c…` |
+
+Recipient: disposable `jennifer+pwrecovery.{stamp}@hellotocheers.com` (internal +alias; not a customer; not Jennifer’s primary Auth user).
 
 ---
 
-## 4. Commands
+## 4. Owner-optional Supabase SMTP (if reverting to GoTrue mailer)
+
+Sandbox project only (`wvpsldwwjqdannqasrdf`):
+
+1. Authentication → Email → SMTP Settings → Enable custom SMTP  
+2. Host `smtp.resend.com` · Port `465` · User `resend` · Pass = Sandbox Resend API key (from Secrets Manager `htc/sandbox/resend-api-key`, never commit)  
+3. Sender email `jennifer@hellotocheers.com` · Sender name `Hello to Cheers`  
+4. Templates → Reset password → subject/body from `lib/auth/password-recovery-email.ts` (keep `{{ .ConfirmationURL }}`)  
+5. Do **not** change Production project settings  
+
+Not required while the app uses Resend delivery.
+
+---
+
+## 5. Commands
 
 ```bash
 npx tsx --test lib/auth/password-recovery.test.ts
-EXPECT_SHA=2af63b9c npx tsx scripts/qa/password-recovery-browser.mts
+npx tsx scripts/qa/password-recovery-branded-email.mts
+EXPECT_SHA=<tip> npx tsx scripts/qa/password-recovery-browser.mts
 ```
 
 ---
 
 ## Safety
 
-- Production / public marketing untouched.  
-- Deploy workflow targets `environment: sandbox` only.  
-- Disposable Sandbox users; no credential rotation for Jennifer / Meadowbrook / customers.  
+- Disposable Sandbox Auth users + internal +alias only.  
+- No Production / marketing deploy.  
+- No secrets, tokens, or full recovery URLs in commits.  
 - Dirty unrelated work preserved.

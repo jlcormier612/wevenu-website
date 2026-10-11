@@ -18,6 +18,8 @@ describe("dropdown identity rows avoid bare DropdownMenuLabel", () => {
     assert.doesNotMatch(code, /DropdownMenuLabel/);
     assert.match(code, /Sign out/);
     assert.match(code, /signOut/);
+    assert.match(code, /Change password/);
+    assert.match(code, /\/account\/password/);
     assert.match(code, /\{email\}/);
   });
 

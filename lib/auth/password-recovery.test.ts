@@ -19,6 +19,10 @@ describe("password recovery helpers", () => {
 
   it("only allows /reset-password as recovery next", () => {
     assert.equal(safePasswordRecoveryNextPath("/reset-password"), PASSWORD_RESET_PATH);
+    assert.equal(
+      safePasswordRecoveryNextPath("/reset-password?audience=client"),
+      "/reset-password?audience=client",
+    );
     assert.equal(safePasswordRecoveryNextPath("/dashboard"), PASSWORD_RESET_PATH);
     assert.equal(safePasswordRecoveryNextPath("https://evil.example"), PASSWORD_RESET_PATH);
     assert.equal(safePasswordRecoveryNextPath(null), PASSWORD_RESET_PATH);
@@ -38,6 +42,10 @@ describe("password recovery helpers", () => {
         passwordRecoveryRedirectTo(),
         "http://app.sandbox.hellotocheers.com/auth/confirm?next=%2Freset-password",
       );
+      assert.equal(
+        passwordRecoveryRedirectTo("client"),
+        "http://app.sandbox.hellotocheers.com/auth/confirm?next=%2Freset-password%3Faudience%3Dclient",
+      );
     } finally {
       if (prior === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
       else process.env.NEXT_PUBLIC_APP_URL = prior;
@@ -50,6 +58,7 @@ describe("password recovery helpers", () => {
     const confirmPage = readFileSync("app/auth/confirm/page.tsx", "utf8");
     const confirmClient = readFileSync("components/auth/auth-confirm-client.tsx", "utf8");
     const actions = readFileSync("app/auth/actions.ts", "utf8");
+    const sendPath = readFileSync("lib/auth/send-password-recovery-email.ts", "utf8");
     assert.match(loginForm, /Forgot password\?/);
     assert.match(loginForm, new RegExp(FORGOT_PASSWORD_PATH.replace("/", "\\/")));
     assert.match(proxy, /"\/forgot-password"/);
@@ -59,9 +68,33 @@ describe("password recovery helpers", () => {
     assert.match(confirmClient, /setSession/);
     assert.match(confirmClient, /exchangeCodeForSession/);
     assert.match(confirmClient, /verifyOtp/);
-    assert.match(actions, /resetPasswordForEmail/);
-    assert.match(actions, /passwordRecoveryRedirectTo/);
+    assert.match(actions, /sendBrandedPasswordRecoveryEmail/);
+    assert.match(sendPath, /generateLink/);
+    assert.match(sendPath, /click_tracking:\s*false/);
+    assert.match(sendPath, /PASSWORD_RECOVERY_EMAIL_SUBJECT/);
     assert.equal(PASSWORD_RESET_PATH, "/reset-password");
+  });
+});
+
+describe("password recovery branded email", () => {
+  it("uses HTC subject, logo, CTA, and safe ignore copy", async () => {
+    const {
+      PASSWORD_RECOVERY_EMAIL_SUBJECT,
+      buildPasswordRecoveryEmailHtml,
+      buildPasswordRecoveryEmailText,
+    } = await import("./password-recovery-email.ts");
+    const url = "https://example.test/auth/v1/verify?token=redacted&type=recovery&redirect_to=http%3A%2F%2Fapp.sandbox.hellotocheers.com%2Fauth%2Fconfirm";
+    const html = buildPasswordRecoveryEmailHtml(url);
+    const text = buildPasswordRecoveryEmailText(url);
+    assert.equal(PASSWORD_RECOVERY_EMAIL_SUBJECT, "Reset your Hello to Cheers password");
+    assert.match(html, /Reset your Hello to Cheers password/);
+    assert.match(html, /Reset password/);
+    assert.match(html, /hello-to-cheers-logo/);
+    assert.match(html, /If you didn’t request a password reset/);
+    assert.doesNotMatch(html, /Supabase/i);
+    assert.match(text, /Reset your Hello to Cheers password/);
+    assert.match(text, /If you didn’t request a password reset/);
+    assert.doesNotMatch(text, /Supabase/i);
   });
 });
 

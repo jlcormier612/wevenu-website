@@ -10,6 +10,7 @@ import { type AuthFormState, updatePasswordAfterRecovery } from "@/app/auth/acti
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import type { PasswordRecoveryAudience } from "@/lib/auth/password-recovery";
 
 const INITIAL_STATE: AuthFormState = {};
 
@@ -30,7 +31,11 @@ function SubmitButton({ redirecting }: { redirecting: boolean }) {
   );
 }
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({
+  audience = "venue",
+}: {
+  audience?: PasswordRecoveryAudience;
+}) {
   const [state, formAction] = React.useActionState(updatePasswordAfterRecovery, INITIAL_STATE);
 
   React.useEffect(() => {
@@ -39,6 +44,7 @@ export function ResetPasswordForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="audience" value={audience} />
       <div className="space-y-2">
         <Label htmlFor="password">New password</Label>
         <PasswordInput
@@ -73,7 +79,7 @@ export function ResetPasswordForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         <Link
-          href="/forgot-password"
+          href={`/forgot-password?audience=${encodeURIComponent(audience)}`}
           className="font-medium text-[var(--forest-sage)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--heritage-sage)]/40"
         >
           Request a new reset link
