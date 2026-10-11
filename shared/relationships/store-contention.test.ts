@@ -85,4 +85,15 @@ describe("contention helpers (source contract)", () => {
     assert.match(sql, /htc_crm_replace_store_lock_profile/);
     assert.match(sql, /has_try_lock/);
   });
+
+  it("conflict errcode migration stops using SQLSTATE 40001 for version conflicts", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20261414800000_htc_crm_conflict_errcode_not_40001.sql"),
+      "utf8",
+    );
+    assert.match(sql, /errcode = 'P0001'/);
+    assert.doesNotMatch(sql, /errcode = '40001'/);
+    assert.match(sql, /htc_crm_version_conflict/);
+    assert.match(sql, /htc_crm_store_busy/);
+  });
 });
