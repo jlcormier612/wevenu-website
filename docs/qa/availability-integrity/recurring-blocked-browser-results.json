@@ -1,0 +1,69 @@
+{
+  "observedAt": "2026-10-11T23:37:11.222Z",
+  "expectSha": "8e4f911e",
+  "form": "https://app.sandbox.hellotocheers.com/form/cd9e89529e65480ba8cfc6e154193d5a",
+  "checks": [
+    {
+      "name": "venue_choose_available",
+      "pass": true,
+      "detail": "mode=choose_available"
+    },
+    {
+      "name": "christmas_rule_intact",
+      "pass": true,
+      "detail": "{\"id\":\"a32242fa-852b-4b34-85c8-8db9f879517d\",\"start_date\":\"2026-12-25\",\"recurrence_rule\":\"annual\",\"label\":\"Christmas\"}"
+    },
+    {
+      "name": "api_2026_no_christmas",
+      "pass": true,
+      "detail": "n=30"
+    },
+    {
+      "name": "api_2027_no_christmas",
+      "pass": true,
+      "detail": "n=30"
+    },
+    {
+      "name": "api_2026_has_other_day",
+      "pass": true,
+      "detail": "Dec 24 open"
+    },
+    {
+      "name": "server_reject_christmas",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"date_unavailable\"}"
+    },
+    {
+      "name": "no_lead_created_on_reject",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "server_accept_open_date",
+      "pass": true,
+      "detail": "{\"ok\":true,\"lead_id\":\"e19c9514-e423-445f-a33c-a235e03c6f7b\",\"relationshipId\":\"fde33054-8851-450b-90f1-b3dbc12050fa\",\"isReturningRelationship\":false}"
+    },
+    {
+      "name": "tour_exception_covers_christmas",
+      "pass": true,
+      "detail": "covers=true"
+    },
+    {
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=8e4f911eb6925b97d4403259a06fbeff1b0f4fb8"
+    },
+    {
+      "name": "ui_dec_2026_christmas_not_selectable",
+      "pass": true,
+      "detail": "apiExcluded=true disabledCell=false"
+    },
+    {
+      "name": "after_refresh_still_excluded",
+      "pass": true,
+      "detail": "n=30"
+    }
+  ],
+  "hardFail": [],
+  "ok": true
+}
