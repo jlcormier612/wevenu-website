@@ -112,14 +112,12 @@ npx tsx --test shared/relationships/store-contention.test.ts shared/relationship
 
 ### Deploy / runtime verification
 
-Recorded in this doc after deploy completes:
-
 | Check | Result |
 |---|---|
-| Sandbox deploy SHA | _(pending)_ |
-| `htc_crm_store_meta.version` stable over 2–3 minutes | _(pending)_ |
-| Intentional stale replace returns fast `htc_crm_version_conflict` (not 125s timeout) | _(pending)_ |
-| Owner Logs Explorer conflict rate | _(pending)_ |
+| Fix commit | `1f2992d48a415d41bee87f938b79f8e87145fdb9` |
+| Sandbox deploy | **Started** — [run 38170050874](https://github.com/jlcormier612/wevenu-website/actions/runs/38170050874) (queued 2026-10-11T19:55:32Z); **ACTIVE STORM STOPPED = UNVERIFIED** until this run finishes and Logs Explorer is rechecked |
+| Pre-fix contention proof | Stale replace timed out ~125s with `upstream request timeout` at version 6784 |
+| Post-deploy checks needed | Image/tag `1f2992d4…` on marketing+workspace; version stable 2–3 min; stale replace returns fast `htc_crm_version_conflict`; conflict rate collapses in Logs Explorer |
 
 ---
 
