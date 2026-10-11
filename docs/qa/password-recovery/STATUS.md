@@ -1,93 +1,91 @@
-# HTC password recovery — logic, branding, and delivery
+# HTC password recovery — Venue · Vendor · Client
 
-**Sandbox only.** Production / public marketing untouched.
+**Sandbox only.** Production / public marketing untouched.  
+**Overall:** GREEN (all three portals + branded Resend delivery)
 
 | Layer | Status |
 |---|---|
-| Recovery logic + browser E2E (tip `456c958c` and later) | **GREEN** (prior closeout) |
-| Sender identity + branded template (Resend) | **GREEN** (see branded-email evidence) |
-| App tip serving branded send path | Pending deploy of this commit |
-| Supabase Auth Dashboard SMTP (optional alternate) | **OPEN / owner-optional** — not required once app sends via Resend |
-| Gmail UI “From” screenshot / full Authentication-Results headers | **Owner confirm recommended** — Resend retrieve shows HTC From + `delivered` |
+| Venue portal recovery | **GREEN** |
+| Vendor portal recovery | **GREEN** |
+| Client portal recovery | **GREEN** |
+| Shared branded-email delivery (Resend) | **GREEN** |
+| Auth / isolation safeguards | **GREEN** (replay + unauth reset + portal-scoped cookie jars) |
 
 ---
 
-## 1. Forensic audit (delivery)
+## Deployed revision (observed)
 
-| Fact | Evidence |
+| Item | Value |
 |---|---|
-| Prior recovery emails used Supabase default mailer | Customer report: `Supabase Auth <noreply@mail.app.supabase.io>` |
-| HTC transactional provider | **Resend** (`htc/sandbox/resend-api-key`, ECS secret `RESEND_API_KEY`) |
-| Sandbox From identity (venue app) | `Hello to Cheers <jennifer@hellotocheers.com>` (`FROM_EMAIL` on ECS) |
-| Domain auth | `hellotocheers.com` DKIM/SPF verified in Resend (see `docs/resend-production-setup-findings.md`) |
-| Supabase Management API token | **Absent** — cannot PATCH Auth SMTP from this environment |
-| Auth SMTP / email templates | Dashboard / Management API only (not in repo migrations) |
-
-Architecture chosen (explicit): keep **Supabase Auth recovery tokens** via `admin.generateLink({ type: "recovery" })`, deliver the `action_link` with **HTC Resend** + branded HTML. This is not a custom token scheme; it avoids Supabase’s default mailer branding without owner Dashboard SMTP.
-
-Optional later: configure Sandbox Auth SMTP → Resend (`smtp.resend.com:465`, user `resend`, pass = Resend API key) and paste Dashboard templates — Production must stay untouched.
+| Tip SHA | `f901efce4696ba82e41e9b31be0c16c0e3ef8f7c` |
+| Live `dpl` | `f901efce4696ba82e41e9b31be0c16c0e3ef8f7c` |
+| Deploy run | [38178248583](https://github.com/jlcormier612/wevenu-website/actions/runs/38178248583) success |
+| Prior branded-email tip | `aaf3c3a8` via [38177637410](https://github.com/jlcormier612/wevenu-website/actions/runs/38177637410) success |
+| Health | `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}` |
 
 ---
 
-## 2. Branded email requirements
+## Architecture (audit)
 
-| Requirement | Implementation |
-|---|---|
-| Subject | `Reset your Hello to Cheers password` |
-| From | ECS `FROM_EMAIL` (Sandbox: Hello to Cheers \<jennifer@hellotocheers.com\>) |
-| Body | HTC logo + clear CTA + ignore-if-unrequested copy |
-| No Supabase customer-facing sender | Resend path; `click_tracking`/`open_tracking` **off** (auth links must not be rewritten) |
-| Recovery URL | Supabase `action_link` → allowlisted `/auth/confirm` → `/reset-password` |
+| Portal | Login route | Forgot entry | Recovery audience | Post-reset login |
+|---|---|---|---|---|
+| Venue | `/login` | `Forgot password?` → `/forgot-password` | `venue` (default jar) | `/login?reset=1` |
+| Vendor | `/vendor/login` | `Forgot password?` → `/forgot-password?audience=vendor` | `vendor` cookie jar | `/vendor/login?reset=1` |
+| Client | `/client/login` | `Forgot password?` → `/forgot-password?audience=client` | `client` cookie jar | `/client/login?reset=1` |
+
+Shared pieces: `requestPasswordReset` → `sendBrandedPasswordRecoveryEmail` (`admin.generateLink` + Resend) → `/auth/confirm` (client hash/`code` exchange into the scoped jar) → `/reset-password` → `updatePasswordAfterRecovery` → portal login.
+
+**Gap closed on tip `f901efce`:** client/vendor Forgot links were missing from `aaf3c3a8` (venue-only). Live HTML before fix: client/vendor `forgot_count=0`.
 
 ---
 
-## 3. Delivery evidence (observed)
-
-Script: `npx tsx scripts/qa/password-recovery-branded-email.mts`  
-Results: `docs/qa/password-recovery/branded-email-results.json`
+## Branded email delivery
 
 | Check | Result |
 |---|---|
-| Resend accept | PASS |
+| Mechanism | Supabase `generateLink({ type: "recovery" })` + Resend HTML/text |
 | From | `Hello to Cheers <jennifer@hellotocheers.com>` |
 | Subject | `Reset your Hello to Cheers password` |
-| Body | HTC branded; no Supabase Auth wording |
-| last_event | `delivered` |
-| Link → reset → new password sign-in | PASS |
-| Old password rejected | PASS |
-| Tip at probe | `dpl=456c958c…` |
-
-Recipient: disposable `jennifer+pwrecovery.{stamp}@hellotocheers.com` (internal +alias; not a customer; not Jennifer’s primary Auth user).
+| Fallback to Supabase mailer | **No** — app path does not call `resetPasswordForEmail` |
+| Click/open tracking | Off (auth links not rewritten) |
+| Enumeration-safe UI | Same success copy whether or not the user exists |
 
 ---
 
-## 4. Owner-optional Supabase SMTP (if reverting to GoTrue mailer)
+## Three-portal browser E2E (tip `f901efce`)
 
-Sandbox project only (`wvpsldwwjqdannqasrdf`):
+Command: `EXPECT_SHA=f901efce npx tsx scripts/qa/password-recovery-three-portals-browser.mts`  
+Evidence: `docs/qa/password-recovery/three-portals-results.json`
 
-1. Authentication → Email → SMTP Settings → Enable custom SMTP  
-2. Host `smtp.resend.com` · Port `465` · User `resend` · Pass = Sandbox Resend API key (from Secrets Manager `htc/sandbox/resend-api-key`, never commit)  
-3. Sender email `jennifer@hellotocheers.com` · Sender name `Hello to Cheers`  
-4. Templates → Reset password → subject/body from `lib/auth/password-recovery-email.ts` (keep `{{ .ConfirmationURL }}`)  
-5. Do **not** change Production project settings  
+For **each** of venue / vendor / client (disposable Auth user + internal `jennifer+pw.{portal}.{stamp}@hellotocheers.com`):
 
-Not required while the app uses Resend delivery.
+| Check | Venue | Vendor | Client |
+|---|---|---|---|
+| Forgot visible on portal login | PASS | PASS | PASS |
+| Correct forgot route / audience | PASS | PASS | PASS |
+| Enumeration-safe form response | PASS | PASS | PASS |
+| Recovery `redirect_to` → `/auth/confirm` | PASS | PASS | PASS |
+| Resend accept + HTC From/subject/body | PASS | PASS | PASS |
+| Land `/reset-password` (scoped) | PASS | PASS | PASS |
+| Mismatch validation | PASS | PASS | PASS |
+| Return to portal login `?reset=1` | PASS | PASS | PASS |
+| Old password rejected | PASS | PASS | PASS |
+| New password signs in (correct portal) | PASS → welcome/dashboard path | PASS → `/vendor/dashboard` | PASS → `/p/{token}` |
+| Replay link safe | PASS | PASS | PASS |
+| Unauth `/reset-password` blocked | PASS | PASS | PASS |
 
----
+**Final answers**
 
-## 5. Commands
-
-```bash
-npx tsx --test lib/auth/password-recovery.test.ts
-npx tsx scripts/qa/password-recovery-branded-email.mts
-EXPECT_SHA=<tip> npx tsx scripts/qa/password-recovery-browser.mts
-```
+1. Does Forgot Password appear in all three portals? **Yes** (on tip `f901efce`).  
+2. Does each portal send the HTC-branded Resend email? **Yes** (From/subject/body verified per portal).  
+3. Does each portal complete recovery and accept the new password? **Yes**.  
+4. Is the old password rejected? **Yes** (all three).
 
 ---
 
 ## Safety
 
-- Disposable Sandbox Auth users + internal +alias only.  
-- No Production / marketing deploy.  
-- No secrets, tokens, or full recovery URLs in commits.  
-- Dirty unrelated work preserved.
+- Disposable Sandbox users/venues/vendors/clients only; cleaned up after each portal run.  
+- No Jennifer / Meadowbrook / customer password rotation.  
+- No secrets or full recovery URLs in commits.  
+- Production / marketing untouched.

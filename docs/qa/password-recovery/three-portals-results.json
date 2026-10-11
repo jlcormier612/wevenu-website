@@ -1,0 +1,284 @@
+{
+  "observedAt": "2026-10-11T22:02:35.698Z",
+  "expectSha": "f901efce",
+  "dpl": "f901efce4696ba82e41e9b31be0c16c0e3ef8f7c",
+  "provider": "resend",
+  "fromConfigured": "Hello to Cheers <jennifer@hellotocheers.com>",
+  "portals": {
+    "venue": {
+      "ok": true,
+      "hardFail": [],
+      "checks": [
+        {
+          "name": "runtime_dpl",
+          "pass": true,
+          "detail": "dpl=f901efce4696ba82e41e9b31be0c16c0e3ef8f7c"
+        },
+        {
+          "name": "login_screen",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/login"
+        },
+        {
+          "name": "forgot_visible",
+          "pass": true,
+          "detail": "/login"
+        },
+        {
+          "name": "forgot_route",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/forgot-password expected~/forgot-password"
+        },
+        {
+          "name": "forgot_form_response",
+          "pass": true,
+          "detail": "Reset your password\nEnter the email for your Hello to Cheers workspace. We’ll send a link if an account exists.\nEmail\n\nIf an account exists for that email, we’l"
+        },
+        {
+          "name": "recovery_link_redirect",
+          "pass": true,
+          "detail": "redirect_to=http://app.sandbox.hellotocheers.com/auth/confirm?next=/reset-password"
+        },
+        {
+          "name": "resend_accepted",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "sender_htc",
+          "pass": true,
+          "detail": "from=Hello to Cheers <jennifer@hellotocheers.com>"
+        },
+        {
+          "name": "subject_branded",
+          "pass": true,
+          "detail": "subject=Reset your Hello to Cheers password"
+        },
+        {
+          "name": "body_branded",
+          "pass": true,
+          "detail": "html_len=3869 last_event=sent"
+        },
+        {
+          "name": "landed_reset_password",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/reset-password?keys="
+        },
+        {
+          "name": "mismatch_validation",
+          "pass": true,
+          "detail": "confirm mismatch"
+        },
+        {
+          "name": "password_updated_to_login",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/login?reset=1"
+        },
+        {
+          "name": "old_password_rejected",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/login?reset=1"
+        },
+        {
+          "name": "new_password_signin",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/welcome?returnTo=%2Fdashboard&context=venueSignup"
+        },
+        {
+          "name": "replay_link_safe",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/forgot-password?keys=error"
+        },
+        {
+          "name": "reset_requires_session",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/forgot-password?error=invalid_link&audience=venue"
+        }
+      ]
+    },
+    "vendor": {
+      "ok": true,
+      "hardFail": [],
+      "checks": [
+        {
+          "name": "runtime_dpl",
+          "pass": true,
+          "detail": "dpl=f901efce4696ba82e41e9b31be0c16c0e3ef8f7c"
+        },
+        {
+          "name": "login_screen",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/vendor/login"
+        },
+        {
+          "name": "forgot_visible",
+          "pass": true,
+          "detail": "/vendor/login"
+        },
+        {
+          "name": "forgot_route",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/forgot-password?audience=vendor expected~/forgot-password?audience=vendor"
+        },
+        {
+          "name": "forgot_form_response",
+          "pass": true,
+          "detail": "Reset your password\nEnter the email for your Hello to Cheers workspace. We’ll send a link if an account exists.\nEmail\n\nIf an account exists for that email, we’l"
+        },
+        {
+          "name": "recovery_link_redirect",
+          "pass": true,
+          "detail": "redirect_to=http://app.sandbox.hellotocheers.com/auth/confirm?next=/reset-password?audience=vendor"
+        },
+        {
+          "name": "resend_accepted",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "sender_htc",
+          "pass": true,
+          "detail": "from=Hello to Cheers <jennifer@hellotocheers.com>"
+        },
+        {
+          "name": "subject_branded",
+          "pass": true,
+          "detail": "subject=Reset your Hello to Cheers password"
+        },
+        {
+          "name": "body_branded",
+          "pass": true,
+          "detail": "html_len=3917 last_event=delivered"
+        },
+        {
+          "name": "landed_reset_password",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/reset-password?keys=audience"
+        },
+        {
+          "name": "mismatch_validation",
+          "pass": true,
+          "detail": "confirm mismatch"
+        },
+        {
+          "name": "password_updated_to_login",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/vendor/login?reset=1"
+        },
+        {
+          "name": "old_password_rejected",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/vendor/login?reset=1"
+        },
+        {
+          "name": "new_password_signin",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/vendor/dashboard"
+        },
+        {
+          "name": "replay_link_safe",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/forgot-password?keys=error,audience"
+        },
+        {
+          "name": "reset_requires_session",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/forgot-password?error=invalid_link&audience=vendor"
+        }
+      ]
+    },
+    "client": {
+      "ok": true,
+      "hardFail": [],
+      "checks": [
+        {
+          "name": "runtime_dpl",
+          "pass": true,
+          "detail": "dpl=f901efce4696ba82e41e9b31be0c16c0e3ef8f7c"
+        },
+        {
+          "name": "login_screen",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/client/login"
+        },
+        {
+          "name": "forgot_visible",
+          "pass": true,
+          "detail": "/client/login"
+        },
+        {
+          "name": "forgot_route",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/forgot-password?audience=client expected~/forgot-password?audience=client"
+        },
+        {
+          "name": "forgot_form_response",
+          "pass": true,
+          "detail": "Reset your password\nEnter the email for your Hello to Cheers workspace. We’ll send a link if an account exists.\nEmail\n\nIf an account exists for that email, we’l"
+        },
+        {
+          "name": "recovery_link_redirect",
+          "pass": true,
+          "detail": "redirect_to=http://app.sandbox.hellotocheers.com/auth/confirm?next=/reset-password?audience=client"
+        },
+        {
+          "name": "resend_accepted",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "sender_htc",
+          "pass": true,
+          "detail": "from=Hello to Cheers <jennifer@hellotocheers.com>"
+        },
+        {
+          "name": "subject_branded",
+          "pass": true,
+          "detail": "subject=Reset your Hello to Cheers password"
+        },
+        {
+          "name": "body_branded",
+          "pass": true,
+          "detail": "html_len=3917 last_event=delivered"
+        },
+        {
+          "name": "landed_reset_password",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/reset-password?keys=audience"
+        },
+        {
+          "name": "mismatch_validation",
+          "pass": true,
+          "detail": "confirm mismatch"
+        },
+        {
+          "name": "password_updated_to_login",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/client/login?reset=1"
+        },
+        {
+          "name": "old_password_rejected",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/client/login?reset=1"
+        },
+        {
+          "name": "new_password_signin",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/p/pwr_1791756197930_yhcw5m8r"
+        },
+        {
+          "name": "replay_link_safe",
+          "pass": true,
+          "detail": "url=http://app.sandbox.hellotocheers.com/forgot-password?keys=error,audience"
+        },
+        {
+          "name": "reset_requires_session",
+          "pass": true,
+          "detail": "url=https://app.sandbox.hellotocheers.com/forgot-password?error=invalid_link&audience=client"
+        }
+      ]
+    }
+  },
+  "ok": true,
+  "hardFail": []
+}
