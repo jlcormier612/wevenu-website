@@ -1,17 +1,17 @@
 {
-  "observedAt": "2026-10-12T02:18:27.787Z",
-  "tip": "553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "observedAt": "2026-10-12T02:58:21.428Z",
+  "tip": "0122911f32c20b33ea99321d1df4ad7306cea3ce",
   "preferredDate": "2027-12-25",
   "checks": [
     {
       "name": "hold_insert",
       "pass": true,
-      "detail": "2feac289"
+      "detail": "fee3bea7"
     },
     {
       "name": "readonly_preferred_date_shown",
       "pass": true,
-      "detail": "EL Tour 1791771507945 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 2"
+      "detail": "EL Tour 1791773901565 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 2"
     },
     {
       "name": "not_forced_to_reselect_calendar",
@@ -21,7 +21,7 @@
     {
       "name": "copy_mentions_already_shared",
       "pass": true,
-      "detail": "EL Tour 1791771507945 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 "
+      "detail": "EL Tour 1791773901565 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 "
     },
     {
       "name": "mode_toggle_hidden_for_existing_lead",
@@ -51,17 +51,17 @@
     {
       "name": "ui_confirm_tour_success",
       "pass": true,
-      "detail": "ok=true err= snip=You're booked, Existing! We're looking forward to meeting you at EL Tour 1791771507945. Your tour Date Tuesday, October "
+      "detail": "ok=true err= snip=You're booked, Existing! We're looking forward to meeting you at EL Tour 1791773901565. Your tour Date Tuesday, October "
     },
     {
       "name": "book_with_empty_client_event_date",
       "pass": true,
-      "detail": "eventDate=\"\" appt=c3edd9e5"
+      "detail": "eventDate=\"\" appt=dd4ff5e1"
     },
     {
       "name": "attached_existing_lead",
       "pass": true,
-      "detail": "leadId=d08af02c attached=true"
+      "detail": "leadId=f42ba5d7 attached=true"
     },
     {
       "name": "ui_payload_has_origin_token",
@@ -96,7 +96,7 @@
     {
       "name": "lead_without_preferred_date_allows_tour_ui",
       "pass": true,
-      "detail": "EL Tour 1791771507945 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 2"
+      "detail": "EL Tour 1791773901565 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 2"
     },
     {
       "name": "reopen_preserves_readonly_context",
@@ -111,7 +111,7 @@
     {
       "name": "new_inquiry_blocked_date_still_enforced",
       "pass": true,
-      "detail": "christmas_in_list=false ok=true exc=bd72bf40"
+      "detail": "christmas_in_list=false ok=true exc=59460d45"
     },
     {
       "name": "event_date_unchanged",
@@ -131,12 +131,12 @@
     {
       "name": "hold_unchanged",
       "pass": true,
-      "detail": "{\"id\":\"2feac289-1817-4f67-a70a-f6d200039a6d\",\"status\":\"active\",\"hold_date\":\"2027-12-25\"}"
+      "detail": "{\"id\":\"fee3bea7-e56a-4378-8d5a-b32a580f7ddb\",\"status\":\"active\",\"hold_date\":\"2027-12-25\"}"
     },
     {
       "name": "appointment_on_correct_lead",
       "pass": true,
-      "detail": "{\"lead\":\"d08af02c\",\"event_date\":\"2027-12-25\",\"status\":\"scheduled\"}"
+      "detail": "{\"lead\":\"f42ba5d7\",\"event_date\":\"2027-12-25\",\"status\":\"scheduled\"}"
     }
   ],
   "passCount": 27,

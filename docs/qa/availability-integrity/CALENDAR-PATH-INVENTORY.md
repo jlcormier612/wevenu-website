@@ -1,11 +1,11 @@
 # Calendar & availability — path inventory (Sandbox audit)
 
-**Observation (UTC):** 2026-10-12T02:50Z  
-**Branch tip (pre-deploy of this pass):** local changes; runtime tip before deploy `553c8687`  
-**Ancestors verified:** `8e4f911e`, `45290d6a`, `c00749be`, `553c8687` ⊂ HEAD  
+**Observation (UTC):** 2026-10-12T02:58Z  
+**Deployed tip:** `0122911f32c20b33ea99321d1df4ad7306cea3ce`  
+**Ancestors verified:** `8e4f911e`, `45290d6a`, `c00749be`, `553c8687` ⊂ tip  
 **Production:** untouched
 
-This inventory traces authoritative checks. It does **not** declare the whole calendar platform GREEN.
+This inventory traces authoritative checks. It does **not** declare the whole calendar platform GREEN. Known held-date tour + staff link guidance are verified on tip; broader concurrency/contract edges remain noted below.
 
 ## Concepts (verified distinct in code/docs)
 

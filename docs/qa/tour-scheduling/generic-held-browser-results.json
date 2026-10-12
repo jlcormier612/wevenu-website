@@ -1,0 +1,69 @@
+{
+  "tip": "0122911f32c20b33ea99321d1df4ad7306cea3ce",
+  "preferredDate": "2027-09-04",
+  "checks": [
+    {
+      "name": "held_date_not_in_public_available_set",
+      "pass": true,
+      "detail": "available=2027-09-01,2027-09-02,2027-09-03,2027-09-05,2027-09-06,2027-09-07,2027-09-08,2027-09-09,2027-09-10"
+    },
+    {
+      "name": "generic_no_existing_lead_readonly_block",
+      "pass": true,
+      "detail": "no o= context"
+    },
+    {
+      "name": "generic_preferred_optional_for_tour",
+      "pass": true,
+      "detail": "GenHold 1791773866540 Inquiry Form 📅 Schedule a Tour Pick a date and time to visit us. ✉️ Request Information Tell us about your event. Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3"
+    },
+    {
+      "name": "generic_ui_tour_slot_selected",
+      "pass": true,
+      "detail": "slot"
+    },
+    {
+      "name": "generic_confirm_tour_without_selecting_held_date",
+      "pass": true,
+      "detail": "ok=true eventDate=\"\" err="
+    },
+    {
+      "name": "generic_attached_existing_lead",
+      "pass": true,
+      "detail": "attached=true"
+    },
+    {
+      "name": "generic_payload_event_date_empty_or_absent",
+      "pass": true,
+      "detail": "eventDate=\"\""
+    },
+    {
+      "name": "personal_link_readonly_preferred",
+      "pass": true,
+      "detail": "o= context"
+    },
+    {
+      "name": "personal_link_hides_mode_toggle",
+      "pass": true,
+      "detail": "locked schedule_tour"
+    },
+    {
+      "name": "preferred_date_unchanged",
+      "pass": true,
+      "detail": "2027-09-04"
+    },
+    {
+      "name": "hold_still_active",
+      "pass": true,
+      "detail": "{\"status\":\"active\",\"hold_date\":\"2027-09-04\"}"
+    },
+    {
+      "name": "no_duplicate_lead",
+      "pass": true,
+      "detail": "count=1"
+    }
+  ],
+  "passCount": 12,
+  "total": 12,
+  "verdict": "GREEN"
+}

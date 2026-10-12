@@ -1,11 +1,11 @@
 # Existing-lead tour scheduling — preserve preferred event date
 
-**Status:** GREEN on Sandbox (Ellie ModeToggle footgun closed — see `EXISTING-LEAD-ELLIE-INCIDENT.md`)  
-**Deployed tip:** `553c8687dd19e1d5196c94fe07b9957cecabec70`  
-**Prior partial GREEN:** `45290d6a` (API-path only; missed ModeToggle + UI Confirm Tour)  
+**Status:** GREEN on Sandbox (see also `EXISTING-LEAD-ELLIE-INCIDENT.md`, `CALENDAR-TOUR-LINK-GUIDANCE.md`)  
+**Deployed tip:** `0122911f32c20b33ea99321d1df4ad7306cea3ce`  
+**Prior tips:** `553c8687` (mode lock); `45290d6a` (API-path)  
 **Blocked-date fix preserved:** `8e4f911e`  
 **Production:** untouched  
-**Observed:** 2026-10-12T02:18:27Z
+**Observed:** 2026-10-12T02:58Z — existing-lead browser **27/27**; generic held-date **12/12**
 
 ---
 

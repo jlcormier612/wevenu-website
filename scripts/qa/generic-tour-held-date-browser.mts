@@ -161,20 +161,13 @@ async function main() {
     );
 
     await page.getByRole("button", { name: /Schedule a Tour/i }).click().catch(() => {});
-    await page.waitForTimeout(500);
-    await page.locator('input[type="number"]').first().fill("120");
-    // Fill identity matching existing lead
-    await page.locator('input').nth(0).fill("Pat"); // may already be empty
-    // Use labels
-    const first = page.getByLabel(/First name/i);
-    if (await first.count()) await first.fill("Pat");
-    const last = page.getByLabel(/Last name/i);
-    if (await last.count()) await last.fill("Prospect");
-    const emailInput = page.getByLabel(/^Email/i);
-    if (await emailInput.count()) await emailInput.fill(coupleEmail);
-    await page.locator("select").first().selectOption({ label: "Wedding" }).catch(async () => {
-      await page.locator("select").first().selectOption("wedding");
-    });
+    await page.waitForTimeout(800);
+    // InquiryForm order: honeypot[0], first, last, email, phone, …
+    await page.locator("form input").nth(1).fill("Pat");
+    await page.locator("form input").nth(2).fill("Prospect");
+    await page.locator('form input[type="email"]').fill(coupleEmail);
+    await page.locator("form select").first().selectOption("wedding");
+    await page.locator('form input[type="number"]').first().fill("120");
 
     const dayBtns = page.locator("form button").filter({ hasText: /^\d{1,2}$/ });
     let selected = false;
