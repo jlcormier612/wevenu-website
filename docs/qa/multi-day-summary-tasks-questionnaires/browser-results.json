@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "servingSha": "d1531f9e823b702f87262552928116ed4547d827",
+  "tip": "d1531f9e",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "serving=d1531f9e823b702f87262552928116ed4547d827 expectedPrefix=d1531f9e"
+    },
+    {
+      "name": "no-overall-hours-label",
+      "pass": true,
+      "detail": "September 3, 2027 – September 4, 2027 Friday – Saturday · In 325 days Booked Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting Ready 2:00 PM – 4:00"
+    },
+    {
+      "name": "component-schedule-rendered",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "rehearsal-present",
+      "pass": true,
+      "detail": "Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting Ready 2:00 PM – 4:00 PM · Meadowbrook Villa Cocktail Hour 4:00 PM – 5:00 PM ·"
+    },
+    {
+      "name": "sep3-sep4-distinction",
+      "pass": true,
+      "detail": "Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting Ready 2:00 PM – 4:00 PM · Meadowbrook Villa Cocktail Hour 4:00 PM – 5:00 PM · Meadowbrook Barn Ceremony 5:00 PM – 6:00 PM · Brook Bridge Reception 6:00 PM – "
+    },
+    {
+      "name": "honest-time-or-set",
+      "pass": true,
+      "detail": "has time labels"
+    },
+    {
+      "name": "rehearsal-not-wedding-hours",
+      "pass": true,
+      "detail": "no Overall 2:00 PM window masquerading as whole booking"
+    },
+    {
+      "name": "task-counts-reconcile",
+      "pass": true,
+      "detail": "listed=8 total=8 completed=0 waived=0"
+    },
+    {
+      "name": "progress-not-labeling-waived-complete",
+      "pass": true,
+      "detail": "0 of 6 required completed"
+    },
+    {
+      "name": "questionnaire-select-client_planning",
+      "pass": true,
+      "detail": "label=\"\""
+    },
+    {
+      "name": "questionnaire-options-client_planning",
+      "pass": true,
+      "detail": "Client Planning Questionnaire"
+    },
+    {
+      "name": "questionnaire-select-final_details",
+      "pass": true,
+      "detail": "label=\"\""
+    },
+    {
+      "name": "questionnaire-options-final_details",
+      "pass": true,
+      "detail": "Final Details"
+    },
+    {
+      "name": "questionnaire-select-post_event_feedback",
+      "pass": true,
+      "detail": "label=\"\""
+    },
+    {
+      "name": "questionnaire-options-post_event_feedback",
+      "pass": true,
+      "detail": "Post-Event Feedback"
+    },
+    {
+      "name": "waived-distinct-after-reload",
+      "pass": true,
+      "detail": "waived=1 completed=0 task=Complete your questionnaire"
+    },
+    {
+      "name": "waived-not-labeled-completed",
+      "pass": true,
+      "detail": "0 completed · 1 waived of 6 required"
+    },
+    {
+      "name": "setup-profile-directory-default-copy",
+      "pass": true,
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setup Set"
+    },
+    {
+      "name": "summary-390-no-overall",
+      "pass": true,
+      "detail": "September 3, 2027 – September 4, 2027 Friday – Saturday · In 325 days Booked Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting "
+    },
+    {
+      "name": "summary-390-has-components",
+      "pass": true,
+      "detail": "component schedule at 390"
+    },
+    {
+      "name": "summary-persists-reload",
+      "pass": true,
+      "detail": "September 3, 2027 – September 4, 2027 Friday – Saturday · In 325 days Booked Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting "
+    }
+  ],
+  "urls": {
+    "client": "https://app.sandbox.hellotocheers.com/clients/406d7558-8293-43c3-802d-f2ad6fd6913c"
+  },
+  "ids": {
+    "clientId": "406d7558-8293-43c3-802d-f2ad6fd6913c",
+    "eventId": "ef980240-359a-439b-a731-5ef80d1f1471",
+    "venueId": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+  },
+  "texts": {
+    "summary1280": "September 3, 2027 – September 4, 2027 Friday – Saturday · In 325 days Booked Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting Ready 2:00 PM – 4:00 PM · Meadowbrook Villa Cocktail Hour 4:00 PM – 5:00 PM · Meadowbrook Barn Ceremony 5:00 PM – 6:00 PM · Brook Bridge Reception 6:00 PM – 11:00 PM · Meadowbrook Barn",
+    "components1280": "Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting Ready 2:00 PM – 4:00 PM · Meadowbrook Villa Cocktail Hour 4:00 PM – 5:00 PM · Meadowbrook Barn Ceremony 5:00 PM – 6:00 PM · Brook Bridge Reception 6:00 PM – 11:00 PM · Meadowbrook Barn",
+    "progress": "0 of 6 required completed",
+    "select-client_planning": "",
+    "select-final_details": "",
+    "select-post_event_feedback": "",
+    "summary390": "September 3, 2027 – September 4, 2027 Friday – Saturday · In 325 days Booked Guests 175 guests FRIDAY, SEP 3, 2027 Rehearsal Dinner 5:00 PM – 10:00 PM · Meadowbrook Barn SATURDAY, SEP 4, 2027 Getting Ready 2:00 PM – 4:00 PM · Meadowbrook Villa Cocktail Hour 4:00 PM – 5:00 PM · Meadowbrook Barn Ceremony 5:00 PM – 6:00 PM · Brook Bridge Reception 6:00 PM – 11:00 PM · Meadowbrook Barn"
+  }
+}
