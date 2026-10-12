@@ -187,6 +187,24 @@ describe("confirmed booking occupancy", () => {
       }, 2),
       null,
     );
+    assert.equal(
+      bookingConfirmationError({
+        eventDate: "2027-05-08",
+        eventEndDate: "2027-05-09",
+        startTime: "14:00",
+        endTime: "22:00",
+        spaceId: "barn",
+        assignments: [{
+          useKey: "reception",
+          useLabel: "Reception",
+          spaceId: "barn",
+          startTime: "18:00",
+          endTime: "22:00",
+          scheduledDate: null,
+        }],
+      }, 2),
+      "Enter a date for each event component.",
+    );
     const prefill = prefillBookingConfirmation({
       eventType: "wedding",
       eventDate: "2027-09-04",

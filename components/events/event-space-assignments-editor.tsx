@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import type { VenueSpace } from "@/lib/availability/types";
 import {
   configuredUsesFromSpaces,
+  materializeMissingScheduledDates,
   spacesEligibleForUse,
   type EventSpaceAssignmentInput,
 } from "@/lib/venue-spaces/assignments";
@@ -49,6 +50,14 @@ export function EventSpaceAssignmentsEditor({
 }) {
   const uses = usesProp ?? configuredUsesFromSpaces(spaces);
   const rangeEnd = eventEndDate && eventEndDate >= eventDate ? eventEndDate : eventDate;
+
+  // Persist the date the timed inputs already show — never leave a display-only
+  // eventDate fallback that submits as null.
+  React.useEffect(() => {
+    if (!withTimes) return;
+    const { next, changed } = materializeMissingScheduledDates(value, eventDate);
+    if (changed) onChange(next);
+  }, [withTimes, eventDate, value, onChange]);
 
   if (uses.length === 0) {
     return (
@@ -104,8 +113,7 @@ export function EventSpaceAssignmentsEditor({
               label: `${s.name}${s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}`,
             })),
           ];
-          const scheduledDate = (current?.scheduledDate ?? "").trim()
-            || (withTimes && currentSpace ? eventDate : "");
+          const scheduledDate = (current?.scheduledDate ?? "").trim();
           return (
             <div
               key={u.key}

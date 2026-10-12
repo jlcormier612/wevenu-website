@@ -106,3 +106,28 @@ export function normalizeAssignmentInputs(
   }
   return [...byKey.values()];
 }
+
+/**
+ * When the timed assignment editor shows a date input for a row that has a
+ * space but no scheduledDate, the visible default is the overall event date.
+ * Materialize that value into state so submit persists what the venue saw —
+ * never leave a phantom display date that saves as null.
+ * Does not overwrite an explicit component date.
+ */
+export function materializeMissingScheduledDates(
+  assignments: EventSpaceAssignmentInput[],
+  eventDate: string,
+): { next: EventSpaceAssignmentInput[]; changed: boolean } {
+  const fallback = eventDate.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fallback)) {
+    return { next: assignments, changed: false };
+  }
+  let changed = false;
+  const next = assignments.map((row) => {
+    if (!row.spaceId.trim()) return row;
+    if (row.scheduledDate?.trim()) return row;
+    changed = true;
+    return { ...row, scheduledDate: fallback };
+  });
+  return { next, changed };
+}

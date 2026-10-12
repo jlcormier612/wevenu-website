@@ -460,6 +460,14 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     endTime: a.endTime ?? null,
     sortOrder: a.sortOrder,
   }));
+  const editableSpaceAssignments = spaceAssignments.map((a) => ({
+    useKey: a.useKey,
+    useLabel: a.useLabel,
+    spaceId: a.spaceId,
+    startTime: a.startTime ?? null,
+    endTime: a.endTime ?? null,
+    scheduledDate: a.scheduledDate ?? null,
+  }));
 
   const questionnaireActivitiesById = Object.fromEntries(activityLists);
   const questionnaireActivities = questionnaire ? (questionnaireActivitiesById[questionnaire.id] ?? []) : [];
@@ -649,6 +657,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       conversationMessages={conversationMessages} spaceName={spaceName}
       spaceAssignmentsDisplay={spaceAssignmentsDisplay}
       scheduleComponents={scheduleComponents}
+      editableSpaceAssignments={editableSpaceAssignments}
       venueName={venue?.name ?? "Your venue"} clientStatus={client.status}
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}

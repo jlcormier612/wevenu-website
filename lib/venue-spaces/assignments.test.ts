@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import type { VenueSpace } from "@/lib/availability/types";
 import {
   configuredUsesFromSpaces,
+  materializeMissingScheduledDates,
   normalizeAssignmentInputs,
   primarySpaceIdFromAssignments,
   spacesEligibleForUse,
@@ -67,6 +68,30 @@ describe("event space assignments", () => {
     ]);
     assert.equal(normalized.length, 2);
     assert.equal(primarySpaceIdFromAssignments(normalized), "barn");
+  });
+
+  it("materializes display eventDate into null scheduledDate without overwriting explicit dates", () => {
+    const { next, changed } = materializeMissingScheduledDates([
+      {
+        useKey: "rehearsal_dinner",
+        useLabel: "Rehearsal Dinner",
+        spaceId: "barn",
+        scheduledDate: "2027-05-08",
+        startTime: "18:00",
+        endTime: "22:00",
+      },
+      {
+        useKey: "reception",
+        useLabel: "Reception",
+        spaceId: "barn",
+        scheduledDate: null,
+        startTime: "18:00",
+        endTime: "22:00",
+      },
+    ], "2027-05-08");
+    assert.equal(changed, true);
+    assert.equal(next[0]?.scheduledDate, "2027-05-08");
+    assert.equal(next[1]?.scheduledDate, "2027-05-08");
   });
 
   it("restricts eligible spaces by permitted use; empty uses = unrestricted", () => {

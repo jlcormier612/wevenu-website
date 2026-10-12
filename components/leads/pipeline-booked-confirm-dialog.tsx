@@ -355,15 +355,14 @@ function BookingSchedulePreview({
   spaces: { id: string; name: string }[];
 }) {
   const rows = assignments
-    .filter((row) => row.spaceId.trim() && row.startTime && row.endTime)
+    .filter((row) => row.spaceId.trim() && row.startTime && row.endTime && row.scheduledDate?.trim())
     .map((row) => ({
-      date: row.scheduledDate?.trim() || eventDate,
+      date: row.scheduledDate!.trim(),
       useLabel: row.useLabel || row.useKey,
       spaceName: spaces.find((s) => s.id === row.spaceId)?.name ?? "Selected space",
       start: formatClock(row.startTime ?? null),
       end: formatClock(row.endTime ?? null),
     }))
-    .filter((row) => row.date)
     .sort((a, b) => a.date.localeCompare(b.date) || a.start!.localeCompare(b.start!));
   if (rows.length === 0) return null;
   const byDate = new Map<string, typeof rows>();

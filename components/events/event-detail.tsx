@@ -16,8 +16,10 @@ import { setEventAssignedStaffAction, updateEventStatusAction, returnClientToBoo
 import { StaffAssignmentField } from "@/components/team/staff-assignment-field";
 import { getBookingConfirmationDraftForClientAction } from "@/app/(app)/leads/[id]/actions";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
+import { EditBookingScheduleDialog } from "@/components/events/edit-booking-schedule-dialog";
 import type { BookingConfirmationDraft } from "@/lib/booking-journey/confirmation-draft";
 import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
+import type { EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
@@ -149,12 +151,19 @@ function EventHeroCard({
   event,
   spaceLine,
   scheduleComponents = null,
+  editableAssignments = null,
+  spaces = [],
+  clientId = null,
 }: {
   event: EventWithDetails;
   spaceLine: string | null;
   scheduleComponents?: BookingSummaryComponent[] | null;
+  editableAssignments?: EventSpaceAssignmentInput[] | null;
+  spaces?: VenueSpace[];
+  clientId?: string | null;
 }) {
   const [countdown, setCountdown] = React.useState<string>("");
+  const [editOpen, setEditOpen] = React.useState(false);
   React.useEffect(() => {
     const days = daysUntil(event.eventDate);
     if (days === 0) setCountdown("Today");
@@ -178,6 +187,12 @@ function EventHeroCard({
     ? groupBookingSummaryByDate(scheduleComponents)
     : [];
   const useComponentSchedule = dayGroups.length > 0;
+  const canEditSchedule = Boolean(
+    editableAssignments
+    && editableAssignments.length > 0
+    && spaces.length > 0
+    && event.bookedAt,
+  );
 
   const timeLabel = event.startTime
     ? `${event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}${formatTime(event.startTime)}${event.endTime ? ` – ${formatTime(event.endTime)}` : ""}${event.teardownTime ? ` · Teardown ${formatTime(event.teardownTime)}` : ""}`
@@ -204,10 +219,36 @@ function EventHeroCard({
               ) : null}
             </p>
           </div>
-          <div className="shrink-0">
+          <div className="flex shrink-0 flex-col items-end gap-2">
             <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
+            {canEditSchedule ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid="edit-booking-schedule"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="mr-1 h-3.5 w-3.5" />
+                Edit schedule
+              </Button>
+            ) : null}
           </div>
         </div>
+
+        {canEditSchedule && editableAssignments ? (
+          <EditBookingScheduleDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            eventId={event.id}
+            clientId={clientId}
+            eventType={event.eventType}
+            eventDate={event.eventDate}
+            eventEndDate={event.eventEndDate}
+            spaces={spaces}
+            assignments={editableAssignments}
+          />
+        ) : null}
 
         {useComponentSchedule ? (
           <div className="mt-3 space-y-3" data-testid="event-booking-component-schedule">
@@ -327,6 +368,7 @@ export function EventDetail({
   spaceName = null,
   spaceAssignmentsDisplay = null,
   scheduleComponents = null,
+  editableSpaceAssignments = null,
   venueName = "Your venue",
   clientStatus: _clientStatus = null,
   contractTemplates = [],
@@ -400,6 +442,8 @@ export function EventDetail({
   spaceName?: string | null;
   spaceAssignmentsDisplay?: string | null;
   scheduleComponents?: BookingSummaryComponent[] | null;
+  /** Full assignment inputs for post-booking Edit schedule. */
+  editableSpaceAssignments?: EventSpaceAssignmentInput[] | null;
   venueName?: string;
   clientStatus?: ClientStatus | null;
   contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
@@ -654,6 +698,9 @@ export function EventDetail({
           event={event}
           spaceLine={spaceAssignmentsDisplay ?? spaceName}
           scheduleComponents={scheduleComponents}
+          editableAssignments={editableSpaceAssignments}
+          spaces={spaces}
+          clientId={event.clientId}
         />
         <div
           data-testid="client-staffing-column"

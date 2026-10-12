@@ -70,13 +70,13 @@ export function bookingConfirmationError(
       return "The end time must be after the start time.";
     }
     const scheduled = row.scheduledDate?.trim() ?? "";
-    if (scheduled) {
-      if (!DATE.test(scheduled)) {
-        return "Enter a valid date for each event component.";
-      }
-      if (scheduled < eventDate || (end && scheduled > end)) {
-        return "Each component date must fall within the overall event dates.";
-      }
+    // Timed components must carry an explicit calendar date — the UI must not
+    // display a phantom eventDate while persisting null.
+    if (!scheduled || !DATE.test(scheduled)) {
+      return "Enter a date for each event component.";
+    }
+    if (scheduled < eventDate || (end && scheduled > end)) {
+      return "Each component date must fall within the overall event dates.";
     }
   }
   if (maxSimultaneousEvents >= 2 && selectedSpaceIds(value).length === 0) {

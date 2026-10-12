@@ -1,0 +1,53 @@
+---
+description: Mandatory change control — scope lock, regression prevention, and closure for every implementation task
+alwaysApply: true
+---
+
+# MANDATORY CHANGE CONTROL — SCOPE, REGRESSION PREVENTION, AND CLOSURE
+
+These requirements apply to every implementation task. They supplement the task-specific acceptance criteria; they do not expand the requested scope.
+
+## 1. Scope is locked
+
+- Fix the identified defect using the smallest correct change within the existing architecture.
+- Do not redesign, refactor unrelated code, clean up adjacent features, introduce a second implementation path, change locked product decisions, or create new backlog items.
+- Do not modify unrelated workflows, shared components, configuration, database structures, integrations, or infrastructure unless the forensic investigation proves that change is necessary to fix this defect. If a broader change is genuinely necessary, explain the dependency and keep the change as narrow as possible.
+
+## 2. Establish the baseline before editing
+
+- Inspect the current implementation, working tree, relevant tests, and existing behavior.
+- Identify the specific defect, its root cause, the files that must change, and the connected behaviors that must remain unchanged.
+- Preserve all existing dirty and untracked work. Never use `git reset --hard`, `git clean`, `git stash`, or broad staging that could destroy or capture unrelated work.
+
+## 3. Regression prevention is mandatory
+
+- Add a regression test that reproduces the original defect and proves the fix.
+- Test the affected workflow end to end and test the directly connected workflows or shared components that could be affected.
+- Verify that existing permissions, data integrity, lifecycle transitions, customer-facing behavior, integrations, and error handling remain correct where relevant to this change.
+- Run the focused tests, relevant integration/browser tests, broader existing test suite, type checks, and changed-file lint as applicable.
+- Do not weaken, delete, skip, or rewrite existing tests merely to make the change pass.
+
+## 4. Review the complete diff before closure
+
+- Inspect every changed file and the final diff.
+- Explain the purpose of each change and why it is necessary for the requested fix.
+- Revert only demonstrably unrelated changes introduced by this task, without disturbing pre-existing work.
+- Do not bundle unrelated fixes into the same commit. Record a separately discovered defect without expanding this task unless it blocks correctness or safety.
+
+## 5. Complete the authorized delivery workflow
+
+- Follow the task's explicit authorization boundary. Where implementation and Sandbox deployment are authorized, complete the scoped fix, commit it, deploy the exact commit to Sandbox, verify the running version, and exercise the actual customer-facing workflow.
+- Verify persisted data, generated emails, permissions, or other runtime evidence wherever applicable.
+- Production remains untouched unless explicitly authorized.
+
+## 6. No premature closure
+
+- If any required check fails, investigate, fix within scope, redeploy when applicable, and repeat the affected checks.
+- If a required check cannot be completed, report the exact blocker and mark the task NOT GREEN.
+- Do not claim success based solely on code inspection, a successful build, unit tests, or a deployment that has not been verified.
+
+## 7. Required completion report
+
+State the confirmed root cause, minimal changes made, regression coverage, relevant test results, final diff review, commit SHA, deployment/runtime evidence when applicable, and any remaining blockers. Explicitly confirm that unrelated work and Production were preserved.
+
+**Definition of done:** The requested defect is demonstrably fixed, relevant existing behavior still works, the change is scoped and reviewed, and all required runtime evidence supports closure.
