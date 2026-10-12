@@ -280,15 +280,9 @@ async function editUnrelatedField(
     timeout: 90_000,
   });
   if (field === "setup") {
-    await page.locator("#setup").fill(value);
+    await page.locator("#su").fill(value);
   } else {
-    const guest = page.locator("#gc, #guest_count, input[name='guestCount']").first();
-    if (await guest.count()) {
-      await guest.fill(value);
-    } else {
-      // Event form guest count field id
-      await page.getByLabel(/guest/i).fill(value);
-    }
+    await page.locator("#gc").fill(value);
   }
   await page.getByRole("button", { name: /Save changes/i }).click();
   await page.waitForURL(new RegExp(`/events/${eventId}`), { timeout: 60_000 }).catch(() => undefined);
