@@ -31,6 +31,11 @@ import {
   type CeremonyReceptionPreferenceSource,
 } from "@/lib/contracts/ceremony-reception-merge";
 import { pickPaymentScheduleForBooking } from "@/lib/contracts/payment-schedule-merge";
+import {
+  summarizeResendDeliveries,
+  validateResendSelection,
+  type ResendDeliveryOutcome,
+} from "@/lib/contracts/resend-recipients";
 import { getSpaces } from "@/lib/availability/service";
 import { contractDocumentBalanceRemaining } from "@/lib/contracts/balance-remaining";
 import { getEventIdForClient } from "@/lib/events/service";
@@ -973,19 +978,36 @@ export async function updateContractContent_(
 async function sendContractInviteEmails(
   contract: ContractWithDetails,
   customMessage?: string,
-): Promise<void> {
+  /** When set, only these contract_signers.id values receive email (already validated). */
+  onlySignerIds?: readonly string[],
+): Promise<ResendDeliveryOutcome[]> {
   const venue = await getCurrentVenue();
-  if (!venue) return;
+  if (!venue) return [];
   const baseUrl = publicAppOrigin();
   const brand = emailBrandFromVenue(venue);
   const supabase = await createClient();
+  const outcomes: ResendDeliveryOutcome[] = [];
 
-  const clientSigners = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
+  let clientSigners = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
+  if (onlySignerIds) {
+    const allow = new Set(onlySignerIds);
+    clientSigners = clientSigners.filter((s) => allow.has(s.id));
+  }
   if (clientSigners.length > 0) {
     for (const signer of clientSigners) {
-      if (!signer.signerEmail) continue;
+      const name = (signer.signerName ?? "").trim() || "Client";
+      if (!signer.signerEmail) {
+        outcomes.push({
+          signerId: signer.id,
+          name,
+          email: null,
+          status: "skipped_no_email",
+          message: "No email on file",
+        });
+        continue;
+      }
       const signUrl = `${baseUrl}/sign/${signer.signToken}`;
-      const firstName = (signer.signerName ?? "there").split(/\s+/)[0] || "there";
+      const firstName = name.split(/\s+/)[0] || "there";
       const ctx = {
         brand,
         recipientFirstName: firstName,
@@ -1001,26 +1023,58 @@ async function sendContractInviteEmails(
         html: buildContractInviteHtml(ctx),
         replyTo: venue.email ?? undefined,
       });
-      if (result.ok && contract.clientId) {
-        await recordExternalClientOutbound(supabase, {
-          venueId: venue.id,
-          clientId: contract.clientId,
-          channel: "email",
-          body: text,
-          providerId: result.method === "resend" ? result.providerId ?? null : null,
-          status: "accepted",
-          sourceType: "contract_invite",
-          sourceId: contract.id,
+      if (result.ok) {
+        if (contract.clientId) {
+          await recordExternalClientOutbound(supabase, {
+            venueId: venue.id,
+            clientId: contract.clientId,
+            channel: "email",
+            body: text,
+            providerId: result.method === "resend" ? result.providerId ?? null : null,
+            status: "accepted",
+            sourceType: "contract_invite",
+            sourceId: contract.id,
+          });
+        }
+        outcomes.push({
+          signerId: signer.id,
+          name,
+          email: signer.signerEmail,
+          status: result.method === "mailto" ? "mailto" : "accepted",
+          message:
+            result.method === "mailto"
+              ? "Opened as a draft in your email client (not provider-accepted)."
+              : "Accepted by the email provider for delivery (not proof of inbox delivery).",
+        });
+      } else {
+        outcomes.push({
+          signerId: signer.id,
+          name,
+          email: signer.signerEmail,
+          status: "failed",
+          message: result.message ?? "Could not send",
         });
       }
     }
-    return;
+    return outcomes;
   }
 
   // Legacy fallback — shared contracts.sign_token to client.email
-  if (!contract.clientId) return;
+  // Only when no per-signer rows and no explicit filter (first-send / legacy).
+  if (onlySignerIds && onlySignerIds.length > 0) return outcomes;
+  if (!contract.clientId) return outcomes;
   const client = await getClient(contract.clientId);
-  if (!client?.email) return;
+  const legacyName = [client?.firstName, client?.lastName].filter(Boolean).join(" ") || "Client";
+  if (!client?.email) {
+    outcomes.push({
+      signerId: "legacy",
+      name: legacyName,
+      email: null,
+      status: "skipped_no_email",
+      message: "No email on file",
+    });
+    return outcomes;
+  }
   const signUrl = `${baseUrl}/sign/${contract.signToken}`;
   const ctx = {
     brand,
@@ -1048,7 +1102,26 @@ async function sendContractInviteEmails(
       sourceType: "contract_invite",
       sourceId: contract.id,
     });
+    outcomes.push({
+      signerId: "legacy",
+      name: legacyName,
+      email: client.email,
+      status: result.method === "mailto" ? "mailto" : "accepted",
+      message:
+        result.method === "mailto"
+          ? "Opened as a draft in your email client (not provider-accepted)."
+          : "Accepted by the email provider for delivery (not proof of inbox delivery).",
+    });
+  } else {
+    outcomes.push({
+      signerId: "legacy",
+      name: legacyName,
+      email: client.email,
+      status: "failed",
+      message: result.message ?? "Could not send",
+    });
   }
+  return outcomes;
 }
 
 export async function venueSignContract(
@@ -1230,26 +1303,117 @@ export async function sendContract(
   return result as ContractActionResult;
 }
 
+export type ContractResendResult =
+  | {
+      ok: true;
+      deliveries: ResendDeliveryOutcome[];
+      message: string;
+      /** Snapshot proof that resend did not mutate signing state. */
+      signatureSnapshot: { signerId: string; signedAt: string | null }[];
+      status: string;
+      contentHashUnchanged: true;
+    }
+  | {
+      ok: false;
+      message?: string;
+      reason?: "stale" | "not_editable" | "not_found";
+      deliveries?: ResendDeliveryOutcome[];
+    };
+
 /**
  * Work Package D5E — "Resend" for a contract already `sent` and still
- * awaiting signature.
+ * awaiting signature. Selected signer ids control delivery; missing selection
+ * defaults to every required client signatory (backward-compatible).
  */
-export async function resendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
+export async function resendContract(
+  id: string,
+  customMessage?: string,
+  selectedSignerIds?: string[],
+): Promise<ContractResendResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const contract = await repo.getContract(supabase, venueId, id);
-    if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
+    if (!contract) return { ok: false, message: "Contract not found." } as ContractResendResult;
     if (contract.status !== "sent") {
-      return { ok: false, message: "Only a contract that's already been sent and is still awaiting signature can be resent." } as ContractActionResult;
+      return {
+        ok: false,
+        message: "Only a contract that's already been sent and is still awaiting signature can be resent.",
+      } as ContractResendResult;
     }
-    await sendContractInviteEmails(contract, customMessage);
+
+    const required = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
+    const beforeSignatures = (contract.signers ?? []).map((s) => ({
+      signerId: s.id,
+      signedAt: s.signedAt,
+    }));
+    const beforeContent = contract.content;
+    const beforeStatus = contract.status;
+
+    let deliveries: ResendDeliveryOutcome[];
+    if (required.length === 0) {
+      // Legacy single-token contracts — no per-signer rows to select.
+      if (selectedSignerIds !== undefined && selectedSignerIds.length > 0) {
+        return {
+          ok: false,
+          message: "Recipients must be selected from this contract's signatories.",
+        } as ContractResendResult;
+      }
+      deliveries = await sendContractInviteEmails(contract, customMessage);
+    } else {
+      const idsToSend =
+        selectedSignerIds !== undefined
+          ? selectedSignerIds
+          : required.map((s) => s.id);
+      const validated = validateResendSelection(contract.signers ?? [], idsToSend);
+      if (!validated.ok) {
+        return { ok: false, message: validated.message } as ContractResendResult;
+      }
+      deliveries = await sendContractInviteEmails(contract, customMessage, validated.signerIds);
+    }
+    const summary = summarizeResendDeliveries(deliveries);
+
     const actor = await currentActor(venueId);
+    const recipientNames = deliveries.map((d) => d.name).join(", ");
     await repo.insertContractActivity(
-      supabase, venueId, id, "resent", "Contract resent for signing",
-      undefined, actor.userId, actor.label,
+      supabase,
+      venueId,
+      id,
+      "resent",
+      "Contract resent for signing",
+      recipientNames
+        ? `Recipients: ${recipientNames}. ${summary.message}`
+        : summary.message,
+      actor.userId,
+      actor.label,
     );
-    return { ok: true } as ContractActionResult;
+
+    const refreshed = await repo.getContract(supabase, venueId, id);
+    const afterSignatures = (refreshed?.signers ?? contract.signers ?? []).map((s) => ({
+      signerId: s.id,
+      signedAt: s.signedAt,
+    }));
+    // Resend must not change terms, version, status, or signatures.
+    if (refreshed && (refreshed.content !== beforeContent || refreshed.status !== beforeStatus)) {
+      return {
+        ok: false,
+        message: "Resend aborted: contract state changed unexpectedly.",
+        deliveries,
+      } as ContractResendResult;
+    }
+
+    if (!summary.ok) {
+      return { ok: false, message: summary.message, deliveries } as ContractResendResult;
+    }
+
+    return {
+      ok: true,
+      deliveries,
+      message: summary.message,
+      signatureSnapshot: afterSignatures.length ? afterSignatures : beforeSignatures,
+      status: beforeStatus,
+      contentHashUnchanged: true as const,
+    } as ContractResendResult;
   });
-  return result as ContractActionResult;
+  return result as ContractResendResult;
 }
 
 export async function cancelContract(id: string): Promise<ContractActionResult> {

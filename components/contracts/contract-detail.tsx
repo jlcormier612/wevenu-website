@@ -42,7 +42,7 @@ import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-obse
 import type { LuvObservation } from "@/lib/luv/types";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
-import { ShareDialog } from "@/components/sharing/share-dialog";
+import { ContractResendDialog } from "@/components/contracts/contract-resend-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -143,15 +143,8 @@ export function ContractDetail({
     expiresAt: contract.expiresAt,
   });
 
-  const primaryClientSigner = requiredClients[0];
-
-  const shareRecipient = {
-    name: primaryClientSigner?.signerName ?? contract.clientName ?? "the client",
-    contact: primaryClientSigner?.signerEmail ?? contract.clientEmail,
-    relationshipLabel: "Client",
-  };
   const shareMergeData = buildMergeData({ venueName, clientName: contract.clientName ?? "", coordinatorName: venueName, eventDate: contract.eventDate });
-  const shareDefaultMessage = mergeContent(
+  const resendDefaultMessage = mergeContent(
     `{{venue_name}} has sent you "${contract.title}" to review and sign.`,
     shareMergeData,
   );
@@ -393,14 +386,12 @@ export function ContractDetail({
               <Pencil className="mr-1 h-3.5 w-3.5" />Sign as venue
             </Button>
           ) : contract.status === "sent" ? (
-            <ShareDialog
+            <ContractResendDialog
               trigger={<Button size="sm" variant="outline"><RotateCcw className="mr-1 h-3.5 w-3.5" />Resend</Button>}
               title="Resend Contract"
-              recipient={shareRecipient}
-              whatHappensNext="They'll get another copy of their signing link — nothing about the contract changes."
-              defaultMessage={shareDefaultMessage}
-              sendLabel="Resend"
-              onSend={async (message) => resendContractAction(contract.id, message)}
+              signers={signers}
+              defaultMessage={resendDefaultMessage}
+              onResend={async (message, signerIds) => resendContractAction(contract.id, message, signerIds)}
               onSent={() => router.refresh()}
             />
           ) : contract.status === "signed" && !finalized ? (

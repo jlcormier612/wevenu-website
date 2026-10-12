@@ -159,8 +159,12 @@ export async function withdrawVenueSignatureAction(id: string): Promise<Contract
 }
 
 /** Work Package D5E — resend, distinct from send: no status/Document Domain changes, see lib/contracts/service.ts resendContract(). */
-export async function resendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
-  const result = await resendContract(id, customMessage);
+export async function resendContractAction(
+  id: string,
+  customMessage?: string,
+  selectedSignerIds?: string[],
+): Promise<import("@/lib/contracts/service").ContractResendResult> {
+  const result = await resendContract(id, customMessage, selectedSignerIds);
   if (result.ok) revalidatePath(`/contracts/${id}`);
   return result;
 }
