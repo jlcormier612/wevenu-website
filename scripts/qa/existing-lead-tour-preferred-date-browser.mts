@@ -138,6 +138,32 @@ async function main() {
       { onConflict: "venue_id" },
     );
 
+    // Match Meadowbrook Ellie: guest_count required on the venue form + set on lead.
+    await admin
+      .from("venues")
+      .update({
+        inquiry_form_fields: {
+          phone: "optional",
+          partner: "optional",
+          guest_count: "required",
+          event_details: "optional",
+          estimated_budget: "optional",
+          preferred_event_date: "required",
+        },
+      })
+      .eq("id", venueId);
+
+    // Tour windows across the week so the UI calendar has selectable slots.
+    await admin.from("tour_availability_windows").delete().eq("venue_id", venueId);
+    for (let d = 0; d < 7; d++) {
+      await admin.from("tour_availability_windows").insert({
+        venue_id: venueId,
+        day_of_week: d,
+        start_time: "10:00",
+        end_time: "16:00",
+      });
+    }
+
     const { data: lead, error: lErr } = await admin
       .from("leads")
       .insert({
@@ -147,13 +173,14 @@ async function main() {
         email: `couple.${stamp}@example.com`,
         event_type: "wedding",
         event_date: preferredDate,
+        guest_count: 175,
         sales_stage: "new_inquiry",
         acquisition_source: "other",
         source: "other",
         exclude_from_business_reporting: true,
         inquiry_date: new Date().toISOString().slice(0, 10),
       })
-      .select("id, event_date, relationship_id")
+      .select("id, event_date, relationship_id, guest_count")
       .single();
     if (lErr || !lead) throw lErr ?? new Error("lead");
     leadId = lead.id;
@@ -203,14 +230,20 @@ async function main() {
       "no date input inside existing-lead block",
     );
     record("copy_mentions_already_shared", /already shared/i.test(body), body.slice(0, 120));
+    record(
+      "mode_toggle_hidden_for_existing_lead",
+      (await page.getByRole("button", { name: /Request Information/i }).count()) === 0,
+      "Request Information not offered on existing-lead tour link",
+    );
+    record(
+      "guest_count_seeded_from_lead",
+      (await page.locator('input[type="number"]').first().inputValue()) === "175",
+      "guest count prefilled",
+    );
 
-    // Pick first available tour slot button
-    const dayButtons = page.locator("button").filter({ hasText: /^\d{1,2}$/ });
-    // Prefer clicking an available day in the tour calendar — look for enabled day cells
     const tourSection = page.getByText(/Select your tour/i);
     record("tour_section_present", (await tourSection.count()) > 0, "tour section");
 
-    // Fetch slots via API (UI context already verified above)
     async function firstSlot(startYmd: string, endYmd: string) {
       const res = await fetch(
         `${APP}/api/tours/slots?key=${encodeURIComponent(tourEmbedKey)}&start=${startYmd}&end=${endYmd}`,
@@ -226,44 +259,110 @@ async function main() {
       (await firstSlot(rangeStart.toISOString().slice(0, 10), rangeEnd.toISOString().slice(0, 10)));
 
     let bookedOk = false;
+    let bookPayload: Record<string, unknown> | null = null;
+    let bookRes: Record<string, unknown> | null = null;
+    page.on("response", async (res) => {
+      if (res.url().includes("/api/tours/book") && res.request().method() === "POST") {
+        try {
+          bookPayload = JSON.parse(res.request().postData() || "{}") as Record<string, unknown>;
+          bookRes = (await res.json()) as Record<string, unknown>;
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+
     if (chosen) {
       record("tour_slot_available", true, chosen.start);
-      // Navigate month if needed then click day + time via UI is fragile; submit via API with origin token for persistence proof,
-      // and still verify UI context above.
-      const bookRes = await fetch(`${APP}/api/tours/book`, {
+      // Case A — UI Confirm Tour (not ModeToggle / Request Information)
+      let selectedUi = false;
+      const dayBtns = page.locator("form button").filter({ hasText: /^\d{1,2}$/ });
+      const dayCount = await dayBtns.count();
+      for (let i = 0; i < Math.min(dayCount, 40); i++) {
+        const btn = dayBtns.nth(i);
+        if (await btn.isDisabled()) continue;
+        await btn.click();
+        await page.waitForTimeout(500);
+        const timeBtn = page.getByRole("button", { name: /\d{1,2}:\d{2}\s*(AM|PM)/i }).first();
+        if (await timeBtn.count()) {
+          await timeBtn.click();
+          selectedUi = true;
+          break;
+        }
+      }
+      record("ui_tour_slot_selected", selectedUi, `days=${dayCount}`);
+      if (selectedUi) {
+        await page.getByRole("button", { name: "Confirm Tour" }).click();
+        await page.waitForTimeout(5000);
+      }
+      bookedOk = bookRes?.ok === true && Boolean(bookRes?.appointmentId);
+      appointmentId = String(bookRes?.appointmentId ?? "");
+      const afterBody = ((await page.locator("body").innerText()) as string).replace(/\s+/g, " ");
+      record(
+        "ui_confirm_tour_success",
+        bookedOk && /You.?re booked/i.test(afterBody),
+        `ok=${bookRes?.ok} err=${bookRes?.error ?? ""} snip=${afterBody.slice(0, 120)}`,
+      );
+      record(
+        "book_with_empty_client_event_date",
+        bookedOk && bookPayload?.eventDate === "",
+        `eventDate=${JSON.stringify(bookPayload?.eventDate)} appt=${appointmentId.slice(0, 8)}`,
+      );
+      record(
+        "attached_existing_lead",
+        bookRes?.attachedExistingLead === true || bookRes?.leadId === leadId,
+        `leadId=${String(bookRes?.leadId ?? "").slice(0, 8)} attached=${bookRes?.attachedExistingLead}`,
+      );
+      record(
+        "ui_payload_has_origin_token",
+        Boolean(bookPayload?.originToken),
+        "originToken present on UI submit",
+      );
+    } else {
+      record("tour_slot_available", false, "none");
+      record("ui_tour_slot_selected", false, "no slot");
+      record("ui_confirm_tour_success", false, "no slot");
+      record("book_with_empty_client_event_date", false, "no slot");
+      record("attached_existing_lead", false, "no slot");
+      record("ui_payload_has_origin_token", false, "no slot");
+    }
+
+    // Held preferred date must still fail new-inquiry create (no token).
+    // Use a different slot than the one just booked so rejection is date_, not slot_.
+    const createSlot =
+      (await firstSlot(rangeStart.toISOString().slice(0, 10), rangeEnd.toISOString().slice(0, 10)));
+    const createSlotStart =
+      createSlot && createSlot.start !== chosen?.start
+        ? createSlot.start
+        : (await firstSlot(
+            new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10),
+            new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+          ))?.start;
+    if (createSlotStart) {
+      const createHeld = await fetch(`${APP}/api/tours/book`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           key: tourEmbedKey,
-          slotStart: chosen.start,
-          firstName: "Existing",
-          lastName: "Lead",
+          slotStart: createSlotStart,
+          firstName: "New",
+          lastName: "Inquiry",
           partnerName: "",
-          email: `couple.${stamp}@example.com`,
+          email: `new.${stamp}@example.com`,
           phone: "",
           eventType: "wedding",
-          eventDate: "", // client omits / clears — server must preserve
-          guestCount: null,
-          notes: "EL tour preferred-date proof",
-          originToken: token,
+          eventDate: preferredDate,
+          guestCount: 50,
+          notes: "must reject held date",
         }),
       }).then((r) => r.json() as Promise<Record<string, unknown>>);
-      bookedOk = bookRes.ok === true && Boolean(bookRes.appointmentId);
-      appointmentId = String(bookRes.appointmentId ?? "");
       record(
-        "book_with_empty_client_event_date",
-        bookedOk,
-        `ok=${bookRes.ok} err=${bookRes.error ?? ""} appt=${appointmentId.slice(0, 8)}`,
-      );
-      record(
-        "attached_existing_lead",
-        bookRes.attachedExistingLead === true || bookRes.leadId === leadId,
-        `leadId=${String(bookRes.leadId ?? "").slice(0, 8)} attached=${bookRes.attachedExistingLead}`,
+        "held_date_rejected_for_new_inquiry_create",
+        createHeld.ok === false && /no longer available/i.test(String(createHeld.error ?? "")),
+        String(createHeld.error ?? ""),
       );
     } else {
-      record("tour_slot_available", false, "none");
-      record("book_with_empty_client_event_date", false, "no slot");
-      record("attached_existing_lead", false, "no slot");
+      record("held_date_rejected_for_new_inquiry_create", false, "no alternate slot");
     }
 
     // Invalid token rejected

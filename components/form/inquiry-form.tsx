@@ -321,7 +321,12 @@ export function InquiryForm({
   const eventTypeOptions = EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
   const smsConsentText = buildInquirySmsConsentText(venue.name);
 
+  const lockedExistingLeadTour = Boolean(existingLeadTour?.hasExistingLead);
+
   const [mode, setMode] = React.useState<InquiryMode | null>(() => {
+    // Existing-lead `?o=` links are tour-scheduling only — never open in
+    // Request Information with a held preferred date seeded into the picker.
+    if (existingLeadTour?.hasExistingLead) return "schedule_tour";
     if (initialMode) return initialMode;
     return tourSchedulingEnabled ? null : "request_information";
   });
@@ -341,13 +346,17 @@ export function InquiryForm({
   const [partnerLast, setPartnerLast] = React.useState("");
   const [eventType, setEventType] = React.useState(existingLeadTour?.eventType ?? "");
   const seededDate = (() => {
-    if (existingLeadTour?.preferredEventDate) return existingLeadTour.preferredEventDate;
+    // Existing-lead preferred date is display-only. Never seed it into mutable
+    // eventDate — ModeToggle/inquire/create must not submit a held date.
+    if (existingLeadTour?.hasExistingLead) return "";
     if (initialEventDate && /^\d{4}-\d{2}-\d{2}$/.test(initialEventDate)) return initialEventDate;
     return "";
   })();
   const seededParts = seededDate ? seededDate.split("-").map(Number) : null;
   const [eventDate, setEventDate] = React.useState(seededDate);
-  const [guestCount, setGuestCount] = React.useState("");
+  const [guestCount, setGuestCount] = React.useState(
+    existingLeadTour?.guestCount != null ? String(existingLeadTour.guestCount) : "",
+  );
   const [budget, setBudget] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [customAnswers, setCustomAnswers] = React.useState<Record<string, string | string[]>>({});
@@ -561,6 +570,9 @@ export function InquiryForm({
       } else if (mode === "schedule_tour" && selectedTourSlot && tourEmbedKey) {
         const qrCampaignId = new URLSearchParams(window.location.search).get("qr");
         const sourceData = buildSourceData("schedule_tour");
+        // Existing-lead attach uses the lead's authoritative event_date server-side.
+        // Never send the held preferred date as a new-inquiry eventDate.
+        const submitEventDate = existingLeadScheduleTour ? "" : eventDate;
         const res = await fetch("/api/tours/book", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -569,7 +581,7 @@ export function InquiryForm({
             slotStart: selectedTourSlot.start,
             firstName, lastName,
             partnerName: [partnerFirst, partnerLast].filter(Boolean).join(" "),
-            email, phone, eventType, eventDate,
+            email, phone, eventType, eventDate: submitEventDate,
             guestCount: guestCount ? parseInt(guestCount, 10) : null,
             notes: message,
             turnstileToken,
@@ -650,9 +662,11 @@ export function InquiryForm({
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
-        <ModeSelector mode={mode} onSelect={setMode} primary={primary} accent={accent} tourEnabled={tourSchedulingEnabled} />
+        {!lockedExistingLeadTour && (
+          <ModeSelector mode={mode} onSelect={setMode} primary={primary} accent={accent} tourEnabled={tourSchedulingEnabled} />
+        )}
 
-        {!showForm && tourSchedulingEnabled && (
+        {!showForm && tourSchedulingEnabled && !lockedExistingLeadTour && (
           <p className="text-center text-sm text-muted-foreground">Choose how you&apos;d like to connect with us.</p>
         )}
 

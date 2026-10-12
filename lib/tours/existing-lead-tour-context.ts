@@ -16,6 +16,8 @@ export type ExistingLeadTourContext = {
   lastName: string;
   email: string;
   eventType: string;
+  /** Authoritative guest count from the lead, when set. */
+  guestCount: number | null;
   /** Opaque — never expose raw leadId to the client HTML as an input. */
   hasExistingLead: true;
 };
@@ -61,7 +63,7 @@ export async function resolveExistingLeadTourContext(opts: {
 
   const { data: lead } = await admin
     .from("leads")
-    .select("id, venue_id, sales_stage, event_date, first_name, last_name, email, event_type")
+    .select("id, venue_id, sales_stage, event_date, first_name, last_name, email, event_type, guest_count")
     .eq("id", payload.leadId)
     .maybeSingle<{
       id: string;
@@ -72,6 +74,7 @@ export async function resolveExistingLeadTourContext(opts: {
       last_name: string | null;
       email: string | null;
       event_type: string | null;
+      guest_count: number | null;
     }>();
 
   if (!lead || lead.id !== payload.leadId) {
@@ -84,6 +87,12 @@ export async function resolveExistingLeadTourContext(opts: {
     return { ok: false, error: "lead_not_open" };
   }
 
+  const guestRaw = lead.guest_count;
+  const guestCount =
+    typeof guestRaw === "number" && Number.isFinite(guestRaw) && guestRaw > 0
+      ? Math.floor(guestRaw)
+      : null;
+
   return {
     ok: true,
     context: {
@@ -92,6 +101,7 @@ export async function resolveExistingLeadTourContext(opts: {
       lastName: (lead.last_name ?? "").trim(),
       email: (lead.email ?? "").trim(),
       eventType: (lead.event_type ?? "").trim(),
+      guestCount,
       hasExistingLead: true,
     },
   };

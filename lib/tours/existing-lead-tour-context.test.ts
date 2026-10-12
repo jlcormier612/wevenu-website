@@ -53,6 +53,16 @@ describe("existing-lead tour preferred event date", () => {
     assert.match(existingBlock, /No preferred event date is on file yet/);
   });
 
+  it("locks existing-lead links to schedule_tour and never seeds held preferred date into eventDate", () => {
+    const form = readFileSync(resolve("components/form/inquiry-form.tsx"), "utf8");
+    assert.match(form, /lockedExistingLeadTour/);
+    assert.match(form, /if \(existingLeadTour\?\.hasExistingLead\) return "schedule_tour"/);
+    assert.match(form, /if \(existingLeadTour\?\.hasExistingLead\) return ""/);
+    assert.match(form, /const submitEventDate = existingLeadScheduleTour \? "" : eventDate/);
+    assert.match(form, /!lockedExistingLeadTour && \(/);
+    assert.match(form, /existingLeadTour\?\.guestCount/);
+  });
+
   it("book_public_tour_for_lead copies lead.event_date onto the appointment and never updates leads", () => {
     const sql = readFileSync(
       resolve("supabase/migrations/20261412400000_book_public_tour_for_lead.sql"),

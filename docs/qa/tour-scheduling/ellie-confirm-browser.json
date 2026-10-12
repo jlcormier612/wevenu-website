@@ -1,0 +1,87 @@
+{
+  "tip": "c00749be9f39026029256e43c408ab9789bea7c1",
+  "hasRO": 1,
+  "selected": true,
+  "network": [
+    {
+      "url": "https://app.sandbox.hellotocheers.com/api/tours/book",
+      "status": 200,
+      "payload": {
+        "key": "c9c0eb738264da1cd8ff486b91e684b8",
+        "slotStart": "2026-10-13T14:00:00+00:00",
+        "firstName": "Ellie",
+        "lastName": "Clone2",
+        "partnerName": "",
+        "email": "couple2.1791770697075@example.com",
+        "phone": "",
+        "eventType": "wedding",
+        "eventDate": "2027-09-04",
+        "guestCount": 150,
+        "notes": "",
+        "turnstileToken": null,
+        "qrCampaignId": null,
+        "sourceData": {
+          "source": "website_form",
+          "form_key": "15ed661d6e9f47fd9b9b8d3a35ac8f7b",
+          "inquiry_mode": "schedule_tour",
+          "custom_answers": [],
+          "landing_page": "https://app.sandbox.hellotocheers.com/book/c9c0eb738264da1cd8ff486b91e684b8?o=v1.a2b56b3d-251a-4317-8e5a-544469977d29.d68d9aff-f0e6-4072-a66b-c9c5f92527f8.1799546698990.X_ZTdbzWKl1iOMNmufdBkWtLxutonoVb9mRQQ7fPxx8"
+        },
+        "originToken": "v1.a2b56b3d-251a-4317-8e5a-544469977d29.d68d9aff-f0e6-4072-a66b-c9c5f92527f8.1799546698990.X_ZTdbzWKl1iOMNmufdBkWtLxutonoVb9mRQQ7fPxx8",
+        "preferredCommunicationChannels": [],
+        "smsPermissionGranted": false
+      },
+      "body": {
+        "ok": true,
+        "leadId": "d68d9aff-f0e6-4072-a66b-c9c5f92527f8",
+        "relationshipId": null,
+        "appointmentId": "7a557d39-9c15-4e02-83e9-12369c353ced",
+        "scheduledAt": "2026-10-13T14:00:00+00:00",
+        "venueName": "EllieClone2 1791770697075",
+        "duration": 60,
+        "venueId": "a2b56b3d-251a-4317-8e5a-544469977d29",
+        "attachedExistingLead": true,
+        "venueEmail": "jennifer+ellieclone2.1791770697075@hellotocheers.com",
+        "venuePhone": null,
+        "addressLine1": null,
+        "city": null,
+        "stateRegion": null,
+        "contactEmail": "couple2.1791770697075@example.com",
+        "contactName": "Ellie Clone2",
+        "contactPhone": ""
+      }
+    }
+  ],
+  "afterSnip": "You're booked, Ellie! We're looking forward to meeting you at EllieClone2 1791770697075. Your tour Date Tuesday, October 13, 2026 Time 10:00 AM Location EllieClone2 1791770697075 A confirmation email has been sent to couple2.1791770697075@example.com. Add to Google Calendar Download .ics",
+  "leadBefore": {
+    "id": "d68d9aff-f0e6-4072-a66b-c9c5f92527f8",
+    "event_date": "2027-09-04",
+    "guest_count": 150,
+    "sales_stage": "outreach_sent"
+  },
+  "holdBefore": {
+    "id": "da1470be-8962-43f9-98de-520b2f534273",
+    "status": "active",
+    "hold_date": "2027-09-04"
+  },
+  "leadAfter": {
+    "id": "d68d9aff-f0e6-4072-a66b-c9c5f92527f8",
+    "event_date": "2027-09-04",
+    "sales_stage": "tour_scheduled",
+    "guest_count": 150
+  },
+  "holdAfter": {
+    "id": "da1470be-8962-43f9-98de-520b2f534273",
+    "status": "active",
+    "hold_date": "2027-09-04"
+  },
+  "appts": [
+    {
+      "id": "7a557d39-9c15-4e02-83e9-12369c353ced",
+      "lead_id": "d68d9aff-f0e6-4072-a66b-c9c5f92527f8",
+      "scheduled_at": "2026-10-13T14:00:00+00:00",
+      "status": "scheduled"
+    }
+  ],
+  "leadCount": null
+}
