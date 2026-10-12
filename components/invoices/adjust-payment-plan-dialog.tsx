@@ -110,7 +110,7 @@ export function AdjustPaymentPlanDialog({
   function refreshPreview(next: AdjustableDraftLine[]) {
     startPending(async () => {
       const result = await previewRemainingPaymentPlanAdjustmentAction(scheduleId, next);
-      if (result.ok && result.preview) {
+      if (result.ok) {
         setPreviewNote(null);
         setDiscrepancy(result.preview.discrepancy);
         setClosedShortfall(result.preview.closedPartialShortfall);
