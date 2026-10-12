@@ -37,12 +37,24 @@ export type DateHold = {
   /** Spaces protected by this hold. Empty = whole venue. */
   spaceIds: string[];
   title: string;
+  /** Inclusive start date (YYYY-MM-DD). */
   holdDate: string;
+  /**
+   * Inclusive end date (YYYY-MM-DD). Equals holdDate for single-day / legacy holds.
+   * All-day Fri–Sun: holdDate=Friday, endDate=Sunday.
+   */
+  endDate: string;
+  /** Null start+end = all-day / date-range reservation for each day in [holdDate, endDate]. */
   startTime: string | null;
   endTime: string | null;
   status: HoldStatus;
   expiresAt: string | null;
   notes: string | null;
+  /**
+   * Optional explicit link to lead_event_space_preferences (e.g. rehearsal dinner).
+   * Holds never invent contract components by themselves.
+   */
+  preferenceId: string | null;
   createdAt: string;
   updatedAt: string;
   // Embedded
@@ -189,10 +201,14 @@ export type DateHoldInput = {
   spaceId: string;
   title: string;
   holdDate: string;
+  /** Inclusive end; defaults to holdDate when omitted. */
+  endDate?: string;
   startTime: string;
   endTime: string;
   expiresAt: string;
   notes: string;
+  /** Optional explicit link to a lead event-space preference component. */
+  preferenceId?: string | null;
 };
 
 /** In-place edit. Omitting title / expiresAt preserves the stored values. Never writes notes. */
@@ -201,10 +217,12 @@ export type DateHoldUpdateInput = {
   spaceIds?: string[];
   spaceId: string;
   holdDate: string;
+  endDate?: string;
   startTime: string;
   endTime: string;
   title?: string;
   expiresAt?: string;
+  preferenceId?: string | null;
 };
 
 export type CalendarBlockInput = {

@@ -122,8 +122,8 @@ describe("same-lead multi-hold persistence and release (G–I)", () => {
 describe("createHold uses overlap — not same-lead uniqueness", () => {
   it("createHold loops active-on-date holds through holdsConflictWithEachOther", () => {
     assert.match(SERVICE, /holdsConflictWithEachOther/);
-    assert.match(SERVICE, /activeOnDate/);
-    assert.match(SERVICE, /That space and time window overlaps another active hold/);
+    assert.match(SERVICE, /activeOverlapping/);
+    assert.match(SERVICE, /That space and date range overlaps another active hold/);
     assert.doesNotMatch(SERVICE, /Release it before placing another/);
   });
 });

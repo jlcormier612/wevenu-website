@@ -28,6 +28,7 @@ export async function updateSelectionFinancialTermsAction(input: {
   packageAmount: number;
   discountType?: "fixed" | "percent" | null;
   discountValue?: number | null;
+  adjustments?: import("@/lib/invoices/financial-adjustments").FinancialAdjustmentInput[] | null;
   applyTax: boolean;
   taxRatePercent?: number | null;
   depositAmount: number;
@@ -39,6 +40,7 @@ export async function updateSelectionFinancialTermsAction(input: {
     packageAmount: input.packageAmount,
     discountType: input.discountType,
     discountValue: input.discountValue,
+    adjustments: input.adjustments,
     applyTax: input.applyTax,
     taxRatePercent: input.taxRatePercent,
     depositAmount: input.depositAmount,

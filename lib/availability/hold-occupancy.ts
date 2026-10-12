@@ -19,11 +19,41 @@ export type HoldOccupancyRow = {
   id?: string;
   leadId?: string | null;
   holdDate: string;
+  /** Inclusive end; defaults to holdDate when omitted (legacy single-day). */
+  endDate?: string | null;
   startTime?: string | null;
   endTime?: string | null;
   /** Empty = whole venue. Legacy single spaceId is folded into this set. */
   spaceIds: string[];
 };
+
+/** Inclusive hold date span. */
+export function holdDateSpan(hold: { holdDate: string; endDate?: string | null }): {
+  start: string;
+  end: string;
+} {
+  const start = hold.holdDate;
+  const end = hold.endDate && hold.endDate >= hold.holdDate ? hold.endDate : hold.holdDate;
+  return { start, end };
+}
+
+/** Inclusive date-range overlap (Fri–Sun overlaps Sat; not an extra day). */
+export function holdDateRangesOverlap(
+  a: { holdDate: string; endDate?: string | null },
+  b: { holdDate: string; endDate?: string | null },
+): boolean {
+  const left = holdDateSpan(a);
+  const right = holdDateSpan(b);
+  return left.start <= right.end && right.start <= left.end;
+}
+
+export function holdCoversDate(
+  hold: { holdDate: string; endDate?: string | null },
+  date: string,
+): boolean {
+  const span = holdDateSpan(hold);
+  return date >= span.start && date <= span.end;
+}
 
 export function holdSpaceIds(input: {
   spaceIds?: readonly string[] | null;
@@ -115,7 +145,7 @@ export function holdConflictsWithCandidate(
   },
   effectiveMax: number,
 ): boolean {
-  if (hold.holdDate !== candidate.date) return false;
+  if (!holdCoversDate(hold, candidate.date)) return false;
   if (!holdWindowsOverlap(hold, candidate)) return false;
   return holdResourcesCollide({
     holdSpaceIds: hold.spaceIds,
@@ -161,7 +191,7 @@ export function inquiryDateBlockedByHolds(
   const foreign = holds.filter((h) => {
     const owner = excludeLeadId?.trim() || null;
     if (owner && h.leadId === owner) return false;
-    return h.holdDate === date;
+    return holdCoversDate(h, date);
   });
 
   if (foreign.length === 0) return false;
@@ -210,7 +240,8 @@ export function holdConflictsWithBookedEvent(
     dates.push(`${y}-${m}-${d}`);
     cur.setDate(cur.getDate() + 1);
   }
-  if (!dates.includes(hold.holdDate)) return false;
+  const holdCoversAnyEventDay = dates.some((d) => holdCoversDate(hold, d));
+  if (!holdCoversAnyEventDay) return false;
   if (!holdWindowsOverlap(hold, event)) return false;
   return holdResourcesCollide({
     holdSpaceIds: hold.spaceIds,
@@ -240,14 +271,20 @@ export function holdProtectsAvailability(
  * Create passes no excludeHoldId. Same-lead siblings stay in the set.
  * Callers must pass only protecting holds (holdProtectsAvailability).
  */
-export function otherActiveHoldsForPlacement<T extends { id?: string; holdDate: string }>(
+export function otherActiveHoldsForPlacement<T extends {
+  id?: string;
+  holdDate: string;
+  endDate?: string | null;
+}>(
   holds: readonly T[],
   holdDate: string,
   excludeHoldId?: string | null,
+  endDate?: string | null,
 ): T[] {
   const exclude = excludeHoldId?.trim() || "";
+  const candidate = { holdDate, endDate: endDate ?? holdDate };
   return holds.filter((h) => {
-    if (h.holdDate !== holdDate) return false;
+    if (!holdDateRangesOverlap(h, candidate)) return false;
     if (exclude && h.id === exclude) return false;
     return true;
   });
@@ -259,7 +296,7 @@ export function holdsConflictWithEachOther(
   b: HoldOccupancyRow,
   effectiveMax: number,
 ): boolean {
-  if (a.holdDate !== b.holdDate) return false;
+  if (!holdDateRangesOverlap(a, b)) return false;
   if (!windowsOverlap(holdOperationalWindow(a), holdOperationalWindow(b))) return false;
   if (isWholeVenueHold(a.spaceIds) || isWholeVenueHold(b.spaceIds)) return true;
   const max = effectiveMax < 1 ? 1 : Math.trunc(effectiveMax);

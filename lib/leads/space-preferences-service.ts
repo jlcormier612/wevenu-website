@@ -18,6 +18,7 @@ import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type PreferenceRow = {
+  id?: string;
   use_key: string;
   preference_kind: string;
   space_id: string | null;
@@ -36,7 +37,11 @@ function mapRow(
     externalLocation: r.external_location,
     scheduledDate: r.scheduled_date ?? null,
   }, { profile });
-  return normalized.ok ? normalized.value : null;
+  if (!normalized.ok) return null;
+  return {
+    ...normalized.value,
+    id: r.id,
+  };
 }
 
 async function resolveLeadExperienceType(
@@ -79,7 +84,7 @@ export async function getLeadSpacePreferences(leadId: string): Promise<LeadEvent
   const profile = resolveExperienceProfile(eventType);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("lead_event_space_preferences") as any)
-    .select("use_key, preference_kind, space_id, external_location, scheduled_date")
+    .select("id, use_key, preference_kind, space_id, external_location, scheduled_date")
     .eq("venue_id", venue.id)
     .eq("lead_id", leadId);
   if (error) throw error;

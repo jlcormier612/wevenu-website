@@ -22,6 +22,7 @@ import {
   activeHolds as selectActiveHolds,
   historicalHoldLabel,
   historicalHolds as selectHistoricalHolds,
+  holdDateRangeLabel,
   holdWindowLabel,
   placeHoldCtaLabel,
   shouldShowPlaceHoldCta,
@@ -36,9 +37,11 @@ function holdExpiresDateInput(expiresAt: string | null, timezone: string | null)
 }
 
 export type HoldSpacePreferenceSeed = {
+  id?: string;
   useKey: string;
   preferenceKind: string;
   spaceId: string | null;
+  scheduledDate?: string | null;
 };
 
 export function DateHoldsSection({
@@ -71,12 +74,14 @@ export function DateHoldsSection({
   const [formMode, setFormMode] = React.useState<"create" | "edit" | null>(null);
   const [editingHoldId, setEditingHoldId] = React.useState<string | null>(null);
   const [holdDate, setHoldDate] = React.useState("");
+  const [endDate, setEndDate] = React.useState("");
   const [holdTitle, setHoldTitle] = React.useState(`Hold — ${leadName}`);
   const [wholeVenue, setWholeVenue] = React.useState(false);
   const [selectedSpaceIds, setSelectedSpaceIds] = React.useState<string[]>([]);
   const [startTime, setStartTime] = React.useState("");
   const [endTime, setEndTime] = React.useState("");
   const [expiresAt, setExpiresAt] = React.useState("");
+  const [preferenceId, setPreferenceId] = React.useState<string>("");
   const [addPending, startAdd] = React.useTransition();
   const [releasingId, setReleasingId] = React.useState<string | null>(null);
   /** Compact density: space names / expiration stay behind this disclosure. */
@@ -113,6 +118,7 @@ export function DateHoldsSection({
 
   function openForm() {
     setHoldDate(desiredDefault);
+    setEndDate(desiredDefault);
     setHoldTitle(`Hold — ${leadName}`);
     const defaults = prefDefaults.filter((id) => activeSpaces.some((s) => s.id === id));
     setWholeVenue(defaults.length === 0);
@@ -120,18 +126,21 @@ export function DateHoldsSection({
     setStartTime("");
     setEndTime("");
     setExpiresAt("");
+    setPreferenceId("");
     setEditingHoldId(null);
     setFormMode("create");
   }
 
   function openEdit(hold: DateHold) {
     setHoldDate(hold.holdDate);
+    setEndDate(hold.endDate || hold.holdDate);
     setHoldTitle(hold.title);
     setWholeVenue(hold.spaceIds.length === 0);
     setSelectedSpaceIds(hold.spaceIds);
     setStartTime(hold.startTime ?? "");
     setEndTime(hold.endTime ?? "");
     setExpiresAt(holdExpiresDateInput(hold.expiresAt, venueTimezone));
+    setPreferenceId(hold.preferenceId ?? "");
     setEditingHoldId(hold.id);
     setFormMode("edit");
   }
@@ -145,6 +154,7 @@ export function DateHoldsSection({
 
   function handleAdd() {
     if (!holdDate || !holdTitle.trim()) return;
+    const resolvedEnd = endDate && endDate >= holdDate ? endDate : holdDate;
     const spaceIds = wholeVenue ? [] : selectedSpaceIds;
     startAdd(async () => {
       const input: DateHoldInput = {
@@ -153,10 +163,12 @@ export function DateHoldsSection({
         spaceId: spaceIds.length === 1 ? spaceIds[0]! : "",
         title: holdTitle.trim(),
         holdDate,
+        endDate: resolvedEnd,
         startTime,
         endTime,
         notes: "",
         expiresAt,
+        preferenceId: preferenceId || null,
       };
       const result = await createHoldAction(input);
       if (result.ok) {
@@ -172,11 +184,13 @@ export function DateHoldsSection({
           spaceIds,
           title: holdTitle.trim(),
           holdDate,
+          endDate: resolvedEnd,
           startTime: startTime || null,
           endTime: endTime || null,
           status: "active",
           expiresAt: expiresAt || null,
           notes: null,
+          preferenceId: preferenceId || null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           leadName,
@@ -191,6 +205,7 @@ export function DateHoldsSection({
 
   function handleSave() {
     if (!editingHoldId || !holdDate || !holdTitle.trim()) return;
+    const resolvedEnd = endDate && endDate >= holdDate ? endDate : holdDate;
     const spaceIds = wholeVenue ? [] : selectedSpaceIds;
     startAdd(async () => {
       const input: DateHoldUpdateInput = {
@@ -199,9 +214,11 @@ export function DateHoldsSection({
         spaceId: spaceIds.length === 1 ? spaceIds[0]! : "",
         title: holdTitle.trim(),
         holdDate,
+        endDate: resolvedEnd,
         startTime,
         endTime,
         expiresAt,
+        preferenceId: preferenceId || null,
       };
       const result = await updateHoldAction(editingHoldId, input);
       if (result.ok) {
@@ -215,9 +232,11 @@ export function DateHoldsSection({
           spaceIds,
           title: holdTitle.trim(),
           holdDate,
+          endDate: resolvedEnd,
           startTime: startTime || null,
           endTime: endTime || null,
           expiresAt: expiresAt || h.expiresAt,
+          preferenceId: preferenceId || null,
           spaceName: names.length === 1 ? names[0]! : names.length > 1 ? names.join(", ") : null,
           spaceNames: names,
         }));
@@ -277,7 +296,7 @@ export function DateHoldsSection({
                     Held
                   </p>
                   <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
-                    {formatDate(hold.holdDate)}
+                    {holdDateRangeLabel(hold)}
                   </p>
                   <button
                     type="button"
@@ -300,7 +319,9 @@ export function DateHoldsSection({
                 <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
                   Held
                 </p>
-                <p className="text-sm font-medium text-foreground">{formatDate(hold.holdDate)}</p>
+                <p className="text-sm font-medium text-foreground" data-testid="date-hold-range-label">
+                  {holdDateRangeLabel(hold)}
+                </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span>{holdResourcesLabel(hold)}</span>
                   {holdWindowLabel(hold) ? <span>{holdWindowLabel(hold)}</span> : <span>All day</span>}
@@ -394,11 +415,15 @@ export function DateHoldsSection({
               <Input value={holdTitle} onChange={(e) => setHoldTitle(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Hold date *</Label>
+              <Label className="text-xs">Start date *</Label>
               <Input
                 type="date"
                 value={holdDate}
-                onChange={(e) => setHoldDate(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setHoldDate(next);
+                  if (!endDate || endDate < next) setEndDate(next);
+                }}
                 data-testid="date-hold-hold-date"
               />
               {formMode !== "edit" && desiredDefault ? (
@@ -410,6 +435,18 @@ export function DateHoldsSection({
                   No preferred event date on this lead — enter the date to hold.
                 </p>
               ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">End date *</Label>
+              <Input
+                type="date"
+                value={endDate || holdDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                data-testid="date-hold-end-date"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Inclusive. Same as start for a single day; use Fri–Sun for a weekend reservation without separate daily holds.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Start time <span className="font-normal text-muted-foreground">(optional)</span></Label>
@@ -429,9 +466,34 @@ export function DateHoldsSection({
                 data-testid="date-hold-end-time"
               />
               <p className="text-[11px] text-muted-foreground">
-                Venue occupancy window for this hold. Leave blank for all day.
+                Leave blank for an all-day / date-range reservation. Times apply to each day in the range.
               </p>
             </div>
+            {spacePreferences.some((p) => p.id) ? (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs">
+                  Link to booking component{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  value={preferenceId}
+                  onChange={(e) => setPreferenceId(e.target.value)}
+                  data-testid="date-hold-preference-link"
+                >
+                  <option value="">No linked component — reservation only</option>
+                  {spacePreferences.filter((p) => p.id).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.useKey}
+                      {p.scheduledDate ? ` (${p.scheduledDate})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  Associates this hold with an agreed component (e.g. rehearsal dinner). Does not add unagreed services to the contract.
+                </p>
+              </div>
+            ) : null}
             {formSpaces.length > 0 && (
               <div className="space-y-1.5 sm:col-span-2" data-testid="date-hold-spaces">
                 <Label className="text-xs">Spaces to hold</Label>

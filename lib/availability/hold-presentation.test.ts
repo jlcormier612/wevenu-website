@@ -111,7 +111,7 @@ describe("Date Hold active-state presentation", () => {
   it("F. createHold allows a second same-lead/date hold unless resources and windows overlap", () => {
     assert.doesNotMatch(service, /An active hold already exists for this date/);
     assert.match(service, /holdsConflictWithEachOther/);
-    assert.match(service, /That space and time window overlaps another active hold/);
+    assert.match(service, /That space and date range overlaps another active hold/);
   });
 
   it("Active Holds window uses HTC 12-hour formatTime, not raw HH:mm", () => {

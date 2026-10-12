@@ -301,14 +301,16 @@ export async function updateCommercialSelectionTerms(
     packageAmount: number;
     discountType?: "fixed" | "percent" | null;
     discountValue?: number | null;
+    adjustments?: import("@/lib/invoices/financial-adjustments").FinancialAdjustmentInput[] | null;
     applyTax: boolean;
     taxRatePercent?: number | null;
     depositAmount: number;
   },
 ): Promise<CommercialSelectionActionResult> {
-  const { computeAgreedFinancialTerms } = await import("@/lib/invoices/financial-terms");
-  const terms = computeAgreedFinancialTerms({
+  const { computeAgreedFinancialTermsMulti } = await import("@/lib/invoices/financial-adjustments");
+  const terms = computeAgreedFinancialTermsMulti({
     packagePrice: input.packageAmount,
+    adjustments: input.adjustments,
     discountMode: input.discountType ?? null,
     discountValue: input.discountValue ?? null,
     applyTax: input.applyTax,
@@ -347,6 +349,7 @@ export async function updateCommercialSelectionTerms(
       discountAmount: terms.discountAmount,
       discountType: terms.discountMode,
       discountValue: terms.discountValue,
+      financialAdjustments: terms.adjustments,
       taxApplied: terms.taxApplied,
       taxRatePercent: terms.taxRatePercent,
       taxAmount: terms.taxAmount,

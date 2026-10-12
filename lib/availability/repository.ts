@@ -34,7 +34,14 @@ type SpaceRow = {
   permitted_uses?: string[] | null; is_active: boolean; sort_order: number; created_at: string; updated_at: string;
 };
 type RulesRow = { id: string; venue_id: string; max_simultaneous_events: number; max_simultaneous_tours: number; min_turnaround_hours: number; created_at: string; updated_at: string; };
-type HoldRow = { id: string; venue_id: string; lead_id: string | null; space_id: string | null; title: string; hold_date: string; start_time: string | null; end_time: string | null; status: DateHold["status"]; expires_at: string | null; notes: string | null; created_at: string; updated_at: string; leads?: { first_name: string; last_name: string } | null; venue_spaces?: { name: string } | null; };
+type HoldRow = {
+  id: string; venue_id: string; lead_id: string | null; space_id: string | null; title: string;
+  hold_date: string; end_date?: string | null; preference_id?: string | null;
+  start_time: string | null; end_time: string | null; status: DateHold["status"];
+  expires_at: string | null; notes: string | null; created_at: string; updated_at: string;
+  leads?: { first_name: string; last_name: string } | null;
+  venue_spaces?: { name: string } | null;
+};
 type BlockRow = {
   id: string; venue_id: string; title: string; type: CalendarBlock["type"]; reason: CalendarBlock["reason"];
   start_date: string; end_date: string; is_all_day: boolean; start_time: string | null; end_time: string | null;
@@ -70,11 +77,13 @@ function mapHold(r: HoldRow, spaces?: { space_id: string; name?: string | null }
     spaceIds: ids,
     title: r.title,
     holdDate: r.hold_date,
+    endDate: r.end_date && r.end_date >= r.hold_date ? r.end_date : r.hold_date,
     startTime: r.start_time?.slice(0, 5) ?? null,
     endTime: r.end_time?.slice(0, 5) ?? null,
     status: r.status,
     expiresAt: r.expires_at,
     notes: r.notes,
+    preferenceId: r.preference_id ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     leadName: r.leads ? `${r.leads.first_name} ${r.leads.last_name}` : null,
@@ -232,13 +241,19 @@ export async function getHolds(client: DbClient, venueId: string, opts?: { leadI
 
 export async function getHoldsForDates(client: DbClient, venueId: string, start: string, end: string): Promise<DateHold[]> {
   await expireElapsedDateHolds(client, venueId);
+  // Inclusive range overlap: hold_date <= end AND end_date >= start.
+  // Fallback for pre-migration rows without end_date: filter in mapHold via hold_date.
   const { data, error } = await client.from("date_holds").select("*, leads(first_name, last_name), venue_spaces(name)")
     .eq("venue_id", venueId)
     .eq("status", "active")
     .or(unexpiredActiveHoldClause())
-    .gte("hold_date", start).lte("hold_date", end);
+    .lte("hold_date", end)
+    .or(`end_date.gte.${start},end_date.is.null`);
   if (error) throw error;
-  const rows = data as unknown as HoldRow[];
+  const rows = (data as unknown as HoldRow[]).filter((r) => {
+    const holdEnd = r.end_date && r.end_date >= r.hold_date ? r.end_date : r.hold_date;
+    return r.hold_date <= end && holdEnd >= start;
+  });
   const spaceMap = await loadHoldSpaceMap(client, venueId, rows.map((r) => r.id));
   return rows.map((r) => mapHold(r, spaceMap.get(r.id)));
 }
@@ -255,6 +270,7 @@ export async function getHold(client: DbClient, venueId: string, holdId: string)
 export async function insertHold(client: DbClient, venueId: string, input: DateHoldInput): Promise<string> {
   const spaces = holdSpaceIds({ spaceIds: input.spaceIds, spaceId: input.spaceId });
   const legacySpaceId = spaces.length === 1 ? spaces[0]! : null;
+  const endDate = input.endDate && input.endDate >= input.holdDate ? input.endDate : input.holdDate;
   const { data, error } = await client.from("date_holds")
     .insert({
       venue_id: venueId,
@@ -262,6 +278,8 @@ export async function insertHold(client: DbClient, venueId: string, input: DateH
       space_id: legacySpaceId,
       title: input.title.trim(),
       hold_date: input.holdDate,
+      end_date: endDate,
+      preference_id: input.preferenceId?.trim() || null,
       start_time: input.startTime || null,
       end_time: input.endTime || null,
       expires_at: input.expiresAt || null,
@@ -287,21 +305,28 @@ export async function updateHold(
 ): Promise<void> {
   const spaces = holdSpaceIds({ spaceIds: input.spaceIds, spaceId: input.spaceId });
   const legacySpaceId = spaces.length === 1 ? spaces[0]! : null;
+  const endDate = input.endDate && input.endDate >= input.holdDate ? input.endDate : input.holdDate;
   const patch: {
     hold_date: string;
+    end_date: string;
     start_time: string | null;
     end_time: string | null;
     space_id: string | null;
+    preference_id?: string | null;
     title?: string;
     expires_at?: string | null;
   } = {
     hold_date: input.holdDate,
+    end_date: endDate,
     start_time: input.startTime || null,
     end_time: input.endTime || null,
     space_id: legacySpaceId,
   };
   if (input.title !== undefined) patch.title = input.title.trim();
   if (input.expiresAt !== undefined) patch.expires_at = input.expiresAt || null;
+  if (input.preferenceId !== undefined) {
+    patch.preference_id = input.preferenceId?.trim() || null;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("date_holds") as any)
     .update(patch)

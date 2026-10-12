@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -18,8 +18,42 @@ import {
 } from "@/components/ui/sheet";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
-import { computeAgreedFinancialTerms } from "@/lib/invoices/financial-terms";
+import {
+  computeAgreedFinancialTermsMulti,
+  type FinancialAdjustmentInput,
+  type FinancialAdjustmentKind,
+} from "@/lib/invoices/financial-adjustments";
 import { formatCurrency } from "@/lib/invoices/constants";
+
+type DraftAdj = {
+  key: string;
+  kind: FinancialAdjustmentKind;
+  description: string;
+  mode: "fixed" | "percent";
+  value: string;
+};
+
+function draftsFromSelection(selection: CommercialSelection): DraftAdj[] {
+  if (selection.financialAdjustments?.length) {
+    return selection.financialAdjustments.map((a) => ({
+      key: a.id,
+      kind: a.kind,
+      description: a.description,
+      mode: a.mode,
+      value: String(a.value),
+    }));
+  }
+  if (selection.discountType && selection.discountValue != null && selection.discountAmount > 0) {
+    return [{
+      key: "legacy-discount",
+      kind: "discount",
+      description: "Discount",
+      mode: selection.discountType,
+      value: String(selection.discountValue),
+    }];
+  }
+  return [];
+}
 
 export function SelectionFinancialTermsSheet({
   open,
@@ -38,12 +72,7 @@ export function SelectionFinancialTermsSheet({
 }) {
   const router = useRouter();
   const [packageAmount, setPackageAmount] = React.useState(String(selection.packageAmount));
-  const [discountMode, setDiscountMode] = React.useState<"none" | "fixed" | "percent">(
-    selection.discountType ?? "none",
-  );
-  const [discountValue, setDiscountValue] = React.useState(
-    selection.discountValue != null ? String(selection.discountValue) : "",
-  );
+  const [adjustments, setAdjustments] = React.useState<DraftAdj[]>(() => draftsFromSelection(selection));
   const [applyTax, setApplyTax] = React.useState(selection.taxApplied);
   const [taxRate, setTaxRate] = React.useState(
     selection.taxRatePercent != null
@@ -59,8 +88,7 @@ export function SelectionFinancialTermsSheet({
   React.useEffect(() => {
     if (!open) return;
     setPackageAmount(String(selection.packageAmount));
-    setDiscountMode(selection.discountType ?? "none");
-    setDiscountValue(selection.discountValue != null ? String(selection.discountValue) : "");
+    setAdjustments(draftsFromSelection(selection));
     setApplyTax(selection.taxApplied);
     setTaxRate(
       selection.taxRatePercent != null
@@ -73,16 +101,27 @@ export function SelectionFinancialTermsSheet({
     setError("");
   }, [open, selection, defaultTaxPercent]);
 
+  const adjustmentInputs: FinancialAdjustmentInput[] = React.useMemo(() => {
+    if (!useDiscounts) return [];
+    return adjustments
+      .filter((a) => a.description.trim() && a.value.trim())
+      .map((a) => ({
+        kind: a.kind,
+        description: a.description.trim(),
+        mode: a.mode,
+        value: parseFloat(a.value) || 0,
+      }));
+  }, [adjustments, useDiscounts]);
+
   const preview = React.useMemo(() => {
     const pkg = parseFloat(packageAmount.replace(/[$,]/g, "")) || 0;
-    return computeAgreedFinancialTerms({
+    return computeAgreedFinancialTermsMulti({
       packagePrice: pkg,
-      discountMode: discountMode === "none" ? null : discountMode,
-      discountValue: discountMode === "none" ? null : parseFloat(discountValue) || 0,
+      adjustments: adjustmentInputs,
       applyTax: applyTax && useTaxes,
       taxRatePercent: applyTax ? parseFloat(taxRate) || 0 : null,
     });
-  }, [packageAmount, discountMode, discountValue, applyTax, taxRate, useTaxes]);
+  }, [packageAmount, adjustmentInputs, applyTax, taxRate, useTaxes]);
 
   const depositNum = parseFloat(deposit.replace(/[$,]/g, "")) || 0;
 
@@ -91,8 +130,9 @@ export function SelectionFinancialTermsSheet({
       const result = await updateSelectionFinancialTermsAction({
         selectionId: selection.id,
         packageAmount: preview.packagePrice,
-        discountType: discountMode === "none" ? null : discountMode,
-        discountValue: discountMode === "none" ? null : parseFloat(discountValue) || 0,
+        adjustments: adjustmentInputs,
+        discountType: preview.discountMode,
+        discountValue: preview.discountValue,
         applyTax: applyTax && useTaxes,
         taxRatePercent: applyTax ? parseFloat(taxRate) || null : null,
         depositAmount: depositNum,
@@ -119,9 +159,9 @@ export function SelectionFinancialTermsSheet({
         <SheetHeader className="mb-6">
           <SheetTitle>Invoice adjustments</SheetTitle>
           <p className="text-sm text-muted-foreground">
-            Apply package price, optional discount, and optional exclusive tax on this Selected Package
-            before the contract. Settings only enable these options — they do not apply tax or discount
-            until you set them here. Terms carry into the contract, invoice, and payment plan.
+            Apply package price, optional discounts/credits/charges, and optional exclusive tax on this
+            Selected Package before the contract. Settings only enable these options — they do not apply
+            tax or discount until you set them here. Deposits are payment allocations, not discounts.
           </p>
         </SheetHeader>
 
@@ -143,37 +183,93 @@ export function SelectionFinancialTermsSheet({
             </div>
 
             {useDiscounts && (
-              <div className="space-y-2">
-                <Label>Discount</Label>
-                <div className="flex gap-1">
-                  {([["none", "None"], ["fixed", "$"], ["percent", "%"]] as const).map(([val, label]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setDiscountMode(val)}
-                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium ${
-                        discountMode === val
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              <div className="space-y-3" data-testid="financial-adjustments-list">
+                <div className="flex items-center justify-between">
+                  <Label>Adjustments</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAdjustments((prev) => [
+                      ...prev,
+                      {
+                        key: `new-${Date.now()}`,
+                        kind: "discount",
+                        description: "",
+                        mode: "fixed",
+                        value: "",
+                      },
+                    ])}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Add
+                  </Button>
                 </div>
-                {discountMode !== "none" && (
-                  <Input
-                    value={discountValue}
-                    onChange={(e) => setDiscountValue(e.target.value)}
-                    placeholder={discountMode === "percent" ? "10" : "500"}
-                    inputMode="decimal"
-                  />
-                )}
-                {discountMode === "percent" && (
-                  <p className="text-xs text-muted-foreground">
-                    Dollar amount freezes when saved ({formatCurrency(preview.discountAmount)}).
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Each reduction needs a description (e.g. Referral credit). Charges/fees increase the total.
+                </p>
+                {adjustments.map((adj, idx) => (
+                  <div key={adj.key} className="space-y-2 rounded-lg border border-border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <select
+                        className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+                        value={adj.kind}
+                        onChange={(e) => {
+                          const kind = e.target.value as FinancialAdjustmentKind;
+                          setAdjustments((prev) => prev.map((row, i) => (
+                            i === idx ? { ...row, kind } : row
+                          )));
+                        }}
+                      >
+                        <option value="discount">Discount</option>
+                        <option value="credit">Credit</option>
+                        <option value="charge">Charge</option>
+                        <option value="fee">Fee</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label="Remove adjustment"
+                        onClick={() => setAdjustments((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <Input
+                      value={adj.description}
+                      onChange={(e) => setAdjustments((prev) => prev.map((row, i) => (
+                        i === idx ? { ...row, description: e.target.value } : row
+                      )))}
+                      placeholder="Description (required)"
+                    />
+                    <div className="flex gap-1">
+                      {([["fixed", "$"], ["percent", "%"]] as const).map(([val, label]) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setAdjustments((prev) => prev.map((row, i) => (
+                            i === idx ? { ...row, mode: val } : row
+                          )))}
+                          className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium ${
+                            adj.mode === val
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <Input
+                      value={adj.value}
+                      onChange={(e) => setAdjustments((prev) => prev.map((row, i) => (
+                        i === idx ? { ...row, value: e.target.value } : row
+                      )))}
+                      placeholder={adj.mode === "percent" ? "10" : "500"}
+                      inputMode="decimal"
+                    />
+                  </div>
+                ))}
               </div>
             )}
 
@@ -189,7 +285,7 @@ export function SelectionFinancialTermsSheet({
                   <span>
                     <span className="font-medium text-heading">Apply tax</span>
                     <span className="block text-muted-foreground">
-                      Exclusive tax on the discounted package amount. Not applied unless checked.
+                      Exclusive tax on the adjusted taxable base. Not applied unless checked.
                     </span>
                   </span>
                 </label>
@@ -201,7 +297,7 @@ export function SelectionFinancialTermsSheet({
                       value={taxRate}
                       onChange={(e) => setTaxRate(e.target.value)}
                       inputMode="decimal"
-                      placeholder="7"
+                      placeholder={defaultTaxPercent != null ? String(defaultTaxPercent) : "6.25"}
                     />
                   </div>
                 )}
@@ -224,9 +320,12 @@ export function SelectionFinancialTermsSheet({
 
             <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm space-y-1">
               <p>Package {formatCurrency(preview.packagePrice)}</p>
-              {preview.discountAmount > 0 && (
-                <p className="text-success">Discount −{formatCurrency(preview.discountAmount)}</p>
-              )}
+              {preview.adjustments.map((a) => (
+                <p key={a.id} className={a.kind === "discount" || a.kind === "credit" ? "text-success" : undefined}>
+                  {a.description}: {a.kind === "discount" || a.kind === "credit" ? "−" : "+"}
+                  {formatCurrency(a.amount)}
+                </p>
+              ))}
               {preview.taxApplied && (
                 <p>
                   Tax {preview.taxRatePercent}% {formatCurrency(preview.taxAmount)}

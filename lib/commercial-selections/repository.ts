@@ -4,6 +4,8 @@ import type {
   CommercialSelectionStatus,
   CreateCommercialSelectionInput,
 } from "@/lib/commercial-selections/types";
+import { parseFinancialAdjustments } from "@/lib/invoices/financial-adjustments";
+import type { FinancialAdjustment } from "@/lib/invoices/financial-adjustments";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = {
@@ -22,6 +24,7 @@ type Row = {
   tax_applied?: boolean | null;
   tax_rate_percent?: number | string | null;
   tax_amount?: number | string | null;
+  financial_adjustments?: unknown;
   total_amount: number | string;
   deposit_amount: number | string;
   included_items: CommercialSelectionItem[] | null;
@@ -57,6 +60,7 @@ function mapRow(r: Row): CommercialSelection {
     discountAmount: Number(r.discount_amount ?? 0),
     discountType: r.discount_type ?? null,
     discountValue: r.discount_value != null ? Number(r.discount_value) : null,
+    financialAdjustments: parseFinancialAdjustments(r.financial_adjustments),
     taxApplied: Boolean(r.tax_applied),
     taxRatePercent: r.tax_rate_percent != null ? Number(r.tax_rate_percent) : null,
     taxAmount: Number(r.tax_amount ?? 0),
@@ -311,6 +315,7 @@ export async function updateSelectionFinancialTerms(
     discountAmount: number;
     discountType: "fixed" | "percent" | null;
     discountValue: number | null;
+    financialAdjustments?: FinancialAdjustment[];
     taxApplied: boolean;
     taxRatePercent: number | null;
     taxAmount: number;
@@ -325,6 +330,7 @@ export async function updateSelectionFinancialTerms(
       discount_amount: terms.discountAmount,
       discount_type: terms.discountType,
       discount_value: terms.discountValue,
+      financial_adjustments: terms.financialAdjustments ?? [],
       tax_applied: terms.taxApplied,
       tax_rate_percent: terms.taxRatePercent,
       tax_amount: terms.taxAmount,

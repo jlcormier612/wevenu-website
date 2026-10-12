@@ -39,19 +39,31 @@ export function placeHoldCtaLabel(desiredDefault: string, hasActiveHolds = false
  * Reuses events formatTime (en-US 12-hour). Same-meridiem ranges collapse the first suffix:
  * 16:00–18:00 → "4:00–6:00 PM".
  */
-export function holdWindowLabel(hold: Pick<DateHold, "startTime" | "endTime">): string | null {
-  if (!hold.startTime && !hold.endTime) return null;
-  const start = formatTime(hold.startTime ?? "00:00");
-  const end = formatTime(hold.endTime ?? "23:59");
-  const startMeridiem = start.endsWith(" AM") ? " AM" : start.endsWith(" PM") ? " PM" : "";
-  const endMeridiem = end.endsWith(" AM") ? " AM" : end.endsWith(" PM") ? " PM" : "";
-  if (startMeridiem && startMeridiem === endMeridiem) {
-    return `${start.slice(0, -startMeridiem.length)}–${end}`;
-  }
-  return `${start}–${end}`;
+/** Inclusive date label: single day or "Fri – Sun" style range. */
+export function holdDateRangeLabel(hold: Pick<DateHold, "holdDate" | "endDate">): string {
+  const end = hold.endDate && hold.endDate >= hold.holdDate ? hold.endDate : hold.holdDate;
+  if (end === hold.holdDate) return formatDate(hold.holdDate);
+  return `${formatDate(hold.holdDate)} – ${formatDate(end)}`;
 }
 
-export function historicalHoldLabel(hold: Pick<DateHold, "holdDate" | "status" | "expiresAt">): string {
+export function holdWindowLabel(hold: Pick<DateHold, "startTime" | "endTime" | "holdDate" | "endDate">): string | null {
+  const end = hold.endDate && hold.endDate >= hold.holdDate ? hold.endDate : (hold.holdDate ?? "");
+  const multiDay = Boolean(hold.holdDate && end && end !== hold.holdDate);
+  if (!hold.startTime && !hold.endTime) {
+    // Legacy single-day callers show their own "All day" copy when null.
+    return multiDay ? "All day (date range)" : null;
+  }
+  const start = formatTime(hold.startTime ?? "00:00");
+  const endTime = formatTime(hold.endTime ?? "23:59");
+  const startMeridiem = start.endsWith(" AM") ? " AM" : start.endsWith(" PM") ? " PM" : "";
+  const endMeridiem = endTime.endsWith(" AM") ? " AM" : endTime.endsWith(" PM") ? " PM" : "";
+  if (startMeridiem && startMeridiem === endMeridiem) {
+    return `${start.slice(0, -startMeridiem.length)}–${endTime}`;
+  }
+  return `${start}–${endTime}`;
+}
+
+export function historicalHoldLabel(hold: Pick<DateHold, "holdDate" | "endDate" | "status" | "expiresAt">): string {
   const elapsedActive = hold.status === "active" && !holdProtectsAvailability(hold);
   const status =
     elapsedActive || hold.status === "expired"
@@ -61,5 +73,5 @@ export function historicalHoldLabel(hold: Pick<DateHold, "holdDate" | "status" |
         : hold.status === "converted"
           ? "Converted"
           : hold.status;
-  return `${formatDate(hold.holdDate)} — ${status}`;
+  return `${holdDateRangeLabel(hold)} — ${status}`;
 }

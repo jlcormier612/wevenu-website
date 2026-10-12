@@ -163,7 +163,7 @@ describe("K — edit placement engine", () => {
       spaceIds: [GARDEN],
     });
     assert.equal(editConflicts(candidate, [current, foreign], HOLD_ID, 2), true);
-    assert.match(SERVICE, /That space and time window overlaps another active hold/);
+    assert.match(SERVICE, /That space and date range overlaps another active hold/);
   });
 
   it("K9. booked-event overlap is rejected through checkAvailability, not a parallel hold helper", () => {

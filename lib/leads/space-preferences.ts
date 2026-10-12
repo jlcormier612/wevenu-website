@@ -30,6 +30,8 @@ export function isApplicableLeadSpacePreferenceKind(
 }
 
 export type LeadEventSpacePreference = {
+  /** Persisted row id when loaded from DB — used to link date holds explicitly. */
+  id?: string;
   useKey: string;
   preferenceKind: LeadSpacePreferenceKind;
   spaceId: string | null;

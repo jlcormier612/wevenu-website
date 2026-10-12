@@ -6,6 +6,7 @@
  * rebuilt safely when no payment has been requested or collected.
  * Customized dollar schedules require venue review — never auto-redistribute.
  */
+import { redistributeUnpaidInstallments } from "@/lib/invoices/financial-adjustments";
 import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
 import { allocatePresetAmounts } from "@/lib/payments/starters";
 import type { PaymentItemStatus } from "@/lib/payments/types";
@@ -106,6 +107,35 @@ export function classifyCommitmentReconcile(input: {
     return { kind: "auto_recalc", previousTotal, nextTotal, reason: "known_preset" };
   }
   return { kind: "needs_review", previousTotal, nextTotal, reason: "customized" };
+}
+
+/**
+ * After a post-payment financial adjustment: keep paid installments untouched
+ * and proportionally redistribute the remaining balance across unpaid lines.
+ * Returns null when there are no unpaid lines (caller should not invent debt).
+ */
+export function redistributeRemainingAcrossUnpaid(input: {
+  lines: { amount: number; status: string; paidAmount?: number | null }[];
+  remainingBalance: number;
+}): { unpaidIndexes: number[]; nextUnpaidAmounts: number[] } | null {
+  const unpaidIndexes: number[] = [];
+  const unpaidAmounts: number[] = [];
+  input.lines.forEach((line, idx) => {
+    const paid = Number(line.paidAmount ?? 0);
+    const isPaidish = ["paid", "processing", "partially_refunded", "refunded", "cancelled"].includes(line.status)
+      || paid > 0;
+    if (isPaidish) return;
+    unpaidIndexes.push(idx);
+    unpaidAmounts.push(roundMoney(Math.max(0, Number(line.amount) || 0)));
+  });
+  if (unpaidIndexes.length === 0) return null;
+  return {
+    unpaidIndexes,
+    nextUnpaidAmounts: redistributeUnpaidInstallments({
+      unpaidAmounts,
+      remainingBalance: input.remainingBalance,
+    }),
+  };
 }
 
 export function recalculateLineAmounts(input: {

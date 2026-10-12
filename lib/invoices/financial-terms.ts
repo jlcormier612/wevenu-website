@@ -68,6 +68,9 @@ export function normalizeNonNegativeMoney(raw: unknown): number | null {
  * Compute agreed commercial terms from package + optional discount + optional exclusive tax.
  * Percentage discounts are calculated once here; callers persist the resulting discountAmount
  * and must not recalc from a later package edit without an explicit new apply.
+ *
+ * Multiple named adjustments: use computeAgreedFinancialTermsMulti (same arithmetic
+ * for the single-discount case via discountMode/discountValue).
  */
 export function computeAgreedFinancialTerms(input: AgreedFinancialTermsInput): AgreedFinancialTerms {
   const packagePrice = roundMoney(Math.max(0, Number(input.packagePrice) || 0));

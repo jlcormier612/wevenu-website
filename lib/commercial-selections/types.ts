@@ -31,10 +31,15 @@ export type CommercialSelection = {
    * Legacy rows without a separate package use the same value as totalAmount.
    */
   packageAmount: number;
-  /** True discount dollars only (never a deposit). Frozen when applied. */
+  /** True discount dollars only (never a deposit). Frozen rollup of reductions. */
   discountAmount: number;
   discountType: "fixed" | "percent" | null;
   discountValue: number | null;
+  /**
+   * Named adjustments (discounts, credits, charges, fees).
+   * Empty/undefined when only legacy single discount_* columns are populated.
+   */
+  financialAdjustments?: import("@/lib/invoices/financial-adjustments").FinancialAdjustment[];
   /** Exclusive tax was deliberately applied to these terms. */
   taxApplied: boolean;
   taxRatePercent: number | null;
