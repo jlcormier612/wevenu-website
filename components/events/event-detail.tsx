@@ -404,10 +404,8 @@ export function EventDetail({
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
-  // Sales → Booking Journey walkthrough — before this, nothing on the
-  // Client Workspace pointed back to the inquiry it came from, so the
-  // Lead's own activity history (status changes, prior notes) had no
-  // reachable path once converted, even though it was never deleted.
+  // Canonical clients.lead_id → /leads/{id}. "View original lead" keeps the
+  // inquiry record reachable after Booked; the lead row is never deleted.
   originatingLeadId?: string | null;
   relationshipContact?: {
     clientId: string;
@@ -532,8 +530,12 @@ export function EventDetail({
           </div>
           {originatingLeadId && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Link href={`/leads/${originatingLeadId}`} className="hover:text-foreground hover:underline">
-                View original inquiry
+              <Link
+                href={`/leads/${originatingLeadId}`}
+                className="hover:text-foreground hover:underline"
+                data-testid="view-original-lead"
+              >
+                View original lead
               </Link>
             </div>
           )}

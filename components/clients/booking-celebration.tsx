@@ -186,6 +186,17 @@ export function BookingCelebration({
           <p className="text-xl text-muted-foreground">
             {handoff.bookingLine}
           </p>
+          {client.leadId ? (
+            <p className="text-sm text-muted-foreground">
+              <Link
+                href={`/leads/${client.leadId}`}
+                className="hover:text-foreground hover:underline"
+                data-testid="view-original-lead"
+              >
+                View original lead
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         {details.length > 0 && (

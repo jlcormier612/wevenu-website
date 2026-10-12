@@ -15,6 +15,19 @@ const leadDetail = readFileSync(resolve("components/leads/lead-detail.tsx"), "ut
 
 
 describe("client page compact booking + staffing layout", () => {
+  it("keeps a View original lead link to clients.lead_id in the booked header", () => {
+    assert.match(detail, /originatingLeadId/);
+    assert.match(detail, /data-testid="view-original-lead"/);
+    assert.match(detail, /View original lead/);
+    assert.match(detail, /href=\{`\/leads\/\$\{originatingLeadId\}`\}/);
+    const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+    assert.match(page, /originatingLeadId=\{client\.leadId\}/);
+    const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+    assert.match(celebration, /data-testid="view-original-lead"/);
+    assert.match(celebration, /View original lead/);
+    assert.match(celebration, /href=\{`\/leads\/\$\{client\.leadId\}`\}/);
+  });
+
   it("places booking, team assignment, and additional staff in one upper region", () => {
     const region = detail.slice(
       detail.indexOf('data-testid="client-booking-staff-region"'),
